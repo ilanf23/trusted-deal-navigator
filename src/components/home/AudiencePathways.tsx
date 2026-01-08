@@ -12,12 +12,54 @@ const AudiencePathways = () => {
   const [isClosedOpen, setIsClosedOpen] = useState(false);
 
   const steps = [
-    { step: 1, title: "Initial Consult", duration: "", icon: "📞", hasPopup: true },
-    { step: 2, title: "Onboarding", duration: "24-48 hours", icon: "📋", hasPopup: true },
-    { step: 3, title: "In-House Underwriting", duration: "24-48 hours", icon: "🔍", hasPopup: true },
-    { step: 4, title: "Lender Management", duration: "5-10 days", icon: "🤝", hasPopup: true },
-    { step: 5, title: "Path to Closing", duration: "1-4+ weeks", icon: "📈", hasPopup: true },
-    { step: 6, title: "Closed", duration: "", icon: "🎉", hasPopup: true },
+    { 
+      step: 1, 
+      title: "Initial Consult", 
+      duration: "", 
+      hasPopup: true,
+      goalsAbove: ["Are we a fit", "Outline the Process", "Needs List"],
+      goalsBelow: []
+    },
+    { 
+      step: 2, 
+      title: "Onboarding", 
+      duration: "24-48 hours", 
+      hasPopup: true,
+      goalsAbove: [],
+      goalsBelow: ["Doc. Review", "Structuring", "Pre-Qualification"]
+    },
+    { 
+      step: 3, 
+      title: "In-House\nUnderwriting", 
+      duration: "24-48 hours", 
+      hasPopup: true,
+      goalsAbove: ["Underwriting", "Mitigate Concerns", "Loan Packaging"],
+      goalsBelow: []
+    },
+    { 
+      step: 4, 
+      title: "Lender\nManagement", 
+      duration: "Terms 5-10 days", 
+      hasPopup: true,
+      goalsAbove: [],
+      goalsBelow: ["Terms", "Underwriting", "Commitment"]
+    },
+    { 
+      step: 5, 
+      title: "Path to\nClosing", 
+      duration: "1-4+ weeks", 
+      hasPopup: true,
+      goalsAbove: ["Expectations", "Checklist", "Third Party Reports"],
+      goalsBelow: []
+    },
+    { 
+      step: 6, 
+      title: "Closed", 
+      duration: "", 
+      hasPopup: true,
+      goalsAbove: [],
+      goalsBelow: ["Closing", "Success Based Fee", "Stay In Touch!"]
+    },
   ];
 
   const handleStepClick = (step: number) => {
@@ -59,54 +101,97 @@ const AudiencePathways = () => {
           </p>
         </div>
 
-        {/* Horizontal Steps Timeline */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-0 mb-16 overflow-x-auto pb-4">
-          {steps.map((step, index) => (
-            <div key={step.step} className="flex items-center">
-              {/* Step */}
-              <div
+        {/* Chevron Steps Timeline */}
+        <div className="mb-16">
+          {/* Goals Above - Desktop */}
+          <div className="hidden lg:grid grid-cols-6 gap-0 mb-4">
+            {steps.map((step, index) => (
+              <div key={`above-${index}`} className="text-center px-2">
+                {step.goalsAbove.map((goal, goalIndex) => (
+                  <p key={goalIndex} className="text-sm text-muted-foreground mb-1">
+                    {(index * 3) + goalIndex + 1}. {goal}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Chevron Steps */}
+          <div className="flex flex-col lg:flex-row items-stretch">
+            {steps.map((step, index) => (
+              <div 
+                key={step.step}
                 onClick={() => handleStepClick(step.step)}
-                className={`group flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 min-w-[120px]`}
+                className="group cursor-pointer relative flex-1"
               >
-                {/* Step number circle */}
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg shadow-lg mb-3 transition-all duration-300 group-hover:scale-110 ${
-                  index === 0 
-                    ? 'bg-primary text-primary-foreground' 
-                    : index === steps.length - 1
-                    ? 'bg-accent text-accent-foreground'
-                    : 'bg-card border-2 border-primary text-primary'
-                }`}>
-                  {step.step}
+                {/* Chevron Shape */}
+                <div 
+                  className={`relative h-20 lg:h-24 flex items-center justify-center transition-all duration-300 group-hover:brightness-110 ${
+                    index === steps.length - 1 
+                      ? 'bg-primary rounded-r-lg lg:rounded-r-none' 
+                      : index === 0
+                      ? 'bg-primary rounded-l-lg lg:rounded-l-none'
+                      : 'bg-primary'
+                  }`}
+                  style={{
+                    clipPath: index === steps.length - 1 
+                      ? 'polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%)'
+                      : index === 0
+                      ? 'polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 0 50%)'
+                      : 'polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%)'
+                  }}
+                >
+                  <div className="text-center text-primary-foreground px-6 lg:px-4">
+                    <h3 className="font-bold text-sm lg:text-base whitespace-pre-line leading-tight">
+                      {step.title}
+                    </h3>
+                    {step.duration && (
+                      <p className="text-xs lg:text-sm opacity-80 mt-1">
+                        {step.duration}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 
-                {/* Title */}
-                <h3 className="text-sm font-semibold text-foreground mb-1 whitespace-nowrap">
-                  {step.title}
-                </h3>
-                
-                {/* Duration */}
-                {step.duration && (
-                  <p className="text-xs text-muted-foreground">
-                    {step.duration}
-                  </p>
-                )}
-                
-                {/* Watch video indicator */}
-                <div className="mt-2 flex items-center gap-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Play className="w-3 h-3" />
-                  Watch
+                {/* Play indicator on hover */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
+                    <Play className="w-4 h-4 text-white fill-white" />
+                  </div>
                 </div>
               </div>
-              
-              {/* Connector Arrow */}
-              {index < steps.length - 1 && (
-                <div className="hidden lg:flex items-center mx-4">
-                  <div className="w-12 h-0.5 bg-gradient-to-r from-primary/50 to-primary/20" />
-                  <ArrowRight className="w-4 h-4 text-primary/50 -ml-1" />
-                </div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Goals Below - Desktop */}
+          <div className="hidden lg:grid grid-cols-6 gap-0 mt-4">
+            {steps.map((step, index) => (
+              <div key={`below-${index}`} className="text-center px-2">
+                {step.goalsBelow.map((goal, goalIndex) => (
+                  <p key={goalIndex} className="text-sm text-muted-foreground mb-1">
+                    {index === 1 ? goalIndex + 4 : index === 3 ? goalIndex + 10 : goalIndex + 16}. {goal}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile: Goals list */}
+          <div className="lg:hidden mt-6 space-y-4">
+            {steps.map((step) => (
+              <div key={`mobile-${step.step}`} className="bg-card rounded-lg p-4 border border-border">
+                <h4 className="font-semibold text-foreground mb-2">{step.title.replace('\n', ' ')}</h4>
+                <ul className="space-y-1">
+                  {[...step.goalsAbove, ...step.goalsBelow].map((goal, i) => (
+                    <li key={i} className="text-sm text-muted-foreground flex items-center gap-2">
+                      <CheckCircle2 className="w-3 h-3 text-primary" />
+                      {goal}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Bottom CTA */}
