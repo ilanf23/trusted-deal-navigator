@@ -65,6 +65,11 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-3">
+            <Link to="/auth">
+              <Button variant="outline" size="default">
+                Client Portal
+              </Button>
+            </Link>
             <Button 
               variant="hero" 
               size="default"
