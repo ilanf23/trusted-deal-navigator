@@ -67,7 +67,7 @@ const Header = () => {
           <div className="hidden lg:flex items-center gap-3">
             <Link to="/contact">
               <Button variant="hero" size="default">
-                Talk to an Expert
+                Talk to Brad
               </Button>
             </Link>
           </div>
@@ -94,7 +94,7 @@ const Header = () => {
               <div className="pt-4 px-4">
                 <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)}>
                   <Button variant="hero" className="w-full">
-                    Talk to an Expert
+                    Talk to Brad
                   </Button>
                 </Link>
               </div>
