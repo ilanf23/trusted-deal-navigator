@@ -41,7 +41,7 @@ const HeroSection = () => {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-primary-foreground mb-6 animate-fade-in-up">
+          <h1 className="text-primary-foreground mb-8 animate-fade-in-up">
             Commercial Financing
             <br />
             <span className="text-accent">
@@ -55,6 +55,19 @@ const HeroSection = () => {
               </span>
             </span>
           </h1>
+
+          {/* Video */}
+          <div className="mb-10 animate-fade-in-up animation-delay-100">
+            <div className="relative w-full max-w-2xl aspect-video rounded-xl overflow-hidden shadow-2xl border border-primary-foreground/20">
+              <iframe 
+                src="https://www.youtube.com/embed/z11ValptvRA?start=1" 
+                title="Commercial Lending X Overview" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowFullScreen 
+                className="absolute inset-0 w-full h-full" 
+              />
+            </div>
+          </div>
 
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8 max-w-2xl leading-relaxed animate-fade-in-up animation-delay-100">
