@@ -76,14 +76,15 @@ const HeroSection = () => {
           </p>
 
           {/* Highlights */}
-          <div className="flex flex-wrap gap-6 mb-10 animate-fade-in-up animation-delay-200">
-            <div className="flex items-center gap-2 text-primary-foreground/90">
+          {/* Highlights */}
+          <div className="flex flex-wrap gap-6 mb-10">
+            <div className="flex items-center gap-2 text-primary-foreground/90 opacity-0 animate-fade-in-up animation-delay-200">
               <span className="font-medium">300+ Lending Partners</span>
             </div>
-            <div className="flex items-center gap-2 text-primary-foreground/90">
+            <div className="flex items-center gap-2 text-primary-foreground/90 opacity-0 animate-fade-in-up animation-delay-300">
               <span className="font-medium">No Upfront Fees</span>
             </div>
-            <div className="flex items-center gap-2 text-primary-foreground/90">
+            <div className="flex items-center gap-2 text-primary-foreground/90 opacity-0 animate-fade-in-up animation-delay-400">
               <span className="font-medium">Success-Based Model</span>
             </div>
           </div>
