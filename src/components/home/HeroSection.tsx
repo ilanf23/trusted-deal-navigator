@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Quote } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import DealPulseMap from "./DealPulseMap";
 
 const rotatingWords = [
@@ -9,19 +9,6 @@ const rotatingWords = [
   "Investors",
   "Franchisees",
   "Real Estate Buyers",
-];
-
-const floatingQuotes = [
-  { text: "Brad made the impossible possible!", top: "15%", left: "5%", delay: "0s", duration: "12s", animation: "floatQuote" },
-  { text: "Closed in just 3 weeks!", top: "25%", left: "85%", delay: "1.5s", duration: "14s", animation: "floatQuote2" },
-  { text: "Best decision we ever made", top: "60%", left: "8%", delay: "3s", duration: "11s", animation: "floatQuote" },
-  { text: "Saved us $50k in fees", top: "70%", left: "88%", delay: "0.5s", duration: "13s", animation: "floatQuote2" },
-  { text: "Professional & responsive", top: "40%", left: "3%", delay: "2s", duration: "15s", animation: "floatQuote2" },
-  { text: "5 stars all the way!", top: "80%", left: "75%", delay: "4s", duration: "10s", animation: "floatQuote" },
-  { text: "Exceeded all expectations", top: "10%", left: "70%", delay: "5s", duration: "12s", animation: "floatQuote2" },
-  { text: "Game changer for our business", top: "50%", left: "92%", delay: "1s", duration: "14s", animation: "floatQuote" },
-  { text: "Highly recommend CLX!", top: "35%", left: "90%", delay: "2.5s", duration: "11s", animation: "floatQuote" },
-  { text: "Smooth process start to finish", top: "85%", left: "10%", delay: "3.5s", duration: "13s", animation: "floatQuote2" },
 ];
 
 const HeroSection = () => {
@@ -41,7 +28,7 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-screen flex items-center hero-gradient overflow-hidden">
-      {/* Animated Background with Floating Quotes */}
+      {/* Animated Background */}
       <div className="absolute inset-0">
         {/* Floating orbs */}
         <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-primary-foreground/10 blur-3xl animate-[float_8s_ease-in-out_infinite]" />
@@ -50,25 +37,20 @@ const HeroSection = () => {
         {/* Moving gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary-foreground/5 to-transparent animate-[shimmer_15s_ease-in-out_infinite]" />
         
-        {/* Floating testimonial quotes */}
-        {floatingQuotes.map((quote, index) => (
-          <div
-            key={index}
-            className="absolute hidden lg:flex items-center gap-2 px-4 py-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full text-primary-foreground/60 text-xs font-medium whitespace-nowrap"
-            style={{
-              top: quote.top,
-              left: quote.left,
-              animationDelay: quote.delay,
-              animationDuration: quote.duration,
-              animationName: quote.animation,
-              animationTimingFunction: 'ease-in-out',
-              animationIterationCount: 'infinite',
-            }}
-          >
-            <Quote className="w-3 h-3 text-accent/60" />
-            <span>{quote.text}</span>
-          </div>
-        ))}
+        {/* Subtle animated grid lines */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundSize: '60px 60px',
+          animation: 'pulse 4s ease-in-out infinite'
+        }} />
+        
+        {/* Floating particles */}
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 rounded-full bg-accent/30 animate-[float_6s_ease-in-out_infinite]" />
+        <div className="absolute top-1/3 right-1/4 w-1.5 h-1.5 rounded-full bg-primary-foreground/20 animate-[float_8s_ease-in-out_infinite_reverse]" />
+        <div className="absolute bottom-1/3 left-1/3 w-1 h-1 rounded-full bg-accent/40 animate-[float_7s_ease-in-out_infinite]" />
+        <div className="absolute top-1/2 right-1/3 w-2 h-2 rounded-full bg-primary-foreground/15 animate-[float_9s_ease-in-out_infinite_reverse]" />
+        <div className="absolute bottom-1/4 right-1/5 w-1.5 h-1.5 rounded-full bg-accent/25 animate-[float_5s_ease-in-out_infinite]" />
+        <div className="absolute top-2/3 left-1/5 w-1 h-1 rounded-full bg-primary-foreground/25 animate-[float_10s_ease-in-out_infinite_reverse]" />
       </div>
 
 
