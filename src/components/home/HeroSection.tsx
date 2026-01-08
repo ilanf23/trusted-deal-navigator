@@ -136,7 +136,7 @@ const HeroSection = () => {
           </div>
 
           {/* Subheadline */}
-          <p className="text-2xl md:text-3xl text-primary-foreground/80 mb-10 max-w-3xl leading-relaxed animate-fade-in-up animation-delay-100">
+          <p className="text-2xl md:text-3xl text-primary-foreground/80 mb-10 max-w-3xl leading-relaxed animate-fade-in-up animation-delay-100 mt-12">
             Navigate complex commercial financing with confidence. Access hundreds of 
             lending partners including banks, SBA, and alternative lenders with our success-based 
             fee model.
