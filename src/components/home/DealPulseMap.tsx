@@ -16,7 +16,7 @@ interface Deal {
 const deals: Deal[] = [
   { id: 1, city: "Dallas", state: "TX", amount: "$2.4M", type: "SBA Loan", days: 21, x: 52, y: 62 },
   { id: 2, city: "Phoenix", state: "AZ", amount: "$1.8M", type: "Industrial Refinance", days: 28, x: 28, y: 58 },
-  { id: 3, city: "Chicago", state: "IL", amount: "$3.2M", type: "Commercial Real Estate", days: 35, x: 58, y: 35 },
+  { id: 3, city: "Chicago", state: "IL", amount: "$3.2M", type: "Commercial Real Estate", days: 35, x: 60, y: 35 },
   { id: 4, city: "Atlanta", state: "GA", amount: "$2.1M", type: "Business Acquisition", days: 24, x: 70, y: 52 },
   { id: 5, city: "Denver", state: "CO", amount: "$1.5M", type: "Equipment Financing", days: 18, x: 38, y: 42 },
   { id: 6, city: "Seattle", state: "WA", amount: "$4.1M", type: "SBA 504 Loan", days: 32, x: 22, y: 22 },
