@@ -13,16 +13,16 @@ interface Deal {
 }
 
 const deals: Deal[] = [
-  { id: 1, city: "Dallas", state: "TX", amount: "$2.4M", type: "SBA Loan", days: 21, x: 45, y: 62 },
-  { id: 2, city: "Phoenix", state: "AZ", amount: "$1.8M", type: "Industrial Refinance", days: 28, x: 22, y: 55 },
-  { id: 3, city: "Chicago", state: "IL", amount: "$3.2M", type: "Commercial Real Estate", days: 35, x: 58, y: 35 },
-  { id: 4, city: "Atlanta", state: "GA", amount: "$2.1M", type: "Business Acquisition", days: 24, x: 68, y: 58 },
-  { id: 5, city: "Denver", state: "CO", amount: "$1.5M", type: "Equipment Financing", days: 18, x: 32, y: 42 },
-  { id: 6, city: "Seattle", state: "WA", amount: "$4.1M", type: "SBA 504 Loan", days: 32, x: 15, y: 18 },
-  { id: 7, city: "Miami", state: "FL", amount: "$2.8M", type: "Working Capital", days: 14, x: 78, y: 78 },
-  { id: 8, city: "Boston", state: "MA", amount: "$1.9M", type: "Commercial Mortgage", days: 26, x: 88, y: 28 },
-  { id: 9, city: "Los Angeles", state: "CA", amount: "$5.2M", type: "Mixed-Use Property", days: 42, x: 12, y: 52 },
-  { id: 10, city: "New York", state: "NY", amount: "$3.7M", type: "Office Building", days: 38, x: 85, y: 32 },
+  { id: 1, city: "Dallas", state: "TX", amount: "$2.4M", type: "SBA Loan", days: 21, x: 48, y: 72 },
+  { id: 2, city: "Phoenix", state: "AZ", amount: "$1.8M", type: "Industrial Refinance", days: 28, x: 22, y: 62 },
+  { id: 3, city: "Chicago", state: "IL", amount: "$3.2M", type: "Commercial Real Estate", days: 35, x: 58, y: 38 },
+  { id: 4, city: "Atlanta", state: "GA", amount: "$2.1M", type: "Business Acquisition", days: 24, x: 68, y: 60 },
+  { id: 5, city: "Denver", state: "CO", amount: "$1.5M", type: "Equipment Financing", days: 18, x: 35, y: 48 },
+  { id: 6, city: "Seattle", state: "WA", amount: "$4.1M", type: "SBA 504 Loan", days: 32, x: 15, y: 22 },
+  { id: 7, city: "Miami", state: "FL", amount: "$2.8M", type: "Working Capital", days: 14, x: 78, y: 85 },
+  { id: 8, city: "Boston", state: "MA", amount: "$1.9M", type: "Commercial Mortgage", days: 26, x: 88, y: 30 },
+  { id: 9, city: "Los Angeles", state: "CA", amount: "$5.2M", type: "Mixed-Use Property", days: 42, x: 12, y: 58 },
+  { id: 10, city: "New York", state: "NY", amount: "$3.7M", type: "Office Building", days: 38, x: 82, y: 35 },
 ];
 
 const DealPulseMap = () => {
@@ -67,20 +67,39 @@ const DealPulseMap = () => {
 
   return (
     <div className="relative w-full h-full min-h-[300px] bg-primary-foreground/5 rounded-2xl backdrop-blur-sm border border-primary-foreground/10 overflow-hidden">
-      {/* Simplified US Map SVG */}
+      {/* USA Map SVG - Continental United States */}
       <svg
-        viewBox="0 0 100 70"
-        className="w-full h-full opacity-30"
+        viewBox="0 0 1000 600"
+        className="absolute inset-0 w-full h-full"
         preserveAspectRatio="xMidYMid meet"
       >
-        {/* Simplified continental US outline */}
+        {/* Continental US outline */}
         <path
-          d="M10,20 L15,15 L25,12 L35,14 L45,12 L55,10 L65,12 L75,15 L85,18 L90,25 L88,35 L85,40 L80,45 L75,50 L78,60 L75,65 L70,60 L65,58 L60,62 L55,60 L50,62 L45,65 L40,62 L35,58 L30,55 L25,52 L20,48 L15,45 L12,40 L10,35 L8,28 Z"
-          fill="currentColor"
-          className="text-primary-foreground/20"
+          d="M60,200 C60,190 70,175 85,165 C100,155 120,145 145,140 L150,130 L160,125 L175,122 L195,120 L220,118 L250,115 L280,112 L310,110 L340,108 L375,106 L410,105 L445,104 L480,103 L515,102 L550,100 L580,98 L610,96 L640,95 L670,96 L700,100 L725,108 L745,118 L760,130 L772,145 L782,162 L790,180 L795,200 L798,220 L800,240 L800,260 L798,280 L795,298 L790,315 L782,330 L772,342 L760,352 L745,360 L728,368 L712,378 L700,390 L692,405 L688,422 L690,440 L698,458 L710,475 L720,490 L725,505 L722,518 L712,528 L695,535 L675,540 L652,542 L628,540 L605,535 L585,528 L568,518 L555,505 L545,490 L538,472 L532,455 L525,440 L515,428 L502,418 L485,412 L465,410 L442,412 L420,418 L400,428 L382,440 L368,455 L358,472 L352,490 L350,508 L352,525 L358,540 L368,552 L380,562 L392,568 L402,572 L408,578 L410,588 L405,598 L395,605 L380,608 L362,605 L345,598 L330,588 L318,575 L308,560 L300,542 L292,525 L282,510 L268,498 L250,490 L228,485 L205,482 L180,480 L155,478 L132,475 L112,470 L95,462 L82,450 L72,435 L65,418 L60,400 L58,380 L58,360 L60,340 L62,320 L62,300 L60,280 L55,260 L50,240 L48,220 L52,205 Z"
+          fill="none"
           stroke="currentColor"
-          strokeWidth="0.5"
+          strokeWidth="2.5"
+          className="text-primary-foreground/40"
         />
+        {/* Florida peninsula */}
+        <path
+          d="M690,440 L698,458 L710,475 L720,490 L725,505 L728,520 L732,538 L738,555 L748,568 L760,575 L772,575 L782,568 L788,555 L790,540 L788,522 L782,505 L772,490 L758,478 L742,468 L725,460 L710,455 L698,452"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          className="text-primary-foreground/40"
+        />
+        {/* Michigan upper peninsula hint */}
+        <path
+          d="M560,180 C575,175 590,178 598,188 C602,198 598,210 588,218 C578,222 565,220 558,210 C552,200 552,188 560,180"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="text-primary-foreground/30"
+        />
+        {/* Great Lakes indication */}
+        <ellipse cx="595" cy="195" rx="30" ry="22" fill="none" stroke="currentColor" strokeWidth="1" className="text-primary-foreground/20" />
+        <ellipse cx="555" cy="210" rx="22" ry="15" fill="none" stroke="currentColor" strokeWidth="1" className="text-primary-foreground/20" />
       </svg>
       
       {/* Deal Pulses */}
