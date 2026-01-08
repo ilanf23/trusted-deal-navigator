@@ -4,10 +4,11 @@ import { Play, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const AudiencePathways = () => {
   const [isInitialConsultOpen, setIsInitialConsultOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   const steps = [
     { step: 1, title: "Initial Consult", duration: "", icon: "📞", hasPopup: true },
-    { step: 2, title: "Onboarding", duration: "24-48 hours", icon: "📋", hasPopup: false },
+    { step: 2, title: "Onboarding", duration: "24-48 hours", icon: "📋", hasPopup: true },
     { step: 3, title: "In-House Underwriting", duration: "24-48 hours", icon: "🔍", hasPopup: false },
     { step: 4, title: "Lender Management", duration: "5-10 days", icon: "🤝", hasPopup: false },
     { step: 5, title: "Path to Closing", duration: "1-4+ weeks", icon: "📈", hasPopup: false },
@@ -17,6 +18,8 @@ const AudiencePathways = () => {
   const handleStepClick = (step: number) => {
     if (step === 1) {
       setIsInitialConsultOpen(true);
+    } else if (step === 2) {
+      setIsOnboardingOpen(true);
     }
   };
 
@@ -171,6 +174,51 @@ const AudiencePathways = () => {
             <button 
               onClick={() => {
                 setIsInitialConsultOpen(false);
+                // @ts-ignore
+                window.Calendly?.initPopupWidget({
+                  url: 'https://calendly.com/adam-fridman/30min'
+                });
+              }}
+              className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
+            >
+              Talk to Brad
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Onboarding Popup */}
+      <Dialog open={isOnboardingOpen} onOpenChange={setIsOnboardingOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl md:text-3xl flex items-center gap-3">
+              <span className="text-3xl">📋</span>
+              Step 2: Onboarding
+            </DialogTitle>
+          </DialogHeader>
+          
+          {/* Video */}
+          <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg">
+            <iframe 
+              src="https://www.youtube.com/embed/8Os00M78vjs" 
+              title="Onboarding - The CLX Way" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+              allowFullScreen 
+              className="absolute inset-0 w-full h-full" 
+            />
+          </div>
+          
+          {/* Description */}
+          <DialogDescription className="text-base md:text-lg leading-relaxed text-foreground/80 mt-8">
+            Welcome to Step 2 of The CLX Way: Onboarding. In this stage, we review your documentation to ensure completeness and accuracy, while crafting a tailored deal structure to match your unique objectives. Through this process, we assess your pre-qualification status, laying the groundwork for our next phase of rigorous in-house underwriting. This step is all about setting the stage for success, ensuring every detail is finely tuned for your financial journey with us.
+          </DialogDescription>
+          
+          {/* CTA Button */}
+          <div className="flex justify-center mt-8">
+            <button 
+              onClick={() => {
+                setIsOnboardingOpen(false);
                 // @ts-ignore
                 window.Calendly?.initPopupWidget({
                   url: 'https://calendly.com/adam-fridman/30min'
