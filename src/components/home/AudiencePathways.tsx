@@ -117,36 +117,47 @@ const AudiencePathways = () => {
           </div>
 
           {/* Chevron Steps */}
-          <div className="flex flex-col lg:flex-row items-stretch">
+          <div className="flex flex-col lg:flex-row items-stretch gap-1 lg:gap-2">
             {steps.map((step, index) => (
               <div 
                 key={step.step}
                 onClick={() => handleStepClick(step.step)}
                 className="group cursor-pointer relative flex-1"
               >
-                {/* Chevron Shape */}
+                {/* Chevron Shape with Border */}
                 <div 
-                  className={`relative h-20 lg:h-24 flex items-center justify-center transition-all duration-300 group-hover:brightness-110 ${
+                  className={`relative h-24 lg:h-28 flex items-center justify-center transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-xl ${
                     index === steps.length - 1 
-                      ? 'bg-primary rounded-r-lg lg:rounded-r-none' 
-                      : index === 0
-                      ? 'bg-primary rounded-l-lg lg:rounded-l-none'
-                      : 'bg-primary'
+                      ? 'bg-accent shadow-lg shadow-accent/30' 
+                      : 'bg-primary shadow-lg shadow-primary/30'
                   }`}
                   style={{
                     clipPath: index === steps.length - 1 
-                      ? 'polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%)'
+                      ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
                       : index === 0
-                      ? 'polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 0 50%)'
-                      : 'polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%)'
+                      ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 0 0)'
+                      : 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
                   }}
                 >
-                  <div className="text-center text-primary-foreground px-6 lg:px-4">
-                    <h3 className="font-bold text-sm lg:text-base whitespace-pre-line leading-tight">
+                  {/* Step Number Badge */}
+                  <div className={`absolute top-2 left-4 lg:left-6 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    index === steps.length - 1 
+                      ? 'bg-white/20 text-white' 
+                      : 'bg-white/20 text-white'
+                  }`}>
+                    {step.step}
+                  </div>
+                  
+                  <div className={`text-center px-8 lg:px-6 ${
+                    index === steps.length - 1 
+                      ? 'text-accent-foreground' 
+                      : 'text-primary-foreground'
+                  }`}>
+                    <h3 className="font-bold text-base lg:text-lg whitespace-pre-line leading-tight drop-shadow-sm">
                       {step.title}
                     </h3>
                     {step.duration && (
-                      <p className="text-xs lg:text-sm opacity-80 mt-1">
+                      <p className="text-sm mt-1 opacity-90 font-medium">
                         {step.duration}
                       </p>
                     )}
@@ -155,8 +166,8 @@ const AudiencePathways = () => {
                 
                 {/* Play indicator on hover */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
-                    <Play className="w-4 h-4 text-white fill-white" />
+                  <div className="bg-white/30 backdrop-blur-sm rounded-full p-3 shadow-lg">
+                    <Play className="w-5 h-5 text-white fill-white" />
                   </div>
                 </div>
               </div>
