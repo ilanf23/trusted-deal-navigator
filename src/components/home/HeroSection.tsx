@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Users, TrendingUp } from "lucide-react";
 import USAMapWithDots from "./USAMapWithDots";
-import PhoneWithNotifications from "./PhoneWithNotifications";
+import ComputerWithNotifications from "./ComputerWithNotifications";
 
 const HeroSection = () => {
   const [dotCount, setDotCount] = useState(0);
@@ -73,7 +73,7 @@ const HeroSection = () => {
           {/* USA Map and Phone */}
           <div className="hidden lg:flex justify-center items-center gap-8 animate-fade-in-up animation-delay-200">
             <USAMapWithDots onDotAdded={setDotCount} />
-            <PhoneWithNotifications dotCount={dotCount} />
+            <ComputerWithNotifications dotCount={dotCount} />
           </div>
         </div>
       </div>

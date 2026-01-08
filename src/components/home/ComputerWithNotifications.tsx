@@ -7,7 +7,7 @@ interface Notification {
   timestamp: number;
 }
 
-interface PhoneWithNotificationsProps {
+interface ComputerWithNotificationsProps {
   dotCount: number;
 }
 
@@ -94,7 +94,7 @@ const deals = [
   { title: "Closed: $4.1M Construction Loan", subtitle: "Suburban retail center · Chicago, IL" },
 ];
 
-const PhoneWithNotifications = ({ dotCount }: PhoneWithNotificationsProps) => {
+const ComputerWithNotifications = ({ dotCount }: ComputerWithNotificationsProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
   // Shuffle deals once on mount
@@ -132,57 +132,68 @@ const PhoneWithNotifications = ({ dotCount }: PhoneWithNotificationsProps) => {
 
   return (
     <div className="relative">
-      {/* Phone Outline */}
+      {/* Laptop/Computer Outline */}
       <svg 
-        width="140" 
-        height="280" 
-        viewBox="0 0 140 280" 
+        width="220" 
+        height="160" 
+        viewBox="0 0 220 160" 
         fill="none" 
         className="opacity-80"
       >
+        {/* Screen */}
         <rect 
-          x="4" 
+          x="10" 
           y="4" 
-          width="132" 
-          height="272" 
-          rx="24" 
+          width="200" 
+          height="120" 
+          rx="8" 
           stroke="currentColor" 
           strokeWidth="3" 
           className="text-primary-foreground"
         />
-        <rect 
-          x="50" 
-          y="14" 
-          width="40" 
-          height="6" 
-          rx="3" 
+        {/* Screen bezel top (camera) */}
+        <circle 
+          cx="110" 
+          cy="12" 
+          r="3" 
           fill="currentColor" 
           className="text-primary-foreground/50"
         />
-        <circle 
-          cx="70" 
-          cy="262" 
-          r="10" 
+        {/* Keyboard base */}
+        <path 
+          d="M0 134 L10 124 L210 124 L220 134 L220 148 C220 152 216 156 212 156 L8 156 C4 156 0 152 0 148 L0 134Z" 
           stroke="currentColor" 
-          strokeWidth="2" 
+          strokeWidth="3" 
+          fill="none"
+          className="text-primary-foreground"
+        />
+        {/* Trackpad */}
+        <rect 
+          x="85" 
+          y="138" 
+          width="50" 
+          height="10" 
+          rx="2" 
+          stroke="currentColor" 
+          strokeWidth="1.5" 
           className="text-primary-foreground/50"
         />
       </svg>
 
       {/* Notifications Container */}
-      <div className="absolute top-10 left-4 right-4 flex flex-col gap-2 overflow-hidden">
+      <div className="absolute top-6 left-6 right-6 flex flex-col gap-2 overflow-hidden">
         {notifications.map((notification, index) => (
           <div
             key={notification.id}
-            className="bg-primary-foreground/15 backdrop-blur-sm rounded-lg px-2.5 py-2 animate-fade-in border border-primary-foreground/10"
+            className="bg-primary-foreground/15 backdrop-blur-sm rounded-lg px-3 py-2 animate-fade-in border border-primary-foreground/10"
             style={{
               opacity: 1 - index * 0.2,
             }}
           >
-            <p className="text-primary-foreground text-[9px] font-semibold leading-tight">
+            <p className="text-primary-foreground text-[10px] font-semibold leading-tight">
               {notification.title}
             </p>
-            <p className="text-primary-foreground/70 text-[7px] leading-tight mt-0.5">
+            <p className="text-primary-foreground/70 text-[8px] leading-tight mt-0.5">
               {notification.subtitle}
             </p>
           </div>
@@ -192,4 +203,4 @@ const PhoneWithNotifications = ({ dotCount }: PhoneWithNotificationsProps) => {
   );
 };
 
-export default PhoneWithNotifications;
+export default ComputerWithNotifications;
