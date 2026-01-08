@@ -67,7 +67,7 @@ const DealPulseMap = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-full bg-primary-foreground/5 rounded-2xl backdrop-blur-sm border border-primary-foreground/10 overflow-hidden">
+    <div className="relative w-full h-full min-h-[300px] bg-primary-foreground/5 rounded-2xl backdrop-blur-sm border border-primary-foreground/10 overflow-hidden">
       {/* USA Map Image */}
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
         <img 
