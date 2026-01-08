@@ -73,11 +73,11 @@ const DealPulseMap = () => {
         <img 
           src={usaOutline} 
           alt="USA Map" 
-          className="object-contain opacity-30"
+          className="object-contain"
           style={{ 
-            filter: 'invert(1) opacity(0.35)',
-            width: '200%',
-            height: '200%',
+            filter: 'invert(1) opacity(0.6)',
+            width: '140%',
+            height: '140%',
             maxWidth: 'none'
           }}
         />
