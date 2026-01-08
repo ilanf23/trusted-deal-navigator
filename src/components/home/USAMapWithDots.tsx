@@ -7,124 +7,166 @@ interface Dot {
   y: number;
 }
 
-// Dot positions based on major US cities (percentages relative to map container)
+// Population-weighted dot positions matching US city lights distribution
 const dotPositions = [
-  // Seattle, WA area
-  { x: 18, y: 24 }, { x: 20, y: 26 }, { x: 17, y: 28 }, { x: 21, y: 25 },
-  // Portland, OR area
-  { x: 16, y: 32 }, { x: 18, y: 34 }, { x: 15, y: 35 }, { x: 19, y: 33 },
-  // San Francisco Bay Area
-  { x: 14, y: 48 }, { x: 16, y: 50 }, { x: 13, y: 52 }, { x: 17, y: 49 },
-  // Los Angeles area
-  { x: 18, y: 62 }, { x: 20, y: 64 }, { x: 17, y: 66 }, { x: 21, y: 63 }, { x: 19, y: 65 },
-  // San Diego area
-  { x: 20, y: 68 }, { x: 22, y: 70 }, { x: 19, y: 69 },
-  // Phoenix, AZ area
-  { x: 28, y: 66 }, { x: 30, y: 68 }, { x: 27, y: 67 }, { x: 31, y: 65 },
-  // Las Vegas, NV area
-  { x: 24, y: 56 }, { x: 26, y: 58 }, { x: 23, y: 57 },
-  // Salt Lake City, UT area
-  { x: 28, y: 44 }, { x: 30, y: 46 }, { x: 27, y: 45 }, { x: 31, y: 43 },
-  // Denver, CO area
-  { x: 38, y: 48 }, { x: 40, y: 50 }, { x: 37, y: 49 }, { x: 41, y: 47 }, { x: 39, y: 51 },
-  // Albuquerque, NM area
-  { x: 34, y: 62 }, { x: 36, y: 64 }, { x: 33, y: 63 },
-  // Boise, ID area
-  { x: 24, y: 36 }, { x: 26, y: 38 }, { x: 23, y: 37 },
-  // Billings, MT area
-  { x: 34, y: 30 }, { x: 36, y: 32 }, { x: 33, y: 31 },
-  // Minneapolis, MN area
-  { x: 56, y: 32 }, { x: 58, y: 34 }, { x: 55, y: 33 }, { x: 59, y: 31 },
-  // Chicago, IL area
-  { x: 68, y: 44 }, { x: 70, y: 46 }, { x: 67, y: 45 }, { x: 71, y: 43 }, { x: 69, y: 47 },
-  // Detroit, MI area
-  { x: 74, y: 40 }, { x: 76, y: 42 }, { x: 73, y: 41 }, { x: 75, y: 39 },
-  // Milwaukee, WI area
-  { x: 66, y: 38 }, { x: 68, y: 40 }, { x: 65, y: 39 },
-  // St. Louis, MO area
-  { x: 62, y: 54 }, { x: 64, y: 56 }, { x: 61, y: 55 }, { x: 63, y: 53 },
-  // Kansas City, MO area
-  { x: 54, y: 52 }, { x: 56, y: 54 }, { x: 53, y: 53 }, { x: 55, y: 51 },
-  // Omaha, NE area
-  { x: 52, y: 44 }, { x: 54, y: 46 }, { x: 51, y: 45 },
-  // Indianapolis, IN area
-  { x: 72, y: 50 }, { x: 74, y: 52 }, { x: 71, y: 51 }, { x: 73, y: 49 },
-  // Columbus, OH area
-  { x: 76, y: 48 }, { x: 78, y: 50 }, { x: 75, y: 49 },
-  // Cleveland, OH area
-  { x: 78, y: 44 }, { x: 80, y: 46 }, { x: 77, y: 45 },
-  // Dallas-Fort Worth, TX area
-  { x: 50, y: 68 }, { x: 52, y: 70 }, { x: 49, y: 69 }, { x: 53, y: 67 }, { x: 51, y: 71 },
-  // Houston, TX area
-  { x: 54, y: 76 }, { x: 56, y: 78 }, { x: 53, y: 77 }, { x: 57, y: 75 }, { x: 55, y: 79 },
-  // San Antonio, TX area
-  { x: 48, y: 74 }, { x: 50, y: 76 }, { x: 47, y: 75 }, { x: 49, y: 73 },
-  // Austin, TX area
-  { x: 50, y: 72 }, { x: 52, y: 74 }, { x: 49, y: 73 },
-  // Oklahoma City, OK area
-  { x: 50, y: 60 }, { x: 52, y: 62 }, { x: 49, y: 61 }, { x: 51, y: 59 },
-  // New Orleans, LA area
-  { x: 64, y: 76 }, { x: 66, y: 78 }, { x: 63, y: 77 },
-  // Memphis, TN area
-  { x: 66, y: 62 }, { x: 68, y: 64 }, { x: 65, y: 63 },
-  // Nashville, TN area
-  { x: 72, y: 60 }, { x: 74, y: 62 }, { x: 71, y: 61 }, { x: 73, y: 59 },
-  // Atlanta, GA area
-  { x: 76, y: 66 }, { x: 78, y: 68 }, { x: 75, y: 67 }, { x: 77, y: 65 }, { x: 79, y: 69 },
-  // Miami, FL area
-  { x: 82, y: 86 }, { x: 84, y: 88 }, { x: 81, y: 87 }, { x: 83, y: 85 },
-  // Tampa, FL area
-  { x: 80, y: 80 }, { x: 82, y: 82 }, { x: 79, y: 81 },
-  // Orlando, FL area
-  { x: 82, y: 78 }, { x: 84, y: 80 }, { x: 81, y: 79 },
-  // Jacksonville, FL area
-  { x: 80, y: 74 }, { x: 82, y: 76 }, { x: 79, y: 75 },
-  // Charlotte, NC area
-  { x: 80, y: 60 }, { x: 82, y: 62 }, { x: 79, y: 61 }, { x: 81, y: 59 },
-  // Raleigh, NC area
-  { x: 84, y: 58 }, { x: 86, y: 60 }, { x: 83, y: 59 },
-  // New York City area
-  { x: 88, y: 44 }, { x: 90, y: 46 }, { x: 87, y: 45 }, { x: 89, y: 43 }, { x: 91, y: 47 },
-  // Boston, MA area
-  { x: 92, y: 40 }, { x: 94, y: 42 }, { x: 91, y: 41 }, { x: 93, y: 39 },
-  // Philadelphia, PA area
-  { x: 86, y: 48 }, { x: 88, y: 50 }, { x: 85, y: 49 }, { x: 87, y: 47 },
-  // Washington, DC area
-  { x: 86, y: 52 }, { x: 88, y: 54 }, { x: 85, y: 53 }, { x: 87, y: 51 },
-  // Baltimore, MD area
-  { x: 86, y: 50 }, { x: 88, y: 52 }, { x: 85, y: 51 },
-  // Pittsburgh, PA area
-  { x: 80, y: 48 }, { x: 82, y: 50 }, { x: 79, y: 49 },
-  // Buffalo, NY area
-  { x: 82, y: 40 }, { x: 84, y: 42 }, { x: 81, y: 41 },
-  // Cincinnati, OH area
-  { x: 74, y: 54 }, { x: 76, y: 56 }, { x: 73, y: 55 },
-  // Louisville, KY area
-  { x: 72, y: 56 }, { x: 74, y: 58 }, { x: 71, y: 57 },
-  // Birmingham, AL area
-  { x: 72, y: 68 }, { x: 74, y: 70 }, { x: 71, y: 69 },
-  // Richmond, VA area
-  { x: 84, y: 56 }, { x: 86, y: 58 }, { x: 83, y: 57 },
-  // Sacramento, CA area
-  { x: 16, y: 46 }, { x: 18, y: 48 }, { x: 15, y: 47 },
-  // Tucson, AZ area
-  { x: 30, y: 70 }, { x: 32, y: 72 }, { x: 29, y: 71 },
-  // El Paso, TX area
-  { x: 36, y: 68 }, { x: 38, y: 70 }, { x: 35, y: 69 },
-  // Wichita, KS area
-  { x: 52, y: 56 }, { x: 54, y: 58 }, { x: 51, y: 57 },
-  // Tulsa, OK area
-  { x: 54, y: 60 }, { x: 56, y: 62 }, { x: 53, y: 61 },
-  // Little Rock, AR area
-  { x: 60, y: 64 }, { x: 62, y: 66 }, { x: 59, y: 65 },
-  // Jackson, MS area
-  { x: 66, y: 70 }, { x: 68, y: 72 }, { x: 65, y: 71 },
-  // Knoxville, TN area
-  { x: 76, y: 58 }, { x: 78, y: 60 }, { x: 75, y: 59 },
-  // Charleston, SC area
-  { x: 82, y: 68 }, { x: 84, y: 70 }, { x: 81, y: 69 },
-  // Savannah, GA area
-  { x: 80, y: 72 }, { x: 82, y: 74 }, { x: 79, y: 73 },
+  // === NORTHEAST CORRIDOR (heaviest concentration) ===
+  // NYC Metro (dense cluster)
+  { x: 88, y: 42 }, { x: 89, y: 43 }, { x: 87, y: 44 }, { x: 90, y: 42 }, { x: 88, y: 45 },
+  { x: 89, y: 44 }, { x: 87, y: 43 }, { x: 90, y: 45 }, { x: 88, y: 41 }, { x: 89, y: 46 },
+  { x: 86, y: 44 }, { x: 91, y: 43 }, { x: 88, y: 47 }, { x: 87, y: 42 },
+  // Boston Metro
+  { x: 92, y: 38 }, { x: 93, y: 39 }, { x: 91, y: 40 }, { x: 94, y: 38 }, { x: 92, y: 41 },
+  { x: 93, y: 40 }, { x: 91, y: 39 }, { x: 94, y: 41 },
+  // Philadelphia
+  { x: 86, y: 46 }, { x: 87, y: 47 }, { x: 85, y: 48 }, { x: 88, y: 47 }, { x: 86, y: 49 },
+  // Washington DC / Baltimore
+  { x: 84, y: 50 }, { x: 85, y: 51 }, { x: 83, y: 52 }, { x: 86, y: 50 }, { x: 84, y: 53 },
+  { x: 85, y: 52 }, { x: 83, y: 51 }, { x: 86, y: 53 },
+  // Connecticut corridor
+  { x: 90, y: 40 }, { x: 89, y: 41 }, { x: 91, y: 42 },
+  // New Jersey
+  { x: 87, y: 45 }, { x: 88, y: 46 }, { x: 86, y: 47 },
+
+  // === CALIFORNIA (second heaviest) ===
+  // LA Metro (dense)
+  { x: 16, y: 60 }, { x: 17, y: 61 }, { x: 15, y: 62 }, { x: 18, y: 60 }, { x: 16, y: 63 },
+  { x: 17, y: 62 }, { x: 15, y: 61 }, { x: 18, y: 63 }, { x: 14, y: 62 }, { x: 19, y: 61 },
+  { x: 16, y: 64 }, { x: 17, y: 59 },
+  // San Francisco Bay
+  { x: 12, y: 46 }, { x: 13, y: 47 }, { x: 11, y: 48 }, { x: 14, y: 46 }, { x: 12, y: 49 },
+  { x: 13, y: 48 }, { x: 11, y: 47 }, { x: 14, y: 49 },
+  // San Diego
+  { x: 18, y: 66 }, { x: 19, y: 67 }, { x: 17, y: 68 }, { x: 20, y: 66 },
+  // Sacramento
+  { x: 14, y: 44 }, { x: 15, y: 45 }, { x: 13, y: 46 },
+  // Inland Empire / Riverside
+  { x: 20, y: 62 }, { x: 21, y: 63 }, { x: 19, y: 64 },
+
+  // === FLORIDA ===
+  // Miami
+  { x: 82, y: 84 }, { x: 83, y: 85 }, { x: 81, y: 86 }, { x: 84, y: 84 }, { x: 82, y: 87 },
+  { x: 83, y: 86 }, { x: 81, y: 85 },
+  // Tampa / St Pete
+  { x: 78, y: 78 }, { x: 79, y: 79 }, { x: 77, y: 80 }, { x: 80, y: 78 },
+  // Orlando
+  { x: 80, y: 76 }, { x: 81, y: 77 }, { x: 79, y: 78 }, { x: 82, y: 76 },
+  // Jacksonville
+  { x: 80, y: 72 }, { x: 81, y: 73 }, { x: 79, y: 74 },
+
+  // === TEXAS ===
+  // Houston
+  { x: 52, y: 74 }, { x: 53, y: 75 }, { x: 51, y: 76 }, { x: 54, y: 74 }, { x: 52, y: 77 },
+  { x: 53, y: 76 }, { x: 51, y: 75 },
+  // Dallas-Fort Worth
+  { x: 48, y: 64 }, { x: 49, y: 65 }, { x: 47, y: 66 }, { x: 50, y: 64 }, { x: 48, y: 67 },
+  { x: 49, y: 66 }, { x: 47, y: 65 },
+  // San Antonio
+  { x: 46, y: 72 }, { x: 47, y: 73 }, { x: 45, y: 74 }, { x: 48, y: 72 },
+  // Austin
+  { x: 48, y: 70 }, { x: 49, y: 71 }, { x: 47, y: 72 }, { x: 50, y: 70 },
+
+  // === MIDWEST ===
+  // Chicago (dense)
+  { x: 66, y: 42 }, { x: 67, y: 43 }, { x: 65, y: 44 }, { x: 68, y: 42 }, { x: 66, y: 45 },
+  { x: 67, y: 44 }, { x: 65, y: 43 }, { x: 68, y: 45 },
+  // Detroit
+  { x: 74, y: 38 }, { x: 75, y: 39 }, { x: 73, y: 40 }, { x: 76, y: 38 }, { x: 74, y: 41 },
+  // Minneapolis
+  { x: 54, y: 30 }, { x: 55, y: 31 }, { x: 53, y: 32 }, { x: 56, y: 30 },
+  // St. Louis
+  { x: 60, y: 52 }, { x: 61, y: 53 }, { x: 59, y: 54 }, { x: 62, y: 52 },
+  // Kansas City
+  { x: 52, y: 50 }, { x: 53, y: 51 }, { x: 51, y: 52 },
+  // Indianapolis
+  { x: 70, y: 48 }, { x: 71, y: 49 }, { x: 69, y: 50 },
+  // Columbus
+  { x: 76, y: 46 }, { x: 77, y: 47 }, { x: 75, y: 48 },
+  // Cleveland
+  { x: 78, y: 42 }, { x: 79, y: 43 }, { x: 77, y: 44 },
+  // Cincinnati
+  { x: 74, y: 52 }, { x: 75, y: 53 }, { x: 73, y: 54 },
+  // Milwaukee
+  { x: 64, y: 38 }, { x: 65, y: 39 }, { x: 63, y: 40 },
+
+  // === SOUTH ===
+  // Atlanta
+  { x: 76, y: 64 }, { x: 77, y: 65 }, { x: 75, y: 66 }, { x: 78, y: 64 }, { x: 76, y: 67 },
+  // Charlotte
+  { x: 80, y: 58 }, { x: 81, y: 59 }, { x: 79, y: 60 }, { x: 82, y: 58 },
+  // Nashville
+  { x: 72, y: 58 }, { x: 73, y: 59 }, { x: 71, y: 60 },
+  // Memphis
+  { x: 64, y: 60 }, { x: 65, y: 61 }, { x: 63, y: 62 },
+  // New Orleans
+  { x: 62, y: 74 }, { x: 63, y: 75 }, { x: 61, y: 76 },
+  // Raleigh
+  { x: 82, y: 56 }, { x: 83, y: 57 }, { x: 81, y: 58 },
+
+  // === PACIFIC NORTHWEST ===
+  // Seattle
+  { x: 16, y: 22 }, { x: 17, y: 23 }, { x: 15, y: 24 }, { x: 18, y: 22 }, { x: 16, y: 25 },
+  // Portland
+  { x: 14, y: 30 }, { x: 15, y: 31 }, { x: 13, y: 32 }, { x: 16, y: 30 },
+
+  // === MOUNTAIN WEST (sparse) ===
+  // Denver
+  { x: 36, y: 46 }, { x: 37, y: 47 }, { x: 35, y: 48 }, { x: 38, y: 46 },
+  // Phoenix
+  { x: 26, y: 64 }, { x: 27, y: 65 }, { x: 25, y: 66 }, { x: 28, y: 64 },
+  // Las Vegas
+  { x: 22, y: 54 }, { x: 23, y: 55 }, { x: 21, y: 56 },
+  // Salt Lake City
+  { x: 26, y: 42 }, { x: 27, y: 43 }, { x: 25, y: 44 },
+  // Albuquerque
+  { x: 32, y: 60 }, { x: 33, y: 61 }, { x: 31, y: 62 },
+  // Tucson
+  { x: 28, y: 68 }, { x: 29, y: 69 },
+  // Boise
+  { x: 22, y: 34 }, { x: 23, y: 35 },
+
+  // === SCATTERED SMALLER CITIES ===
+  // Pittsburgh
+  { x: 80, y: 46 }, { x: 81, y: 47 },
+  // Buffalo
+  { x: 82, y: 38 }, { x: 83, y: 39 },
+  // Louisville
+  { x: 72, y: 54 }, { x: 73, y: 55 },
+  // Oklahoma City
+  { x: 48, y: 58 }, { x: 49, y: 59 },
+  // Tulsa
+  { x: 52, y: 58 }, { x: 53, y: 59 },
+  // Omaha
+  { x: 50, y: 42 }, { x: 51, y: 43 },
+  // Richmond
+  { x: 84, y: 54 }, { x: 85, y: 55 },
+  // Birmingham
+  { x: 72, y: 66 }, { x: 73, y: 67 },
+  // El Paso
+  { x: 34, y: 66 }, { x: 35, y: 67 },
+  // Wichita
+  { x: 50, y: 54 }, { x: 51, y: 55 },
+  // Little Rock
+  { x: 58, y: 62 }, { x: 59, y: 63 },
+  // Knoxville
+  { x: 76, y: 56 }, { x: 77, y: 57 },
+  // Charleston SC
+  { x: 82, y: 66 }, { x: 83, y: 67 },
+  // Savannah
+  { x: 80, y: 70 }, { x: 81, y: 71 },
+  // Des Moines
+  { x: 56, y: 44 }, { x: 57, y: 45 },
+  // Madison
+  { x: 62, y: 40 }, { x: 63, y: 41 },
+  // Grand Rapids
+  { x: 72, y: 40 }, { x: 73, y: 41 },
+  // Spokane
+  { x: 20, y: 24 }, { x: 21, y: 25 },
+  // Reno
+  { x: 18, y: 44 }, { x: 19, y: 45 },
+  // Fresno
+  { x: 16, y: 54 }, { x: 17, y: 55 },
+  // Bakersfield
+  { x: 18, y: 58 }, { x: 19, y: 59 },
 ];
 
 // Fisher-Yates shuffle
