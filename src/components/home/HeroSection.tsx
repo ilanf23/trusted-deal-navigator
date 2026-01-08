@@ -85,7 +85,7 @@ const HeroSection = () => {
             <img
               src={phoneMockup}
               alt="Mobile app"
-              className="w-40 xl:w-48 h-auto drop-shadow-2xl"
+              className="w-40 xl:w-48 h-auto invert opacity-80 drop-shadow-2xl"
             />
           </div>
         </div>
