@@ -85,7 +85,7 @@ const HeroSection = () => {
             <img
               src={phoneMockup}
               alt="Mobile app"
-              className="w-40 xl:w-48 h-auto mix-blend-screen opacity-90"
+              className="w-40 xl:w-48 h-auto invert opacity-90"
             />
           </div>
         </div>
