@@ -100,9 +100,9 @@ const USAMapWithDots = ({ onDotAdded }: USAMapWithDotsProps) => {
       // Notify parent
       onDotAdded?.(dotIndexRef.current);
 
-      // Calculate delay - starts at 1500ms and accelerates to 30ms
-      const progress = dotIndexRef.current / shuffledPositions.length;
-      const delay = Math.max(30, 1500 * Math.pow(1 - progress, 2));
+      // First 4 dots are slow (1500ms, 1200ms, 800ms, 400ms), then super fast (30ms)
+      const dotIndex = dotIndexRef.current;
+      const delay = dotIndex <= 4 ? 1500 / dotIndex : 30;
 
       timeoutRef.current = setTimeout(addNextDot, delay);
     };
