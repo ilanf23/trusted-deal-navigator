@@ -59,81 +59,51 @@ const AudiencePathways = () => {
           </p>
         </div>
 
-        {/* Modern Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+        {/* Horizontal Steps Timeline */}
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-0 mb-16 overflow-x-auto pb-4">
           {steps.map((step, index) => (
-            <div
-              key={step.step}
-              onClick={() => handleStepClick(step.step)}
-              className={`group relative p-6 rounded-2xl transition-all duration-500 ${
-                step.hasPopup ? 'cursor-pointer' : ''
-              } ${
-                index === 0 
-                  ? 'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-1' 
-                  : index === steps.length - 1
-                  ? 'bg-gradient-to-br from-accent to-accent/80 text-accent-foreground shadow-xl shadow-accent/20 hover:shadow-2xl hover:shadow-accent/30 hover:-translate-y-1'
-                  : 'bg-card border border-border/50 hover:border-primary/30 hover:shadow-xl hover:-translate-y-1 backdrop-blur-sm'
-              }`}
-            >
-              {/* Step number badge */}
-              <div className={`absolute -top-3 -left-3 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-lg ${
-                index === 0 || index === steps.length - 1
-                  ? 'bg-white text-primary'
-                  : 'bg-primary text-primary-foreground'
-              }`}>
-                {step.step}
-              </div>
-
-              {/* Content */}
-              <div className="pt-4">
-                <span className="text-4xl mb-4 block">{step.icon}</span>
-                <h3 className={`text-xl font-bold mb-2 ${
-                  index === 0 || index === steps.length - 1 
-                    ? '' 
-                    : 'text-foreground'
+            <div key={step.step} className="flex items-center">
+              {/* Step */}
+              <div
+                onClick={() => handleStepClick(step.step)}
+                className={`group flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:-translate-y-1 min-w-[120px]`}
+              >
+                {/* Step number circle */}
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg shadow-lg mb-3 transition-all duration-300 group-hover:scale-110 ${
+                  index === 0 
+                    ? 'bg-primary text-primary-foreground' 
+                    : index === steps.length - 1
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-card border-2 border-primary text-primary'
                 }`}>
+                  {step.step}
+                </div>
+                
+                {/* Title */}
+                <h3 className="text-sm font-semibold text-foreground mb-1 whitespace-nowrap">
                   {step.title}
                 </h3>
+                
+                {/* Duration */}
                 {step.duration && (
-                  <p className={`text-sm ${
-                    index === 0 || index === steps.length - 1 
-                      ? 'opacity-80' 
-                      : 'text-muted-foreground'
-                  }`}>
-                    Timeline: {step.duration}
+                  <p className="text-xs text-muted-foreground">
+                    {step.duration}
                   </p>
                 )}
                 
-                {/* Click indicator for popup */}
-                {step.hasPopup && (
-                  <div className="mt-4 flex items-center gap-2 text-sm font-medium opacity-90 group-hover:opacity-100">
-                    <Play className="w-4 h-4" />
-                    Watch video
-                  </div>
-                )}
-              </div>
-
-              {/* Hover arrow for non-last items */}
-              {index < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
-                  <ArrowRight className={`w-6 h-6 ${
-                    index === 0 ? 'text-primary' : 'text-muted-foreground/50'
-                  }`} />
+                {/* Watch video indicator */}
+                <div className="mt-2 flex items-center gap-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Play className="w-3 h-3" />
+                  Watch
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Progress indicator */}
-        <div className="hidden md:flex items-center justify-center gap-2 mb-12">
-          {steps.map((_, index) => (
-            <div key={index} className="flex items-center">
-              <div className={`w-3 h-3 rounded-full ${
-                index === 0 ? 'bg-primary' : index === steps.length - 1 ? 'bg-accent' : 'bg-muted-foreground/30'
-              }`} />
+              </div>
+              
+              {/* Connector Arrow */}
               {index < steps.length - 1 && (
-                <div className="w-12 h-0.5 bg-gradient-to-r from-muted-foreground/30 to-muted-foreground/10" />
+                <div className="hidden lg:flex items-center mx-4">
+                  <div className="w-12 h-0.5 bg-gradient-to-r from-primary/50 to-primary/20" />
+                  <ArrowRight className="w-4 h-4 text-primary/50 -ml-1" />
+                </div>
               )}
             </div>
           ))}
