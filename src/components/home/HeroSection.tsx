@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Users, TrendingUp, Briefcase, Rocket, PiggyBank, Store, Home } from "lucide-react";
+import { ArrowRight, Shield, Users, TrendingUp, Briefcase, Rocket, PiggyBank, Store, Home, Flame } from "lucide-react";
 
 const rotatingItems = [
-  { word: "Business Owners", icon: Briefcase, animation: "animate-briefcase", isRealEstate: false },
-  { word: "Entrepreneurs", icon: Rocket, animation: "animate-rocket", isRealEstate: false },
-  { word: "Investors", icon: PiggyBank, animation: "animate-piggybank", isRealEstate: false },
-  { word: "Franchisees", icon: Store, animation: "animate-store", isRealEstate: false },
-  { word: "Real Estate Buyers", icon: Home, animation: "animate-building", isRealEstate: true },
+  { word: "Business Owners", icon: Briefcase, animation: "animate-briefcase", isRealEstate: false, isRocket: false },
+  { word: "Entrepreneurs", icon: Rocket, animation: "animate-rocket", isRealEstate: false, isRocket: true },
+  { word: "Investors", icon: PiggyBank, animation: "animate-piggybank", isRealEstate: false, isRocket: false },
+  { word: "Franchisees", icon: Store, animation: "animate-store", isRealEstate: false, isRocket: false },
+  { word: "Real Estate Buyers", icon: Home, animation: "animate-building", isRealEstate: true, isRocket: false },
 ];
 
 const HeroSection = () => {
@@ -15,14 +15,16 @@ const HeroSection = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [iconPhase, setIconPhase] = useState<"enter" | "active" | "exit">("enter");
   const [housesVisible, setHousesVisible] = useState(0);
+  const [rocketPhase, setRocketPhase] = useState<"appear" | "ignite" | "liftoff" | "idle">("idle");
 
   const isRealEstate = rotatingItems[currentIndex].isRealEstate;
+  const isRocket = rotatingItems[currentIndex].isRocket;
 
+  // Real Estate houses animation
   useEffect(() => {
     let houseInterval: NodeJS.Timeout | null = null;
     
     if (isRealEstate && iconPhase === "active") {
-      // Start with 1 house, add more over time
       setHousesVisible(1);
       let count = 1;
       houseInterval = setInterval(() => {
@@ -39,6 +41,33 @@ const HeroSection = () => {
       if (houseInterval) clearInterval(houseInterval);
     };
   }, [isRealEstate, iconPhase]);
+
+  // Rocket animation sequence
+  useEffect(() => {
+    if (isRocket && iconPhase === "enter") {
+      setRocketPhase("appear");
+    } else if (isRocket && iconPhase === "active") {
+      // Phase 1: Appear (already done)
+      setRocketPhase("appear");
+      
+      // Phase 2: Ignite flames after 800ms
+      const igniteTimeout = setTimeout(() => {
+        setRocketPhase("ignite");
+      }, 800);
+      
+      // Phase 3: Liftoff after 2.5s
+      const liftoffTimeout = setTimeout(() => {
+        setRocketPhase("liftoff");
+      }, 2500);
+      
+      return () => {
+        clearTimeout(igniteTimeout);
+        clearTimeout(liftoffTimeout);
+      };
+    } else if (!isRocket) {
+      setRocketPhase("idle");
+    }
+  }, [isRocket, iconPhase]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -221,6 +250,44 @@ const HeroSection = () => {
                     }`}
                     strokeWidth={1}
                   />
+                </div>
+              ) : isRocket ? (
+                /* Rocket with flames animation */
+                <div className={`relative transition-all duration-1000 ease-out ${
+                  rocketPhase === "liftoff" 
+                    ? "translate-x-[200%] -translate-y-32 rotate-45 opacity-0" 
+                    : rocketPhase === "appear" || rocketPhase === "ignite"
+                    ? "opacity-100 translate-x-0 translate-y-0"
+                    : "opacity-0 scale-50"
+                }`}>
+                  {/* Rocket */}
+                  <Rocket 
+                    className={`w-48 h-48 md:w-64 md:h-64 xl:w-80 xl:h-80 text-accent transition-all duration-500 rotate-90 ${
+                      rocketPhase === "ignite" || rocketPhase === "liftoff" ? "animate-[wiggle_0.1s_ease-in-out_infinite]" : ""
+                    }`}
+                    strokeWidth={1}
+                  />
+                  
+                  {/* Flames */}
+                  <div className={`absolute -left-8 md:-left-12 top-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-300 ${
+                    rocketPhase === "ignite" || rocketPhase === "liftoff" ? "opacity-100 scale-100" : "opacity-0 scale-0"
+                  }`}>
+                    <Flame 
+                      className="w-16 h-16 md:w-24 md:h-24 text-orange-500 animate-pulse" 
+                      strokeWidth={1.5}
+                      fill="currentColor"
+                    />
+                    <Flame 
+                      className="w-12 h-12 md:w-20 md:h-20 text-yellow-400 -mt-8 md:-mt-12 animate-pulse animation-delay-100" 
+                      strokeWidth={1.5}
+                      fill="currentColor"
+                    />
+                    <Flame 
+                      className="w-10 h-10 md:w-16 md:h-16 text-red-500 -mt-6 md:-mt-10 animate-pulse animation-delay-200" 
+                      strokeWidth={1.5}
+                      fill="currentColor"
+                    />
+                  </div>
                 </div>
               ) : (
                 /* Main Icon for other types */
