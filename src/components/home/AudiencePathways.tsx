@@ -132,7 +132,7 @@ const AudiencePathways = () => {
                     <div className="text-center px-8 lg:px-6 text-white">
                       <h3 style={{
                     textShadow: '0 1px 3px rgba(0,0,0,0.3)'
-                  }} className="font-bold text-base lg:text-lg whitespace-pre-line leading-tight drop-shadow-md text-primary-foreground">
+                  }} className="font-black text-base lg:text-lg whitespace-pre-line leading-tight drop-shadow-md text-primary-foreground">
                         {step.title}
                       </h3>
                       {step.duration && <p className="text-sm mt-1 font-medium drop-shadow-sm" style={{
