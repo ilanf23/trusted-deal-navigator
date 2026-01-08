@@ -1,20 +1,44 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Users, TrendingUp, Briefcase, Rocket, PiggyBank, Store, Building2 } from "lucide-react";
+import { ArrowRight, Shield, Users, TrendingUp, Briefcase, Rocket, PiggyBank, Store, Home } from "lucide-react";
 
 const rotatingItems = [
-  { word: "Business Owners", icon: Briefcase, animation: "animate-briefcase" },
-  { word: "Entrepreneurs", icon: Rocket, animation: "animate-rocket" },
-  { word: "Investors", icon: PiggyBank, animation: "animate-piggybank" },
-  { word: "Franchisees", icon: Store, animation: "animate-store" },
-  { word: "Real Estate Buyers", icon: Building2, animation: "animate-building" },
+  { word: "Business Owners", icon: Briefcase, animation: "animate-briefcase", isRealEstate: false },
+  { word: "Entrepreneurs", icon: Rocket, animation: "animate-rocket", isRealEstate: false },
+  { word: "Investors", icon: PiggyBank, animation: "animate-piggybank", isRealEstate: false },
+  { word: "Franchisees", icon: Store, animation: "animate-store", isRealEstate: false },
+  { word: "Real Estate Buyers", icon: Home, animation: "animate-building", isRealEstate: true },
 ];
 
 const HeroSection = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [iconPhase, setIconPhase] = useState<"enter" | "active" | "exit">("enter");
+  const [housesVisible, setHousesVisible] = useState(0);
+
+  const isRealEstate = rotatingItems[currentIndex].isRealEstate;
+
+  useEffect(() => {
+    let houseInterval: NodeJS.Timeout | null = null;
+    
+    if (isRealEstate && iconPhase === "active") {
+      // Start with 1 house, add more over time
+      setHousesVisible(1);
+      let count = 1;
+      houseInterval = setInterval(() => {
+        count++;
+        if (count <= 3) {
+          setHousesVisible(count);
+        }
+      }, 800);
+    } else {
+      setHousesVisible(0);
+    }
+
+    return () => {
+      if (houseInterval) clearInterval(houseInterval);
+    };
+  }, [isRealEstate, iconPhase]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -32,7 +56,7 @@ const HeroSection = () => {
           setIconPhase("active");
         }, 500);
       }, 600);
-    }, 5000); // Slowed to 5 seconds
+    }, 5000);
     
     // Initial active phase
     const initialTimeout = setTimeout(() => {
@@ -166,11 +190,37 @@ const HeroSection = () => {
                 iconPhase === "active" ? "scale-100 opacity-100" : "scale-50 opacity-0"
               }`} />
               
-              {/* Main Icon */}
-              <CurrentIcon 
-                className={`w-48 h-48 md:w-64 md:h-64 xl:w-80 xl:h-80 text-accent transition-all duration-700 ease-out ${getIconAnimationClass()}`}
-                strokeWidth={1}
-              />
+              {/* Real Estate - Multiple Houses */}
+              {isRealEstate ? (
+                <div className={`flex items-end gap-4 transition-all duration-700 ${
+                  iconPhase === "exit" ? "opacity-0 translate-y-8" : ""
+                }`}>
+                  <Home 
+                    className={`w-32 h-32 md:w-40 md:h-40 text-accent transition-all duration-500 ${
+                      housesVisible >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+                    }`}
+                    strokeWidth={1}
+                  />
+                  <Home 
+                    className={`w-40 h-40 md:w-52 md:h-52 text-accent transition-all duration-500 delay-100 ${
+                      housesVisible >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+                    }`}
+                    strokeWidth={1}
+                  />
+                  <Home 
+                    className={`w-36 h-36 md:w-44 md:h-44 text-accent transition-all duration-500 delay-200 ${
+                      housesVisible >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+                    }`}
+                    strokeWidth={1}
+                  />
+                </div>
+              ) : (
+                /* Main Icon for other types */
+                <CurrentIcon 
+                  className={`w-48 h-48 md:w-64 md:h-64 xl:w-80 xl:h-80 text-accent transition-all duration-700 ease-out ${getIconAnimationClass()}`}
+                  strokeWidth={1}
+                />
+              )}
             </div>
           </div>
         </div>
