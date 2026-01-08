@@ -147,7 +147,7 @@ const DealPulseMap = () => {
           ) : (
             <div className="flex items-center justify-center py-2">
               <p className="font-bold text-foreground text-sm text-center">
-                Talk to Brad and it can be you
+                Talk to <span className="text-accent">Brad</span> and it can be you
               </p>
             </div>
           )}
