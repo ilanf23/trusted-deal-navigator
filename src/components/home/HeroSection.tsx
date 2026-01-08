@@ -2,32 +2,21 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import DealPulseMap from "./DealPulseMap";
-
-const rotatingWords = [
-  "Business Owners",
-  "Entrepreneurs",
-  "Investors",
-  "Franchisees",
-  "Real Estate Buyers",
-];
-
+const rotatingWords = ["Business Owners", "Entrepreneurs", "Investors", "Franchisees", "Real Estate Buyers"];
 const HeroSection = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-
   useEffect(() => {
     const interval = setInterval(() => {
       setIsAnimating(true);
       setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % rotatingWords.length);
+        setCurrentIndex(prev => (prev + 1) % rotatingWords.length);
         setIsAnimating(false);
       }, 300);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
-
-  return (
-    <section className="relative min-h-screen flex items-center hero-gradient overflow-hidden">
+  return <section className="relative min-h-screen flex items-center hero-gradient overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0">
         {/* Floating orbs */}
@@ -39,10 +28,10 @@ const HeroSection = () => {
         
         {/* Subtle animated grid lines */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
-          animation: 'pulse 4s ease-in-out infinite'
-        }} />
+        backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+        backgroundSize: '60px 60px',
+        animation: 'pulse 4s ease-in-out infinite'
+      }} />
         
         {/* Floating particles */}
         <div className="absolute top-1/4 left-1/4 w-2 h-2 rounded-full bg-accent/30 animate-[float_6s_ease-in-out_infinite]" />
@@ -65,13 +54,9 @@ const HeroSection = () => {
           {/* Main Headline */}
           <h1 className="text-primary-foreground mb-10 animate-fade-in-up text-5xl md:text-6xl lg:text-7xl">
             <span className="block">Commercial Financing</span>
-            <span className="text-accent">
+            <span className="text-primary-foreground">
               for{" "}
-              <span 
-                className={`inline-block transition-all duration-500 underline decoration-accent underline-offset-8 ${
-                  isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
-                }`}
-              >
+              <span className={`inline-block transition-all duration-500 underline decoration-accent underline-offset-8 ${isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
                 {rotatingWords[currentIndex]}
               </span>
             </span>
@@ -82,13 +67,7 @@ const HeroSection = () => {
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Video */}
               <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-primary-foreground/20">
-                <iframe 
-                  src="https://www.youtube.com/embed/z11ValptvRA?start=1" 
-                  title="Commercial Lending X Overview" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  allowFullScreen 
-                  className="absolute inset-0 w-full h-full" 
-                />
+                <iframe src="https://www.youtube.com/embed/z11ValptvRA?start=1" title="Commercial Lending X Overview" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 w-full h-full" />
               </div>
               
               {/* Deal Pulse Map */}
@@ -120,17 +99,12 @@ const HeroSection = () => {
 
           {/* CTA */}
           <div className="animate-fade-in-up animation-delay-300">
-            <Button 
-              variant="hero" 
-              size="xl" 
-              className="group"
-              onClick={() => {
-                // @ts-ignore - Calendly is loaded via script
-                window.Calendly?.initPopupWidget({
-                  url: 'https://calendly.com/adam-fridman/30min'
-                });
-              }}
-            >
+            <Button variant="hero" size="xl" className="group" onClick={() => {
+            // @ts-ignore - Calendly is loaded via script
+            window.Calendly?.initPopupWidget({
+              url: 'https://calendly.com/adam-fridman/30min'
+            });
+          }}>
               Talk to Brad
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
@@ -144,8 +118,6 @@ const HeroSection = () => {
           <div className="w-1.5 h-3 rounded-full bg-primary-foreground/50 animate-pulse" />
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default HeroSection;
