@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Users, TrendingUp } from "lucide-react";
 import USAMapWithDots from "./USAMapWithDots";
-import phoneMockup from "@/assets/phone-mockup.png";
+import PhoneWithNotifications from "./PhoneWithNotifications";
+
 const HeroSection = () => {
+  const [dotCount, setDotCount] = useState(0);
   const highlights = [{
     icon: Users,
     text: "300+ Lending Partners"
@@ -69,44 +72,8 @@ const HeroSection = () => {
 
           {/* USA Map and Phone */}
           <div className="hidden lg:flex justify-center items-center gap-8 animate-fade-in-up animation-delay-200">
-            <USAMapWithDots />
-            
-            {/* Phone Outline */}
-            <svg 
-              width="120" 
-              height="240" 
-              viewBox="0 0 120 240" 
-              fill="none" 
-              className="opacity-80"
-            >
-              <rect 
-                x="4" 
-                y="4" 
-                width="112" 
-                height="232" 
-                rx="20" 
-                stroke="currentColor" 
-                strokeWidth="3" 
-                className="text-primary-foreground"
-              />
-              <rect 
-                x="45" 
-                y="12" 
-                width="30" 
-                height="6" 
-                rx="3" 
-                fill="currentColor" 
-                className="text-primary-foreground/50"
-              />
-              <circle 
-                cx="60" 
-                cy="224" 
-                r="8" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                className="text-primary-foreground/50"
-              />
-            </svg>
+            <USAMapWithDots onDotAdded={setDotCount} />
+            <PhoneWithNotifications dotCount={dotCount} />
           </div>
         </div>
       </div>

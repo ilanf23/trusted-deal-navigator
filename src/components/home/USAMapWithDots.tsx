@@ -69,7 +69,11 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return shuffled;
 };
 
-const USAMapWithDots = () => {
+interface USAMapWithDotsProps {
+  onDotAdded?: (count: number) => void;
+}
+
+const USAMapWithDots = ({ onDotAdded }: USAMapWithDotsProps) => {
   const [dots, setDots] = useState<Dot[]>([]);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dotIndexRef = useRef(0);
@@ -92,6 +96,9 @@ const USAMapWithDots = () => {
 
       setDots((prev) => [...prev, newDot]);
       dotIndexRef.current += 1;
+      
+      // Notify parent
+      onDotAdded?.(dotIndexRef.current);
 
       // Calculate delay - starts at 350ms and decreases to 25ms
       const progress = dotIndexRef.current / shuffledPositions.length;
@@ -108,7 +115,7 @@ const USAMapWithDots = () => {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [shuffledPositions]);
+  }, [shuffledPositions, onDotAdded]);
 
   return (
     <div className="relative w-80 xl:w-96">
