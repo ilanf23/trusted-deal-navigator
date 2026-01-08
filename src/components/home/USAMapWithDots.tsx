@@ -80,8 +80,7 @@ const USAMapWithDots = ({ onDotAdded }: USAMapWithDotsProps) => {
           </clipPath>
         </defs>
         
-        {/* USA outline */}
-        <path d={USA_PATH} fill="none" stroke="currentColor" strokeWidth="1.2" className="text-primary-foreground opacity-80" />
+        {/* USA outline removed */}
         
         {/* Dots clipped to USA shape */}
         <g clipPath="url(#usa-fill-clip)">
