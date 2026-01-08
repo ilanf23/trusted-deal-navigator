@@ -61,7 +61,7 @@ const HeroSection = () => {
                 <span 
                   className={`inline-block transition-all duration-300 ${
                     isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
-                  }`}
+                  } ${rotatingWords[currentIndex] === "Real Estate Buyers" ? "underline decoration-accent underline-offset-4" : ""}`}
                 >
                   {rotatingWords[currentIndex]}
                 </span>
