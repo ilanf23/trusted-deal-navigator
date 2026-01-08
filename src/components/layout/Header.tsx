@@ -65,11 +65,18 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-3">
-            <Link to="/contact">
-              <Button variant="hero" size="default">
-                Talk to Brad
-              </Button>
-            </Link>
+            <Button 
+              variant="hero" 
+              size="default"
+              onClick={() => {
+                // @ts-ignore - Calendly is loaded via script
+                window.Calendly?.initPopupWidget({
+                  url: 'https://calendly.com/adam-fridman/30min'
+                });
+              }}
+            >
+              Talk to Brad
+            </Button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -92,11 +99,19 @@ const Header = () => {
                     {item.label}
                   </Link>)}
               <div className="pt-4 px-4">
-                <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="hero" className="w-full">
-                    Talk to Brad
-                  </Button>
-                </Link>
+                <Button 
+                  variant="hero" 
+                  className="w-full"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    // @ts-ignore - Calendly is loaded via script
+                    window.Calendly?.initPopupWidget({
+                      url: 'https://calendly.com/adam-fridman/30min'
+                    });
+                  }}
+                >
+                  Talk to Brad
+                </Button>
               </div>
             </nav>
           </div>}
