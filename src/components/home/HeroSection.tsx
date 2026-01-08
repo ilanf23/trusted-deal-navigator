@@ -53,8 +53,9 @@ const HeroSection = () => {
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-primary-foreground mb-6 animate-fade-in-up whitespace-nowrap">
-              Commercial Financing{" "}
+            <h1 className="text-primary-foreground mb-6 animate-fade-in-up">
+              Commercial Financing
+              <br />
               <span className="text-accent">
                 for{" "}
                 <span 
