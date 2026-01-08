@@ -118,60 +118,64 @@ const AudiencePathways = () => {
 
           {/* Chevron Steps */}
           <div className="flex flex-col lg:flex-row items-stretch gap-1 lg:gap-2">
-            {steps.map((step, index) => (
-              <div 
-                key={step.step}
-                onClick={() => handleStepClick(step.step)}
-                className="group cursor-pointer relative flex-1"
-              >
-                {/* Chevron Shape with Border */}
+            {steps.map((step, index) => {
+              // Color progression: light blue -> dark blue, then orange for last
+              const getBackgroundColor = () => {
+                if (index === 5) return 'hsl(25, 95%, 53%)'; // Orange for Closed
+                const blueShades = [
+                  'hsl(210, 60%, 70%)', // Step 1 - Very light blue
+                  'hsl(210, 65%, 55%)', // Step 2 - Light blue
+                  'hsl(210, 70%, 45%)', // Step 3 - Medium blue
+                  'hsl(210, 75%, 35%)', // Step 4 - Dark blue
+                  'hsl(210, 80%, 25%)', // Step 5 - Darkest blue
+                ];
+                return blueShades[index] || blueShades[0];
+              };
+
+              return (
                 <div 
-                  className={`relative h-24 lg:h-28 flex items-center justify-center transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-xl ${
-                    index === steps.length - 1 
-                      ? 'bg-accent shadow-lg shadow-accent/30' 
-                      : 'bg-primary shadow-lg shadow-primary/30'
-                  }`}
-                  style={{
-                    clipPath: index === steps.length - 1 
-                      ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
-                      : index === 0
-                      ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 0 0)'
-                      : 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
-                  }}
+                  key={step.step}
+                  onClick={() => handleStepClick(step.step)}
+                  className="group cursor-pointer relative flex-1"
                 >
-                  {/* Step Number Badge */}
-                  <div className={`absolute top-2 left-4 lg:left-6 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    index === steps.length - 1 
-                      ? 'bg-white/20 text-white' 
-                      : 'bg-white/20 text-white'
-                  }`}>
-                    {step.step}
+                  {/* Chevron Shape with Border */}
+                  <div 
+                    className="relative h-24 lg:h-28 flex items-center justify-center transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-xl shadow-lg"
+                    style={{
+                      backgroundColor: getBackgroundColor(),
+                      clipPath: index === steps.length - 1 
+                        ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
+                        : index === 0
+                        ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 0 0)'
+                        : 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
+                    }}
+                  >
+                    {/* Step Number Badge */}
+                    <div className="absolute top-2 left-4 lg:left-6 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-white/30 text-white border border-white/40">
+                      {step.step}
+                    </div>
+                    
+                    <div className="text-center px-8 lg:px-6 text-white">
+                      <h3 className="font-bold text-base lg:text-lg whitespace-pre-line leading-tight drop-shadow-md" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+                        {step.title}
+                      </h3>
+                      {step.duration && (
+                        <p className="text-sm mt-1 font-medium drop-shadow-sm" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
+                          {step.duration}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   
-                  <div className={`text-center px-8 lg:px-6 ${
-                    index === steps.length - 1 
-                      ? 'text-accent-foreground' 
-                      : 'text-primary-foreground'
-                  }`}>
-                    <h3 className="font-bold text-base lg:text-lg whitespace-pre-line leading-tight drop-shadow-sm">
-                      {step.title}
-                    </h3>
-                    {step.duration && (
-                      <p className="text-sm mt-1 opacity-90 font-medium">
-                        {step.duration}
-                      </p>
-                    )}
+                  {/* Play indicator on hover */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="bg-white/40 backdrop-blur-sm rounded-full p-3 shadow-lg">
+                      <Play className="w-5 h-5 text-white fill-white drop-shadow-md" />
+                    </div>
                   </div>
                 </div>
-                
-                {/* Play indicator on hover */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                  <div className="bg-white/30 backdrop-blur-sm rounded-full p-3 shadow-lg">
-                    <Play className="w-5 h-5 text-white fill-white" />
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Goals Below - Desktop */}
