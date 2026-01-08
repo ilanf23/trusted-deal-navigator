@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Users, TrendingUp } from "lucide-react";
+import { ArrowRight, Shield, Users, TrendingUp, Briefcase, Rocket, PiggyBank, Store, Building2 } from "lucide-react";
 
-const rotatingWords = [
-  "Business Owners",
-  "Entrepreneurs",
-  "Investors",
-  "Franchisees",
-  "Real Estate Buyers",
+const rotatingItems = [
+  { word: "Business Owners", icon: Briefcase },
+  { word: "Entrepreneurs", icon: Rocket },
+  { word: "Investors", icon: PiggyBank },
+  { word: "Franchisees", icon: Store },
+  { word: "Real Estate Buyers", icon: Building2 },
 ];
 
 const HeroSection = () => {
@@ -19,12 +19,14 @@ const HeroSection = () => {
     const interval = setInterval(() => {
       setIsAnimating(true);
       setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % rotatingWords.length);
+        setCurrentIndex((prev) => (prev + 1) % rotatingItems.length);
         setIsAnimating(false);
       }, 300);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  const CurrentIcon = rotatingItems[currentIndex].icon;
 
   const highlights = [{
     icon: Users,
@@ -56,15 +58,20 @@ const HeroSection = () => {
             <h1 className="text-primary-foreground mb-6 animate-fade-in-up">
               Commercial Financing
               <br />
-              <span className="text-accent">
+              <span className="text-accent inline-flex items-center gap-4">
                 for{" "}
                 <span 
                   className={`inline-block transition-all duration-300 underline decoration-accent underline-offset-4 ${
                     isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
                   }`}
                 >
-                  {rotatingWords[currentIndex]}
+                  {rotatingItems[currentIndex].word}
                 </span>
+                <CurrentIcon 
+                  className={`w-12 h-12 md:w-16 md:h-16 transition-all duration-300 ${
+                    isAnimating ? "opacity-0 scale-75" : "opacity-100 scale-100"
+                  }`}
+                />
               </span>
             </h1>
 
