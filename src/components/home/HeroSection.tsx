@@ -3,25 +3,18 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Users, TrendingUp } from "lucide-react";
 import USAMapWithDots from "./USAMapWithDots";
 import phoneMockup from "@/assets/phone-mockup.png";
-
 const HeroSection = () => {
-  const highlights = [
-    {
-      icon: Users,
-      text: "300+ Lending Partners",
-    },
-    {
-      icon: Shield,
-      text: "No Upfront Fees",
-    },
-    {
-      icon: TrendingUp,
-      text: "Success-Based Model",
-    },
-  ];
-
-  return (
-    <section className="relative min-h-[90vh] flex items-center hero-gradient overflow-hidden">
+  const highlights = [{
+    icon: Users,
+    text: "300+ Lending Partners"
+  }, {
+    icon: Shield,
+    text: "No Upfront Fees"
+  }, {
+    icon: TrendingUp,
+    text: "Success-Based Model"
+  }];
+  return <section className="relative min-h-[90vh] flex items-center hero-gradient overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-primary-foreground/20 blur-3xl" />
@@ -52,15 +45,10 @@ const HeroSection = () => {
 
             {/* Highlights */}
             <div className="flex flex-wrap gap-6 mb-10 animate-fade-in-up animation-delay-200">
-              {highlights.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 text-primary-foreground/90"
-                >
+              {highlights.map((item, index) => <div key={index} className="flex items-center gap-2 text-primary-foreground/90">
                   <item.icon className="w-5 h-5 text-accent" />
                   <span className="font-medium">{item.text}</span>
-                </div>
-              ))}
+                </div>)}
             </div>
 
             {/* CTAs */}
@@ -82,11 +70,7 @@ const HeroSection = () => {
           {/* USA Map and Phone */}
           <div className="hidden lg:flex justify-center items-center gap-8 animate-fade-in-up animation-delay-200">
             <USAMapWithDots />
-            <img
-              src={phoneMockup}
-              alt="Mobile app"
-              className="w-40 xl:w-48 h-auto invert opacity-90"
-            />
+            
           </div>
         </div>
       </div>
@@ -97,8 +81,6 @@ const HeroSection = () => {
           <div className="w-1.5 h-3 rounded-full bg-primary-foreground/50 animate-pulse" />
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default HeroSection;
