@@ -7,60 +7,57 @@ interface Dot {
   y: number;
 }
 
-// Predefined positions that roughly fall within USA boundaries (as percentages)
+// Predefined positions that fit within USA boundaries (as percentages)
 const dotPositions = [
-  { x: 15, y: 35 }, // West Coast
-  { x: 12, y: 55 }, // California
-  { x: 18, y: 25 }, // Pacific Northwest
-  { x: 25, y: 40 }, // Nevada area
-  { x: 30, y: 55 }, // Arizona
-  { x: 35, y: 30 }, // Mountain region
-  { x: 40, y: 45 }, // Colorado
-  { x: 45, y: 60 }, // Texas
-  { x: 50, y: 35 }, // Central
-  { x: 55, y: 50 }, // Oklahoma/Texas
-  { x: 48, y: 25 }, // North Central
-  { x: 55, y: 30 }, // Minnesota area
-  { x: 60, y: 40 }, // Missouri
-  { x: 65, y: 55 }, // Louisiana
-  { x: 70, y: 35 }, // Illinois
-  { x: 72, y: 50 }, // Tennessee
-  { x: 75, y: 28 }, // Michigan
-  { x: 78, y: 40 }, // Ohio
-  { x: 80, y: 55 }, // Georgia
-  { x: 82, y: 65 }, // Florida
-  { x: 85, y: 35 }, // Pennsylvania
-  { x: 88, y: 28 }, // New York
-  { x: 90, y: 38 }, // New Jersey
-  { x: 92, y: 25 }, // New England
-  { x: 75, y: 60 }, // Alabama
-  { x: 68, y: 45 }, // Kentucky
-  { x: 58, y: 22 }, // Dakotas
-  { x: 42, y: 20 }, // Montana
-  { x: 28, y: 20 }, // Idaho
-  { x: 22, y: 45 }, // Utah
-  { x: 38, y: 65 }, // New Mexico
-  { x: 52, y: 70 }, // South Texas
-  { x: 62, y: 62 }, // Mississippi
-  { x: 85, y: 48 }, // Virginia
-  { x: 78, y: 22 }, // Wisconsin
-  { x: 65, y: 25 }, // Iowa
-  { x: 72, y: 42 }, // Indiana
-  { x: 88, y: 55 }, // North Carolina
-  { x: 84, y: 60 }, // South Carolina
-  { x: 20, y: 60 }, // Southern California
+  // West Coast
+  { x: 12, y: 28 }, { x: 10, y: 38 }, { x: 8, y: 48 }, { x: 12, y: 55 },
+  { x: 15, y: 35 }, { x: 14, y: 45 }, { x: 18, y: 30 }, { x: 16, y: 52 },
+  // Pacific Northwest
+  { x: 18, y: 22 }, { x: 22, y: 25 }, { x: 20, y: 18 },
+  // Mountain West
+  { x: 22, y: 35 }, { x: 25, y: 28 }, { x: 28, y: 32 }, { x: 24, y: 42 },
+  { x: 26, y: 48 }, { x: 30, y: 25 }, { x: 32, y: 35 }, { x: 28, y: 55 },
+  // Southwest
+  { x: 22, y: 52 }, { x: 30, y: 58 }, { x: 35, y: 55 }, { x: 32, y: 48 },
+  { x: 38, y: 60 }, { x: 25, y: 58 },
+  // Central/Mountain
+  { x: 35, y: 28 }, { x: 38, y: 35 }, { x: 40, y: 42 }, { x: 42, y: 32 },
+  { x: 36, y: 45 }, { x: 44, y: 38 }, { x: 40, y: 25 },
+  // Texas
+  { x: 42, y: 55 }, { x: 45, y: 60 }, { x: 48, y: 55 }, { x: 50, y: 62 },
+  { x: 44, y: 65 }, { x: 52, y: 58 }, { x: 46, y: 52 }, { x: 40, y: 62 },
+  // Great Plains
+  { x: 48, y: 28 }, { x: 52, y: 32 }, { x: 50, y: 22 }, { x: 55, y: 25 },
+  { x: 54, y: 35 }, { x: 48, y: 40 }, { x: 52, y: 45 },
+  // Midwest
+  { x: 58, y: 30 }, { x: 62, y: 35 }, { x: 60, y: 25 }, { x: 56, y: 40 },
+  { x: 64, y: 28 }, { x: 66, y: 35 }, { x: 60, y: 42 }, { x: 58, y: 48 },
+  // South Central
+  { x: 55, y: 52 }, { x: 60, y: 55 }, { x: 64, y: 50 }, { x: 58, y: 58 },
+  { x: 62, y: 60 }, { x: 56, y: 55 },
+  // Southeast
+  { x: 68, y: 52 }, { x: 72, y: 48 }, { x: 70, y: 55 }, { x: 74, y: 52 },
+  { x: 76, y: 58 }, { x: 78, y: 62 }, { x: 80, y: 68 }, { x: 75, y: 65 },
+  // Great Lakes
+  { x: 68, y: 28 }, { x: 72, y: 32 }, { x: 70, y: 25 }, { x: 74, y: 28 },
+  { x: 76, y: 35 }, { x: 68, y: 38 }, { x: 72, y: 42 },
+  // East Central
+  { x: 78, y: 42 }, { x: 80, y: 38 }, { x: 76, y: 45 }, { x: 82, y: 48 },
+  // Northeast
+  { x: 84, y: 35 }, { x: 86, y: 30 }, { x: 88, y: 28 }, { x: 90, y: 32 },
+  { x: 85, y: 40 }, { x: 88, y: 38 }, { x: 82, y: 32 },
+  // Atlantic Coast
+  { x: 84, y: 52 }, { x: 86, y: 48 }, { x: 88, y: 55 }, { x: 82, y: 58 },
 ];
 
 const USAMapWithDots = () => {
   const [dots, setDots] = useState<Dot[]>([]);
-  const [isComplete, setIsComplete] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dotIndexRef = useRef(0);
 
   useEffect(() => {
     const addNextDot = () => {
       if (dotIndexRef.current >= dotPositions.length) {
-        setIsComplete(true);
         return;
       }
 
@@ -112,10 +109,6 @@ const USAMapWithDots = () => {
           />
         ))}
       </div>
-      {/* Completion glow effect */}
-      {isComplete && (
-        <div className="absolute inset-0 bg-accent/10 rounded-lg animate-fade-in" />
-      )}
     </div>
   );
 };
