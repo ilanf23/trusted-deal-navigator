@@ -5,6 +5,12 @@ interface EmailNotificationsProps {
   dotCount: number;
 }
 
+interface Notification {
+  id: number;
+  title: string;
+  subtitle: string;
+}
+
 const deals = [
   { title: "Closed: $2.3M SBA 7(a)", subtitle: "Logistics company · Dallas, TX" },
   { title: "Closed: $1.8M CRE Refinance", subtitle: "Medical office · Orlando, FL" },
@@ -56,13 +62,13 @@ const deals = [
   { title: "Closed: $4.0M Construction Loan", subtitle: "Medical office build-to-suit · Houston, TX" },
 ];
 
-// Total number of dots in the map animation
+const VISIBLE_COUNT = 4;
 const TOTAL_DOTS = 350;
 
 const EmailNotifications = ({ dotCount }: EmailNotificationsProps) => {
-  const [currentDeal, setCurrentDeal] = useState<{ title: string; subtitle: string } | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [animationComplete, setAnimationComplete] = useState(false);
-  const [cycleIndex, setCycleIndex] = useState(0);
+  const notificationIdRef = useRef(0);
   const cycleIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Shuffle deals once on mount
@@ -79,7 +85,16 @@ const EmailNotifications = ({ dotCount }: EmailNotificationsProps) => {
   useEffect(() => {
     if (dotCount > 0 && !animationComplete) {
       const deal = shuffledDeals[(dotCount - 1) % shuffledDeals.length];
-      setCurrentDeal(deal);
+      const newNotification: Notification = {
+        id: notificationIdRef.current++,
+        title: deal.title,
+        subtitle: deal.subtitle,
+      };
+      
+      setNotifications((prev) => {
+        const updated = [newNotification, ...prev].slice(0, VISIBLE_COUNT);
+        return updated;
+      });
       
       // Check if animation is complete
       if (dotCount >= TOTAL_DOTS) {
@@ -88,12 +103,23 @@ const EmailNotifications = ({ dotCount }: EmailNotificationsProps) => {
     }
   }, [dotCount, shuffledDeals, animationComplete]);
 
-  // After animation completes, cycle through deals every 1 second
+  // After animation completes, cycle through deals every 1.5 seconds
   useEffect(() => {
     if (animationComplete) {
       cycleIntervalRef.current = setInterval(() => {
-        setCycleIndex((prev) => (prev + 1) % shuffledDeals.length);
-      }, 1000);
+        const dealIndex = notificationIdRef.current % shuffledDeals.length;
+        const deal = shuffledDeals[dealIndex];
+        const newNotification: Notification = {
+          id: notificationIdRef.current++,
+          title: deal.title,
+          subtitle: deal.subtitle,
+        };
+        
+        setNotifications((prev) => {
+          const updated = [newNotification, ...prev].slice(0, VISIBLE_COUNT);
+          return updated;
+        });
+      }, 1500);
 
       return () => {
         if (cycleIntervalRef.current) {
@@ -101,45 +127,60 @@ const EmailNotifications = ({ dotCount }: EmailNotificationsProps) => {
         }
       };
     }
-  }, [animationComplete, shuffledDeals.length]);
+  }, [animationComplete, shuffledDeals]);
 
-  // Update current deal when cycling
-  useEffect(() => {
-    if (animationComplete) {
-      setCurrentDeal(shuffledDeals[cycleIndex]);
-    }
-  }, [cycleIndex, animationComplete, shuffledDeals]);
-
-  if (!currentDeal) return null;
+  if (notifications.length === 0) return null;
 
   return (
-    <div className="w-64">
-      {/* Email notification card */}
-      <div 
-        key={animationComplete ? cycleIndex : dotCount}
-        className="bg-primary-foreground/10 backdrop-blur-md rounded-xl p-4 border border-primary-foreground/20 shadow-lg animate-fade-in"
-      >
-        {/* Email header */}
-        <div className="flex items-center gap-3 mb-3 pb-3 border-b border-primary-foreground/10">
-          <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
-            <Mail className="w-5 h-5 text-accent" />
-          </div>
-          <div>
-            <p className="text-primary-foreground text-xs font-medium">New Deal Notification</p>
-            <p className="text-primary-foreground/50 text-[10px]">just now</p>
-          </div>
+    <div className="w-72 relative">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+          <Mail className="w-4 h-4 text-accent" />
         </div>
-        
-        {/* Email content */}
         <div>
-          <p className="text-primary-foreground text-sm font-semibold leading-tight">
-            {currentDeal.title}
-          </p>
-          <p className="text-primary-foreground/70 text-xs leading-tight mt-1">
-            {currentDeal.subtitle}
-          </p>
+          <p className="text-primary-foreground text-xs font-medium">Deal Notifications</p>
+          <p className="text-primary-foreground/50 text-[10px]">Real-time updates</p>
         </div>
       </div>
+      
+      {/* Notifications stack */}
+      <div className="relative space-y-2 overflow-hidden" style={{ maxHeight: '280px' }}>
+        {notifications.map((notification, index) => (
+          <div
+            key={notification.id}
+            className="bg-primary-foreground/10 backdrop-blur-md rounded-lg px-3 py-2.5 border border-primary-foreground/15 transition-all duration-500 ease-out"
+            style={{
+              opacity: 1 - index * 0.2,
+              transform: `translateY(0)`,
+              animation: index === 0 ? 'slideDown 0.4s ease-out' : undefined,
+            }}
+          >
+            <p className="text-primary-foreground text-xs font-semibold leading-tight">
+              {notification.title}
+            </p>
+            <p className="text-primary-foreground/60 text-[10px] leading-tight mt-0.5">
+              {notification.subtitle}
+            </p>
+          </div>
+        ))}
+        
+        {/* Fade out gradient at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-primary/80 to-transparent pointer-events-none" />
+      </div>
+      
+      <style>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };
