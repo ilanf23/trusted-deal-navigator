@@ -149,12 +149,12 @@ const HeroSection = () => {
 
             {/* CTA */}
             <div className="animate-fade-in-up animation-delay-300">
-              <Link to="/contact">
+              <a href="https://calendly.com/adam-fridman/30min" target="_blank" rel="noopener noreferrer">
                 <Button variant="hero" size="xl" className="group">
                   Talk to Brad
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
-              </Link>
+              </a>
             </div>
           </div>
 
