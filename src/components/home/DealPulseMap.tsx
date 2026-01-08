@@ -20,7 +20,7 @@ const deals: Deal[] = [
   { id: 4, city: "Atlanta", state: "GA", amount: "$2.1M", type: "Business Acquisition", days: 24, x: 70, y: 52 },
   { id: 5, city: "Denver", state: "CO", amount: "$1.5M", type: "Equipment Financing", days: 18, x: 38, y: 42 },
   { id: 6, city: "Seattle", state: "WA", amount: "$4.1M", type: "SBA 504 Loan", days: 32, x: 22, y: 22 },
-  { id: 7, city: "Miami", state: "FL", amount: "$2.8M", type: "Working Capital", days: 14, x: 78, y: 72 },
+  { id: 7, city: "Miami", state: "FL", amount: "$2.8M", type: "Working Capital", days: 14, x: 72, y: 65 },
   { id: 8, city: "Boston", state: "MA", amount: "$1.9M", type: "Commercial Mortgage", days: 26, x: 85, y: 28 },
   { id: 9, city: "Los Angeles", state: "CA", amount: "$5.2M", type: "Mixed-Use Property", days: 42, x: 20, y: 52 },
   { id: 10, city: "New York", state: "NY", amount: "$3.7M", type: "Office Building", days: 38, x: 82, y: 32 },
@@ -29,7 +29,6 @@ const deals: Deal[] = [
 const DealPulseMap = () => {
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [pulsingDeals, setPulsingDeals] = useState<number[]>([]);
-  const [showCTA, setShowCTA] = useState(false);
 
   useEffect(() => {
     let dealIndex = 0;
@@ -43,24 +42,17 @@ const DealPulseMap = () => {
       // Show deal notification after pulse starts
       setTimeout(() => {
         setActiveDeal(deal);
-        setShowCTA(false);
       }, 500);
-      
-      // Switch to CTA message
-      setTimeout(() => {
-        setShowCTA(true);
-      }, 3000);
       
       // Hide notification
       setTimeout(() => {
         setActiveDeal(null);
-        setShowCTA(false);
-      }, 5500);
+      }, 4000);
       
       // Remove pulse
       setTimeout(() => {
         setPulsingDeals(prev => prev.filter(id => id !== deal.id));
-      }, 6000);
+      }, 5000);
       
       dealIndex = (dealIndex + 1) % deals.length;
     };
@@ -69,7 +61,7 @@ const DealPulseMap = () => {
     showNextDeal();
     
     // Continue cycling
-    const interval = setInterval(showNextDeal, 7500);
+    const interval = setInterval(showNextDeal, 6000);
     
     return () => clearInterval(interval);
   }, []);
@@ -127,30 +119,22 @@ const DealPulseMap = () => {
         }`}
       >
         <div className="bg-card/95 backdrop-blur-md rounded-xl p-4 shadow-xl border border-border/50">
-          {!showCTA ? (
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-                <MapPin className="w-5 h-5 text-accent" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-foreground text-sm">
-                  {activeDeal?.amount} {activeDeal?.type} Closed
-                </p>
-                <p className="text-muted-foreground text-xs mt-0.5">
-                  {activeDeal?.type} • {activeDeal?.city}, {activeDeal?.state}
-                </p>
-                <p className="text-accent text-xs font-medium mt-1">
-                  Closed in {activeDeal?.days} Days
-                </p>
-              </div>
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+              <MapPin className="w-5 h-5 text-accent" />
             </div>
-          ) : (
-            <div className="flex items-center justify-center py-2">
-              <p className="font-bold text-foreground text-sm text-center">
-                Talk to <span className="text-accent">Brad</span> and it can be you
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-foreground text-sm">
+                {activeDeal?.amount} {activeDeal?.type} Closed
+              </p>
+              <p className="text-muted-foreground text-xs mt-0.5">
+                {activeDeal?.type} • {activeDeal?.city}, {activeDeal?.state}
+              </p>
+              <p className="text-accent text-xs font-medium mt-1">
+                Closed in {activeDeal?.days} Days
               </p>
             </div>
-          )}
+          </div>
         </div>
       </div>
       
