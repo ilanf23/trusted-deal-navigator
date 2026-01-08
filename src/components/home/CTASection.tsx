@@ -25,7 +25,7 @@ const CTASection = () => {
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link to="/contact">
               <Button variant="hero" size="xl" className="group">
-                Talk to a Financing Expert
+                Talk to Brad
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
