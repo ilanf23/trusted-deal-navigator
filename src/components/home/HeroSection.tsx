@@ -129,7 +129,7 @@ const HeroSection = () => {
               </div>
               
               {/* Deal Pulse Map */}
-              <div className="hidden lg:block aspect-video" style={{ transform: 'scale(1.25)', transformOrigin: 'center center' }}>
+              <div className="hidden lg:flex aspect-video" style={{ transform: 'scale(1.25)', transformOrigin: 'center center' }}>
                 <DealPulseMap />
               </div>
             </div>
