@@ -20,7 +20,7 @@ const deals: Deal[] = [
   { id: 4, city: "Atlanta", state: "GA", amount: "$2.1M", type: "Business Acquisition", days: 24, x: 70, y: 52 },
   { id: 5, city: "Denver", state: "CO", amount: "$1.5M", type: "Equipment Financing", days: 18, x: 38, y: 42 },
   { id: 6, city: "Seattle", state: "WA", amount: "$4.1M", type: "SBA 504 Loan", days: 32, x: 22, y: 22 },
-  { id: 7, city: "Miami", state: "FL", amount: "$2.8M", type: "Working Capital", days: 14, x: 68, y: 79 },
+  { id: 7, city: "Miami", state: "FL", amount: "$2.8M", type: "Working Capital", days: 14, x: 71, y: 86 },
   { id: 8, city: "Boston", state: "MA", amount: "$1.9M", type: "Commercial Mortgage", days: 26, x: 85, y: 28 },
   { id: 9, city: "Los Angeles", state: "CA", amount: "$5.2M", type: "Mixed-Use Property", days: 42, x: 20, y: 52 },
   { id: 10, city: "New York", state: "NY", amount: "$3.7M", type: "Office Building", days: 38, x: 82, y: 32 },
