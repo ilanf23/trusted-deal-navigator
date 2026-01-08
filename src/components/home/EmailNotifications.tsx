@@ -63,7 +63,7 @@ const deals = [
 ];
 
 const VISIBLE_COUNT = 4;
-const TOTAL_DOTS = 350;
+const TOTAL_DOTS = 1100; // Dense grid creates ~1100 dots for solid fill
 
 const EmailNotifications = ({ dotCount }: EmailNotificationsProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
