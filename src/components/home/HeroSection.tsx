@@ -41,9 +41,8 @@ const HeroSection = () => {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-primary-foreground mb-8 animate-fade-in-up">
-            Commercial Financing
-            <br />
+          <h1 className="text-primary-foreground mb-8 animate-fade-in-up whitespace-nowrap">
+            Commercial Financing{" "}
             <span className="text-accent">
               for{" "}
               <span 
@@ -58,7 +57,7 @@ const HeroSection = () => {
 
           {/* Video */}
           <div className="mb-10 animate-fade-in-up animation-delay-100">
-            <div className="relative w-full max-w-2xl aspect-video rounded-xl overflow-hidden shadow-2xl border border-primary-foreground/20">
+            <div className="relative w-full max-w-4xl aspect-video rounded-xl overflow-hidden shadow-2xl border border-primary-foreground/20">
               <iframe 
                 src="https://www.youtube.com/embed/z11ValptvRA?start=1" 
                 title="Commercial Lending X Overview" 
