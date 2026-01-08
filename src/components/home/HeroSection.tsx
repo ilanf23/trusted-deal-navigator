@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Quote } from "lucide-react";
 
 const rotatingWords = [
   "Business Owners",
@@ -8,6 +8,17 @@ const rotatingWords = [
   "Investors",
   "Franchisees",
   "Real Estate Buyers",
+];
+
+const floatingQuotes = [
+  { text: "Brad made the impossible possible!", top: "15%", left: "5%", delay: "0s", duration: "20s" },
+  { text: "Closed in just 3 weeks!", top: "25%", left: "85%", delay: "2s", duration: "18s" },
+  { text: "Best decision we ever made", top: "60%", left: "8%", delay: "4s", duration: "22s" },
+  { text: "Saved us $50k in fees", top: "70%", left: "88%", delay: "1s", duration: "19s" },
+  { text: "Professional & responsive", top: "40%", left: "3%", delay: "3s", duration: "21s" },
+  { text: "5 stars all the way!", top: "80%", left: "75%", delay: "5s", duration: "17s" },
+  { text: "Exceeded all expectations", top: "10%", left: "70%", delay: "6s", duration: "23s" },
+  { text: "Game changer for our business", top: "50%", left: "92%", delay: "2.5s", duration: "20s" },
 ];
 
 const HeroSection = () => {
@@ -27,32 +38,33 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-screen flex items-center hero-gradient overflow-hidden">
-      {/* Animated Background */}
+      {/* Animated Background with Floating Quotes */}
       <div className="absolute inset-0">
         {/* Floating orbs */}
         <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-primary-foreground/10 blur-3xl animate-[float_8s_ease-in-out_infinite]" />
         <div className="absolute bottom-20 left-20 w-80 h-80 rounded-full bg-accent/15 blur-3xl animate-[float_10s_ease-in-out_infinite_reverse]" />
-        <div className="absolute top-1/2 left-1/3 w-64 h-64 rounded-full bg-primary-foreground/5 blur-3xl animate-[float_12s_ease-in-out_infinite_2s]" />
-        <div className="absolute top-1/4 right-1/3 w-72 h-72 rounded-full bg-accent/10 blur-3xl animate-[float_9s_ease-in-out_infinite_1s]" />
         
         {/* Moving gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary-foreground/5 to-transparent animate-[shimmer_15s_ease-in-out_infinite]" />
         
-        {/* Subtle grid pattern */}
-        <div 
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-            backgroundSize: '60px 60px',
-          }}
-        />
-        
-        {/* Animated particles */}
-        <div className="absolute top-1/4 left-1/4 w-2 h-2 rounded-full bg-accent/40 animate-[pulse_3s_ease-in-out_infinite]" />
-        <div className="absolute top-3/4 right-1/4 w-3 h-3 rounded-full bg-primary-foreground/30 animate-[pulse_4s_ease-in-out_infinite_1s]" />
-        <div className="absolute top-1/2 right-1/5 w-2 h-2 rounded-full bg-accent/30 animate-[pulse_3.5s_ease-in-out_infinite_0.5s]" />
-        <div className="absolute bottom-1/3 left-1/5 w-2 h-2 rounded-full bg-primary-foreground/20 animate-[pulse_4.5s_ease-in-out_infinite_2s]" />
+        {/* Floating testimonial quotes */}
+        {floatingQuotes.map((quote, index) => (
+          <div
+            key={index}
+            className="absolute hidden lg:flex items-center gap-2 px-4 py-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full text-primary-foreground/60 text-xs font-medium whitespace-nowrap animate-[floatQuote_var(--duration)_ease-in-out_infinite]"
+            style={{
+              top: quote.top,
+              left: quote.left,
+              animationDelay: quote.delay,
+              '--duration': quote.duration,
+            } as React.CSSProperties}
+          >
+            <Quote className="w-3 h-3 text-accent/60" />
+            <span>{quote.text}</span>
+          </div>
+        ))}
       </div>
+
 
 
       <div className="section-container relative z-10 py-24 md:py-32">
