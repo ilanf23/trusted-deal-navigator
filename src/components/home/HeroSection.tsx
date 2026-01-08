@@ -1,12 +1,9 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Users, TrendingUp } from "lucide-react";
 import USAMapWithDots from "./USAMapWithDots";
-import EmailNotifications from "./EmailNotifications";
 
 const HeroSection = () => {
-  const [dotCount, setDotCount] = useState(0);
   const highlights = [{
     icon: Users,
     text: "300+ Lending Partners"
@@ -70,10 +67,9 @@ const HeroSection = () => {
             </div>
           </div>
 
-          {/* USA Map and Phone */}
-          <div className="hidden lg:flex justify-center items-center gap-8 animate-fade-in-up animation-delay-200">
-            <USAMapWithDots onDotAdded={setDotCount} />
-            <EmailNotifications dotCount={dotCount} />
+          {/* USA Map */}
+          <div className="hidden lg:flex justify-center items-center animate-fade-in-up animation-delay-200">
+            <USAMapWithDots />
           </div>
         </div>
       </div>
