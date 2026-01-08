@@ -31,34 +31,34 @@ const AudiencePathways = () => {
               {/* Arrow Shape with SVG */}
               <div className="relative h-24 md:h-28">
                 <svg 
-                  viewBox="0 0 180 80" 
+                  viewBox="0 0 160 80" 
                   className="h-full w-auto"
-                  style={{ minWidth: '150px' }}
+                  style={{ minWidth: '140px' }}
                 >
-                  {/* First step - solid fill, arrow end only */}
+                  {/* First step - solid fill */}
                   {index === 0 && (
                     <path
-                      d="M0 0 L155 0 L180 40 L155 80 L0 80 Z"
+                      d="M0 0 L135 0 L160 40 L135 80 L0 80 Z"
                       fill="hsl(var(--primary))"
                       stroke="hsl(var(--primary))"
                       strokeWidth="2"
                     />
                   )}
                   
-                  {/* Middle steps - outline with arrow on both sides */}
+                  {/* Middle steps - outline, rectangle with arrow right */}
                   {index > 0 && index < steps.length - 1 && (
                     <path
-                      d="M25 0 L155 0 L180 40 L155 80 L25 80 L0 40 Z"
+                      d="M0 0 L135 0 L160 40 L135 80 L0 80 Z"
                       fill="white"
                       stroke="hsl(var(--primary))"
                       strokeWidth="2"
                     />
                   )}
                   
-                  {/* Last step - solid fill, arrow start only */}
+                  {/* Last step - solid fill */}
                   {index === steps.length - 1 && (
                     <path
-                      d="M25 0 L180 0 L180 80 L25 80 L0 40 Z"
+                      d="M0 0 L135 0 L160 40 L135 80 L0 80 Z"
                       fill="hsl(var(--primary))"
                       stroke="hsl(var(--primary))"
                       strokeWidth="2"
@@ -67,22 +67,22 @@ const AudiencePathways = () => {
                   
                   {/* Text */}
                   <text
-                    x="90"
+                    x="70"
                     y={step.duration ? "35" : "42"}
                     textAnchor="middle"
                     className="text-sm font-semibold"
                     fill={index === 0 || index === steps.length - 1 ? "white" : "hsl(var(--primary))"}
-                    style={{ fontSize: '13px', fontWeight: 600 }}
+                    style={{ fontSize: '12px', fontWeight: 600 }}
                   >
                     {step.title}
                   </text>
                   {step.duration && (
                     <text
-                      x="90"
-                      y="55"
+                      x="70"
+                      y="52"
                       textAnchor="middle"
                       fill={index === 0 || index === steps.length - 1 ? "rgba(255,255,255,0.7)" : "hsl(var(--muted-foreground))"}
-                      style={{ fontSize: '11px' }}
+                      style={{ fontSize: '10px' }}
                     >
                       {step.duration}
                     </text>
