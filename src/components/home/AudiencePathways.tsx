@@ -82,7 +82,7 @@ const AudiencePathways = () => {
             Our Proven Process
           </span>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
-            The CLX Way
+            The <span className="font-black">CLX</span> Way
           </h2>
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
             Navigate the commercial lending journey with confidence
