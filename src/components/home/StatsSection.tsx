@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { TrendingUp, Handshake, Calendar, DollarSign } from "lucide-react";
+import bankBackground from "@/assets/bank-background.jpg";
 
 const useCountUp = (end: number, duration: number = 2000, startCounting: boolean = false) => {
   const [count, setCount] = useState(0);
@@ -133,8 +134,13 @@ const StatsSection = () => {
   ];
 
   return (
-    <section className="py-20 bg-muted">
-      <div className="section-container">
+    <section 
+      className="py-20 relative bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${bankBackground})` }}
+    >
+      {/* Overlay for readability */}
+      <div className="absolute inset-0 bg-muted/85" />
+      <div className="section-container relative z-10">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
           {stats.map((stat, index) => (
             <AnimatedStat
