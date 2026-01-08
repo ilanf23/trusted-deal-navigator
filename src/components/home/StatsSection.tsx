@@ -139,7 +139,7 @@ const StatsSection = () => {
       style={{ backgroundImage: `url(${bankBackground})` }}
     >
       {/* Overlay for readability */}
-      <div className="absolute inset-0 bg-muted/85" />
+      <div className="absolute inset-0 bg-background/60" />
       <div className="section-container relative z-10">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
           {stats.map((stat, index) => (
