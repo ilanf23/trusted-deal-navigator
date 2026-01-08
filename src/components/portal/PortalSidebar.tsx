@@ -45,8 +45,13 @@ const PortalSidebar = () => {
   return (
     <Sidebar className="border-r border-border">
       <SidebarHeader className="p-4 border-b border-border">
-        <Link to="/portal" className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-primary">10X</span>
+        <Link to="/portal" className="flex items-center">
+          <img
+            src={logo}
+            alt="Commercial Lending X logo"
+            className="h-24 w-auto"
+            loading="lazy"
+          />
         </Link>
       </SidebarHeader>
       
