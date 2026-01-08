@@ -235,11 +235,11 @@ const Contact = () => {
                   <h3 className="mb-4">Prefer to Talk?</h3>
                   <div className="space-y-4">
                     <a
-                      href="tel:+15551234567"
+                      href="tel:+18476510319"
                       className="flex items-center gap-3 text-primary-foreground/90 hover:text-primary-foreground transition-colors"
                     >
                       <Phone className="w-5 h-5" />
-                      (555) 123-4567
+                      (847) 651-0319
                     </a>
                     <a
                       href="mailto:info@commerciallendingx.com"

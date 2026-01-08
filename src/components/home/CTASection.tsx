@@ -29,10 +29,10 @@ const CTASection = () => {
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <a href="tel:+15551234567">
+            <a href="tel:+18476510319">
               <Button variant="heroOutline" size="xl" className="group">
                 <Phone className="w-5 h-5" />
-                (555) 123-4567
+                (847) 651-0319
               </Button>
             </a>
           </div>
