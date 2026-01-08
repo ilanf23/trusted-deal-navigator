@@ -1,4 +1,5 @@
 import { Quote } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const TestimonialsSection = () => {
   const testimonials = [
@@ -59,9 +60,17 @@ const TestimonialsSection = () => {
               </p>
 
               {/* Author */}
-              <div className="border-t border-border pt-6">
-                <div className="font-semibold text-foreground">{testimonial.author}</div>
-                <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+              <div className="border-t border-border pt-6 flex items-center gap-4">
+                <Avatar className="w-12 h-12">
+                  <AvatarImage src={`https://i.pravatar.cc/150?img=${index + 10}`} alt={testimonial.author} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {testimonial.author.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-semibold text-foreground">{testimonial.author}</div>
+                  <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+                </div>
               </div>
             </div>
           ))}
