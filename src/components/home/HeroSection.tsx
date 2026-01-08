@@ -2,10 +2,26 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import DealPulseMap from "./DealPulseMap";
+
 const rotatingWords = ["Business Owners", "Entrepreneurs", "Investors", "Franchisees", "Real Estate Buyers"];
+
+const pulsingDotPositions = [
+  { x: 20, y: 25 },
+  { x: 75, y: 35 },
+  { x: 45, y: 60 },
+  { x: 85, y: 70 },
+  { x: 30, y: 80 },
+  { x: 60, y: 20 },
+  { x: 15, y: 55 },
+  { x: 80, y: 45 },
+];
+
 const HeroSection = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [activeDotIndex, setActiveDotIndex] = useState(0);
+  const [showDot, setShowDot] = useState(true);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setIsAnimating(true);
@@ -16,6 +32,19 @@ const HeroSection = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Pulsing dots animation
+  useEffect(() => {
+    const dotInterval = setInterval(() => {
+      setShowDot(false);
+      setTimeout(() => {
+        setActiveDotIndex(prev => (prev + 1) % pulsingDotPositions.length);
+        setShowDot(true);
+      }, 300);
+    }, 2500);
+    return () => clearInterval(dotInterval);
+  }, []);
+
   return <section className="relative min-h-screen flex items-center hero-gradient overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0">
@@ -33,13 +62,24 @@ const HeroSection = () => {
         animation: 'pulse 4s ease-in-out infinite'
       }} />
         
-        {/* Floating particles */}
-        <div className="absolute top-1/4 left-1/4 w-2 h-2 rounded-full bg-accent/30 animate-[float_6s_ease-in-out_infinite]" />
-        <div className="absolute top-1/3 right-1/4 w-1.5 h-1.5 rounded-full bg-primary-foreground/20 animate-[float_8s_ease-in-out_infinite_reverse]" />
-        <div className="absolute bottom-1/3 left-1/3 w-1 h-1 rounded-full bg-accent/40 animate-[float_7s_ease-in-out_infinite]" />
-        <div className="absolute top-1/2 right-1/3 w-2 h-2 rounded-full bg-primary-foreground/15 animate-[float_9s_ease-in-out_infinite_reverse]" />
-        <div className="absolute bottom-1/4 right-1/5 w-1.5 h-1.5 rounded-full bg-accent/25 animate-[float_5s_ease-in-out_infinite]" />
-        <div className="absolute top-2/3 left-1/5 w-1 h-1 rounded-full bg-primary-foreground/25 animate-[float_10s_ease-in-out_infinite_reverse]" />
+        {/* Pulsing dot - one at a time */}
+        {showDot && (
+          <div 
+            className="absolute w-16 h-16 md:w-24 md:h-24 transition-all duration-300"
+            style={{ 
+              left: `${pulsingDotPositions[activeDotIndex].x}%`, 
+              top: `${pulsingDotPositions[activeDotIndex].y}%`,
+              transform: 'translate(-50%, -50%)'
+            }}
+          >
+            {/* Outer pulse ring */}
+            <div className="absolute inset-0 rounded-full bg-accent/20 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]" />
+            {/* Middle pulse ring */}
+            <div className="absolute inset-2 md:inset-4 rounded-full bg-accent/30 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite_0.3s]" />
+            {/* Inner solid dot */}
+            <div className="absolute inset-4 md:inset-8 rounded-full bg-accent/50 animate-pulse" />
+          </div>
+        )}
       </div>
 
 
