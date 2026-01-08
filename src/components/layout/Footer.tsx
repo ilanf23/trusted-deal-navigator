@@ -33,7 +33,7 @@ const Footer = () => {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <Link to="/" className="inline-block mb-6">
-              <img src={logo} alt="Commercial Lending X" className="h-10 brightness-0 invert" />
+              <img src={logo} alt="Commercial Lending X" className="h-48 brightness-0 invert" />
             </Link>
             <p className="text-primary-foreground/80 mb-6 max-w-sm leading-relaxed">
               Commercial financing expertise for real world deals. Access hundreds of lending 
