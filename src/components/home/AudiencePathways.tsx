@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Play, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Play, ArrowRight, CheckCircle2, Target } from "lucide-react";
 
 const AudiencePathways = () => {
   const [isInitialConsultOpen, setIsInitialConsultOpen] = useState(false);
@@ -145,91 +146,143 @@ const AudiencePathways = () => {
 
       {/* Initial Consult Popup */}
       <Dialog open={isInitialConsultOpen} onOpenChange={setIsInitialConsultOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl md:text-3xl flex items-center gap-3">
-              <span className="text-3xl">📞</span>
-              Step 1: Initial Consult
-            </DialogTitle>
-          </DialogHeader>
-          
-          {/* Video */}
-          <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg">
-            <iframe 
-              src="https://www.youtube.com/embed/ZnUo6vRzvOU?si=OyhhS0qyrMMRLvhN" 
-              title="Initial Consult - The CLX Way" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-              allowFullScreen 
-              className="absolute inset-0 w-full h-full" 
-            />
-          </div>
-          
-          {/* Description */}
-          <DialogDescription className="text-base md:text-lg leading-relaxed text-foreground/80 mt-8">
-            Welcome to Commercial Lending X and Step 1 of The CLX Way, the Initial Consult. We will assess if we're the right fit for your lending needs and educate you on the commercial lending landscape. This step focuses on your proactive engagement, inviting feedback and questions as we outline the tailored roadmap ahead. We'll also provide a clear list of initial requirements to kickstart your lending journey, ensuring a seamless and informed partnership towards financial success.
-          </DialogDescription>
-          
-          {/* CTA Button */}
-          <div className="flex justify-center mt-8">
-            <button 
-              onClick={() => {
-                setIsInitialConsultOpen(false);
-                // @ts-ignore
-                window.Calendly?.initPopupWidget({
-                  url: 'https://calendly.com/adam-fridman/30min'
-                });
-              }}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
-            >
-              Talk to Brad
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
+        <DialogContent className="max-w-5xl h-[85vh] p-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-6 md:p-8">
+              <DialogHeader>
+                <DialogTitle className="text-2xl md:text-3xl flex items-center gap-3">
+                  <span className="text-3xl">📞</span>
+                  Step 1: Initial Consult
+                </DialogTitle>
+              </DialogHeader>
+              
+              {/* 1. Video */}
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mt-6">
+                <iframe 
+                  src="https://www.youtube.com/embed/ZnUo6vRzvOU?si=OyhhS0qyrMMRLvhN" 
+                  title="Initial Consult - The CLX Way" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowFullScreen 
+                  className="absolute inset-0 w-full h-full" 
+                />
+              </div>
+              
+              {/* 2. Goals */}
+              <div className="mt-8">
+                <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
+                  <Target className="w-5 h-5 text-primary" />
+                  Goals
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {["Are we a fit", "Outline the Process", "Needs List"].map((goal, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10"
+                    >
+                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                      <span className="font-medium text-foreground">{goal}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* 3. Description */}
+              <div className="mt-8">
+                <h3 className="text-xl font-bold mb-4">About This Step</h3>
+                <p className="text-base md:text-lg leading-relaxed text-muted-foreground">
+                  Welcome to Commercial Lending X and Step 1 of The CLX Way, the Initial Consult. We will assess if we're the right fit for your lending needs and educate you on the commercial lending landscape. This step focuses on your proactive engagement, inviting feedback and questions as we outline the tailored roadmap ahead. We'll also provide a clear list of initial requirements to kickstart your lending journey, ensuring a seamless and informed partnership towards financial success.
+                </p>
+              </div>
+              
+              {/* CTA Button */}
+              <div className="flex justify-center mt-10 pb-4">
+                <button 
+                  onClick={() => {
+                    setIsInitialConsultOpen(false);
+                    // @ts-ignore
+                    window.Calendly?.initPopupWidget({
+                      url: 'https://calendly.com/adam-fridman/30min'
+                    });
+                  }}
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
+                >
+                  Talk to Brad
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
       {/* Onboarding Popup */}
       <Dialog open={isOnboardingOpen} onOpenChange={setIsOnboardingOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl md:text-3xl flex items-center gap-3">
-              <span className="text-3xl">📋</span>
-              Step 2: Onboarding
-            </DialogTitle>
-          </DialogHeader>
-          
-          {/* Video */}
-          <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg">
-            <iframe 
-              src="https://www.youtube.com/embed/8Os00M78vjs" 
-              title="Onboarding - The CLX Way" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-              allowFullScreen 
-              className="absolute inset-0 w-full h-full" 
-            />
-          </div>
-          
-          {/* Description */}
-          <DialogDescription className="text-base md:text-lg leading-relaxed text-foreground/80 mt-8">
-            Welcome to Step 2 of The CLX Way: Onboarding. In this stage, we review your documentation to ensure completeness and accuracy, while crafting a tailored deal structure to match your unique objectives. Through this process, we assess your pre-qualification status, laying the groundwork for our next phase of rigorous in-house underwriting. This step is all about setting the stage for success, ensuring every detail is finely tuned for your financial journey with us.
-          </DialogDescription>
-          
-          {/* CTA Button */}
-          <div className="flex justify-center mt-8">
-            <button 
-              onClick={() => {
-                setIsOnboardingOpen(false);
-                // @ts-ignore
-                window.Calendly?.initPopupWidget({
-                  url: 'https://calendly.com/adam-fridman/30min'
-                });
-              }}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
-            >
-              Talk to Brad
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
+        <DialogContent className="max-w-5xl h-[85vh] p-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-6 md:p-8">
+              <DialogHeader>
+                <DialogTitle className="text-2xl md:text-3xl flex items-center gap-3">
+                  <span className="text-3xl">📋</span>
+                  Step 2: Onboarding
+                </DialogTitle>
+              </DialogHeader>
+              
+              {/* 1. Video */}
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mt-6">
+                <iframe 
+                  src="https://www.youtube.com/embed/8Os00M78vjs" 
+                  title="Onboarding - The CLX Way" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowFullScreen 
+                  className="absolute inset-0 w-full h-full" 
+                />
+              </div>
+              
+              {/* 2. Goals */}
+              <div className="mt-8">
+                <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
+                  <Target className="w-5 h-5 text-primary" />
+                  Goals
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {["Document Review", "Deal Structure", "Pre-Qualification"].map((goal, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10"
+                    >
+                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                      <span className="font-medium text-foreground">{goal}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* 3. Description */}
+              <div className="mt-8">
+                <h3 className="text-xl font-bold mb-4">About This Step</h3>
+                <p className="text-base md:text-lg leading-relaxed text-muted-foreground">
+                  Welcome to Step 2 of The CLX Way: Onboarding. In this stage, we review your documentation to ensure completeness and accuracy, while crafting a tailored deal structure to match your unique objectives. Through this process, we assess your pre-qualification status, laying the groundwork for our next phase of rigorous in-house underwriting. This step is all about setting the stage for success, ensuring every detail is finely tuned for your financial journey with us.
+                </p>
+              </div>
+              
+              {/* CTA Button */}
+              <div className="flex justify-center mt-10 pb-4">
+                <button 
+                  onClick={() => {
+                    setIsOnboardingOpen(false);
+                    // @ts-ignore
+                    window.Calendly?.initPopupWidget({
+                      url: 'https://calendly.com/adam-fridman/30min'
+                    });
+                  }}
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
+                >
+                  Talk to Brad
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </section>
