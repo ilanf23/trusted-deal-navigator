@@ -41,12 +41,12 @@ const HeroSection = () => {
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-primary-foreground mb-8 animate-fade-in-up">
+          <h1 className="text-primary-foreground mb-10 animate-fade-in-up text-5xl md:text-6xl lg:text-7xl">
             <span className="block">Commercial Financing</span>
             <span className="text-accent">
               for{" "}
               <span 
-                className={`inline-block transition-all duration-500 underline decoration-accent underline-offset-4 ${
+                className={`inline-block transition-all duration-500 underline decoration-accent underline-offset-8 ${
                   isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
                 }`}
               >
@@ -56,8 +56,8 @@ const HeroSection = () => {
           </h1>
 
           {/* Video */}
-          <div className="w-full max-w-6xl mb-10 animate-fade-in-up animation-delay-100">
-            <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-primary-foreground/20">
+          <div className="w-full max-w-7xl mb-12 animate-fade-in-up animation-delay-100">
+            <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-primary-foreground/20">
               <iframe 
                 src="https://www.youtube.com/embed/z11ValptvRA?start=1" 
                 title="Commercial Lending X Overview" 
@@ -69,7 +69,7 @@ const HeroSection = () => {
           </div>
 
           {/* Subheadline */}
-          <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8 max-w-2xl leading-relaxed animate-fade-in-up animation-delay-100">
+          <p className="text-2xl md:text-3xl text-primary-foreground/80 mb-10 max-w-3xl leading-relaxed animate-fade-in-up animation-delay-100">
             Navigate complex commercial financing with confidence. Access hundreds of 
             lending partners including banks, SBA, and alternative lenders with our success-based 
             fee model.
