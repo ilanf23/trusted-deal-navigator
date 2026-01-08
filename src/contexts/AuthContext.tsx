@@ -36,15 +36,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .single();
+        .eq('user_id', userId);
 
       if (error) {
         console.error('Error fetching user role:', error);
         return null;
       }
 
-      return data?.role as UserRole;
+      // Prioritize admin role if user has multiple roles
+      const roles = data?.map(r => r.role) || [];
+      if (roles.includes('admin')) {
+        return 'admin' as UserRole;
+      }
+      return (roles[0] as UserRole) || null;
     } catch (error) {
       console.error('Error fetching user role:', error);
       return null;
