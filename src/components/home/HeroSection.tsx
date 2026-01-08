@@ -1,8 +1,31 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Users, TrendingUp } from "lucide-react";
 
+const rotatingWords = [
+  "Business Owners",
+  "Entrepreneurs",
+  "Investors",
+  "Franchisees",
+  "Real Estate Buyers",
+];
+
 const HeroSection = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % rotatingWords.length);
+        setIsAnimating(false);
+      }, 300);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   const highlights = [{
     icon: Users,
     text: "300+ Lending Partners"
@@ -32,7 +55,16 @@ const HeroSection = () => {
             {/* Main Headline */}
             <h1 className="text-primary-foreground mb-6 animate-fade-in-up">
               Commercial Financing Expertise{" "}
-              <span className="text-accent">for Real-World Deals</span>
+              <span className="text-accent">
+                for{" "}
+                <span 
+                  className={`inline-block transition-all duration-300 ${
+                    isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
+                  }`}
+                >
+                  {rotatingWords[currentIndex]}
+                </span>
+              </span>
             </h1>
 
             {/* Subheadline */}
