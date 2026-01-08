@@ -9,6 +9,7 @@ const AudiencePathways = () => {
   const [isUnderwritingOpen, setIsUnderwritingOpen] = useState(false);
   const [isLenderManagementOpen, setIsLenderManagementOpen] = useState(false);
   const [isPathToClosingOpen, setIsPathToClosingOpen] = useState(false);
+  const [isClosedOpen, setIsClosedOpen] = useState(false);
 
   const steps = [
     { step: 1, title: "Initial Consult", duration: "", icon: "📞", hasPopup: true },
@@ -16,7 +17,7 @@ const AudiencePathways = () => {
     { step: 3, title: "In-House Underwriting", duration: "24-48 hours", icon: "🔍", hasPopup: true },
     { step: 4, title: "Lender Management", duration: "5-10 days", icon: "🤝", hasPopup: true },
     { step: 5, title: "Path to Closing", duration: "1-4+ weeks", icon: "📈", hasPopup: true },
-    { step: 6, title: "Closed", duration: "", icon: "🎉", hasPopup: false },
+    { step: 6, title: "Closed", duration: "", icon: "🎉", hasPopup: true },
   ];
 
   const handleStepClick = (step: number) => {
@@ -30,6 +31,8 @@ const AudiencePathways = () => {
       setIsLenderManagementOpen(true);
     } else if (step === 5) {
       setIsPathToClosingOpen(true);
+    } else if (step === 6) {
+      setIsClosedOpen(true);
     }
   };
 
@@ -492,6 +495,77 @@ const AudiencePathways = () => {
                 <button 
                   onClick={() => {
                     setIsPathToClosingOpen(false);
+                    // @ts-ignore
+                    window.Calendly?.initPopupWidget({
+                      url: 'https://calendly.com/adam-fridman/30min'
+                    });
+                  }}
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
+                >
+                  Talk to Brad
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Closed Popup */}
+      <Dialog open={isClosedOpen} onOpenChange={setIsClosedOpen}>
+        <DialogContent className="max-w-5xl h-[85vh] p-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-6 md:p-8">
+              <DialogHeader>
+                <DialogTitle className="text-2xl md:text-3xl flex items-center gap-3">
+                  <span className="text-3xl">🎉</span>
+                  Step 6: Closed
+                </DialogTitle>
+              </DialogHeader>
+              
+              {/* 1. Video */}
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mt-6">
+                <iframe 
+                  src="https://www.youtube.com/embed/GgIV9VSx5p0" 
+                  title="Closed - The CLX Way" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowFullScreen 
+                  className="absolute inset-0 w-full h-full" 
+                />
+              </div>
+              
+              {/* 2. Goals */}
+              <div className="mt-8">
+                <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
+                  <Target className="w-5 h-5 text-primary" />
+                  Goals
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {["Closing", "Success Based Fee", "Stay In Touch!"].map((goal, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10"
+                    >
+                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                      <span className="font-medium text-foreground">{goal}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* 3. Description */}
+              <div className="mt-8">
+                <h3 className="text-xl font-bold mb-4">About This Step</h3>
+                <p className="text-base md:text-lg leading-relaxed text-muted-foreground">
+                  Welcome to the final step of The CLX Way: Closed. In this video, we'll walk you through the crucial closing process, ensuring you are well-prepared. We'll discuss what you need to bring to the closing, address the timing, and provide guidance on how to proactively handle any potential issues that may arise. Additionally, we emphasize the importance of staying in touch post-closing, as we're here to assist with any further needs related to your loan. At Commercial Lending X, our success is intrinsically tied to yours. We only succeed when you accept the financing we secure for you and successfully close on it. We do everything possible to ensure you have the loan you want and have a successful closing. Congratulations on reaching this milestone in your financial journey with us!
+                </p>
+              </div>
+              
+              {/* CTA Button */}
+              <div className="flex justify-center mt-10 pb-4">
+                <button 
+                  onClick={() => {
+                    setIsClosedOpen(false);
                     // @ts-ignore
                     window.Calendly?.initPopupWidget({
                       url: 'https://calendly.com/adam-fridman/30min'
