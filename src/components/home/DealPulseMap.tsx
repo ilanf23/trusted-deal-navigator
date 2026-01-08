@@ -29,6 +29,7 @@ const deals: Deal[] = [
 const DealPulseMap = () => {
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [pulsingDeals, setPulsingDeals] = useState<number[]>([]);
+  const [showCTA, setShowCTA] = useState(false);
 
   useEffect(() => {
     let dealIndex = 0;
@@ -39,20 +40,27 @@ const DealPulseMap = () => {
       // Add pulse
       setPulsingDeals(prev => [...prev, deal.id]);
       
-      // Show notification after pulse starts
+      // Show deal notification after pulse starts
       setTimeout(() => {
         setActiveDeal(deal);
+        setShowCTA(false);
       }, 500);
+      
+      // Switch to CTA message
+      setTimeout(() => {
+        setShowCTA(true);
+      }, 3000);
       
       // Hide notification
       setTimeout(() => {
         setActiveDeal(null);
-      }, 4000);
+        setShowCTA(false);
+      }, 5500);
       
       // Remove pulse
       setTimeout(() => {
         setPulsingDeals(prev => prev.filter(id => id !== deal.id));
-      }, 5000);
+      }, 6000);
       
       dealIndex = (dealIndex + 1) % deals.length;
     };
@@ -61,7 +69,7 @@ const DealPulseMap = () => {
     showNextDeal();
     
     // Continue cycling
-    const interval = setInterval(showNextDeal, 6000);
+    const interval = setInterval(showNextDeal, 7500);
     
     return () => clearInterval(interval);
   }, []);
@@ -119,22 +127,30 @@ const DealPulseMap = () => {
         }`}
       >
         <div className="bg-card/95 backdrop-blur-md rounded-xl p-4 shadow-xl border border-border/50">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-              <MapPin className="w-5 h-5 text-accent" />
+          {!showCTA ? (
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-5 h-5 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-foreground text-sm">
+                  {activeDeal?.amount} {activeDeal?.type} Closed
+                </p>
+                <p className="text-muted-foreground text-xs mt-0.5">
+                  {activeDeal?.type} • {activeDeal?.city}, {activeDeal?.state}
+                </p>
+                <p className="text-accent text-xs font-medium mt-1">
+                  Closed in {activeDeal?.days} Days
+                </p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-foreground text-sm">
-                {activeDeal?.amount} {activeDeal?.type} Closed
-              </p>
-              <p className="text-muted-foreground text-xs mt-0.5">
-                {activeDeal?.type} • {activeDeal?.city}, {activeDeal?.state}
-              </p>
-              <p className="text-accent text-xs font-medium mt-1">
-                Closed in {activeDeal?.days} Days
+          ) : (
+            <div className="flex items-center justify-center py-2">
+              <p className="font-bold text-foreground text-sm text-center">
+                Talk to Brad and it can be you
               </p>
             </div>
-          </div>
+          )}
         </div>
       </div>
       
