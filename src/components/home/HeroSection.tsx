@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Quote } from "lucide-react";
+import DealPulseMap from "./DealPulseMap";
 
 const rotatingWords = [
   "Business Owners",
@@ -94,16 +95,24 @@ const HeroSection = () => {
             </span>
           </h1>
 
-          {/* Video */}
+          {/* Video + Map Grid */}
           <div className="w-full max-w-7xl mb-12 animate-fade-in-up animation-delay-100">
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-primary-foreground/20">
-              <iframe 
-                src="https://www.youtube.com/embed/z11ValptvRA?start=1" 
-                title="Commercial Lending X Overview" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                allowFullScreen 
-                className="absolute inset-0 w-full h-full" 
-              />
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Video */}
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-primary-foreground/20">
+                <iframe 
+                  src="https://www.youtube.com/embed/z11ValptvRA?start=1" 
+                  title="Commercial Lending X Overview" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowFullScreen 
+                  className="absolute inset-0 w-full h-full" 
+                />
+              </div>
+              
+              {/* Deal Pulse Map */}
+              <div className="hidden lg:block aspect-video">
+                <DealPulseMap />
+              </div>
             </div>
           </div>
 
