@@ -53,8 +53,8 @@ const HeroSection = () => {
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-primary-foreground mb-6 animate-fade-in-up">
-              Commercial Financing Expertise{" "}
+            <h1 className="text-primary-foreground mb-6 animate-fade-in-up whitespace-nowrap">
+              Commercial Financing{" "}
               <span className="text-accent">
                 for{" "}
                 <span 
@@ -82,17 +82,12 @@ const HeroSection = () => {
                 </div>)}
             </div>
 
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up animation-delay-300">
+            {/* CTA */}
+            <div className="animate-fade-in-up animation-delay-300">
               <Link to="/contact">
                 <Button variant="hero" size="xl" className="group">
                   Talk to Brad
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-              <Link to="/transactions">
-                <Button variant="heroOutline" size="xl">
-                  View Recent Deals
                 </Button>
               </Link>
             </div>
