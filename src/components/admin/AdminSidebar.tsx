@@ -7,7 +7,8 @@ import {
   Receipt, 
   MessageSquare,
   UserPlus,
-  LogOut
+  LogOut,
+  Kanban
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -27,6 +28,7 @@ import logo from '@/assets/logo.png';
 
 const menuItems = [
   { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
+  { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
   { title: 'Leads', url: '/admin/leads', icon: UserPlus },
   { title: 'Clients', url: '/admin/clients', icon: Users },
   { title: 'Contracts', url: '/admin/contracts', icon: FileText },

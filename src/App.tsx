@@ -22,6 +22,7 @@ import AdminContracts from "./pages/admin/Contracts";
 import AdminInvoices from "./pages/admin/Invoices";
 import AdminMessages from "./pages/admin/Messages";
 import AdminMarketing from "./pages/admin/Marketing";
+import CRMBoard from "./pages/admin/CRMBoard";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
@@ -50,6 +51,7 @@ const App = () => (
             {/* Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/leads" element={<ProtectedRoute requireAdmin><AdminLeads /></ProtectedRoute>} />
+            <Route path="/admin/crm" element={<ProtectedRoute requireAdmin><CRMBoard /></ProtectedRoute>} />
             <Route path="/admin/clients" element={<ProtectedRoute requireAdmin><AdminClients /></ProtectedRoute>} />
             <Route path="/admin/contracts" element={<ProtectedRoute requireAdmin><AdminContracts /></ProtectedRoute>} />
             <Route path="/admin/invoices" element={<ProtectedRoute requireAdmin><AdminInvoices /></ProtectedRoute>} />
