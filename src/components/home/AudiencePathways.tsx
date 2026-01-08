@@ -134,7 +134,7 @@ const AudiencePathways = () => {
             }}
             className="group inline-flex items-center gap-3 px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-2xl hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-0.5"
           >
-            Start Your Journey Today
+            Talk to Brad
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
@@ -151,7 +151,7 @@ const AudiencePathways = () => {
           </DialogHeader>
           
           {/* Video */}
-          <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg my-4">
+          <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg">
             <iframe 
               src="https://www.youtube.com/embed/ZnUo6vRzvOU?si=OyhhS0qyrMMRLvhN" 
               title="Initial Consult - The CLX Way" 
@@ -162,12 +162,12 @@ const AudiencePathways = () => {
           </div>
           
           {/* Description */}
-          <DialogDescription className="text-base md:text-lg leading-relaxed text-foreground/80">
+          <DialogDescription className="text-base md:text-lg leading-relaxed text-foreground/80 mt-8">
             Welcome to Commercial Lending X and Step 1 of The CLX Way, the Initial Consult. We will assess if we're the right fit for your lending needs and educate you on the commercial lending landscape. This step focuses on your proactive engagement, inviting feedback and questions as we outline the tailored roadmap ahead. We'll also provide a clear list of initial requirements to kickstart your lending journey, ensuring a seamless and informed partnership towards financial success.
           </DialogDescription>
           
           {/* CTA Button */}
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-8">
             <button 
               onClick={() => {
                 setIsInitialConsultOpen(false);
@@ -178,7 +178,7 @@ const AudiencePathways = () => {
               }}
               className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
             >
-              Schedule Your Initial Consult
+              Talk to Brad
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>

@@ -222,7 +222,7 @@ const BankServices = () => {
             </p>
             <Link to="/contact">
               <Button variant="hero" size="xl" className="group">
-                Schedule a Discovery Call
+                Talk to Brad
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
