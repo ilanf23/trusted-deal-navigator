@@ -361,3 +361,17 @@
     transform: translateX(50px) translateY(-60px) scale(0.95);
   }
 }
+
+@keyframes growPulse {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.15;
+  }
+}

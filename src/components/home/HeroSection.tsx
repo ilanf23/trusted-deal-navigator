@@ -33,15 +33,15 @@ const HeroSection = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Pulsing dots animation
+  // Pulsing dots animation - slower cycle
   useEffect(() => {
     const dotInterval = setInterval(() => {
       setShowDot(false);
       setTimeout(() => {
         setActiveDotIndex(prev => (prev + 1) % pulsingDotPositions.length);
         setShowDot(true);
-      }, 300);
-    }, 2500);
+      }, 500);
+    }, 5000);
     return () => clearInterval(dotInterval);
   }, []);
 
@@ -62,22 +62,40 @@ const HeroSection = () => {
         animation: 'pulse 4s ease-in-out infinite'
       }} />
         
-        {/* Pulsing dot - one at a time */}
+        {/* Pulsing dot - one at a time, grows to ~25% of viewport */}
         {showDot && (
           <div 
-            className="absolute w-16 h-16 md:w-24 md:h-24 transition-all duration-300"
+            className="absolute transition-all duration-500"
             style={{ 
               left: `${pulsingDotPositions[activeDotIndex].x}%`, 
               top: `${pulsingDotPositions[activeDotIndex].y}%`,
-              transform: 'translate(-50%, -50%)'
+              transform: 'translate(-50%, -50%)',
+              width: '25vw',
+              height: '25vw',
+              animation: 'growPulse 4s ease-out forwards'
             }}
           >
-            {/* Outer pulse ring */}
-            <div className="absolute inset-0 rounded-full bg-accent/20 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]" />
+            {/* Outer pulse ring - grows */}
+            <div 
+              className="absolute inset-0 rounded-full bg-accent/10"
+              style={{ animation: 'growPulse 4s ease-out forwards' }}
+            />
             {/* Middle pulse ring */}
-            <div className="absolute inset-2 md:inset-4 rounded-full bg-accent/30 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite_0.3s]" />
+            <div 
+              className="absolute rounded-full bg-accent/15"
+              style={{ 
+                inset: '15%',
+                animation: 'growPulse 4s ease-out 0.3s forwards'
+              }}
+            />
             {/* Inner solid dot */}
-            <div className="absolute inset-4 md:inset-8 rounded-full bg-accent/50 animate-pulse" />
+            <div 
+              className="absolute rounded-full bg-accent/25"
+              style={{ 
+                inset: '35%',
+                animation: 'growPulse 4s ease-out 0.5s forwards'
+              }}
+            />
           </div>
         )}
       </div>
