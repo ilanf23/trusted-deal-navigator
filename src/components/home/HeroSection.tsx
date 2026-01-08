@@ -27,11 +27,33 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-screen flex items-center hero-gradient overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-primary-foreground/20 blur-3xl" />
-        <div className="absolute bottom-20 left-20 w-80 h-80 rounded-full bg-accent/20 blur-3xl" />
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        {/* Floating orbs */}
+        <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-primary-foreground/10 blur-3xl animate-[float_8s_ease-in-out_infinite]" />
+        <div className="absolute bottom-20 left-20 w-80 h-80 rounded-full bg-accent/15 blur-3xl animate-[float_10s_ease-in-out_infinite_reverse]" />
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 rounded-full bg-primary-foreground/5 blur-3xl animate-[float_12s_ease-in-out_infinite_2s]" />
+        <div className="absolute top-1/4 right-1/3 w-72 h-72 rounded-full bg-accent/10 blur-3xl animate-[float_9s_ease-in-out_infinite_1s]" />
+        
+        {/* Moving gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary-foreground/5 to-transparent animate-[shimmer_15s_ease-in-out_infinite]" />
+        
+        {/* Subtle grid pattern */}
+        <div 
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
+            backgroundSize: '60px 60px',
+          }}
+        />
+        
+        {/* Animated particles */}
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 rounded-full bg-accent/40 animate-[pulse_3s_ease-in-out_infinite]" />
+        <div className="absolute top-3/4 right-1/4 w-3 h-3 rounded-full bg-primary-foreground/30 animate-[pulse_4s_ease-in-out_infinite_1s]" />
+        <div className="absolute top-1/2 right-1/5 w-2 h-2 rounded-full bg-accent/30 animate-[pulse_3.5s_ease-in-out_infinite_0.5s]" />
+        <div className="absolute bottom-1/3 left-1/5 w-2 h-2 rounded-full bg-primary-foreground/20 animate-[pulse_4.5s_ease-in-out_infinite_2s]" />
       </div>
+
 
       <div className="section-container relative z-10 py-24 md:py-32">
         <div className="flex flex-col items-center text-center">

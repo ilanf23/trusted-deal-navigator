@@ -282,3 +282,29 @@
     transform: rotate(92deg);
   }
 }
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px);
+  }
+  50% {
+    transform: translateY(-10px) translateX(-10px);
+  }
+  75% {
+    transform: translateY(-25px) translateX(5px);
+  }
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateX(-10%) translateY(-10%);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateX(10%) translateY(10%);
+  }
+}
