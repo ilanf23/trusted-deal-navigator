@@ -10,35 +10,35 @@ const AudiencePathways = () => {
 
   return (
     <section className="py-24 bg-background">
-      <div className="section-container">
-        {/* Section Header with Blue Background */}
-        <div className="bg-primary rounded-2xl p-12 md:p-16 text-center mb-16">
-          <h2 className="text-primary-foreground mb-4">The CLX Way</h2>
-          <p className="text-xl md:text-2xl text-primary-foreground/80 max-w-3xl mx-auto">
-            Proven Process To Navigate The Commercial Lending Journey
-          </p>
-        </div>
+      {/* Section Header with Blue Background - Full Width */}
+      <div className="bg-primary p-12 md:p-16 text-center mb-16">
+        <h2 className="text-primary-foreground mb-4">The CLX Way</h2>
+        <p className="text-xl md:text-2xl text-primary-foreground/80 max-w-3xl mx-auto">
+          Proven Process To Navigate The Commercial Lending Journey
+        </p>
+      </div>
 
-        {/* Process Steps */}
-        <div className="flex flex-col md:flex-row items-stretch justify-center gap-0 overflow-x-auto pb-4 px-4">
+      {/* Process Steps - Full Width */}
+      <div className="w-full px-4 md:px-8 lg:px-12">
+        <div className="flex flex-col md:flex-row items-stretch justify-between gap-0 w-full">
           {steps.map((step, index) => (
-            <div key={step.step} className="flex flex-col items-center flex-shrink-0">
+            <div key={step.step} className="flex flex-col items-center flex-1">
               {/* Step Label */}
-              <span className="text-xs font-semibold text-primary mb-2">
+              <span className="text-sm font-semibold text-primary mb-3">
                 Step {step.step}
               </span>
               
               {/* Arrow Shape with SVG */}
-              <div className="relative h-16 md:h-20">
+              <div className="relative h-20 md:h-24 w-full">
                 <svg 
-                  viewBox="0 0 130 60" 
-                  className="h-full w-auto"
-                  style={{ minWidth: '100px', maxWidth: '130px' }}
+                  viewBox="0 0 160 70" 
+                  className="h-full w-full"
+                  preserveAspectRatio="none"
                 >
                   {/* First step - solid fill */}
                   {index === 0 && (
                     <path
-                      d="M0 0 L110 0 L130 30 L110 60 L0 60 Z"
+                      d="M0 0 L135 0 L160 35 L135 70 L0 70 Z"
                       fill="hsl(var(--primary))"
                       stroke="hsl(var(--primary))"
                       strokeWidth="2"
@@ -48,7 +48,7 @@ const AudiencePathways = () => {
                   {/* Middle steps - outline, rectangle with arrow right */}
                   {index > 0 && index < steps.length - 1 && (
                     <path
-                      d="M0 0 L110 0 L130 30 L110 60 L0 60 Z"
+                      d="M0 0 L135 0 L160 35 L135 70 L0 70 Z"
                       fill="white"
                       stroke="hsl(var(--primary))"
                       strokeWidth="2"
@@ -58,7 +58,7 @@ const AudiencePathways = () => {
                   {/* Last step - solid fill */}
                   {index === steps.length - 1 && (
                     <path
-                      d="M0 0 L110 0 L130 30 L110 60 L0 60 Z"
+                      d="M0 0 L135 0 L160 35 L135 70 L0 70 Z"
                       fill="hsl(var(--primary))"
                       stroke="hsl(var(--primary))"
                       strokeWidth="2"
@@ -67,22 +67,22 @@ const AudiencePathways = () => {
                   
                   {/* Text */}
                   <text
-                    x="58"
-                    y={step.duration ? "25" : "32"}
+                    x="70"
+                    y={step.duration ? "28" : "38"}
                     textAnchor="middle"
-                    className="text-xs font-semibold"
+                    className="text-sm font-semibold"
                     fill={index === 0 || index === steps.length - 1 ? "white" : "hsl(var(--primary))"}
-                    style={{ fontSize: '9px', fontWeight: 600 }}
+                    style={{ fontSize: '11px', fontWeight: 600 }}
                   >
                     {step.title}
                   </text>
                   {step.duration && (
                     <text
-                      x="58"
-                      y="40"
+                      x="70"
+                      y="48"
                       textAnchor="middle"
                       fill={index === 0 || index === steps.length - 1 ? "rgba(255,255,255,0.7)" : "hsl(var(--muted-foreground))"}
-                      style={{ fontSize: '8px' }}
+                      style={{ fontSize: '9px' }}
                     >
                       {step.duration}
                     </text>
