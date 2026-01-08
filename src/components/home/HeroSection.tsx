@@ -173,12 +173,20 @@ const HeroSection = () => {
 
             {/* CTA */}
             <div className="animate-fade-in-up animation-delay-300">
-              <a href="https://calendly.com/adam-fridman/30min" target="_blank" rel="noopener noreferrer">
-                <Button variant="hero" size="xl" className="group">
-                  Talk to Brad
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </a>
+              <Button 
+                variant="hero" 
+                size="xl" 
+                className="group"
+                onClick={() => {
+                  // @ts-ignore - Calendly is loaded via script
+                  window.Calendly?.initPopupWidget({
+                    url: 'https://calendly.com/adam-fridman/30min'
+                  });
+                }}
+              >
+                Talk to Brad
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
             </div>
           </div>
 
