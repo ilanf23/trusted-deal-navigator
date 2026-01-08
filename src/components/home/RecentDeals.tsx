@@ -15,15 +15,15 @@ const RecentDeals = () => {
       icon: Building2,
       amount: "$8.5M",
       type: "Commercial Real Estate",
-      industry: "Mixed-Use Development",
-      highlight: "Bridge to perm, 18-month term",
+      industry: "Mixed Use Development",
+      highlight: "Bridge to perm, 18 month term",
     },
     {
       icon: ShoppingBag,
       amount: "$2.1M",
       type: "Acquisition",
       industry: "Retail Franchise",
-      highlight: "Multi-unit expansion financing",
+      highlight: "Multi unit expansion financing",
     },
     {
       icon: Utensils,
@@ -35,9 +35,9 @@ const RecentDeals = () => {
     {
       icon: Truck,
       amount: "$3.5M",
-      type: "Asset-Based",
+      type: "Asset Based",
       industry: "Logistics",
-      highlight: "Fleet expansion, 90-day close",
+      highlight: "Fleet expansion, 90 day close",
     },
     {
       icon: Hospital,

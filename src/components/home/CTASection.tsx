@@ -18,7 +18,7 @@ const CTASection = () => {
           </h2>
           <p className="text-xl text-primary-foreground/80 mb-10 leading-relaxed">
             Whether you're acquiring a business, investing in commercial real estate, 
-            or need credit support—let's find the right solution together. 
+            or need credit support, let's find the right solution together. 
             No upfront fees, no pressure.
           </p>
 

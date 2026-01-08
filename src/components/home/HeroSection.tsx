@@ -43,7 +43,7 @@ const HeroSection = () => {
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-primary-foreground/80 mb-8 max-w-2xl leading-relaxed animate-fade-in-up animation-delay-100">
             Navigate complex commercial financing with confidence. Access hundreds of 
-            lending partners—banks, SBA, and alternative lenders—with our success-based 
+            lending partners including banks, SBA, and alternative lenders with our success-based 
             fee model.
           </p>
 

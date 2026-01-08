@@ -32,7 +32,7 @@ const TestimonialsSection = () => {
         <div className="text-center mb-16">
           <h2 className="mb-4">What Our Clients Say</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            From business owners to bank partners—hear why they trust Commercial Lending X.
+            From business owners to bank partners, hear why they trust Commercial Lending X.
           </p>
         </div>
 

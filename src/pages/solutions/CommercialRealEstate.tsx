@@ -13,11 +13,11 @@ import {
 
 const CommercialRealEstate = () => {
   const isThisYou = [
-    "Acquiring income-producing commercial property",
+    "Acquiring income producing commercial property",
     "Developing or constructing a new commercial project",
     "Refinancing existing CRE debt for better terms",
     "Bridge financing for transitional properties",
-    "Owner-occupied real estate for your business",
+    "Owner occupied real estate for your business",
   ];
 
   const products = [
@@ -25,25 +25,25 @@ const CommercialRealEstate = () => {
       title: "Conventional CRE Loans",
       description:
         "Traditional bank financing for stabilized properties with competitive rates and flexible terms.",
-      highlights: ["Competitive rates", "Various terms", "Full amortization options"],
+      highlights: ["Competitive rates", "Various terms", "Full amortization"],
     },
     {
       title: "SBA 504 Loans",
       description:
-        "Ideal for owner-occupied properties. Low down payment, long terms, and fixed rates on the CDC portion.",
-      highlights: ["10% down", "25-year terms", "Fixed rates"],
+        "Ideal for owner occupied properties. Low down payment, long terms, and fixed rates on the CDC portion.",
+      highlights: ["10% down", "25 year terms", "Fixed rates"],
     },
     {
       title: "Bridge & Construction",
       description:
-        "Short-term financing for acquisition, renovation, or ground-up construction projects.",
-      highlights: ["Quick close", "Interest-only", "Flexible terms"],
+        "Short term financing for acquisition, renovation, or ground up construction projects.",
+      highlights: ["Quick close", "Interest only", "Flexible terms"],
     },
     {
       title: "CMBS & Life Company",
       description:
-        "Non-recourse options for larger stabilized properties with predictable cash flows.",
-      highlights: ["Non-recourse", "Larger amounts", "Long terms"],
+        "Non recourse options for larger stabilized properties with predictable cash flows.",
+      highlights: ["Non recourse", "Larger amounts", "Long terms"],
     },
   ];
 
@@ -51,23 +51,23 @@ const CommercialRealEstate = () => {
     {
       amount: "$8.5M",
       type: "Bridge Loan",
-      property: "Mixed-Use Development",
+      property: "Mixed Use Development",
       summary:
-        "Acquisition and repositioning of downtown mixed-use property. 18-month bridge with permanent takeout commitment from regional bank.",
+        "Acquisition and repositioning of downtown mixed use property. 18 month bridge with permanent takeout commitment from regional bank.",
     },
     {
       amount: "$12.8M",
       type: "CMBS",
-      property: "Limited-Service Hotel",
+      property: "Limited Service Hotel",
       summary:
-        "Refinance of 120-room hotel. CMBS execution provided best terms for stabilized asset with non-recourse structure.",
+        "Refinance of 120 room hotel. CMBS execution provided best terms for stabilized asset with non recourse structure.",
     },
     {
       amount: "$6.2M",
       type: "SBA 504",
       property: "Industrial Distribution",
       summary:
-        "Owner-user acquisition of distribution warehouse with cold storage. 504 structure maximized leverage with 10% down.",
+        "Owner user acquisition of distribution warehouse with cold storage. 504 structure maximized leverage with 10% down.",
     },
   ];
 
