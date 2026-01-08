@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Users, TrendingUp } from "lucide-react";
-import USAMapWithDots from "./USAMapWithDots";
 
 const HeroSection = () => {
   const highlights = [{
@@ -65,11 +64,6 @@ const HeroSection = () => {
                 </Button>
               </Link>
             </div>
-          </div>
-
-          {/* USA Map */}
-          <div className="hidden lg:flex justify-center items-center animate-fade-in-up animation-delay-200">
-            <USAMapWithDots />
           </div>
         </div>
       </div>
