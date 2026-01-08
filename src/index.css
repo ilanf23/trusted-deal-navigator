@@ -308,3 +308,23 @@
     transform: translateX(10%) translateY(10%);
   }
 }
+
+@keyframes floatQuote {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) translateX(0);
+  }
+  10% {
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-15px) translateX(10px);
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) translateX(-5px);
+  }
+}
