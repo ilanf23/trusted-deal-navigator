@@ -273,3 +273,12 @@
     transform: scale(1);
   }
 }
+
+@keyframes wiggle {
+  0%, 100% {
+    transform: rotate(88deg);
+  }
+  50% {
+    transform: rotate(92deg);
+  }
+}
