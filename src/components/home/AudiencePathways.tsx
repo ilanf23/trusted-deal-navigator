@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+import { Play, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const AudiencePathways = () => {
   const [isInitialConsultOpen, setIsInitialConsultOpen] = useState(false);
@@ -9,7 +9,7 @@ const AudiencePathways = () => {
     { step: 1, title: "Initial Consult", duration: "", icon: "📞", hasPopup: true },
     { step: 2, title: "Onboarding", duration: "24-48 hours", icon: "📋", hasPopup: false },
     { step: 3, title: "In-House Underwriting", duration: "24-48 hours", icon: "🔍", hasPopup: false },
-    { step: 4, title: "Lender Management", duration: "Terms 5-10 days", icon: "🤝", hasPopup: false },
+    { step: 4, title: "Lender Management", duration: "5-10 days", icon: "🤝", hasPopup: false },
     { step: 5, title: "Path to Closing", duration: "1-4+ weeks", icon: "📈", hasPopup: false },
     { step: 6, title: "Closed", duration: "", icon: "🎉", hasPopup: false },
   ];
@@ -21,84 +21,110 @@ const AudiencePathways = () => {
   };
 
   return (
-    <section className="py-20 bg-gradient-to-b from-background to-muted/30">
-      {/* Section Header with Blue Background */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-primary via-primary to-primary/90 p-12 md:p-20 text-center mb-16">
-        {/* Decorative elements */}
-        <div className="absolute top-0 left-0 w-40 h-40 bg-accent/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 right-0 w-60 h-60 bg-primary-foreground/5 rounded-full translate-x-1/3 translate-y-1/3" />
-        <div className="absolute top-1/2 left-1/4 w-20 h-20 bg-accent/5 rounded-full" />
-        
-        <div className="relative z-10">
-          <span className="inline-block px-4 py-1 bg-accent/20 text-accent rounded-full text-sm font-medium mb-4">
-            Our Process
-          </span>
-          <h2 className="text-primary-foreground mb-4 text-4xl md:text-5xl lg:text-6xl">The CLX Way</h2>
-          <p className="text-xl md:text-2xl text-primary-foreground/80 max-w-3xl mx-auto leading-relaxed">
-            Proven Process To Navigate The Commercial Lending Journey
-          </p>
-        </div>
+    <section className="py-24 bg-gradient-to-br from-muted/20 via-background to-muted/30 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/5 rounded-full blur-3xl" />
       </div>
 
-      {/* Process Steps */}
-      <div className="w-full px-4 md:px-8 lg:px-16 xl:px-24">
-        <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-0 w-full max-w-7xl mx-auto">
+      <div className="section-container relative z-10">
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-semibold mb-6">
+            <CheckCircle2 className="w-4 h-4" />
+            Our Proven Process
+          </span>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
+            The CLX Way
+          </h2>
+          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
+            Navigate the commercial lending journey with confidence
+          </p>
+        </div>
+
+        {/* Modern Steps Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
           {steps.map((step, index) => (
-            <div 
-              key={step.step} 
-              className={`flex flex-col items-center flex-1 w-full md:w-auto group ${step.hasPopup ? 'cursor-pointer' : ''}`}
+            <div
+              key={step.step}
               onClick={() => handleStepClick(step.step)}
+              className={`group relative p-6 rounded-2xl transition-all duration-500 ${
+                step.hasPopup ? 'cursor-pointer' : ''
+              } ${
+                index === 0 
+                  ? 'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-1' 
+                  : index === steps.length - 1
+                  ? 'bg-gradient-to-br from-accent to-accent/80 text-accent-foreground shadow-xl shadow-accent/20 hover:shadow-2xl hover:shadow-accent/30 hover:-translate-y-1'
+                  : 'bg-card border border-border/50 hover:border-primary/30 hover:shadow-xl hover:-translate-y-1 backdrop-blur-sm'
+              }`}
             >
-              {/* Step Label */}
-              <span className="text-xs font-bold text-accent uppercase tracking-wider mb-2">
-                Step {step.step}
-              </span>
-              
-              {/* Arrow Card */}
-              <div 
-                className={`relative w-full md:min-w-[140px] lg:min-w-[180px] h-24 md:h-28 flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:z-10 ${
-                  index === 0 || index === steps.length - 1 
-                    ? 'bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20' 
-                    : 'bg-card border-2 border-primary/20 hover:border-primary/40 shadow-md hover:shadow-lg'
-                } ${step.hasPopup ? 'ring-2 ring-accent/50 ring-offset-2' : ''}`}
-                style={{
-                  clipPath: index === 0 
-                    ? 'polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%)'
-                    : index === steps.length - 1
-                    ? 'polygon(20px 0, 100% 0, 100% 100%, 20px 100%, 0 50%)'
-                    : 'polygon(20px 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 20px 100%, 0 50%)'
-                }}
-              >
-                <div className="text-center px-6">
-                  <span className="text-2xl mb-1 block">{step.icon}</span>
-                  <p className={`font-semibold text-sm md:text-base leading-tight ${
-                    index === 0 || index === steps.length - 1 
-                      ? 'text-primary-foreground' 
-                      : 'text-foreground'
-                  }`}>
-                    {step.title}
-                  </p>
-                  {step.duration && (
-                    <p className={`text-xs mt-1 ${
-                      index === 0 || index === steps.length - 1 
-                        ? 'text-primary-foreground/70' 
-                        : 'text-muted-foreground'
-                    }`}>
-                      {step.duration}
-                    </p>
-                  )}
-                  {step.hasPopup && (
-                    <span className="text-xs text-accent mt-1 block">Click to learn more</span>
-                  )}
-                </div>
+              {/* Step number badge */}
+              <div className={`absolute -top-3 -left-3 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-lg ${
+                index === 0 || index === steps.length - 1
+                  ? 'bg-white text-primary'
+                  : 'bg-primary text-primary-foreground'
+              }`}>
+                {step.step}
               </div>
+
+              {/* Content */}
+              <div className="pt-4">
+                <span className="text-4xl mb-4 block">{step.icon}</span>
+                <h3 className={`text-xl font-bold mb-2 ${
+                  index === 0 || index === steps.length - 1 
+                    ? '' 
+                    : 'text-foreground'
+                }`}>
+                  {step.title}
+                </h3>
+                {step.duration && (
+                  <p className={`text-sm ${
+                    index === 0 || index === steps.length - 1 
+                      ? 'opacity-80' 
+                      : 'text-muted-foreground'
+                  }`}>
+                    Timeline: {step.duration}
+                  </p>
+                )}
+                
+                {/* Click indicator for popup */}
+                {step.hasPopup && (
+                  <div className="mt-4 flex items-center gap-2 text-sm font-medium opacity-90 group-hover:opacity-100">
+                    <Play className="w-4 h-4" />
+                    Watch video
+                  </div>
+                )}
+              </div>
+
+              {/* Hover arrow for non-last items */}
+              {index < steps.length - 1 && (
+                <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
+                  <ArrowRight className={`w-6 h-6 ${
+                    index === 0 ? 'text-primary' : 'text-muted-foreground/50'
+                  }`} />
+                </div>
+              )}
             </div>
           ))}
         </div>
-        
+
+        {/* Progress indicator */}
+        <div className="hidden md:flex items-center justify-center gap-2 mb-12">
+          {steps.map((_, index) => (
+            <div key={index} className="flex items-center">
+              <div className={`w-3 h-3 rounded-full ${
+                index === 0 ? 'bg-primary' : index === steps.length - 1 ? 'bg-accent' : 'bg-muted-foreground/30'
+              }`} />
+              {index < steps.length - 1 && (
+                <div className="w-12 h-0.5 bg-gradient-to-r from-muted-foreground/30 to-muted-foreground/10" />
+              )}
+            </div>
+          ))}
+        </div>
+
         {/* Bottom CTA */}
-        <div className="text-center mt-12">
-          <p className="text-muted-foreground mb-4">Ready to start your journey?</p>
+        <div className="text-center">
           <button 
             onClick={() => {
               // @ts-ignore
@@ -106,12 +132,10 @@ const AudiencePathways = () => {
                 url: 'https://calendly.com/adam-fridman/30min'
               });
             }}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg shadow-accent/20 hover:shadow-xl hover:shadow-accent/30 hover:-translate-y-0.5"
+            className="group inline-flex items-center gap-3 px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-2xl hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-0.5"
           >
-            Start With Step 1
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
+            Start Your Journey Today
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
       </div>
@@ -155,9 +179,7 @@ const AudiencePathways = () => {
               className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
             >
               Schedule Your Initial Consult
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
+              <ArrowRight className="w-5 h-5" />
             </button>
           </div>
         </DialogContent>
