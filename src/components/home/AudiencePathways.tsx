@@ -1,83 +1,65 @@
-import { Link } from "react-router-dom";
-import { ArrowRight, Building2, Briefcase, Building } from "lucide-react";
-
 const AudiencePathways = () => {
-  const pathways = [
-    {
-      icon: Briefcase,
-      title: "Business Owners",
-      description:
-        "Buying, refinancing, or expanding your business? Get access to SBA loans, conventional financing, and creative capital solutions.",
-      link: "/solutions/business-acquisition",
-      linkText: "Explore Business Financing",
-      color: "from-primary to-primary/80",
-    },
-    {
-      icon: Building2,
-      title: "Real Estate Investors",
-      description:
-        "Financing acquisition, construction, or refinancing of commercial properties? We navigate complex CRE deals with precision.",
-      link: "/solutions/commercial-real-estate",
-      linkText: "Explore CRE Financing",
-      color: "from-highlight to-highlight/80",
-    },
-    {
-      icon: Building,
-      title: "Banks & Partners",
-      description:
-        "Need outsourced underwriting or credit support? Partner with us for overflow capacity and specialized credit services.",
-      link: "/bank-services",
-      linkText: "Partner With CLX",
-      color: "from-accent to-accent/80",
-    },
+  const steps = [
+    { step: 1, title: "Initial Consult", duration: "" },
+    { step: 2, title: "Onboarding", duration: "24-48 hours" },
+    { step: 3, title: "In-House Underwriting", duration: "24-48 hours" },
+    { step: 4, title: "Lender Management", duration: "Terms 5-10 days" },
+    { step: 5, title: "Path to Closing", duration: "1-4+ weeks" },
+    { step: 6, title: "Closed", duration: "" },
   ];
 
   return (
     <section className="py-24 bg-background">
       <div className="section-container">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="mb-4">How Can We Help You?</h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Whether you're acquiring a business, investing in real estate, or need 
-            credit support, we have the expertise to guide you.
+        {/* Section Header with Blue Background */}
+        <div className="bg-primary rounded-2xl p-12 md:p-16 text-center mb-16">
+          <h2 className="text-primary-foreground mb-4">The CLX Way</h2>
+          <p className="text-xl md:text-2xl text-primary-foreground/80 max-w-3xl mx-auto">
+            Proven Process To Navigate The Commercial Lending Journey
           </p>
         </div>
 
-        {/* Pathway Cards */}
-        <div className="grid md:grid-cols-3 gap-8">
-          {pathways.map((pathway, index) => (
-            <Link
-              key={index}
-              to={pathway.link}
-              className="group relative bg-card rounded-2xl p-8 card-hover border border-border overflow-hidden"
-            >
-              {/* Gradient Accent */}
-              <div
-                className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${pathway.color}`}
-              />
-
-              {/* Icon */}
-              <div
-                className={`w-14 h-14 rounded-xl bg-gradient-to-br ${pathway.color} flex items-center justify-center mb-6`}
-              >
-                <pathway.icon className="w-7 h-7 text-primary-foreground" />
+        {/* Process Steps */}
+        <div className="flex flex-col md:flex-row items-stretch justify-center overflow-x-auto pb-4">
+          {steps.map((step, index) => (
+            <div key={step.step} className="flex items-center">
+              {/* Step Card */}
+              <div className="relative flex flex-col items-center min-w-[140px] md:min-w-[160px]">
+                {/* Step Label */}
+                <span className="text-sm font-semibold text-primary mb-3">
+                  Step {step.step}
+                </span>
+                
+                {/* Arrow Shape */}
+                <div 
+                  className={`relative flex items-center justify-center px-6 py-6 bg-primary text-primary-foreground min-h-[100px] w-full ${
+                    index === 0 
+                      ? "rounded-l-lg" 
+                      : index === steps.length - 1 
+                      ? "clip-path-arrow-end" 
+                      : "clip-path-arrow-middle"
+                  }`}
+                  style={{
+                    clipPath: index === 0 
+                      ? "polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%)"
+                      : index === steps.length - 1 
+                      ? "polygon(15px 0, 100% 0, 100% 100%, 15px 100%, 0 50%)"
+                      : "polygon(15px 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 15px 100%, 0 50%)"
+                  }}
+                >
+                  <div className="text-center px-2">
+                    <p className="font-semibold text-sm md:text-base leading-tight">
+                      {step.title}
+                    </p>
+                    {step.duration && (
+                      <p className="text-xs text-primary-foreground/70 mt-1">
+                        {step.duration}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-
-              {/* Content */}
-              <h3 className="text-xl font-semibold mb-3 group-hover:text-primary transition-colors">
-                {pathway.title}
-              </h3>
-              <p className="text-muted-foreground mb-6 leading-relaxed">
-                {pathway.description}
-              </p>
-
-              {/* Link */}
-              <div className="flex items-center gap-2 text-primary font-medium">
-                <span>{pathway.linkText}</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
+            </div>
           ))}
         </div>
       </div>
