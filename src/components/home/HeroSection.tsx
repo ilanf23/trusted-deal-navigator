@@ -56,7 +56,7 @@ const HeroSection = () => {
           </h1>
 
           {/* Video */}
-          <div className="w-full max-w-4xl mb-10 animate-fade-in-up animation-delay-100">
+          <div className="w-full max-w-6xl mb-10 animate-fade-in-up animation-delay-100">
             <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-primary-foreground/20">
               <iframe 
                 src="https://www.youtube.com/embed/z11ValptvRA?start=1" 
