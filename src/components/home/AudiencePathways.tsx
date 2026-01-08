@@ -40,7 +40,7 @@ const AudiencePathways = () => {
           <h2 className="mb-4">How Can We Help You?</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Whether you're acquiring a business, investing in real estate, or need 
-            credit support—we have the expertise to guide you.
+            credit support, we have the expertise to guide you.
           </p>
         </div>
 

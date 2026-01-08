@@ -45,7 +45,7 @@ const HowItWorks = () => {
       icon: Phone,
       title: "Strategy Call",
       description:
-        "We walk you through the options, explain the trade-offs, and help you choose the best path forward. No jargon, just clear advice.",
+        "We walk you through the options, explain the tradeoffs, and help you choose the best path forward. No jargon, just clear advice.",
       details: [
         "Review financing options together",
         "Discuss pros and cons",
@@ -72,7 +72,7 @@ const HowItWorks = () => {
         "We stay engaged through closing, coordinating with lenders, attorneys, and all parties to ensure a smooth transaction.",
       details: [
         "Manage closing timeline",
-        "Resolve last-minute issues",
+        "Resolve last minute issues",
         "Celebrate your success",
       ],
     },
@@ -98,7 +98,7 @@ const HowItWorks = () => {
     },
     {
       icon: CheckCircle2,
-      title: "Lender-Agnostic Advice",
+      title: "Lender Agnostic Advice",
       description: "We're not tied to any single lender. Our job is to find the best solution for you.",
     },
   ];
@@ -115,7 +115,7 @@ const HowItWorks = () => {
               <h1 className="mb-6">The CLX Way</h1>
               <p className="text-xl text-muted-foreground leading-relaxed">
                 Complex commercial financing, made simple. Our proven process guides you from 
-                initial conversation to successful closing—and beyond.
+                initial conversation to successful closing and beyond.
               </p>
             </div>
           </div>

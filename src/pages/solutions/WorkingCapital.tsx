@@ -34,7 +34,7 @@ const WorkingCapital = () => {
       highlights: ["Up to 100% financing", "Fixed payments", "Preserve cash"],
     },
     {
-      title: "Asset-Based Lending",
+      title: "Asset Based Lending",
       description:
         "Leverage your receivables, inventory, or equipment to access larger credit facilities.",
       highlights: ["Higher availability", "Grow with sales", "Flexible structure"],
@@ -42,7 +42,7 @@ const WorkingCapital = () => {
     {
       title: "Term Loans",
       description:
-        "Fixed-term financing for specific purposes with predictable payment schedules.",
+        "Fixed term financing for specific purposes with predictable payment schedules.",
       highlights: ["Predictable payments", "Various terms", "Multiple uses"],
     },
   ];
@@ -50,7 +50,7 @@ const WorkingCapital = () => {
   const caseStudies = [
     {
       amount: "$3.5M",
-      type: "Asset-Based",
+      type: "Asset Based",
       industry: "Logistics",
       summary:
         "Fleet expansion financing secured by trucks and receivables. Closed in 90 days to meet contract deadline for major new customer.",
@@ -60,14 +60,14 @@ const WorkingCapital = () => {
       type: "Equipment Finance",
       industry: "Manufacturing",
       summary:
-        "CNC equipment upgrade financing. 7-year term with seasonal payment structure to match business cash flow patterns.",
+        "CNC equipment upgrade financing. 7 year term with seasonal payment structure to match business cash flow patterns.",
     },
     {
       amount: "$2.0M",
       type: "Business LOC",
       industry: "Wholesale Distribution",
       summary:
-        "Revolving credit facility for inventory and receivables management. Formula-based availability grows with sales.",
+        "Revolving credit facility for inventory and receivables management. Formula based availability grows with sales.",
     },
   ];
 

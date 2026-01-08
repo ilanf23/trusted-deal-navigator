@@ -162,7 +162,7 @@ const BankServices = () => {
                       </span>
                       <span className="text-muted-foreground">
                         {" "}
-                        — {testimonial.company}
+                        | {testimonial.company}
                       </span>
                     </div>
                   </div>
@@ -193,7 +193,7 @@ const BankServices = () => {
                   </div>
                   <h4 className="mb-2">Fast Turnaround</h4>
                   <p className="text-sm text-muted-foreground">
-                    Typical 3-5 business day completion
+                    Typical 3 to 5 business day completion
                   </p>
                 </div>
                 <div className="text-center">

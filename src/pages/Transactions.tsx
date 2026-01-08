@@ -42,10 +42,10 @@ const Transactions = () => {
       amount: "$8.5M",
       type: "Bridge Loan",
       category: "cre",
-      industry: "Mixed-Use Development",
-      highlight: "Bridge to perm, 18-month term",
+      industry: "Mixed Use Development",
+      highlight: "Bridge to perm, 18 month term",
       description:
-        "Acquisition and repositioning of downtown mixed-use property. Bridge financing with permanent takeout commitment.",
+        "Acquisition and repositioning of downtown mixed use property. Bridge financing with permanent takeout commitment.",
     },
     {
       icon: ShoppingBag,
@@ -53,7 +53,7 @@ const Transactions = () => {
       type: "Acquisition",
       category: "acquisition",
       industry: "Retail Franchise",
-      highlight: "Multi-unit expansion financing",
+      highlight: "Multi unit expansion financing",
       description:
         "Acquisition of 5-unit franchise territory. Structured with seller note and SBA financing for optimal leverage.",
     },
@@ -70,10 +70,10 @@ const Transactions = () => {
     {
       icon: Truck,
       amount: "$3.5M",
-      type: "Asset-Based",
+      type: "Asset Based",
       category: "working-capital",
       industry: "Logistics",
-      highlight: "Fleet expansion, 90-day close",
+      highlight: "Fleet expansion, 90 day close",
       description:
         "Asset-based facility secured by fleet and receivables. Provided growth capital for major contract expansion.",
     },
@@ -93,9 +93,9 @@ const Transactions = () => {
       type: "CMBS",
       category: "cre",
       industry: "Hospitality",
-      highlight: "Limited-service hotel refinance",
+      highlight: "Limited service hotel refinance",
       description:
-        "Refinance of 120-room limited-service hotel. CMBS execution provided best terms for stabilized asset.",
+        "Refinance of 120 room limited service hotel. CMBS execution provided best terms for stabilized asset.",
     },
     {
       icon: Warehouse,
@@ -103,7 +103,7 @@ const Transactions = () => {
       type: "SBA 504",
       category: "sba",
       industry: "Distribution",
-      highlight: "Owner-occupied industrial",
+      highlight: "Owner occupied industrial",
       description:
         "Purchase of distribution warehouse with cold storage. 504 financing maximized leverage for owner-occupant.",
     },

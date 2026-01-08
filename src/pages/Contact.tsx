@@ -51,7 +51,7 @@ const Contact = () => {
   };
 
   const benefits = [
-    "Confidential consultation—your information is protected",
+    "Confidential consultation, your information is protected",
     "Thoughtful follow-up, not spam",
     "No obligation, no upfront fees",
     "Typically respond within 24 hours",
@@ -250,7 +250,7 @@ const Contact = () => {
                     </a>
                     <div className="flex items-center gap-3 text-primary-foreground/70">
                       <Clock className="w-5 h-5" />
-                      Mon-Fri 9am-6pm EST
+                      Mon to Fri 9am to 6pm EST
                     </div>
                   </div>
                 </div>

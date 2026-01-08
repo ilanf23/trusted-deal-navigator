@@ -17,7 +17,7 @@ const BusinessAcquisition = () => {
     "Looking to refinance your current business loan for better terms",
     "Need capital for partner buyout or ownership transition",
     "Want to expand through acquisition of a competitor",
-    "First-time buyer searching for the right financing structure",
+    "First time buyer searching for the right financing structure",
   ];
 
   const products = [
@@ -25,7 +25,7 @@ const BusinessAcquisition = () => {
       title: "SBA 7(a) Loans",
       description:
         "The most versatile SBA program. Ideal for business acquisitions up to $5M with as little as 10% down.",
-      highlights: ["Up to $5M", "10-25 year terms", "10% minimum down"],
+      highlights: ["Up to $5M", "10 to 25 year terms", "10% minimum down"],
     },
     {
       title: "SBA 504 Loans",
@@ -53,7 +53,7 @@ const BusinessAcquisition = () => {
       type: "SBA 7(a)",
       industry: "Manufacturing",
       summary:
-        "First-time buyer acquired established metal fabrication company. Structured 10% injection with working capital for immediate equipment upgrades.",
+        "First time buyer acquired established metal fabrication company. Structured 10% injection with working capital for immediate equipment upgrades.",
     },
     {
       amount: "$2.8M",
@@ -88,7 +88,7 @@ const BusinessAcquisition = () => {
                 Finance Your Business Acquisition with Confidence
               </h1>
               <p className="text-xl text-primary-foreground/80 leading-relaxed mb-8">
-                Whether you're a first-time buyer or serial entrepreneur, we navigate 
+                Whether you're a first time buyer or serial entrepreneur, we navigate 
                 the complexities of acquisition financing to find the right structure 
                 for your deal.
               </p>
