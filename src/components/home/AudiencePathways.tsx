@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Play, ArrowRight, CheckCircle2, Target } from "lucide-react";
-
 const AudiencePathways = () => {
   const [isInitialConsultOpen, setIsInitialConsultOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -10,58 +9,49 @@ const AudiencePathways = () => {
   const [isLenderManagementOpen, setIsLenderManagementOpen] = useState(false);
   const [isPathToClosingOpen, setIsPathToClosingOpen] = useState(false);
   const [isClosedOpen, setIsClosedOpen] = useState(false);
-
-  const steps = [
-    { 
-      step: 1, 
-      title: "Initial Consult", 
-      duration: "", 
-      hasPopup: true,
-      goalsAbove: ["Are we a fit", "Outline the Process", "Needs List"],
-      goalsBelow: []
-    },
-    { 
-      step: 2, 
-      title: "Onboarding", 
-      duration: "24-48 hours", 
-      hasPopup: true,
-      goalsAbove: [],
-      goalsBelow: ["Doc. Review", "Structuring", "Pre-Qualification"]
-    },
-    { 
-      step: 3, 
-      title: "In-House\nUnderwriting", 
-      duration: "24-48 hours", 
-      hasPopup: true,
-      goalsAbove: ["Underwriting", "Mitigate Concerns", "Loan Packaging"],
-      goalsBelow: []
-    },
-    { 
-      step: 4, 
-      title: "Lender\nManagement", 
-      duration: "Terms 5-10 days", 
-      hasPopup: true,
-      goalsAbove: [],
-      goalsBelow: ["Terms", "Underwriting", "Commitment"]
-    },
-    { 
-      step: 5, 
-      title: "Path to\nClosing", 
-      duration: "1-4+ weeks", 
-      hasPopup: true,
-      goalsAbove: ["Expectations", "Checklist", "Third Party Reports"],
-      goalsBelow: []
-    },
-    { 
-      step: 6, 
-      title: "Closed", 
-      duration: "", 
-      hasPopup: true,
-      goalsAbove: [],
-      goalsBelow: ["Closing", "Success Based Fee", "Stay In Touch!"]
-    },
-  ];
-
+  const steps = [{
+    step: 1,
+    title: "Initial Consult",
+    duration: "",
+    hasPopup: true,
+    goalsAbove: ["Are we a fit", "Outline the Process", "Needs List"],
+    goalsBelow: []
+  }, {
+    step: 2,
+    title: "Onboarding",
+    duration: "24-48 hours",
+    hasPopup: true,
+    goalsAbove: [],
+    goalsBelow: ["Doc. Review", "Structuring", "Pre-Qualification"]
+  }, {
+    step: 3,
+    title: "In-House\nUnderwriting",
+    duration: "24-48 hours",
+    hasPopup: true,
+    goalsAbove: ["Underwriting", "Mitigate Concerns", "Loan Packaging"],
+    goalsBelow: []
+  }, {
+    step: 4,
+    title: "Lender\nManagement",
+    duration: "Terms 5-10 days",
+    hasPopup: true,
+    goalsAbove: [],
+    goalsBelow: ["Terms", "Underwriting", "Commitment"]
+  }, {
+    step: 5,
+    title: "Path to\nClosing",
+    duration: "1-4+ weeks",
+    hasPopup: true,
+    goalsAbove: ["Expectations", "Checklist", "Third Party Reports"],
+    goalsBelow: []
+  }, {
+    step: 6,
+    title: "Closed",
+    duration: "",
+    hasPopup: true,
+    goalsAbove: [],
+    goalsBelow: ["Closing", "Success Based Fee", "Stay In Touch!"]
+  }];
   const handleStepClick = (step: number) => {
     if (step === 1) {
       setIsInitialConsultOpen(true);
@@ -77,9 +67,7 @@ const AudiencePathways = () => {
       setIsClosedOpen(true);
     }
   };
-
-  return (
-    <section className="py-24 bg-gradient-to-br from-muted/20 via-background to-muted/30 relative overflow-hidden">
+  return <section className="py-24 bg-gradient-to-br from-muted/20 via-background to-muted/30 relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
@@ -105,65 +93,53 @@ const AudiencePathways = () => {
         <div className="mb-16">
           {/* Goals Above - Desktop */}
           <div className="hidden lg:grid grid-cols-6 gap-0 mb-4">
-            {steps.map((step, index) => (
-              <div key={`above-${index}`} className="text-center px-2">
-                {step.goalsAbove.map((goal, goalIndex) => (
-                  <p key={goalIndex} className="text-sm text-muted-foreground mb-1">
-                    {(index * 3) + goalIndex + 1}. {goal}
-                  </p>
-                ))}
-              </div>
-            ))}
+            {steps.map((step, index) => <div key={`above-${index}`} className="text-center px-2">
+                {step.goalsAbove.map((goal, goalIndex) => <p key={goalIndex} className="text-sm text-muted-foreground mb-1">
+                    {index * 3 + goalIndex + 1}. {goal}
+                  </p>)}
+              </div>)}
           </div>
 
           {/* Chevron Steps */}
           <div className="flex flex-col lg:flex-row items-stretch gap-1 lg:gap-2">
             {steps.map((step, index) => {
-              // Color progression: light blue -> dark blue, then orange for last
-              const getBackgroundColor = () => {
-                if (index === 5) return 'hsl(25, 95%, 53%)'; // Orange for Closed
-                const blueShades = [
-                  'hsl(210, 60%, 70%)', // Step 1 - Very light blue
-                  'hsl(210, 65%, 55%)', // Step 2 - Light blue
-                  'hsl(210, 70%, 45%)', // Step 3 - Medium blue
-                  'hsl(210, 75%, 35%)', // Step 4 - Dark blue
-                  'hsl(210, 80%, 25%)', // Step 5 - Darkest blue
-                ];
-                return blueShades[index] || blueShades[0];
-              };
-
-              return (
-                <div 
-                  key={step.step}
-                  onClick={() => handleStepClick(step.step)}
-                  className="group cursor-pointer relative flex-1"
-                >
+            // Color progression: light blue -> dark blue, then orange for last
+            const getBackgroundColor = () => {
+              if (index === 5) return 'hsl(25, 95%, 53%)'; // Orange for Closed
+              const blueShades = ['hsl(210, 60%, 70%)',
+              // Step 1 - Very light blue
+              'hsl(210, 65%, 55%)',
+              // Step 2 - Light blue
+              'hsl(210, 70%, 45%)',
+              // Step 3 - Medium blue
+              'hsl(210, 75%, 35%)',
+              // Step 4 - Dark blue
+              'hsl(210, 80%, 25%)' // Step 5 - Darkest blue
+              ];
+              return blueShades[index] || blueShades[0];
+            };
+            return <div key={step.step} onClick={() => handleStepClick(step.step)} className="group cursor-pointer relative flex-1">
                   {/* Chevron Shape with Border */}
-                  <div 
-                    className="relative h-24 lg:h-28 flex items-center justify-center transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-xl shadow-lg"
-                    style={{
-                      backgroundColor: getBackgroundColor(),
-                      clipPath: index === steps.length - 1 
-                        ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
-                        : index === 0
-                        ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 0 0)'
-                        : 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
-                    }}
-                  >
+                  <div className="relative h-24 lg:h-28 flex items-center justify-center transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-xl shadow-lg" style={{
+                backgroundColor: getBackgroundColor(),
+                clipPath: index === steps.length - 1 ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)' : index === 0 ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 0 0)' : 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
+              }}>
                     {/* Step Number Badge */}
                     <div className="absolute top-2 left-4 lg:left-6 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-white/30 text-white border border-white/40">
                       {step.step}
                     </div>
                     
                     <div className="text-center px-8 lg:px-6 text-white">
-                      <h3 className="font-bold text-base lg:text-lg whitespace-pre-line leading-tight drop-shadow-md" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+                      <h3 style={{
+                    textShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                  }} className="font-bold text-base lg:text-lg whitespace-pre-line leading-tight drop-shadow-md text-primary-foreground">
                         {step.title}
                       </h3>
-                      {step.duration && (
-                        <p className="text-sm mt-1 font-medium drop-shadow-sm" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
+                      {step.duration && <p className="text-sm mt-1 font-medium drop-shadow-sm" style={{
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                  }}>
                           {step.duration}
-                        </p>
-                      )}
+                        </p>}
                     </div>
                   </div>
                   
@@ -173,53 +149,41 @@ const AudiencePathways = () => {
                       <Play className="w-5 h-5 text-white fill-white drop-shadow-md" />
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                </div>;
+          })}
           </div>
 
           {/* Goals Below - Desktop */}
           <div className="hidden lg:grid grid-cols-6 gap-0 mt-4">
-            {steps.map((step, index) => (
-              <div key={`below-${index}`} className="text-center px-2">
-                {step.goalsBelow.map((goal, goalIndex) => (
-                  <p key={goalIndex} className="text-sm text-muted-foreground mb-1">
+            {steps.map((step, index) => <div key={`below-${index}`} className="text-center px-2">
+                {step.goalsBelow.map((goal, goalIndex) => <p key={goalIndex} className="text-sm text-muted-foreground mb-1">
                     {index === 1 ? goalIndex + 4 : index === 3 ? goalIndex + 10 : goalIndex + 16}. {goal}
-                  </p>
-                ))}
-              </div>
-            ))}
+                  </p>)}
+              </div>)}
           </div>
 
           {/* Mobile: Goals list */}
           <div className="lg:hidden mt-6 space-y-4">
-            {steps.map((step) => (
-              <div key={`mobile-${step.step}`} className="bg-card rounded-lg p-4 border border-border">
+            {steps.map(step => <div key={`mobile-${step.step}`} className="bg-card rounded-lg p-4 border border-border">
                 <h4 className="font-semibold text-foreground mb-2">{step.title.replace('\n', ' ')}</h4>
                 <ul className="space-y-1">
-                  {[...step.goalsAbove, ...step.goalsBelow].map((goal, i) => (
-                    <li key={i} className="text-sm text-muted-foreground flex items-center gap-2">
+                  {[...step.goalsAbove, ...step.goalsBelow].map((goal, i) => <li key={i} className="text-sm text-muted-foreground flex items-center gap-2">
                       <CheckCircle2 className="w-3 h-3 text-primary" />
                       {goal}
-                    </li>
-                  ))}
+                    </li>)}
                 </ul>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
 
         {/* Bottom CTA */}
         <div className="text-center">
-          <button 
-            onClick={() => {
-              // @ts-ignore
-              window.Calendly?.initPopupWidget({
-                url: 'https://calendly.com/adam-fridman/30min'
-              });
-            }}
-            className="group inline-flex items-center gap-3 px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-2xl hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-0.5"
-          >
+          <button onClick={() => {
+          // @ts-ignore
+          window.Calendly?.initPopupWidget({
+            url: 'https://calendly.com/adam-fridman/30min'
+          });
+        }} className="group inline-flex items-center gap-3 px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-2xl hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-0.5">
             Talk to Brad
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
@@ -240,13 +204,7 @@ const AudiencePathways = () => {
               
               {/* 1. Video */}
               <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mt-6">
-                <iframe 
-                  src="https://www.youtube.com/embed/ZnUo6vRzvOU?si=OyhhS0qyrMMRLvhN" 
-                  title="Initial Consult - The CLX Way" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  allowFullScreen 
-                  className="absolute inset-0 w-full h-full" 
-                />
+                <iframe src="https://www.youtube.com/embed/ZnUo6vRzvOU?si=OyhhS0qyrMMRLvhN" title="Initial Consult - The CLX Way" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 w-full h-full" />
               </div>
               
               {/* 2. Goals */}
@@ -256,15 +214,10 @@ const AudiencePathways = () => {
                   Goals
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {["Are we a fit", "Outline the Process", "Needs List"].map((goal, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10"
-                    >
+                  {["Are we a fit", "Outline the Process", "Needs List"].map((goal, index) => <div key={index} className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
                       <span className="font-medium text-foreground">{goal}</span>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </div>
               
@@ -278,16 +231,13 @@ const AudiencePathways = () => {
               
               {/* CTA Button */}
               <div className="flex justify-center mt-10 pb-4">
-                <button 
-                  onClick={() => {
-                    setIsInitialConsultOpen(false);
-                    // @ts-ignore
-                    window.Calendly?.initPopupWidget({
-                      url: 'https://calendly.com/adam-fridman/30min'
-                    });
-                  }}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
-                >
+                <button onClick={() => {
+                setIsInitialConsultOpen(false);
+                // @ts-ignore
+                window.Calendly?.initPopupWidget({
+                  url: 'https://calendly.com/adam-fridman/30min'
+                });
+              }} className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg">
                   Talk to Brad
                   <ArrowRight className="w-5 h-5" />
                 </button>
@@ -311,13 +261,7 @@ const AudiencePathways = () => {
               
               {/* 1. Video */}
               <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mt-6">
-                <iframe 
-                  src="https://www.youtube.com/embed/8Os00M78vjs" 
-                  title="Onboarding - The CLX Way" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  allowFullScreen 
-                  className="absolute inset-0 w-full h-full" 
-                />
+                <iframe src="https://www.youtube.com/embed/8Os00M78vjs" title="Onboarding - The CLX Way" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 w-full h-full" />
               </div>
               
               {/* 2. Goals */}
@@ -327,15 +271,10 @@ const AudiencePathways = () => {
                   Goals
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {["Document Review", "Deal Structure", "Pre-Qualification"].map((goal, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10"
-                    >
+                  {["Document Review", "Deal Structure", "Pre-Qualification"].map((goal, index) => <div key={index} className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
                       <span className="font-medium text-foreground">{goal}</span>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </div>
               
@@ -349,16 +288,13 @@ const AudiencePathways = () => {
               
               {/* CTA Button */}
               <div className="flex justify-center mt-10 pb-4">
-                <button 
-                  onClick={() => {
-                    setIsOnboardingOpen(false);
-                    // @ts-ignore
-                    window.Calendly?.initPopupWidget({
-                      url: 'https://calendly.com/adam-fridman/30min'
-                    });
-                  }}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
-                >
+                <button onClick={() => {
+                setIsOnboardingOpen(false);
+                // @ts-ignore
+                window.Calendly?.initPopupWidget({
+                  url: 'https://calendly.com/adam-fridman/30min'
+                });
+              }} className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg">
                   Talk to Brad
                   <ArrowRight className="w-5 h-5" />
                 </button>
@@ -382,13 +318,7 @@ const AudiencePathways = () => {
               
               {/* 1. Video */}
               <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mt-6">
-                <iframe 
-                  src="https://www.youtube.com/embed/vGI61GN9AJ8" 
-                  title="In-House Underwriting - The CLX Way" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  allowFullScreen 
-                  className="absolute inset-0 w-full h-full" 
-                />
+                <iframe src="https://www.youtube.com/embed/vGI61GN9AJ8" title="In-House Underwriting - The CLX Way" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 w-full h-full" />
               </div>
               
               {/* 2. Goals */}
@@ -398,15 +328,10 @@ const AudiencePathways = () => {
                   Goals
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {["Underwriting", "Mitigate Concerns", "Loan Packaging"].map((goal, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10"
-                    >
+                  {["Underwriting", "Mitigate Concerns", "Loan Packaging"].map((goal, index) => <div key={index} className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
                       <span className="font-medium text-foreground">{goal}</span>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </div>
               
@@ -420,16 +345,13 @@ const AudiencePathways = () => {
               
               {/* CTA Button */}
               <div className="flex justify-center mt-10 pb-4">
-                <button 
-                  onClick={() => {
-                    setIsUnderwritingOpen(false);
-                    // @ts-ignore
-                    window.Calendly?.initPopupWidget({
-                      url: 'https://calendly.com/adam-fridman/30min'
-                    });
-                  }}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
-                >
+                <button onClick={() => {
+                setIsUnderwritingOpen(false);
+                // @ts-ignore
+                window.Calendly?.initPopupWidget({
+                  url: 'https://calendly.com/adam-fridman/30min'
+                });
+              }} className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg">
                   Talk to Brad
                   <ArrowRight className="w-5 h-5" />
                 </button>
@@ -453,13 +375,7 @@ const AudiencePathways = () => {
               
               {/* 1. Video */}
               <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mt-6">
-                <iframe 
-                  src="https://www.youtube.com/embed/n9RQSPsZWD8" 
-                  title="Lender Management - The CLX Way" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  allowFullScreen 
-                  className="absolute inset-0 w-full h-full" 
-                />
+                <iframe src="https://www.youtube.com/embed/n9RQSPsZWD8" title="Lender Management - The CLX Way" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 w-full h-full" />
               </div>
               
               {/* 2. Goals */}
@@ -469,15 +385,10 @@ const AudiencePathways = () => {
                   Goals
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {["Terms", "Underwriting", "Commitment"].map((goal, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10"
-                    >
+                  {["Terms", "Underwriting", "Commitment"].map((goal, index) => <div key={index} className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
                       <span className="font-medium text-foreground">{goal}</span>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </div>
               
@@ -491,16 +402,13 @@ const AudiencePathways = () => {
               
               {/* CTA Button */}
               <div className="flex justify-center mt-10 pb-4">
-                <button 
-                  onClick={() => {
-                    setIsLenderManagementOpen(false);
-                    // @ts-ignore
-                    window.Calendly?.initPopupWidget({
-                      url: 'https://calendly.com/adam-fridman/30min'
-                    });
-                  }}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
-                >
+                <button onClick={() => {
+                setIsLenderManagementOpen(false);
+                // @ts-ignore
+                window.Calendly?.initPopupWidget({
+                  url: 'https://calendly.com/adam-fridman/30min'
+                });
+              }} className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg">
                   Talk to Brad
                   <ArrowRight className="w-5 h-5" />
                 </button>
@@ -524,13 +432,7 @@ const AudiencePathways = () => {
               
               {/* 1. Video */}
               <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mt-6">
-                <iframe 
-                  src="https://www.youtube.com/embed/VmtnExaPjls" 
-                  title="Path to Closing - The CLX Way" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  allowFullScreen 
-                  className="absolute inset-0 w-full h-full" 
-                />
+                <iframe src="https://www.youtube.com/embed/VmtnExaPjls" title="Path to Closing - The CLX Way" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 w-full h-full" />
               </div>
               
               {/* 2. Goals */}
@@ -540,15 +442,10 @@ const AudiencePathways = () => {
                   Goals
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {["Expectations", "Checklist", "Third Party Reports"].map((goal, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10"
-                    >
+                  {["Expectations", "Checklist", "Third Party Reports"].map((goal, index) => <div key={index} className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
                       <span className="font-medium text-foreground">{goal}</span>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </div>
               
@@ -562,16 +459,13 @@ const AudiencePathways = () => {
               
               {/* CTA Button */}
               <div className="flex justify-center mt-10 pb-4">
-                <button 
-                  onClick={() => {
-                    setIsPathToClosingOpen(false);
-                    // @ts-ignore
-                    window.Calendly?.initPopupWidget({
-                      url: 'https://calendly.com/adam-fridman/30min'
-                    });
-                  }}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
-                >
+                <button onClick={() => {
+                setIsPathToClosingOpen(false);
+                // @ts-ignore
+                window.Calendly?.initPopupWidget({
+                  url: 'https://calendly.com/adam-fridman/30min'
+                });
+              }} className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg">
                   Talk to Brad
                   <ArrowRight className="w-5 h-5" />
                 </button>
@@ -595,13 +489,7 @@ const AudiencePathways = () => {
               
               {/* 1. Video */}
               <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mt-6">
-                <iframe 
-                  src="https://www.youtube.com/embed/GgIV9VSx5p0" 
-                  title="Closed - The CLX Way" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  allowFullScreen 
-                  className="absolute inset-0 w-full h-full" 
-                />
+                <iframe src="https://www.youtube.com/embed/GgIV9VSx5p0" title="Closed - The CLX Way" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 w-full h-full" />
               </div>
               
               {/* 2. Goals */}
@@ -611,15 +499,10 @@ const AudiencePathways = () => {
                   Goals
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {["Closing", "Success Based Fee", "Stay In Touch!"].map((goal, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10"
-                    >
+                  {["Closing", "Success Based Fee", "Stay In Touch!"].map((goal, index) => <div key={index} className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
                       <span className="font-medium text-foreground">{goal}</span>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </div>
               
@@ -633,16 +516,13 @@ const AudiencePathways = () => {
               
               {/* CTA Button */}
               <div className="flex justify-center mt-10 pb-4">
-                <button 
-                  onClick={() => {
-                    setIsClosedOpen(false);
-                    // @ts-ignore
-                    window.Calendly?.initPopupWidget({
-                      url: 'https://calendly.com/adam-fridman/30min'
-                    });
-                  }}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg"
-                >
+                <button onClick={() => {
+                setIsClosedOpen(false);
+                // @ts-ignore
+                window.Calendly?.initPopupWidget({
+                  url: 'https://calendly.com/adam-fridman/30min'
+                });
+              }} className="inline-flex items-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-xl hover:bg-accent/90 transition-all duration-300 shadow-lg">
                   Talk to Brad
                   <ArrowRight className="w-5 h-5" />
                 </button>
@@ -651,8 +531,6 @@ const AudiencePathways = () => {
           </ScrollArea>
         </DialogContent>
       </Dialog>
-    </section>
-  );
+    </section>;
 };
-
 export default AudiencePathways;
