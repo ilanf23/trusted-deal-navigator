@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin, Linkedin, Twitter } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -31,18 +32,12 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-primary-foreground flex items-center justify-center">
-                <span className="text-primary font-bold text-lg">CL</span>
-              </div>
-              <div>
-                <span className="font-bold text-lg">Commercial Lending</span>
-                <span className="font-bold text-lg text-accent ml-1">X</span>
-              </div>
+            <Link to="/" className="inline-block mb-6">
+              <img src={logo} alt="Commercial Lending X" className="h-10 brightness-0 invert" />
             </Link>
             <p className="text-primary-foreground/80 mb-6 max-w-sm leading-relaxed">
-              Commercial financing expertise for real-world deals. Access hundreds of lending 
-              partners with a success-based fee model.
+              Commercial financing expertise for real world deals. Access hundreds of lending 
+              partners with a success based fee model.
             </p>
             <div className="flex items-center gap-4">
               <a

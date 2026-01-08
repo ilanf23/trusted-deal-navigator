@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import logo from "@/assets/logo.png";
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -36,16 +37,8 @@ const Header = () => {
       <div className="section-container">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">CL</span>
-              </div>
-              <div className="hidden sm:block">
-                <span className="font-bold text-lg text-foreground">Commercial Lending</span>
-                <span className="font-bold text-lg text-accent ml-1">X</span>
-              </div>
-            </div>
+          <Link to="/" className="flex items-center">
+            <img src={logo} alt="Commercial Lending X" className="h-8 md:h-10" />
           </Link>
 
           {/* Desktop Navigation */}
