@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import USMapSVG from "./USMapSVG";
 import DealNotification from "./DealNotification";
@@ -16,7 +16,7 @@ interface Deal {
 }
 
 const dealData: Omit<Deal, "id">[] = [
-  { amount: "$2.3M", type: "SBA 7(a)", industry: "Logistics Company", state: "TX", mapX: 45, mapY: 70 },
+  { amount: "$2.3M", type: "SBA 7(a)", industry: "Logistics", state: "TX", mapX: 45, mapY: 70 },
   { amount: "$1.8M", type: "CRE Refinance", industry: "Medical Office", state: "FL", mapX: 78, mapY: 80 },
   { amount: "$3.4M", type: "SBA 504", industry: "Manufacturing", state: "IL", mapX: 58, mapY: 40 },
   { amount: "$950K", type: "Working Capital", industry: "E-Commerce", state: "CA", mapX: 12, mapY: 45 },
@@ -25,17 +25,17 @@ const dealData: Omit<Deal, "id">[] = [
   { amount: "$2.9M", type: "Bridge Loan", industry: "Industrial", state: "OH", mapX: 68, mapY: 38 },
   { amount: "$1.5M", type: "Equipment", industry: "Restaurant Group", state: "GA", mapX: 72, mapY: 62 },
   { amount: "$5.1M", type: "CRE Purchase", industry: "Retail Center", state: "NC", mapX: 76, mapY: 52 },
-  { amount: "$890K", type: "SBA 7(a)", industry: "Auto Service", state: "WA", mapX: 14, mapY: 18 },
+  { amount: "$1.2M", type: "SBA 7(a)", industry: "FedEx Routes", state: "WA", mapX: 14, mapY: 18 },
 ];
 
 const CLXHeroAnimation = () => {
   const [phase, setPhase] = useState<1 | 2>(1);
-  const [activeDeals, setActiveDeals] = useState<Deal[]>([]);
   const [visibleNotifications, setVisibleNotifications] = useState<Deal[]>([]);
   const [allPins, setAllPins] = useState<Deal[]>([]);
-  const [dealIndex, setDealIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const dealIndexRef = useRef(0);
+  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Check for reduced motion preference
   useEffect(() => {
@@ -47,28 +47,7 @@ const CLXHeroAnimation = () => {
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
-  // Phase 1: Deal burst animation
-  const addDeal = useCallback(() => {
-    if (dealIndex >= dealData.length) return;
-
-    const newDeal: Deal = {
-      ...dealData[dealIndex],
-      id: Date.now() + dealIndex,
-    };
-
-    // Add to pins (permanent)
-    setAllPins(prev => [...prev, newDeal]);
-
-    // Add to notifications (max 4 visible)
-    setVisibleNotifications(prev => {
-      const updated = [newDeal, ...prev];
-      return updated.slice(0, 4);
-    });
-
-    setDealIndex(prev => prev + 1);
-  }, [dealIndex]);
-
-  // Phase 1 timing sequence
+  // Phase 1: Deal burst animation sequence
   useEffect(() => {
     if (reducedMotion) {
       // Skip to phase 2 with all pins visible
@@ -79,41 +58,65 @@ const CLXHeroAnimation = () => {
 
     if (phase !== 1) return;
 
-    // Timing intervals - start slow, get faster
-    const timings = [800, 700, 600, 500, 450, 400, 350, 300, 250, 200];
+    // Timing intervals - start slow, get faster (in ms)
+    const timings = [700, 600, 550, 500, 450, 400, 350, 300, 250, 200];
     
-    let currentIndex = 0;
-    let timeoutId: NodeJS.Timeout;
+    const addDeal = () => {
+      const index = dealIndexRef.current;
+      if (index >= dealData.length) return;
 
-    const scheduleDeal = () => {
-      if (currentIndex >= dealData.length) {
-        // Transition to phase 2 after a brief pause
-        setTimeout(() => {
+      const newDeal: Deal = {
+        ...dealData[index],
+        id: Date.now() + index,
+      };
+
+      // Add to pins (permanent)
+      setAllPins(prev => [...prev, newDeal]);
+
+      // Add to notifications - max 4 visible normally, allow 5 at overflow moment
+      const maxVisible = index >= dealData.length - 3 ? 5 : 4;
+      setVisibleNotifications(prev => {
+        const updated = [newDeal, ...prev];
+        return updated.slice(0, maxVisible);
+      });
+
+      dealIndexRef.current = index + 1;
+    };
+
+    const scheduleDeal = (index: number) => {
+      if (index >= dealData.length) {
+        // Transition to phase 2 after clearing notifications
+        const transitionTimeout = setTimeout(() => {
           setVisibleNotifications([]);
-          setPhase(2);
+          setTimeout(() => setPhase(2), 300);
         }, 800);
+        timeoutsRef.current.push(transitionTimeout);
         return;
       }
 
-      const delay = timings[Math.min(currentIndex, timings.length - 1)];
+      const delay = timings[Math.min(index, timings.length - 1)];
       
-      timeoutId = setTimeout(() => {
+      const timeout = setTimeout(() => {
         addDeal();
-        currentIndex++;
-        scheduleDeal();
+        scheduleDeal(index + 1);
       }, delay);
+      
+      timeoutsRef.current.push(timeout);
     };
 
-    // Start after initial delay
+    // Start after initial 1s pause
     const initialTimeout = setTimeout(() => {
-      scheduleDeal();
-    }, 500);
+      addDeal(); // First deal
+      scheduleDeal(1); // Schedule remaining deals
+    }, 1000);
+    
+    timeoutsRef.current.push(initialTimeout);
 
     return () => {
-      clearTimeout(initialTimeout);
-      clearTimeout(timeoutId);
+      timeoutsRef.current.forEach(t => clearTimeout(t));
+      timeoutsRef.current = [];
     };
-  }, [phase, addDeal, reducedMotion]);
+  }, [phase, reducedMotion]);
 
   return (
     <div 
@@ -139,34 +142,38 @@ const CLXHeroAnimation = () => {
           <USMapSVG className="w-full h-full text-primary-foreground/15" />
           
           {/* Map pins */}
-          {allPins.map((pin, index) => (
-            <MapPing
-              key={pin.id}
-              x={pin.mapX}
-              y={pin.mapY}
-              delay={reducedMotion ? 0 : 0}
-            />
-          ))}
+          <AnimatePresence>
+            {allPins.map((pin) => (
+              <MapPing
+                key={pin.id}
+                x={pin.mapX}
+                y={pin.mapY}
+                showRing={phase === 1 && !reducedMotion}
+              />
+            ))}
+          </AnimatePresence>
         </motion.div>
       </div>
 
-      {/* Notification stack */}
+      {/* Notification stack - positioned top-right of animation area */}
       <AnimatePresence>
-        {phase === 1 && !reducedMotion && (
+        {phase === 1 && !reducedMotion && visibleNotifications.length > 0 && (
           <motion.div
-            className="absolute top-8 right-0 z-30 space-y-2"
+            className="absolute top-10 right-0 z-30 flex flex-col gap-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            {visibleNotifications.map((deal, index) => (
-              <DealNotification
-                key={deal.id}
-                deal={deal}
-                index={index}
-              />
-            ))}
+            <AnimatePresence mode="popLayout">
+              {visibleNotifications.map((deal, index) => (
+                <DealNotification
+                  key={deal.id}
+                  deal={deal}
+                  index={index}
+                />
+              ))}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
@@ -181,7 +188,7 @@ const CLXHeroAnimation = () => {
         
         {/* Caption under phone */}
         <motion.p 
-          initial={{ opacity: 0 }}
+          initial={{ opacity: 0.5 }}
           animate={{ opacity: phase === 2 ? 1 : 0.5 }}
           transition={{ duration: 0.5, delay: phase === 2 ? 0.5 : 0 }}
           className="text-[9px] sm:text-[10px] text-primary-foreground/60 text-center mt-2"

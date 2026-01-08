@@ -9,23 +9,19 @@ interface DealNotificationProps {
     state: string;
   };
   index: number;
-  isExiting?: boolean;
 }
 
-const DealNotification = ({ deal, index, isExiting }: DealNotificationProps) => {
+const DealNotification = ({ deal, index }: DealNotificationProps) => {
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, x: 50, y: -10 }}
-      animate={{ 
-        opacity: isExiting ? 0 : 1, 
-        x: isExiting ? 50 : 0, 
-        y: 0 
-      }}
-      exit={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0, y: 0 }}
+      exit={{ opacity: 0, x: 50, scale: 0.9 }}
       transition={{ 
-        duration: 0.25, 
+        duration: 0.22, 
         ease: "easeOut",
-        delay: index * 0.05 
+        layout: { duration: 0.2 }
       }}
       className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-lg p-3 shadow-lg min-w-[200px] max-w-[240px]"
     >
