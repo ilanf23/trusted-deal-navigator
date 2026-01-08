@@ -90,17 +90,17 @@ const AnimatedStat = ({
   return (
     <div
       ref={ref}
-      className="text-center animate-fade-in-up"
+      className="text-center animate-fade-in-up p-6 rounded-2xl bg-primary/20 border border-accent/30 shadow-lg shadow-accent/10"
       style={{ animationDelay: `${index * 100}ms` }}
     >
-      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-4">
-        <Icon className="w-6 h-6 text-primary" />
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent/20 mb-4">
+        <Icon className="w-6 h-6 text-accent" />
       </div>
-      <div className="text-3xl md:text-4xl font-bold text-foreground mb-1">
+      <div className="text-3xl md:text-4xl font-bold text-primary-foreground mb-1">
         {formatValue()}
       </div>
-      <div className="font-semibold text-foreground mb-1">{label}</div>
-      <div className="text-sm text-muted-foreground">{description}</div>
+      <div className="font-semibold text-primary-foreground mb-1">{label}</div>
+      <div className="text-sm text-primary-foreground/70">{description}</div>
     </div>
   );
 };
@@ -139,7 +139,7 @@ const StatsSection = () => {
       style={{ backgroundImage: `url(${bankBackground})` }}
     >
       {/* Overlay for readability */}
-      <div className="absolute inset-0 bg-primary/75" />
+      <div className="absolute inset-0 bg-primary/85" />
       <div className="section-container relative z-10">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
           {stats.map((stat, index) => (
