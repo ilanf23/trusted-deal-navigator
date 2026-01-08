@@ -56,7 +56,7 @@ const HeroSection = () => {
             <span className="block">Commercial Financing</span>
             <span className="text-primary-foreground">
               for{" "}
-              <span className={`inline-block transition-all duration-500 underline decoration-accent underline-offset-8 ${isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
+              <span className={`inline-block transition-all duration-500 text-accent underline decoration-accent underline-offset-8 ${isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
                 {rotatingWords[currentIndex]}
               </span>
             </span>
