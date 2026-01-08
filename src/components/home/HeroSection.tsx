@@ -11,14 +11,16 @@ const rotatingWords = [
 ];
 
 const floatingQuotes = [
-  { text: "Brad made the impossible possible!", top: "15%", left: "5%", delay: "0s", duration: "20s" },
-  { text: "Closed in just 3 weeks!", top: "25%", left: "85%", delay: "2s", duration: "18s" },
-  { text: "Best decision we ever made", top: "60%", left: "8%", delay: "4s", duration: "22s" },
-  { text: "Saved us $50k in fees", top: "70%", left: "88%", delay: "1s", duration: "19s" },
-  { text: "Professional & responsive", top: "40%", left: "3%", delay: "3s", duration: "21s" },
-  { text: "5 stars all the way!", top: "80%", left: "75%", delay: "5s", duration: "17s" },
-  { text: "Exceeded all expectations", top: "10%", left: "70%", delay: "6s", duration: "23s" },
-  { text: "Game changer for our business", top: "50%", left: "92%", delay: "2.5s", duration: "20s" },
+  { text: "Brad made the impossible possible!", top: "15%", left: "5%", delay: "0s", duration: "12s", animation: "floatQuote" },
+  { text: "Closed in just 3 weeks!", top: "25%", left: "85%", delay: "1.5s", duration: "14s", animation: "floatQuote2" },
+  { text: "Best decision we ever made", top: "60%", left: "8%", delay: "3s", duration: "11s", animation: "floatQuote" },
+  { text: "Saved us $50k in fees", top: "70%", left: "88%", delay: "0.5s", duration: "13s", animation: "floatQuote2" },
+  { text: "Professional & responsive", top: "40%", left: "3%", delay: "2s", duration: "15s", animation: "floatQuote2" },
+  { text: "5 stars all the way!", top: "80%", left: "75%", delay: "4s", duration: "10s", animation: "floatQuote" },
+  { text: "Exceeded all expectations", top: "10%", left: "70%", delay: "5s", duration: "12s", animation: "floatQuote2" },
+  { text: "Game changer for our business", top: "50%", left: "92%", delay: "1s", duration: "14s", animation: "floatQuote" },
+  { text: "Highly recommend CLX!", top: "35%", left: "90%", delay: "2.5s", duration: "11s", animation: "floatQuote" },
+  { text: "Smooth process start to finish", top: "85%", left: "10%", delay: "3.5s", duration: "13s", animation: "floatQuote2" },
 ];
 
 const HeroSection = () => {
@@ -51,13 +53,16 @@ const HeroSection = () => {
         {floatingQuotes.map((quote, index) => (
           <div
             key={index}
-            className="absolute hidden lg:flex items-center gap-2 px-4 py-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full text-primary-foreground/60 text-xs font-medium whitespace-nowrap animate-[floatQuote_var(--duration)_ease-in-out_infinite]"
+            className="absolute hidden lg:flex items-center gap-2 px-4 py-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full text-primary-foreground/60 text-xs font-medium whitespace-nowrap"
             style={{
               top: quote.top,
               left: quote.left,
               animationDelay: quote.delay,
-              '--duration': quote.duration,
-            } as React.CSSProperties}
+              animationDuration: quote.duration,
+              animationName: quote.animation,
+              animationTimingFunction: 'ease-in-out',
+              animationIterationCount: 'infinite',
+            }}
           >
             <Quote className="w-3 h-3 text-accent/60" />
             <span>{quote.text}</span>
