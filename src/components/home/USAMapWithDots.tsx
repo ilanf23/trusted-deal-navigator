@@ -165,7 +165,7 @@ const USAMapWithDots = ({ onDotAdded }: USAMapWithDotsProps) => {
   }, [shuffledPositions, onDotAdded]);
 
   return (
-    <div className="relative w-80 xl:w-96">
+    <div className="relative w-[26rem] xl:w-[31rem]">
       <img
         src={usaMap}
         alt="United States of America"
