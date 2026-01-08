@@ -26,23 +26,23 @@ const HeroSection = () => {
   }, []);
 
   return (
-    <section className="relative min-h-[90vh] flex items-center hero-gradient overflow-hidden">
+    <section className="relative min-h-screen flex items-center hero-gradient overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-20 right-20 w-96 h-96 rounded-full bg-primary-foreground/20 blur-3xl" />
         <div className="absolute bottom-20 left-20 w-80 h-80 rounded-full bg-accent/20 blur-3xl" />
       </div>
 
-      <div className="section-container relative z-10 py-32">
-        <div className="max-w-3xl">
+      <div className="section-container relative z-10 py-24 md:py-32">
+        <div className="flex flex-col items-center text-center">
           {/* Trust Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full text-primary-foreground/90 text-sm font-medium mb-8 animate-fade-in">
             Trusted by 500+ Business Owners & Investors
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-primary-foreground mb-8 animate-fade-in-up whitespace-nowrap">
-            Commercial Financing{" "}
+          <h1 className="text-primary-foreground mb-8 animate-fade-in-up">
+            <span className="block">Commercial Financing</span>
             <span className="text-accent">
               for{" "}
               <span 
@@ -56,8 +56,8 @@ const HeroSection = () => {
           </h1>
 
           {/* Video */}
-          <div className="mb-10 animate-fade-in-up animation-delay-100">
-            <div className="relative w-full max-w-4xl aspect-video rounded-xl overflow-hidden shadow-2xl border border-primary-foreground/20">
+          <div className="w-full max-w-4xl mb-10 animate-fade-in-up animation-delay-100">
+            <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-primary-foreground/20">
               <iframe 
                 src="https://www.youtube.com/embed/z11ValptvRA?start=1" 
                 title="Commercial Lending X Overview" 
@@ -76,15 +76,14 @@ const HeroSection = () => {
           </p>
 
           {/* Highlights */}
-          {/* Highlights */}
-          <div className="flex flex-wrap gap-6 mb-10">
-            <div className="flex items-center gap-2 text-primary-foreground/90 opacity-0 animate-fade-in-up animation-delay-200">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-10">
+            <div className="flex items-center gap-2 text-primary-foreground/90 opacity-0 animate-fade-in-up animation-delay-200 px-4 py-2 bg-primary-foreground/5 rounded-full">
               <span className="font-medium">300+ Lending Partners</span>
             </div>
-            <div className="flex items-center gap-2 text-primary-foreground/90 opacity-0 animate-fade-in-up animation-delay-300">
+            <div className="flex items-center gap-2 text-primary-foreground/90 opacity-0 animate-fade-in-up animation-delay-300 px-4 py-2 bg-primary-foreground/5 rounded-full">
               <span className="font-medium">No Upfront Fees</span>
             </div>
-            <div className="flex items-center gap-2 text-primary-foreground/90 opacity-0 animate-fade-in-up animation-delay-400">
+            <div className="flex items-center gap-2 text-primary-foreground/90 opacity-0 animate-fade-in-up animation-delay-400 px-4 py-2 bg-primary-foreground/5 rounded-full">
               <span className="font-medium">Success-Based Model</span>
             </div>
           </div>
