@@ -176,18 +176,6 @@ const AudiencePathways = () => {
           </div>
         </div>
 
-        {/* Bottom CTA */}
-        <div className="text-center">
-          <button onClick={() => {
-          // @ts-ignore
-          window.Calendly?.initPopupWidget({
-            url: 'https://calendly.com/adam-fridman/30min'
-          });
-        }} className="group inline-flex items-center gap-3 px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-2xl hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 hover:-translate-y-0.5">
-            Talk to Brad
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
       </div>
 
       {/* Initial Consult Popup */}
