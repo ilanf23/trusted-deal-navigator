@@ -375,3 +375,8 @@
     opacity: 0.15;
   }
 }
+
+/* Hide Lovable badge */
+#lovable-badge {
+  display: none !important;
+}
