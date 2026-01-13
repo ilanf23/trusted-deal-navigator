@@ -105,8 +105,9 @@ export default {
           to: { opacity: "1", transform: "translateY(0)" },
         },
         "pulse-scale": {
-          "0%, 100%": { transform: "scale(1)" },
-          "50%": { transform: "scale(1.05)" },
+          "0%": { transform: "scale(1)" },
+          "8.33%": { transform: "scale(1.05)" },
+          "16.67%, 100%": { transform: "scale(1)" },
         },
       },
       animation: {
@@ -117,7 +118,7 @@ export default {
         "slide-in-right": "slide-in-right 0.5s ease-out forwards",
         "scale-in": "scale-in 0.4s ease-out forwards",
         "count-up": "count-up 0.8s ease-out forwards",
-        "pulse-scale": "pulse-scale 2s ease-in-out infinite",
+        "pulse-scale": "pulse-scale 12s ease-in-out infinite",
       },
     },
   },
