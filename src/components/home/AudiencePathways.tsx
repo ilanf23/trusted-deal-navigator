@@ -118,9 +118,9 @@ const AudiencePathways = () => {
               ];
               return blueShades[index] || blueShades[0];
             };
-            return <div key={step.step} onClick={() => handleStepClick(step.step)} className="group cursor-pointer relative flex-1">
+            return <div key={step.step} onClick={() => handleStepClick(step.step)} className="group cursor-pointer relative flex-1 animate-pulse-scale" style={{ animationDelay: `${index * 2}s` }}>
                   {/* Chevron Shape with Border */}
-                  <div className="relative h-24 lg:h-28 flex items-center justify-center transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-xl shadow-lg" style={{
+                  <div className="relative h-24 lg:h-28 flex items-center justify-center transition-all duration-300 group-hover:scale-[1.05] group-hover:shadow-xl shadow-lg" style={{
                 backgroundColor: getBackgroundColor(),
                 clipPath: index === steps.length - 1 ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)' : index === 0 ? 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 0 0)' : 'polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%)'
               }}>
