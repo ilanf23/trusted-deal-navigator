@@ -57,12 +57,12 @@ const App = () => (
             <Route path="/admin/invoices" element={<ProtectedRoute requireAdmin><AdminInvoices /></ProtectedRoute>} />
             <Route path="/admin/messages" element={<ProtectedRoute requireAdmin><AdminMessages /></ProtectedRoute>} />
             <Route path="/admin/marketing" element={<ProtectedRoute requireAdmin><AdminMarketing /></ProtectedRoute>} />
-            {/* Client Portal Routes */}
-            <Route path="/portal" element={<ProtectedRoute><PortalDashboard /></ProtectedRoute>} />
-            <Route path="/portal/contracts" element={<ProtectedRoute><PortalContracts /></ProtectedRoute>} />
-            <Route path="/portal/invoices" element={<ProtectedRoute><PortalInvoices /></ProtectedRoute>} />
-            <Route path="/portal/messages" element={<ProtectedRoute><PortalMessages /></ProtectedRoute>} />
-            <Route path="/portal/profile" element={<ProtectedRoute><PortalProfile /></ProtectedRoute>} />
+            {/* Client Portal Routes - clientOnly redirects admins to /admin */}
+            <Route path="/portal" element={<ProtectedRoute clientOnly><PortalDashboard /></ProtectedRoute>} />
+            <Route path="/portal/contracts" element={<ProtectedRoute clientOnly><PortalContracts /></ProtectedRoute>} />
+            <Route path="/portal/invoices" element={<ProtectedRoute clientOnly><PortalInvoices /></ProtectedRoute>} />
+            <Route path="/portal/messages" element={<ProtectedRoute clientOnly><PortalMessages /></ProtectedRoute>} />
+            <Route path="/portal/profile" element={<ProtectedRoute clientOnly><PortalProfile /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
