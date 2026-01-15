@@ -15,14 +15,14 @@ import type { Database } from '@/integrations/supabase/types';
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
-// Subtle gradient progression from primary to a slightly shifted hue
+// Subtle gradient progression from lighter (left) to darker (right)
 const columns: { status: LeadStatus; title: string; color: string }[] = [
-  { status: 'discovery', title: 'Discovery', color: 'bg-[hsl(220,70%,45%)]' },
-  { status: 'pre_qualification', title: 'Pre-Qualification', color: 'bg-[hsl(215,65%,42%)]' },
-  { status: 'document_collection', title: 'Document Collection', color: 'bg-[hsl(210,60%,40%)]' },
-  { status: 'underwriting', title: 'Underwriting', color: 'bg-[hsl(205,55%,38%)]' },
-  { status: 'approval', title: 'Approval', color: 'bg-[hsl(200,50%,36%)]' },
-  { status: 'funded', title: 'Funded', color: 'bg-[hsl(195,55%,34%)]' },
+  { status: 'discovery', title: 'Discovery', color: 'bg-[hsl(195,55%,50%)]' },
+  { status: 'pre_qualification', title: 'Pre-Qualification', color: 'bg-[hsl(200,55%,46%)]' },
+  { status: 'document_collection', title: 'Document Collection', color: 'bg-[hsl(205,58%,42%)]' },
+  { status: 'underwriting', title: 'Underwriting', color: 'bg-[hsl(210,62%,38%)]' },
+  { status: 'approval', title: 'Approval', color: 'bg-[hsl(215,66%,34%)]' },
+  { status: 'funded', title: 'Funded', color: 'bg-[hsl(220,70%,30%)]' },
 ];
 
 const CRMBoard = () => {
