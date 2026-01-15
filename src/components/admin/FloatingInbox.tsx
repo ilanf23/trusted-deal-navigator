@@ -526,29 +526,42 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
         )}
       </div>
 
-      {/* Compose Dialog with AI Assistant Side Panel */}
-      <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-        <DialogContent className={cn(
-          "sm:max-w-[500px] overflow-visible",
-          showAIPanel && "sm:ml-[200px]" // Shift dialog right when AI panel is open
-        )}>
-          {/* AI Assistant Panel - Attached to left of dialog */}
-          {showAIPanel && currentLeadId && (
-            <div className="absolute right-full top-0 w-[380px] h-full bg-card border rounded-l-lg shadow-lg flex flex-col mr-[-1px]">
-              {/* AI Header */}
-              <div className="flex items-center justify-between p-3 border-b bg-muted/50 shrink-0 rounded-tl-lg">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-sm">AI Email Assistant</span>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => setShowAIPanel(false)} className="h-7 w-7">
-                  <X className="w-3 h-3" />
+      {/* Compose Panel - Fixed panel to the left of Gmail inbox */}
+      {composeOpen && (
+        <div 
+          style={{ right: panelWidth }}
+          className="fixed top-0 h-screen w-[420px] bg-card border-l shadow-2xl z-50 flex flex-col"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-3 border-b bg-muted/50 shrink-0">
+            <div className="flex items-center gap-2">
+              <Send className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">New Email</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {currentLeadId && (
+                <Button
+                  variant={showAIPanel ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowAIPanel(!showAIPanel)}
+                  className="gap-1.5 h-7 text-xs"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  AI
                 </Button>
-              </div>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => setComposeOpen(false)} className="h-7 w-7">
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
 
+          {/* AI Assistant Section - Collapsible */}
+          {showAIPanel && currentLeadId && (
+            <div className="border-b flex flex-col max-h-[50%]">
               {/* Quick Prompts */}
               {aiMessages.length === 0 && (
-                <div className="p-3 border-b shrink-0">
+                <div className="p-3 border-b shrink-0 bg-muted/30">
                   <p className="text-xs text-muted-foreground mb-2">Quick prompts:</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {[
@@ -573,11 +586,11 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
                 </div>
               )}
 
-              {/* Messages */}
-              <ScrollArea className="flex-1 p-3">
+              {/* AI Messages */}
+              <ScrollArea className="flex-1 p-3 min-h-[100px]">
                 {aiMessages.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-6">
-                    <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <div className="text-center text-muted-foreground py-4">
+                    <Sparkles className="w-6 h-6 mx-auto mb-2 opacity-50" />
                     <p className="text-xs">Select a prompt or type your request.</p>
                   </div>
                 ) : (
@@ -615,7 +628,7 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
 
               {/* Use Email Button */}
               {aiMessages.some(m => m.role === 'assistant') && (
-                <div className="p-2 border-t bg-muted/30 shrink-0">
+                <div className="px-3 py-2 border-t bg-muted/30 shrink-0">
                   <Button 
                     size="sm" 
                     onClick={() => {
@@ -635,16 +648,16 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
                         toast({ title: 'Email content applied' });
                       }
                     }}
-                    className="w-full gap-1 h-8"
+                    className="w-full gap-1 h-7 text-xs"
                   >
-                    <Mail className="w-3 h-3" />
-                    Use in Email
+                    <ArrowLeft className="w-3 h-3" />
+                    Use in Email Below
                   </Button>
                 </div>
               )}
 
-              {/* Input Area */}
-              <div className="p-2 border-t shrink-0 rounded-bl-lg">
+              {/* AI Input */}
+              <div className="p-2 border-t shrink-0">
                 <div className="flex gap-1.5">
                   <Input
                     value={aiInput}
@@ -672,63 +685,49 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
             </div>
           )}
 
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Send className="w-5 h-5" />
-                New Email
-              </span>
-              {currentLeadId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAIPanel(!showAIPanel)}
-                  className="gap-2"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {showAIPanel ? 'Hide AI' : 'AI Generate'}
-                </Button>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>To</Label>
+          {/* Email Compose Form */}
+          <div className="flex-1 flex flex-col min-h-0 p-4 space-y-3 overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label className="text-xs">To</Label>
               <Input
                 placeholder="recipient@example.com"
                 value={composeTo}
                 onChange={(e) => setComposeTo(e.target.value)}
+                className="h-9"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Subject</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Subject</Label>
               <Input
                 placeholder="Subject"
                 value={composeSubject}
                 onChange={(e) => setComposeSubject(e.target.value)}
+                className="h-9"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Message</Label>
+            <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
+              <Label className="text-xs">Message</Label>
               <Textarea
                 placeholder="Write your message..."
-                rows={8}
                 value={composeBody}
                 onChange={(e) => setComposeBody(e.target.value)}
+                className="flex-1 min-h-[150px] resize-none"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setComposeOpen(false)}>
+
+          {/* Footer */}
+          <div className="p-3 border-t flex justify-end gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => setComposeOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSend} disabled={sending || !composeTo || !composeSubject || !composeBody}>
+            <Button size="sm" onClick={handleSend} disabled={sending || !composeTo || !composeSubject || !composeBody}>
               {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
               Send
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
 
       {/* Reply Dialog */}
       <Dialog open={replyOpen} onOpenChange={setReplyOpen}>
