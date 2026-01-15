@@ -195,6 +195,7 @@ const refinancing: Transaction[] = [
   { date: "3/2024", amount: "$2,296,000", title: "Banquet Facility Refinance (SBA 504)", description: "The Client was seeking to refinance the existing mortgage and business debt on a banquet facility. We were able to secure an SBA 504 loan approval to facilitate the refinance of the property and debt consolidation." },
   { date: "2/2024", amount: "$1,075,000", title: "Restaurant Properties Cash-Out Refinance", description: "The Client was seeking to refinance the existing mortgages on three restaurant properties they owned to facilitate cash out to pay off business debt and expand the business. We were able to secure financing with a traditional lender at a strong fixed rate." },
   { date: "2/2024", amount: "$622,000", title: "Mixed-Use Building Bridge Refinance", description: "The Client was seeking a commercial bridge loan to refinance and make updates to a mixed-use commercial / apartment building they owned as an investment property. We were able to secure an approval with a non-bank lender." },
+  { date: "1/2024", amount: "$300,000", title: "Refinance Mixed-Use Building", description: "The Client was seeking a commercial bridge loan to refinance the existing debt on a mixed-used retail and apartment building. We were able to secure hard money financing with a private lender to meet the Client's needs." },
 ];
 
 const constructionLoans: Transaction[] = [
