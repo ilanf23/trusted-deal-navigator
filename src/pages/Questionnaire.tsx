@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, User, MapPin, DollarSign, Building2, Briefcase, FileText, Info, Brain, ChevronRight } from 'lucide-react';
+import { Loader2, CheckCircle2, Check, User, MapPin, DollarSign, Building2, Briefcase, FileText, Info, ChevronRight } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { cn } from '@/lib/utils';
 
@@ -786,7 +786,7 @@ const Questionnaire = () => {
                           : "bg-muted text-muted-foreground"
                     )}>
                       {isConfirmedComplete && !isActive ? (
-                        <Brain className="w-5 h-5" />
+                        <Check className="w-5 h-5" />
                       ) : (
                         <span>{index + 1}</span>
                       )}
