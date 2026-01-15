@@ -2,12 +2,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Building2,
   Briefcase,
@@ -295,28 +290,36 @@ const Transactions = () => {
         {/* Transaction Categories */}
         <section className="py-16">
           <div className="section-container">
-            <Accordion type="multiple" className="space-y-4">
+            <Tabs defaultValue="business-acquisitions" className="w-full">
+              <TabsList className="w-full flex flex-wrap h-auto gap-2 bg-muted/50 p-2 rounded-xl mb-8">
+                {categories.map((category) => (
+                  <TabsTrigger 
+                    key={category.id} 
+                    value={category.id}
+                    className="flex items-center gap-2 px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg transition-all"
+                  >
+                    <category.icon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{category.label}</span>
+                    <span className="sm:hidden">{category.label.split(' ')[0]}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              
               {categories.map((category) => (
-                <AccordionItem 
-                  key={category.id} 
-                  value={category.id}
-                  className="border border-border rounded-xl overflow-hidden bg-card"
-                >
-                  <AccordionTrigger className="px-6 py-5 hover:no-underline hover:bg-muted/50">
-                    <div className="flex items-center gap-4 w-full">
+                <TabsContent key={category.id} value={category.id} className="mt-0">
+                  <div className="bg-card border border-border rounded-xl p-6">
+                    <div className="flex items-center gap-4 mb-6 pb-4 border-b border-border">
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                         <category.icon className="w-6 h-6 text-primary" />
                       </div>
-                      <div className="flex-1 text-left">
-                        <h3 className="text-lg font-semibold text-foreground">{category.label}</h3>
+                      <div>
+                        <h3 className="text-xl font-semibold text-foreground">{category.label}</h3>
                         <p className="text-sm text-muted-foreground">
                           {category.count} transactions • {category.totalAmount} funded
                         </p>
                       </div>
                     </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-6 pb-6">
-                    <div className="space-y-4 pt-2">
+                    <div className="space-y-4">
                       {category.transactions.map((transaction, index) => (
                         <div 
                           key={index}
@@ -340,10 +343,10 @@ const Transactions = () => {
                         </div>
                       ))}
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
+                  </div>
+                </TabsContent>
               ))}
-            </Accordion>
+            </Tabs>
           </div>
         </section>
 
