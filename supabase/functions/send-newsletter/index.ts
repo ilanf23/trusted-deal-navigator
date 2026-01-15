@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +21,29 @@ interface Recipient {
   id: string;
   email: string;
   name: string | null;
+}
+
+// Helper to wrap links for click tracking
+function wrapLinksForTracking(html: string, campaignId: string, subscriberId: string): string {
+  const trackingBaseUrl = `${SUPABASE_URL}/functions/v1/newsletter-track/click/${campaignId}/${subscriberId}`;
+  
+  // Match href attributes in anchor tags
+  return html.replace(
+    /href="(https?:\/\/[^"]+)"/g,
+    (match, url) => {
+      // Don't wrap unsubscribe links or tracking pixels
+      if (url.includes('unsubscribe') || url.includes('newsletter-track')) {
+        return match;
+      }
+      const encodedUrl = encodeURIComponent(url);
+      return `href="${trackingBaseUrl}?url=${encodedUrl}"`;
+    }
+  );
+}
+
+// Generate tracking pixel URL
+function getTrackingPixelUrl(campaignId: string, subscriberId: string): string {
+  return `${SUPABASE_URL}/functions/v1/newsletter-track/open/${campaignId}/${subscriberId}`;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -123,7 +147,10 @@ serve(async (req: Request): Promise<Response> => {
           .replace(/{{name}}/g, recipient.name || "Valued Client")
           .replace(/{{email}}/g, recipient.email);
 
-        const htmlContent = `
+        // Generate tracking pixel URL for this recipient
+        const trackingPixelUrl = getTrackingPixelUrl(campaignId, recipient.id);
+
+        let htmlContent = `
           <!DOCTYPE html>
           <html>
           <head>
@@ -157,9 +184,14 @@ serve(async (req: Request): Promise<Response> => {
                 </p>
               </div>
             </div>
+            <!-- Tracking pixel for open detection -->
+            <img src="${trackingPixelUrl}" width="1" height="1" alt="" style="display:none;width:1px;height:1px;border:0;" />
           </body>
           </html>
         `;
+
+        // Wrap all links for click tracking
+        htmlContent = wrapLinksForTracking(htmlContent, campaignId, recipient.id);
 
         // Send email via Resend API
         const emailResponse = await fetch("https://api.resend.com/emails", {
