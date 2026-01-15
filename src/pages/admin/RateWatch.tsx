@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import FloatingInbox, { PrefilledEmail } from '@/components/admin/FloatingInbox';
-import { Sparkles } from 'lucide-react';
+import AIEmailAssistant from '@/components/admin/AIEmailAssistant';
 import { 
+  Sparkles,
   TrendingDown, 
   TrendingUp, 
   Mail, 
@@ -73,6 +74,18 @@ const RateWatch = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+  const [selectedLeadForAI, setSelectedLeadForAI] = useState<{
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    company_name: string | null;
+    loan_type?: string | null;
+    loan_amount?: number | null;
+    current_rate?: number | null;
+    target_rate?: number | null;
+  } | null>(null);
   const [prefilledEmail, setPrefilledEmail] = useState<PrefilledEmail | null>(null);
   const [draggedEntry, setDraggedEntry] = useState<RateWatchEntry | null>(null);
   
@@ -210,15 +223,19 @@ const RateWatch = () => {
 
   const openEmailForEntry = (entry: RateWatchEntry, useAI: boolean = false) => {
     if (useAI) {
-      // Open inbox with lead context for AI generation
-      const emailData: PrefilledEmail = {
-        to: entry.leads.email || '',
-        subject: '',
-        body: '',
-        leadId: entry.lead_id,
-      };
-      setPrefilledEmail(emailData);
-      setInboxOpen(true);
+      // Open AI Assistant dialog
+      setSelectedLeadForAI({
+        id: entry.lead_id,
+        name: entry.leads.name,
+        email: entry.leads.email,
+        phone: entry.leads.phone,
+        company_name: entry.leads.company_name,
+        loan_type: entry.loan_type,
+        loan_amount: entry.loan_amount,
+        current_rate: entry.current_rate,
+        target_rate: entry.target_rate,
+      });
+      setAiAssistantOpen(true);
       updateLastContacted.mutate(entry.id);
     } else {
       // Open with pre-written template
@@ -246,6 +263,18 @@ Commercial Lending X`,
       setPrefilledEmail(emailData);
       setInboxOpen(true);
       updateLastContacted.mutate(entry.id);
+    }
+  };
+
+  const handleAIEmailUse = (subject: string, body: string) => {
+    if (selectedLeadForAI) {
+      setPrefilledEmail({
+        to: selectedLeadForAI.email || '',
+        subject,
+        body,
+        leadId: selectedLeadForAI.id,
+      });
+      setInboxOpen(true);
     }
   };
 
@@ -503,6 +532,14 @@ Commercial Lending X`,
           onClose={() => setInboxOpen(false)}
           prefilledEmail={prefilledEmail}
           onPrefilledEmailHandled={() => setPrefilledEmail(null)}
+        />
+
+        {/* AI Email Assistant */}
+        <AIEmailAssistant
+          isOpen={aiAssistantOpen}
+          onClose={() => setAiAssistantOpen(false)}
+          lead={selectedLeadForAI}
+          onUseEmail={handleAIEmailUse}
         />
       </div>
     </AdminLayout>
