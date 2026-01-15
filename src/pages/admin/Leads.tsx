@@ -18,11 +18,12 @@ type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 const statusColors: Record<LeadStatus, string> = {
-  new: 'bg-blue-100 text-blue-800',
-  contacted: 'bg-yellow-100 text-yellow-800',
-  qualified: 'bg-green-100 text-green-800',
-  unqualified: 'bg-red-100 text-red-800',
-  converted: 'bg-purple-100 text-purple-800',
+  discovery: 'bg-blue-100 text-blue-800',
+  pre_qualification: 'bg-cyan-100 text-cyan-800',
+  document_collection: 'bg-yellow-100 text-yellow-800',
+  underwriting: 'bg-orange-100 text-orange-800',
+  approval: 'bg-green-100 text-green-800',
+  funded: 'bg-purple-100 text-purple-800',
 };
 
 const AdminLeads = () => {
@@ -103,7 +104,7 @@ const AdminLeads = () => {
     try {
       const updateData: Partial<Lead> = { status: newStatus };
       
-      if (newStatus === 'qualified') {
+      if (newStatus === 'approval') {
         updateData.qualified_at = new Date().toISOString();
       }
 
@@ -239,11 +240,12 @@ const AdminLeads = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="contacted">Contacted</SelectItem>
-                  <SelectItem value="qualified">Qualified</SelectItem>
-                  <SelectItem value="unqualified">Unqualified</SelectItem>
-                  <SelectItem value="converted">Converted</SelectItem>
+                  <SelectItem value="discovery">Discovery</SelectItem>
+                  <SelectItem value="pre_qualification">Pre-Qualification</SelectItem>
+                  <SelectItem value="document_collection">Document Collection</SelectItem>
+                  <SelectItem value="underwriting">Underwriting</SelectItem>
+                  <SelectItem value="approval">Approval</SelectItem>
+                  <SelectItem value="funded">Funded</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -290,11 +292,12 @@ const AdminLeads = () => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="new">New</SelectItem>
-                            <SelectItem value="contacted">Contacted</SelectItem>
-                            <SelectItem value="qualified">Qualified</SelectItem>
-                            <SelectItem value="unqualified">Unqualified</SelectItem>
-                            <SelectItem value="converted">Converted</SelectItem>
+                            <SelectItem value="discovery">Discovery</SelectItem>
+                            <SelectItem value="pre_qualification">Pre-Qualification</SelectItem>
+                            <SelectItem value="document_collection">Document Collection</SelectItem>
+                            <SelectItem value="underwriting">Underwriting</SelectItem>
+                            <SelectItem value="approval">Approval</SelectItem>
+                            <SelectItem value="funded">Funded</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
