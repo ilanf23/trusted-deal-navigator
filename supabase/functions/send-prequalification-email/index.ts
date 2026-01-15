@@ -91,6 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
       body: JSON.stringify({
         from: "Trusted Deal Navigator <ilan@maverich.ai>",
         to: [lead.email],
+        bcc: ["ilan@maverich.ai"],
         subject: "Next Steps: Complete Your Pre-Qualification",
         html: `
 <!DOCTYPE html>
