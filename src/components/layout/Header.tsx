@@ -36,7 +36,7 @@ const Header = () => {
   }];
   return <header className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
       <div className="w-full px-4">
-        <div className="flex items-center justify-between h-20 md:h-28">
+        <div className="flex items-center justify-between h-14 md:h-16">
           {/* Logo - Left aligned */}
           <Link to="/" className="flex items-start mt-2">
             <img src={logo} alt="Commercial Lending X" className="h-40 md:h-60" />
