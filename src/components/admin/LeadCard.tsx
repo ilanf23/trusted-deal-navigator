@@ -2,7 +2,8 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Mail, Phone, Calendar } from 'lucide-react';
+import { Building2, Mail, Phone, Calendar, FileQuestion, CheckCircle2, Clock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -34,6 +35,10 @@ export const LeadCard = ({ lead }: LeadCardProps) => {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  // Questionnaire status
+  const questionnaireSent = !!lead.questionnaire_sent_at;
+  const questionnaireCompleted = !!lead.questionnaire_completed_at;
+
   return (
     <Card
       ref={setNodeRef}
@@ -47,11 +52,33 @@ export const LeadCard = ({ lead }: LeadCardProps) => {
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <h4 className="font-medium text-sm leading-tight">{lead.name}</h4>
-          {lead.source && (
-            <Badge variant="secondary" className={`text-xs shrink-0 ${sourceColors[lead.source] || 'bg-gray-100 text-gray-700'}`}>
-              {lead.source}
-            </Badge>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Questionnaire Status Indicator */}
+            {questionnaireSent && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`p-1 rounded-full ${questionnaireCompleted ? 'bg-green-100' : 'bg-amber-100'}`}>
+                    {questionnaireCompleted ? (
+                      <CheckCircle2 className="w-3 h-3 text-green-600" />
+                    ) : (
+                      <Clock className="w-3 h-3 text-amber-600" />
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {questionnaireCompleted 
+                    ? `Questionnaire completed ${new Date(lead.questionnaire_completed_at!).toLocaleDateString()}`
+                    : `Questionnaire sent ${new Date(lead.questionnaire_sent_at!).toLocaleDateString()}`
+                  }
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {lead.source && (
+              <Badge variant="secondary" className={`text-xs ${sourceColors[lead.source] || 'bg-gray-100 text-gray-700'}`}>
+                {lead.source}
+              </Badge>
+            )}
+          </div>
         </div>
         
         {lead.company_name && (

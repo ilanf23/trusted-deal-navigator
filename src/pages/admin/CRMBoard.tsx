@@ -67,6 +67,40 @@ const CRMBoard = () => {
     setActiveId(event.active.id as string);
   };
 
+  const sendPrequalificationEmail = async (leadId: string) => {
+    try {
+      console.log('Sending pre-qualification email for lead:', leadId);
+      const response = await supabase.functions.invoke('send-prequalification-email', {
+        body: { leadId },
+      });
+
+      if (response.error) {
+        console.error('Error sending email:', response.error);
+        toast({
+          title: 'Email Failed',
+          description: 'Could not send pre-qualification email. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Email Sent',
+        description: 'Pre-qualification questionnaire has been sent to the lead.',
+      });
+
+      // Refresh leads to show updated questionnaire_sent_at
+      fetchLeads();
+    } catch (error) {
+      console.error('Error invoking edge function:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send pre-qualification email',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
@@ -81,6 +115,11 @@ const CRMBoard = () => {
 
     const lead = leads.find(l => l.id === leadId);
     if (!lead || lead.status === newStatus) return;
+
+    // Check if moving from discovery to pre_qualification
+    const isMovingToPreQual = lead.status === 'discovery' && newStatus === 'pre_qualification';
+    const hasEmail = !!lead.email;
+    const alreadySentQuestionnaire = !!lead.questionnaire_sent_at;
 
     // Optimistic update
     setLeads(prev => prev.map(l => 
@@ -108,6 +147,17 @@ const CRMBoard = () => {
         title: 'Lead Updated', 
         description: `${lead.name} moved to ${columns.find(c => c.status === newStatus)?.title}` 
       });
+
+      // Send pre-qualification email if applicable
+      if (isMovingToPreQual && hasEmail && !alreadySentQuestionnaire) {
+        sendPrequalificationEmail(leadId);
+      } else if (isMovingToPreQual && !hasEmail) {
+        toast({
+          title: 'No Email Address',
+          description: 'Cannot send questionnaire - lead has no email address.',
+          variant: 'destructive',
+        });
+      }
     } catch (error) {
       console.error('Error updating lead:', error);
       // Revert on error
