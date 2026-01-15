@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, User, MapPin, DollarSign, Building2, Briefcase, FileText, Info } from 'lucide-react';
+import { Loader2, CheckCircle2, User, MapPin, DollarSign, Building2, Briefcase, FileText, Info, Brain, ChevronRight } from 'lucide-react';
 import logo from '@/assets/logo.png';
+import { cn } from '@/lib/utils';
 
 interface LeadData {
   id: string;
@@ -24,6 +25,26 @@ const COUNTRIES = [
   "United States", "Canada", "United Kingdom", "Afghanistan", "Albania", "Algeria", "American Samoa", "Andorra", "Angola", "Anguilla", "Antigua & Barbuda", "Argentina", "Armenia", "Aruba", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bermuda", "Bhutan", "Bolivia", "Bosnia & Herzegovina", "Botswana", "Brazil", "British Virgin Islands", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Cape Verde", "Cayman Islands", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo - Brazzaville", "Congo - Kinshasa", "Cook Islands", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France", "French Guiana", "French Polynesia", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Gibraltar", "Greece", "Greenland", "Grenada", "Guadeloupe", "Guam", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hong Kong SAR China", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Martinique", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Caledonia", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Puerto Rico", "Qatar", "Romania", "Russia", "Rwanda", "Samoa", "San Marino", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad & Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
+type SectionKey = 'contact' | 'address' | 'loan' | 'current-loan' | 'real-estate' | 'employment' | 'preferences' | 'additional';
+
+interface Section {
+  key: SectionKey;
+  label: string;
+  icon: React.ElementType;
+  requiredFields: string[];
+}
+
+const SECTIONS: Section[] = [
+  { key: 'contact', label: 'Contact Info', icon: User, requiredFields: ['first_name', 'last_name', 'email', 'phone', 'contact_method'] },
+  { key: 'address', label: 'Address', icon: MapPin, requiredFields: ['address_line_1', 'city', 'state', 'zip_code'] },
+  { key: 'loan', label: 'Loan Details', icon: DollarSign, requiredFields: ['principal_name', 'loan_amount', 'purpose_of_loan', 'collateral_value', 'collateral_description'] },
+  { key: 'current-loan', label: 'Current Loan', icon: FileText, requiredFields: [] },
+  { key: 'real-estate', label: 'Real Estate', icon: Building2, requiredFields: [] },
+  { key: 'employment', label: 'Employment', icon: Briefcase, requiredFields: [] },
+  { key: 'preferences', label: 'Preferences', icon: FileText, requiredFields: [] },
+  { key: 'additional', label: 'Additional', icon: Info, requiredFields: [] },
+];
+
 const Questionnaire = () => {
   const { token } = useParams<{ token: string }>();
   const { toast } = useToast();
@@ -33,23 +54,21 @@ const Questionnaire = () => {
   const [submitted, setSubmitted] = useState(false);
   const [lead, setLead] = useState<LeadData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<SectionKey>('contact');
   
   const [formData, setFormData] = useState({
-    // Primary Contact
     first_name: '',
     last_name: '',
     email: '',
     phone: '',
     newsletter_signup: false,
     contact_method: '',
-    // Address
     country: 'United States',
     address_line_1: '',
     address_line_2: '',
     city: '',
     state: '',
     zip_code: '',
-    // Loan Details
     principal_name: '',
     co_borrowers: '',
     guarantors: '',
@@ -61,20 +80,17 @@ const Questionnaire = () => {
     loan_type_other: '',
     cash_out: '',
     cash_out_amount: '',
-    // Current Loan
     current_lender: '',
     current_loan_balance: '',
     current_loan_rate: '',
     current_loan_maturity_date: '',
     current_loan_in_default: '',
-    // Real Estate
     property_owner_occupied: '',
     year_acquired: '',
     purchase_price: '',
     current_estimated_value: '',
     square_footage: '',
     number_of_units: '',
-    // Borrower Employment
     borrower_occupation: '',
     borrower_year_started: '',
     borrower_current_employer: '',
@@ -84,7 +100,6 @@ const Questionnaire = () => {
     self_employed_business_type: '',
     year_business_founded: '',
     business_description: '',
-    // Loan Preferences
     desired_interest_rate: '',
     desired_term: '',
     desired_amortization: '',
@@ -92,7 +107,6 @@ const Questionnaire = () => {
     co_borrower_bankruptcy: '',
     borrower_credit_score: '',
     co_borrower_credit_score: '',
-    // Additional
     additional_information: '',
     how_did_you_hear: '',
     referred_by: '',
@@ -101,6 +115,44 @@ const Questionnaire = () => {
   const updateField = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Calculate section completion
+  const sectionCompletion = useMemo(() => {
+    const completion: Record<SectionKey, boolean> = {
+      'contact': false,
+      'address': false,
+      'loan': false,
+      'current-loan': true,
+      'real-estate': true,
+      'employment': true,
+      'preferences': true,
+      'additional': true,
+    };
+
+    SECTIONS.forEach(section => {
+      if (section.requiredFields.length === 0) {
+        completion[section.key] = true;
+      } else {
+        completion[section.key] = section.requiredFields.every(
+          field => !!formData[field as keyof typeof formData]
+        );
+      }
+    });
+
+    return completion;
+  }, [formData]);
+
+  // Calculate overall progress
+  const overallProgress = useMemo(() => {
+    const allRequiredFields = SECTIONS.flatMap(s => s.requiredFields);
+    if (allRequiredFields.length === 0) return 100;
+    
+    const filledFields = allRequiredFields.filter(
+      field => !!formData[field as keyof typeof formData]
+    );
+    
+    return Math.round((filledFields.length / allRequiredFields.length) * 100);
+  }, [formData]);
 
   useEffect(() => {
     const validateToken = async () => {
@@ -143,14 +195,13 @@ const Questionnaire = () => {
     
     if (!lead) return;
     
-    // Validate required fields
-    const requiredFields = ['first_name', 'last_name', 'email', 'phone', 'contact_method', 'address_line_1', 'city', 'state', 'zip_code', 'principal_name', 'loan_amount', 'purpose_of_loan', 'collateral_value', 'collateral_description'];
-    const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+    const allRequiredFields = SECTIONS.flatMap(s => s.requiredFields);
+    const missingFields = allRequiredFields.filter(field => !formData[field as keyof typeof formData]);
     
     if (missingFields.length > 0) {
       toast({
         title: 'Please complete all required fields',
-        description: 'Fields marked with * are required.',
+        description: `${missingFields.length} required field(s) are missing.`,
         variant: 'destructive',
       });
       return;
@@ -218,18 +269,12 @@ const Questionnaire = () => {
           referred_by: formData.referred_by,
         });
 
-      if (insertError) {
-        throw insertError;
-      }
+      if (insertError) throw insertError;
 
-      const { error: updateError } = await supabase
+      await supabase
         .from('leads')
         .update({ questionnaire_completed_at: new Date().toISOString() })
         .eq('id', lead.id);
-
-      if (updateError) {
-        console.error('Error updating lead:', updateError);
-      }
 
       setSubmitted(true);
       toast({
@@ -293,457 +338,534 @@ const Questionnaire = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted py-8 px-4">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <img src={logo} alt="Commercial Lending X" className="h-20 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-foreground mb-2">Loan Application</h1>
-          <p className="text-muted-foreground">
-            Welcome{lead?.name ? `, ${lead.name}` : ''}! Please complete the form below.
-          </p>
-        </div>
+  const renderSectionContent = () => {
+    switch (activeSection) {
+      case 'contact':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>First Name *</Label>
+              <Input value={formData.first_name} onChange={(e) => updateField('first_name', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Last Name *</Label>
+              <Input value={formData.last_name} onChange={(e) => updateField('last_name', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input type="email" value={formData.email} onChange={(e) => updateField('email', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone *</Label>
+              <Input type="tel" value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Primary Contact Method *</Label>
+              <Select value={formData.contact_method} onValueChange={(v) => updateField('contact_method', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="phone">Phone</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2 pt-6">
+              <Checkbox 
+                id="newsletter" 
+                checked={formData.newsletter_signup} 
+                onCheckedChange={(checked) => updateField('newsletter_signup', !!checked)} 
+              />
+              <Label htmlFor="newsletter" className="font-normal">Sign up for news and updates</Label>
+            </div>
+          </div>
+        );
 
-        <form onSubmit={handleSubmit}>
-          <Accordion type="multiple" defaultValue={['contact', 'address', 'loan']} className="space-y-4">
+      case 'address':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Country</Label>
+              <Select value={formData.country} onValueChange={(v) => updateField('country', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Address Line 1 *</Label>
+              <Input value={formData.address_line_1} onChange={(e) => updateField('address_line_1', e.target.value)} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Address Line 2</Label>
+              <Input value={formData.address_line_2} onChange={(e) => updateField('address_line_2', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>City *</Label>
+              <Input value={formData.city} onChange={(e) => updateField('city', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>State *</Label>
+              <Input value={formData.state} onChange={(e) => updateField('state', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>ZIP Code *</Label>
+              <Input value={formData.zip_code} onChange={(e) => updateField('zip_code', e.target.value)} />
+            </div>
+          </div>
+        );
+
+      case 'loan':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Principal Name or Entity on Loan *</Label>
+              <Input value={formData.principal_name} onChange={(e) => updateField('principal_name', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Co-Borrower(s)</Label>
+              <Input value={formData.co_borrowers} onChange={(e) => updateField('co_borrowers', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Guarantor(s)</Label>
+              <Input value={formData.guarantors} onChange={(e) => updateField('guarantors', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Loan Amount *</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input type="number" className="pl-7" value={formData.loan_amount} onChange={(e) => updateField('loan_amount', e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Collateral Value *</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input type="number" className="pl-7" value={formData.collateral_value} onChange={(e) => updateField('collateral_value', e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Purpose of Loan Request *</Label>
+              <Textarea value={formData.purpose_of_loan} onChange={(e) => updateField('purpose_of_loan', e.target.value)} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Collateral Description / Address *</Label>
+              <Textarea value={formData.collateral_description} onChange={(e) => updateField('collateral_description', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Loan Type</Label>
+              <Select value={formData.loan_type} onValueChange={(v) => updateField('loan_type', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="purchase">Purchase</SelectItem>
+                  <SelectItem value="refinance">Refinance</SelectItem>
+                  <SelectItem value="cloc">CLOC</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {formData.loan_type === 'other' && (
+              <div className="space-y-2">
+                <Label>Loan Type (Other)</Label>
+                <Input value={formData.loan_type_other} onChange={(e) => updateField('loan_type_other', e.target.value)} />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Cash Out</Label>
+              <Select value={formData.cash_out} onValueChange={(v) => updateField('cash_out', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {formData.cash_out === 'yes' && (
+              <div className="space-y-2">
+                <Label>Cash Out Amount</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input type="number" className="pl-7" value={formData.cash_out_amount} onChange={(e) => updateField('cash_out_amount', e.target.value)} />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'current-loan':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Current Lender</Label>
+              <Input value={formData.current_lender} onChange={(e) => updateField('current_lender', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Current Loan Balance</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input type="number" className="pl-7" value={formData.current_loan_balance} onChange={(e) => updateField('current_loan_balance', e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Current Loan Rate</Label>
+              <Input value={formData.current_loan_rate} onChange={(e) => updateField('current_loan_rate', e.target.value)} placeholder="e.g., 5.5%" />
+            </div>
+            <div className="space-y-2">
+              <Label>Current Loan Maturity Date</Label>
+              <Input type="date" value={formData.current_loan_maturity_date} onChange={(e) => updateField('current_loan_maturity_date', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Current Loan in Default</Label>
+              <Select value={formData.current_loan_in_default} onValueChange={(v) => updateField('current_loan_in_default', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="n/a">N/A</SelectItem>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
+      case 'real-estate':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Is the Property Owner-Occupied</Label>
+              <Select value={formData.property_owner_occupied} onValueChange={(v) => updateField('property_owner_occupied', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="n/a">N/A</SelectItem>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Year Acquired</Label>
+              <Input value={formData.year_acquired} onChange={(e) => updateField('year_acquired', e.target.value)} placeholder="e.g., 2020" />
+            </div>
+            <div className="space-y-2">
+              <Label>Purchase Price</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input type="number" className="pl-7" value={formData.purchase_price} onChange={(e) => updateField('purchase_price', e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Current Estimated Value</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input type="number" className="pl-7" value={formData.current_estimated_value} onChange={(e) => updateField('current_estimated_value', e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Square Footage of Building</Label>
+              <Input value={formData.square_footage} onChange={(e) => updateField('square_footage', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Number of Units / Tenants</Label>
+              <Input value={formData.number_of_units} onChange={(e) => updateField('number_of_units', e.target.value)} />
+            </div>
+          </div>
+        );
+
+      case 'employment':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <h4 className="md:col-span-2 font-medium text-muted-foreground border-b pb-2">Borrower</h4>
+            <div className="space-y-2">
+              <Label>Borrower Occupation</Label>
+              <Input value={formData.borrower_occupation} onChange={(e) => updateField('borrower_occupation', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Borrower Year Started</Label>
+              <Input value={formData.borrower_year_started} onChange={(e) => updateField('borrower_year_started', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Borrower Current Employer</Label>
+              <Input value={formData.borrower_current_employer} onChange={(e) => updateField('borrower_current_employer', e.target.value)} />
+            </div>
             
-            {/* Primary Contact */}
-            <AccordionItem value="contact" className="bg-card rounded-lg border">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-primary" />
-                  <span className="font-semibold">Primary Contact Information</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>First Name *</Label>
-                    <Input value={formData.first_name} onChange={(e) => updateField('first_name', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Last Name *</Label>
-                    <Input value={formData.last_name} onChange={(e) => updateField('last_name', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email *</Label>
-                    <Input type="email" value={formData.email} onChange={(e) => updateField('email', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Phone *</Label>
-                    <Input type="tel" value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Primary Contact Method *</Label>
-                    <Select value={formData.contact_method} onValueChange={(v) => updateField('contact_method', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="phone">Phone</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2 pt-6">
-                    <Checkbox 
-                      id="newsletter" 
-                      checked={formData.newsletter_signup} 
-                      onCheckedChange={(checked) => updateField('newsletter_signup', !!checked)} 
-                    />
-                    <Label htmlFor="newsletter" className="font-normal">Sign up for news and updates</Label>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+            <h4 className="md:col-span-2 font-medium text-muted-foreground border-b pb-2 mt-4">Co-Borrower</h4>
+            <div className="space-y-2">
+              <Label>Co-Borrower Occupation</Label>
+              <Input value={formData.co_borrower_occupation} onChange={(e) => updateField('co_borrower_occupation', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Co-Borrower Year Started</Label>
+              <Input value={formData.co_borrower_year_started} onChange={(e) => updateField('co_borrower_year_started', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Co-Borrower Current Employer</Label>
+              <Input value={formData.co_borrower_current_employer} onChange={(e) => updateField('co_borrower_current_employer', e.target.value)} />
+            </div>
 
-            {/* Address */}
-            <AccordionItem value="address" className="bg-card rounded-lg border">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-primary" />
-                  <span className="font-semibold">Address</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Country</Label>
-                    <Select value={formData.country} onValueChange={(v) => updateField('country', v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Address Line 1 *</Label>
-                    <Input value={formData.address_line_1} onChange={(e) => updateField('address_line_1', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Address Line 2</Label>
-                    <Input value={formData.address_line_2} onChange={(e) => updateField('address_line_2', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>City *</Label>
-                    <Input value={formData.city} onChange={(e) => updateField('city', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>State *</Label>
-                    <Input value={formData.state} onChange={(e) => updateField('state', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>ZIP Code *</Label>
-                    <Input value={formData.zip_code} onChange={(e) => updateField('zip_code', e.target.value)} required />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+            <h4 className="md:col-span-2 font-medium text-muted-foreground border-b pb-2 mt-4">Self-Employed</h4>
+            <div className="space-y-2">
+              <Label>Type of Business Owned</Label>
+              <Input value={formData.self_employed_business_type} onChange={(e) => updateField('self_employed_business_type', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Year Business Founded / Acquired</Label>
+              <Input value={formData.year_business_founded} onChange={(e) => updateField('year_business_founded', e.target.value)} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Description of Business & Products/Services</Label>
+              <Textarea value={formData.business_description} onChange={(e) => updateField('business_description', e.target.value)} />
+            </div>
+          </div>
+        );
 
-            {/* Loan Details */}
-            <AccordionItem value="loan" className="bg-card rounded-lg border">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <DollarSign className="w-5 h-5 text-primary" />
-                  <span className="font-semibold">Loan Details</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Principal Name or Entity on Loan *</Label>
-                    <Input value={formData.principal_name} onChange={(e) => updateField('principal_name', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Co-Borrower(s)</Label>
-                    <Input value={formData.co_borrowers} onChange={(e) => updateField('co_borrowers', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Guarantor(s)</Label>
-                    <Input value={formData.guarantors} onChange={(e) => updateField('guarantors', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Loan Amount *</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                      <Input type="number" className="pl-7" value={formData.loan_amount} onChange={(e) => updateField('loan_amount', e.target.value)} required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Collateral Value *</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                      <Input type="number" className="pl-7" value={formData.collateral_value} onChange={(e) => updateField('collateral_value', e.target.value)} required />
-                    </div>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Purpose of Loan Request *</Label>
-                    <Textarea value={formData.purpose_of_loan} onChange={(e) => updateField('purpose_of_loan', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Collateral Description / Address *</Label>
-                    <Textarea value={formData.collateral_description} onChange={(e) => updateField('collateral_description', e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Loan Type</Label>
-                    <Select value={formData.loan_type} onValueChange={(v) => updateField('loan_type', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="purchase">Purchase</SelectItem>
-                        <SelectItem value="refinance">Refinance</SelectItem>
-                        <SelectItem value="cloc">CLOC</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {formData.loan_type === 'other' && (
-                    <div className="space-y-2">
-                      <Label>Loan Type (Other)</Label>
-                      <Input value={formData.loan_type_other} onChange={(e) => updateField('loan_type_other', e.target.value)} />
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label>Cash Out</Label>
-                    <Select value={formData.cash_out} onValueChange={(v) => updateField('cash_out', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {formData.cash_out === 'yes' && (
-                    <div className="space-y-2">
-                      <Label>If yes, amount desired</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                        <Input type="number" className="pl-7" value={formData.cash_out_amount} onChange={(e) => updateField('cash_out_amount', e.target.value)} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+      case 'preferences':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Desired Interest Rate</Label>
+              <Input value={formData.desired_interest_rate} onChange={(e) => updateField('desired_interest_rate', e.target.value)} placeholder="e.g., 6%" />
+            </div>
+            <div className="space-y-2">
+              <Label>Desired Term</Label>
+              <Input value={formData.desired_term} onChange={(e) => updateField('desired_term', e.target.value)} placeholder="e.g., 30 years" />
+            </div>
+            <div className="space-y-2">
+              <Label>Desired Amortization</Label>
+              <Input value={formData.desired_amortization} onChange={(e) => updateField('desired_amortization', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Borrower filed bankruptcy in last 7 years</Label>
+              <Select value={formData.borrower_bankruptcy} onValueChange={(v) => updateField('borrower_bankruptcy', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="n/a">N/A</SelectItem>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Co-Borrower filed bankruptcy in last 7 years</Label>
+              <Select value={formData.co_borrower_bankruptcy} onValueChange={(v) => updateField('co_borrower_bankruptcy', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="n/a">N/A</SelectItem>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Borrower Credit Score (or estimated)</Label>
+              <Input value={formData.borrower_credit_score} onChange={(e) => updateField('borrower_credit_score', e.target.value)} placeholder="e.g., 720" />
+            </div>
+            <div className="space-y-2">
+              <Label>Co-Borrower Credit Score (or estimated)</Label>
+              <Input value={formData.co_borrower_credit_score} onChange={(e) => updateField('co_borrower_credit_score', e.target.value)} placeholder="e.g., 700" />
+            </div>
+          </div>
+        );
 
-            {/* Current Loan */}
-            <AccordionItem value="current-loan" className="bg-card rounded-lg border">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-primary" />
-                  <span className="font-semibold">Current Loan Information</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Current Lender</Label>
-                    <Input value={formData.current_lender} onChange={(e) => updateField('current_lender', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Current Loan Balance</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                      <Input type="number" className="pl-7" value={formData.current_loan_balance} onChange={(e) => updateField('current_loan_balance', e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Current Loan Rate</Label>
-                    <Input value={formData.current_loan_rate} onChange={(e) => updateField('current_loan_rate', e.target.value)} placeholder="e.g., 5.5%" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Current Loan Maturity Date</Label>
-                    <Input type="date" value={formData.current_loan_maturity_date} onChange={(e) => updateField('current_loan_maturity_date', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Current Loan in Default</Label>
-                    <Select value={formData.current_loan_in_default} onValueChange={(v) => updateField('current_loan_in_default', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="n/a">N/A</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+      case 'additional':
+        return (
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label>Additional information for CLX</Label>
+              <Textarea 
+                value={formData.additional_information} 
+                onChange={(e) => updateField('additional_information', e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>How did you hear about CLX</Label>
+                <Input value={formData.how_did_you_hear} onChange={(e) => updateField('how_did_you_hear', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Referred By</Label>
+                <Input value={formData.referred_by} onChange={(e) => updateField('referred_by', e.target.value)} />
+              </div>
+            </div>
+          </div>
+        );
 
-            {/* Real Estate */}
-            <AccordionItem value="real-estate" className="bg-card rounded-lg border">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <Building2 className="w-5 h-5 text-primary" />
-                  <span className="font-semibold">Real Estate Information</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Is the Property Owner-Occupied</Label>
-                    <Select value={formData.property_owner_occupied} onValueChange={(v) => updateField('property_owner_occupied', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="n/a">N/A</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Year Acquired</Label>
-                    <Input value={formData.year_acquired} onChange={(e) => updateField('year_acquired', e.target.value)} placeholder="e.g., 2020" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Purchase Price</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                      <Input type="number" className="pl-7" value={formData.purchase_price} onChange={(e) => updateField('purchase_price', e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Current Estimated Value</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                      <Input type="number" className="pl-7" value={formData.current_estimated_value} onChange={(e) => updateField('current_estimated_value', e.target.value)} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Square Footage of Building</Label>
-                    <Input value={formData.square_footage} onChange={(e) => updateField('square_footage', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Number of Units / Tenants</Label>
-                    <Input value={formData.number_of_units} onChange={(e) => updateField('number_of_units', e.target.value)} />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+      default:
+        return null;
+    }
+  };
 
-            {/* Borrower Employment */}
-            <AccordionItem value="employment" className="bg-card rounded-lg border">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <Briefcase className="w-5 h-5 text-primary" />
-                  <span className="font-semibold">Employment & Business Information</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <h4 className="md:col-span-2 font-medium text-muted-foreground">Borrower</h4>
-                  <div className="space-y-2">
-                    <Label>Borrower Occupation</Label>
-                    <Input value={formData.borrower_occupation} onChange={(e) => updateField('borrower_occupation', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Borrower Year Started</Label>
-                    <Input value={formData.borrower_year_started} onChange={(e) => updateField('borrower_year_started', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Borrower Current Employer</Label>
-                    <Input value={formData.borrower_current_employer} onChange={(e) => updateField('borrower_current_employer', e.target.value)} />
+  const currentIndex = SECTIONS.findIndex(s => s.key === activeSection);
+  const canGoNext = currentIndex < SECTIONS.length - 1;
+  const canGoPrev = currentIndex > 0;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+      {/* Header */}
+      <div className="bg-card border-b sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="Commercial Lending X" className="h-12" />
+              <div>
+                <h1 className="text-xl font-bold">Loan Application</h1>
+                <p className="text-sm text-muted-foreground">Welcome{lead?.name ? `, ${lead.name}` : ''}!</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-primary">{overallProgress}%</div>
+              <div className="text-xs text-muted-foreground">Complete</div>
+            </div>
+          </div>
+          <Progress value={overallProgress} className="h-2" />
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="flex gap-6">
+          {/* Sidebar Navigation */}
+          <nav className="w-64 shrink-0 hidden md:block">
+            <div className="bg-card rounded-lg border p-2 sticky top-32">
+              {SECTIONS.map((section) => {
+                const Icon = section.icon;
+                const isComplete = sectionCompletion[section.key];
+                const isActive = activeSection === section.key;
+                
+                return (
+                  <button
+                    key={section.key}
+                    onClick={() => setActiveSection(section.key)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-3 rounded-md text-left transition-all",
+                      isActive 
+                        ? "bg-primary text-primary-foreground" 
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                      isComplete && !isActive ? "bg-green-500/20" : isActive ? "bg-primary-foreground/20" : "bg-muted"
+                    )}>
+                      {isComplete ? (
+                        <Brain className={cn(
+                          "w-4 h-4",
+                          isActive ? "text-primary-foreground" : "text-green-500"
+                        )} />
+                      ) : (
+                        <Icon className={cn(
+                          "w-4 h-4",
+                          isActive ? "text-primary-foreground" : "text-muted-foreground"
+                        )} />
+                      )}
+                    </div>
+                    <span className={cn(
+                      "text-sm font-medium",
+                      !isActive && "text-foreground"
+                    )}>
+                      {section.label}
+                    </span>
+                    {isComplete && !isActive && (
+                      <CheckCircle2 className="w-4 h-4 text-green-500 ml-auto" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* Mobile Navigation */}
+          <div className="md:hidden w-full mb-4">
+            <Select value={activeSection} onValueChange={(v) => setActiveSection(v as SectionKey)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SECTIONS.map((section) => (
+                  <SelectItem key={section.key} value={section.key}>
+                    {sectionCompletion[section.key] ? '✓ ' : ''}{section.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1">
+            <form onSubmit={handleSubmit}>
+              <Card className="mb-6">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    {(() => {
+                      const section = SECTIONS.find(s => s.key === activeSection)!;
+                      const Icon = section.icon;
+                      return (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Icon className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <h2 className="text-xl font-semibold">{section.label}</h2>
+                            <p className="text-sm text-muted-foreground">
+                              {section.requiredFields.length > 0 
+                                ? `${section.requiredFields.length} required field(s)`
+                                : 'All fields optional'}
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                   
-                  <h4 className="md:col-span-2 font-medium text-muted-foreground mt-4">Co-Borrower</h4>
-                  <div className="space-y-2">
-                    <Label>Co-Borrower Occupation</Label>
-                    <Input value={formData.co_borrower_occupation} onChange={(e) => updateField('co_borrower_occupation', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Co-Borrower Year Started</Label>
-                    <Input value={formData.co_borrower_year_started} onChange={(e) => updateField('co_borrower_year_started', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Co-Borrower Current Employer</Label>
-                    <Input value={formData.co_borrower_current_employer} onChange={(e) => updateField('co_borrower_current_employer', e.target.value)} />
-                  </div>
+                  {renderSectionContent()}
+                </CardContent>
+              </Card>
 
-                  <h4 className="md:col-span-2 font-medium text-muted-foreground mt-4">Self-Employed</h4>
-                  <div className="space-y-2">
-                    <Label>If Self-Employed, Type of Business Owned</Label>
-                    <Input value={formData.self_employed_business_type} onChange={(e) => updateField('self_employed_business_type', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Year Business Founded / Acquired</Label>
-                    <Input value={formData.year_business_founded} onChange={(e) => updateField('year_business_founded', e.target.value)} />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Description of Business & Products/Services Offered</Label>
-                    <Textarea value={formData.business_description} onChange={(e) => updateField('business_description', e.target.value)} />
-                  </div>
+              {/* Navigation Buttons */}
+              <div className="flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setActiveSection(SECTIONS[currentIndex - 1].key)}
+                  disabled={!canGoPrev}
+                >
+                  Previous
+                </Button>
+                
+                <div className="flex gap-2">
+                  {canGoNext ? (
+                    <Button
+                      type="button"
+                      onClick={() => setActiveSection(SECTIONS[currentIndex + 1].key)}
+                      className="gap-2"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={submitting || overallProgress < 100}
+                      className="gap-2"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Application'
+                      )}
+                    </Button>
+                  )}
                 </div>
-              </AccordionContent>
-            </AccordionItem>
+              </div>
+            </form>
 
-            {/* Loan Preferences & Credit */}
-            <AccordionItem value="preferences" className="bg-card rounded-lg border">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-primary" />
-                  <span className="font-semibold">Loan Preferences & Credit</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Desired Interest Rate</Label>
-                    <Input value={formData.desired_interest_rate} onChange={(e) => updateField('desired_interest_rate', e.target.value)} placeholder="e.g., 6%" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Desired Term</Label>
-                    <Input value={formData.desired_term} onChange={(e) => updateField('desired_term', e.target.value)} placeholder="e.g., 30 years" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Desired Amortization</Label>
-                    <Input value={formData.desired_amortization} onChange={(e) => updateField('desired_amortization', e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Has Borrower filed bankruptcy in last 7 years</Label>
-                    <Select value={formData.borrower_bankruptcy} onValueChange={(v) => updateField('borrower_bankruptcy', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="n/a">N/A</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Has Co-Borrower filed bankruptcy in last 7 years</Label>
-                    <Select value={formData.co_borrower_bankruptcy} onValueChange={(v) => updateField('co_borrower_bankruptcy', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="n/a">N/A</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Borrower Credit Score (or estimated)</Label>
-                    <Input value={formData.borrower_credit_score} onChange={(e) => updateField('borrower_credit_score', e.target.value)} placeholder="e.g., 720" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Co-Borrower Credit Score (or estimated)</Label>
-                    <Input value={formData.co_borrower_credit_score} onChange={(e) => updateField('co_borrower_credit_score', e.target.value)} placeholder="e.g., 700" />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* Additional Information */}
-            <AccordionItem value="additional" className="bg-card rounded-lg border">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <Info className="w-5 h-5 text-primary" />
-                  <span className="font-semibold">Additional Information</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6">
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <Label>Additional information pertinent for CLX to be aware of</Label>
-                    <Textarea 
-                      value={formData.additional_information} 
-                      onChange={(e) => updateField('additional_information', e.target.value)}
-                      rows={4}
-                    />
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>How did you hear about CLX</Label>
-                      <Input value={formData.how_did_you_hear} onChange={(e) => updateField('how_did_you_hear', e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Referred By</Label>
-                      <Input value={formData.referred_by} onChange={(e) => updateField('referred_by', e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-          </Accordion>
-
-          <Button 
-            type="submit" 
-            size="lg" 
-            className="w-full mt-6"
-            disabled={submitting}
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              'Submit Application'
-            )}
-          </Button>
-        </form>
-
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          Your information is secure and will only be used to assess your financing options.
-        </p>
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              Your information is secure and will only be used to assess your financing options.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
