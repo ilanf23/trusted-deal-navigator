@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import FloatingInbox, { PrefilledEmail } from '@/components/admin/FloatingInbox';
 import { 
   TrendingDown, 
   TrendingUp, 
@@ -70,10 +71,8 @@ const RateWatch = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState<RateWatchEntry | null>(null);
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [prefilledEmail, setPrefilledEmail] = useState<PrefilledEmail | null>(null);
   const [draggedEntry, setDraggedEntry] = useState<RateWatchEntry | null>(null);
   
   // Form state for adding new entry
@@ -203,42 +202,35 @@ const RateWatch = () => {
 
   const handleDropOnEmail = () => {
     if (draggedEntry) {
-      setSelectedEntry(draggedEntry);
-      setEmailSubject(`Rate Alert: Your ${draggedEntry.loan_type || 'Loan'} Refinancing Opportunity`);
-      setEmailBody(`Dear ${draggedEntry.leads.name},
+      openEmailForEntry(draggedEntry);
+      setDraggedEntry(null);
+    }
+  };
+
+  const openEmailForEntry = (entry: RateWatchEntry) => {
+    const emailData: PrefilledEmail = {
+      to: entry.leads.email || '',
+      subject: `Rate Alert: Your ${entry.loan_type || 'Loan'} Refinancing Opportunity`,
+      body: `Dear ${entry.leads.name},
 
 Great news! Interest rates have dropped to a level that makes refinancing your loan attractive.
 
-Your current rate: ${draggedEntry.current_rate}%
-Target rate achieved: ${draggedEntry.target_rate}%
+Current Rate: ${entry.current_rate}%
+Target Rate: ${entry.target_rate}%
+${entry.loan_amount ? `Loan Amount: $${entry.loan_amount.toLocaleString()}` : ''}
+${entry.loan_type ? `Loan Type: ${entry.loan_type}` : ''}
+${entry.leads.company_name ? `Company: ${entry.leads.company_name}` : ''}
 
 This presents an excellent opportunity to reduce your monthly payments or shorten your loan term.
 
 Would you like to schedule a call to discuss your refinancing options?
 
 Best regards,
-Commercial Lending X`);
-      setEmailDialogOpen(true);
-      setDraggedEntry(null);
-    }
-  };
-
-  const handleSendEmail = async () => {
-    if (!selectedEntry) return;
-    
-    // Mark as contacted
-    await updateLastContacted.mutateAsync(selectedEntry.id);
-    
-    // Open email client
-    const mailtoLink = `mailto:${selectedEntry.leads.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-    window.open(mailtoLink, '_blank');
-    
-    setEmailDialogOpen(false);
-    setSelectedEntry(null);
-    setEmailSubject('');
-    setEmailBody('');
-    
-    toast({ title: 'Email drafted', description: 'Opening your email client...' });
+Commercial Lending X`
+    };
+    setPrefilledEmail(emailData);
+    setInboxOpen(true);
+    updateLastContacted.mutate(entry.id);
   };
 
   const getRateStatus = (entry: RateWatchEntry) => {
@@ -440,12 +432,7 @@ Commercial Lending X`);
                     entry={entry} 
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
-                    onEmail={() => {
-                      setSelectedEntry(entry);
-                      setEmailSubject(`Rate Alert: Your ${entry.loan_type || 'Loan'} Refinancing Opportunity`);
-                      setEmailBody(`Dear ${entry.leads.name},\n\nGreat news! Interest rates have dropped to a level that makes refinancing your loan attractive.\n\nYour current rate: ${entry.current_rate}%\nTarget rate achieved: ${entry.target_rate}%\n\nThis presents an excellent opportunity to reduce your monthly payments or shorten your loan term.\n\nWould you like to schedule a call to discuss your refinancing options?\n\nBest regards,\nCommercial Lending X`);
-                      setEmailDialogOpen(true);
-                    }}
+                    onEmail={() => openEmailForEntry(entry)}
                     onPhone={() => {
                       if (entry.leads.phone) {
                         window.open(`tel:${entry.leads.phone}`, '_blank');
@@ -478,12 +465,7 @@ Commercial Lending X`);
                     entry={entry} 
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
-                    onEmail={() => {
-                      setSelectedEntry(entry);
-                      setEmailSubject(`Checking In: ${entry.loan_type || 'Loan'} Rate Update`);
-                      setEmailBody(`Dear ${entry.leads.name},\n\nI wanted to touch base regarding your rate watch subscription.\n\nYour current rate: ${entry.current_rate}%\nTarget rate: ${entry.target_rate}%\n\nWhile rates haven't quite reached your target yet, I wanted to keep you informed and see if there's anything else I can help with.\n\nBest regards,\nCommercial Lending X`);
-                      setEmailDialogOpen(true);
-                    }}
+                    onEmail={() => openEmailForEntry(entry)}
                     onPhone={() => {
                       if (entry.leads.phone) {
                         window.open(`tel:${entry.leads.phone}`, '_blank');
@@ -497,44 +479,13 @@ Commercial Lending X`);
           </Card>
         </div>
 
-        {/* Email Dialog */}
-        <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Compose Email to {selectedEntry?.leads.name}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label>To</Label>
-                <Input value={selectedEntry?.leads.email || ''} readOnly className="bg-muted" />
-              </div>
-              <div className="space-y-2">
-                <Label>Subject</Label>
-                <Input 
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Message</Label>
-                <Textarea 
-                  value={emailBody}
-                  onChange={(e) => setEmailBody(e.target.value)}
-                  rows={10}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setEmailDialogOpen(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button onClick={handleSendEmail} className="flex-1 gap-2">
-                  <Mail className="w-4 h-4" />
-                  Open in Email Client
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Floating Inbox */}
+        <FloatingInbox 
+          isOpen={inboxOpen} 
+          onClose={() => setInboxOpen(false)}
+          prefilledEmail={prefilledEmail}
+          onPrefilledEmailHandled={() => setPrefilledEmail(null)}
+        />
       </div>
     </AdminLayout>
   );
