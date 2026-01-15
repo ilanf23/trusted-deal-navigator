@@ -154,6 +154,36 @@
 }
 
 @layer components {
+  /* Admin Portal - Larger Text */
+  .admin-portal {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .admin-portal p,
+  .admin-portal span:not(.sr-only),
+  .admin-portal label,
+  .admin-portal td,
+  .admin-portal th {
+    font-size: 1rem;
+  }
+
+  .admin-portal h1 {
+    font-size: 2.25rem;
+  }
+
+  .admin-portal h2 {
+    font-size: 1.875rem;
+  }
+
+  .admin-portal h3 {
+    font-size: 1.5rem;
+  }
+
+  .admin-portal h4 {
+    font-size: 1.25rem;
+  }
+
   /* Card Hover Effect */
   .card-hover {
     @apply transition-all duration-300 ease-out;
