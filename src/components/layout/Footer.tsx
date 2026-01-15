@@ -26,7 +26,7 @@ const Footer = () => {
           {/* Brand Column */}
           <div>
             <Link to="/" className="inline-block mb-3">
-              <img src={logo} alt="Commercial Lending X" className="h-20 brightness-0 invert" />
+              <img src={logo} alt="Commercial Lending X" className="h-60 brightness-0 invert" />
             </Link>
             <p className="text-primary-foreground/90 text-sm leading-relaxed">
               Commercial financing expertise for real world deals.
@@ -35,7 +35,7 @@ const Footer = () => {
 
           {/* Solutions */}
           <div>
-            <h4 className="font-semibold text-sm uppercase tracking-wide mb-3">Solutions</h4>
+            <h4 className="font-semibold text-sm uppercase tracking-wide mb-3 text-white">Solutions</h4>
             <ul className="space-y-2">
               {footerLinks.solutions.map((link) => (
                 <li key={link.href}>
@@ -52,7 +52,7 @@ const Footer = () => {
 
           {/* Company */}
           <div>
-            <h4 className="font-semibold text-sm uppercase tracking-wide mb-3">Company</h4>
+            <h4 className="font-semibold text-sm uppercase tracking-wide mb-3 text-white">Company</h4>
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.href}>
@@ -69,7 +69,7 @@ const Footer = () => {
 
           {/* Contact */}
           <div>
-            <h4 className="font-semibold text-sm uppercase tracking-wide mb-3">Contact</h4>
+            <h4 className="font-semibold text-sm uppercase tracking-wide mb-3 text-white">Contact</h4>
             <ul className="space-y-2">
               <li>
                 <a
