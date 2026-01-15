@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.send-newsletter]
 verify_jwt = false
+
+[functions.newsletter-webhook]
+verify_jwt = false
+
+[functions.newsletter-track]
+verify_jwt = false
