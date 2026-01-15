@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.seed-test-data]
 verify_jwt = false
+
+[functions.send-newsletter]
+verify_jwt = false
