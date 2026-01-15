@@ -15,13 +15,14 @@ import type { Database } from '@/integrations/supabase/types';
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
+// Subtle gradient progression from primary to a slightly shifted hue
 const columns: { status: LeadStatus; title: string; color: string }[] = [
-  { status: 'discovery', title: 'Discovery', color: 'bg-blue-600' },
-  { status: 'pre_qualification', title: 'Pre-Qualification', color: 'bg-cyan-600' },
-  { status: 'document_collection', title: 'Document Collection', color: 'bg-yellow-600' },
-  { status: 'underwriting', title: 'Underwriting', color: 'bg-orange-600' },
-  { status: 'approval', title: 'Approval', color: 'bg-green-600' },
-  { status: 'funded', title: 'Funded', color: 'bg-purple-600' },
+  { status: 'discovery', title: 'Discovery', color: 'bg-[hsl(220,70%,45%)]' },
+  { status: 'pre_qualification', title: 'Pre-Qualification', color: 'bg-[hsl(215,65%,42%)]' },
+  { status: 'document_collection', title: 'Document Collection', color: 'bg-[hsl(210,60%,40%)]' },
+  { status: 'underwriting', title: 'Underwriting', color: 'bg-[hsl(205,55%,38%)]' },
+  { status: 'approval', title: 'Approval', color: 'bg-[hsl(200,50%,36%)]' },
+  { status: 'funded', title: 'Funded', color: 'bg-[hsl(195,55%,34%)]' },
 ];
 
 const CRMBoard = () => {
@@ -250,7 +251,7 @@ const CRMBoard = () => {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 overflow-x-auto pb-4 flex-1">
+          <div className="flex gap-3 overflow-x-auto pb-4 flex-1">
             {columns.map(column => (
               <KanbanColumn
                 key={column.status}
