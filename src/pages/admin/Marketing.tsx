@@ -17,11 +17,12 @@ type LeadStatus = Database['public']['Enums']['lead_status'];
 const COLORS = ['hsl(217, 71%, 22%)', 'hsl(32, 95%, 44%)', 'hsl(187, 71%, 35%)', 'hsl(215, 16%, 47%)', 'hsl(142, 71%, 35%)', 'hsl(0, 84%, 60%)'];
 
 const statusColors: Record<LeadStatus, string> = {
-  new: 'bg-blue-100 text-blue-800',
-  contacted: 'bg-yellow-100 text-yellow-800',
-  qualified: 'bg-green-100 text-green-800',
-  unqualified: 'bg-red-100 text-red-800',
-  converted: 'bg-purple-100 text-purple-800',
+  discovery: 'bg-blue-100 text-blue-800',
+  pre_qualification: 'bg-cyan-100 text-cyan-800',
+  document_collection: 'bg-yellow-100 text-yellow-800',
+  underwriting: 'bg-orange-100 text-orange-800',
+  approval: 'bg-green-100 text-green-800',
+  funded: 'bg-purple-100 text-purple-800',
 };
 
 const AdminMarketing = () => {
@@ -64,7 +65,7 @@ const AdminMarketing = () => {
             const source = lead.source || 'Unknown';
             const current = sourceMap.get(source) || { total: 0, converted: 0 };
             current.total += 1;
-            if (lead.status === 'converted') current.converted += 1;
+            if (lead.status === 'funded') current.converted += 1;
             sourceMap.set(source, current);
           });
           setLeadsBySource(
@@ -94,15 +95,15 @@ const AdminMarketing = () => {
             if (monthlyMap.has(key)) {
               const current = monthlyMap.get(key)!;
               current.leads += 1;
-              if (lead.status === 'qualified' || lead.status === 'converted') current.qualified += 1;
-              if (lead.status === 'converted') current.converted += 1;
+              if (lead.status === 'approval' || lead.status === 'funded') current.qualified += 1;
+              if (lead.status === 'funded') current.converted += 1;
             }
           });
           setMonthlyLeads(Array.from(monthlyMap.entries()).map(([month, data]) => ({ month, ...data })));
 
           // Stats
-          const qualified = leadsData.filter(l => l.status === 'qualified' || l.status === 'converted').length;
-          const converted = leadsData.filter(l => l.status === 'converted').length;
+          const qualified = leadsData.filter(l => l.status === 'approval' || l.status === 'funded').length;
+          const converted = leadsData.filter(l => l.status === 'funded').length;
           const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
           const newThisWeek = leadsData.filter(l => new Date(l.created_at) > oneWeekAgo).length;
           

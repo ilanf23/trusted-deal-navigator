@@ -90,10 +90,10 @@ const CRMBoard = () => {
     try {
       const updateData: Partial<Lead> = { status: newStatus };
       
-      if (newStatus === 'qualified' && !lead.qualified_at) {
+      if (newStatus === 'approval' && !lead.qualified_at) {
         updateData.qualified_at = new Date().toISOString();
       }
-      if (newStatus === 'converted' && !lead.converted_at) {
+      if (newStatus === 'funded' && !lead.converted_at) {
         updateData.converted_at = new Date().toISOString();
       }
 
