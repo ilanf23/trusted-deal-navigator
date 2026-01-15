@@ -35,11 +35,11 @@ const Header = () => {
     href: "/resources"
   }];
   return <header className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
-      <div className="section-container">
+      <div className="w-full px-4">
         <div className="flex items-center justify-between h-20 md:h-28">
-          {/* Logo - Vertically centered */}
-          <Link to="/" className="flex items-center h-full">
-            <img src={logo} alt="Commercial Lending X" className="h-32 md:h-48 my-auto" />
+          {/* Logo - Left aligned and positioned higher */}
+          <Link to="/" className="flex items-start -mt-2">
+            <img src={logo} alt="Commercial Lending X" className="h-32 md:h-48" />
           </Link>
 
           {/* Desktop Navigation */}
