@@ -2,3 +2,12 @@ project_id = "pcwiwtajzqnayfwvqsbh"
 
 [functions.send-prequalification-email]
 verify_jwt = false
+
+[functions.generate-lead-email]
+verify_jwt = false
+
+[functions.gmail-api]
+verify_jwt = false
+
+[functions.seed-test-data]
+verify_jwt = false
