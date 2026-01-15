@@ -8,7 +8,8 @@ import {
   MessageSquare,
   UserPlus,
   LogOut,
-  Kanban
+  Kanban,
+  Inbox
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -33,6 +34,7 @@ const menuItems = [
   { title: 'Clients', url: '/admin/clients', icon: Users },
   { title: 'Contracts', url: '/admin/contracts', icon: FileText },
   { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
+  { title: 'Inbox', url: '/admin/inbox', icon: Inbox },
   { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
   { title: 'Marketing', url: '/admin/marketing', icon: BarChart3 },
 ];
