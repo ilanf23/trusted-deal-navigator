@@ -733,12 +733,12 @@ const Questionnaire = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-background to-primary/5">
       {/* Header */}
       <div className="bg-card border-b-2 border-primary/20 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4">
+        <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-6">
-              {/* Logo - Vertically centered in header */}
-              <img src={logo} alt="Commercial Lending X" className="h-[100px] w-auto" />
-              <div>
+            {/* Logo - Left aligned, doubled size */}
+            <img src={logo} alt="Commercial Lending X" className="h-[200px] w-auto" />
+            <div className="flex items-center gap-6 flex-1 justify-center">
+              <div className="text-center">
                 <h1 className="text-2xl font-bold text-foreground">Loan Application</h1>
                 <p className="text-sm text-muted-foreground">Welcome{lead?.name ? `, ${lead.name}` : ''}!</p>
               </div>
