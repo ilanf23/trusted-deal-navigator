@@ -193,7 +193,7 @@ serve(async (req: Request): Promise<Response> => {
         // Wrap all links for click tracking
         htmlContent = wrapLinksForTracking(htmlContent, campaignId, recipient.id);
 
-        // Send email via Resend API
+        // Send email via Resend API with improved deliverability headers
         const emailResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -202,9 +202,15 @@ serve(async (req: Request): Promise<Response> => {
           },
           body: JSON.stringify({
             from: `${fromName} <newsletter@maverich.ai>`,
+            reply_to: "ilan@maverich.ai",
             to: [recipient.email],
             subject: subject,
             html: htmlContent,
+            headers: {
+              "List-Unsubscribe": "<mailto:unsubscribe@maverich.ai>",
+              "X-Priority": "3",
+              "X-Mailer": "Maverich Newsletter System",
+            },
           }),
         });
 
