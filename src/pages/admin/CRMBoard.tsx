@@ -16,11 +16,12 @@ type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 const columns: { status: LeadStatus; title: string; color: string }[] = [
-  { status: 'new', title: 'New Leads', color: 'bg-blue-600' },
-  { status: 'contacted', title: 'Contacted', color: 'bg-yellow-600' },
-  { status: 'qualified', title: 'Qualified', color: 'bg-green-600' },
-  { status: 'unqualified', title: 'Unqualified', color: 'bg-red-500' },
-  { status: 'converted', title: 'Converted', color: 'bg-purple-600' },
+  { status: 'discovery', title: 'Discovery', color: 'bg-blue-600' },
+  { status: 'pre_qualification', title: 'Pre-Qualification', color: 'bg-cyan-600' },
+  { status: 'document_collection', title: 'Document Collection', color: 'bg-yellow-600' },
+  { status: 'underwriting', title: 'Underwriting', color: 'bg-orange-600' },
+  { status: 'approval', title: 'Approval', color: 'bg-green-600' },
+  { status: 'funded', title: 'Funded', color: 'bg-purple-600' },
 ];
 
 const CRMBoard = () => {

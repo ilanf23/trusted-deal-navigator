@@ -396,11 +396,12 @@ export type Database = {
         | "overdue"
         | "cancelled"
       lead_status:
-        | "new"
-        | "contacted"
-        | "qualified"
-        | "unqualified"
-        | "converted"
+        | "discovery"
+        | "pre_qualification"
+        | "document_collection"
+        | "underwriting"
+        | "approval"
+        | "funded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -546,11 +547,12 @@ export const Constants = {
         "cancelled",
       ],
       lead_status: [
-        "new",
-        "contacted",
-        "qualified",
-        "unqualified",
-        "converted",
+        "discovery",
+        "pre_qualification",
+        "document_collection",
+        "underwriting",
+        "approval",
+        "funded",
       ],
     },
   },
