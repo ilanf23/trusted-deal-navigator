@@ -1,4 +1,4 @@
-import { useSortable } from '@dnd-kit/sortable';
+import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,13 +26,11 @@ export const LeadCard = ({ lead }: LeadCardProps) => {
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
-  } = useSortable({ id: lead.id });
+  } = useDraggable({ id: lead.id });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
   };
 
@@ -43,7 +41,7 @@ export const LeadCard = ({ lead }: LeadCardProps) => {
       {...attributes}
       {...listeners}
       className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
-        isDragging ? 'shadow-lg ring-2 ring-primary' : ''
+        isDragging ? 'shadow-lg ring-2 ring-primary z-50' : ''
       }`}
     >
       <CardContent className="p-3 space-y-2">
