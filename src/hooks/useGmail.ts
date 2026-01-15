@@ -83,27 +83,9 @@ export function useGmail() {
       const redirectUri = `${window.location.origin}/admin/inbox/callback`;
       const data = await callGmailApi('get-oauth-url', undefined, { redirect_uri: redirectUri });
       
-      // Open OAuth popup
-      const width = 500;
-      const height = 600;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-      
-      const popup = window.open(
-        data.url,
-        'gmail-oauth',
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
-
-      // Listen for callback
-      return new Promise<boolean>((resolve) => {
-        const checkClosed = setInterval(() => {
-          if (popup?.closed) {
-            clearInterval(checkClosed);
-            checkStatus().then(resolve);
-          }
-        }, 500);
-      });
+      // Full page redirect instead of popup
+      window.location.href = data.url;
+      return true;
     } catch (error: any) {
       console.error('Error connecting Gmail:', error);
       toast({
@@ -113,7 +95,7 @@ export function useGmail() {
       });
       return false;
     }
-  }, [callGmailApi, checkStatus, toast]);
+  }, [callGmailApi, toast]);
 
   const disconnect = useCallback(async () => {
     try {
