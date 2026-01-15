@@ -26,6 +26,12 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.png';
+import { cn } from '@/lib/utils';
+
+interface AdminSidebarProps {
+  onInboxToggle: () => void;
+  inboxOpen: boolean;
+}
 
 const menuItems = [
   { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
@@ -34,12 +40,11 @@ const menuItems = [
   { title: 'Clients', url: '/admin/clients', icon: Users },
   { title: 'Contracts', url: '/admin/contracts', icon: FileText },
   { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
-  { title: 'Inbox', url: '/admin/inbox', icon: Inbox },
   { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
   { title: 'Marketing', url: '/admin/marketing', icon: BarChart3 },
 ];
 
-const AdminSidebar = () => {
+const AdminSidebar = ({ onInboxToggle, inboxOpen }: AdminSidebarProps) => {
   const location = useLocation();
   const { signOut, user } = useAuth();
 
@@ -78,6 +83,19 @@ const AdminSidebar = () => {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {/* Inbox toggle button */}
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  onClick={onInboxToggle}
+                  isActive={inboxOpen}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <Inbox className="w-5 h-5" />
+                    <span>Inbox</span>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
