@@ -46,7 +46,7 @@ const Header = () => {
           <nav className="hidden lg:flex items-center gap-2">
             {navItems.map(item => item.submenu ? <DropdownMenu key={item.label}>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-1 px-5 py-3 text-base font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">
+                    <button className="flex items-center gap-1 px-5 py-3 text-lg font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">
                       {item.label}
                       <ChevronDown className="w-5 h-5" />
                     </button>
@@ -58,7 +58,7 @@ const Header = () => {
                         </Link>
                       </DropdownMenuItem>)}
                   </DropdownMenuContent>
-                </DropdownMenu> : <Link key={item.href} to={item.href} className={`px-5 py-3 text-base font-medium transition-colors whitespace-nowrap ${isActive(item.href) ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                </DropdownMenu> : <Link key={item.href} to={item.href} className={`px-5 py-3 text-lg font-medium transition-colors whitespace-nowrap ${isActive(item.href) ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
                   {item.label}
                 </Link>)}
           </nav>
