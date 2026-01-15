@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 const InboxCallback = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing...');
 
@@ -16,14 +17,14 @@ const InboxCallback = () => {
       if (error) {
         setStatus('error');
         setMessage('Authorization was cancelled or denied.');
-        setTimeout(() => window.close(), 2000);
+        setTimeout(() => navigate('/admin'), 2000);
         return;
       }
 
       if (!code) {
         setStatus('error');
         setMessage('No authorization code received.');
-        setTimeout(() => window.close(), 2000);
+        setTimeout(() => navigate('/admin'), 2000);
         return;
       }
 
@@ -32,7 +33,7 @@ const InboxCallback = () => {
         if (!session) {
           setStatus('error');
           setMessage('Not authenticated. Please log in again.');
-          setTimeout(() => window.close(), 2000);
+          setTimeout(() => navigate('/auth'), 2000);
           return;
         }
 
@@ -53,21 +54,21 @@ const InboxCallback = () => {
         if (response.ok && data.success) {
           setStatus('success');
           setMessage(`Connected successfully! (${data.email})`);
-          setTimeout(() => window.close(), 1500);
+          setTimeout(() => navigate('/admin'), 1500);
         } else {
           setStatus('error');
           setMessage(data.error || 'Failed to connect Gmail.');
-          setTimeout(() => window.close(), 3000);
+          setTimeout(() => navigate('/admin'), 3000);
         }
       } catch (err: any) {
         setStatus('error');
         setMessage(err.message || 'An error occurred.');
-        setTimeout(() => window.close(), 3000);
+        setTimeout(() => navigate('/admin'), 3000);
       }
     };
 
     handleCallback();
-  }, [searchParams]);
+  }, [searchParams, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -83,7 +84,7 @@ const InboxCallback = () => {
         )}
         <p className="text-lg font-medium">{message}</p>
         <p className="text-sm text-muted-foreground">
-          This window will close automatically.
+          Redirecting you back...
         </p>
       </div>
     </div>
