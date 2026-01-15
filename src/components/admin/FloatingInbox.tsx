@@ -582,151 +582,152 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
               {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
               Send
             </Button>
-          </DialogFooter>
-          
-          {/* AI Assistant Side Panel - Attached to Dialog */}
-          {showAIPanel && currentLeadId && (
-            <div className="absolute left-0 top-0 -translate-x-full w-[420px] h-full bg-card border border-r-0 rounded-l-lg shadow-lg flex flex-col">
-              {/* AI Header */}
-              <div className="flex items-center justify-between p-3 border-b bg-muted/50 shrink-0">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-sm">AI Email Assistant</span>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => setShowAIPanel(false)} className="h-7 w-7">
-                  <X className="w-3 h-3" />
-                </Button>
-              </div>
+        </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-              {/* Quick Prompts */}
-              {aiMessages.length === 0 && (
-                <div className="p-3 border-b shrink-0">
-                  <p className="text-xs text-muted-foreground mb-2">Quick prompts:</p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {[
-                      { label: 'Rate Alert', prompt: 'Write a compelling rate alert email. Their target rate has been reached and it\'s time to refinance.', Icon: Sparkles },
-                      { label: 'Check-In', prompt: 'Write a friendly check-in email. Ask how they\'re doing and if their financing needs have changed.', Icon: RefreshCw },
-                      { label: 'Follow Up', prompt: 'Write a professional follow-up email. Reference their loan inquiry and offer to answer questions.', Icon: Mail },
-                      { label: 'Introduction', prompt: 'Write a warm introduction email. Thank them for their interest and explain how we can help.', Icon: Loader2 },
-                    ].map((item) => (
-                      <Button
-                        key={item.label}
-                        variant="outline"
-                        size="sm"
-                        className="justify-start h-7 text-xs"
-                        onClick={() => handleAISend(item.prompt)}
-                        disabled={aiLoading}
-                      >
-                        <item.Icon className="w-3 h-3 mr-1.5 shrink-0" />
-                        {item.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
+      {/* AI Assistant Panel - Fixed next to Gmail inbox */}
+      {showAIPanel && currentLeadId && (
+        <div 
+          style={{ right: panelWidth }}
+          className="fixed top-0 h-screen w-[400px] bg-card border-l shadow-2xl z-50 flex flex-col animate-in slide-in-from-right-10 duration-200"
+        >
+          {/* AI Header */}
+          <div className="flex items-center justify-between p-3 border-b bg-muted/50 shrink-0">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">AI Email Assistant</span>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setShowAIPanel(false)} className="h-7 w-7">
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
 
-              {/* Messages */}
-              <ScrollArea className="flex-1 p-3">
-                {aiMessages.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-6">
-                    <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-xs">Select a prompt or type your request.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {aiMessages.map((message, index) => (
-                      <div
-                        key={index}
-                        className={cn(
-                          'flex gap-2',
-                          message.role === 'user' ? 'justify-end' : 'justify-start'
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            'max-w-[90%] rounded-lg px-3 py-2',
-                            message.role === 'user'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
-                          )}
-                        >
-                          <p className="whitespace-pre-wrap text-xs">{message.content}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {aiLoading && (
-                      <div className="flex gap-2 justify-start">
-                        <div className="bg-muted rounded-lg px-3 py-2">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </ScrollArea>
-
-              {/* Use Email Button */}
-              {aiMessages.some(m => m.role === 'assistant') && (
-                <div className="p-2 border-t bg-muted/30 shrink-0">
-                  <Button 
-                    size="sm" 
-                    onClick={() => {
-                      const lastAssistant = [...aiMessages].reverse().find(m => m.role === 'assistant');
-                      if (lastAssistant) {
-                        // Try to extract subject and body from the response
-                        const lines = lastAssistant.content.split('\n').filter(l => l.trim());
-                        let subject = `Email for Lead`;
-                        let body = lastAssistant.content;
-                        
-                        // Check if first line looks like a subject
-                        if (lines[0]?.toLowerCase().startsWith('subject:')) {
-                          subject = lines[0].replace(/^subject:\s*/i, '').trim();
-                          body = lines.slice(1).join('\n').trim();
-                        }
-                        
-                        setComposeSubject(subject);
-                        setComposeBody(body);
-                        toast({ title: 'Email content applied' });
-                      }
-                    }}
-                    className="w-full gap-1 h-8"
-                  >
-                    <Mail className="w-3 h-3" />
-                    Use in Email
-                  </Button>
-                </div>
-              )}
-
-              {/* Input Area */}
-              <div className="p-2 border-t shrink-0">
-                <div className="flex gap-1.5">
-                  <Input
-                    value={aiInput}
-                    onChange={(e) => setAiInput(e.target.value)}
-                    placeholder="Ask AI to write an email..."
-                    className="h-8 text-xs"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleAISend(aiInput);
-                      }
-                    }}
+          {/* Quick Prompts */}
+          {aiMessages.length === 0 && (
+            <div className="p-3 border-b shrink-0">
+              <p className="text-xs text-muted-foreground mb-2">Quick prompts:</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { label: 'Rate Alert', prompt: 'Write a compelling rate alert email. Their target rate has been reached and it\'s time to refinance.', Icon: Sparkles },
+                  { label: 'Check-In', prompt: 'Write a friendly check-in email. Ask how they\'re doing and if their financing needs have changed.', Icon: RefreshCw },
+                  { label: 'Follow Up', prompt: 'Write a professional follow-up email. Reference their loan inquiry and offer to answer questions.', Icon: Mail },
+                  { label: 'Introduction', prompt: 'Write a warm introduction email. Thank them for their interest and explain how we can help.', Icon: Loader2 },
+                ].map((item) => (
+                  <Button
+                    key={item.label}
+                    variant="outline"
+                    size="sm"
+                    className="justify-start h-7 text-xs"
+                    onClick={() => handleAISend(item.prompt)}
                     disabled={aiLoading}
-                  />
-                  <Button 
-                    size="icon" 
-                    className="h-8 w-8 shrink-0" 
-                    onClick={() => handleAISend(aiInput)}
-                    disabled={aiLoading || !aiInput.trim()}
                   >
-                    {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    <item.Icon className="w-3 h-3 mr-1.5 shrink-0" />
+                    {item.label}
                   </Button>
-                </div>
+                ))}
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+
+          {/* Messages */}
+          <ScrollArea className="flex-1 p-3">
+            {aiMessages.length === 0 ? (
+              <div className="text-center text-muted-foreground py-6">
+                <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-xs">Select a prompt or type your request.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {aiMessages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      'flex gap-2',
+                      message.role === 'user' ? 'justify-end' : 'justify-start'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'max-w-[90%] rounded-lg px-3 py-2',
+                        message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      )}
+                    >
+                      <p className="whitespace-pre-wrap text-xs">{message.content}</p>
+                    </div>
+                  </div>
+                ))}
+                {aiLoading && (
+                  <div className="flex gap-2 justify-start">
+                    <div className="bg-muted rounded-lg px-3 py-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Use Email Button */}
+          {aiMessages.some(m => m.role === 'assistant') && (
+            <div className="p-2 border-t bg-muted/30 shrink-0">
+              <Button 
+                size="sm" 
+                onClick={() => {
+                  const lastAssistant = [...aiMessages].reverse().find(m => m.role === 'assistant');
+                  if (lastAssistant) {
+                    const lines = lastAssistant.content.split('\n').filter(l => l.trim());
+                    let subject = `Email for Lead`;
+                    let body = lastAssistant.content;
+                    
+                    if (lines[0]?.toLowerCase().startsWith('subject:')) {
+                      subject = lines[0].replace(/^subject:\s*/i, '').trim();
+                      body = lines.slice(1).join('\n').trim();
+                    }
+                    
+                    setComposeSubject(subject);
+                    setComposeBody(body);
+                    toast({ title: 'Email content applied' });
+                  }
+                }}
+                className="w-full gap-1 h-8"
+              >
+                <Mail className="w-3 h-3" />
+                Use in Email
+              </Button>
+            </div>
+          )}
+
+          {/* Input Area */}
+          <div className="p-2 border-t shrink-0">
+            <div className="flex gap-1.5">
+              <Input
+                value={aiInput}
+                onChange={(e) => setAiInput(e.target.value)}
+                placeholder="Ask AI to write an email..."
+                className="h-8 text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAISend(aiInput);
+                  }
+                }}
+                disabled={aiLoading}
+              />
+              <Button 
+                size="icon" 
+                className="h-8 w-8 shrink-0" 
+                onClick={() => handleAISend(aiInput)}
+                disabled={aiLoading || !aiInput.trim()}
+              >
+                {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reply Dialog */}
       <Dialog open={replyOpen} onOpenChange={setReplyOpen}>
