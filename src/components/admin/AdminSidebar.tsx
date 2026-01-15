@@ -10,7 +10,8 @@ import {
   LogOut,
   Kanban,
   Inbox,
-  TrendingDown
+  TrendingDown,
+  Newspaper
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -43,6 +44,7 @@ const menuItems = [
   { title: 'Contracts', url: '/admin/contracts', icon: FileText },
   { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
   { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+  { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
   { title: 'Marketing', url: '/admin/marketing', icon: BarChart3 },
 ];
 
