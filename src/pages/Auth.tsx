@@ -34,13 +34,19 @@ const Auth = () => {
 
   // Redirect if already logged in
   useEffect(() => {
+    console.log('Auth redirect check - user:', !!user, 'authLoading:', authLoading, 'isAdmin:', isAdmin);
+    
     if (user && !authLoading) {
       const from = location.state?.from?.pathname;
+      console.log('Redirecting user - from:', from, 'isAdmin:', isAdmin);
+      
       if (from) {
         navigate(from, { replace: true });
       } else if (isAdmin) {
+        console.log('Navigating to /admin');
         navigate('/admin', { replace: true });
       } else {
+        console.log('Navigating to /portal');
         navigate('/portal', { replace: true });
       }
     }
