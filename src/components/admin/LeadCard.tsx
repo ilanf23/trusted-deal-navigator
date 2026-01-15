@@ -49,9 +49,9 @@ export const LeadCard = ({ lead }: LeadCardProps) => {
         isDragging ? 'shadow-lg ring-2 ring-primary z-50' : ''
       }`}
     >
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="p-4 space-y-2.5">
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-medium text-sm leading-tight">{lead.name}</h4>
+          <h4 className="font-semibold text-sm leading-tight">{lead.name}</h4>
           <div className="flex items-center gap-1 shrink-0">
             {/* Questionnaire Status Indicator */}
             {questionnaireSent && (
@@ -82,28 +82,28 @@ export const LeadCard = ({ lead }: LeadCardProps) => {
         </div>
         
         {lead.company_name && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Building2 className="w-3 h-3" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Building2 className="w-4 h-4" />
             <span className="truncate">{lead.company_name}</span>
           </div>
         )}
         
         {lead.email && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Mail className="w-3 h-3" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Mail className="w-4 h-4" />
             <span className="truncate">{lead.email}</span>
           </div>
         )}
         
         {lead.phone && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Phone className="w-3 h-3" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Phone className="w-4 h-4" />
             <span>{lead.phone}</span>
           </div>
         )}
         
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1 border-t">
-          <Calendar className="w-3 h-3" />
+        <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t">
+          <Calendar className="w-4 h-4" />
           <span>{new Date(lead.created_at).toLocaleDateString()}</span>
         </div>
       </CardContent>
