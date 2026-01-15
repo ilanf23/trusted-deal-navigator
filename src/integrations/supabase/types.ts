@@ -575,13 +575,6 @@ export type Database = {
             referencedRelation: "newsletter_campaigns"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "newsletter_campaign_events_subscriber_id_fkey"
-            columns: ["subscriber_id"]
-            isOneToOne: false
-            referencedRelation: "newsletter_subscribers"
-            referencedColumns: ["id"]
-          },
         ]
       }
       newsletter_campaigns: {
