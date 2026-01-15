@@ -75,10 +75,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen }: AdminSidebarProps) => {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <Link to={item.url} className="flex items-center gap-3">
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.title}</span>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} className="py-4 px-4">
+                    <Link to={item.url} className="flex items-center gap-4">
+                      <item.icon className="w-6 h-6" />
+                      <span className="text-base font-medium">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -88,11 +88,11 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen }: AdminSidebarProps) => {
                 <SidebarMenuButton 
                   onClick={onInboxToggle}
                   isActive={inboxOpen}
-                  className="cursor-pointer"
+                  className="cursor-pointer py-4 px-4"
                 >
-                  <div className="flex items-center gap-3">
-                    <Inbox className="w-5 h-5" />
-                    <span>Inbox</span>
+                  <div className="flex items-center gap-4">
+                    <Inbox className="w-6 h-6" />
+                    <span className="text-base font-medium">Inbox</span>
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
