@@ -183,37 +183,196 @@ export type Database = {
       }
       lead_responses: {
         Row: {
+          additional_information: string | null
+          address_line_1: string | null
+          address_line_2: string | null
           annual_revenue: string | null
+          borrower_bankruptcy: string | null
+          borrower_credit_score: string | null
+          borrower_current_employer: string | null
+          borrower_occupation: string | null
+          borrower_year_started: string | null
+          business_description: string | null
           business_type: string | null
+          cash_out: string | null
+          cash_out_amount: number | null
+          city: string | null
+          co_borrower_bankruptcy: string | null
+          co_borrower_credit_score: string | null
+          co_borrower_current_employer: string | null
+          co_borrower_occupation: string | null
+          co_borrower_year_started: string | null
+          co_borrowers: string | null
+          collateral_description: string | null
+          collateral_value: number | null
+          contact_method: string | null
+          country: string | null
           created_at: string
+          current_estimated_value: number | null
+          current_lender: string | null
+          current_loan_balance: number | null
+          current_loan_in_default: string | null
+          current_loan_maturity_date: string | null
+          current_loan_rate: string | null
+          desired_amortization: string | null
+          desired_interest_rate: string | null
+          desired_term: string | null
+          email: string | null
+          first_name: string | null
           funding_amount: string | null
           funding_purpose: string | null
           funding_timeline: string | null
+          guarantors: string | null
+          how_did_you_hear: string | null
           id: string
+          last_name: string | null
           lead_id: string
+          loan_amount: number | null
+          loan_type: string | null
+          loan_type_other: string | null
+          newsletter_signup: boolean | null
+          number_of_units: string | null
+          phone: string | null
+          principal_name: string | null
+          property_owner_occupied: string | null
+          purchase_price: number | null
+          purpose_of_loan: string | null
+          referred_by: string | null
+          self_employed_business_type: string | null
+          square_footage: string | null
+          state: string | null
           submitted_at: string
+          year_acquired: string | null
+          year_business_founded: string | null
+          zip_code: string | null
         }
         Insert: {
+          additional_information?: string | null
+          address_line_1?: string | null
+          address_line_2?: string | null
           annual_revenue?: string | null
+          borrower_bankruptcy?: string | null
+          borrower_credit_score?: string | null
+          borrower_current_employer?: string | null
+          borrower_occupation?: string | null
+          borrower_year_started?: string | null
+          business_description?: string | null
           business_type?: string | null
+          cash_out?: string | null
+          cash_out_amount?: number | null
+          city?: string | null
+          co_borrower_bankruptcy?: string | null
+          co_borrower_credit_score?: string | null
+          co_borrower_current_employer?: string | null
+          co_borrower_occupation?: string | null
+          co_borrower_year_started?: string | null
+          co_borrowers?: string | null
+          collateral_description?: string | null
+          collateral_value?: number | null
+          contact_method?: string | null
+          country?: string | null
           created_at?: string
+          current_estimated_value?: number | null
+          current_lender?: string | null
+          current_loan_balance?: number | null
+          current_loan_in_default?: string | null
+          current_loan_maturity_date?: string | null
+          current_loan_rate?: string | null
+          desired_amortization?: string | null
+          desired_interest_rate?: string | null
+          desired_term?: string | null
+          email?: string | null
+          first_name?: string | null
           funding_amount?: string | null
           funding_purpose?: string | null
           funding_timeline?: string | null
+          guarantors?: string | null
+          how_did_you_hear?: string | null
           id?: string
+          last_name?: string | null
           lead_id: string
+          loan_amount?: number | null
+          loan_type?: string | null
+          loan_type_other?: string | null
+          newsletter_signup?: boolean | null
+          number_of_units?: string | null
+          phone?: string | null
+          principal_name?: string | null
+          property_owner_occupied?: string | null
+          purchase_price?: number | null
+          purpose_of_loan?: string | null
+          referred_by?: string | null
+          self_employed_business_type?: string | null
+          square_footage?: string | null
+          state?: string | null
           submitted_at?: string
+          year_acquired?: string | null
+          year_business_founded?: string | null
+          zip_code?: string | null
         }
         Update: {
+          additional_information?: string | null
+          address_line_1?: string | null
+          address_line_2?: string | null
           annual_revenue?: string | null
+          borrower_bankruptcy?: string | null
+          borrower_credit_score?: string | null
+          borrower_current_employer?: string | null
+          borrower_occupation?: string | null
+          borrower_year_started?: string | null
+          business_description?: string | null
           business_type?: string | null
+          cash_out?: string | null
+          cash_out_amount?: number | null
+          city?: string | null
+          co_borrower_bankruptcy?: string | null
+          co_borrower_credit_score?: string | null
+          co_borrower_current_employer?: string | null
+          co_borrower_occupation?: string | null
+          co_borrower_year_started?: string | null
+          co_borrowers?: string | null
+          collateral_description?: string | null
+          collateral_value?: number | null
+          contact_method?: string | null
+          country?: string | null
           created_at?: string
+          current_estimated_value?: number | null
+          current_lender?: string | null
+          current_loan_balance?: number | null
+          current_loan_in_default?: string | null
+          current_loan_maturity_date?: string | null
+          current_loan_rate?: string | null
+          desired_amortization?: string | null
+          desired_interest_rate?: string | null
+          desired_term?: string | null
+          email?: string | null
+          first_name?: string | null
           funding_amount?: string | null
           funding_purpose?: string | null
           funding_timeline?: string | null
+          guarantors?: string | null
+          how_did_you_hear?: string | null
           id?: string
+          last_name?: string | null
           lead_id?: string
+          loan_amount?: number | null
+          loan_type?: string | null
+          loan_type_other?: string | null
+          newsletter_signup?: boolean | null
+          number_of_units?: string | null
+          phone?: string | null
+          principal_name?: string | null
+          property_owner_occupied?: string | null
+          purchase_price?: number | null
+          purpose_of_loan?: string | null
+          referred_by?: string | null
+          self_employed_business_type?: string | null
+          square_footage?: string | null
+          state?: string | null
           submitted_at?: string
+          year_acquired?: string | null
+          year_business_founded?: string | null
+          zip_code?: string | null
         }
         Relationships: [
           {
