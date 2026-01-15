@@ -9,6 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import {
   Mail,
   Search,
@@ -26,6 +28,7 @@ import {
   Maximize2,
   ArrowLeft,
   GripVertical,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -34,6 +37,7 @@ interface PrefilledEmail {
   to: string;
   subject: string;
   body: string;
+  leadId?: string;
 }
 
 interface FloatingInboxProps {
@@ -41,9 +45,11 @@ interface FloatingInboxProps {
   onClose: () => void;
   prefilledEmail?: PrefilledEmail | null;
   onPrefilledEmailHandled?: () => void;
+  leadId?: string; // For AI email generation without prefilled content
 }
 
-const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandled }: FloatingInboxProps) => {
+const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandled, leadId }: FloatingInboxProps) => {
+  const { toast } = useToast();
   const {
     status,
     messages,
@@ -70,6 +76,8 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
   const [isMinimized, setIsMinimized] = useState(false);
   const [panelWidth, setPanelWidth] = useState(420);
   const [isResizing, setIsResizing] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [currentLeadId, setCurrentLeadId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,10 +92,62 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
       setComposeTo(prefilledEmail.to);
       setComposeSubject(prefilledEmail.subject);
       setComposeBody(prefilledEmail.body);
+      if (prefilledEmail.leadId) {
+        setCurrentLeadId(prefilledEmail.leadId);
+      }
       setComposeOpen(true);
       onPrefilledEmailHandled?.();
     }
   }, [prefilledEmail, isOpen]);
+
+  // Set leadId from prop when opening
+  useEffect(() => {
+    if (leadId && isOpen) {
+      setCurrentLeadId(leadId);
+    }
+  }, [leadId, isOpen]);
+
+  const generateAIEmail = async (emailType: string = 'general') => {
+    if (!currentLeadId) {
+      toast({
+        title: "No lead selected",
+        description: "AI email generation requires a lead to be selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingAI(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-lead-email', {
+        body: { leadId: currentLeadId, emailType },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setComposeTo(data.to || composeTo);
+      setComposeSubject(data.subject);
+      setComposeBody(data.body);
+
+      toast({
+        title: "Email generated",
+        description: `AI-powered email created for ${data.leadName}`,
+      });
+    } catch (error: any) {
+      console.error('AI generation error:', error);
+      toast({
+        title: "Generation failed",
+        description: error.message || "Failed to generate email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -422,9 +482,27 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
       <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Send className="w-5 h-5" />
-              New Email
+            <DialogTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Send className="w-5 h-5" />
+                New Email
+              </span>
+              {currentLeadId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateAIEmail('general')}
+                  disabled={generatingAI}
+                  className="gap-2"
+                >
+                  {generatingAI ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  {generatingAI ? 'Generating...' : 'AI Generate'}
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">

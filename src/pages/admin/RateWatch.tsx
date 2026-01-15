@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import FloatingInbox, { PrefilledEmail } from '@/components/admin/FloatingInbox';
+import { Sparkles } from 'lucide-react';
 import { 
   TrendingDown, 
   TrendingUp, 
@@ -207,11 +208,24 @@ const RateWatch = () => {
     }
   };
 
-  const openEmailForEntry = (entry: RateWatchEntry) => {
-    const emailData: PrefilledEmail = {
-      to: entry.leads.email || '',
-      subject: `Rate Alert: Your ${entry.loan_type || 'Loan'} Refinancing Opportunity`,
-      body: `Dear ${entry.leads.name},
+  const openEmailForEntry = (entry: RateWatchEntry, useAI: boolean = false) => {
+    if (useAI) {
+      // Open inbox with lead context for AI generation
+      const emailData: PrefilledEmail = {
+        to: entry.leads.email || '',
+        subject: '',
+        body: '',
+        leadId: entry.lead_id,
+      };
+      setPrefilledEmail(emailData);
+      setInboxOpen(true);
+      updateLastContacted.mutate(entry.id);
+    } else {
+      // Open with pre-written template
+      const emailData: PrefilledEmail = {
+        to: entry.leads.email || '',
+        subject: `Rate Alert: Your ${entry.loan_type || 'Loan'} Refinancing Opportunity`,
+        body: `Dear ${entry.leads.name},
 
 Great news! Interest rates have dropped to a level that makes refinancing your loan attractive.
 
@@ -226,11 +240,13 @@ This presents an excellent opportunity to reduce your monthly payments or shorte
 Would you like to schedule a call to discuss your refinancing options?
 
 Best regards,
-Commercial Lending X`
-    };
-    setPrefilledEmail(emailData);
-    setInboxOpen(true);
-    updateLastContacted.mutate(entry.id);
+Commercial Lending X`,
+        leadId: entry.lead_id,
+      };
+      setPrefilledEmail(emailData);
+      setInboxOpen(true);
+      updateLastContacted.mutate(entry.id);
+    }
   };
 
   const getRateStatus = (entry: RateWatchEntry) => {
@@ -432,7 +448,8 @@ Commercial Lending X`
                     entry={entry} 
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
-                    onEmail={() => openEmailForEntry(entry)}
+                    onEmail={() => openEmailForEntry(entry, false)}
+                    onAIEmail={() => openEmailForEntry(entry, true)}
                     onPhone={() => {
                       if (entry.leads.phone) {
                         window.open(`tel:${entry.leads.phone}`, '_blank');
@@ -465,7 +482,8 @@ Commercial Lending X`
                     entry={entry} 
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
-                    onEmail={() => openEmailForEntry(entry)}
+                    onEmail={() => openEmailForEntry(entry, false)}
+                    onAIEmail={() => openEmailForEntry(entry, true)}
                     onPhone={() => {
                       if (entry.leads.phone) {
                         window.open(`tel:${entry.leads.phone}`, '_blank');
@@ -497,10 +515,11 @@ interface RateWatchCardProps {
   onDragStart: (entry: RateWatchEntry) => void;
   onDragEnd: () => void;
   onEmail: () => void;
+  onAIEmail: () => void;
   onPhone: () => void;
 }
 
-const RateWatchCard = ({ entry, onDragStart, onDragEnd, onEmail, onPhone }: RateWatchCardProps) => {
+const RateWatchCard = ({ entry, onDragStart, onDragEnd, onEmail, onAIEmail, onPhone }: RateWatchCardProps) => {
   const rateStatus = entry.current_rate <= entry.target_rate;
   const rateDiff = (entry.current_rate - entry.target_rate).toFixed(3);
   
@@ -572,11 +591,14 @@ const RateWatchCard = ({ entry, onDragStart, onDragEnd, onEmail, onPhone }: Rate
         </div>
         
         <div className="flex flex-col gap-1 shrink-0">
-          <Button size="icon" variant="ghost" onClick={onEmail} className="h-8 w-8">
+          <Button size="icon" variant="ghost" onClick={onAIEmail} className="h-8 w-8" title="AI Generate Email">
+            <Sparkles className="w-4 h-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={onEmail} className="h-8 w-8" title="Template Email">
             <Mail className="w-4 h-4" />
           </Button>
           {entry.leads.phone && (
-            <Button size="icon" variant="ghost" onClick={onPhone} className="h-8 w-8">
+            <Button size="icon" variant="ghost" onClick={onPhone} className="h-8 w-8" title="Call">
               <Phone className="w-4 h-4" />
             </Button>
           )}
