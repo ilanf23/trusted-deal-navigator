@@ -149,6 +149,8 @@ const realEstateAcquisitions: Transaction[] = [
   { date: "3/2024", amount: "$408,600", title: "Retail Building Purchase", description: "The Client was seeking to acquire the retail building they occupied with their business. We were able to secure financing with a traditional lender at a strong fixed rate to facilitate the acquisition." },
   { date: "3/2024", amount: "$294,000", title: "Apartment Building Investment Purchase", description: "The Client was seeking to acquire a commercial apartment building to hold as an investment rental property. We were able to secure financing with a strong fixed rate with a 30-year loan term to meet the Client's needs." },
   { date: "3/2024", amount: "$2,250,000", title: "Industrial Buildings Acquisition (SBA 504)", description: "The Client was seeking to acquire the industrial buildings of a recently acquired business. We were able to secure an SBA 504 loan approval to facilitate the acquisition of the buildings." },
+  { date: "1/2024", amount: "$581,250", title: "Industrial Property Investment Purchase", description: "The Client was seeking to purchase a leased commercial / industrial property to hold as an investment property. We were able to secure financing with a traditional lender at a strong fixed rate to facilitate the acquisition." },
+  { date: "1/2024", amount: "$350,000", title: "Land Acquisition", description: "The Client was seeking to acquire vacant land adjacent to the real estate that they already owned and operated their business from. We were able to secure financing with a traditional lender at a reasonable rate to facilitate the acquisition." },
 ];
 
 const linesOfCredit: Transaction[] = [
