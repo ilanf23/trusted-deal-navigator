@@ -30,12 +30,20 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
+interface PrefilledEmail {
+  to: string;
+  subject: string;
+  body: string;
+}
+
 interface FloatingInboxProps {
   isOpen: boolean;
   onClose: () => void;
+  prefilledEmail?: PrefilledEmail | null;
+  onPrefilledEmailHandled?: () => void;
 }
 
-const FloatingInbox = ({ isOpen, onClose }: FloatingInboxProps) => {
+const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandled }: FloatingInboxProps) => {
   const {
     status,
     messages,
@@ -69,6 +77,17 @@ const FloatingInbox = ({ isOpen, onClose }: FloatingInboxProps) => {
       fetchMessages();
     }
   }, [status.connected, isOpen, isMinimized]);
+
+  // Handle prefilled email data
+  useEffect(() => {
+    if (prefilledEmail && isOpen) {
+      setComposeTo(prefilledEmail.to);
+      setComposeSubject(prefilledEmail.subject);
+      setComposeBody(prefilledEmail.body);
+      setComposeOpen(true);
+      onPrefilledEmailHandled?.();
+    }
+  }, [prefilledEmail, isOpen]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -486,3 +505,4 @@ const FloatingInbox = ({ isOpen, onClose }: FloatingInboxProps) => {
 };
 
 export default FloatingInbox;
+export type { PrefilledEmail };
