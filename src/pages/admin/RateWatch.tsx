@@ -216,7 +216,27 @@ const RateWatch = () => {
 
   const handleDropOnEmail = () => {
     if (draggedEntry) {
-      openEmailForEntry(draggedEntry);
+      // Open both AI Assistant and Gmail inbox side by side
+      setSelectedLeadForAI({
+        id: draggedEntry.lead_id,
+        name: draggedEntry.leads.name,
+        email: draggedEntry.leads.email,
+        phone: draggedEntry.leads.phone,
+        company_name: draggedEntry.leads.company_name,
+        loan_type: draggedEntry.loan_type,
+        loan_amount: draggedEntry.loan_amount,
+        current_rate: draggedEntry.current_rate,
+        target_rate: draggedEntry.target_rate,
+      });
+      setPrefilledEmail({
+        to: draggedEntry.leads.email || '',
+        subject: '',
+        body: '',
+        leadId: draggedEntry.lead_id,
+      });
+      setAiAssistantOpen(true);
+      setInboxOpen(true);
+      updateLastContacted.mutate(draggedEntry.id);
       setDraggedEntry(null);
     }
   };

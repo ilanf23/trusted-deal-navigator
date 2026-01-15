@@ -1,17 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Sparkles,
   Send,
@@ -22,8 +15,9 @@ import {
   User,
   Building2,
   DollarSign,
-  Percent,
   RefreshCw,
+  X,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -55,7 +49,7 @@ const PROMPT_SUGGESTIONS = [
   {
     label: 'Rate Alert',
     prompt: 'Write a compelling rate alert email. Their target rate has been reached and it\'s time to refinance.',
-    icon: Percent,
+    icon: Sparkles,
   },
   {
     label: 'Check-In',
@@ -83,7 +77,6 @@ const AIEmailAssistant = ({ isOpen, onClose, lead, onUseEmail }: AIEmailAssistan
   const [generatedBody, setGeneratedBody] = useState('');
   const [copied, setCopied] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isOpen && lead) {
@@ -176,182 +169,165 @@ const AIEmailAssistant = ({ isOpen, onClose, lead, onUseEmail }: AIEmailAssistan
 
   const hasOutput = generatedBody || messages.some(m => m.role === 'assistant');
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="p-6 pb-4 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-xl">
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/20 z-40"
+        onClick={onClose}
+      />
+      
+      {/* Panel - positioned to the left of the inbox (which is 420px from right) */}
+      <div 
+        className="fixed top-0 right-[420px] h-screen w-[500px] bg-card border-l shadow-2xl z-50 flex flex-col animate-in slide-in-from-left-10 duration-200"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b bg-muted/50 shrink-0">
+          <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            AI Email Assistant
-          </DialogTitle>
-          
-          {/* Lead Context Card */}
-          {lead && (
-            <div className="mt-4 p-4 bg-muted rounded-lg">
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-medium">{lead.name}</span>
-                </div>
-                {lead.company_name && (
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-muted-foreground" />
-                    <span>{lead.company_name}</span>
-                  </div>
-                )}
-                {lead.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span>{lead.email}</span>
-                  </div>
-                )}
-                {lead.loan_amount && (
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-muted-foreground" />
-                    <span>${lead.loan_amount.toLocaleString()}</span>
-                  </div>
-                )}
-                {lead.current_rate !== undefined && lead.current_rate !== null && (
-                  <Badge variant={lead.current_rate <= (lead.target_rate || 0) ? 'default' : 'secondary'}>
-                    {lead.current_rate}% → {lead.target_rate}%
-                  </Badge>
-                )}
-                {lead.loan_type && (
-                  <Badge variant="outline">{lead.loan_type}</Badge>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogHeader>
+            <span className="font-semibold">AI Email Assistant</span>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex min-h-0">
-          {/* Chat Area */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Prompt Suggestions */}
-            {messages.length === 0 && (
-              <div className="p-6 border-b">
-                <p className="text-sm text-muted-foreground mb-3">Quick prompts:</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {PROMPT_SUGGESTIONS.map((suggestion) => (
-                    <Button
-                      key={suggestion.label}
-                      variant="outline"
-                      className="justify-start h-auto py-3 px-4"
-                      onClick={() => handleSuggestionClick(suggestion.prompt)}
-                      disabled={loading}
-                    >
-                      <suggestion.icon className="w-4 h-4 mr-2 shrink-0" />
-                      <span className="text-left">{suggestion.label}</span>
-                    </Button>
-                  ))}
-                </div>
+        {/* Lead Context */}
+        {lead && (
+          <div className="p-3 border-b bg-muted/30 shrink-0">
+            <div className="flex flex-wrap gap-2 text-sm">
+              <div className="flex items-center gap-1">
+                <User className="w-3 h-3 text-muted-foreground" />
+                <span className="font-medium">{lead.name}</span>
               </div>
-            )}
-
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-6" ref={scrollRef}>
-              {messages.length === 0 ? (
-                <div className="text-center text-muted-foreground py-12">
-                  <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Start a conversation or use a quick prompt above.</p>
-                  <p className="text-sm mt-1">I have full context about this lead's data.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {messages.map((message, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        'flex gap-3',
-                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'max-w-[80%] rounded-lg px-4 py-3',
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        )}
-                      >
-                        <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {loading && (
-                    <div className="flex gap-3 justify-start">
-                      <div className="bg-muted rounded-lg px-4 py-3">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      </div>
-                    </div>
-                  )}
+              {lead.company_name && (
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Building2 className="w-3 h-3" />
+                  <span>{lead.company_name}</span>
                 </div>
               )}
-            </ScrollArea>
-
-            {/* Input Area */}
-            <form onSubmit={handleSubmit} className="p-4 border-t shrink-0">
-              <div className="flex gap-2">
-                <Textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask AI to write or refine an email..."
-                  className="min-h-[60px] resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit(e);
-                    }
-                  }}
-                  disabled={loading}
-                />
-                <Button type="submit" size="icon" className="h-[60px] w-[60px]" disabled={loading || !input.trim()}>
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                </Button>
-              </div>
-            </form>
+              {lead.loan_amount && (
+                <Badge variant="outline" className="text-xs">
+                  <DollarSign className="w-3 h-3 mr-0.5" />
+                  {lead.loan_amount.toLocaleString()}
+                </Badge>
+              )}
+              {lead.current_rate !== undefined && lead.current_rate !== null && (
+                <Badge variant={lead.current_rate <= (lead.target_rate || 0) ? 'default' : 'secondary'} className="text-xs">
+                  {lead.current_rate}% → {lead.target_rate}%
+                </Badge>
+              )}
+              {lead.loan_type && (
+                <Badge variant="outline" className="text-xs">{lead.loan_type}</Badge>
+              )}
+            </div>
           </div>
+        )}
 
-          {/* Preview Panel */}
-          {hasOutput && (
-            <div className="w-80 border-l flex flex-col shrink-0">
-              <div className="p-4 border-b bg-muted/50">
-                <h3 className="font-medium flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Generated Email
-                </h3>
-              </div>
-              <ScrollArea className="flex-1 p-4">
-                {generatedSubject && (
-                  <div className="mb-4">
-                    <p className="text-xs text-muted-foreground mb-1">Subject:</p>
-                    <p className="font-medium text-sm">{generatedSubject}</p>
+        {/* Quick Prompts */}
+        {messages.length === 0 && (
+          <div className="p-3 border-b shrink-0">
+            <p className="text-xs text-muted-foreground mb-2">Quick prompts:</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {PROMPT_SUGGESTIONS.map((suggestion) => (
+                <Button
+                  key={suggestion.label}
+                  variant="outline"
+                  size="sm"
+                  className="justify-start h-8 text-xs"
+                  onClick={() => handleSuggestionClick(suggestion.prompt)}
+                  disabled={loading}
+                >
+                  <suggestion.icon className="w-3 h-3 mr-1.5 shrink-0" />
+                  {suggestion.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Messages */}
+        <ScrollArea className="flex-1 p-3" ref={scrollRef}>
+          {messages.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              <Sparkles className="w-10 h-10 mx-auto mb-3 opacity-50" />
+              <p className="text-sm">Select a prompt or type your request.</p>
+              <p className="text-xs mt-1">I have full context about this lead.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    'flex gap-2',
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'max-w-[85%] rounded-lg px-3 py-2',
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap text-sm">{message.content}</p>
                   </div>
-                )}
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Body:</p>
-                  <p className="text-sm whitespace-pre-wrap">
-                    {generatedBody || messages.filter(m => m.role === 'assistant').pop()?.content || ''}
-                  </p>
                 </div>
-              </ScrollArea>
-              <div className="p-4 border-t flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleCopy} className="flex-1">
-                  {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
-                  {copied ? 'Copied' : 'Copy'}
-                </Button>
-                <Button size="sm" onClick={handleUseEmail} className="flex-1">
-                  <Mail className="w-4 h-4 mr-1" />
-                  Use Email
-                </Button>
-              </div>
+              ))}
+              {loading && (
+                <div className="flex gap-2 justify-start">
+                  <div className="bg-muted rounded-lg px-3 py-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </ScrollArea>
+
+        {/* Action Buttons - show when there's output */}
+        {hasOutput && (
+          <div className="p-3 border-t bg-muted/30 shrink-0">
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopy} className="flex-1">
+                {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+              <Button size="sm" onClick={handleUseEmail} className="flex-1 gap-1">
+                Use in Email
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Input Area */}
+        <form onSubmit={handleSubmit} className="p-3 border-t shrink-0">
+          <div className="flex gap-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask AI to write or refine an email..."
+              className="min-h-[50px] max-h-[100px] resize-none text-sm"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              disabled={loading}
+            />
+            <Button type="submit" size="icon" className="h-[50px] w-[50px] shrink-0" disabled={loading || !input.trim()}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 };
 
