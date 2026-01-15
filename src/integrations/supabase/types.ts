@@ -181,6 +181,50 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_responses: {
+        Row: {
+          annual_revenue: string | null
+          business_type: string | null
+          created_at: string
+          funding_amount: string | null
+          funding_purpose: string | null
+          funding_timeline: string | null
+          id: string
+          lead_id: string
+          submitted_at: string
+        }
+        Insert: {
+          annual_revenue?: string | null
+          business_type?: string | null
+          created_at?: string
+          funding_amount?: string | null
+          funding_purpose?: string | null
+          funding_timeline?: string | null
+          id?: string
+          lead_id: string
+          submitted_at?: string
+        }
+        Update: {
+          annual_revenue?: string | null
+          business_type?: string | null
+          created_at?: string
+          funding_amount?: string | null
+          funding_purpose?: string | null
+          funding_timeline?: string | null
+          id?: string
+          lead_id?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_responses_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           assigned_to: string | null
@@ -194,6 +238,9 @@ export type Database = {
           notes: string | null
           phone: string | null
           qualified_at: string | null
+          questionnaire_completed_at: string | null
+          questionnaire_sent_at: string | null
+          questionnaire_token: string | null
           source: string | null
           status: Database["public"]["Enums"]["lead_status"]
           updated_at: string
@@ -210,6 +257,9 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           qualified_at?: string | null
+          questionnaire_completed_at?: string | null
+          questionnaire_sent_at?: string | null
+          questionnaire_token?: string | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
@@ -226,6 +276,9 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           qualified_at?: string | null
+          questionnaire_completed_at?: string | null
+          questionnaire_sent_at?: string | null
+          questionnaire_token?: string | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string

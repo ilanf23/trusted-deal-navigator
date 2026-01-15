@@ -15,6 +15,7 @@ import CommercialRealEstate from "./pages/solutions/CommercialRealEstate";
 import WorkingCapital from "./pages/solutions/WorkingCapital";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import Questionnaire from "./pages/Questionnaire";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminLeads from "./pages/admin/Leads";
 import AdminClients from "./pages/admin/Clients";
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/solutions/commercial-real-estate" element={<CommercialRealEstate />} />
             <Route path="/solutions/working-capital" element={<WorkingCapital />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/questionnaire/:token" element={<Questionnaire />} />
             {/* Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/leads" element={<ProtectedRoute requireAdmin><AdminLeads /></ProtectedRoute>} />
