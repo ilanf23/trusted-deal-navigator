@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.generate-lead-email]
 verify_jwt = false
 
+[functions.ai-email-chat]
+verify_jwt = false
+
 [functions.gmail-api]
 verify_jwt = false
 
