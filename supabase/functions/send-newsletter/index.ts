@@ -169,7 +169,7 @@ serve(async (req: Request): Promise<Response> => {
             "Authorization": `Bearer ${RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: `${fromName} <onboarding@resend.dev>`,
+            from: `${fromName} <newsletter@maverich.ai>`,
             to: [recipient.email],
             subject: subject,
             html: htmlContent,
