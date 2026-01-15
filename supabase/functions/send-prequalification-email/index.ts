@@ -89,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Trusted Deal Navigator <onboarding@resend.dev>",
+        from: "Trusted Deal Navigator <ilan@maverich.ai>",
         to: [lead.email],
         subject: "Next Steps: Complete Your Pre-Qualification",
         html: `
