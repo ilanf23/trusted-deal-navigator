@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Loader2 } from 'lucide-react';
+import { Plus, Search, Loader2, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -33,6 +34,8 @@ const AdminLeads = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { toast } = useToast();
 
   // New lead form
@@ -273,17 +276,31 @@ const AdminLeads = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredLeads.map((lead) => (
-                    <TableRow key={lead.id}>
+                    <TableRow 
+                      key={lead.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedLead(lead);
+                        setIsDetailOpen(true);
+                      }}
+                    >
                       <TableCell className="font-medium">{lead.name}</TableCell>
                       <TableCell>{lead.email || '-'}</TableCell>
                       <TableCell>{lead.company_name || '-'}</TableCell>
                       <TableCell>{lead.source || '-'}</TableCell>
                       <TableCell>
-                        <Badge className={statusColors[lead.status]}>
-                          {lead.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className={statusColors[lead.status]}>
+                            {lead.status}
+                          </Badge>
+                          {lead.questionnaire_completed_at && (
+                            <span title="Questionnaire completed">
+                              <FileText className="w-4 h-4 text-green-600" />
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={lead.status}
                           onValueChange={(value) => handleStatusChange(lead.id, value as LeadStatus)}
@@ -308,6 +325,13 @@ const AdminLeads = () => {
             )}
           </CardContent>
         </Card>
+
+        <LeadDetailDialog
+          lead={selectedLead}
+          open={isDetailOpen}
+          onOpenChange={setIsDetailOpen}
+          onLeadUpdated={fetchLeads}
+        />
       </div>
     </AdminLayout>
   );
