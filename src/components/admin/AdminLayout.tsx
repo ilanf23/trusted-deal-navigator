@@ -8,7 +8,7 @@ interface AdminLayoutProps {
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full admin-portal">
         <AdminSidebar />
         <main className="flex-1 bg-muted/30">
           <header className="h-14 flex items-center border-b border-border bg-card px-4">
