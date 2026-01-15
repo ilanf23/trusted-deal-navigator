@@ -23,6 +23,7 @@ import AdminContracts from "./pages/admin/Contracts";
 import AdminInvoices from "./pages/admin/Invoices";
 import AdminMessages from "./pages/admin/Messages";
 import AdminMarketing from "./pages/admin/Marketing";
+import AdminNewsletter from "./pages/admin/Newsletter";
 import CRMBoard from "./pages/admin/CRMBoard";
 import AdminRateWatch from "./pages/admin/RateWatch";
 import AdminInboxCallback from "./pages/admin/InboxCallback";
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/admin/invoices" element={<ProtectedRoute requireAdmin><AdminInvoices /></ProtectedRoute>} />
             <Route path="/admin/messages" element={<ProtectedRoute requireAdmin><AdminMessages /></ProtectedRoute>} />
             <Route path="/admin/marketing" element={<ProtectedRoute requireAdmin><AdminMarketing /></ProtectedRoute>} />
+            <Route path="/admin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
             <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
             <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
             {/* Client Portal Routes - clientOnly redirects admins to /admin */}
