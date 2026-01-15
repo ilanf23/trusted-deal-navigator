@@ -55,6 +55,7 @@ const Questionnaire = () => {
   const [lead, setLead] = useState<LeadData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SectionKey>('contact');
+  const [visitedSections, setVisitedSections] = useState<Set<SectionKey>>(new Set(['contact']));
   
   const [formData, setFormData] = useState({
     first_name: '',
@@ -699,73 +700,116 @@ const Questionnaire = () => {
   const canGoNext = currentIndex < SECTIONS.length - 1;
   const canGoPrev = currentIndex > 0;
 
+  // Handle section navigation with visited tracking
+  const navigateToSection = (sectionKey: SectionKey) => {
+    setVisitedSections(prev => new Set([...prev, sectionKey]));
+    setActiveSection(sectionKey);
+  };
+
+  const goToNextSection = () => {
+    if (canGoNext) {
+      const nextSection = SECTIONS[currentIndex + 1].key;
+      setVisitedSections(prev => new Set([...prev, nextSection]));
+      setActiveSection(nextSection);
+    }
+  };
+
+  const goToPrevSection = () => {
+    if (canGoPrev) {
+      setActiveSection(SECTIONS[currentIndex - 1].key);
+    }
+  };
+
+  // Check if a section should show as complete (completed + moved past it)
+  const isSectionConfirmedComplete = (sectionKey: SectionKey) => {
+    const sectionIndex = SECTIONS.findIndex(s => s.key === sectionKey);
+    const isComplete = sectionCompletion[sectionKey];
+    const hasMovedPast = currentIndex > sectionIndex || 
+      (visitedSections.has(SECTIONS[sectionIndex + 1]?.key) && sectionIndex < SECTIONS.length - 1);
+    return isComplete && hasMovedPast;
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-background to-primary/5">
       {/* Header */}
-      <div className="bg-card border-b sticky top-0 z-10">
+      <div className="bg-card border-b-2 border-primary/20 sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <img src={logo} alt="Commercial Lending X" className="h-12" />
+            <div className="flex items-center gap-4">
+              <img src={logo} alt="Commercial Lending X" className="h-[75px] w-auto" />
               <div>
-                <h1 className="text-xl font-bold">Loan Application</h1>
+                <h1 className="text-2xl font-bold text-foreground">Loan Application</h1>
                 <p className="text-sm text-muted-foreground">Welcome{lead?.name ? `, ${lead.name}` : ''}!</p>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-primary">{overallProgress}%</div>
-              <div className="text-xs text-muted-foreground">Complete</div>
+            <div className="text-right bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
+              <div className="text-3xl font-bold text-primary">{overallProgress}%</div>
+              <div className="text-xs text-primary/70 font-medium">Complete</div>
             </div>
           </div>
-          <Progress value={overallProgress} className="h-2" />
+          <Progress value={overallProgress} className="h-3 bg-muted" />
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex gap-6">
           {/* Sidebar Navigation */}
-          <nav className="w-64 shrink-0 hidden md:block">
-            <div className="bg-card rounded-lg border p-2 sticky top-32">
-              {SECTIONS.map((section) => {
+          <nav className="w-72 shrink-0 hidden md:block">
+            <div className="bg-card rounded-xl border-2 border-muted p-3 sticky top-36 shadow-lg">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2 mb-1">
+                Sections
+              </div>
+              {SECTIONS.map((section, index) => {
                 const Icon = section.icon;
-                const isComplete = sectionCompletion[section.key];
+                const isConfirmedComplete = isSectionConfirmedComplete(section.key);
                 const isActive = activeSection === section.key;
                 
                 return (
                   <button
                     key={section.key}
-                    onClick={() => setActiveSection(section.key)}
+                    onClick={() => navigateToSection(section.key)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-3 rounded-md text-left transition-all",
+                      "w-full flex items-center gap-3 px-3 py-3.5 rounded-lg text-left transition-all mb-1",
                       isActive 
-                        ? "bg-primary text-primary-foreground" 
-                        : "hover:bg-muted"
+                        ? "bg-primary text-primary-foreground shadow-md" 
+                        : isConfirmedComplete
+                          ? "bg-green-50 hover:bg-green-100 border border-green-200"
+                          : "hover:bg-muted/80 border border-transparent"
                     )}
                   >
                     <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                      isComplete && !isActive ? "bg-green-500/20" : isActive ? "bg-primary-foreground/20" : "bg-muted"
+                      "w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-semibold text-sm",
+                      isConfirmedComplete && !isActive 
+                        ? "bg-green-500 text-white" 
+                        : isActive 
+                          ? "bg-primary-foreground/20 text-primary-foreground" 
+                          : "bg-muted text-muted-foreground"
                     )}>
-                      {isComplete ? (
-                        <Brain className={cn(
-                          "w-4 h-4",
-                          isActive ? "text-primary-foreground" : "text-green-500"
-                        )} />
+                      {isConfirmedComplete && !isActive ? (
+                        <Brain className="w-5 h-5" />
                       ) : (
-                        <Icon className={cn(
-                          "w-4 h-4",
-                          isActive ? "text-primary-foreground" : "text-muted-foreground"
-                        )} />
+                        <span>{index + 1}</span>
                       )}
                     </div>
-                    <span className={cn(
-                      "text-sm font-medium",
-                      !isActive && "text-foreground"
-                    )}>
-                      {section.label}
-                    </span>
-                    {isComplete && !isActive && (
-                      <CheckCircle2 className="w-4 h-4 text-green-500 ml-auto" />
+                    <div className="flex-1">
+                      <span className={cn(
+                        "text-sm font-medium block",
+                        isConfirmedComplete && !isActive && "text-green-700",
+                        !isActive && !isConfirmedComplete && "text-foreground"
+                      )}>
+                        {section.label}
+                      </span>
+                      {section.requiredFields.length > 0 && (
+                        <span className={cn(
+                          "text-xs",
+                          isActive ? "text-primary-foreground/70" : "text-muted-foreground"
+                        )}>
+                          {section.requiredFields.length} required
+                        </span>
+                      )}
+                    </div>
+                    {isConfirmedComplete && !isActive && (
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
                     )}
                   </button>
                 );
@@ -775,14 +819,14 @@ const Questionnaire = () => {
 
           {/* Mobile Navigation */}
           <div className="md:hidden w-full mb-4">
-            <Select value={activeSection} onValueChange={(v) => setActiveSection(v as SectionKey)}>
-              <SelectTrigger>
+            <Select value={activeSection} onValueChange={(v) => navigateToSection(v as SectionKey)}>
+              <SelectTrigger className="border-2 border-primary/30 bg-card">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {SECTIONS.map((section) => (
                   <SelectItem key={section.key} value={section.key}>
-                    {sectionCompletion[section.key] ? '✓ ' : ''}{section.label}
+                    {isSectionConfirmedComplete(section.key) ? '✓ ' : ''}{section.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -792,25 +836,31 @@ const Questionnaire = () => {
           {/* Main Content */}
           <div className="flex-1">
             <form onSubmit={handleSubmit}>
-              <Card className="mb-6">
+              <Card className="mb-6 border-2 border-muted shadow-lg">
                 <CardContent className="pt-6">
-                  <div className="flex items-center gap-3 mb-6">
+                  <div className="flex items-center gap-4 mb-6 pb-4 border-b border-muted">
                     {(() => {
                       const section = SECTIONS.find(s => s.key === activeSection)!;
                       const Icon = section.icon;
+                      const sectionIndex = SECTIONS.findIndex(s => s.key === activeSection);
                       return (
                         <>
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Icon className="w-5 h-5 text-primary" />
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-md">
+                            <Icon className="w-6 h-6 text-primary-foreground" />
                           </div>
-                          <div>
-                            <h2 className="text-xl font-semibold">{section.label}</h2>
+                          <div className="flex-1">
+                            <h2 className="text-xl font-bold text-foreground">{section.label}</h2>
                             <p className="text-sm text-muted-foreground">
-                              {section.requiredFields.length > 0 
+                              Step {sectionIndex + 1} of {SECTIONS.length} • {section.requiredFields.length > 0 
                                 ? `${section.requiredFields.length} required field(s)`
                                 : 'All fields optional'}
                             </p>
                           </div>
+                          {sectionCompletion[section.key] && (
+                            <div className="bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-sm font-medium border border-green-200">
+                              Section Complete
+                            </div>
+                          )}
                         </>
                       );
                     })()}
@@ -821,22 +871,29 @@ const Questionnaire = () => {
               </Card>
 
               {/* Navigation Buttons */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between bg-card p-4 rounded-xl border-2 border-muted">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setActiveSection(SECTIONS[currentIndex - 1].key)}
+                  size="lg"
+                  onClick={goToPrevSection}
                   disabled={!canGoPrev}
+                  className="border-2"
                 >
                   Previous
                 </Button>
+                
+                <div className="text-sm text-muted-foreground font-medium">
+                  {currentIndex + 1} / {SECTIONS.length}
+                </div>
                 
                 <div className="flex gap-2">
                   {canGoNext ? (
                     <Button
                       type="button"
-                      onClick={() => setActiveSection(SECTIONS[currentIndex + 1].key)}
-                      className="gap-2"
+                      size="lg"
+                      onClick={goToNextSection}
+                      className="gap-2 shadow-md"
                     >
                       Next
                       <ChevronRight className="w-4 h-4" />
@@ -844,8 +901,9 @@ const Questionnaire = () => {
                   ) : (
                     <Button
                       type="submit"
+                      size="lg"
                       disabled={submitting || overallProgress < 100}
-                      className="gap-2"
+                      className="gap-2 bg-green-600 hover:bg-green-700 shadow-md"
                     >
                       {submitting ? (
                         <>
@@ -861,8 +919,8 @@ const Questionnaire = () => {
               </div>
             </form>
 
-            <p className="text-center text-sm text-muted-foreground mt-6">
-              Your information is secure and will only be used to assess your financing options.
+            <p className="text-center text-sm text-muted-foreground mt-6 bg-muted/50 py-3 px-4 rounded-lg">
+              🔒 Your information is secure and will only be used to assess your financing options.
             </p>
           </div>
         </div>
