@@ -9,7 +9,8 @@ import {
   UserPlus,
   LogOut,
   Kanban,
-  Inbox
+  Inbox,
+  TrendingDown
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -37,6 +38,7 @@ const menuItems = [
   { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
   { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
   { title: 'Leads', url: '/admin/leads', icon: UserPlus },
+  { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
   { title: 'Clients', url: '/admin/clients', icon: Users },
   { title: 'Contracts', url: '/admin/contracts', icon: FileText },
   { title: 'Invoices', url: '/admin/invoices', icon: Receipt },

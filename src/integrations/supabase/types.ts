@@ -590,6 +590,59 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_watch: {
+        Row: {
+          created_at: string
+          current_rate: number
+          enrolled_at: string
+          id: string
+          is_active: boolean
+          last_contacted_at: string | null
+          lead_id: string
+          loan_amount: number | null
+          loan_type: string | null
+          notes: string | null
+          target_rate: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_rate: number
+          enrolled_at?: string
+          id?: string
+          is_active?: boolean
+          last_contacted_at?: string | null
+          lead_id: string
+          loan_amount?: number | null
+          loan_type?: string | null
+          notes?: string | null
+          target_rate: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_rate?: number
+          enrolled_at?: string
+          id?: string
+          is_active?: boolean
+          last_contacted_at?: string | null
+          lead_id?: string
+          loan_amount?: number | null
+          loan_type?: string | null
+          notes?: string | null
+          target_rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_watch_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
