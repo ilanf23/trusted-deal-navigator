@@ -11,7 +11,8 @@ import {
   Kanban,
   Inbox,
   TrendingDown,
-  Newspaper
+  Newspaper,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -28,14 +29,15 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.png';
-import { cn } from '@/lib/utils';
 
 interface AdminSidebarProps {
   onInboxToggle: () => void;
   inboxOpen: boolean;
+  onAIAssistantToggle?: () => void;
+  aiAssistantOpen?: boolean;
 }
 
-const menuItems = [
+const pageItems = [
   { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
   { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
   { title: 'Leads', url: '/admin/leads', icon: UserPlus },
@@ -48,7 +50,7 @@ const menuItems = [
   { title: 'Marketing', url: '/admin/marketing', icon: BarChart3 },
 ];
 
-const AdminSidebar = ({ onInboxToggle, inboxOpen }: AdminSidebarProps) => {
+const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssistantOpen }: AdminSidebarProps) => {
   const location = useLocation();
   const { signOut, user } = useAuth();
 
@@ -73,11 +75,12 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen }: AdminSidebarProps) => {
       </SidebarHeader>
       
       <SidebarContent>
+        {/* Pages Section */}
         <SidebarGroup>
-          <SidebarGroupLabel>Admin Portal</SidebarGroupLabel>
+          <SidebarGroupLabel>Pages</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {pageItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)} className="py-4 px-4">
                     <Link to={item.url} className="flex items-center gap-4">
@@ -87,7 +90,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen }: AdminSidebarProps) => {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              {/* Inbox toggle button */}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Tools Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Tools</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   onClick={onInboxToggle}
@@ -97,6 +108,18 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen }: AdminSidebarProps) => {
                   <div className="flex items-center gap-4">
                     <Inbox className="w-6 h-6" />
                     <span className="text-base font-medium">Inbox</span>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  onClick={onAIAssistantToggle}
+                  isActive={aiAssistantOpen}
+                  className="cursor-pointer py-4 px-4"
+                >
+                  <div className="flex items-center gap-4">
+                    <Sparkles className="w-6 h-6" />
+                    <span className="text-base font-medium">AI Assistant</span>
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
