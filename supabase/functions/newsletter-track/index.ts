@@ -15,6 +15,50 @@ const TRACKING_PIXEL = new Uint8Array([
   0x01, 0x00, 0x3b
 ]);
 
+// Known bot/scanner user agent patterns to filter out
+const BOT_PATTERNS = [
+  /googleimageproxy/i,
+  /yahoo.*slurp/i,
+  /bingpreview/i,
+  /outlook/i,
+  /microsoft office/i,
+  /ms-office/i,
+  /mozilla\/5\.0.*chrome\/4[0-5]\./i, // Very old Chrome versions (likely bots)
+  /barracuda/i,
+  /proofpoint/i,
+  /mimecast/i,
+  /fortiguard/i,
+  /symantec/i,
+  /mcafee/i,
+  /sophos/i,
+  /antivirus/i,
+  /security/i,
+  /scanner/i,
+  /bot/i,
+  /crawler/i,
+  /spider/i,
+  /fetch/i,
+];
+
+// Check if user agent looks like a bot/scanner
+function isLikelyBot(userAgent: string | null): boolean {
+  if (!userAgent) return true; // No user agent = suspicious
+  
+  for (const pattern of BOT_PATTERNS) {
+    if (pattern.test(userAgent)) {
+      return true;
+    }
+  }
+  
+  // Check for very old browser versions (likely scanners)
+  const chromeMatch = userAgent.match(/Chrome\/(\d+)/);
+  if (chromeMatch && parseInt(chromeMatch[1]) < 70) {
+    return true;
+  }
+  
+  return false;
+}
+
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -32,8 +76,10 @@ serve(async (req: Request): Promise<Response> => {
     const action = pathParts[1]; // 'open' or 'click'
     const campaignId = pathParts[2];
     const subscriberId = pathParts[3];
+    const userAgent = req.headers.get("user-agent");
 
     console.log(`newsletter-track: ${action} for campaign ${campaignId}, subscriber ${subscriberId}`);
+    console.log(`newsletter-track: User-Agent: ${userAgent}`);
 
     if (!campaignId || !subscriberId) {
       console.error("newsletter-track: Missing campaignId or subscriberId");
@@ -44,6 +90,14 @@ serve(async (req: Request): Promise<Response> => {
         });
       }
       return new Response("Missing parameters", { status: 400 });
+    }
+
+    // Check for bot/scanner user agents for open tracking
+    if (action === "open" && isLikelyBot(userAgent)) {
+      console.log(`newsletter-track: Ignoring open from likely bot: ${userAgent}`);
+      return new Response(TRACKING_PIXEL, {
+        headers: { "Content-Type": "image/gif", "Cache-Control": "no-store, no-cache, must-revalidate" },
+      });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
