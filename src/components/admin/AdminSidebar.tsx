@@ -11,7 +11,6 @@ import {
   Kanban,
   TrendingDown,
   Newspaper,
-  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -29,6 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.png';
 import gmailLogo from '@/assets/gmail-logo.png';
+import chatgptLogo from '@/assets/chatgpt-logo.png';
 
 interface AdminSidebarProps {
   onInboxToggle: () => void;
@@ -118,8 +118,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                   className="cursor-pointer py-4 px-4"
                 >
                   <div className="flex items-center gap-4">
-                    <Sparkles className="w-6 h-6" />
-                    <span className="text-base font-medium">AI Assistant</span>
+                    <img src={chatgptLogo} alt="AI Agent" className="w-6 h-6 object-contain" />
+                    <span className="text-base font-medium">AI Agent</span>
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>

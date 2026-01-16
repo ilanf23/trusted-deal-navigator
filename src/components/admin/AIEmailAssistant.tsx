@@ -20,6 +20,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import chatgptLogo from '@/assets/chatgpt-logo.png';
 
 interface LeadContext {
   id: string;
@@ -167,8 +168,8 @@ const AIEmailAssistant = ({ isOpen, onClose, lead, onUseEmail }: AIEmailAssistan
   return (
     <DraggableBox
       id="ai-assistant"
-      title="AI Email Assistant"
-      icon={<Sparkles className="w-4 h-4 text-primary" />}
+      title="AI Agent"
+      icon={<img src={chatgptLogo} alt="AI Agent" className="w-5 h-5 object-contain" />}
       isOpen={isOpen}
       onClose={onClose}
       defaultWidth={480}
