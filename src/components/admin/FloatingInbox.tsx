@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import gmailLogo from '@/assets/gmail-logo.png';
 
 interface PrefilledEmail {
   to: string;
@@ -224,8 +225,8 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
           className="gap-2 shadow-lg"
           size="lg"
         >
-          <Mail className="w-5 h-5" />
-          Inbox
+          <img src={gmailLogo} alt="Gmail" className="w-5 h-5 object-contain" />
+          Email
           {messages.filter(m => m.isUnread).length > 0 && (
             <Badge variant="destructive" className="ml-1">
               {messages.filter(m => m.isUnread).length}
@@ -244,8 +245,8 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
     <>
       <DraggableBox
         id="inbox"
-        title="Inbox"
-        icon={<Mail className="w-4 h-4 text-primary" />}
+        title="Email"
+        icon={<img src={gmailLogo} alt="Gmail" className="w-5 h-5 object-contain" />}
         isOpen={isOpen}
         onClose={onClose}
         defaultWidth={450}

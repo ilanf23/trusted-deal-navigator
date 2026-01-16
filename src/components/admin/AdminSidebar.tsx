@@ -9,7 +9,6 @@ import {
   UserPlus,
   LogOut,
   Kanban,
-  Inbox,
   TrendingDown,
   Newspaper,
   Sparkles,
@@ -29,6 +28,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.png';
+import gmailLogo from '@/assets/gmail-logo.png';
 
 interface AdminSidebarProps {
   onInboxToggle: () => void;
@@ -106,8 +106,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                   className="cursor-pointer py-4 px-4"
                 >
                   <div className="flex items-center gap-4">
-                    <Inbox className="w-6 h-6" />
-                    <span className="text-base font-medium">Inbox</span>
+                    <img src={gmailLogo} alt="Gmail" className="w-6 h-6 object-contain" />
+                    <span className="text-base font-medium">Email</span>
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
