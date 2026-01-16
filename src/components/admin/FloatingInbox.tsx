@@ -463,7 +463,7 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
       >
         {/* AI Assistant Section */}
         {showAIPanel && currentLeadId && (
-          <div className="border-b flex flex-col max-h-[40%] shrink-0">
+          <div className="border-b flex flex-col shrink-0" style={{ maxHeight: '45%' }}>
             {/* Quick Prompts */}
             {aiMessages.length === 0 && (
               <div className="p-3 border-b shrink-0 bg-muted/30">
@@ -492,7 +492,7 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
             )}
 
             {/* AI Messages */}
-            <ScrollArea className="flex-1 p-3 min-h-[80px]">
+            <ScrollArea className="flex-1 min-h-0 p-3">
               {aiMessages.length === 0 ? (
                 <div className="text-center text-muted-foreground py-2">
                   <p className="text-xs">AI-powered email generation</p>
@@ -590,33 +590,35 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
         )}
 
         {/* Email Compose Form */}
-        <div className="flex-1 flex flex-col min-h-0 p-4 space-y-3 overflow-y-auto">
-          <div className="space-y-1.5">
-            <Label className="text-xs">To</Label>
-            <Input
-              placeholder="recipient@example.com"
-              value={composeTo}
-              onChange={(e) => setComposeTo(e.target.value)}
-              className="h-9"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Subject</Label>
-            <Input
-              placeholder="Subject"
-              value={composeSubject}
-              onChange={(e) => setComposeSubject(e.target.value)}
-              className="h-9"
-            />
-          </div>
-          <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
-            <Label className="text-xs">Message</Label>
-            <Textarea
-              placeholder="Write your message..."
-              value={composeBody}
-              onChange={(e) => setComposeBody(e.target.value)}
-              className="flex-1 min-h-[100px] resize-none"
-            />
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 flex flex-col p-4 space-y-3 overflow-y-auto">
+            <div className="space-y-1.5 shrink-0">
+              <Label className="text-xs">To</Label>
+              <Input
+                placeholder="recipient@example.com"
+                value={composeTo}
+                onChange={(e) => setComposeTo(e.target.value)}
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1.5 shrink-0">
+              <Label className="text-xs">Subject</Label>
+              <Input
+                placeholder="Subject"
+                value={composeSubject}
+                onChange={(e) => setComposeSubject(e.target.value)}
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1.5 flex-1 flex flex-col min-h-[100px]">
+              <Label className="text-xs">Message</Label>
+              <Textarea
+                placeholder="Write your message..."
+                value={composeBody}
+                onChange={(e) => setComposeBody(e.target.value)}
+                className="flex-1 min-h-[80px] resize-none"
+              />
+            </div>
           </div>
         </div>
 
