@@ -85,11 +85,23 @@ Deno.serve(async (req) => {
     console.log('Dialing Twilio clients:', clientDialTargets);
 
     // Generate TwiML to connect to all Twilio Client browsers
-    // No automated voice prompts; ring immediately.
+    // Add status callbacks so we can see exactly why calls end (failed/busy/no-answer/etc.)
+    const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-call-status`;
+
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="60">
-    ${clientDialTargets}
+  <Dial timeout="60" answerOnBridge="true">
+    ${adminRoles && adminRoles.length > 0
+      ? adminRoles
+          .map(
+            (role) => `<Client statusCallback="${statusCallbackUrl}" statusCallbackEvent="initiated ringing answered completed">
+      <Identity>evan-${role.user_id.substring(0, 8)}</Identity>
+    </Client>`
+          )
+          .join('\n    ')
+      : `<Client statusCallback="${statusCallbackUrl}" statusCallbackEvent="initiated ringing answered completed">
+      <Identity>evan-admin</Identity>
+    </Client>`}
   </Dial>
 </Response>`;
 
