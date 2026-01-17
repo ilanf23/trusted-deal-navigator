@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import AdminSidebar from './AdminSidebar';
 import FloatingInbox from './FloatingInbox';
 import AIEmailAssistant from './AIEmailAssistant';
+import { IncomingCallPopup } from '@/components/evan/IncomingCallPopup';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -36,6 +37,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           lead={null}
           onUseEmail={() => {}}
         />
+        <IncomingCallPopup />
       </div>
     </SidebarProvider>
   );
