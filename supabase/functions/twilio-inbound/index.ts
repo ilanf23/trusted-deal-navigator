@@ -65,14 +65,39 @@ Deno.serve(async (req) => {
       console.log('Active call record created/updated');
     }
 
-    // Generate TwiML to connect to the Twilio Client
-    // This will ring all connected clients with the identity pattern 'evan-*'
+    // Get admin users to find Twilio client identities
+    const { data: adminRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin');
+
+    // Build client dial targets for all admin users
+    let clientDialTargets = '';
+    if (adminRoles && adminRoles.length > 0) {
+      clientDialTargets = adminRoles
+        .map(role => `<Client>evan-${role.user_id.substring(0, 8)}</Client>`)
+        .join('\n    ');
+    } else {
+      // Fallback to a generic client identity
+      clientDialTargets = '<Client>evan-admin</Client>';
+    }
+
+    console.log('Dialing Twilio clients:', clientDialTargets);
+
+    // Generate TwiML to connect to all Twilio Client browsers
+    // The timeout gives time to answer, action URL handles no-answer
+    const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-call-status`;
+    
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial>
-    <Client>evan-client</Client>
+  <Say>Please hold while we connect your call.</Say>
+  <Dial timeout="30" action="${statusCallbackUrl}" callerId="${fromNumber}">
+    ${clientDialTargets}
   </Dial>
+  <Say>We're sorry, but no one is available to take your call right now. Please try again later or leave a message.</Say>
 </Response>`;
+
+    console.log('TwiML response:', twiml);
 
     return new Response(twiml, { headers: corsHeaders });
 
