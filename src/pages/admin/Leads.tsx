@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, Loader2, FileText, Phone, Mail, Building2, Calendar, X, ChevronRight, User } from 'lucide-react';
+import { Plus, Search, Loader2, FileText, Phone, Mail, Building2, X, ChevronRight, User, Calendar, Clock, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
@@ -25,22 +25,13 @@ interface LeadWithOwner extends Lead {
   team_member?: TeamMember | null;
 }
 
-const statusColors: Record<LeadStatus, string> = {
-  discovery: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  pre_qualification: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
-  document_collection: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20',
-  underwriting: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
-  approval: 'bg-green-500/10 text-green-600 border-green-500/20',
-  funded: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-};
-
-const statusLabels: Record<LeadStatus, string> = {
-  discovery: 'Discovery',
-  pre_qualification: 'Pre-Qual',
-  document_collection: 'Docs',
-  underwriting: 'UW',
-  approval: 'Approval',
-  funded: 'Funded',
+const statusConfig: Record<LeadStatus, { label: string; color: string; bg: string }> = {
+  discovery: { label: 'Discovery', color: 'text-blue-600', bg: 'bg-blue-50' },
+  pre_qualification: { label: 'Pre-Qual', color: 'text-cyan-600', bg: 'bg-cyan-50' },
+  document_collection: { label: 'Documents', color: 'text-amber-600', bg: 'bg-amber-50' },
+  underwriting: { label: 'Underwriting', color: 'text-orange-600', bg: 'bg-orange-50' },
+  approval: { label: 'Approved', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  funded: { label: 'Funded', color: 'text-violet-600', bg: 'bg-violet-50' },
 };
 
 const AdminLeads = () => {
@@ -120,7 +111,6 @@ const AdminLeads = () => {
 
     setIsSubmitting(true);
     try {
-      // Get default owner (Evan) if none selected
       const assignedTo = newLead.assigned_to || teamMembers.find(m => m.name === 'Evan')?.id || teamMembers[0]?.id || null;
       
       const { error } = await supabase.from('leads').insert({
@@ -192,7 +182,6 @@ const AdminLeads = () => {
     );
   });
 
-  // Calculate status counts
   const statusCounts = leads.reduce((acc, lead) => {
     acc[lead.status] = (acc[lead.status] || 0) + 1;
     return acc;
@@ -200,98 +189,110 @@ const AdminLeads = () => {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col h-[calc(100vh-80px)]">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">Leads</h1>
-            <p className="text-sm text-muted-foreground">{leads.length} total leads</p>
+      <div className="flex flex-col h-[calc(100vh-112px)]">
+        {/* Header Section */}
+        <div className="flex items-start justify-between mb-6">
+          <div className="animate-fade-in">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {leads.length} total leads · {filteredLeads.length} showing
+            </p>
           </div>
+          
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="w-4 h-4 mr-1" />
-                Add Lead
+              <Button className="h-10 px-4 rounded-xl bg-foreground text-background hover:bg-foreground/90 shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98]">
+                <Plus className="w-4 h-4 mr-2" strokeWidth={2} />
+                <span className="font-medium">New Lead</span>
               </Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Lead</DialogTitle>
-                <DialogDescription>Enter the lead's information</DialogDescription>
+            <DialogContent className="sm:max-w-md rounded-2xl border-border/50 shadow-2xl">
+              <DialogHeader className="pb-2">
+                <DialogTitle className="text-lg font-semibold">Create New Lead</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Add a new lead to your pipeline
+                </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 py-2">
                 <div>
-                  <Label htmlFor="name">Name *</Label>
+                  <Label htmlFor="name" className="text-[13px] font-medium">Name *</Label>
                   <Input
                     id="name"
                     value={newLead.name}
                     onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
                     placeholder="John Doe"
+                    className="mt-1.5 h-10 rounded-xl"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-[13px] font-medium">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={newLead.email}
                       onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
                       placeholder="john@company.com"
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="phone" className="text-[13px] font-medium">Phone</Label>
                     <Input
                       id="phone"
                       value={newLead.phone}
                       onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
                       placeholder="(555) 123-4567"
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="company">Company</Label>
+                    <Label htmlFor="company" className="text-[13px] font-medium">Company</Label>
                     <Input
                       id="company"
                       value={newLead.company_name}
                       onChange={(e) => setNewLead({ ...newLead, company_name: e.target.value })}
                       placeholder="Acme Corp"
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="source">Source</Label>
+                    <Label htmlFor="source" className="text-[13px] font-medium">Source</Label>
                     <Input
                       id="source"
                       value={newLead.source}
                       onChange={(e) => setNewLead({ ...newLead, source: e.target.value })}
                       placeholder="Website, Referral..."
+                      className="mt-1.5 h-10 rounded-xl"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="notes">Notes</Label>
+                    <Label htmlFor="notes" className="text-[13px] font-medium">Notes</Label>
                     <Textarea
                       id="notes"
                       value={newLead.notes}
                       onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })}
                       placeholder="Additional notes..."
+                      className="mt-1.5 rounded-xl resize-none"
+                      rows={3}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="assigned_to">Owner</Label>
+                    <Label htmlFor="assigned_to" className="text-[13px] font-medium">Owner</Label>
                     <Select
                       value={newLead.assigned_to || teamMembers.find(m => m.name === 'Evan')?.id || ''}
                       onValueChange={(value) => setNewLead({ ...newLead, assigned_to: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1.5 h-10 rounded-xl">
                         <SelectValue placeholder="Select owner" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="rounded-xl">
                         {teamMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
+                          <SelectItem key={member.id} value={member.id} className="rounded-lg">
                             {member.name}
                           </SelectItem>
                         ))}
@@ -300,9 +301,11 @@ const AdminLeads = () => {
                   </div>
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateLead} disabled={isSubmitting}>
+              <DialogFooter className="gap-2 pt-2">
+                <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl">
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateLead} disabled={isSubmitting} className="rounded-xl bg-foreground text-background hover:bg-foreground/90">
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   Create Lead
                 </Button>
@@ -311,131 +314,151 @@ const AdminLeads = () => {
           </Dialog>
         </div>
 
-        {/* Status Pills */}
-        <div className="flex gap-2 mb-4 flex-wrap">
-          <Button
-            variant={statusFilter === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusFilter('all')}
-            className="h-7 text-xs"
-          >
-            All ({leads.length})
-          </Button>
-          {(Object.keys(statusLabels) as LeadStatus[]).map((status) => (
-            <Button
-              key={status}
-              variant={statusFilter === status ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStatusFilter(status)}
-              className="h-7 text-xs"
+        {/* Filters Row */}
+        <div className="flex items-center gap-4 mb-5 animate-fade-in animation-delay-100">
+          {/* Status Pills */}
+          <div className="flex gap-1.5 p-1 bg-muted/50 rounded-xl">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all duration-200 ${
+                statusFilter === 'all'
+                  ? 'bg-white text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
             >
-              {statusLabels[status]} ({statusCounts[status] || 0})
-            </Button>
-          ))}
-        </div>
+              All ({leads.length})
+            </button>
+            {(Object.keys(statusConfig) as LeadStatus[]).map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all duration-200 ${
+                  statusFilter === status
+                    ? 'bg-white text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {statusConfig[status].label} ({statusCounts[status] || 0})
+              </button>
+            ))}
+          </div>
 
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search by name, email, company, phone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-9"
-          />
+          {/* Search */}
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search leads..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-9 rounded-xl bg-white border-border/50 focus:border-foreground/20 transition-colors"
+            />
+          </div>
         </div>
 
         {/* Main Content - Split View */}
-        <div className="flex-1 flex gap-4 min-h-0">
-          {/* Table */}
-          <Card className={`flex-1 flex flex-col min-h-0 ${previewLead ? 'max-w-[60%]' : ''}`}>
+        <div className="flex-1 flex gap-5 min-h-0 animate-fade-in animation-delay-200">
+          {/* Table Card */}
+          <Card className={`flex-1 flex flex-col min-h-0 rounded-2xl border-border/50 shadow-sm overflow-hidden ${previewLead ? 'max-w-[58%]' : ''}`}>
             <ScrollArea className="flex-1">
               {loading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin" />
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Loading leads...</p>
                 </div>
               ) : filteredLeads.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No leads found.
+                <div className="flex flex-col items-center justify-center py-16 gap-2">
+                  <div className="w-12 h-12 rounded-2xl bg-muted/50 flex items-center justify-center mb-2">
+                    <User className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">No leads found</p>
+                  <p className="text-xs text-muted-foreground">Try adjusting your filters</p>
                 </div>
               ) : (
                 <Table>
-                  <TableHeader className="sticky top-0 bg-card z-10">
-                    <TableRow className="text-xs">
-                      <TableHead className="w-[180px] py-2">Name / Company</TableHead>
-                      <TableHead className="w-[140px] py-2">Contact</TableHead>
-                      <TableHead className="w-[70px] py-2">Owner</TableHead>
-                      <TableHead className="w-[80px] py-2">Source</TableHead>
-                      <TableHead className="w-[80px] py-2">Status</TableHead>
-                      <TableHead className="w-[80px] py-2">Created</TableHead>
-                      <TableHead className="w-[36px] py-2"></TableHead>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-border/50">
+                      <TableHead className="w-[200px]">Lead</TableHead>
+                      <TableHead className="w-[150px]">Contact</TableHead>
+                      <TableHead className="w-[90px]">Owner</TableHead>
+                      <TableHead className="w-[90px]">Status</TableHead>
+                      <TableHead className="w-[100px]">Created</TableHead>
+                      <TableHead className="w-[40px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLeads.map((lead) => (
+                    {filteredLeads.map((lead, index) => (
                       <TableRow 
                         key={lead.id} 
-                        className={`cursor-pointer text-xs ${previewLead?.id === lead.id ? 'bg-accent' : 'hover:bg-muted/50'}`}
+                        className={`
+                          cursor-pointer transition-colors border-border/30
+                          ${previewLead?.id === lead.id 
+                            ? 'bg-accent/5 border-l-2 border-l-foreground' 
+                            : 'hover:bg-muted/40'
+                          }
+                        `}
+                        style={{ animationDelay: `${index * 30}ms` }}
                         onClick={() => setPreviewLead(lead)}
                         onDoubleClick={() => {
                           setSelectedLead(lead);
                           setIsDetailOpen(true);
                         }}
                       >
-                        <TableCell className="py-2">
-                          <div className="flex flex-col">
-                            <span className="font-medium truncate">{lead.name}</span>
-                            {lead.company_name && (
-                              <span className="text-muted-foreground text-[11px] flex items-center gap-1 truncate">
-                                <Building2 className="w-3 h-3" />
-                                {lead.company_name}
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-semibold text-foreground/70">
+                                {lead.name.charAt(0).toUpperCase()}
                               </span>
-                            )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-medium text-foreground truncate">{lead.name}</p>
+                              {lead.company_name && (
+                                <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                                  <Building2 className="w-3 h-3 flex-shrink-0" />
+                                  {lead.company_name}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-2">
-                          <div className="flex flex-col gap-0.5">
+                        <TableCell>
+                          <div className="space-y-0.5">
                             {lead.phone && (
-                              <span className="text-muted-foreground text-[11px] flex items-center gap-1 truncate">
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                                 <Phone className="w-3 h-3" />
                                 {lead.phone}
-                              </span>
+                              </p>
                             )}
                             {lead.email && (
-                              <span className="text-muted-foreground text-[11px] flex items-center gap-1 truncate">
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
                                 <Mail className="w-3 h-3" />
                                 {lead.email}
-                              </span>
+                              </p>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-2">
-                          <span className="text-[11px] font-medium text-primary">
+                        <TableCell>
+                          <span className="text-[12px] font-medium text-foreground/80">
                             {lead.team_member?.name || '—'}
                           </span>
                         </TableCell>
-                        <TableCell className="py-2">
-                          {lead.source && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                              {lead.source}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="flex items-center gap-1">
-                            <Badge className={`text-[10px] px-1.5 py-0 ${statusColors[lead.status]}`}>
-                              {statusLabels[lead.status]}
-                            </Badge>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusConfig[lead.status].bg} ${statusConfig[lead.status].color}`}>
+                              {statusConfig[lead.status].label}
+                            </span>
                             {lead.questionnaire_completed_at && (
-                              <FileText className="w-3 h-3 text-green-600" />
+                              <FileText className="w-3.5 h-3.5 text-emerald-500" />
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="py-2 text-muted-foreground text-[11px]">
-                          {format(new Date(lead.created_at), 'MMM d, yy')}
+                        <TableCell>
+                          <p className="text-[11px] text-muted-foreground">
+                            {format(new Date(lead.created_at), 'MMM d, yyyy')}
+                          </p>
                         </TableCell>
-                        <TableCell className="py-2">
-                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        <TableCell>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -447,100 +470,136 @@ const AdminLeads = () => {
 
           {/* Preview Panel */}
           {previewLead && (
-            <Card className="w-[40%] min-w-[320px] flex flex-col">
-              <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Lead Details
-                </CardTitle>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPreviewLead(null)}>
+            <div className="w-[42%] min-w-[340px] flex flex-col preview-panel animate-slide-in-right">
+              <div className="preview-panel-header flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-foreground/10 to-foreground/5 flex items-center justify-center">
+                    <User className="w-5 h-5 text-foreground/70" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Lead Details</h3>
+                    <p className="text-[11px] text-muted-foreground">Click fields to edit</p>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-lg hover:bg-muted/60" 
+                  onClick={() => setPreviewLead(null)}
+                >
                   <X className="w-4 h-4" />
                 </Button>
-              </CardHeader>
+              </div>
+              
               <ScrollArea className="flex-1">
-                <CardContent className="space-y-4">
+                <div className="p-5 space-y-5">
                   {/* Name & Status */}
                   <div>
-                    <h3 className="font-semibold text-lg">{previewLead.name}</h3>
+                    <h2 className="text-lg font-semibold text-foreground">{previewLead.name}</h2>
                     {previewLead.company_name && (
-                      <p className="text-sm text-muted-foreground">{previewLead.company_name}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">{previewLead.company_name}</p>
                     )}
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge className={statusColors[previewLead.status]}>
-                        {statusLabels[previewLead.status]}
-                      </Badge>
+                    <div className="flex items-center gap-2 mt-3">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium ${statusConfig[previewLead.status].bg} ${statusConfig[previewLead.status].color}`}>
+                        <Sparkles className="w-3 h-3" />
+                        {statusConfig[previewLead.status].label}
+                      </span>
                       {previewLead.questionnaire_completed_at && (
-                        <Badge variant="outline" className="text-green-600 border-green-500/20">
-                          <FileText className="w-3 h-3 mr-1" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium bg-emerald-50 text-emerald-600">
+                          <FileText className="w-3 h-3" />
                           Questionnaire
-                        </Badge>
+                        </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Contact */}
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">Contact</h4>
-                    {previewLead.phone && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-4 h-4 text-muted-foreground" />
-                        <a href={`tel:${previewLead.phone}`} className="hover:underline">{previewLead.phone}</a>
-                      </div>
-                    )}
-                    {previewLead.email && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="w-4 h-4 text-muted-foreground" />
-                        <a href={`mailto:${previewLead.email}`} className="hover:underline">{previewLead.email}</a>
-                      </div>
-                    )}
+                  <div className="section-divider" />
+
+                  {/* Contact Info */}
+                  <div>
+                    <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3">Contact Information</h4>
+                    <div className="space-y-2">
+                      {previewLead.phone && (
+                        <a href={`tel:${previewLead.phone}`} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-colors group">
+                          <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                            <Phone className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
+                          </div>
+                          <div>
+                            <p className="text-[13px] font-medium text-foreground">{previewLead.phone}</p>
+                            <p className="text-[11px] text-muted-foreground">Phone</p>
+                          </div>
+                        </a>
+                      )}
+                      {previewLead.email && (
+                        <a href={`mailto:${previewLead.email}`} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-colors group">
+                          <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                            <Mail className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
+                          </div>
+                          <div>
+                            <p className="text-[13px] font-medium text-foreground">{previewLead.email}</p>
+                            <p className="text-[11px] text-muted-foreground">Email</p>
+                          </div>
+                        </a>
+                      )}
+                    </div>
                   </div>
 
                   {/* Source */}
                   {previewLead.source && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-muted-foreground">Source</h4>
-                      <p className="text-sm">{previewLead.source}</p>
-                    </div>
+                    <>
+                      <div className="section-divider" />
+                      <div>
+                        <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Source</h4>
+                        <p className="text-[13px] text-foreground">{previewLead.source}</p>
+                      </div>
+                    </>
                   )}
 
-                  {/* Dates */}
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">Timeline</h4>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-muted/50 rounded p-2">
-                        <p className="text-muted-foreground">Created</p>
-                        <p className="font-medium">{format(new Date(previewLead.created_at), 'MMM d, yyyy')}</p>
-                      </div>
-                      <div className="bg-muted/50 rounded p-2">
-                        <p className="text-muted-foreground">Updated</p>
-                        <p className="font-medium">{format(new Date(previewLead.updated_at), 'MMM d, yyyy')}</p>
-                      </div>
-                      {previewLead.qualified_at && (
-                        <div className="bg-muted/50 rounded p-2">
-                          <p className="text-muted-foreground">Qualified</p>
-                          <p className="font-medium">{format(new Date(previewLead.qualified_at), 'MMM d, yyyy')}</p>
+                  <div className="section-divider" />
+
+                  {/* Timeline */}
+                  <div>
+                    <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3">Timeline</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-3 rounded-xl bg-muted/30">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-[11px] text-muted-foreground">Created</span>
                         </div>
-                      )}
-                      {previewLead.questionnaire_sent_at && (
-                        <div className="bg-muted/50 rounded p-2">
-                          <p className="text-muted-foreground">Quest. Sent</p>
-                          <p className="font-medium">{format(new Date(previewLead.questionnaire_sent_at), 'MMM d, yyyy')}</p>
+                        <p className="text-[13px] font-medium text-foreground">
+                          {format(new Date(previewLead.created_at), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-muted/30">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-[11px] text-muted-foreground">Updated</span>
                         </div>
-                      )}
+                        <p className="text-[13px] font-medium text-foreground">
+                          {format(new Date(previewLead.updated_at), 'MMM d, yyyy')}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
                   {/* Notes */}
                   {previewLead.notes && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-muted-foreground">Notes</h4>
-                      <p className="text-sm bg-muted/50 rounded p-2 whitespace-pre-wrap">{previewLead.notes}</p>
-                    </div>
+                    <>
+                      <div className="section-divider" />
+                      <div>
+                        <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Notes</h4>
+                        <p className="text-[13px] text-foreground p-3 rounded-xl bg-muted/30 whitespace-pre-wrap">
+                          {previewLead.notes}
+                        </p>
+                      </div>
+                    </>
                   )}
 
-                  {/* Owner */}
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">Owner</h4>
+                  <div className="section-divider" />
+
+                  {/* Owner Select */}
+                  <div>
+                    <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Owner</h4>
                     <Select
                       value={previewLead.assigned_to || ''}
                       onValueChange={(value) => {
@@ -549,12 +608,12 @@ const AdminLeads = () => {
                         setPreviewLead({ ...previewLead, assigned_to: value, team_member: newOwner || null });
                       }}
                     >
-                      <SelectTrigger className="h-8 text-sm">
+                      <SelectTrigger className="h-10 rounded-xl border-border/50">
                         <SelectValue placeholder="Select owner" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="rounded-xl">
                         {teamMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
+                          <SelectItem key={member.id} value={member.id} className="rounded-lg">
                             {member.name}
                           </SelectItem>
                         ))}
@@ -562,9 +621,9 @@ const AdminLeads = () => {
                     </Select>
                   </div>
 
-                  {/* Status Change */}
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">Change Status</h4>
+                  {/* Status Select */}
+                  <div>
+                    <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Status</h4>
                     <Select
                       value={previewLead.status}
                       onValueChange={(value) => {
@@ -572,16 +631,15 @@ const AdminLeads = () => {
                         setPreviewLead({ ...previewLead, status: value as LeadStatus });
                       }}
                     >
-                      <SelectTrigger className="h-8 text-sm">
+                      <SelectTrigger className="h-10 rounded-xl border-border/50">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="discovery">Discovery</SelectItem>
-                        <SelectItem value="pre_qualification">Pre-Qualification</SelectItem>
-                        <SelectItem value="document_collection">Document Collection</SelectItem>
-                        <SelectItem value="underwriting">Underwriting</SelectItem>
-                        <SelectItem value="approval">Approval</SelectItem>
-                        <SelectItem value="funded">Funded</SelectItem>
+                      <SelectContent className="rounded-xl">
+                        {(Object.keys(statusConfig) as LeadStatus[]).map((status) => (
+                          <SelectItem key={status} value={status} className="rounded-lg">
+                            {statusConfig[status].label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -589,19 +647,19 @@ const AdminLeads = () => {
                   {/* Actions */}
                   <div className="pt-2">
                     <Button 
-                      className="w-full" 
-                      size="sm"
+                      className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90 shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98]" 
                       onClick={() => {
                         setSelectedLead(previewLead);
                         setIsDetailOpen(true);
                       }}
                     >
-                      Open Full Details
+                      <span className="font-medium">View Full Details</span>
+                      <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   </div>
-                </CardContent>
+                </div>
               </ScrollArea>
-            </Card>
+            </div>
           )}
         </div>
 
