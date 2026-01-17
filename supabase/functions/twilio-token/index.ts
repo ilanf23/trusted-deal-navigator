@@ -67,13 +67,21 @@ Deno.serve(async (req) => {
 
   try {
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
+    const apiKeySid = Deno.env.get('TWILIO_API_KEY_SID');
+    const apiKeySecret = Deno.env.get('TWILIO_API_KEY_SECRET');
     const twimlAppSid = Deno.env.get('TWILIO_TWIML_APP_SID');
 
-    if (!accountSid || !authToken || !twimlAppSid) {
+    console.log('Twilio config check:', {
+      hasAccountSid: !!accountSid,
+      hasApiKeySid: !!apiKeySid,
+      hasApiKeySecret: !!apiKeySecret,
+      hasTwimlAppSid: !!twimlAppSid,
+    });
+
+    if (!accountSid || !apiKeySid || !apiKeySecret || !twimlAppSid) {
       console.error('Missing Twilio credentials');
       return new Response(
-        JSON.stringify({ error: 'Twilio credentials not configured' }),
+        JSON.stringify({ error: 'Twilio credentials not configured. Required: TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_TWIML_APP_SID' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -116,14 +124,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use account SID and auth token as API key/secret for simplicity
-    // Note: In production, create separate API Keys in Twilio console
+    // Generate identity for this user
     const identity = `evan-${user.id.substring(0, 8)}`;
+    
+    console.log('Creating access token for identity:', identity, 'with TwiML App:', twimlAppSid);
     
     const accessToken = await createTwilioAccessToken(
       accountSid,
-      accountSid, // Using account SID as API Key
-      authToken,  // Using auth token as API Secret
+      apiKeySid,
+      apiKeySecret,
       identity,
       twimlAppSid
     );
