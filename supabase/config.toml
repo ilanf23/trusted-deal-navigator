@@ -26,3 +26,12 @@ verify_jwt = false
 
 [functions.twilio-sms]
 verify_jwt = false
+
+[functions.twilio-token]
+verify_jwt = false
+
+[functions.twilio-voice]
+verify_jwt = false
+
+[functions.twilio-call]
+verify_jwt = false
