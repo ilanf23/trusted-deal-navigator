@@ -5,7 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple JWT creation for Twilio Access Token
+// RFC7519 JWT creation for Twilio Access Token (Voice SDK)
+// Twilio expects a special `cty` header and base64url encoding.
+function base64UrlEncode(input: string | Uint8Array): string {
+  const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : input;
+  const binary = String.fromCharCode(...bytes);
+  return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
 async function createTwilioAccessToken(
   accountSid: string,
   apiKey: string,
@@ -13,7 +20,8 @@ async function createTwilioAccessToken(
   identity: string,
   twimlAppSid: string
 ): Promise<string> {
-  const header = { alg: 'HS256', typ: 'JWT' };
+  // Twilio AccessTokens typically include this content-type header
+  const header = { alg: 'HS256', typ: 'JWT', cty: 'twilio-fpa;v=1' };
   const now = Math.floor(Date.now() / 1000);
   const expiry = now + 3600; // 1 hour
 
@@ -24,7 +32,7 @@ async function createTwilioAccessToken(
     iat: now,
     exp: expiry,
     grants: {
-      identity: identity,
+      identity,
       voice: {
         outgoing: {
           application_sid: twimlAppSid,
@@ -36,27 +44,21 @@ async function createTwilioAccessToken(
     },
   };
 
-  const base64Header = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const base64Payload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const base64Header = base64UrlEncode(JSON.stringify(header));
+  const base64Payload = base64UrlEncode(JSON.stringify(payload));
 
-  const encoder = new TextEncoder();
-  const key = encoder.encode(apiSecret);
-  const message = encoder.encode(`${base64Header}.${base64Payload}`);
-
+  const message = new TextEncoder().encode(`${base64Header}.${base64Payload}`);
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    new TextEncoder().encode(apiSecret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
   );
-  
+
   const signature = await crypto.subtle.sign('HMAC', cryptoKey, message);
-  const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-  
+  const base64Signature = base64UrlEncode(new Uint8Array(signature));
+
   return `${base64Header}.${base64Payload}.${base64Signature}`;
 }
 
@@ -71,11 +73,17 @@ Deno.serve(async (req) => {
     const apiKeySecret = Deno.env.get('TWILIO_API_KEY_SECRET');
     const twimlAppSid = Deno.env.get('TWILIO_TWIML_APP_SID');
 
+    const maskId = (v: string | null | undefined) =>
+      v ? `${v.slice(0, 6)}…${v.slice(-4)}` : null;
+
     console.log('Twilio config check:', {
       hasAccountSid: !!accountSid,
       hasApiKeySid: !!apiKeySid,
       hasApiKeySecret: !!apiKeySecret,
       hasTwimlAppSid: !!twimlAppSid,
+      accountSid: maskId(accountSid),
+      apiKeySid: maskId(apiKeySid),
+      twimlAppSid: maskId(twimlAppSid),
     });
 
     if (!accountSid || !apiKeySid || !apiKeySecret || !twimlAppSid) {
