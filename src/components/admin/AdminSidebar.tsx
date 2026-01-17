@@ -11,6 +11,8 @@ import {
   Kanban,
   TrendingDown,
   Newspaper,
+  UsersRound,
+  User,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -50,6 +52,10 @@ const pageItems = [
   { title: 'Marketing', url: '/admin/marketing', icon: BarChart3 },
 ];
 
+const peopleItems = [
+  { title: "Evan's Page", url: '/admin/people/evans', icon: User },
+];
+
 const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssistantOpen }: AdminSidebarProps) => {
   const location = useLocation();
   const { signOut, user } = useAuth();
@@ -81,6 +87,28 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           <SidebarGroupContent>
             <SidebarMenu>
               {pageItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} className="py-4 px-4">
+                    <Link to={item.url} className="flex items-center gap-4">
+                      <item.icon className="w-6 h-6" />
+                      <span className="text-base font-medium">{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* People Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="flex items-center gap-2">
+            <UsersRound className="w-4 h-4" />
+            People
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {peopleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)} className="py-4 px-4">
                     <Link to={item.url} className="flex items-center gap-4">

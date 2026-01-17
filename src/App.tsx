@@ -27,6 +27,7 @@ import AdminNewsletter from "./pages/admin/Newsletter";
 import CRMBoard from "./pages/admin/CRMBoard";
 import AdminRateWatch from "./pages/admin/RateWatch";
 import AdminInboxCallback from "./pages/admin/InboxCallback";
+import EvansPage from "./pages/admin/EvansPage";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/admin/marketing" element={<ProtectedRoute requireAdmin><AdminMarketing /></ProtectedRoute>} />
             <Route path="/admin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
             <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
+            <Route path="/admin/people/evans" element={<ProtectedRoute requireAdmin><EvansPage /></ProtectedRoute>} />
             <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
             {/* Client Portal Routes - clientOnly redirects admins to /admin */}
             <Route path="/portal" element={<ProtectedRoute clientOnly><PortalDashboard /></ProtectedRoute>} />
