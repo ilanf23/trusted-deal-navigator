@@ -154,34 +154,139 @@
 }
 
 @layer components {
-  /* Admin Portal - Larger Text */
+  /* Admin Portal - Enhanced Readability & Spacing */
   .admin-portal {
     font-size: 1rem;
-    line-height: 1.6;
+    line-height: 1.7;
+    --admin-text: 222 47% 11%;
+    --admin-muted: 215 16% 40%;
   }
 
   .admin-portal p,
-  .admin-portal span:not(.sr-only),
+  .admin-portal span:not(.sr-only):not([class*="text-["]),
   .admin-portal label,
   .admin-portal td,
-  .admin-portal th {
-    font-size: 1rem;
+  .admin-portal th,
+  .admin-portal input,
+  .admin-portal textarea,
+  .admin-portal select,
+  .admin-portal button {
+    font-size: 0.9375rem;
+    letter-spacing: 0.01em;
+  }
+
+  .admin-portal .text-xs {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .admin-portal .text-sm {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .admin-portal .text-muted-foreground {
+    color: hsl(var(--admin-muted));
   }
 
   .admin-portal h1 {
-    font-size: 2.25rem;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 
   .admin-portal h2 {
-    font-size: 1.875rem;
+    font-size: 1.625rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .admin-portal h3 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
   }
 
   .admin-portal h4 {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+  }
+
+  /* Admin Cards - Larger Padding */
+  .admin-portal [data-slot="card"],
+  .admin-portal .rounded-lg.border {
+    padding: 0;
+  }
+
+  .admin-portal [data-slot="card-header"] {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .admin-portal [data-slot="card-content"] {
+    padding: 1.5rem;
+    padding-top: 0;
+  }
+
+  /* Admin Tables - Better Readability */
+  .admin-portal table {
+    font-size: 0.875rem;
+  }
+
+  .admin-portal th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: hsl(var(--admin-muted));
+    padding: 0.875rem 1rem;
+  }
+
+  .admin-portal td {
+    padding: 0.875rem 1rem;
+    vertical-align: middle;
+  }
+
+  .admin-portal tbody tr {
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  /* Admin Badges - Slightly Larger */
+  .admin-portal [data-slot="badge"],
+  .admin-portal .inline-flex.rounded-full,
+  .admin-portal .inline-flex.rounded-md {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.625rem;
+    font-weight: 500;
+  }
+
+  /* Admin Inputs - Better Sizing */
+  .admin-portal input,
+  .admin-portal textarea,
+  .admin-portal select,
+  .admin-portal [role="combobox"] {
+    font-size: 0.9375rem;
+    padding: 0.625rem 0.875rem;
+  }
+
+  /* Admin Buttons */
+  .admin-portal button {
+    font-weight: 500;
+  }
+
+  /* Admin Section Spacing */
+  .admin-portal .space-y-4 > * + * {
+    margin-top: 1.25rem;
+  }
+
+  .admin-portal .space-y-6 > * + * {
+    margin-top: 2rem;
+  }
+
+  .admin-portal .gap-4 {
+    gap: 1.25rem;
+  }
+
+  .admin-portal .gap-6 {
+    gap: 2rem;
   }
 
   /* Card Hover Effect */
