@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_calls: {
+        Row: {
+          answered_at: string | null
+          call_sid: string
+          created_at: string
+          direction: string
+          ended_at: string | null
+          from_number: string
+          id: string
+          lead_id: string | null
+          status: string
+          to_number: string
+          updated_at: string
+        }
+        Insert: {
+          answered_at?: string | null
+          call_sid: string
+          created_at?: string
+          direction?: string
+          ended_at?: string | null
+          from_number: string
+          id?: string
+          lead_id?: string | null
+          status?: string
+          to_number: string
+          updated_at?: string
+        }
+        Update: {
+          answered_at?: string | null
+          call_sid?: string
+          created_at?: string
+          direction?: string
+          ended_at?: string | null
+          from_number?: string
+          id?: string
+          lead_id?: string | null
+          status?: string
+          to_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "active_calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           client_id: string
