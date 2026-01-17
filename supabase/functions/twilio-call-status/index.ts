@@ -19,30 +19,37 @@ Deno.serve(async (req) => {
 
     // Parse form data from Twilio webhook
     const formData = await req.formData().catch(() => null);
-    
+
     const callSid = formData?.get('CallSid')?.toString() || '';
     const callStatus = formData?.get('CallStatus')?.toString() || '';
     const callDuration = formData?.get('CallDuration')?.toString() || '0';
 
-    console.log(`Call status update: ${callSid} -> ${callStatus}, duration: ${callDuration}s`);
+    // Dial-specific fields (present for status callbacks from <Dial>)
+    const dialCallStatus = formData?.get('DialCallStatus')?.toString() || '';
+    const dialCallSid = formData?.get('DialCallSid')?.toString() || '';
+    const dialCallDuration = formData?.get('DialCallDuration')?.toString() || '';
+
+    console.log(
+      `Call status update: CallSid=${callSid} CallStatus=${callStatus} CallDuration=${callDuration}s DialCallStatus=${dialCallStatus} DialCallSid=${dialCallSid} DialCallDuration=${dialCallDuration}s`
+    );
 
     if (!callSid) {
-      return new Response(
-        JSON.stringify({ error: 'Missing CallSid' }),
-        { status: 400, headers: corsHeaders }
-      );
+      return new Response('Missing CallSid', { status: 400, headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
     }
+
+    // Prefer DialCallStatus if present (it describes the <Dial> leg result)
+    const effectiveStatus = dialCallStatus || callStatus;
 
     // Update the active call status
     const updateData: Record<string, unknown> = {
-      status: callStatus,
+      status: effectiveStatus,
     };
 
-    if (callStatus === 'in-progress') {
+    if (effectiveStatus === 'in-progress') {
       updateData.answered_at = new Date().toISOString();
     }
 
-    if (['completed', 'busy', 'failed', 'no-answer', 'canceled'].includes(callStatus)) {
+    if (['completed', 'busy', 'failed', 'no-answer', 'canceled', 'cancelled'].includes(effectiveStatus)) {
       updateData.ended_at = new Date().toISOString();
 
       // Also log to evan_communications
@@ -77,10 +84,7 @@ Deno.serve(async (req) => {
       console.error('Error updating call status:', error);
     }
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: corsHeaders }
-    );
+    return new Response('OK', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
 
   } catch (error) {
     console.error('Error in twilio-call-status function:', error);
