@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.newsletter-track]
 verify_jwt = false
+
+[functions.twilio-sms]
+verify_jwt = false

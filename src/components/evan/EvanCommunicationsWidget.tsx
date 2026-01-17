@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, MessageSquare, Plus, ArrowUpRight, ArrowDownLeft, Clock } from 'lucide-react';
+import { Phone, MessageSquare, Plus, ArrowUpRight, ArrowDownLeft, Clock, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -45,14 +45,20 @@ interface Lead {
 
 export const EvanCommunicationsWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSmsOpen, setIsSmsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [newComm, setNewComm] = useState({
     lead_id: '',
-    communication_type: 'sms',
+    communication_type: 'call',
     direction: 'outbound',
     content: '',
     phone_number: '',
     duration_seconds: '',
+  });
+  const [smsData, setSmsData] = useState({
+    to: '',
+    message: '',
+    leadId: '',
   });
   const queryClient = useQueryClient();
 
@@ -99,7 +105,7 @@ export const EvanCommunicationsWidget = () => {
       queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
       setNewComm({
         lead_id: '',
-        communication_type: 'sms',
+        communication_type: 'call',
         direction: 'outbound',
         content: '',
         phone_number: '',
@@ -109,6 +115,31 @@ export const EvanCommunicationsWidget = () => {
       toast.success('Communication logged');
     },
     onError: () => toast.error('Failed to log communication'),
+  });
+
+  const sendSms = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('twilio-sms', {
+        body: {
+          to: smsData.to,
+          message: smsData.message,
+          leadId: smsData.leadId || undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
+      setSmsData({ to: '', message: '', leadId: '' });
+      setIsSmsOpen(false);
+      toast.success(`SMS sent successfully! Status: ${data.status}`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to send SMS: ${error.message}`);
+    },
   });
 
   const filteredComms = communications.filter(comm => {
@@ -131,93 +162,169 @@ export const EvanCommunicationsWidget = () => {
             <Phone className="h-5 w-5 text-primary" />
             Communications
           </CardTitle>
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
-                <Plus className="h-4 w-4 mr-1" /> Log
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Log Communication</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <Select
-                  value={newComm.communication_type}
-                  onValueChange={(value) => setNewComm(prev => ({ ...prev, communication_type: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sms">SMS</SelectItem>
-                    <SelectItem value="call">Phone Call</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={newComm.direction}
-                  onValueChange={(value) => setNewComm(prev => ({ ...prev, direction: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Direction" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="inbound">Inbound</SelectItem>
-                    <SelectItem value="outbound">Outbound</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={newComm.lead_id}
-                  onValueChange={(value) => {
-                    const lead = leads.find(l => l.id === value);
-                    setNewComm(prev => ({
-                      ...prev,
-                      lead_id: value,
-                      phone_number: lead?.phone || prev.phone_number,
-                    }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Lead (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leads.map(lead => (
-                      <SelectItem key={lead.id} value={lead.id}>
-                        {lead.name} {lead.phone ? `(${lead.phone})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Input
-                  placeholder="Phone number"
-                  value={newComm.phone_number}
-                  onChange={(e) => setNewComm(prev => ({ ...prev, phone_number: e.target.value }))}
-                />
-
-                {newComm.communication_type === 'call' && (
-                  <Input
-                    type="number"
-                    placeholder="Duration (seconds)"
-                    value={newComm.duration_seconds}
-                    onChange={(e) => setNewComm(prev => ({ ...prev, duration_seconds: e.target.value }))}
-                  />
-                )}
-
-                <Textarea
-                  placeholder={newComm.communication_type === 'sms' ? 'SMS content' : 'Call notes'}
-                  value={newComm.content}
-                  onChange={(e) => setNewComm(prev => ({ ...prev, content: e.target.value }))}
-                />
-
-                <Button className="w-full" onClick={() => addCommunication.mutate()}>
-                  Log Communication
+          <div className="flex gap-2">
+            {/* Send SMS Dialog */}
+            <Dialog open={isSmsOpen} onOpenChange={setIsSmsOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="default">
+                  <Send className="h-4 w-4 mr-1" /> Send SMS
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Send SMS via Twilio</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <Select
+                    value={smsData.leadId}
+                    onValueChange={(value) => {
+                      const lead = leads.find(l => l.id === value);
+                      setSmsData(prev => ({
+                        ...prev,
+                        leadId: value,
+                        to: lead?.phone || prev.to,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Lead (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leads.filter(l => l.phone).map(lead => (
+                        <SelectItem key={lead.id} value={lead.id}>
+                          {lead.name} ({lead.phone})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Input
+                    placeholder="Phone number (e.g., +15551234567)"
+                    value={smsData.to}
+                    onChange={(e) => setSmsData(prev => ({ ...prev, to: e.target.value }))}
+                  />
+
+                  <Textarea
+                    placeholder="Type your message..."
+                    value={smsData.message}
+                    onChange={(e) => setSmsData(prev => ({ ...prev, message: e.target.value }))}
+                    className="min-h-[100px]"
+                  />
+
+                  <div className="text-xs text-muted-foreground">
+                    {smsData.message.length}/160 characters
+                  </div>
+
+                  <Button 
+                    className="w-full" 
+                    onClick={() => sendSms.mutate()}
+                    disabled={!smsData.to || !smsData.message || sendSms.isPending}
+                  >
+                    {sendSms.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Send SMS
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Log Communication Dialog */}
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <Plus className="h-4 w-4 mr-1" /> Log
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Log Communication</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <Select
+                    value={newComm.communication_type}
+                    onValueChange={(value) => setNewComm(prev => ({ ...prev, communication_type: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sms">SMS</SelectItem>
+                      <SelectItem value="call">Phone Call</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={newComm.direction}
+                    onValueChange={(value) => setNewComm(prev => ({ ...prev, direction: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Direction" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inbound">Inbound</SelectItem>
+                      <SelectItem value="outbound">Outbound</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={newComm.lead_id}
+                    onValueChange={(value) => {
+                      const lead = leads.find(l => l.id === value);
+                      setNewComm(prev => ({
+                        ...prev,
+                        lead_id: value,
+                        phone_number: lead?.phone || prev.phone_number,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Lead (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leads.map(lead => (
+                        <SelectItem key={lead.id} value={lead.id}>
+                          {lead.name} {lead.phone ? `(${lead.phone})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Input
+                    placeholder="Phone number"
+                    value={newComm.phone_number}
+                    onChange={(e) => setNewComm(prev => ({ ...prev, phone_number: e.target.value }))}
+                  />
+
+                  {newComm.communication_type === 'call' && (
+                    <Input
+                      type="number"
+                      placeholder="Duration (seconds)"
+                      value={newComm.duration_seconds}
+                      onChange={(e) => setNewComm(prev => ({ ...prev, duration_seconds: e.target.value }))}
+                    />
+                  )}
+
+                  <Textarea
+                    placeholder={newComm.communication_type === 'sms' ? 'SMS content' : 'Call notes'}
+                    value={newComm.content}
+                    onChange={(e) => setNewComm(prev => ({ ...prev, content: e.target.value }))}
+                  />
+
+                  <Button className="w-full" onClick={() => addCommunication.mutate()}>
+                    Log Communication
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col min-h-0">
@@ -266,6 +373,11 @@ export const EvanCommunicationsWidget = () => {
                             <Clock className="h-3 w-3" />
                             {formatDuration(comm.duration_seconds)}
                           </span>
+                        )}
+                        {comm.status && (
+                          <Badge variant="secondary" className="text-xs">
+                            {comm.status}
+                          </Badge>
                         )}
                       </div>
                       {comm.content && (
