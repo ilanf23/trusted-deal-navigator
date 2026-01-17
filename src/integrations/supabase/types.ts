@@ -89,6 +89,151 @@ export type Database = {
         }
         Relationships: []
       }
+      evan_appointments: {
+        Row: {
+          appointment_type: string | null
+          created_at: string
+          description: string | null
+          end_time: string | null
+          id: string
+          lead_id: string | null
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_type?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          lead_id?: string | null
+          start_time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_type?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          lead_id?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_appointments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evan_communications: {
+        Row: {
+          communication_type: string
+          content: string | null
+          created_at: string
+          direction: string
+          duration_seconds: number | null
+          id: string
+          lead_id: string | null
+          phone_number: string | null
+          status: string | null
+        }
+        Insert: {
+          communication_type: string
+          content?: string | null
+          created_at?: string
+          direction: string
+          duration_seconds?: number | null
+          id?: string
+          lead_id?: string | null
+          phone_number?: string | null
+          status?: string | null
+        }
+        Update: {
+          communication_type?: string
+          content?: string | null
+          created_at?: string
+          direction?: string
+          duration_seconds?: number | null
+          id?: string
+          lead_id?: string | null
+          phone_number?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_communications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evan_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_pinned: boolean
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      evan_tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean
+          priority: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gmail_connections: {
         Row: {
           access_token: string
