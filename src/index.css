@@ -168,35 +168,35 @@
 }
 
 @layer components {
-  /* ====== ADMIN PORTAL - 2026 Apple UI ====== */
+  /* ====== ADMIN PORTAL - 2026 Apple UI (25% larger) ====== */
   .admin-portal {
-    font-size: 0.9375rem;
+    font-size: 1.1875rem; /* 0.9375 * 1.25 */
     line-height: 1.6;
     letter-spacing: -0.011em;
   }
 
-  /* Typography Refinements */
+  /* Typography Refinements - 25% larger */
   .admin-portal h1 {
-    font-size: 1.875rem;
+    font-size: 2.34375rem; /* 1.875 * 1.25 */
     font-weight: 600;
     letter-spacing: -0.025em;
     color: hsl(var(--foreground));
   }
 
   .admin-portal h2 {
-    font-size: 1.375rem;
+    font-size: 1.71875rem; /* 1.375 * 1.25 */
     font-weight: 600;
     letter-spacing: -0.02em;
   }
 
   .admin-portal h3 {
-    font-size: 1.125rem;
+    font-size: 1.40625rem; /* 1.125 * 1.25 */
     font-weight: 600;
     letter-spacing: -0.015em;
   }
 
   .admin-portal h4 {
-    font-size: 1rem;
+    font-size: 1.25rem; /* 1 * 1.25 */
     font-weight: 500;
     letter-spacing: -0.01em;
   }
@@ -204,20 +204,32 @@
   .admin-portal p,
   .admin-portal span:not(.sr-only):not([class*="text-["]),
   .admin-portal label {
-    font-size: 0.875rem;
+    font-size: 1.09375rem; /* 0.875 * 1.25 */
     letter-spacing: -0.006em;
   }
 
   .admin-portal .text-xs {
-    font-size: 0.75rem;
+    font-size: 0.9375rem; /* 0.75 * 1.25 */
     letter-spacing: 0;
     line-height: 1.5;
   }
 
   .admin-portal .text-sm {
-    font-size: 0.8125rem;
+    font-size: 1.015625rem; /* 0.8125 * 1.25 */
     letter-spacing: -0.003em;
     line-height: 1.5;
+  }
+
+  .admin-portal .text-\[11px\] {
+    font-size: 0.859375rem; /* 11px * 1.25 = ~13.75px */
+  }
+
+  .admin-portal .text-\[12px\] {
+    font-size: 0.9375rem; /* 12px * 1.25 = 15px */
+  }
+
+  .admin-portal .text-\[13px\] {
+    font-size: 1.015625rem; /* 13px * 1.25 = ~16.25px */
   }
 
   /* Apple-Style Cards */
@@ -225,7 +237,7 @@
   .apple-card {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border) / 0.6);
-    border-radius: 1rem;
+    border-radius: 1.25rem;
     box-shadow: var(--shadow-sm);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -237,31 +249,31 @@
   }
 
   .admin-portal [data-slot="card-header"] {
-    padding: 1.25rem 1.5rem 0.75rem;
+    padding: 1.5625rem 1.875rem 0.9375rem; /* 25% larger */
   }
 
   .admin-portal [data-slot="card-content"] {
-    padding: 1rem 1.5rem 1.5rem;
+    padding: 1.25rem 1.875rem 1.875rem; /* 25% larger */
   }
 
-  /* Tables - Ultra-Clean */
+  /* Tables - Ultra-Clean - 25% larger */
   .admin-portal table {
-    font-size: 0.8125rem;
+    font-size: 1.015625rem; /* 0.8125 * 1.25 */
   }
 
   .admin-portal th {
     font-weight: 500;
-    font-size: 0.6875rem;
+    font-size: 0.859375rem; /* 0.6875 * 1.25 */
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: hsl(var(--muted-foreground));
-    padding: 0.75rem 1rem;
+    padding: 0.9375rem 1.25rem; /* 25% larger */
     background: hsl(var(--muted) / 0.3);
     border-bottom: 1px solid hsl(var(--border) / 0.5);
   }
 
   .admin-portal td {
-    padding: 0.875rem 1rem;
+    padding: 1.09375rem 1.25rem; /* 25% larger */
     vertical-align: middle;
     border-bottom: 1px solid hsl(var(--border) / 0.4);
   }
@@ -274,17 +286,17 @@
     background-color: hsl(var(--muted) / 0.4);
   }
 
-  /* Inputs - Refined */
+  /* Inputs - Refined - 25% larger */
   .admin-portal input,
   .admin-portal textarea,
   .admin-portal select,
   .admin-portal [role="combobox"] {
-    font-size: 0.875rem;
+    font-size: 1.09375rem; /* 0.875 * 1.25 */
     letter-spacing: -0.006em;
-    border-radius: 0.625rem;
+    border-radius: 0.78125rem; /* 25% larger */
     border: 1px solid hsl(var(--border));
     background: hsl(var(--card));
-    padding: 0.625rem 0.875rem;
+    padding: 0.78125rem 1.09375rem; /* 25% larger */
     transition: all 0.2s ease;
     box-shadow: var(--shadow-xs);
   }
@@ -297,11 +309,13 @@
     box-shadow: 0 0 0 3px hsl(var(--accent) / 0.12);
   }
 
-  /* Buttons - Apple Style */
+  /* Buttons - Apple Style - 25% larger */
   .admin-portal button {
+    font-size: 1.09375rem; /* ~17.5px */
     font-weight: 500;
     letter-spacing: -0.006em;
-    border-radius: 0.625rem;
+    border-radius: 0.78125rem; /* 25% larger */
+    padding: 0.625rem 1.25rem; /* 25% larger base padding */
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -309,13 +323,13 @@
     transform: scale(0.98);
   }
 
-  /* Badges - Pill Style */
+  /* Badges - Pill Style - 25% larger */
   .admin-portal [data-slot="badge"],
   .apple-badge {
-    font-size: 0.6875rem;
+    font-size: 0.859375rem; /* 0.6875 * 1.25 */
     font-weight: 500;
     letter-spacing: 0.01em;
-    padding: 0.25rem 0.625rem;
+    padding: 0.3125rem 0.78125rem; /* 25% larger */
     border-radius: 9999px;
     border: none;
   }
