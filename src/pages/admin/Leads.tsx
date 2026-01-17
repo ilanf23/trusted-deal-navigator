@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -9,22 +9,33 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Loader2, FileText } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Plus, Search, Loader2, FileText, Phone, Mail, Building2, Calendar, X, ChevronRight, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import { format } from 'date-fns';
 import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 const statusColors: Record<LeadStatus, string> = {
-  discovery: 'bg-blue-100 text-blue-800',
-  pre_qualification: 'bg-cyan-100 text-cyan-800',
-  document_collection: 'bg-yellow-100 text-yellow-800',
-  underwriting: 'bg-orange-100 text-orange-800',
-  approval: 'bg-green-100 text-green-800',
-  funded: 'bg-purple-100 text-purple-800',
+  discovery: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  pre_qualification: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
+  document_collection: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20',
+  underwriting: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+  approval: 'bg-green-500/10 text-green-600 border-green-500/20',
+  funded: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+};
+
+const statusLabels: Record<LeadStatus, string> = {
+  discovery: 'Discovery',
+  pre_qualification: 'Pre-Qual',
+  document_collection: 'Docs',
+  underwriting: 'UW',
+  approval: 'Approval',
+  funded: 'Funded',
 };
 
 const AdminLeads = () => {
@@ -36,9 +47,9 @@ const AdminLeads = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [previewLead, setPreviewLead] = useState<Lead | null>(null);
   const { toast } = useToast();
 
-  // New lead form
   const [newLead, setNewLead] = useState({
     name: '',
     email: '',
@@ -129,22 +140,30 @@ const AdminLeads = () => {
     return (
       lead.name.toLowerCase().includes(searchLower) ||
       lead.email?.toLowerCase().includes(searchLower) ||
-      lead.company_name?.toLowerCase().includes(searchLower)
+      lead.company_name?.toLowerCase().includes(searchLower) ||
+      lead.phone?.toLowerCase().includes(searchLower)
     );
   });
 
+  // Calculate status counts
+  const statusCounts = leads.reduce((acc, lead) => {
+    acc[lead.status] = (acc[lead.status] || 0) + 1;
+    return acc;
+  }, {} as Record<LeadStatus, number>);
+
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col h-[calc(100vh-80px)]">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold">Leads</h1>
-            <p className="text-muted-foreground">Manage and qualify your leads</p>
+            <h1 className="text-2xl font-bold">Leads</h1>
+            <p className="text-sm text-muted-foreground">{leads.length} total leads</p>
           </div>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
+              <Button size="sm">
+                <Plus className="w-4 h-4 mr-1" />
                 Add Lead
               </Button>
             </DialogTrigger>
@@ -225,106 +244,273 @@ const AdminLeads = () => {
           </Dialog>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Search leads..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="discovery">Discovery</SelectItem>
-                  <SelectItem value="pre_qualification">Pre-Qualification</SelectItem>
-                  <SelectItem value="document_collection">Document Collection</SelectItem>
-                  <SelectItem value="underwriting">Underwriting</SelectItem>
-                  <SelectItem value="approval">Approval</SelectItem>
-                  <SelectItem value="funded">Funded</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin" />
-              </div>
-            ) : filteredLeads.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No leads found. Add your first lead to get started.
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLeads.map((lead) => (
-                    <TableRow 
-                      key={lead.id} 
-                      className="cursor-pointer hover:bg-muted/50"
+        {/* Status Pills */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          <Button
+            variant={statusFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setStatusFilter('all')}
+            className="h-7 text-xs"
+          >
+            All ({leads.length})
+          </Button>
+          {(Object.keys(statusLabels) as LeadStatus[]).map((status) => (
+            <Button
+              key={status}
+              variant={statusFilter === status ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter(status)}
+              className="h-7 text-xs"
+            >
+              {statusLabels[status]} ({statusCounts[status] || 0})
+            </Button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            placeholder="Search by name, email, company, phone..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 h-9"
+          />
+        </div>
+
+        {/* Main Content - Split View */}
+        <div className="flex-1 flex gap-4 min-h-0">
+          {/* Table */}
+          <Card className={`flex-1 flex flex-col min-h-0 ${previewLead ? 'max-w-[60%]' : ''}`}>
+            <ScrollArea className="flex-1">
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin" />
+                </div>
+              ) : filteredLeads.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No leads found.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader className="sticky top-0 bg-card z-10">
+                    <TableRow className="text-xs">
+                      <TableHead className="w-[180px] py-2">Name / Company</TableHead>
+                      <TableHead className="w-[140px] py-2">Contact</TableHead>
+                      <TableHead className="w-[80px] py-2">Source</TableHead>
+                      <TableHead className="w-[80px] py-2">Status</TableHead>
+                      <TableHead className="w-[90px] py-2">Created</TableHead>
+                      <TableHead className="w-[90px] py-2">Updated</TableHead>
+                      <TableHead className="w-[36px] py-2"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLeads.map((lead) => (
+                      <TableRow 
+                        key={lead.id} 
+                        className={`cursor-pointer text-xs ${previewLead?.id === lead.id ? 'bg-accent' : 'hover:bg-muted/50'}`}
+                        onClick={() => setPreviewLead(lead)}
+                        onDoubleClick={() => {
+                          setSelectedLead(lead);
+                          setIsDetailOpen(true);
+                        }}
+                      >
+                        <TableCell className="py-2">
+                          <div className="flex flex-col">
+                            <span className="font-medium truncate">{lead.name}</span>
+                            {lead.company_name && (
+                              <span className="text-muted-foreground text-[11px] flex items-center gap-1 truncate">
+                                <Building2 className="w-3 h-3" />
+                                {lead.company_name}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="flex flex-col gap-0.5">
+                            {lead.phone && (
+                              <span className="text-muted-foreground text-[11px] flex items-center gap-1 truncate">
+                                <Phone className="w-3 h-3" />
+                                {lead.phone}
+                              </span>
+                            )}
+                            {lead.email && (
+                              <span className="text-muted-foreground text-[11px] flex items-center gap-1 truncate">
+                                <Mail className="w-3 h-3" />
+                                {lead.email}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          {lead.source && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {lead.source}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-1">
+                            <Badge className={`text-[10px] px-1.5 py-0 ${statusColors[lead.status]}`}>
+                              {statusLabels[lead.status]}
+                            </Badge>
+                            {lead.questionnaire_completed_at && (
+                              <FileText className="w-3 h-3 text-green-600" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2 text-muted-foreground text-[11px]">
+                          {format(new Date(lead.created_at), 'MMM d, yy')}
+                        </TableCell>
+                        <TableCell className="py-2 text-muted-foreground text-[11px]">
+                          {format(new Date(lead.updated_at), 'MMM d, yy')}
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </ScrollArea>
+          </Card>
+
+          {/* Preview Panel */}
+          {previewLead && (
+            <Card className="w-[40%] min-w-[320px] flex flex-col">
+              <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Lead Details
+                </CardTitle>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPreviewLead(null)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </CardHeader>
+              <ScrollArea className="flex-1">
+                <CardContent className="space-y-4">
+                  {/* Name & Status */}
+                  <div>
+                    <h3 className="font-semibold text-lg">{previewLead.name}</h3>
+                    {previewLead.company_name && (
+                      <p className="text-sm text-muted-foreground">{previewLead.company_name}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge className={statusColors[previewLead.status]}>
+                        {statusLabels[previewLead.status]}
+                      </Badge>
+                      {previewLead.questionnaire_completed_at && (
+                        <Badge variant="outline" className="text-green-600 border-green-500/20">
+                          <FileText className="w-3 h-3 mr-1" />
+                          Questionnaire
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Contact */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">Contact</h4>
+                    {previewLead.phone && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <a href={`tel:${previewLead.phone}`} className="hover:underline">{previewLead.phone}</a>
+                      </div>
+                    )}
+                    {previewLead.email && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <a href={`mailto:${previewLead.email}`} className="hover:underline">{previewLead.email}</a>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Source */}
+                  {previewLead.source && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-muted-foreground">Source</h4>
+                      <p className="text-sm">{previewLead.source}</p>
+                    </div>
+                  )}
+
+                  {/* Dates */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">Timeline</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-muted/50 rounded p-2">
+                        <p className="text-muted-foreground">Created</p>
+                        <p className="font-medium">{format(new Date(previewLead.created_at), 'MMM d, yyyy')}</p>
+                      </div>
+                      <div className="bg-muted/50 rounded p-2">
+                        <p className="text-muted-foreground">Updated</p>
+                        <p className="font-medium">{format(new Date(previewLead.updated_at), 'MMM d, yyyy')}</p>
+                      </div>
+                      {previewLead.qualified_at && (
+                        <div className="bg-muted/50 rounded p-2">
+                          <p className="text-muted-foreground">Qualified</p>
+                          <p className="font-medium">{format(new Date(previewLead.qualified_at), 'MMM d, yyyy')}</p>
+                        </div>
+                      )}
+                      {previewLead.questionnaire_sent_at && (
+                        <div className="bg-muted/50 rounded p-2">
+                          <p className="text-muted-foreground">Quest. Sent</p>
+                          <p className="font-medium">{format(new Date(previewLead.questionnaire_sent_at), 'MMM d, yyyy')}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  {previewLead.notes && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-muted-foreground">Notes</h4>
+                      <p className="text-sm bg-muted/50 rounded p-2 whitespace-pre-wrap">{previewLead.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Status Change */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">Change Status</h4>
+                    <Select
+                      value={previewLead.status}
+                      onValueChange={(value) => {
+                        handleStatusChange(previewLead.id, value as LeadStatus);
+                        setPreviewLead({ ...previewLead, status: value as LeadStatus });
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="discovery">Discovery</SelectItem>
+                        <SelectItem value="pre_qualification">Pre-Qualification</SelectItem>
+                        <SelectItem value="document_collection">Document Collection</SelectItem>
+                        <SelectItem value="underwriting">Underwriting</SelectItem>
+                        <SelectItem value="approval">Approval</SelectItem>
+                        <SelectItem value="funded">Funded</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-2">
+                    <Button 
+                      className="w-full" 
+                      size="sm"
                       onClick={() => {
-                        setSelectedLead(lead);
+                        setSelectedLead(previewLead);
                         setIsDetailOpen(true);
                       }}
                     >
-                      <TableCell className="font-medium">{lead.name}</TableCell>
-                      <TableCell>{lead.email || '-'}</TableCell>
-                      <TableCell>{lead.company_name || '-'}</TableCell>
-                      <TableCell>{lead.source || '-'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge className={statusColors[lead.status]}>
-                            {lead.status}
-                          </Badge>
-                          {lead.questionnaire_completed_at && (
-                            <span title="Questionnaire completed">
-                              <FileText className="w-4 h-4 text-green-600" />
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Select
-                          value={lead.status}
-                          onValueChange={(value) => handleStatusChange(lead.id, value as LeadStatus)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="discovery">Discovery</SelectItem>
-                            <SelectItem value="pre_qualification">Pre-Qualification</SelectItem>
-                            <SelectItem value="document_collection">Document Collection</SelectItem>
-                            <SelectItem value="underwriting">Underwriting</SelectItem>
-                            <SelectItem value="approval">Approval</SelectItem>
-                            <SelectItem value="funded">Funded</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                      Open Full Details
+                    </Button>
+                  </div>
+                </CardContent>
+              </ScrollArea>
+            </Card>
+          )}
+        </div>
 
         <LeadDetailDialog
           lead={selectedLead}
