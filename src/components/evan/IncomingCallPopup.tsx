@@ -36,13 +36,20 @@ export const IncomingCallPopup = () => {
 
   // Initialize Twilio Device
   const initializeTwilioDevice = useCallback(async () => {
+    if (twilioDevice) {
+      console.log('Twilio Device already initialized');
+      return twilioDevice;
+    }
+    
     try {
       setIsInitializing(true);
+      console.log('Initializing Twilio Device...');
       
       // Get token from edge function
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
-        throw new Error('Not authenticated');
+        console.log('Not authenticated, skipping Twilio initialization');
+        return null;
       }
 
       const response = await fetch(
@@ -61,7 +68,8 @@ export const IncomingCallPopup = () => {
         throw new Error(error.error || 'Failed to get Twilio token');
       }
 
-      const { token } = await response.json();
+      const { token, identity } = await response.json();
+      console.log('Got Twilio token for identity:', identity);
       
       // Create Twilio Device
       const device = new Device(token, {
@@ -71,7 +79,8 @@ export const IncomingCallPopup = () => {
 
       // Set up device event handlers
       device.on('registered', () => {
-        console.log('Twilio Device registered');
+        console.log('Twilio Device registered and ready to receive calls');
+        toast.success('Phone ready to receive calls');
       });
 
       device.on('error', (error) => {
@@ -80,35 +89,54 @@ export const IncomingCallPopup = () => {
       });
 
       device.on('incoming', (call) => {
-        console.log('Incoming call via Twilio SDK:', call);
+        console.log('Incoming call via Twilio SDK:', call.parameters);
         // Handle incoming calls through SDK
         setActiveCall(call);
         
+        // Get caller info from call parameters
+        const fromNumber = call.parameters.From || 'Unknown';
+        console.log('Call from:', fromNumber);
+        
         call.on('accept', () => {
+          console.log('Call accepted');
           setIsConnected(true);
           startCallTimer();
         });
         
         call.on('disconnect', () => {
+          console.log('Call disconnected');
           handleCallEnd();
         });
         
         call.on('cancel', () => {
+          console.log('Call cancelled');
+          handleCallEnd();
+        });
+        
+        call.on('reject', () => {
+          console.log('Call rejected');
           handleCallEnd();
         });
       });
 
       await device.register();
       setTwilioDevice(device);
+      console.log('Twilio Device initialized successfully');
       
       return device;
     } catch (error) {
       console.error('Failed to initialize Twilio Device:', error);
-      throw error;
+      // Don't throw, just log - we'll retry on answer
+      return null;
     } finally {
       setIsInitializing(false);
     }
-  }, []);
+  }, [twilioDevice]);
+
+  // Auto-initialize Twilio Device on mount
+  useEffect(() => {
+    initializeTwilioDevice();
+  }, [initializeTwilioDevice]);
 
   // Start call timer
   const startCallTimer = useCallback(() => {
