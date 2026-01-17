@@ -85,16 +85,12 @@ Deno.serve(async (req) => {
     console.log('Dialing Twilio clients:', clientDialTargets);
 
     // Generate TwiML to connect to all Twilio Client browsers
-    // The timeout gives time to answer, action URL handles no-answer
-    const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-call-status`;
-    
+    // No automated voice prompts; ring immediately.
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say>Please hold while we connect your call.</Say>
-  <Dial timeout="30" action="${statusCallbackUrl}" callerId="${fromNumber}">
+  <Dial timeout="60">
     ${clientDialTargets}
   </Dial>
-  <Say>We're sorry, but no one is available to take your call right now. Please try again later or leave a message.</Say>
 </Response>`;
 
     console.log('TwiML response:', twiml);

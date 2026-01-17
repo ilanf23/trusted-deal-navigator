@@ -242,34 +242,39 @@ export const IncomingCallPopup = () => {
   const answerCall = useMutation({
     mutationFn: async () => {
       if (!incomingCall) throw new Error('No incoming call');
-      
-      // Initialize Twilio Device if not already done
-      let device = twilioDevice;
+
+      // Ensure Twilio Device is registered
+      const device = twilioDevice ?? (await initializeTwilioDevice());
       if (!device) {
-        device = await initializeTwilioDevice();
+        throw new Error('Phone is not ready yet. Please refresh the page and try again.');
       }
-      
-      // Update call status to in-progress
+
+      // We must have an actual incoming Twilio SDK call to accept
+      if (!activeCall) {
+        throw new Error('Still connecting the call… please wait 1–2 seconds and press Answer again.');
+      }
+
+      // Ensure microphone permission before accepting
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch {
+        throw new Error('Microphone access is required to answer calls.');
+      }
+
+      // Accept the call in the browser
+      activeCall.accept();
+
+      // Update call status (best-effort)
       const { error } = await supabase
         .from('active_calls')
-        .update({ 
+        .update({
           status: 'in-progress',
           answered_at: new Date().toISOString(),
         })
         .eq('id', incomingCall.id);
-      
+
       if (error) throw error;
 
-      // If there's an incoming call via SDK, accept it
-      if (activeCall) {
-        activeCall.accept();
-      } else {
-        // Otherwise, connect to the call using the call SID
-        // The Twilio webhook should have already connected us
-        setIsConnected(true);
-        startCallTimer();
-      }
-      
       return true;
     },
     onSuccess: () => {
