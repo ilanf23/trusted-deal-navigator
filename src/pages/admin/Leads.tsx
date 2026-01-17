@@ -19,6 +19,11 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
+type TeamMember = Database['public']['Tables']['team_members']['Row'];
+
+interface LeadWithOwner extends Lead {
+  team_member?: TeamMember | null;
+}
 
 const statusColors: Record<LeadStatus, string> = {
   discovery: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
@@ -39,15 +44,16 @@ const statusLabels: Record<LeadStatus, string> = {
 };
 
 const AdminLeads = () => {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<LeadWithOwner[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedLead, setSelectedLead] = useState<LeadWithOwner | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [previewLead, setPreviewLead] = useState<Lead | null>(null);
+  const [previewLead, setPreviewLead] = useState<LeadWithOwner | null>(null);
   const { toast } = useToast();
 
   const [newLead, setNewLead] = useState({
@@ -57,11 +63,30 @@ const AdminLeads = () => {
     company_name: '',
     source: '',
     notes: '',
+    assigned_to: '',
   });
+
+  const fetchTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      setTeamMembers(data || []);
+    } catch (error) {
+      console.error('Error fetching team members:', error);
+    }
+  };
 
   const fetchLeads = async () => {
     try {
-      let query = supabase.from('leads').select('*').order('created_at', { ascending: false });
+      let query = supabase
+        .from('leads')
+        .select('*, team_member:team_members(id, name, email, role)')
+        .order('created_at', { ascending: false });
       
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter as LeadStatus);
@@ -70,7 +95,7 @@ const AdminLeads = () => {
       const { data, error } = await query;
       
       if (error) throw error;
-      setLeads(data || []);
+      setLeads((data as LeadWithOwner[]) || []);
     } catch (error) {
       console.error('Error fetching leads:', error);
       toast({ title: 'Error', description: 'Failed to fetch leads', variant: 'destructive' });
@@ -78,6 +103,10 @@ const AdminLeads = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
 
   useEffect(() => {
     fetchLeads();
@@ -91,6 +120,9 @@ const AdminLeads = () => {
 
     setIsSubmitting(true);
     try {
+      // Get default owner (Evan) if none selected
+      const assignedTo = newLead.assigned_to || teamMembers.find(m => m.name === 'Evan')?.id || teamMembers[0]?.id || null;
+      
       const { error } = await supabase.from('leads').insert({
         name: newLead.name,
         email: newLead.email || null,
@@ -98,19 +130,34 @@ const AdminLeads = () => {
         company_name: newLead.company_name || null,
         source: newLead.source || null,
         notes: newLead.notes || null,
+        assigned_to: assignedTo,
       });
 
       if (error) throw error;
 
       toast({ title: 'Success', description: 'Lead created successfully' });
       setIsCreateOpen(false);
-      setNewLead({ name: '', email: '', phone: '', company_name: '', source: '', notes: '' });
+      setNewLead({ name: '', email: '', phone: '', company_name: '', source: '', notes: '', assigned_to: '' });
       fetchLeads();
     } catch (error) {
       console.error('Error creating lead:', error);
       toast({ title: 'Error', description: 'Failed to create lead', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOwnerChange = async (leadId: string, newOwnerId: string) => {
+    try {
+      const { error } = await supabase.from('leads').update({ assigned_to: newOwnerId }).eq('id', leadId);
+      
+      if (error) throw error;
+      
+      toast({ title: 'Success', description: 'Lead owner updated' });
+      fetchLeads();
+    } catch (error) {
+      console.error('Error updating lead owner:', error);
+      toast({ title: 'Error', description: 'Failed to update owner', variant: 'destructive' });
     }
   };
 
@@ -223,14 +270,34 @@ const AdminLeads = () => {
                     />
                   </div>
                 </div>
-                <div>
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={newLead.notes}
-                    onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })}
-                    placeholder="Additional notes..."
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={newLead.notes}
+                      onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })}
+                      placeholder="Additional notes..."
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="assigned_to">Owner</Label>
+                    <Select
+                      value={newLead.assigned_to || teamMembers.find(m => m.name === 'Evan')?.id || ''}
+                      onValueChange={(value) => setNewLead({ ...newLead, assigned_to: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select owner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -297,10 +364,10 @@ const AdminLeads = () => {
                     <TableRow className="text-xs">
                       <TableHead className="w-[180px] py-2">Name / Company</TableHead>
                       <TableHead className="w-[140px] py-2">Contact</TableHead>
+                      <TableHead className="w-[70px] py-2">Owner</TableHead>
                       <TableHead className="w-[80px] py-2">Source</TableHead>
                       <TableHead className="w-[80px] py-2">Status</TableHead>
-                      <TableHead className="w-[90px] py-2">Created</TableHead>
-                      <TableHead className="w-[90px] py-2">Updated</TableHead>
+                      <TableHead className="w-[80px] py-2">Created</TableHead>
                       <TableHead className="w-[36px] py-2"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -343,6 +410,11 @@ const AdminLeads = () => {
                           </div>
                         </TableCell>
                         <TableCell className="py-2">
+                          <span className="text-[11px] font-medium text-primary">
+                            {lead.team_member?.name || '—'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-2">
                           {lead.source && (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                               {lead.source}
@@ -361,9 +433,6 @@ const AdminLeads = () => {
                         </TableCell>
                         <TableCell className="py-2 text-muted-foreground text-[11px]">
                           {format(new Date(lead.created_at), 'MMM d, yy')}
-                        </TableCell>
-                        <TableCell className="py-2 text-muted-foreground text-[11px]">
-                          {format(new Date(lead.updated_at), 'MMM d, yy')}
                         </TableCell>
                         <TableCell className="py-2">
                           <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -468,6 +537,30 @@ const AdminLeads = () => {
                       <p className="text-sm bg-muted/50 rounded p-2 whitespace-pre-wrap">{previewLead.notes}</p>
                     </div>
                   )}
+
+                  {/* Owner */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">Owner</h4>
+                    <Select
+                      value={previewLead.assigned_to || ''}
+                      onValueChange={(value) => {
+                        handleOwnerChange(previewLead.id, value);
+                        const newOwner = teamMembers.find(m => m.id === value);
+                        setPreviewLead({ ...previewLead, assigned_to: value, team_member: newOwner || null });
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select owner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Status Change */}
                   <div className="space-y-2">
