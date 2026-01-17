@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, MessageSquare, Plus, ArrowUpRight, ArrowDownLeft, Clock, Send, Loader2, PhoneCall } from 'lucide-react';
+import { Phone, MessageSquare, Plus, ArrowUpRight, ArrowDownLeft, Clock, Send, Loader2, PhoneCall, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,8 @@ export const EvanCommunicationsWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSmsOpen, setIsSmsOpen] = useState(false);
   const [isCallOpen, setIsCallOpen] = useState(false);
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const [addLeadCommId, setAddLeadCommId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [newComm, setNewComm] = useState({
     lead_id: '',
@@ -64,6 +67,11 @@ export const EvanCommunicationsWidget = () => {
   const [callData, setCallData] = useState({
     to: '',
     leadId: '',
+  });
+  const [newLeadData, setNewLeadData] = useState({
+    name: '',
+    email: '',
+    company_name: '',
   });
   const queryClient = useQueryClient();
 
@@ -170,6 +178,55 @@ export const EvanCommunicationsWidget = () => {
       toast.error(`Failed to initiate call: ${error.message}`);
     },
   });
+
+  const addAsLead = useMutation({
+    mutationFn: async (comm: Communication) => {
+      // Create new lead with phone from communication
+      const { data: newLead, error: leadError } = await supabase
+        .from('leads')
+        .insert({
+          name: newLeadData.name,
+          phone: comm.phone_number,
+          email: newLeadData.email || null,
+          company_name: newLeadData.company_name || null,
+          source: 'inbound_call',
+          status: 'discovery',
+        })
+        .select()
+        .single();
+
+      if (leadError) throw leadError;
+
+      // Link communication to new lead
+      const { error: updateError } = await supabase
+        .from('evan_communications')
+        .update({ lead_id: newLead.id })
+        .eq('id', comm.id);
+
+      if (updateError) throw updateError;
+
+      return newLead;
+    },
+    onSuccess: (newLead) => {
+      queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
+      queryClient.invalidateQueries({ queryKey: ['evan-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-for-comm'] });
+      setNewLeadData({ name: '', email: '', company_name: '' });
+      setIsAddLeadOpen(false);
+      setAddLeadCommId(null);
+      toast.success(`Lead "${newLead.name}" created and linked!`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create lead: ${error.message}`);
+    },
+  });
+
+  const handleAddAsLead = (comm: Communication) => {
+    setAddLeadCommId(comm.id);
+    setIsAddLeadOpen(true);
+  };
+
+  const selectedCommForLead = communications.find(c => c.id === addLeadCommId);
 
   const filteredComms = communications.filter(comm => {
     if (activeTab === 'all') return true;
@@ -438,58 +495,157 @@ export const EvanCommunicationsWidget = () => {
               <div className="text-center text-muted-foreground py-4">No communications logged</div>
             ) : (
               <div className="space-y-2">
-                {filteredComms.map((comm) => (
-                  <div
-                    key={comm.id}
-                    className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                  >
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      comm.communication_type === 'sms' ? 'bg-blue-500/10 text-blue-500' : 'bg-green-500/10 text-green-500'
-                    }`}>
-                      {comm.communication_type === 'sms' ? (
-                        <MessageSquare className="h-4 w-4" />
-                      ) : (
-                        <Phone className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">
-                          {comm.direction === 'inbound' ? (
-                            <><ArrowDownLeft className="h-3 w-3 mr-1" /> Inbound</>
-                          ) : (
-                            <><ArrowUpRight className="h-3 w-3 mr-1" /> Outbound</>
-                          )}
-                        </Badge>
-                        {comm.phone_number && (
-                          <span className="text-xs text-muted-foreground">{comm.phone_number}</span>
-                        )}
-                        {comm.duration_seconds && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDuration(comm.duration_seconds)}
-                          </span>
-                        )}
-                        {comm.status && (
-                          <Badge variant="secondary" className="text-xs">
-                            {comm.status}
-                          </Badge>
+                {filteredComms.map((comm) => {
+                  // Show Add as Lead button for completed calls without a lead_id
+                  const isCompletedCall = comm.communication_type === 'call' && 
+                    (comm.status === 'completed' || comm.status === 'busy' || comm.status === 'no-answer' || comm.status === 'canceled' || comm.duration_seconds !== null);
+                  const canAddAsLead = !comm.lead_id && comm.phone_number;
+
+                  return (
+                    <div
+                      key={comm.id}
+                      className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                        comm.communication_type === 'sms' ? 'bg-blue-500/10 text-blue-500' : 'bg-green-500/10 text-green-500'
+                      }`}>
+                        {comm.communication_type === 'sms' ? (
+                          <MessageSquare className="h-4 w-4" />
+                        ) : (
+                          <Phone className="h-4 w-4" />
                         )}
                       </div>
-                      {comm.content && (
-                        <p className="text-sm mt-1 text-muted-foreground line-clamp-2">{comm.content}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(comm.created_at), 'MMM d, yyyy h:mm a')}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {comm.direction === 'inbound' ? (
+                              <><ArrowDownLeft className="h-3 w-3 mr-1" /> Inbound</>
+                            ) : (
+                              <><ArrowUpRight className="h-3 w-3 mr-1" /> Outbound</>
+                            )}
+                          </Badge>
+                          {comm.phone_number && (
+                            <span className="text-xs text-muted-foreground">{comm.phone_number}</span>
+                          )}
+                          {comm.duration_seconds && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDuration(comm.duration_seconds)}
+                            </span>
+                          )}
+                          {comm.status && (
+                            <Badge variant="secondary" className="text-xs">
+                              {comm.status}
+                            </Badge>
+                          )}
+                          {comm.lead_id && (
+                            <Badge variant="default" className="text-xs bg-primary/10 text-primary">
+                              Linked to Lead
+                            </Badge>
+                          )}
+                        </div>
+                        {comm.content && (
+                          <p className="text-sm mt-1 text-muted-foreground line-clamp-2">{comm.content}</p>
+                        )}
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(comm.created_at), 'MMM d, yyyy h:mm a')}
+                          </p>
+                          {canAddAsLead && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-xs text-primary hover:text-primary"
+                              onClick={() => handleAddAsLead(comm)}
+                            >
+                              <UserPlus className="h-3 w-3 mr-1" />
+                              Add as Lead
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      {/* Add as Lead Dialog */}
+      <Dialog open={isAddLeadOpen} onOpenChange={(open) => {
+        setIsAddLeadOpen(open);
+        if (!open) {
+          setAddLeadCommId(null);
+          setNewLeadData({ name: '', email: '', company_name: '' });
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Caller as Lead</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {selectedCommForLead && (
+              <div className="bg-muted p-3 rounded-lg text-sm">
+                <p className="font-medium">Phone: {selectedCommForLead.phone_number}</p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  {selectedCommForLead.direction === 'inbound' ? 'Inbound' : 'Outbound'} call on {format(new Date(selectedCommForLead.created_at), 'MMM d, yyyy h:mm a')}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="lead-name">Name *</Label>
+              <Input
+                id="lead-name"
+                placeholder="Enter caller's name"
+                value={newLeadData.name}
+                onChange={(e) => setNewLeadData(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lead-email">Email (optional)</Label>
+              <Input
+                id="lead-email"
+                type="email"
+                placeholder="email@example.com"
+                value={newLeadData.email}
+                onChange={(e) => setNewLeadData(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lead-company">Company (optional)</Label>
+              <Input
+                id="lead-company"
+                placeholder="Company name"
+                value={newLeadData.company_name}
+                onChange={(e) => setNewLeadData(prev => ({ ...prev, company_name: e.target.value }))}
+              />
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={() => selectedCommForLead && addAsLead.mutate(selectedCommForLead)}
+              disabled={!newLeadData.name.trim() || addAsLead.isPending}
+            >
+              {addAsLead.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating Lead...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create Lead
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
