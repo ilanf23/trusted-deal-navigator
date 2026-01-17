@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, MessageSquare, Plus, ArrowUpRight, ArrowDownLeft, Clock, Send, Loader2 } from 'lucide-react';
+import { Phone, MessageSquare, Plus, ArrowUpRight, ArrowDownLeft, Clock, Send, Loader2, PhoneCall } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -46,6 +46,7 @@ interface Lead {
 export const EvanCommunicationsWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSmsOpen, setIsSmsOpen] = useState(false);
+  const [isCallOpen, setIsCallOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [newComm, setNewComm] = useState({
     lead_id: '',
@@ -58,6 +59,10 @@ export const EvanCommunicationsWidget = () => {
   const [smsData, setSmsData] = useState({
     to: '',
     message: '',
+    leadId: '',
+  });
+  const [callData, setCallData] = useState({
+    to: '',
     leadId: '',
   });
   const queryClient = useQueryClient();
@@ -142,6 +147,30 @@ export const EvanCommunicationsWidget = () => {
     },
   });
 
+  const makeCall = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('twilio-call', {
+        body: {
+          to: callData.to,
+          leadId: callData.leadId || undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
+      setCallData({ to: '', leadId: '' });
+      setIsCallOpen(false);
+      toast.success(`Call initiated to ${data.to}! Status: ${data.status}`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to initiate call: ${error.message}`);
+    },
+  });
+
   const filteredComms = communications.filter(comm => {
     if (activeTab === 'all') return true;
     return comm.communication_type === activeTab;
@@ -163,11 +192,78 @@ export const EvanCommunicationsWidget = () => {
             Communications
           </CardTitle>
           <div className="flex gap-2">
+            {/* Make Call Dialog */}
+            <Dialog open={isCallOpen} onOpenChange={setIsCallOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700">
+                  <PhoneCall className="h-4 w-4 mr-1" /> Call
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Make a Call via Twilio</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <Select
+                    value={callData.leadId}
+                    onValueChange={(value) => {
+                      const lead = leads.find(l => l.id === value);
+                      setCallData(prev => ({
+                        ...prev,
+                        leadId: value,
+                        to: lead?.phone || prev.to,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Lead (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leads.filter(l => l.phone).map(lead => (
+                        <SelectItem key={lead.id} value={lead.id}>
+                          {lead.name} ({lead.phone})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Input
+                    placeholder="Phone number (e.g., +15551234567)"
+                    value={callData.to}
+                    onChange={(e) => setCallData(prev => ({ ...prev, to: e.target.value }))}
+                  />
+
+                  <div className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                    <p className="font-medium mb-1">How it works:</p>
+                    <p>Twilio will call the number and connect it to your Twilio phone line. Make sure your phone is ready to receive the call.</p>
+                  </div>
+
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700" 
+                    onClick={() => makeCall.mutate()}
+                    disabled={!callData.to || makeCall.isPending}
+                  >
+                    {makeCall.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Initiating Call...
+                      </>
+                    ) : (
+                      <>
+                        <PhoneCall className="h-4 w-4 mr-2" />
+                        Make Call
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             {/* Send SMS Dialog */}
             <Dialog open={isSmsOpen} onOpenChange={setIsSmsOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="default">
-                  <Send className="h-4 w-4 mr-1" /> Send SMS
+                  <Send className="h-4 w-4 mr-1" /> SMS
                 </Button>
               </DialogTrigger>
               <DialogContent>
