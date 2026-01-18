@@ -488,20 +488,20 @@ const formatCurrency = (amount: number) => {
   return `$${amount}`;
 };
 
-const getTypeBadgeVariant = (type: Program['type']) => {
+const getTypeBadgeClass = (type: Program['type']) => {
   switch (type) {
     case 'SBA':
-      return 'default';
+      return 'bg-admin-blue text-white border-0';
     case 'Conventional':
-      return 'secondary';
+      return 'bg-admin-teal text-white border-0';
     case 'Bridge':
-      return 'outline';
+      return 'bg-admin-orange text-white border-0';
     case 'Construction':
-      return 'destructive';
+      return 'bg-gradient-to-r from-admin-orange to-admin-orange-dark text-white border-0';
     case 'CMBS':
-      return 'default';
+      return 'bg-admin-blue-dark text-white border-0';
     default:
-      return 'secondary';
+      return 'bg-muted text-muted-foreground';
   }
 };
 
@@ -519,9 +519,9 @@ const LenderPrograms = () => {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Lender Programs</h1>
+          <h1 className="text-3xl font-bold text-admin-blue-dark">Lender Programs</h1>
           <p className="text-muted-foreground mt-1">
-            Browse lending programs from our network of {lenders.length} lenders
+            Browse lending programs from our network of <span className="font-semibold text-admin-orange">{lenders.length} lenders</span>
           </p>
         </div>
 
@@ -532,23 +532,23 @@ const LenderPrograms = () => {
               open={expandedLenders[lender.id]}
               onOpenChange={() => toggleLender(lender.id)}
             >
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden border-admin-blue/10 border-2 hover:border-admin-blue/30 transition-all">
                 <CollapsibleTrigger className="w-full">
-                  <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
+                  <CardHeader className="cursor-pointer hover:bg-admin-blue-light/30 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-primary" />
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark flex items-center justify-center shadow-md">
+                          <Building2 className="w-6 h-6 text-white" />
                         </div>
                         <div className="text-left">
-                          <CardTitle className="text-lg">{lender.name}</CardTitle>
+                          <CardTitle className="text-lg text-admin-blue-dark">{lender.name}</CardTitle>
                           <CardDescription>{lender.specialty}</CardDescription>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge variant="secondary">{lender.programs.length} Programs</Badge>
+                        <Badge className="bg-admin-orange text-white border-0">{lender.programs.length} Programs</Badge>
                         {expandedLenders[lender.id] ? (
-                          <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                          <ChevronUp className="w-5 h-5 text-admin-blue" />
                         ) : (
                           <ChevronDown className="w-5 h-5 text-muted-foreground" />
                         )}
@@ -562,41 +562,47 @@ const LenderPrograms = () => {
                       {lender.programs.map((program) => (
                         <div
                           key={program.id}
-                          className="p-4 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors"
+                          className="p-4 rounded-lg border border-admin-blue/10 bg-gradient-to-r from-admin-blue-light/30 to-transparent hover:from-admin-blue-light/50 transition-colors"
                         >
                           <div className="flex items-start justify-between gap-4 mb-3">
                             <div>
                               <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-semibold">{program.name}</h4>
-                                <Badge variant={getTypeBadgeVariant(program.type)} className="text-xs">
+                                <h4 className="font-semibold text-admin-blue-dark">{program.name}</h4>
+                                <Badge className={`text-xs ${getTypeBadgeClass(program.type)}`}>
                                   {program.type}
                                 </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground">{program.description}</p>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 pt-3 border-t">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 pt-3 border-t border-admin-blue/10">
                             <div className="flex items-center gap-2">
-                              <DollarSign className="w-4 h-4 text-green-600" />
+                              <div className="p-1.5 rounded-md bg-admin-teal-light">
+                                <DollarSign className="w-4 h-4 text-admin-teal" />
+                              </div>
                               <div>
                                 <p className="text-xs text-muted-foreground">Loan Range</p>
-                                <p className="text-sm font-medium">
+                                <p className="text-sm font-medium text-admin-teal">
                                   {formatCurrency(program.minLoan)} - {formatCurrency(program.maxLoan)}
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Percent className="w-4 h-4 text-blue-600" />
+                              <div className="p-1.5 rounded-md bg-admin-blue-light">
+                                <Percent className="w-4 h-4 text-admin-blue" />
+                              </div>
                               <div>
                                 <p className="text-xs text-muted-foreground">Interest Rate</p>
-                                <p className="text-sm font-medium">{program.interestRange}</p>
+                                <p className="text-sm font-medium text-admin-blue">{program.interestRange}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-amber-600" />
+                              <div className="p-1.5 rounded-md bg-admin-orange-light">
+                                <Clock className="w-4 h-4 text-admin-orange" />
+                              </div>
                               <div>
                                 <p className="text-xs text-muted-foreground">Term</p>
-                                <p className="text-sm font-medium">{program.term}</p>
+                                <p className="text-sm font-medium text-admin-orange">{program.term}</p>
                               </div>
                             </div>
                           </div>
