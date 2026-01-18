@@ -128,12 +128,12 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
 
   return (
     <Sidebar className="border-r border-border/40 bg-white/80 backdrop-blur-xl w-72">
-      <SidebarHeader className="p-6 pb-5">
-        <Link to="/admin" className="flex items-center gap-4 group">
+      <SidebarHeader className="p-4">
+        <Link to="/admin" className="flex items-center justify-center group">
           <img 
             src="/logo.png" 
             alt="CommercialLendingX" 
-            className="h-[200px] w-auto"
+            className="max-h-[200px] max-w-full object-contain"
           />
         </Link>
       </SidebarHeader>
