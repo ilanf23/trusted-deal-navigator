@@ -64,6 +64,42 @@ export type Database = {
           },
         ]
       }
+      calendar_connections: {
+        Row: {
+          access_token: string
+          calendar_id: string | null
+          created_at: string
+          email: string
+          id: string
+          refresh_token: string
+          token_expiry: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          calendar_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          refresh_token: string
+          token_expiry: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          calendar_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          refresh_token?: string
+          token_expiry?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           client_id: string
@@ -145,9 +181,13 @@ export type Database = {
           created_at: string
           description: string | null
           end_time: string | null
+          google_calendar_id: string | null
+          google_event_id: string | null
           id: string
           lead_id: string | null
           start_time: string
+          sync_status: string | null
+          synced_at: string | null
           title: string
           updated_at: string
         }
@@ -156,9 +196,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_time?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
           id?: string
           lead_id?: string | null
           start_time: string
+          sync_status?: string | null
+          synced_at?: string | null
           title: string
           updated_at?: string
         }
@@ -167,9 +211,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           end_time?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
           id?: string
           lead_id?: string | null
           start_time?: string
+          sync_status?: string | null
+          synced_at?: string | null
           title?: string
           updated_at?: string
         }
