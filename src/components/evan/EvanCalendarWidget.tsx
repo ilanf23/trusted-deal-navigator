@@ -169,6 +169,25 @@ export const EvanCalendarWidget = () => {
 
   const connectCalendar = async () => {
     setIsConnecting(true);
+
+    // Open the popup immediately (must be synchronous to avoid popup blockers)
+    const width = 500;
+    const height = 650;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    const popup = window.open(
+      'about:blank',
+      'google-calendar-auth',
+      `width=${width},height=${height},left=${left},top=${top},popup=1`
+    );
+
+    if (!popup || popup.closed) {
+      toast.error('Popup blocked. Please allow popups for this site.');
+      setIsConnecting(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
         body: {
@@ -178,37 +197,25 @@ export const EvanCalendarWidget = () => {
       });
 
       if (error) throw error;
+      if (!data?.authUrl) throw new Error('Missing authUrl');
 
-      if (data.authUrl) {
-        // Open OAuth in a popup window
-        const width = 500;
-        const height = 600;
-        const left = window.screenX + (window.outerWidth - width) / 2;
-        const top = window.screenY + (window.outerHeight - height) / 2;
-        
-        const popup = window.open(
-          data.authUrl,
-          'google-calendar-auth',
-          `width=${width},height=${height},left=${left},top=${top},popup=1`
-        );
+      // Navigate the already-open popup to Google
+      popup.location.href = data.authUrl;
 
-        // Check if popup was blocked
-        if (!popup || popup.closed) {
-          toast.error('Popup blocked. Please allow popups for this site.');
+      // Poll to check if popup is closed (user cancelled)
+      const pollTimer = window.setInterval(() => {
+        if (popup.closed) {
+          window.clearInterval(pollTimer);
           setIsConnecting(false);
-          return;
         }
-
-        // Poll to check if popup is closed (user cancelled)
-        const pollTimer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(pollTimer);
-            setIsConnecting(false);
-          }
-        }, 500);
-      }
+      }, 500);
     } catch (err) {
       console.error('Failed to get auth URL:', err);
+      try {
+        popup.close();
+      } catch {
+        // ignore
+      }
       toast.error('Failed to connect Google Calendar');
       setIsConnecting(false);
     }
