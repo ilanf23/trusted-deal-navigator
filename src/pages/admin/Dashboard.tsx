@@ -72,11 +72,11 @@ const AdminDashboard = () => {
   }, []);
 
   const statCards = [
-    { title: 'Total Leads', value: stats.totalLeads, icon: UserPlus, color: 'text-blue-600' },
-    { title: 'Active Clients', value: stats.activeClients, icon: Users, color: 'text-green-600' },
-    { title: 'Pending Invoices', value: stats.pendingInvoices, icon: Receipt, color: 'text-amber-600' },
-    { title: 'Pending Contracts', value: stats.pendingContracts, icon: FileText, color: 'text-purple-600' },
-    { title: 'Unread Messages', value: stats.unreadMessages, icon: MessageSquare, color: 'text-pink-600' },
+    { title: 'Total Leads', value: stats.totalLeads, icon: UserPlus, color: 'text-admin-blue', bgColor: 'bg-admin-blue-light', borderColor: 'border-admin-blue/20' },
+    { title: 'Active Clients', value: stats.activeClients, icon: Users, color: 'text-admin-teal', bgColor: 'bg-admin-teal-light', borderColor: 'border-admin-teal/20' },
+    { title: 'Pending Invoices', value: stats.pendingInvoices, icon: Receipt, color: 'text-admin-orange', bgColor: 'bg-admin-orange-light', borderColor: 'border-admin-orange/20' },
+    { title: 'Pending Contracts', value: stats.pendingContracts, icon: FileText, color: 'text-admin-blue-dark', bgColor: 'bg-admin-blue-light', borderColor: 'border-admin-blue/20' },
+    { title: 'Unread Messages', value: stats.unreadMessages, icon: MessageSquare, color: 'text-admin-orange-dark', bgColor: 'bg-admin-orange-light', borderColor: 'border-admin-orange/20' },
   ];
 
   return (
@@ -89,15 +89,17 @@ const AdminDashboard = () => {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {statCards.map((stat) => (
-            <Card key={stat.title}>
+            <Card key={stat.title} className={`${stat.borderColor} border-2 hover:shadow-lg transition-all duration-200`}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}
                 </CardTitle>
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className={`text-2xl font-bold ${stat.color}`}>
                   {loading ? '...' : stat.value}
                 </div>
               </CardContent>
@@ -106,25 +108,27 @@ const AdminDashboard = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Card>
+          <Card className="border-admin-blue/10 border-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+                <div className="p-2 rounded-lg bg-admin-blue-light">
+                  <TrendingUp className="h-5 w-5 text-admin-blue" />
+                </div>
                 Quick Actions
               </CardTitle>
               <CardDescription>Common tasks for your workflow</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <a href="/admin/leads" className="block p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                <div className="font-medium">Manage Leads</div>
+              <a href="/admin/leads" className="block p-3 rounded-lg bg-admin-blue-light/50 hover:bg-admin-blue-light border border-admin-blue/10 transition-colors">
+                <div className="font-medium text-admin-blue-dark">Manage Leads</div>
                 <div className="text-sm text-muted-foreground">View and qualify new leads</div>
               </a>
-              <a href="/admin/contracts" className="block p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                <div className="font-medium">Create Contract</div>
+              <a href="/admin/contracts" className="block p-3 rounded-lg bg-admin-orange-light/50 hover:bg-admin-orange-light border border-admin-orange/10 transition-colors">
+                <div className="font-medium text-admin-orange-dark">Create Contract</div>
                 <div className="text-sm text-muted-foreground">Draft and send new contracts</div>
               </a>
-              <a href="/admin/invoices" className="block p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                <div className="font-medium">Create Invoice</div>
+              <a href="/admin/invoices" className="block p-3 rounded-lg bg-admin-teal-light/50 hover:bg-admin-teal-light border border-admin-teal/10 transition-colors">
+                <div className="font-medium text-admin-teal">Create Invoice</div>
                 <div className="text-sm text-muted-foreground">Bill clients for services</div>
               </a>
             </CardContent>

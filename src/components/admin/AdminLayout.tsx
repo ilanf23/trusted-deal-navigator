@@ -24,11 +24,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           aiAssistantOpen={aiAssistantOpen}
         />
         <main className="flex-1 flex flex-col min-h-screen">
-          {/* Top Bar - Minimal */}
-          <header className="h-16 flex items-center justify-between border-b border-border/40 bg-white/80 backdrop-blur-xl sticky top-0 z-40 px-8">
+          {/* Top Bar - With blue accent */}
+          <header className="h-16 flex items-center justify-between border-b border-admin-blue/10 bg-white/90 backdrop-blur-xl sticky top-0 z-40 px-8">
             <div className="flex items-center gap-5">
-              <SidebarTrigger className="w-11 h-11 rounded-xl hover:bg-muted/60 transition-colors flex items-center justify-center">
-                <Menu className="w-6 h-6 text-muted-foreground" />
+              <SidebarTrigger className="w-11 h-11 rounded-xl hover:bg-admin-blue-light transition-colors flex items-center justify-center group">
+                <Menu className="w-6 h-6 text-muted-foreground group-hover:text-admin-blue" />
               </SidebarTrigger>
             </div>
             

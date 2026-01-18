@@ -129,8 +129,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   };
 
   return (
-    <Sidebar className="border-r border-border/40 bg-white/80 backdrop-blur-xl w-72">
-      <SidebarHeader className="p-4">
+    <Sidebar className="border-r border-sidebar-border bg-gradient-to-b from-sidebar to-white/90 backdrop-blur-xl w-72">
+      <SidebarHeader className="p-4 border-b border-sidebar-border/50">
         <Link to="/admin" className="flex items-center justify-center group">
           <img 
             src="/logo.png" 
@@ -151,8 +151,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
               <div className={`
                 flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
                 ${openSections[section.title] 
-                  ? 'bg-muted/60 text-foreground' 
-                  : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                  ? 'bg-admin-blue-light text-admin-blue-dark' 
+                  : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                 }
               `}>
                 <div className="flex items-center gap-3">
@@ -161,13 +161,13 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                       openSections[section.title] ? '' : '-rotate-90'
                     }`} 
                   />
-                  <section.icon className="w-5 h-5" strokeWidth={1.75} />
+                  <section.icon className={`w-5 h-5 ${openSections[section.title] ? 'text-admin-blue' : ''}`} strokeWidth={1.75} />
                   <span className="text-base font-medium">{section.title}</span>
                 </div>
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="ml-4 mt-1 space-y-1 border-l-2 border-border/40">
+              <div className="ml-4 mt-1 space-y-1 border-l-2 border-admin-blue/30">
                 {section.items.map((item) => (
                   <Link
                     key={item.title}
@@ -175,8 +175,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                     className={`
                       flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
                       ${isActive(item.url) 
-                        ? 'bg-foreground text-background shadow-sm' 
-                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                        ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
+                        : 'text-muted-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
                       }
                     `}
                   >
@@ -195,8 +195,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
             <div className={`
               flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
               ${toolsOpen 
-                ? 'bg-muted/60 text-foreground' 
-                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                ? 'bg-admin-orange-light text-admin-orange-dark' 
+                : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               }
             `}>
               <div className="flex items-center gap-3">
@@ -205,20 +205,20 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                     toolsOpen ? '' : '-rotate-90'
                   }`} 
                 />
-                <Sparkles className="w-5 h-5" strokeWidth={1.75} />
+                <Sparkles className={`w-5 h-5 ${toolsOpen ? 'text-admin-orange' : ''}`} strokeWidth={1.75} />
                 <span className="text-base font-medium">Tools</span>
               </div>
             </div>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="ml-4 mt-1 space-y-1 border-l-2 border-border/40">
+            <div className="ml-4 mt-1 space-y-1 border-l-2 border-admin-orange/30">
               <button
                 onClick={onInboxToggle}
                 className={`
                   w-full flex items-center justify-between gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
                   ${inboxOpen 
-                    ? 'bg-foreground text-background shadow-sm' 
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    ? 'bg-gradient-to-r from-admin-orange to-admin-orange-dark text-white shadow-md' 
+                    : 'text-muted-foreground hover:bg-admin-orange-light hover:text-admin-orange-dark'
                   }
                 `}
               >
@@ -233,8 +233,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                 className={`
                   w-full flex items-center justify-between gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
                   ${aiAssistantOpen 
-                    ? 'bg-foreground text-background shadow-sm' 
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    ? 'bg-gradient-to-r from-admin-orange to-admin-orange-dark text-white shadow-md' 
+                    : 'text-muted-foreground hover:bg-admin-orange-light hover:text-admin-orange-dark'
                   }
                 `}
               >
