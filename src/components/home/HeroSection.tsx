@@ -55,42 +55,6 @@ const HeroSection = () => {
         {/* Moving gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary-foreground/5 to-transparent animate-[shimmer_15s_ease-in-out_infinite]" />
         
-        {/* Pulsing dot - one at a time, grows to ~25% of viewport */}
-        {showDot && (
-          <div 
-            className="absolute transition-all duration-500"
-            style={{ 
-              left: `${pulsingDotPositions[activeDotIndex].x}%`, 
-              top: `${pulsingDotPositions[activeDotIndex].y}%`,
-              transform: 'translate(-50%, -50%)',
-              width: '25vw',
-              height: '25vw',
-              animation: 'growPulse 4s ease-out forwards'
-            }}
-          >
-            {/* Outer pulse ring - grows */}
-            <div 
-              className="absolute inset-0 rounded-full bg-accent/10"
-              style={{ animation: 'growPulse 4s ease-out forwards' }}
-            />
-            {/* Middle pulse ring */}
-            <div 
-              className="absolute rounded-full bg-accent/15"
-              style={{ 
-                inset: '15%',
-                animation: 'growPulse 4s ease-out 0.3s forwards'
-              }}
-            />
-            {/* Inner solid dot */}
-            <div 
-              className="absolute rounded-full bg-accent/25"
-              style={{ 
-                inset: '35%',
-                animation: 'growPulse 4s ease-out 0.5s forwards'
-              }}
-            />
-          </div>
-        )}
       </div>
 
 
