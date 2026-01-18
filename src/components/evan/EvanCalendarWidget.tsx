@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,10 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Plus, Phone, Video, Users, Clock, Trash2, RefreshCw, Link2, Unlink, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, isToday, isTomorrow, addDays, startOfDay, endOfDay } from 'date-fns';
-
-// Fixed callback URL - use the published domain only
-const CALENDAR_CALLBACK_URL = 'https://trusted-deal-navigator.lovable.app/admin/calendar-callback';
+import { format, isToday, isTomorrow, addDays, addMonths, startOfDay, endOfDay } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +29,14 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+
+// Fixed callback URL - use the published domain only
+const CALENDAR_CALLBACK_URL = 'https://trusted-deal-navigator.lovable.app/admin/calendar-callback';
 
 interface Appointment {
   id: string;
@@ -45,8 +50,11 @@ interface Appointment {
   sync_status: string | null;
 }
 
+type TimelineFilter = 'today' | 'week' | 'month';
+
 export const EvanCalendarWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>('week');
   const [newAppointment, setNewAppointment] = useState({
     title: '',
     start_time: '',
@@ -57,7 +65,7 @@ export const EvanCalendarWidget = () => {
   const queryClient = useQueryClient();
 
   // Check Google Calendar connection status
-  const checkCalendarStatus = async () => {
+  const checkCalendarStatus = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -72,23 +80,53 @@ export const EvanCalendarWidget = () => {
     } catch (err) {
       console.error('Failed to check calendar status:', err);
     }
-  };
-
-  useEffect(() => {
-    checkCalendarStatus();
   }, []);
 
+  // Listen for popup OAuth completion
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'GOOGLE_CALENDAR_CONNECTED') {
+        setCalendarStatus({ connected: true, email: event.data.email });
+        setIsConnecting(false);
+        toast.success(`Google Calendar connected: ${event.data.email}`);
+        queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+      } else if (event.data?.type === 'GOOGLE_CALENDAR_ERROR') {
+        setIsConnecting(false);
+        toast.error('Failed to connect Google Calendar');
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    checkCalendarStatus();
+
+    return () => window.removeEventListener('message', handleMessage);
+  }, [checkCalendarStatus, queryClient]);
+
+  // Calculate date range based on filter
+  const getDateRange = () => {
+    const today = startOfDay(new Date());
+    switch (timelineFilter) {
+      case 'today':
+        return { start: today, end: endOfDay(today) };
+      case 'week':
+        return { start: today, end: endOfDay(addDays(today, 7)) };
+      case 'month':
+        return { start: today, end: endOfDay(addMonths(today, 1)) };
+      default:
+        return { start: today, end: endOfDay(addDays(today, 7)) };
+    }
+  };
+
   const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ['evan-appointments'],
+    queryKey: ['evan-appointments', timelineFilter],
     queryFn: async () => {
-      const today = startOfDay(new Date());
-      const weekEnd = endOfDay(addDays(today, 7));
+      const { start, end } = getDateRange();
       
       const { data, error } = await supabase
         .from('evan_appointments')
         .select('*')
-        .gte('start_time', today.toISOString())
-        .lte('start_time', weekEnd.toISOString())
+        .gte('start_time', start.toISOString())
+        .lte('start_time', end.toISOString())
         .order('start_time', { ascending: true });
       if (error) throw error;
       return data as Appointment[];
@@ -142,7 +180,32 @@ export const EvanCalendarWidget = () => {
       if (error) throw error;
 
       if (data.authUrl) {
-        window.location.href = data.authUrl;
+        // Open OAuth in a popup window
+        const width = 500;
+        const height = 600;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        
+        const popup = window.open(
+          data.authUrl,
+          'google-calendar-auth',
+          `width=${width},height=${height},left=${left},top=${top},popup=1`
+        );
+
+        // Check if popup was blocked
+        if (!popup || popup.closed) {
+          toast.error('Popup blocked. Please allow popups for this site.');
+          setIsConnecting(false);
+          return;
+        }
+
+        // Poll to check if popup is closed (user cancelled)
+        const pollTimer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(pollTimer);
+            setIsConnecting(false);
+          }
+        }, 500);
       }
     } catch (err) {
       console.error('Failed to get auth URL:', err);
@@ -338,12 +401,23 @@ export const EvanCalendarWidget = () => {
             </Dialog>
           </div>
         </div>
+
+        {/* Timeline Filter Tabs */}
+        <Tabs value={timelineFilter} onValueChange={(v) => setTimelineFilter(v as TimelineFilter)} className="mt-3">
+          <TabsList className="grid w-full grid-cols-3 h-8">
+            <TabsTrigger value="today" className="text-xs">Today</TabsTrigger>
+            <TabsTrigger value="week" className="text-xs">This Week</TabsTrigger>
+            <TabsTrigger value="month" className="text-xs">This Month</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="text-center text-muted-foreground py-4">Loading...</div>
         ) : Object.keys(groupedAppointments).length === 0 ? (
-          <div className="text-center text-muted-foreground py-4">No upcoming appointments</div>
+          <div className="text-center text-muted-foreground py-4">
+            No appointments {timelineFilter === 'today' ? 'today' : timelineFilter === 'week' ? 'this week' : 'this month'}
+          </div>
         ) : (
           <div className="space-y-4">
             {Object.entries(groupedAppointments).map(([date, apts]) => (
