@@ -29,6 +29,7 @@ import AdminRateWatch from "./pages/admin/RateWatch";
 import AdminInboxCallback from "./pages/admin/InboxCallback";
 import LenderPrograms from "./pages/admin/LenderPrograms";
 import EvansPage from "./pages/admin/EvansPage";
+import CalendarCallback from "./pages/admin/CalendarCallback";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/admin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
             <Route path="/admin/people/evans" element={<ProtectedRoute requireAdmin><EvansPage /></ProtectedRoute>} />
             <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
+            <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
             {/* Client Portal Routes - clientOnly redirects admins to /admin */}
             <Route path="/portal" element={<ProtectedRoute clientOnly><PortalDashboard /></ProtectedRoute>} />
             <Route path="/portal/contracts" element={<ProtectedRoute clientOnly><PortalContracts /></ProtectedRoute>} />
