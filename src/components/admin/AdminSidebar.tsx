@@ -17,6 +17,7 @@ import {
   Sparkles,
   ChevronDown,
   ChevronRight,
+  Building2,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -62,6 +63,7 @@ const navSections: NavSection[] = [
       { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
       { title: 'Leads', url: '/admin/leads', icon: UserPlus },
       { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
+      { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },
       { title: 'Clients', url: '/admin/clients', icon: Users },
       { title: 'Contracts', url: '/admin/contracts', icon: FileText },
       { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
