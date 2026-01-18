@@ -461,10 +461,10 @@ const Newsletter = () => {
                       {/* Filters */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <div className="relative flex-1 min-w-[200px]">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                           <Input 
                             placeholder="Search leads..." 
-                            className="pl-8"
+                            className="pl-10"
                             value={leadSearchQuery}
                             onChange={(e) => setLeadSearchQuery(e.target.value)}
                           />
@@ -703,10 +703,10 @@ The Commercial Lending X Team"
                     <CardDescription>View and manage your email campaigns</CardDescription>
                   </div>
                   <div className="relative w-64">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input 
                       placeholder="Search campaigns..." 
-                      className="pl-8"
+                      className="pl-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />

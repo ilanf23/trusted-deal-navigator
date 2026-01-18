@@ -418,7 +418,7 @@ Commercial Lending X`,
 
         {/* Search */}
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input 
             placeholder="Search by name, email, company, or loan type..."
             value={searchTerm}
