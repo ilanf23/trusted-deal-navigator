@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Plus, Phone, Video, Users, Clock, Trash2, RefreshCw, Link2, Unlink, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isToday, isTomorrow, addDays, startOfDay, endOfDay } from 'date-fns';
+
+// Fixed callback URL - use the published domain only
+const CALENDAR_CALLBACK_URL = 'https://trusted-deal-navigator.lovable.app/admin/calendar-callback';
 import {
   Dialog,
   DialogContent,
@@ -73,41 +76,6 @@ export const EvanCalendarWidget = () => {
 
   useEffect(() => {
     checkCalendarStatus();
-
-    // Handle OAuth callback
-    const handleCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const state = urlParams.get('state');
-
-      if (code && window.location.pathname.includes('evans')) {
-        setIsConnecting(true);
-        try {
-          const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-            body: {
-              action: 'exchangeCode',
-              code,
-              redirectUri: `${window.location.origin}/admin/people/evans`,
-            },
-          });
-
-          if (error) throw error;
-
-          if (data.success) {
-            toast.success(`Google Calendar connected: ${data.email}`);
-            setCalendarStatus({ connected: true, email: data.email });
-            // Clean up URL
-            window.history.replaceState({}, '', window.location.pathname);
-          }
-        } catch (err) {
-          console.error('OAuth callback error:', err);
-          toast.error('Failed to connect Google Calendar');
-        }
-        setIsConnecting(false);
-      }
-    };
-
-    handleCallback();
   }, []);
 
   const { data: appointments = [], isLoading } = useQuery({
@@ -167,7 +135,7 @@ export const EvanCalendarWidget = () => {
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
         body: {
           action: 'getAuthUrl',
-          redirectUri: `${window.location.origin}/admin/people/evans`,
+          redirectUri: CALENDAR_CALLBACK_URL,
         },
       });
 
