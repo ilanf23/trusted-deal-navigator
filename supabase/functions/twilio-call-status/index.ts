@@ -70,8 +70,9 @@ Deno.serve(async (req) => {
             duration_seconds: parseInt(callDuration) || null,
             status: callStatus,
             content: `${activeCall.direction === 'inbound' ? 'Incoming' : 'Outgoing'} call - ${callStatus}`,
+            call_sid: callSid,
           });
-        console.log('Communication logged');
+        console.log('Communication logged with call_sid');
       }
     }
 

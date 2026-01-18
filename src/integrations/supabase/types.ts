@@ -185,6 +185,7 @@ export type Database = {
       }
       evan_communications: {
         Row: {
+          call_sid: string | null
           communication_type: string
           content: string | null
           created_at: string
@@ -193,9 +194,13 @@ export type Database = {
           id: string
           lead_id: string | null
           phone_number: string | null
+          recording_sid: string | null
+          recording_url: string | null
           status: string | null
+          transcript: string | null
         }
         Insert: {
+          call_sid?: string | null
           communication_type: string
           content?: string | null
           created_at?: string
@@ -204,9 +209,13 @@ export type Database = {
           id?: string
           lead_id?: string | null
           phone_number?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
           status?: string | null
+          transcript?: string | null
         }
         Update: {
+          call_sid?: string | null
           communication_type?: string
           content?: string | null
           created_at?: string
@@ -215,7 +224,10 @@ export type Database = {
           id?: string
           lead_id?: string | null
           phone_number?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
           status?: string | null
+          transcript?: string | null
         }
         Relationships: [
           {

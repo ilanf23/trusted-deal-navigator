@@ -30,6 +30,8 @@ Deno.serve(async (req) => {
 
     console.log(`Transcription received: CallSid=${callSid} Status=${transcriptionStatus}`);
     console.log(`TranscriptionSid=${transcriptionSid}`);
+    console.log(`RecordingSid=${recordingSid}`);
+    console.log(`RecordingUrl=${recordingUrl}`);
     console.log(`TranscriptionText length=${transcriptionText.length}`);
     console.log(`TranscriptionText preview: ${transcriptionText.substring(0, 200)}...`);
 
@@ -54,46 +56,59 @@ Deno.serve(async (req) => {
       console.error('Error finding active call:', callError);
     }
 
-    // Find the most recent communication for this call
-    // Match by phone number and approximate time
-    let commQuery = supabase
+    // First try to find by call_sid directly
+    let commToUpdate = null;
+    
+    const { data: commByCallSid } = await supabase
       .from('evan_communications')
       .select('*')
-      .eq('communication_type', 'call')
-      .order('created_at', { ascending: false })
-      .limit(10);
+      .eq('call_sid', callSid)
+      .single();
 
-    if (activeCall?.from_number) {
-      const normalizedPhone = activeCall.from_number.replace(/\D/g, '').slice(-10);
-      commQuery = supabase
+    if (commByCallSid) {
+      commToUpdate = commByCallSid;
+      console.log(`Found communication by call_sid: ${commByCallSid.id}`);
+    } else {
+      // Fallback: Find the most recent communication for this call by phone number
+      let commQuery = supabase
         .from('evan_communications')
         .select('*')
         .eq('communication_type', 'call')
-        .or(`phone_number.ilike.%${normalizedPhone}%`)
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(10);
+
+      if (activeCall?.from_number) {
+        const normalizedPhone = activeCall.from_number.replace(/\D/g, '').slice(-10);
+        commQuery = supabase
+          .from('evan_communications')
+          .select('*')
+          .eq('communication_type', 'call')
+          .or(`phone_number.ilike.%${normalizedPhone}%`)
+          .order('created_at', { ascending: false })
+          .limit(5);
+      }
+
+      const { data: recentComms, error: commError } = await commQuery;
+
+      if (commError) {
+        console.error('Error finding communications:', commError);
+      }
+
+      if (recentComms && recentComms.length > 0) {
+        commToUpdate = recentComms[0];
+        console.log(`Found communication by phone number: ${commToUpdate.id}`);
+      }
     }
 
-    const { data: recentComms, error: commError } = await commQuery;
-
-    if (commError) {
-      console.error('Error finding communications:', commError);
-    }
-
-    // Update the most recent matching communication with the transcript
-    if (recentComms && recentComms.length > 0) {
-      const commToUpdate = recentComms[0];
-      
-      // Build the updated content with transcript
-      const existingContent = commToUpdate.content || '';
-      const updatedContent = existingContent.includes('Transcript:') 
-        ? existingContent 
-        : `${existingContent}\n\n--- Transcript ---\n${transcriptionText}`.trim();
-
+    // Update the matching communication with the transcript
+    if (commToUpdate) {
       const { error: updateError } = await supabase
         .from('evan_communications')
         .update({ 
-          content: updatedContent,
+          transcript: transcriptionText,
+          recording_url: recordingUrl || null,
+          recording_sid: recordingSid || null,
+          call_sid: callSid,
         })
         .eq('id', commToUpdate.id);
 
@@ -113,12 +128,18 @@ Deno.serve(async (req) => {
           communication_type: 'call',
           direction: activeCall?.direction || 'inbound',
           phone_number: activeCall?.from_number || null,
-          content: `Call transcript:\n\n${transcriptionText}`,
+          content: 'Call with transcript',
+          transcript: transcriptionText,
+          recording_url: recordingUrl || null,
+          recording_sid: recordingSid || null,
+          call_sid: callSid,
           status: 'transcribed',
         });
 
       if (insertError) {
         console.error('Error creating communication with transcript:', insertError);
+      } else {
+        console.log('Created new communication with transcript');
       }
     }
 
