@@ -138,7 +138,96 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get the authorization header
+    const body = await req.json();
+    const { action, appointmentId } = body;
+
+    // Handle scheduled sync (called by cron job without user auth)
+    if (action === 'scheduledSync') {
+      console.log('Running scheduled sync for all connected calendars...');
+      
+      // Get all calendar connections
+      const { data: connections, error: connErr } = await supabase
+        .from('calendar_connections')
+        .select('*');
+
+      if (connErr || !connections?.length) {
+        console.log('No calendar connections found');
+        return new Response(
+          JSON.stringify({ success: true, message: 'No calendars to sync', synced: 0 }),
+          { headers: corsHeaders }
+        );
+      }
+
+      let totalImported = 0;
+      let totalUpdated = 0;
+
+      for (const connection of connections) {
+        try {
+          const accessToken = await getValidAccessToken(connection, supabase);
+          if (!accessToken) {
+            console.error(`Failed to get token for user ${connection.user_id}`);
+            continue;
+          }
+
+          const now = new Date();
+          const timeMin = now.toISOString();
+          const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+          const googleEvents = await fetchFromGoogle(accessToken, connection.calendar_id, timeMin, timeMax);
+
+          for (const event of googleEvents) {
+            if (!event.start?.dateTime) continue;
+
+            const { data: existing } = await supabase
+              .from('evan_appointments')
+              .select('id')
+              .eq('google_event_id', event.id)
+              .single();
+
+            if (existing) {
+              await supabase
+                .from('evan_appointments')
+                .update({
+                  title: event.summary || 'Untitled Event',
+                  description: event.description || null,
+                  start_time: event.start.dateTime,
+                  end_time: event.end?.dateTime || null,
+                  synced_at: new Date().toISOString(),
+                  sync_status: 'synced',
+                })
+                .eq('id', existing.id);
+              totalUpdated++;
+            } else {
+              await supabase
+                .from('evan_appointments')
+                .insert({
+                  title: event.summary || 'Untitled Event',
+                  description: event.description || null,
+                  start_time: event.start.dateTime,
+                  end_time: event.end?.dateTime || null,
+                  google_event_id: event.id,
+                  google_calendar_id: connection.calendar_id,
+                  synced_at: new Date().toISOString(),
+                  sync_status: 'synced',
+                  appointment_type: 'imported',
+                });
+              totalImported++;
+            }
+          }
+
+          console.log(`Synced calendar for user ${connection.user_id}: ${googleEvents.length} events`);
+        } catch (err) {
+          console.error(`Error syncing calendar for user ${connection.user_id}:`, err);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, imported: totalImported, updated: totalUpdated }),
+        { headers: corsHeaders }
+      );
+    }
+
+    // For user-initiated actions, verify authorization
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -162,7 +251,6 @@ Deno.serve(async (req) => {
     }
 
     const userId = userData.user.id;
-    const { action, appointmentId } = await req.json();
 
     // Get user's calendar connection
     const { data: connection, error: connError } = await supabase
