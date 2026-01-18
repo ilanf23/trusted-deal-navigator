@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Mail, Phone, Building2, Calendar, FileText, User, DollarSign, Clock, Save } from 'lucide-react';
+import { Loader2, Mail, Phone, Building2, Calendar, FileText, User, DollarSign, Clock, Save, Landmark } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -14,6 +14,19 @@ import type { Database } from '@/integrations/supabase/types';
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadResponse = Database['public']['Tables']['lead_responses']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
+
+interface AssignedProgram {
+  id: string;
+  status: string | null;
+  notes: string | null;
+  program: {
+    id: string;
+    lender_name: string;
+    program_name: string;
+    program_type: string;
+    interest_range: string | null;
+  };
+}
 
 const statusColors: Record<LeadStatus, string> = {
   discovery: 'bg-blue-100 text-blue-800',
@@ -33,6 +46,7 @@ interface LeadDetailDialogProps {
 
 const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetailDialogProps) => {
   const [responses, setResponses] = useState<LeadResponse | null>(null);
+  const [assignedPrograms, setAssignedPrograms] = useState<AssignedProgram[]>([]);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
@@ -42,6 +56,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     if (lead && open) {
       setNotes(lead.notes || '');
       fetchResponses();
+      fetchAssignedPrograms();
     }
   }, [lead, open]);
 
@@ -61,6 +76,26 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       console.error('Error fetching responses:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAssignedPrograms = async () => {
+    if (!lead) return;
+    try {
+      const { data, error } = await supabase
+        .from('lead_lender_programs')
+        .select(`
+          id,
+          status,
+          notes,
+          program:lender_programs(id, lender_name, program_name, program_type, interest_range)
+        `)
+        .eq('lead_id', lead.id);
+
+      if (error) throw error;
+      setAssignedPrograms((data || []) as unknown as AssignedProgram[]);
+    } catch (error) {
+      console.error('Error fetching assigned programs:', error);
     }
   };
 
@@ -171,6 +206,62 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                 </div>
               </>
             )}
+
+            {/* Assigned Lender Programs */}
+            <Separator />
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <Landmark className="w-4 h-4" />
+                Assigned Lender Programs ({assignedPrograms.length})
+              </h3>
+              {assignedPrograms.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground bg-muted/50 rounded-lg">
+                  <Landmark className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No lender programs assigned yet</p>
+                  <p className="text-sm mt-1">Assign programs from the Lender Programs page</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {assignedPrograms.map((ap) => (
+                    <div key={ap.id} className="p-3 rounded-lg border border-admin-blue/10 bg-admin-blue-light/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-admin-blue-dark">{ap.program?.program_name}</span>
+                            <Badge className={`text-xs ${
+                              ap.status === 'approved' ? 'bg-green-500 text-white' :
+                              ap.status === 'submitted' ? 'bg-admin-blue text-white' :
+                              ap.status === 'declined' ? 'bg-red-500 text-white' :
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              {ap.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{ap.program?.lender_name}</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className={`text-xs ${
+                            ap.program?.program_type === 'SBA' ? 'bg-admin-blue text-white' :
+                            ap.program?.program_type === 'Bridge' ? 'bg-admin-orange text-white' :
+                            ap.program?.program_type === 'Construction' ? 'bg-admin-orange-dark text-white' :
+                            ap.program?.program_type === 'CMBS' ? 'bg-admin-blue-dark text-white' :
+                            'bg-admin-teal text-white'
+                          }`}>
+                            {ap.program?.program_type}
+                          </Badge>
+                          {ap.program?.interest_range && (
+                            <p className="text-xs text-muted-foreground mt-1">{ap.program.interest_range}</p>
+                          )}
+                        </div>
+                      </div>
+                      {ap.notes && (
+                        <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-admin-blue/10">{ap.notes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Notes Section */}
             <Separator />
