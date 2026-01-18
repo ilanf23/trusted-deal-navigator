@@ -79,13 +79,11 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
     <Sidebar className="border-r border-border/40 bg-white/80 backdrop-blur-xl w-72">
       <SidebarHeader className="p-6 pb-5">
         <Link to="/admin" className="flex items-center gap-4 group">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-foreground to-foreground/80 flex items-center justify-center shadow-sm">
-            <span className="text-background font-bold text-xl">C</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-base font-semibold tracking-tight text-foreground">Commercial Lending</span>
-            <span className="text-sm text-muted-foreground font-medium">Admin Portal</span>
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="CommercialLendingX" 
+            className="h-10 w-auto"
+          />
         </Link>
       </SidebarHeader>
       
