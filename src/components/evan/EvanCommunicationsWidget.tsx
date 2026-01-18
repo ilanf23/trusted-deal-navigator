@@ -36,6 +36,10 @@ interface Communication {
   duration_seconds: number | null;
   status: string | null;
   created_at: string;
+  transcript: string | null;
+  recording_url: string | null;
+  recording_sid: string | null;
+  call_sid: string | null;
 }
 
 interface Lead {
@@ -88,11 +92,20 @@ export const EvanCommunicationsWidget = () => {
     });
   };
 
-  const hasTranscript = (content: string | null) => {
-    return content?.includes('--- Transcript ---') || content?.includes('Call transcript:');
+  const hasTranscript = (comm: Communication) => {
+    // Check for dedicated transcript column first, then fall back to content parsing
+    if (comm.transcript) return true;
+    return comm.content?.includes('--- Transcript ---') || comm.content?.includes('Call transcript:');
   };
 
-  const getTranscriptContent = (content: string | null) => {
+  const getTranscriptContent = (comm: Communication) => {
+    // Use dedicated transcript column if available
+    if (comm.transcript) {
+      return { summary: comm.content || '', transcript: comm.transcript };
+    }
+    
+    // Fall back to parsing content for legacy data
+    const content = comm.content;
     if (!content) return { summary: '', transcript: '' };
     
     const transcriptMarkers = ['--- Transcript ---', 'Call transcript:'];
@@ -586,14 +599,25 @@ export const EvanCommunicationsWidget = () => {
                             </Badge>
                           )}
                         </div>
-                        {comm.content && (
+                        {(comm.content || comm.transcript) && (
                           <>
-                            {hasTranscript(comm.content) ? (
+                            {hasTranscript(comm) ? (
                               <div className="mt-2">
-                                {getTranscriptContent(comm.content).summary && (
+                                {getTranscriptContent(comm).summary && (
                                   <p className="text-sm text-muted-foreground">
-                                    {getTranscriptContent(comm.content).summary}
+                                    {getTranscriptContent(comm).summary}
                                   </p>
+                                )}
+                                {comm.recording_url && (
+                                  <div className="mt-2">
+                                    <audio 
+                                      controls 
+                                      className="h-8 w-full max-w-xs"
+                                      src={comm.recording_url}
+                                    >
+                                      Your browser does not support the audio element.
+                                    </audio>
+                                  </div>
                                 )}
                                 <Button
                                   variant="ghost"
@@ -611,7 +635,7 @@ export const EvanCommunicationsWidget = () => {
                                 {expandedTranscripts.has(comm.id) && (
                                   <div className="mt-2 p-3 bg-muted/50 rounded-lg border">
                                     <p className="text-sm whitespace-pre-wrap">
-                                      {getTranscriptContent(comm.content).transcript}
+                                      {getTranscriptContent(comm).transcript}
                                     </p>
                                   </div>
                                 )}
