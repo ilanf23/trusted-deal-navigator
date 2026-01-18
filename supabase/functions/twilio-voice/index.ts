@@ -43,10 +43,14 @@ Deno.serve(async (req) => {
 
     console.log(`Initiating call to ${formattedPhone} from ${twilioPhoneNumber}`);
 
-    // Generate TwiML to dial the number
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const transcriptionCallbackUrl = `${supabaseUrl}/functions/v1/twilio-transcription`;
+    const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-call-status`;
+
+    // Generate TwiML to dial the number with recording and transcription
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial callerId="${twilioPhoneNumber}">
+  <Dial callerId="${twilioPhoneNumber}" record="record-from-answer-dual" recordingStatusCallback="${statusCallbackUrl}" transcribe="true" transcribeCallback="${transcriptionCallbackUrl}">
     <Number>${formattedPhone}</Number>
   </Dial>
 </Response>`;
