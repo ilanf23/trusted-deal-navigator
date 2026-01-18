@@ -421,6 +421,51 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_lender_programs: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string
+          notes: string | null
+          program_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id: string
+          notes?: string | null
+          program_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          program_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_lender_programs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_lender_programs_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "lender_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_responses: {
         Row: {
           additional_information: string | null
@@ -691,6 +736,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lender_programs: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          interest_range: string | null
+          lender_name: string
+          lender_specialty: string | null
+          max_loan: number | null
+          min_loan: number | null
+          program_name: string
+          program_type: string
+          term: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          interest_range?: string | null
+          lender_name: string
+          lender_specialty?: string | null
+          max_loan?: number | null
+          min_loan?: number | null
+          program_name: string
+          program_type: string
+          term?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          interest_range?: string | null
+          lender_name?: string
+          lender_specialty?: string | null
+          max_loan?: number | null
+          min_loan?: number | null
+          program_name?: string
+          program_type?: string
+          term?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       marketing_stats: {
         Row: {
