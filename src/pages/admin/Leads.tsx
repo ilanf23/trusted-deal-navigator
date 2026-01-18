@@ -345,12 +345,12 @@ const AdminLeads = () => {
 
           {/* Search */}
           <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
             <Input
               placeholder="Search leads..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 rounded-xl bg-white border-border/50 focus:border-foreground/20 transition-colors"
+              className="pl-10 h-9 rounded-xl bg-white border-border/50 focus:border-foreground/20 transition-colors"
             />
           </div>
         </div>
