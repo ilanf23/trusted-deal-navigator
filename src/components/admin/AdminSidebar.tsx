@@ -133,7 +133,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           <img 
             src="/logo.png" 
             alt="CommercialLendingX" 
-            className="h-10 w-auto"
+            className="h-[200px] w-auto"
           />
         </Link>
       </SidebarHeader>
