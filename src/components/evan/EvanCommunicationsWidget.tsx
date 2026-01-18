@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, MessageSquare, Plus, ArrowUpRight, ArrowDownLeft, Clock, Send, Loader2, PhoneCall, UserPlus } from 'lucide-react';
+import { Phone, MessageSquare, Plus, ArrowUpRight, ArrowDownLeft, Clock, Send, Loader2, PhoneCall, UserPlus, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -50,6 +50,7 @@ export const EvanCommunicationsWidget = () => {
   const [isCallOpen, setIsCallOpen] = useState(false);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [addLeadCommId, setAddLeadCommId] = useState<string | null>(null);
+  const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('all');
   const [newComm, setNewComm] = useState({
     lead_id: '',
@@ -74,6 +75,47 @@ export const EvanCommunicationsWidget = () => {
     company_name: '',
   });
   const queryClient = useQueryClient();
+
+  const toggleTranscript = (commId: string) => {
+    setExpandedTranscripts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commId)) {
+        newSet.delete(commId);
+      } else {
+        newSet.add(commId);
+      }
+      return newSet;
+    });
+  };
+
+  const hasTranscript = (content: string | null) => {
+    return content?.includes('--- Transcript ---') || content?.includes('Call transcript:');
+  };
+
+  const getTranscriptContent = (content: string | null) => {
+    if (!content) return { summary: '', transcript: '' };
+    
+    const transcriptMarkers = ['--- Transcript ---', 'Call transcript:'];
+    let transcriptStart = -1;
+    let marker = '';
+    
+    for (const m of transcriptMarkers) {
+      const idx = content.indexOf(m);
+      if (idx !== -1 && (transcriptStart === -1 || idx < transcriptStart)) {
+        transcriptStart = idx;
+        marker = m;
+      }
+    }
+    
+    if (transcriptStart === -1) {
+      return { summary: content, transcript: '' };
+    }
+    
+    const summary = content.substring(0, transcriptStart).trim();
+    const transcript = content.substring(transcriptStart + marker.length).trim();
+    
+    return { summary, transcript };
+  };
 
   const { data: communications = [], isLoading } = useQuery({
     queryKey: ['evan-communications'],
@@ -545,7 +587,39 @@ export const EvanCommunicationsWidget = () => {
                           )}
                         </div>
                         {comm.content && (
-                          <p className="text-sm mt-1 text-muted-foreground line-clamp-2">{comm.content}</p>
+                          <>
+                            {hasTranscript(comm.content) ? (
+                              <div className="mt-2">
+                                {getTranscriptContent(comm.content).summary && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {getTranscriptContent(comm.content).summary}
+                                  </p>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-xs text-primary hover:text-primary mt-1 p-0"
+                                  onClick={() => toggleTranscript(comm.id)}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  {expandedTranscripts.has(comm.id) ? (
+                                    <>Hide Transcript <ChevronUp className="h-3 w-3 ml-1" /></>
+                                  ) : (
+                                    <>View Transcript <ChevronDown className="h-3 w-3 ml-1" /></>
+                                  )}
+                                </Button>
+                                {expandedTranscripts.has(comm.id) && (
+                                  <div className="mt-2 p-3 bg-muted/50 rounded-lg border">
+                                    <p className="text-sm whitespace-pre-wrap">
+                                      {getTranscriptContent(comm.content).transcript}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-sm mt-1 text-muted-foreground line-clamp-2">{comm.content}</p>
+                            )}
+                          </>
                         )}
                         <div className="flex items-center justify-between mt-1">
                           <p className="text-xs text-muted-foreground">
