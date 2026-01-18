@@ -17,33 +17,59 @@ export default function CalendarCallback() {
       const code = urlParams.get('code');
       const error = urlParams.get('error');
 
-      // Check if this is a popup or a full page redirect
-      const isPopup = window.opener !== null;
+      // Helper to notify parent (works for both popup and localStorage fallback)
+      const notifyParent = (data: { type: string; email?: string; error?: string }) => {
+        // Try postMessage first (works if same origin and window.opener exists)
+        if (window.opener) {
+          try {
+            window.opener.postMessage(data, '*');
+          } catch {
+            // Ignore cross-origin errors
+          }
+        }
+        
+        // Always use localStorage as a reliable cross-origin fallback
+        localStorage.setItem('google-calendar-auth-result', JSON.stringify({
+          ...data,
+          timestamp: Date.now()
+        }));
+      };
+
+      const closeOrRedirect = () => {
+        // If we're in a popup (has opener or small window), try to close
+        const isLikelyPopup = window.opener || window.innerWidth < 600;
+        
+        if (isLikelyPopup) {
+          try {
+            window.close();
+          } catch {
+            // Can't close, redirect instead
+          }
+          // If window.close() didn't work (some browsers block it), redirect after delay
+          setTimeout(() => {
+            if (!window.closed) {
+              navigate('/admin/people/evans');
+            }
+          }, 500);
+        } else {
+          navigate('/admin/people/evans');
+        }
+      };
 
       if (error) {
         console.error('OAuth error:', error);
         setStatus('error');
         setMessage('Authorization was denied or failed');
-        
-        if (isPopup) {
-          window.opener?.postMessage({ type: 'GOOGLE_CALENDAR_ERROR', error }, '*');
-          setTimeout(() => window.close(), 1500);
-        } else {
-          setTimeout(() => navigate('/admin/people/evans'), 2000);
-        }
+        notifyParent({ type: 'GOOGLE_CALENDAR_ERROR', error });
+        setTimeout(closeOrRedirect, 1500);
         return;
       }
 
       if (!code) {
         setStatus('error');
         setMessage('No authorization code received');
-        
-        if (isPopup) {
-          window.opener?.postMessage({ type: 'GOOGLE_CALENDAR_ERROR', error: 'No code' }, '*');
-          setTimeout(() => window.close(), 1500);
-        } else {
-          setTimeout(() => navigate('/admin/people/evans'), 2000);
-        }
+        notifyParent({ type: 'GOOGLE_CALENDAR_ERROR', error: 'No code' });
+        setTimeout(closeOrRedirect, 1500);
         return;
       }
 
@@ -61,18 +87,8 @@ export default function CalendarCallback() {
         if (data.success) {
           setStatus('success');
           setMessage(`Connected: ${data.email}`);
-          
-          if (isPopup) {
-            // Send message to parent window and close popup
-            window.opener?.postMessage({ 
-              type: 'GOOGLE_CALENDAR_CONNECTED', 
-              email: data.email 
-            }, '*');
-            setTimeout(() => window.close(), 1000);
-          } else {
-            // Regular redirect flow
-            setTimeout(() => navigate('/admin/people/evans'), 1500);
-          }
+          notifyParent({ type: 'GOOGLE_CALENDAR_CONNECTED', email: data.email });
+          setTimeout(closeOrRedirect, 1000);
         } else {
           throw new Error(data.error || 'Failed to connect');
         }
@@ -80,13 +96,8 @@ export default function CalendarCallback() {
         console.error('OAuth callback error:', err);
         setStatus('error');
         setMessage('Failed to connect Google Calendar');
-        
-        if (isPopup) {
-          window.opener?.postMessage({ type: 'GOOGLE_CALENDAR_ERROR', error: String(err) }, '*');
-          setTimeout(() => window.close(), 1500);
-        } else {
-          setTimeout(() => navigate('/admin/people/evans'), 2000);
-        }
+        notifyParent({ type: 'GOOGLE_CALENDAR_ERROR', error: String(err) });
+        setTimeout(closeOrRedirect, 1500);
       }
     };
 
@@ -110,7 +121,7 @@ export default function CalendarCallback() {
             </div>
             <h1 className="text-xl font-semibold text-green-600 dark:text-green-400">Connected!</h1>
             <p className="text-muted-foreground">{message}</p>
-            <p className="text-sm text-muted-foreground">This window will close automatically...</p>
+            <p className="text-sm text-muted-foreground">You can close this window now.</p>
           </>
         )}
         {status === 'error' && (

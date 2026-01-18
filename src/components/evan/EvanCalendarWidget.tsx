@@ -109,7 +109,7 @@ export const EvanCalendarWidget = () => {
     }
   }, []);
 
-  // Listen for popup OAuth completion
+  // Listen for popup OAuth completion via postMessage and localStorage
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'GOOGLE_CALENDAR_CONNECTED') {
@@ -123,10 +123,61 @@ export const EvanCalendarWidget = () => {
       }
     };
 
-    window.addEventListener('message', handleMessage);
-    checkCalendarStatus();
+    // Also listen for localStorage changes (fallback for cross-origin popups)
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'google-calendar-auth-result' && event.newValue) {
+        try {
+          const result = JSON.parse(event.newValue);
+          // Only process if it's recent (within last 30 seconds)
+          if (result.timestamp && Date.now() - result.timestamp < 30000) {
+            if (result.type === 'GOOGLE_CALENDAR_CONNECTED') {
+              setCalendarStatus({ connected: true, email: result.email });
+              setIsConnecting(false);
+              toast.success(`Google Calendar connected: ${result.email}`);
+              queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+            } else if (result.type === 'GOOGLE_CALENDAR_ERROR') {
+              setIsConnecting(false);
+              toast.error('Failed to connect Google Calendar');
+            }
+            // Clean up
+            localStorage.removeItem('google-calendar-auth-result');
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    };
 
-    return () => window.removeEventListener('message', handleMessage);
+    // Also check localStorage on mount (in case popup already completed)
+    const checkExistingResult = () => {
+      const stored = localStorage.getItem('google-calendar-auth-result');
+      if (stored) {
+        try {
+          const result = JSON.parse(stored);
+          if (result.timestamp && Date.now() - result.timestamp < 30000) {
+            if (result.type === 'GOOGLE_CALENDAR_CONNECTED') {
+              setCalendarStatus({ connected: true, email: result.email });
+              setIsConnecting(false);
+              toast.success(`Google Calendar connected: ${result.email}`);
+              queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
+            }
+            localStorage.removeItem('google-calendar-auth-result');
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    window.addEventListener('storage', handleStorageChange);
+    checkCalendarStatus();
+    checkExistingResult();
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [checkCalendarStatus, queryClient]);
 
   // Calculate date range based on preset or custom range
