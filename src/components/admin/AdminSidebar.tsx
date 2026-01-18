@@ -39,7 +39,7 @@ interface AdminSidebarProps {
   aiAssistantOpen?: boolean;
 }
 
-const pageItems = [
+const dashboardItems = [
   { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
   { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
   { title: 'Leads', url: '/admin/leads', icon: UserPlus },
@@ -48,11 +48,14 @@ const pageItems = [
   { title: 'Contracts', url: '/admin/contracts', icon: FileText },
   { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
   { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
-  { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
-  { title: 'Marketing', url: '/admin/marketing', icon: BarChart3 },
 ];
 
-const peopleItems = [
+const marketingItems = [
+  { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
+  { title: 'Analytics', url: '/admin/marketing', icon: BarChart3 },
+];
+
+const teamItems = [
   { title: "Evan's Page", url: '/admin/people/evans', icon: User },
 ];
 
@@ -87,14 +90,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
       </SidebarHeader>
       
       <SidebarContent className="px-4">
-        {/* Pages Section */}
+        {/* Dashboard Section */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-4 text-sm font-medium text-muted-foreground/70 uppercase tracking-wider mb-2">
-            Pages
+            Dashboard
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {pageItems.map((item) => (
+              {dashboardItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
@@ -118,14 +121,45 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* People Section */}
-        <SidebarGroup className="mt-8">
+        {/* Marketing Section */}
+        <SidebarGroup className="mt-6">
+          <SidebarGroupLabel className="px-4 text-sm font-medium text-muted-foreground/70 uppercase tracking-wider mb-2">
+            Marketing
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-1">
+              {marketingItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive(item.url)} 
+                    className={`
+                      py-3.5 px-4 rounded-xl transition-all duration-200
+                      ${isActive(item.url) 
+                        ? 'bg-foreground text-background shadow-sm' 
+                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                      }
+                    `}
+                  >
+                    <Link to={item.url} className="flex items-center gap-4">
+                      <item.icon className="w-[22px] h-[22px]" strokeWidth={1.75} />
+                      <span className="text-base font-medium">{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Team Section */}
+        <SidebarGroup className="mt-6">
           <SidebarGroupLabel className="px-4 text-sm font-medium text-muted-foreground/70 uppercase tracking-wider mb-2">
             Team
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {peopleItems.map((item) => (
+              {teamItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
