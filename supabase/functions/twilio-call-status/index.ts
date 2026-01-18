@@ -6,6 +6,59 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
+// Transcribe audio using OpenAI Whisper
+async function transcribeAudio(audioUrl: string): Promise<string | null> {
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+  if (!OPENAI_API_KEY) {
+    console.log('OPENAI_API_KEY not configured, skipping transcription');
+    return null;
+  }
+
+  try {
+    console.log(`Fetching audio from: ${audioUrl}`);
+    
+    // Fetch the audio file from Twilio
+    const audioResponse = await fetch(audioUrl);
+    if (!audioResponse.ok) {
+      console.error('Failed to fetch audio:', audioResponse.status);
+      return null;
+    }
+    
+    const audioBlob = await audioResponse.blob();
+    console.log(`Audio fetched, size: ${audioBlob.size} bytes`);
+    
+    // Create form data for Whisper API
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'recording.mp3');
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'en');
+    
+    console.log('Sending to OpenAI Whisper for transcription...');
+    
+    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: formData,
+    });
+    
+    if (!whisperResponse.ok) {
+      const errorText = await whisperResponse.text();
+      console.error('Whisper API error:', whisperResponse.status, errorText);
+      return null;
+    }
+    
+    const result = await whisperResponse.json();
+    console.log('Transcription completed, length:', result.text?.length || 0);
+    
+    return result.text || null;
+  } catch (error) {
+    console.error('Transcription error:', error);
+    return null;
+  }
+}
+
 // This endpoint handles call status updates AND recording status callbacks from Twilio
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -49,9 +102,14 @@ Deno.serve(async (req) => {
       return new Response('Missing CallSid', { status: 400, headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
     }
 
-    // Handle recording completed callback - update the communication with the recording URL
+    // Handle recording completed callback - update the communication with the recording URL and transcription
     if (recordingStatus === 'completed' && recordingUrl) {
-      console.log(`Recording completed for CallSid=${callSid}, updating communication...`);
+      console.log(`Recording completed for CallSid=${callSid}, processing...`);
+      
+      const mp3Url = `${recordingUrl}.mp3`;
+      
+      // Transcribe the audio
+      const transcript = await transcribeAudio(mp3Url);
       
       // Find the communication by call_sid
       const { data: comm, error: findError } = await supabase
@@ -61,28 +119,53 @@ Deno.serve(async (req) => {
         .single();
 
       if (findError) {
-        console.log('Communication not found by call_sid, will try later or create new');
-      }
+        console.log('Communication not found by call_sid, will try to find by recent calls');
+        
+        // Try to find by most recent call
+        const { data: recentComm } = await supabase
+          .from('evan_communications')
+          .select('id')
+          .eq('communication_type', 'call')
+          .is('recording_url', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (recentComm) {
+          const { error: updateError } = await supabase
+            .from('evan_communications')
+            .update({
+              recording_url: mp3Url,
+              recording_sid: recordingSid,
+              duration_seconds: parseInt(recordingDuration) || null,
+              transcript: transcript,
+              call_sid: callSid,
+            })
+            .eq('id', recentComm.id);
 
-      if (comm) {
-        // Update with recording URL (add .mp3 for direct playback)
+          if (updateError) {
+            console.error('Error updating communication with recording:', updateError);
+          } else {
+            console.log(`Recording and transcript added to communication ${recentComm.id}`);
+          }
+        }
+      } else if (comm) {
+        // Update with recording URL and transcript
         const { error: updateError } = await supabase
           .from('evan_communications')
           .update({
-            recording_url: `${recordingUrl}.mp3`,
+            recording_url: mp3Url,
             recording_sid: recordingSid,
             duration_seconds: parseInt(recordingDuration) || null,
+            transcript: transcript,
           })
           .eq('id', comm.id);
 
         if (updateError) {
           console.error('Error updating communication with recording:', updateError);
         } else {
-          console.log(`Recording URL added to communication ${comm.id}`);
+          console.log(`Recording and transcript added to communication ${comm.id}`);
         }
-      } else {
-        // If communication doesn't exist yet, store recording info in active_calls for later
-        console.log('Storing recording info for later processing');
       }
 
       return new Response('OK', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
