@@ -551,10 +551,9 @@ export const EvanCommunicationsWidget = () => {
             ) : (
               <div className="space-y-2">
                 {filteredComms.map((comm) => {
-                  // Show Add as Lead button for completed calls without a lead_id
-                  const isCompletedCall = comm.communication_type === 'call' && 
-                    (comm.status === 'completed' || comm.status === 'busy' || comm.status === 'no-answer' || comm.status === 'canceled' || comm.duration_seconds !== null);
-                  const canAddAsLead = !comm.lead_id && comm.phone_number;
+                  // Show Add as Lead button for any call without a linked lead
+                  const isCall = comm.communication_type === 'call';
+                  const canAddAsLead = isCall && !comm.lead_id && comm.phone_number;
 
                   return (
                     <div
