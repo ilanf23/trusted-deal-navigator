@@ -85,13 +85,12 @@ Deno.serve(async (req) => {
     console.log('Dialing Twilio clients:', clientDialTargets);
 
     // Generate TwiML to connect to all Twilio Client browsers
-    // Add status callbacks and recording with transcription
+    // Note: transcribe attribute on <Dial> is deprecated - recordings are handled via recordingStatusCallback
     const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-call-status`;
-    const transcriptionCallbackUrl = `${supabaseUrl}/functions/v1/twilio-transcription`;
 
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="60" answerOnBridge="true" record="record-from-answer-dual" recordingStatusCallback="${statusCallbackUrl}" transcribe="true" transcribeCallback="${transcriptionCallbackUrl}">
+  <Dial timeout="60" answerOnBridge="true" record="record-from-answer-dual" recordingStatusCallback="${statusCallbackUrl}" recordingStatusCallbackEvent="completed">
     ${adminRoles && adminRoles.length > 0
       ? adminRoles
           .map(

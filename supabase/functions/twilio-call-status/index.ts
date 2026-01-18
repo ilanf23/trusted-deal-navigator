@@ -6,7 +6,7 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-// This endpoint handles call status updates from Twilio
+// This endpoint handles call status updates AND recording status callbacks from Twilio
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -24,17 +24,68 @@ Deno.serve(async (req) => {
     const callStatus = formData?.get('CallStatus')?.toString() || '';
     const callDuration = formData?.get('CallDuration')?.toString() || '0';
 
+    // Recording-specific fields (present for recording status callbacks)
+    const recordingUrl = formData?.get('RecordingUrl')?.toString() || '';
+    const recordingSid = formData?.get('RecordingSid')?.toString() || '';
+    const recordingStatus = formData?.get('RecordingStatus')?.toString() || '';
+    const recordingDuration = formData?.get('RecordingDuration')?.toString() || '';
+
     // Dial-specific fields (present for status callbacks from <Dial>)
     const dialCallStatus = formData?.get('DialCallStatus')?.toString() || '';
     const dialCallSid = formData?.get('DialCallSid')?.toString() || '';
     const dialCallDuration = formData?.get('DialCallDuration')?.toString() || '';
 
     console.log(
-      `Call status update: CallSid=${callSid} CallStatus=${callStatus} CallDuration=${callDuration}s DialCallStatus=${dialCallStatus} DialCallSid=${dialCallSid} DialCallDuration=${dialCallDuration}s`
+      `Twilio callback: CallSid=${callSid} CallStatus=${callStatus} CallDuration=${callDuration}s`
+    );
+    console.log(
+      `Recording: Status=${recordingStatus} Sid=${recordingSid} Duration=${recordingDuration}s Url=${recordingUrl}`
+    );
+    console.log(
+      `Dial: Status=${dialCallStatus} Sid=${dialCallSid} Duration=${dialCallDuration}s`
     );
 
     if (!callSid) {
       return new Response('Missing CallSid', { status: 400, headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
+    }
+
+    // Handle recording completed callback - update the communication with the recording URL
+    if (recordingStatus === 'completed' && recordingUrl) {
+      console.log(`Recording completed for CallSid=${callSid}, updating communication...`);
+      
+      // Find the communication by call_sid
+      const { data: comm, error: findError } = await supabase
+        .from('evan_communications')
+        .select('id')
+        .eq('call_sid', callSid)
+        .single();
+
+      if (findError) {
+        console.log('Communication not found by call_sid, will try later or create new');
+      }
+
+      if (comm) {
+        // Update with recording URL (add .mp3 for direct playback)
+        const { error: updateError } = await supabase
+          .from('evan_communications')
+          .update({
+            recording_url: `${recordingUrl}.mp3`,
+            recording_sid: recordingSid,
+            duration_seconds: parseInt(recordingDuration) || null,
+          })
+          .eq('id', comm.id);
+
+        if (updateError) {
+          console.error('Error updating communication with recording:', updateError);
+        } else {
+          console.log(`Recording URL added to communication ${comm.id}`);
+        }
+      } else {
+        // If communication doesn't exist yet, store recording info in active_calls for later
+        console.log('Storing recording info for later processing');
+      }
+
+      return new Response('OK', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
     }
 
     // Prefer DialCallStatus if present (it describes the <Dial> leg result)
@@ -60,19 +111,38 @@ Deno.serve(async (req) => {
         .single();
 
       if (activeCall) {
-        await supabase
+        // Check if communication already exists for this call
+        const { data: existingComm } = await supabase
           .from('evan_communications')
-          .insert({
-            lead_id: activeCall.lead_id,
-            communication_type: 'call',
-            direction: activeCall.direction,
-            phone_number: activeCall.from_number,
-            duration_seconds: parseInt(callDuration) || null,
-            status: callStatus,
-            content: `${activeCall.direction === 'inbound' ? 'Incoming' : 'Outgoing'} call - ${callStatus}`,
-            call_sid: callSid,
-          });
-        console.log('Communication logged with call_sid');
+          .select('id')
+          .eq('call_sid', callSid)
+          .single();
+
+        if (!existingComm) {
+          await supabase
+            .from('evan_communications')
+            .insert({
+              lead_id: activeCall.lead_id,
+              communication_type: 'call',
+              direction: activeCall.direction,
+              phone_number: activeCall.from_number,
+              duration_seconds: parseInt(callDuration) || parseInt(dialCallDuration) || null,
+              status: effectiveStatus,
+              content: `${activeCall.direction === 'inbound' ? 'Incoming' : 'Outgoing'} call - ${effectiveStatus}`,
+              call_sid: callSid,
+            });
+          console.log('Communication logged with call_sid');
+        } else {
+          // Update existing communication with final status and duration
+          await supabase
+            .from('evan_communications')
+            .update({
+              status: effectiveStatus,
+              duration_seconds: parseInt(callDuration) || parseInt(dialCallDuration) || null,
+            })
+            .eq('id', existingComm.id);
+          console.log('Updated existing communication');
+        }
       }
     }
 
