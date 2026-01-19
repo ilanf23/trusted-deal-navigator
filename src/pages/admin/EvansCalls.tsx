@@ -21,7 +21,10 @@ import {
   Loader2,
   PhoneOff,
   AlertCircle,
-  FileText
+  FileText,
+  PhoneIncoming,
+  PhoneOutgoing,
+  History
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
@@ -75,6 +78,21 @@ interface GroupedLender {
   name: string;
   specialty: string;
   programs: Program[];
+}
+
+interface CallLog {
+  id: string;
+  communication_type: string;
+  direction: string;
+  phone_number: string | null;
+  status: string | null;
+  duration_seconds: number | null;
+  created_at: string;
+  lead_id: string | null;
+  leads?: {
+    name: string;
+    company_name: string | null;
+  } | null;
 }
 
 const formatCurrency = (amount: number | null) => {
@@ -136,8 +154,16 @@ const getStatusBadgeClass = (status: string) => {
   }
 };
 
+const formatDuration = (seconds: number | null) => {
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 const EvansCalls = () => {
   const [expandedLenders, setExpandedLenders] = useState<Record<string, boolean>>({});
+  const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -154,6 +180,28 @@ const EvansCalls = () => {
       return data as ActiveCall[];
     },
     refetchInterval: 2000,
+  });
+
+  // Fetch call history from evan_communications
+  const { data: callHistory = [], isLoading: historyLoading } = useQuery({
+    queryKey: ['evan-call-history'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select(`
+          *,
+          leads (
+            name,
+            company_name
+          )
+        `)
+        .eq('communication_type', 'call')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (error) throw error;
+      return data as CallLog[];
+    },
   });
 
   const currentCall = activeCalls[0];
@@ -426,6 +474,80 @@ const EvansCalls = () => {
                     </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Call History Card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <History className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <CardTitle className="text-lg">Call History</CardTitle>
+                    <CardDescription>{callHistory.length} calls</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[300px]">
+                  {historyLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : callHistory.length === 0 ? (
+                    <div className="text-center py-8 px-4">
+                      <PhoneOff className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">No call history yet</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {callHistory.map((call) => (
+                        <div
+                          key={call.id}
+                          className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                          onClick={() => setSelectedCallLog(call)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded-full ${
+                              call.direction === 'inbound' 
+                                ? 'bg-green-100 text-green-600' 
+                                : 'bg-blue-100 text-blue-600'
+                            }`}>
+                              {call.direction === 'inbound' ? (
+                                <PhoneIncoming className="h-4 w-4" />
+                              ) : (
+                                <PhoneOutgoing className="h-4 w-4" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="font-medium text-sm truncate">
+                                  {call.leads?.name || formatPhoneNumber(call.phone_number || 'Unknown')}
+                                </p>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {formatDuration(call.duration_seconds)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-muted-foreground">
+                                  {call.phone_number ? formatPhoneNumber(call.phone_number) : 'No number'}
+                                </span>
+                                {call.leads?.company_name && (
+                                  <span className="text-xs text-muted-foreground">
+                                    • {call.leads.company_name}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
               </CardContent>
             </Card>
           </div>
