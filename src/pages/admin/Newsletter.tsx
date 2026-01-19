@@ -14,7 +14,6 @@ import {
   Users, 
   FileText, 
   Plus, 
-  Search,
   MoreHorizontal,
   Eye,
   Edit,
@@ -460,11 +459,9 @@ const Newsletter = () => {
                     <div className="space-y-4 h-full flex flex-col">
                       {/* Filters */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        <div className="relative flex-1 min-w-[200px]">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                        <div className="flex-1 min-w-[200px]">
                           <Input 
                             placeholder="Search leads..." 
-                            className="pl-10"
                             value={leadSearchQuery}
                             onChange={(e) => setLeadSearchQuery(e.target.value)}
                           />
@@ -702,11 +699,9 @@ The Commercial Lending X Team"
                     <CardTitle>Email Campaigns</CardTitle>
                     <CardDescription>View and manage your email campaigns</CardDescription>
                   </div>
-                  <div className="relative w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <div className="w-64">
                     <Input 
                       placeholder="Search campaigns..." 
-                      className="pl-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
