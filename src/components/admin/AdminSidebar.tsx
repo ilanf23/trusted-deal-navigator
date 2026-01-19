@@ -53,6 +53,7 @@ interface NavSection {
   title: string;
   icon: LucideIcon;
   items: NavItem[];
+  noCollapse?: boolean;
 }
 
 const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssistantOpen }: AdminSidebarProps) => {
@@ -108,13 +109,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
       const employeeName = teamMember.name;
       const employeeUrl = `/user/${employeeName.toLowerCase()}`;
 
-      // Employee's Page - their personal dashboard
+      // Employee's Page - their personal dashboard (no dropdown)
       sections.push({
         title: `${employeeName}'s Page`,
         icon: User,
         items: [
           { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
         ],
+        noCollapse: true,
       });
 
       // CLX CRM section
@@ -194,51 +196,73 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
       
       <SidebarContent className="px-4 space-y-2">
         {navSections.map((section) => (
-          <Collapsible
-            key={section.title}
-            open={openSections[section.title]}
-            onOpenChange={() => toggleSection(section.title)}
-          >
-            <CollapsibleTrigger className="w-full">
-              <div className={`
-                flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
-                ${openSections[section.title] 
-                  ? 'bg-admin-blue-light text-admin-blue-dark' 
-                  : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                }
-              `}>
-                <div className="flex items-center gap-3">
-                  <ChevronDown 
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      openSections[section.title] ? '' : '-rotate-90'
-                    }`} 
-                  />
-                  <section.icon className={`w-5 h-5 ${openSections[section.title] ? 'text-admin-blue' : ''}`} strokeWidth={1.75} />
-                  <span className="text-base font-medium">{section.title}</span>
+          section.noCollapse ? (
+            // Render direct links without collapsible wrapper
+            <div key={section.title} className="space-y-1">
+              {section.items.map((item) => (
+                <Link
+                  key={item.title}
+                  to={item.url}
+                  className={`
+                    flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200
+                    ${isActive(item.url) 
+                      ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
+                      : 'text-muted-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                    }
+                  `}
+                >
+                  <item.icon className="w-5 h-5" strokeWidth={1.75} />
+                  <span className="text-base font-medium">{item.title}</span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Collapsible
+              key={section.title}
+              open={openSections[section.title]}
+              onOpenChange={() => toggleSection(section.title)}
+            >
+              <CollapsibleTrigger className="w-full">
+                <div className={`
+                  flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
+                  ${openSections[section.title] 
+                    ? 'bg-admin-blue-light text-admin-blue-dark' 
+                    : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  }
+                `}>
+                  <div className="flex items-center gap-3">
+                    <ChevronDown 
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        openSections[section.title] ? '' : '-rotate-90'
+                      }`} 
+                    />
+                    <section.icon className={`w-5 h-5 ${openSections[section.title] ? 'text-admin-blue' : ''}`} strokeWidth={1.75} />
+                    <span className="text-base font-medium">{section.title}</span>
+                  </div>
                 </div>
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="ml-4 mt-1 space-y-1 border-l-2 border-admin-blue/30">
-                {section.items.map((item) => (
-                  <Link
-                    key={item.title}
-                    to={item.url}
-                    className={`
-                      flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
-                      ${isActive(item.url) 
-                        ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                        : 'text-muted-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
-                      }
-                    `}
-                  >
-                    <item.icon className="w-4 h-4" strokeWidth={1.75} />
-                    <span className="text-sm font-medium">{item.title}</span>
-                  </Link>
-                ))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="ml-4 mt-1 space-y-1 border-l-2 border-admin-blue/30">
+                  {section.items.map((item) => (
+                    <Link
+                      key={item.title}
+                      to={item.url}
+                      className={`
+                        flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
+                        ${isActive(item.url) 
+                          ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
+                          : 'text-muted-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                        }
+                      `}
+                    >
+                      <item.icon className="w-4 h-4" strokeWidth={1.75} />
+                      <span className="text-sm font-medium">{item.title}</span>
+                    </Link>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )
         ))}
 
         {/* Tools Section */}
