@@ -1,19 +1,49 @@
+import { useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Target, BarChart3, Calendar, Users, Handshake, Gauge } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TrendingUp, Target, BarChart3, Calendar, Users, Handshake, Gauge, CalendarDays } from 'lucide-react';
+
+type TimePeriod = 'ytd' | 'mtd';
 
 const AdminDashboard = () => {
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
+
+  // Metrics by time period
+  const metrics = {
+    ytd: {
+      revenue: 156000,
+      target: 1500000,
+      paceVsPlan: 224,
+      forecastAmount: 1110000,
+      forecastConfidence: 74,
+      label: 'Year to Date',
+      shortLabel: 'YTD',
+    },
+    mtd: {
+      revenue: 24000,
+      target: 125000,
+      paceVsPlan: 187,
+      forecastAmount: 98000,
+      forecastConfidence: 81,
+      label: 'Month to Date',
+      shortLabel: 'MTD',
+    },
+  };
+
+  const currentMetrics = metrics[timePeriod];
+  
   // Key metrics for confidence calculation
-  const revenueYTD = 156000;
-  const targetRevenue = 1500000;
-  const percentOfTarget = (revenueYTD / targetRevenue) * 100; // 10.4%
-  const paceVsPlan = 224; // 224% ahead
-  const forecastConfidence = 74; // 74%
-  const weightedForecast = 1110000;
-  const forecastAsPercentOfTarget = (weightedForecast / targetRevenue) * 100; // 74%
+  const revenueAmount = currentMetrics.revenue;
+  const targetRevenue = currentMetrics.target;
+  const percentOfTarget = (revenueAmount / targetRevenue) * 100;
+  const paceVsPlan = currentMetrics.paceVsPlan;
+  const forecastConfidence = currentMetrics.forecastConfidence;
+  const weightedForecast = currentMetrics.forecastAmount;
+  const forecastAsPercentOfTarget = (weightedForecast / targetRevenue) * 100;
   
   // Team average conversion rate
   const avgConversion = (18 + 45 + 33 + 0) / 4; // 24%
@@ -33,10 +63,15 @@ const AdminDashboard = () => {
   const overallConfidence = Math.round(
     (paceScore * 0.25) +
     (forecastConfidence * 0.25) +
-    (forecastAsPercentOfTarget * 0.20) +
+    (Math.min(forecastAsPercentOfTarget, 100) * 0.20) +
     (pipelineHealth * 0.15) +
     (avgConversion * 0.15)
   );
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(2)}M`;
+    return `$${(amount / 1000).toFixed(0)}K`;
+  };
 
   const getConfidenceColor = (score: number) => {
     if (score >= 70) return 'text-green-600';
@@ -98,9 +133,21 @@ const AdminDashboard = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Performance overview and pipeline status</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Performance overview and pipeline status</p>
+          </div>
+          <Select value={timePeriod} onValueChange={(value: TimePeriod) => setTimePeriod(value)}>
+            <SelectTrigger className="w-[180px] bg-background">
+              <CalendarDays className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border shadow-lg z-50">
+              <SelectItem value="ytd">Year to Date</SelectItem>
+              <SelectItem value="mtd">Month to Date</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Confidence Level Banner */}
@@ -112,7 +159,9 @@ const AdminDashboard = () => {
                   <Gauge className={`h-8 w-8 ${getConfidenceColor(overallConfidence)}`} />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-muted-foreground">Overall Confidence Level</div>
+                  <div className="text-sm font-medium text-muted-foreground">
+                    Overall Confidence Level ({currentMetrics.shortLabel})
+                  </div>
                   <div className={`text-4xl font-bold ${getConfidenceColor(overallConfidence)}`}>
                     {overallConfidence}%
                     <span className="text-lg ml-2 font-normal">({getConfidenceLabel(overallConfidence)})</span>
@@ -122,8 +171,8 @@ const AdminDashboard = () => {
               <div className="flex-1 max-w-md">
                 <Progress value={overallConfidence} className="h-3" />
                 <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                  <span>Target: $1.50M</span>
-                  <span>Current: ${(revenueYTD / 1000).toFixed(0)}K ({percentOfTarget.toFixed(1)}%)</span>
+                  <span>Target: {formatCurrency(targetRevenue)}</span>
+                  <span>Current: {formatCurrency(revenueAmount)} ({percentOfTarget.toFixed(1)}%)</span>
                 </div>
               </div>
               <div className="text-right">
@@ -139,25 +188,25 @@ const AdminDashboard = () => {
 
         {/* Top Row - Revenue Metrics */}
         <div className="grid gap-4 md:grid-cols-3">
-          {/* Revenue YTD */}
+          {/* Revenue */}
           <Card className="border-2 border-admin-teal/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Target className="h-4 w-4" />
-                Revenue YTD
+                Revenue {currentMetrics.shortLabel}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-admin-teal">$156K</div>
+              <div className="text-3xl font-bold text-admin-teal">{formatCurrency(revenueAmount)}</div>
               <p className="text-sm text-muted-foreground mt-1">earned so far</p>
               <div className="mt-3">
                 <div className="flex justify-between text-sm mb-1">
-                  <span>Target: $1.50M</span>
-                  <span className="font-medium">10%</span>
+                  <span>Target: {formatCurrency(targetRevenue)}</span>
+                  <span className="font-medium">{percentOfTarget.toFixed(0)}%</span>
                 </div>
-                <Progress value={10} className="h-2" />
+                <Progress value={percentOfTarget} className="h-2" />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">You are at 10% of the goal</p>
+              <p className="text-xs text-muted-foreground mt-2">You are at {percentOfTarget.toFixed(0)}% of the goal</p>
             </CardContent>
           </Card>
 
@@ -170,7 +219,7 @@ const AdminDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-600">224%</div>
+              <div className="text-3xl font-bold text-green-600">{paceVsPlan}%</div>
               <p className="text-sm text-muted-foreground mt-1">ahead of schedule</p>
               <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
                 <p className="text-sm text-green-700 dark:text-green-400">
@@ -189,15 +238,15 @@ const AdminDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-admin-orange">$1.11M</div>
-              <p className="text-sm text-muted-foreground mt-1">projected for the year</p>
+              <div className="text-3xl font-bold text-admin-orange">{formatCurrency(weightedForecast)}</div>
+              <p className="text-sm text-muted-foreground mt-1">projected for the {timePeriod === 'ytd' ? 'year' : 'month'}</p>
               <div className="mt-3 flex items-center gap-2">
                 <Badge variant="secondary" className="bg-admin-orange/10 text-admin-orange">
-                  74% confidence
+                  {forecastConfidence}% confidence
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                If deals continue as expected, the system predicts about $1.11M in total revenue.
+                If deals continue as expected, the system predicts about {formatCurrency(weightedForecast)} in total revenue.
               </p>
             </CardContent>
           </Card>
