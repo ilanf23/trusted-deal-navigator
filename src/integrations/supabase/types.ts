@@ -311,6 +311,91 @@ export type Database = {
         }
         Relationships: []
       }
+      evan_task_activities: {
+        Row: {
+          activity_type: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          mentioned_users: string[] | null
+          new_value: string | null
+          old_value: string | null
+          task_id: string
+        }
+        Insert: {
+          activity_type: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mentioned_users?: string[] | null
+          new_value?: string | null
+          old_value?: string | null
+          task_id: string
+        }
+        Update: {
+          activity_type?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mentioned_users?: string[] | null
+          new_value?: string | null
+          old_value?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_task_activities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "evan_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evan_task_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          task_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          task_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          task_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_task_files_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "evan_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evan_tasks: {
         Row: {
           assignee_name: string | null
@@ -318,10 +403,12 @@ export type Database = {
           description: string | null
           due_date: string | null
           estimated_hours: number | null
+          group_name: string | null
           id: string
           is_completed: boolean
           priority: string | null
           status: string | null
+          tags: string[] | null
           title: string
           updated_at: string
         }
@@ -331,10 +418,12 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
+          group_name?: string | null
           id?: string
           is_completed?: boolean
           priority?: string | null
           status?: string | null
+          tags?: string[] | null
           title: string
           updated_at?: string
         }
@@ -344,10 +433,12 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
+          group_name?: string | null
           id?: string
           is_completed?: boolean
           priority?: string | null
           status?: string | null
+          tags?: string[] | null
           title?: string
           updated_at?: string
         }
