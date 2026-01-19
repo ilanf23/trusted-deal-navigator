@@ -98,17 +98,17 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         items: [
           { title: 'Brad', url: '/admin/brad', icon: User },
           { title: 'Adam', url: '/admin/adam', icon: User },
-          { title: 'Evan', url: '/admin/evan', icon: User },
-          { title: 'Maura', url: '/admin/maura', icon: User },
-          { title: 'Wendy', url: '/admin/wendy', icon: User },
+          { title: 'Evan', url: '/user/evan', icon: User },
+          { title: 'Maura', url: '/user/maura', icon: User },
+          { title: 'Wendy', url: '/user/wendy', icon: User },
         ],
       });
     } else if (teamMember) {
       // For regular employees, show their own dashboard and limited navigation
       const employeeName = teamMember.name;
-      const employeeUrl = `/admin/${employeeName.toLowerCase()}`;
+      const employeeUrl = `/user/${employeeName.toLowerCase()}`;
 
-      // Evan's Page - their personal dashboard
+      // Employee's Page - their personal dashboard
       sections.push({
         title: `${employeeName}'s Page`,
         icon: User,
