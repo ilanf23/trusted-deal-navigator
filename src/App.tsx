@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import EmployeeRoute from "@/components/admin/EmployeeRoute";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
 import Contact from "./pages/Contact";
@@ -72,11 +73,11 @@ const App = () => (
             <Route path="/admin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
             <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
             <Route path="/admin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
-            <Route path="/admin/evan" element={<ProtectedRoute requireAdmin><EvansPage /></ProtectedRoute>} />
-            <Route path="/admin/maura" element={<ProtectedRoute requireAdmin><MaurasPage /></ProtectedRoute>} />
-            <Route path="/admin/wendy" element={<ProtectedRoute requireAdmin><WendysPage /></ProtectedRoute>} />
-            <Route path="/admin/brad" element={<ProtectedRoute requireAdmin><BradsPage /></ProtectedRoute>} />
-            <Route path="/admin/adam" element={<ProtectedRoute requireAdmin><AdamsPage /></ProtectedRoute>} />
+            <Route path="/admin/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
+            <Route path="/admin/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
+            <Route path="/admin/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
+            <Route path="/admin/brad" element={<EmployeeRoute employeeName="Brad"><BradsPage /></EmployeeRoute>} />
+            <Route path="/admin/adam" element={<EmployeeRoute employeeName="Adam"><AdamsPage /></EmployeeRoute>} />
             <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
             <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
             {/* Client Portal Routes - clientOnly redirects admins to /admin */}

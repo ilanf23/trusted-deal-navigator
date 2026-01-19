@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import {
   Sidebar,
   SidebarContent,
@@ -54,46 +55,73 @@ interface NavSection {
   items: NavItem[];
 }
 
-const navSections: NavSection[] = [
-  {
-    title: 'Dashboard',
-    icon: LayoutDashboard,
-    items: [
-      { title: 'Overview', url: '/admin', icon: LayoutDashboard },
-      { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
-      { title: 'Leads', url: '/admin/leads', icon: UserPlus },
-      { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
-      { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },
-      { title: 'Clients', url: '/admin/clients', icon: Users },
-      { title: 'Contracts', url: '/admin/contracts', icon: FileText },
-      { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
-      { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
-    ],
-  },
-  {
-    title: 'Marketing',
-    icon: BarChart3,
-    items: [
-      { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
-      { title: 'Analytics', url: '/admin/marketing', icon: BarChart3 },
-    ],
-  },
-  {
-    title: 'Team',
-    icon: Users,
-    items: [
-      { title: 'Brad', url: '/admin/brad', icon: User },
-      { title: 'Adam', url: '/admin/adam', icon: User },
-      { title: 'Evan', url: '/admin/evan', icon: User },
-      { title: 'Maura', url: '/admin/maura', icon: User },
-      { title: 'Wendy', url: '/admin/wendy', icon: User },
-    ],
-  },
-];
-
 const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssistantOpen }: AdminSidebarProps) => {
   const location = useLocation();
   const { signOut, user } = useAuth();
+  const { teamMember, isOwner, loading: teamLoading } = useTeamMember();
+
+  // Build navigation sections based on user's role
+  const navSections: NavSection[] = useMemo(() => {
+    const sections: NavSection[] = [];
+
+    // Dashboard section - show to owners, or customized for employees
+    if (isOwner) {
+      sections.push({
+        title: 'Dashboard',
+        icon: LayoutDashboard,
+        items: [
+          { title: 'Overview', url: '/admin', icon: LayoutDashboard },
+          { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
+          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
+          { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
+          { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },
+          { title: 'Clients', url: '/admin/clients', icon: Users },
+          { title: 'Contracts', url: '/admin/contracts', icon: FileText },
+          { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
+          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+        ],
+      });
+
+      sections.push({
+        title: 'Marketing',
+        icon: BarChart3,
+        items: [
+          { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
+          { title: 'Analytics', url: '/admin/marketing', icon: BarChart3 },
+        ],
+      });
+
+      // Team section for owners - can see all dashboards
+      sections.push({
+        title: 'Team',
+        icon: Users,
+        items: [
+          { title: 'Brad', url: '/admin/brad', icon: User },
+          { title: 'Adam', url: '/admin/adam', icon: User },
+          { title: 'Evan', url: '/admin/evan', icon: User },
+          { title: 'Maura', url: '/admin/maura', icon: User },
+          { title: 'Wendy', url: '/admin/wendy', icon: User },
+        ],
+      });
+    } else if (teamMember) {
+      // For regular employees, show their own dashboard and limited navigation
+      const employeeName = teamMember.name;
+      const employeeUrl = `/admin/${employeeName.toLowerCase()}`;
+
+      sections.push({
+        title: 'My Dashboard',
+        icon: LayoutDashboard,
+        items: [
+          { title: 'My Overview', url: employeeUrl, icon: User },
+          { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
+          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
+          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+        ],
+      });
+    }
+
+    return sections;
+  }, [isOwner, teamMember]);
 
   // Determine which sections should be open based on current route
   const getSectionOpenState = () => {

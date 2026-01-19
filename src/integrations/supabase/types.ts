@@ -1169,10 +1169,12 @@ export type Database = {
           email: string | null
           id: string
           is_active: boolean
+          is_owner: boolean | null
           name: string
           phone: string | null
           role: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1180,10 +1182,12 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          is_owner?: boolean | null
           name: string
           phone?: string | null
           role?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1191,10 +1195,12 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          is_owner?: boolean | null
           name?: string
           phone?: string | null
           role?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1224,6 +1230,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_team_member: {
+        Args: { _team_member_name: string }
+        Returns: boolean
+      }
+      get_current_team_member: {
+        Args: never
+        Returns: {
+          email: string
+          id: string
+          is_owner: boolean
+          name: string
+          role: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1231,6 +1251,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_team_owner: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "client"
