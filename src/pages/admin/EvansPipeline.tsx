@@ -170,7 +170,7 @@ const EvansPipeline = () => {
             placeholder="Search leads..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
+            className="pl-[6rem]"
           />
         </div>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
