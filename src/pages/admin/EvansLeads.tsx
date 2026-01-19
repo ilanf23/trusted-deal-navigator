@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Phone, Mail, Building2, Calendar, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -29,6 +30,7 @@ const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
 
 const EvansLeads = () => {
   const queryClient = useQueryClient();
+  const { teamMember, isOwner } = useTeamMember();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -43,25 +45,49 @@ const EvansLeads = () => {
     notes: '',
   });
 
-  const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['evans-leads'],
+  // Get Evan's team member ID
+  const { data: evanTeamMember } = useQuery({
+    queryKey: ['evan-team-member'],
     queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id')
+        .ilike('name', 'evan')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const evanId = evanTeamMember?.id;
+
+  // Check if current user can edit (is Evan or is owner/super admin)
+  const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
+
+  const { data: leads = [], isLoading } = useQuery({
+    queryKey: ['evans-leads', evanId],
+    queryFn: async () => {
+      if (!evanId) return [];
       const { data, error } = await supabase
         .from('leads')
         .select('*')
+        .eq('assigned_to', evanId)
         .order('updated_at', { ascending: false });
       if (error) throw error;
       return data as Lead[];
     },
+    enabled: !!evanId,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from('leads').insert([data]);
+      if (!evanId) throw new Error('Evan team member not found');
+      const { error } = await supabase.from('leads').insert([{ ...data, assigned_to: evanId }]);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] }); // Also refresh company-wide CRM
       toast.success('Lead created successfully');
       setIsAddDialogOpen(false);
       resetForm();
@@ -71,11 +97,13 @@ const EvansLeads = () => {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      if (!canEdit) throw new Error('Not authorized to edit this lead');
       const { error } = await supabase.from('leads').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] }); // Also refresh company-wide CRM
       toast.success('Lead updated successfully');
       setEditingLead(null);
       resetForm();
@@ -85,11 +113,13 @@ const EvansLeads = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!canEdit) throw new Error('Not authorized to delete this lead');
       const { error } = await supabase.from('leads').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] }); // Also refresh company-wide CRM
       toast.success('Lead deleted successfully');
     },
     onError: () => toast.error('Failed to delete lead'),
@@ -151,7 +181,15 @@ const EvansLeads = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Evan's Leads</h1>
-          <p className="text-muted-foreground">Manage your personal lead pipeline</p>
+          <p className="text-muted-foreground">
+            {canEdit ? 'Manage your personal lead pipeline' : 'View-only access to Evan\'s leads'}
+          </p>
+          {!canEdit && (
+            <Badge variant="outline" className="mt-2 gap-1 text-amber-500 border-amber-500/30">
+              <Lock className="h-3 w-3" />
+              View Only
+            </Badge>
+          )}
         </div>
         <Dialog open={isAddDialogOpen || !!editingLead} onOpenChange={(open) => {
           if (!open) {
@@ -160,12 +198,14 @@ const EvansLeads = () => {
             resetForm();
           }
         }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Lead
-            </Button>
-          </DialogTrigger>
+          {canEdit && (
+            <DialogTrigger asChild>
+              <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Lead
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{editingLead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
@@ -354,19 +394,21 @@ const EvansLeads = () => {
                           <p className="mt-1 text-xs text-muted-foreground/70 line-clamp-1">{lead.notes}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(lead)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => deleteMutation.mutate(lead.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {canEdit && (
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(lead)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => deleteMutation.mutate(lead.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

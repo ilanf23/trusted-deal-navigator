@@ -114,7 +114,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         icon: User,
         items: [
           { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
-          { title: `${employeeName}'s Leads`, url: `${employeeUrl}/leads`, icon: UserPlus },
         ],
       });
 
@@ -126,6 +125,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+        ],
+      });
+
+      // Evan CRM section - personal leads management
+      sections.push({
+        title: 'Evan CRM',
+        icon: User,
+        items: [
+          { title: "Evan's Leads", url: `${employeeUrl}/leads`, icon: UserPlus },
         ],
       });
     }
