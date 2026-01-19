@@ -50,7 +50,6 @@ export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
           detail: comm.direction === 'outbound' ? 'Outgoing' : 'Incoming',
           timestamp: new Date(comm.created_at),
           icon: comm.communication_type === 'call' ? Phone : Mail,
-          color: comm.communication_type === 'call' ? 'text-green-500' : 'text-blue-500',
         });
       });
 
@@ -63,7 +62,6 @@ export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
           detail: note.is_pinned ? 'Pinned' : '',
           timestamp: new Date(note.created_at),
           icon: FileText,
-          color: 'text-purple-500',
         });
       });
 
@@ -76,7 +74,6 @@ export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
           detail: lead.status.replace('_', ' '),
           timestamp: new Date(lead.updated_at),
           icon: ArrowRight,
-          color: 'text-amber-500',
         });
       });
 
@@ -86,21 +83,11 @@ export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
     enabled: !!evanId,
   });
 
-  const getTypeBadgeColor = (type: string) => {
-    switch (type) {
-      case 'call': return 'bg-green-500/10 text-green-500 border-green-500/30';
-      case 'email': return 'bg-blue-500/10 text-blue-500 border-blue-500/30';
-      case 'note': return 'bg-purple-500/10 text-purple-500 border-purple-500/30';
-      case 'status': return 'bg-amber-500/10 text-amber-500 border-amber-500/30';
-      default: return 'bg-muted text-muted-foreground';
-    }
-  };
-
   return (
-    <Card className="bg-gradient-to-br from-card to-card/80 border-border/50 h-full">
+    <Card className="h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Activity className="h-5 w-5 text-primary" />
+          <Activity className="h-5 w-5 text-muted-foreground" />
           Activity Feed
         </CardTitle>
       </CardHeader>
@@ -117,14 +104,14 @@ export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
                   key={activity.id}
                   className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <div className={`mt-0.5 p-1.5 rounded-full bg-muted/50`}>
-                    <activity.icon className={`h-3 w-3 ${activity.color}`} />
+                  <div className="mt-0.5 p-1.5 rounded-full bg-muted">
+                    <activity.icon className="h-3 w-3 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{activity.title}</span>
                       {activity.detail && (
-                        <Badge variant="outline" className={`text-xs ${getTypeBadgeColor(activity.type)}`}>
+                        <Badge variant="secondary" className="text-xs">
                           {activity.detail}
                         </Badge>
                       )}

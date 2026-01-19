@@ -87,40 +87,30 @@ export const TodaysPriorities = ({ evanId }: TodaysPrioritiesProps) => {
       label: 'Calls to Make',
       value: priorities?.callsToMake || 0,
       icon: Phone,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
       urgent: (priorities?.callsToMake || 0) > 5,
     },
     {
       label: 'Follow-ups Due',
       value: priorities?.followUpsDue || 0,
       icon: Clock,
-      color: 'text-amber-500',
-      bgColor: 'bg-amber-500/10',
       urgent: (priorities?.followUpsDue || 0) > 3,
     },
     {
       label: 'Docs Missing',
       value: priorities?.docsMissing || 0,
       icon: FileWarning,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
       urgent: (priorities?.docsMissing || 0) > 0,
     },
     {
       label: 'Deals Stuck',
       value: priorities?.stuckDeals || 0,
       icon: AlertTriangle,
-      color: 'text-red-500',
-      bgColor: 'bg-red-500/10',
       urgent: (priorities?.stuckDeals || 0) > 0,
     },
     {
       label: 'Meetings Today',
       value: priorities?.meetingsToday || 0,
       icon: Calendar,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
       urgent: false,
     },
   ];
@@ -128,18 +118,14 @@ export const TodaysPriorities = ({ evanId }: TodaysPrioritiesProps) => {
   const totalPriorities = priorityItems.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <Card className="bg-gradient-to-br from-card to-card/80 border-border/50">
+    <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Clock className="h-5 w-5 text-primary" />
+            <Clock className="h-5 w-5 text-muted-foreground" />
             Today's Priorities
           </CardTitle>
-          <Badge variant="outline" className={
-            totalPriorities > 10 ? 'border-red-500 text-red-500' :
-            totalPriorities > 5 ? 'border-amber-500 text-amber-500' :
-            'border-green-500 text-green-500'
-          }>
+          <Badge variant="secondary">
             {totalPriorities} items
           </Badge>
         </div>
@@ -149,17 +135,17 @@ export const TodaysPriorities = ({ evanId }: TodaysPrioritiesProps) => {
           {priorityItems.map((item, index) => (
             <div
               key={index}
-              className={`relative p-4 rounded-xl ${item.bgColor} border ${
-                item.urgent && item.value > 0 ? 'border-red-500/50 animate-pulse' : 'border-transparent'
-              } transition-all hover:scale-105 cursor-pointer`}
+              className={`relative p-4 rounded-lg border bg-card transition-all hover:bg-muted/50 cursor-pointer ${
+                item.urgent && item.value > 0 ? 'border-destructive/50' : ''
+              }`}
             >
               {item.urgent && item.value > 0 && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />
               )}
               <div className="flex items-center gap-2 mb-2">
-                <item.icon className={`h-4 w-4 ${item.color}`} />
+                <item.icon className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
+              <p className="text-2xl font-bold">{item.value}</p>
               <p className="text-xs text-muted-foreground">{item.label}</p>
             </div>
           ))}

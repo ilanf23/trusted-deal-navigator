@@ -96,35 +96,31 @@ export const QuickActions = ({ evanId }: QuickActionsProps) => {
     {
       label: 'Add Deal',
       icon: Plus,
-      color: 'bg-emerald-500 hover:bg-emerald-600',
       onClick: () => navigate('/user/evan/leads'),
     },
     {
       label: 'Log Call',
       icon: Phone,
-      color: 'bg-green-500 hover:bg-green-600',
       onClick: () => setShowLogCall(true),
     },
     {
       label: 'Add Note',
       icon: MessageSquare,
-      color: 'bg-purple-500 hover:bg-purple-600',
       onClick: () => setShowAddNote(true),
     },
     {
       label: 'Pipeline',
       icon: ArrowRight,
-      color: 'bg-blue-500 hover:bg-blue-600',
       onClick: () => navigate('/user/evan/pipeline'),
     },
   ];
 
   return (
     <>
-      <Card className="bg-gradient-to-br from-card to-card/80 border-border/50">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Zap className="h-5 w-5 text-amber-500" />
+            <Zap className="h-5 w-5 text-muted-foreground" />
             Quick Actions
           </CardTitle>
         </CardHeader>
@@ -133,8 +129,9 @@ export const QuickActions = ({ evanId }: QuickActionsProps) => {
             {actions.map((action) => (
               <Button
                 key={action.label}
+                variant="outline"
                 onClick={action.onClick}
-                className={`${action.color} text-white h-auto py-4 flex flex-col gap-2`}
+                className="h-auto py-4 flex flex-col gap-2"
               >
                 <action.icon className="h-5 w-5" />
                 <span className="text-xs font-medium">{action.label}</span>

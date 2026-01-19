@@ -97,22 +97,22 @@ export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
   const paceStatus = (metrics?.paceVsPlan || 0) >= 100 ? 'ahead' : 'behind';
 
   return (
-    <Card className="bg-gradient-to-br from-card to-card/80 border-border/50">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <BarChart3 className="h-5 w-5 text-primary" />
+          <BarChart3 className="h-5 w-5 text-muted-foreground" />
           Performance Snapshot
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {/* Revenue YTD */}
-          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="h-4 w-4 text-emerald-500" />
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Revenue YTD</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-500">
+            <p className="text-2xl font-bold">
               {formatCurrency(metrics?.revenueYTD || 0)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -121,12 +121,12 @@ export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
           </div>
 
           {/* Target vs Actual */}
-          <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+          <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4 text-blue-500" />
+              <Target className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Target Progress</span>
             </div>
-            <p className="text-2xl font-bold text-blue-500">
+            <p className="text-2xl font-bold">
               {Math.round(((metrics?.revenueYTD || 0) / (metrics?.annualTarget || 1)) * 100)}%
             </p>
             <Progress 
@@ -139,22 +139,16 @@ export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
           </div>
 
           {/* Pace vs Plan */}
-          <div className={`p-4 rounded-xl ${
-            paceStatus === 'ahead' 
-              ? 'bg-green-500/10 border border-green-500/20' 
-              : 'bg-amber-500/10 border border-amber-500/20'
-          }`}>
+          <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
               {paceStatus === 'ahead' ? (
-                <TrendingUp className="h-4 w-4 text-green-500" />
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-amber-500" />
+                <TrendingDown className="h-4 w-4 text-muted-foreground" />
               )}
               <span className="text-xs text-muted-foreground">Pace vs Plan</span>
             </div>
-            <p className={`text-2xl font-bold ${
-              paceStatus === 'ahead' ? 'text-green-500' : 'text-amber-500'
-            }`}>
+            <p className="text-2xl font-bold">
               {metrics?.paceVsPlan || 0}%
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -163,12 +157,12 @@ export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
           </div>
 
           {/* Weighted Forecast */}
-          <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+          <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <BarChart3 className="h-4 w-4 text-purple-500" />
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Weighted Forecast</span>
             </div>
-            <p className="text-2xl font-bold text-purple-500">
+            <p className="text-2xl font-bold">
               {formatCurrency(metrics?.weightedForecast || 0)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -177,12 +171,12 @@ export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
           </div>
 
           {/* Confidence Score */}
-          <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+          <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <Gauge className="h-4 w-4 text-cyan-500" />
+              <Gauge className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Confidence</span>
             </div>
-            <p className="text-2xl font-bold text-cyan-500">
+            <p className="text-2xl font-bold">
               {metrics?.confidenceScore || 0}
             </p>
             <Progress 

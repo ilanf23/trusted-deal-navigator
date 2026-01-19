@@ -73,38 +73,30 @@ export const HotDeals = ({ evanId }: HotDealsProps) => {
     {
       title: 'Close to Closing',
       icon: Flame,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
       deals: deals?.closeToClosing || [],
     },
     {
       title: 'Stuck Too Long',
       icon: Clock,
-      color: 'text-amber-500',
-      bgColor: 'bg-amber-500/10',
       deals: deals?.stuckTooLong || [],
     },
     {
       title: 'Missing Docs',
       icon: FileWarning,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
       deals: deals?.missingDocs || [],
     },
     {
       title: 'High Value',
       icon: DollarSign,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
       deals: deals?.highValue || [],
     },
   ];
 
   return (
-    <Card className="bg-gradient-to-br from-card to-card/80 border-border/50 h-full">
+    <Card className="h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <AlertTriangle className="h-5 w-5 text-muted-foreground" />
           Hot & At-Risk Deals
         </CardTitle>
       </CardHeader>
@@ -113,12 +105,12 @@ export const HotDeals = ({ evanId }: HotDealsProps) => {
           <div className="space-y-4 pb-4">
             {sections.map((section) => (
               <div key={section.title}>
-                <div className={`flex items-center gap-2 mb-2 p-2 rounded-lg ${section.bgColor}`}>
-                  <section.icon className={`h-4 w-4 ${section.color}`} />
-                  <span className={`text-sm font-medium ${section.color}`}>
+                <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-muted/50">
+                  <section.icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
                     {section.title}
                   </span>
-                  <Badge variant="outline" className="ml-auto">
+                  <Badge variant="secondary" className="ml-auto">
                     {section.deals.length}
                   </Badge>
                 </div>
@@ -137,7 +129,7 @@ export const HotDeals = ({ evanId }: HotDealsProps) => {
                             {deal.company_name || 'No company'} • {deal.daysInStage}d in stage
                           </p>
                         </div>
-                        <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 shrink-0">
+                        <Badge variant="outline" className="shrink-0">
                           {formatCurrency(deal.loanAmount)}
                         </Badge>
                       </div>
