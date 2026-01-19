@@ -3,41 +3,56 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, TrendingDown, Target, DollarSign, Gauge, BarChart3 } from 'lucide-react';
-import { startOfYear, differenceInDays, startOfMonth } from 'date-fns';
+import { startOfYear, startOfMonth, differenceInDays } from 'date-fns';
+import type { TimePeriod } from '@/pages/admin/EvansPage';
 
 interface PerformanceSnapshotProps {
   evanId?: string;
+  timePeriod?: TimePeriod;
 }
 
-export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
+// Mock data for varied deal values (simulating different closing prices)
+const mockDealData = [
+  { status: 'funded', loanAmount: 850000, closedDate: '2026-01-05' },
+  { status: 'funded', loanAmount: 425000, closedDate: '2026-01-08' },
+  { status: 'funded', loanAmount: 1200000, closedDate: '2025-12-15' },
+  { status: 'funded', loanAmount: 275000, closedDate: '2025-11-20' },
+  { status: 'funded', loanAmount: 950000, closedDate: '2025-10-10' },
+  { status: 'funded', loanAmount: 180000, closedDate: '2025-09-25' },
+  { status: 'funded', loanAmount: 2100000, closedDate: '2025-08-18' },
+  { status: 'funded', loanAmount: 650000, closedDate: '2025-07-05' },
+  { status: 'funded', loanAmount: 520000, closedDate: '2025-06-12' },
+  { status: 'funded', loanAmount: 380000, closedDate: '2025-05-22' },
+  { status: 'funded', loanAmount: 1450000, closedDate: '2025-04-08' },
+  { status: 'funded', loanAmount: 290000, closedDate: '2025-03-15' },
+  { status: 'funded', loanAmount: 780000, closedDate: '2025-02-28' },
+  { status: 'funded', loanAmount: 1100000, closedDate: '2025-01-18' },
+  // Pipeline deals (not funded yet)
+  { status: 'discovery', loanAmount: 450000 },
+  { status: 'pre_qualification', loanAmount: 890000 },
+  { status: 'pre_qualification', loanAmount: 320000 },
+  { status: 'document_collection', loanAmount: 1750000 },
+  { status: 'document_collection', loanAmount: 560000 },
+  { status: 'underwriting', loanAmount: 980000 },
+  { status: 'underwriting', loanAmount: 1200000 },
+  { status: 'approval', loanAmount: 720000 },
+  { status: 'approval', loanAmount: 2400000 },
+];
+
+export const PerformanceSnapshot = ({ evanId, timePeriod = 'ytd' }: PerformanceSnapshotProps) => {
   const today = new Date();
   const yearStart = startOfYear(today);
-  const daysIntoYear = differenceInDays(today, yearStart);
-  const yearProgress = Math.round((daysIntoYear / 365) * 100);
+  const monthStart = startOfMonth(today);
+  const periodStart = timePeriod === 'ytd' ? yearStart : monthStart;
+  
+  const daysIntoPeriod = differenceInDays(today, periodStart);
+  const totalDaysInPeriod = timePeriod === 'ytd' ? 365 : new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const periodProgress = Math.round((daysIntoPeriod / totalDaysInPeriod) * 100);
 
   const { data: metrics } = useQuery({
-    queryKey: ['evan-performance-snapshot', evanId],
+    queryKey: ['evan-performance-snapshot', evanId, timePeriod],
     queryFn: async () => {
-      if (!evanId) return null;
-
-      // Get Evan's funded leads this year
-      const { data: fundedLeads } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('assigned_to', evanId)
-        .eq('status', 'funded')
-        .gte('converted_at', yearStart.toISOString());
-
-      // Get all Evan's leads for pipeline value
-      const { data: allLeads } = await supabase
-        .from('leads')
-        .select('*, lead_responses(*)')
-        .eq('assigned_to', evanId);
-
-      // Calculate metrics based on lead responses (loan amounts)
-      let revenueYTD = 0;
-      let weightedForecast = 0;
-      
+      // Calculate metrics from mock data based on time period
       const stageWeights: Record<string, number> = {
         discovery: 0.1,
         pre_qualification: 0.25,
@@ -47,45 +62,53 @@ export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
         funded: 1.0,
       };
 
-      fundedLeads?.forEach(lead => {
-        // Estimate fee at 2% of loan amount or flat $5000 if no amount
-        const loanAmount = (lead as any).lead_responses?.[0]?.loan_amount || 250000;
-        revenueYTD += loanAmount * 0.02;
+      // Filter funded deals by period
+      const fundedDeals = mockDealData.filter(deal => {
+        if (deal.status !== 'funded' || !deal.closedDate) return false;
+        const closedDate = new Date(deal.closedDate);
+        return closedDate >= periodStart && closedDate <= today;
       });
 
-      allLeads?.forEach(lead => {
-        if (lead.status !== 'funded') {
-          const loanAmount = (lead as any).lead_responses?.[0]?.loan_amount || 250000;
-          const fee = loanAmount * 0.02;
-          const weight = stageWeights[lead.status] || 0.1;
-          weightedForecast += fee * weight;
-        }
-      });
+      // Calculate revenue (2% broker fee on loan amount)
+      const revenueInPeriod = fundedDeals.reduce((sum, deal) => sum + (deal.loanAmount * 0.02), 0);
+      
+      // Pipeline deals (not funded)
+      const pipelineDeals = mockDealData.filter(deal => deal.status !== 'funded');
+      
+      // Calculate weighted forecast
+      const weightedForecast = pipelineDeals.reduce((sum, deal) => {
+        const fee = deal.loanAmount * 0.02;
+        const weight = stageWeights[deal.status] || 0.1;
+        return sum + (fee * weight);
+      }, 0);
 
-      const annualTarget = 500000; // $500k annual target
-      const targetToDate = (annualTarget * yearProgress) / 100;
-      const paceVsPlan = targetToDate > 0 ? Math.round((revenueYTD / targetToDate) * 100) : 0;
+      // Annual/Monthly targets
+      const annualTarget = 500000;
+      const monthlyTarget = 45000;
+      const targetAmount = timePeriod === 'ytd' ? annualTarget : monthlyTarget;
+      const targetToDate = (targetAmount * periodProgress) / 100;
+      const paceVsPlan = targetToDate > 0 ? Math.round((revenueInPeriod / targetToDate) * 100) : 0;
       
       // Confidence score based on pipeline health
-      const pipelineLeads = allLeads?.filter(l => l.status !== 'funded').length || 0;
-      const advancedStageLeads = allLeads?.filter(l => 
-        ['underwriting', 'approval'].includes(l.status)
-      ).length || 0;
+      const advancedStageDeals = pipelineDeals.filter(d => 
+        ['underwriting', 'approval'].includes(d.status)
+      ).length;
       const confidenceScore = Math.min(100, Math.round(
-        (pipelineLeads * 5) + (advancedStageLeads * 15) + (paceVsPlan * 0.3)
+        (pipelineDeals.length * 5) + (advancedStageDeals * 15) + (paceVsPlan * 0.3)
       ));
 
       return {
-        revenueYTD,
-        annualTarget,
+        revenueInPeriod,
+        targetAmount,
         targetToDate,
         paceVsPlan,
         weightedForecast,
         confidenceScore,
-        fundedDeals: fundedLeads?.length || 0,
+        fundedDeals: fundedDeals.length,
+        periodProgress,
       };
     },
-    enabled: !!evanId,
+    enabled: true,
   });
 
   const formatCurrency = (value: number) => {
@@ -95,25 +118,26 @@ export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
   };
 
   const paceStatus = (metrics?.paceVsPlan || 0) >= 100 ? 'ahead' : 'behind';
+  const periodLabel = timePeriod === 'ytd' ? 'YTD' : 'MTD';
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <BarChart3 className="h-5 w-5 text-muted-foreground" />
-          Performance Snapshot
+          Performance Snapshot ({periodLabel})
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {/* Revenue YTD */}
+          {/* Revenue in Period */}
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Revenue YTD</span>
+              <span className="text-xs text-muted-foreground">Revenue {periodLabel}</span>
             </div>
             <p className="text-2xl font-bold">
-              {formatCurrency(metrics?.revenueYTD || 0)}
+              {formatCurrency(metrics?.revenueInPeriod || 0)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {metrics?.fundedDeals || 0} deals funded
@@ -127,14 +151,14 @@ export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
               <span className="text-xs text-muted-foreground">Target Progress</span>
             </div>
             <p className="text-2xl font-bold">
-              {Math.round(((metrics?.revenueYTD || 0) / (metrics?.annualTarget || 1)) * 100)}%
+              {Math.round(((metrics?.revenueInPeriod || 0) / (metrics?.targetAmount || 1)) * 100)}%
             </p>
             <Progress 
-              value={((metrics?.revenueYTD || 0) / (metrics?.annualTarget || 1)) * 100} 
+              value={((metrics?.revenueInPeriod || 0) / (metrics?.targetAmount || 1)) * 100} 
               className="h-1.5 mt-2"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              of {formatCurrency(metrics?.annualTarget || 0)}
+              of {formatCurrency(metrics?.targetAmount || 0)}
             </p>
           </div>
 
@@ -142,13 +166,13 @@ export const PerformanceSnapshot = ({ evanId }: PerformanceSnapshotProps) => {
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
               {paceStatus === 'ahead' ? (
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <TrendingUp className="h-4 w-4 text-green-500" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                <TrendingDown className="h-4 w-4 text-amber-500" />
               )}
               <span className="text-xs text-muted-foreground">Pace vs Plan</span>
             </div>
-            <p className="text-2xl font-bold">
+            <p className={`text-2xl font-bold ${paceStatus === 'ahead' ? 'text-green-600' : 'text-amber-600'}`}>
               {metrics?.paceVsPlan || 0}%
             </p>
             <p className="text-xs text-muted-foreground mt-1">
