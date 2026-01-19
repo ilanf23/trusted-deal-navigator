@@ -89,8 +89,8 @@ export const TaskWorkspace = () => {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-4 flex-wrap sticky top-0 z-10 bg-background py-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button 
             onClick={() => handleAddTask({})}
             className="bg-[#0073ea] hover:bg-[#0060c7] text-white"
@@ -131,7 +131,7 @@ export const TaskWorkspace = () => {
         </div>
 
         {/* View Switcher */}
-        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg flex-shrink-0">
           {viewOptions.map(({ mode, icon: Icon, label }) => (
             <Button
               key={mode}
