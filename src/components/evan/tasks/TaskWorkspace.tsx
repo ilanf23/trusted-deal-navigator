@@ -89,8 +89,8 @@ export const TaskWorkspace = () => {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-4 flex-nowrap sticky top-16 z-30 bg-background py-2 overflow-x-auto">
-        <div className="flex items-center gap-2 flex-nowrap min-w-max">
+      <div className="flex items-center gap-4 sticky top-16 z-30 bg-background py-2">
+        <div className="flex items-center gap-2 flex-wrap flex-1">
           <Button 
             onClick={() => handleAddTask({})}
             className="bg-[#0073ea] hover:bg-[#0060c7] text-white"
