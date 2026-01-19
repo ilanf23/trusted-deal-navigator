@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { RoadTo1Point5M } from '@/components/evan/dashboard/RoadTo1Point5M';
 import { PerformanceSnapshot } from '@/components/evan/dashboard/PerformanceSnapshot';
 import { TodaysPriorities } from '@/components/evan/dashboard/TodaysPriorities';
 import { PersonalPipeline } from '@/components/evan/dashboard/PersonalPipeline';
@@ -53,6 +54,9 @@ const EvansPage = () => {
             </TabsList>
           </Tabs>
         </div>
+
+        {/* Road to $1.5M - Company Goal Tracker */}
+        <RoadTo1Point5M evanId={evanId} timePeriod={timePeriod} />
 
         {/* Performance Snapshot - Main Focus */}
         <PerformanceSnapshot evanId={evanId} timePeriod={timePeriod} />
