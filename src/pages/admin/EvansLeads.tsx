@@ -16,6 +16,7 @@ import { Plus, Search, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, Use
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import AdminLayout from '@/components/admin/AdminLayout';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -196,7 +197,8 @@ const EvansLeads = () => {
   }, {} as Record<LeadStatus, number>);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)]">
+    <AdminLayout>
+      <div className="flex flex-col h-[calc(100vh-200px)]">
       {/* Header Section */}
       <div className="flex items-start justify-between mb-6">
         <div className="animate-fade-in">
@@ -662,7 +664,8 @@ const EvansLeads = () => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

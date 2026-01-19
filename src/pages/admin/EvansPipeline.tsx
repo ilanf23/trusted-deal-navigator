@@ -13,6 +13,7 @@ import { KanbanColumn } from '@/components/admin/KanbanColumn';
 import { LeadCard } from '@/components/admin/LeadCard';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { Link } from 'react-router-dom';
+import AdminLayout from '@/components/admin/AdminLayout';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -136,8 +137,8 @@ const EvansPipeline = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)]">
-      {/* Header */}
+    <AdminLayout>
+      <div className="flex flex-col h-[calc(100vh-200px)]">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-3xl font-bold">Pipeline</h1>
@@ -214,7 +215,8 @@ const EvansPipeline = () => {
           {activeLead && <LeadCard lead={activeLead} />}
         </DragOverlay>
       </DndContext>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 
