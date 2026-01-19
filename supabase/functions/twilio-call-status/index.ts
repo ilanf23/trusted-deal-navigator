@@ -9,21 +9,36 @@ const corsHeaders = {
 // Transcribe audio using OpenAI Whisper
 async function transcribeAudio(audioUrl: string): Promise<string | null> {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+  const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID');
+  const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN');
+
   if (!OPENAI_API_KEY) {
     console.log('OPENAI_API_KEY not configured, skipping transcription');
     return null;
   }
 
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+    console.log('Twilio credentials not configured, cannot fetch recordings');
+    return null;
+  }
+
   try {
     console.log(`Fetching audio from: ${audioUrl}`);
-    
-    // Fetch the audio file from Twilio
-    const audioResponse = await fetch(audioUrl);
+
+    const basicAuth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
+
+    // Fetch the audio file from Twilio (recording URLs require Basic Auth)
+    const audioResponse = await fetch(audioUrl, {
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+      },
+    });
+
     if (!audioResponse.ok) {
       console.error('Failed to fetch audio:', audioResponse.status);
       return null;
     }
-    
+
     const audioBlob = await audioResponse.blob();
     console.log(`Audio fetched, size: ${audioBlob.size} bytes`);
     
@@ -146,7 +161,11 @@ Deno.serve(async (req) => {
           if (updateError) {
             console.error('Error updating communication with recording:', updateError);
           } else {
-            console.log(`Recording and transcript added to communication ${recentComm.id}`);
+            console.log(
+              transcript
+                ? `Recording and transcript added to communication ${recentComm.id}`
+                : `Recording saved for communication ${recentComm.id} (transcript unavailable)`
+            );
           }
         }
       } else if (comm) {
@@ -164,7 +183,11 @@ Deno.serve(async (req) => {
         if (updateError) {
           console.error('Error updating communication with recording:', updateError);
         } else {
-          console.log(`Recording and transcript added to communication ${comm.id}`);
+          console.log(
+            transcript
+              ? `Recording and transcript added to communication ${comm.id}`
+              : `Recording saved for communication ${comm.id} (transcript unavailable)`
+          );
         }
       }
 
