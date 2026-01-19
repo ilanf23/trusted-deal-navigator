@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -91,6 +91,9 @@ interface CallLog {
   created_at: string;
   lead_id: string | null;
   transcript: string | null;
+  recording_url?: string | null;
+  recording_sid?: string | null;
+  call_sid?: string | null;
   leads?: {
     name: string;
     company_name: string | null;
@@ -164,10 +167,12 @@ const formatDuration = (seconds: number | null) => {
 };
 
 const EvansCalls = () => {
+  const queryClient = useQueryClient();
   const [expandedLenders, setExpandedLenders] = useState<Record<string, boolean>>({});
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
+  const [retryingTranscriptId, setRetryingTranscriptId] = useState<string | null>(null);
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -207,6 +212,15 @@ const EvansCalls = () => {
       return data as CallLog[];
     },
   });
+
+  // If the transcript arrives after the dialog is opened, refresh the dialog content
+  useEffect(() => {
+    if (!selectedTranscriptCall?.id) return;
+    const updated = callHistory.find((c) => c.id === selectedTranscriptCall.id);
+    if (updated && updated.transcript !== selectedTranscriptCall.transcript) {
+      setSelectedTranscriptCall(updated);
+    }
+  }, [callHistory, selectedTranscriptCall?.id]);
 
   const currentCall = activeCalls[0];
   const callerPhone = currentCall?.from_number;
@@ -550,14 +564,39 @@ const EvansCalls = () => {
                                     variant="outline"
                                     size="sm"
                                     className="h-7 text-xs"
-                                    onClick={(e) => {
+                                    disabled={retryingTranscriptId === call.id}
+                                    onClick={async (e) => {
                                       e.stopPropagation();
                                       setSelectedTranscriptCall(call);
                                       setTranscriptDialogOpen(true);
+
+                                      // If we already have a transcript, just show it
+                                      if (call.transcript) return;
+
+                                      // If there is no recording, we cannot generate a transcript
+                                      if (!call.recording_url) return;
+
+                                      try {
+                                        setRetryingTranscriptId(call.id);
+                                        await supabase.functions.invoke('retry-call-transcription', {
+                                          body: { communicationId: call.id },
+                                        });
+                                        await queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
+                                      } finally {
+                                        setRetryingTranscriptId(null);
+                                      }
                                     }}
                                   >
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    Transcript
+                                    {retryingTranscriptId === call.id ? (
+                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                    ) : (
+                                      <FileText className="h-3 w-3 mr-1" />
+                                    )}
+                                    {call.transcript
+                                      ? 'Transcript'
+                                      : retryingTranscriptId === call.id
+                                        ? 'Generating…'
+                                        : 'Generate transcript'}
                                   </Button>
                                 )}
                               </div>
@@ -696,12 +735,18 @@ const EvansCalls = () => {
               <div className="whitespace-pre-wrap text-sm leading-relaxed p-4 bg-muted rounded-lg">
                 {selectedTranscriptCall.transcript}
               </div>
+            ) : retryingTranscriptId && selectedTranscriptCall?.id === retryingTranscriptId ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-12 w-12 text-muted-foreground mx-auto mb-3 animate-spin" />
+                <p className="text-muted-foreground">Generating transcript…</p>
+                <p className="text-xs text-muted-foreground mt-1">This usually takes under a minute.</p>
+              </div>
             ) : (
               <div className="text-center py-8">
                 <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground">No transcript available for this call</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Transcripts are generated automatically after calls are completed
+                  If this was a recorded call, click “Generate transcript” in Call History.
                 </p>
               </div>
             )}
