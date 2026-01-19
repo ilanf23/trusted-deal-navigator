@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, X } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, X, Clock, Sparkles, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -426,43 +426,51 @@ const EvansLeads = () => {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-muted-foreground">
+                            <span className="text-sm font-semibold text-foreground/70">
                               {lead.name.charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{lead.name}</p>
+                            <p className="text-[13px] font-medium text-foreground truncate">{lead.name}</p>
                             {lead.company_name && (
-                              <p className="text-xs text-muted-foreground truncate">{lead.company_name}</p>
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                                <Building2 className="w-3 h-3 flex-shrink-0" />
+                                {lead.company_name}
+                              </p>
                             )}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-0.5">
-                          {lead.email && (
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Mail className="w-3 h-3" />
-                              <span className="truncate">{lead.email}</span>
-                            </div>
-                          )}
                           {lead.phone && (
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                               <Phone className="w-3 h-3" />
-                              <span>{lead.phone}</span>
-                            </div>
+                              {lead.phone}
+                            </p>
+                          )}
+                          {lead.email && (
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
+                              <Mail className="w-3 h-3" />
+                              {lead.email}
+                            </p>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${statusConfig[lead.status].bg} ${statusConfig[lead.status].color}`}>
-                          {statusConfig[lead.status].label}
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusConfig[lead.status].bg} ${statusConfig[lead.status].color}`}>
+                            {statusConfig[lead.status].label}
+                          </span>
+                          {lead.questionnaire_completed_at && (
+                            <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(lead.created_at), 'MMM d')}
-                        </span>
+                        <p className="text-[11px] text-muted-foreground">
+                          {format(new Date(lead.created_at), 'MMM d, yyyy')}
+                        </p>
                       </TableCell>
                       <TableCell>
                         <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
@@ -477,126 +485,181 @@ const EvansLeads = () => {
 
         {/* Preview Panel */}
         {previewLead && (
-          <Card className="w-[42%] flex flex-col rounded-2xl border-border/50 shadow-sm overflow-hidden animate-fade-in">
-            <div className="p-5 border-b border-border/50">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                    <span className="text-lg font-semibold text-muted-foreground">
-                      {previewLead.name.charAt(0).toUpperCase()}
+          <div className="w-[42%] min-w-[340px] flex flex-col preview-panel animate-slide-in-right">
+            <div className="preview-panel-header flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-foreground/10 to-foreground/5 flex items-center justify-center">
+                  <User className="w-5 h-5 text-foreground/70" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Lead Details</h3>
+                  <p className="text-[11px] text-muted-foreground">Click fields to edit</p>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg hover:bg-muted/60" 
+                onClick={() => setPreviewLead(null)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="p-5 space-y-5">
+                {/* Name & Status */}
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">{previewLead.name}</h2>
+                  {previewLead.company_name && (
+                    <p className="text-sm text-muted-foreground mt-0.5">{previewLead.company_name}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium ${statusConfig[previewLead.status].bg} ${statusConfig[previewLead.status].color}`}>
+                      <Sparkles className="w-3 h-3" />
+                      {statusConfig[previewLead.status].label}
                     </span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">{previewLead.name}</h3>
-                    {previewLead.company_name && (
-                      <p className="text-sm text-muted-foreground">{previewLead.company_name}</p>
+                    {previewLead.questionnaire_completed_at && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium bg-emerald-50 text-emerald-600">
+                        <FileText className="w-3 h-3" />
+                        Questionnaire
+                      </span>
                     )}
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="rounded-xl -mr-2 -mt-2" onClick={() => setPreviewLead(null)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
 
-            <ScrollArea className="flex-1 p-5">
-              <div className="space-y-6">
-                {/* Status */}
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Status</p>
-                  <Select
-                    value={previewLead.status}
-                    onValueChange={(value) => handleStatusChange(previewLead.id, value as LeadStatus)}
-                    disabled={!canEdit}
-                  >
-                    <SelectTrigger className="h-9 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {Object.entries(statusConfig).map(([key, { label }]) => (
-                        <SelectItem key={key} value={key} className="rounded-lg">
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <div className="section-divider" />
 
                 {/* Contact Info */}
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Contact</p>
+                  <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3">Contact Information</h4>
                   <div className="space-y-2">
-                    {previewLead.email && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="w-4 h-4 text-muted-foreground" />
-                        <span>{previewLead.email}</span>
-                      </div>
-                    )}
                     {previewLead.phone && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-4 h-4 text-muted-foreground" />
-                        <span>{previewLead.phone}</span>
-                      </div>
+                      <a href={`tel:${previewLead.phone}`} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-colors group">
+                        <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                          <Phone className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-medium text-foreground">{previewLead.phone}</p>
+                          <p className="text-[11px] text-muted-foreground">Phone</p>
+                        </div>
+                      </a>
                     )}
-                    {previewLead.company_name && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Building2 className="w-4 h-4 text-muted-foreground" />
-                        <span>{previewLead.company_name}</span>
-                      </div>
+                    {previewLead.email && (
+                      <a href={`mailto:${previewLead.email}`} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 transition-colors group">
+                        <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center group-hover:bg-accent/10 transition-colors">
+                          <Mail className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-medium text-foreground">{previewLead.email}</p>
+                          <p className="text-[11px] text-muted-foreground">Email</p>
+                        </div>
+                      </a>
                     )}
                   </div>
                 </div>
 
                 {/* Source */}
                 {previewLead.source && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Source</p>
-                    <Badge variant="secondary">{previewLead.source}</Badge>
-                  </div>
-                )}
-
-                {/* Notes */}
-                {previewLead.notes && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Notes</p>
-                    <p className="text-sm text-muted-foreground">{previewLead.notes}</p>
-                  </div>
-                )}
-
-                {/* Dates */}
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Timeline</p>
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3 h-3" />
-                      <span>Created {format(new Date(previewLead.created_at), 'MMM d, yyyy')}</span>
+                  <>
+                    <div className="section-divider" />
+                    <div>
+                      <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Source</h4>
+                      <p className="text-[13px] text-foreground">{previewLead.source}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3 h-3" />
-                      <span>Updated {format(new Date(previewLead.updated_at), 'MMM d, yyyy')}</span>
+                  </>
+                )}
+
+                <div className="section-divider" />
+
+                {/* Timeline */}
+                <div>
+                  <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3">Timeline</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-3 rounded-xl bg-muted/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-[11px] text-muted-foreground">Created</span>
+                      </div>
+                      <p className="text-[13px] font-medium text-foreground">
+                        {format(new Date(previewLead.created_at), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-muted/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-[11px] text-muted-foreground">Updated</span>
+                      </div>
+                      <p className="text-[13px] font-medium text-foreground">
+                        {format(new Date(previewLead.updated_at), 'MMM d, yyyy')}
+                      </p>
                     </div>
                   </div>
                 </div>
+
+                {/* Notes */}
+                {previewLead.notes && (
+                  <>
+                    <div className="section-divider" />
+                    <div>
+                      <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Notes</h4>
+                      <p className="text-[13px] text-foreground p-3 rounded-xl bg-muted/30 whitespace-pre-wrap">
+                        {previewLead.notes}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                <div className="section-divider" />
+
+                {/* Status Select */}
+                <div>
+                  <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Status</h4>
+                  <Select
+                    value={previewLead.status}
+                    onValueChange={(value) => {
+                      handleStatusChange(previewLead.id, value as LeadStatus);
+                      setPreviewLead({ ...previewLead, status: value as LeadStatus });
+                    }}
+                    disabled={!canEdit}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl border-border/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {(Object.keys(statusConfig) as LeadStatus[]).map((status) => (
+                        <SelectItem key={status} value={status} className="rounded-lg">
+                          {statusConfig[status].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Actions */}
+                {canEdit && (
+                  <div className="pt-2 space-y-2">
+                    <Button 
+                      variant="outline"
+                      className="w-full h-11 rounded-xl shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98]" 
+                      onClick={() => handleEdit(previewLead)}
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      <span className="font-medium">Edit Lead</span>
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="w-full h-11 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/5 transition-all duration-200 active:scale-[0.98]"
+                      onClick={() => deleteMutation.mutate(previewLead.id)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      <span className="font-medium">Delete Lead</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </ScrollArea>
-
-            {/* Actions */}
-            {canEdit && (
-              <div className="p-4 border-t border-border/50 flex gap-2">
-                <Button variant="outline" className="flex-1 rounded-xl" onClick={() => handleEdit(previewLead)}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="rounded-xl text-destructive hover:text-destructive"
-                  onClick={() => deleteMutation.mutate(previewLead.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </Card>
+          </div>
         )}
       </div>
     </div>
