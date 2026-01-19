@@ -91,9 +91,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         ],
       });
 
-      // Team section for owners - can see all dashboards
+      // Employee Users section for owners - can see all dashboards
       sections.push({
-        title: 'Team',
+        title: 'Employee Users',
         icon: Users,
         items: [
           { title: 'Brad', url: '/admin/brad', icon: User },
