@@ -122,11 +122,11 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         title: 'CLX CRM',
         icon: Kanban,
         items: [
+          { title: "Evan's Pipeline", url: '/user/evan/pipeline', icon: Kanban },
+          { title: "Evan's Leads", url: '/user/evan/leads', icon: UserPlus },
           { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
-          { title: "Evan's Pipeline", url: '/user/evan/pipeline', icon: Kanban },
-          { title: "Evan's Leads", url: '/user/evan/leads', icon: UserPlus },
         ],
       });
 
