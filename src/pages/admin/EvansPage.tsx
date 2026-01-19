@@ -4,10 +4,8 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { PerformanceSnapshot } from '@/components/evan/dashboard/PerformanceSnapshot';
 import { TodaysPriorities } from '@/components/evan/dashboard/TodaysPriorities';
 import { PersonalPipeline } from '@/components/evan/dashboard/PersonalPipeline';
-import { HotDeals } from '@/components/evan/dashboard/HotDeals';
 import { ActivityFeed } from '@/components/evan/dashboard/ActivityFeed';
 import { CommissionTracker } from '@/components/evan/dashboard/CommissionTracker';
-import { QuickActions } from '@/components/evan/dashboard/QuickActions';
 import { Rocket } from 'lucide-react';
 
 const EvansPage = () => {
@@ -41,32 +39,19 @@ const EvansPage = () => {
           </div>
         </div>
 
-        {/* Quick Actions - Always visible at top */}
-        <QuickActions evanId={evanId} />
-
-        {/* Performance Snapshot */}
+        {/* Performance Snapshot - Main Focus */}
         <PerformanceSnapshot evanId={evanId} />
+
+        {/* Personal Pipeline - Second Focus, Full Width */}
+        <PersonalPipeline evanId={evanId} />
 
         {/* Today's Priorities */}
         <TodaysPriorities evanId={evanId} />
 
-        {/* Main Grid - Pipeline & Commission */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Personal Pipeline - Takes 2 columns */}
-          <div className="lg:col-span-2">
-            <PersonalPipeline evanId={evanId} />
-          </div>
-
-          {/* Commission Tracker */}
-          <div>
-            <CommissionTracker evanId={evanId} />
-          </div>
-        </div>
-
-        {/* Bottom Grid - Hot Deals & Activity */}
+        {/* Bottom Grid - Commission & Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Hot & At-Risk Deals */}
-          <HotDeals evanId={evanId} />
+          {/* Commission Tracker */}
+          <CommissionTracker evanId={evanId} />
 
           {/* Activity Feed */}
           <ActivityFeed evanId={evanId} />
