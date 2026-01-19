@@ -1,17 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Plus, Search, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -19,13 +20,13 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
-const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
-  discovery: { label: 'Discovery', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  pre_qualification: { label: 'Pre-Qual', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
-  document_collection: { label: 'Doc Collection', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
-  underwriting: { label: 'Underwriting', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-  approval: { label: 'Approval', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  funded: { label: 'Funded', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+const statusConfig: Record<LeadStatus, { label: string; color: string; bg: string }> = {
+  discovery: { label: 'Discovery', color: 'text-blue-600', bg: 'bg-blue-50' },
+  pre_qualification: { label: 'Pre-Qual', color: 'text-cyan-600', bg: 'bg-cyan-50' },
+  document_collection: { label: 'Documents', color: 'text-amber-600', bg: 'bg-amber-50' },
+  underwriting: { label: 'Underwriting', color: 'text-orange-600', bg: 'bg-orange-50' },
+  approval: { label: 'Approved', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  funded: { label: 'Funded', color: 'text-violet-600', bg: 'bg-violet-50' },
 };
 
 const EvansLeads = () => {
@@ -35,6 +36,7 @@ const EvansLeads = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [previewLead, setPreviewLead] = useState<Lead | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -87,7 +89,7 @@ const EvansLeads = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['leads'] }); // Also refresh company-wide CRM
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
       toast.success('Lead created successfully');
       setIsAddDialogOpen(false);
       resetForm();
@@ -103,7 +105,7 @@ const EvansLeads = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['leads'] }); // Also refresh company-wide CRM
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
       toast.success('Lead updated successfully');
       setEditingLead(null);
       resetForm();
@@ -119,11 +121,28 @@ const EvansLeads = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['leads'] }); // Also refresh company-wide CRM
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
       toast.success('Lead deleted successfully');
+      setPreviewLead(null);
     },
     onError: () => toast.error('Failed to delete lead'),
   });
+
+  const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
+    try {
+      const updateData: Partial<Lead> = { status: newStatus };
+      if (newStatus === 'approval') {
+        updateData.qualified_at = new Date().toISOString();
+      }
+      const { error } = await supabase.from('leads').update(updateData).eq('id', leadId);
+      if (error) throw error;
+      toast.success('Lead status updated');
+      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    } catch (error) {
+      toast.error('Failed to update lead');
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -177,20 +196,22 @@ const EvansLeads = () => {
   }, {} as Record<LeadStatus, number>);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Evan's Leads</h1>
-          <p className="text-muted-foreground">
-            {canEdit ? 'Manage your personal lead pipeline' : 'View-only access to Evan\'s leads'}
+    <div className="flex flex-col h-[calc(100vh-200px)]">
+      {/* Header Section */}
+      <div className="flex items-start justify-between mb-6">
+        <div className="animate-fade-in">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {leads.length} total leads · {filteredLeads.length} showing
           </p>
           {!canEdit && (
-            <Badge variant="outline" className="mt-2 gap-1 text-amber-500 border-amber-500/30">
+            <Badge variant="outline" className="mt-2 gap-1">
               <Lock className="h-3 w-3" />
               View Only
             </Badge>
           )}
         </div>
+        
         <Dialog open={isAddDialogOpen || !!editingLead} onOpenChange={(open) => {
           if (!open) {
             setIsAddDialogOpen(false);
@@ -200,223 +221,384 @@ const EvansLeads = () => {
         }}>
           {canEdit && (
             <DialogTrigger asChild>
-              <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Lead
+              <Button onClick={() => setIsAddDialogOpen(true)} className="h-10 px-4 rounded-xl bg-foreground text-background hover:bg-foreground/90 shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98]">
+                <Plus className="w-4 h-4 mr-2" strokeWidth={2} />
+                <span className="font-medium">New Lead</span>
               </Button>
             </DialogTrigger>
           )}
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>{editingLead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
+          <DialogContent className="sm:max-w-md rounded-2xl border-border/50 shadow-2xl">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-lg font-semibold">{editingLead ? 'Edit Lead' : 'Create New Lead'}</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {editingLead ? 'Update lead information' : 'Add a new lead to your pipeline'}
+              </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Name *</Label>
+            <div className="space-y-4 py-2">
+              <div>
+                <Label htmlFor="name" className="text-[13px] font-medium">Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Lead name"
+                  placeholder="John Doe"
+                  className="mt-1.5 h-10 rounded-xl"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="email" className="text-[13px] font-medium">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="email@example.com"
+                    placeholder="john@company.com"
+                    className="mt-1.5 h-10 rounded-xl"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="phone">Phone</Label>
+                <div>
+                  <Label htmlFor="phone" className="text-[13px] font-medium">Phone</Label>
                   <Input
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="(555) 123-4567"
+                    className="mt-1.5 h-10 rounded-xl"
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="company">Company</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="company" className="text-[13px] font-medium">Company</Label>
                   <Input
                     id="company"
                     value={formData.company_name}
                     onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                    placeholder="Company name"
+                    placeholder="Acme Corp"
+                    className="mt-1.5 h-10 rounded-xl"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="source">Source</Label>
+                <div>
+                  <Label htmlFor="source" className="text-[13px] font-medium">Source</Label>
                   <Input
                     id="source"
                     value={formData.source}
                     onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                    placeholder="e.g., Website, Referral"
+                    placeholder="Website, Referral..."
+                    className="mt-1.5 h-10 rounded-xl"
                   />
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => setFormData({ ...formData, status: value as LeadStatus })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(statusConfig).map(([key, { label }]) => (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Additional notes..."
-                  rows={3}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="status" className="text-[13px] font-medium">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData({ ...formData, status: value as LeadStatus })}
+                  >
+                    <SelectTrigger className="mt-1.5 h-10 rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {Object.entries(statusConfig).map(([key, { label }]) => (
+                        <SelectItem key={key} value={key} className="rounded-lg">
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="notes" className="text-[13px] font-medium">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Additional notes..."
+                    className="mt-1.5 rounded-xl resize-none"
+                    rows={3}
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => {
+            <DialogFooter className="gap-2 pt-2">
+              <Button variant="ghost" onClick={() => {
                 setIsAddDialogOpen(false);
                 setEditingLead(null);
                 resetForm();
-              }}>
+              }} className="rounded-xl">
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+              <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending} className="rounded-xl bg-foreground text-background hover:bg-foreground/90">
+                {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 {editingLead ? 'Update' : 'Create'} Lead
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Status Summary */}
-      <div className="flex flex-wrap gap-2">
-        {Object.entries(statusConfig).map(([status, config]) => (
-          <Badge key={status} className={`${config.color} border`}>
-            {config.label}: {statusCounts[status as LeadStatus] || 0}
-          </Badge>
-        ))}
-      </div>
+      {/* Filters Row */}
+      <div className="flex items-center gap-4 mb-5 animate-fade-in animation-delay-100">
+        {/* Status Pills */}
+        <div className="flex gap-1.5 p-1 bg-muted/50 rounded-xl">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all duration-200 ${
+              statusFilter === 'all'
+                ? 'bg-white text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            All ({leads.length})
+          </button>
+          {(Object.keys(statusConfig) as LeadStatus[]).map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all duration-200 ${
+                statusFilter === status
+                  ? 'bg-white text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {statusConfig[status].label} ({statusCounts[status] || 0})
+            </button>
+          ))}
+        </div>
 
-      {/* Filters */}
-      <div className="flex gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Search */}
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
           <Input
             placeholder="Search leads..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-9 rounded-xl bg-white border-border/50 focus:border-foreground/20 transition-colors"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {Object.entries(statusConfig).map(([key, { label }]) => (
-              <SelectItem key={key} value={key}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* Leads List */}
-      <Card className="bg-card/50 border-border/50">
-        <CardHeader>
-          <CardTitle className="text-lg">Leads ({filteredLeads.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ScrollArea className="h-[500px]">
+      {/* Main Content - Split View */}
+      <div className="flex-1 flex gap-5 min-h-0 animate-fade-in animation-delay-200">
+        {/* Table Card */}
+        <Card className={`flex-1 flex flex-col min-h-0 rounded-2xl border-border/50 shadow-sm overflow-hidden ${previewLead ? 'max-w-[58%]' : ''}`}>
+          <ScrollArea className="flex-1">
             {isLoading ? (
-              <div className="p-8 text-center text-muted-foreground">Loading...</div>
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading leads...</p>
+              </div>
             ) : filteredLeads.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                {leads.length === 0 ? 'No leads yet. Add your first lead!' : 'No leads match your filters.'}
+              <div className="flex flex-col items-center justify-center py-16 gap-2">
+                <div className="w-12 h-12 rounded-2xl bg-muted/50 flex items-center justify-center mb-2">
+                  <User className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground">No leads found</p>
+                <p className="text-xs text-muted-foreground">Try adjusting your filters</p>
               </div>
             ) : (
-              <div className="divide-y divide-border/50">
-                {filteredLeads.map((lead) => (
-                  <div key={lead.id} className="p-4 hover:bg-muted/20 transition-colors">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-white truncate">{lead.name}</h3>
-                          <Badge className={`${statusConfig[lead.status].color} border text-xs`}>
-                            {statusConfig[lead.status].label}
-                          </Badge>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-border/50">
+                    <TableHead className="w-[200px]">Lead</TableHead>
+                    <TableHead className="w-[150px]">Contact</TableHead>
+                    <TableHead className="w-[90px]">Status</TableHead>
+                    <TableHead className="w-[100px]">Created</TableHead>
+                    <TableHead className="w-[40px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLeads.map((lead, index) => (
+                    <TableRow 
+                      key={lead.id} 
+                      className={`
+                        cursor-pointer transition-colors border-border/30
+                        ${previewLead?.id === lead.id 
+                          ? 'bg-accent/5 border-l-2 border-l-foreground' 
+                          : 'hover:bg-muted/40'
+                        }
+                      `}
+                      style={{ animationDelay: `${index * 30}ms` }}
+                      onClick={() => setPreviewLead(lead)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0">
+                            <span className="text-sm font-semibold text-muted-foreground">
+                              {lead.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{lead.name}</p>
+                            {lead.company_name && (
+                              <p className="text-xs text-muted-foreground truncate">{lead.company_name}</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                          {lead.company_name && (
-                            <span className="flex items-center gap-1">
-                              <Building2 className="h-3 w-3" />
-                              {lead.company_name}
-                            </span>
-                          )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-0.5">
                           {lead.email && (
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {lead.email}
-                            </span>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Mail className="w-3 h-3" />
+                              <span className="truncate">{lead.email}</span>
+                            </div>
                           )}
                           {lead.phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {lead.phone}
-                            </span>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Phone className="w-3 h-3" />
+                              <span>{lead.phone}</span>
+                            </div>
                           )}
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {format(new Date(lead.updated_at), 'MMM d, h:mm a')}
-                          </span>
                         </div>
-                        {lead.notes && (
-                          <p className="mt-1 text-xs text-muted-foreground/70 line-clamp-1">{lead.notes}</p>
-                        )}
-                      </div>
-                      {canEdit && (
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(lead)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => deleteMutation.mutate(lead.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                      </TableCell>
+                      <TableCell>
+                        <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${statusConfig[lead.status].bg} ${statusConfig[lead.status].color}`}>
+                          {statusConfig[lead.status].label}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(lead.created_at), 'MMM d')}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </ScrollArea>
-        </CardContent>
-      </Card>
+        </Card>
+
+        {/* Preview Panel */}
+        {previewLead && (
+          <Card className="w-[42%] flex flex-col rounded-2xl border-border/50 shadow-sm overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-border/50">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+                    <span className="text-lg font-semibold text-muted-foreground">
+                      {previewLead.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{previewLead.name}</h3>
+                    {previewLead.company_name && (
+                      <p className="text-sm text-muted-foreground">{previewLead.company_name}</p>
+                    )}
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" className="rounded-xl -mr-2 -mt-2" onClick={() => setPreviewLead(null)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            <ScrollArea className="flex-1 p-5">
+              <div className="space-y-6">
+                {/* Status */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Status</p>
+                  <Select
+                    value={previewLead.status}
+                    onValueChange={(value) => handleStatusChange(previewLead.id, value as LeadStatus)}
+                    disabled={!canEdit}
+                  >
+                    <SelectTrigger className="h-9 rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {Object.entries(statusConfig).map(([key, { label }]) => (
+                        <SelectItem key={key} value={key} className="rounded-lg">
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Contact Info */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Contact</p>
+                  <div className="space-y-2">
+                    {previewLead.email && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <span>{previewLead.email}</span>
+                      </div>
+                    )}
+                    {previewLead.phone && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span>{previewLead.phone}</span>
+                      </div>
+                    )}
+                    {previewLead.company_name && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Building2 className="w-4 h-4 text-muted-foreground" />
+                        <span>{previewLead.company_name}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Source */}
+                {previewLead.source && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Source</p>
+                    <Badge variant="secondary">{previewLead.source}</Badge>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {previewLead.notes && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Notes</p>
+                    <p className="text-sm text-muted-foreground">{previewLead.notes}</p>
+                  </div>
+                )}
+
+                {/* Dates */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Timeline</p>
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-3 h-3" />
+                      <span>Created {format(new Date(previewLead.created_at), 'MMM d, yyyy')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-3 h-3" />
+                      <span>Updated {format(new Date(previewLead.updated_at), 'MMM d, yyyy')}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+
+            {/* Actions */}
+            {canEdit && (
+              <div className="p-4 border-t border-border/50 flex gap-2">
+                <Button variant="outline" className="flex-1 rounded-xl" onClick={() => handleEdit(previewLead)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl text-destructive hover:text-destructive"
+                  onClick={() => deleteMutation.mutate(previewLead.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </Card>
+        )}
+      </div>
     </div>
   );
 };
