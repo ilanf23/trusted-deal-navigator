@@ -1,56 +1,75 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { EvanTasksWidget } from '@/components/evan/EvanTasksWidget';
-import { EvanCalendarWidget } from '@/components/evan/EvanCalendarWidget';
-import { EvanNotesWidget } from '@/components/evan/EvanNotesWidget';
-import { EvanCommunicationsWidget } from '@/components/evan/EvanCommunicationsWidget';
-import { EvanLeadsWidget } from '@/components/evan/EvanLeadsWidget';
-import { EvanMetricsWidget } from '@/components/evan/EvanMetricsWidget';
+import { PerformanceSnapshot } from '@/components/evan/dashboard/PerformanceSnapshot';
+import { TodaysPriorities } from '@/components/evan/dashboard/TodaysPriorities';
+import { PersonalPipeline } from '@/components/evan/dashboard/PersonalPipeline';
+import { HotDeals } from '@/components/evan/dashboard/HotDeals';
+import { ActivityFeed } from '@/components/evan/dashboard/ActivityFeed';
+import { CommissionTracker } from '@/components/evan/dashboard/CommissionTracker';
+import { QuickActions } from '@/components/evan/dashboard/QuickActions';
+import { Rocket } from 'lucide-react';
 
 const EvansPage = () => {
+  // Get Evan's team member ID
+  const { data: evanTeamMember } = useQuery({
+    queryKey: ['evan-team-member'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id')
+        .ilike('name', 'evan')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const evanId = evanTeamMember?.id;
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold">Evan's Dashboard</h1>
-          <p className="text-muted-foreground">Your personal workspace for managing leads and communications</p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-primary/10">
+            <Rocket className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Evan's Command Center</h1>
+            <p className="text-muted-foreground">Your sales cockpit — not an investor report</p>
+          </div>
         </div>
 
-        {/* Performance Metrics - Full Width */}
-        <EvanMetricsWidget />
+        {/* Quick Actions - Always visible at top */}
+        <QuickActions evanId={evanId} />
 
-        {/* Main Grid Layout */}
+        {/* Performance Snapshot */}
+        <PerformanceSnapshot evanId={evanId} />
+
+        {/* Today's Priorities */}
+        <TodaysPriorities evanId={evanId} />
+
+        {/* Main Grid - Pipeline & Commission */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Communications & Leads */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Communications Widget */}
-            <div className="h-[400px]">
-              <EvanCommunicationsWidget />
-            </div>
-
-            {/* Leads Widget */}
-            <div className="h-[500px]">
-              <EvanLeadsWidget />
-            </div>
+          {/* Personal Pipeline - Takes 2 columns */}
+          <div className="lg:col-span-2">
+            <PersonalPipeline evanId={evanId} />
           </div>
 
-          {/* Right Column - Tasks, Calendar, Notes */}
-          <div className="space-y-6">
-            {/* Tasks Widget */}
-            <div className="h-[350px]">
-              <EvanTasksWidget />
-            </div>
-
-            {/* Calendar Widget */}
-            <div className="h-[350px]">
-              <EvanCalendarWidget />
-            </div>
-
-            {/* Quick Notes Widget */}
-            <div className="h-[300px]">
-              <EvanNotesWidget />
-            </div>
+          {/* Commission Tracker */}
+          <div>
+            <CommissionTracker evanId={evanId} />
           </div>
+        </div>
+
+        {/* Bottom Grid - Hot Deals & Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Hot & At-Risk Deals */}
+          <HotDeals evanId={evanId} />
+
+          {/* Activity Feed */}
+          <ActivityFeed evanId={evanId} />
         </div>
       </div>
     </AdminLayout>
