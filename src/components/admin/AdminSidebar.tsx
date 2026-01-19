@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronRight,
   Building2,
+  ListTodo,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -126,6 +127,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         items: [
           { title: "Evan's Pipeline", url: '/user/evan/pipeline', icon: Kanban },
           { title: "Evan's Leads", url: '/user/evan/leads', icon: UserPlus },
+          { title: "Evan's Tasks", url: '/user/evan/tasks', icon: ListTodo },
           { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
