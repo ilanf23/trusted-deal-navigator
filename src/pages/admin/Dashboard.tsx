@@ -3,9 +3,61 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Target, BarChart3, Calendar, Users, Handshake } from 'lucide-react';
+import { TrendingUp, Target, BarChart3, Calendar, Users, Handshake, Gauge } from 'lucide-react';
 
 const AdminDashboard = () => {
+  // Key metrics for confidence calculation
+  const revenueYTD = 156000;
+  const targetRevenue = 1500000;
+  const percentOfTarget = (revenueYTD / targetRevenue) * 100; // 10.4%
+  const paceVsPlan = 224; // 224% ahead
+  const forecastConfidence = 74; // 74%
+  const weightedForecast = 1110000;
+  const forecastAsPercentOfTarget = (weightedForecast / targetRevenue) * 100; // 74%
+  
+  // Team average conversion rate
+  const avgConversion = (18 + 45 + 33 + 0) / 4; // 24%
+  
+  // Pipeline health (deals in later stages vs total)
+  const totalDeals = 8 + 6 + 7 + 5 + 4 + 12; // 42
+  const lateStageDeals = 5 + 4 + 12; // 21 (Lender Management + Path to Close + Closed)
+  const pipelineHealth = (lateStageDeals / totalDeals) * 100; // 50%
+
+  // Calculate overall confidence score (weighted average)
+  // - Pace vs Plan (capped at 100 for scoring): 25% weight
+  // - Forecast confidence: 25% weight  
+  // - Forecast as % of target: 20% weight
+  // - Pipeline health: 15% weight
+  // - Team conversion: 15% weight
+  const paceScore = Math.min(paceVsPlan, 100); // Cap at 100
+  const overallConfidence = Math.round(
+    (paceScore * 0.25) +
+    (forecastConfidence * 0.25) +
+    (forecastAsPercentOfTarget * 0.20) +
+    (pipelineHealth * 0.15) +
+    (avgConversion * 0.15)
+  );
+
+  const getConfidenceColor = (score: number) => {
+    if (score >= 70) return 'text-green-600';
+    if (score >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getConfidenceLabel = (score: number) => {
+    if (score >= 80) return 'Very High';
+    if (score >= 70) return 'High';
+    if (score >= 50) return 'Moderate';
+    if (score >= 30) return 'Low';
+    return 'Very Low';
+  };
+
+  const getConfidenceBg = (score: number) => {
+    if (score >= 70) return 'from-green-500/20 to-green-600/10 border-green-500/30';
+    if (score >= 50) return 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30';
+    return 'from-red-500/20 to-red-600/10 border-red-500/30';
+  };
+
   // Pipeline data
   const pipelineStages = [
     { stage: 'Initial Consult', deals: 8, requested: '$54.7M', weightedFees: '$60K', medianDays: 9 },
@@ -50,6 +102,40 @@ const AdminDashboard = () => {
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">Performance overview and pipeline status</p>
         </div>
+
+        {/* Confidence Level Banner */}
+        <Card className={`bg-gradient-to-r ${getConfidenceBg(overallConfidence)} border-2`}>
+          <CardContent className="py-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-background/80 rounded-full">
+                  <Gauge className={`h-8 w-8 ${getConfidenceColor(overallConfidence)}`} />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Overall Confidence Level</div>
+                  <div className={`text-4xl font-bold ${getConfidenceColor(overallConfidence)}`}>
+                    {overallConfidence}%
+                    <span className="text-lg ml-2 font-normal">({getConfidenceLabel(overallConfidence)})</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 max-w-md">
+                <Progress value={overallConfidence} className="h-3" />
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                  <span>Target: $1.50M</span>
+                  <span>Current: ${(revenueYTD / 1000).toFixed(0)}K ({percentOfTarget.toFixed(1)}%)</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-muted-foreground">Based on</div>
+                <div className="text-xs space-y-1 mt-1">
+                  <div>Pace: {paceVsPlan}% • Forecast: {forecastConfidence}%</div>
+                  <div>Pipeline: {pipelineHealth.toFixed(0)}% • Team Conv: {avgConversion.toFixed(0)}%</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Top Row - Revenue Metrics */}
         <div className="grid gap-4 md:grid-cols-3">
