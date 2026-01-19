@@ -173,6 +173,7 @@ const EvansCalls = () => {
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
   const [retryingTranscriptId, setRetryingTranscriptId] = useState<string | null>(null);
+  const [transcriptError, setTranscriptError] = useState<string | null>(null);
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -308,6 +309,27 @@ const EvansCalls = () => {
       ...prev,
       [lenderName]: !prev[lenderName],
     }));
+  };
+
+  const handleGenerateTranscript = async (call: CallLog) => {
+    if (!call.recording_url) return;
+    setRetryingTranscriptId(call.id);
+    setTranscriptError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('retry-call-transcription', {
+        body: { communicationId: call.id },
+      });
+      if (error) {
+        setTranscriptError('Failed to generate transcript. Please try again later.');
+      } else if (data?.error) {
+        setTranscriptError(data.error);
+      }
+      await queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
+    } catch {
+      setTranscriptError('Failed to generate transcript. Please try again later.');
+    } finally {
+      setRetryingTranscriptId(null);
+    }
   };
 
   const isLoading = callsLoading || programsLoading;
@@ -569,6 +591,7 @@ const EvansCalls = () => {
                                       e.stopPropagation();
                                       setSelectedTranscriptCall(call);
                                       setTranscriptDialogOpen(true);
+                                      setTranscriptError(null);
 
                                       // If we already have a transcript, just show it
                                       if (call.transcript) return;
@@ -576,15 +599,7 @@ const EvansCalls = () => {
                                       // If there is no recording, we cannot generate a transcript
                                       if (!call.recording_url) return;
 
-                                      try {
-                                        setRetryingTranscriptId(call.id);
-                                        await supabase.functions.invoke('retry-call-transcription', {
-                                          body: { communicationId: call.id },
-                                        });
-                                        await queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
-                                      } finally {
-                                        setRetryingTranscriptId(null);
-                                      }
+                                      await handleGenerateTranscript(call);
                                     }}
                                   >
                                     {retryingTranscriptId === call.id ? (
@@ -711,7 +726,10 @@ const EvansCalls = () => {
         </div>
       </div>
       {/* Transcript Dialog */}
-      <Dialog open={transcriptDialogOpen} onOpenChange={setTranscriptDialogOpen}>
+      <Dialog open={transcriptDialogOpen} onOpenChange={(open) => {
+        setTranscriptDialogOpen(open);
+        if (!open) setTranscriptError(null);
+      }}>
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -741,13 +759,39 @@ const EvansCalls = () => {
                 <p className="text-muted-foreground">Generating transcript…</p>
                 <p className="text-xs text-muted-foreground mt-1">This usually takes under a minute.</p>
               </div>
+            ) : transcriptError ? (
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-3" />
+                <p className="text-destructive font-medium">Transcription Failed</p>
+                <p className="text-xs text-muted-foreground mt-1">{transcriptError}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-4"
+                  onClick={() => selectedTranscriptCall && handleGenerateTranscript(selectedTranscriptCall)}
+                >
+                  Try Again
+                </Button>
+              </div>
             ) : (
               <div className="text-center py-8">
                 <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground">No transcript available for this call</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  If this was a recorded call, click “Generate transcript” in Call History.
-                </p>
+                {selectedTranscriptCall?.recording_url ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={() => selectedTranscriptCall && handleGenerateTranscript(selectedTranscriptCall)}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Generate Transcript
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No recording available for this call.
+                  </p>
+                )}
               </div>
             )}
           </ScrollArea>
