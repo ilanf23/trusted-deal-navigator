@@ -6,7 +6,7 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, u
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Lock, List } from 'lucide-react';
+import { Filter, Lock, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { KanbanColumn } from '@/components/admin/KanbanColumn';
@@ -164,13 +164,11 @@ const EvansPipeline = () => {
 
       {/* Filters */}
       <div className="flex items-center gap-4 mb-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none z-10" />
+        <div className="flex-1 max-w-sm">
           <Input
             placeholder="Search leads..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-[6rem]"
           />
         </div>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
