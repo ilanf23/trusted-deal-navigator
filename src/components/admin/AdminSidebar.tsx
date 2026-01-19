@@ -119,7 +119,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         noCollapse: true,
       });
 
-      // CLX CRM section
+      // CLX CRM section (no dropdown for employees)
       sections.push({
         title: 'CLX CRM',
         icon: Kanban,
@@ -130,15 +130,17 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
         ],
+        noCollapse: true,
       });
 
-      // Evan CRM section - personal leads management
+      // Evan CRM section - personal leads management (no dropdown)
       sections.push({
         title: 'Evan CRM',
         icon: User,
         items: [
           { title: "Evan's Leads", url: `${employeeUrl}/leads`, icon: UserPlus },
         ],
+        noCollapse: true,
       });
     }
 
