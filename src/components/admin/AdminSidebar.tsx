@@ -200,7 +200,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         </Link>
       </SidebarHeader>
       
-      <SidebarContent className="px-4 space-y-2">
+      <SidebarContent className="px-4 pt-4 space-y-2">
         {navSections.map((section) => (
           section.noCollapse ? (
             // Render direct links without collapsible wrapper
