@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Phone, 
   User, 
@@ -25,10 +27,12 @@ import {
   FileText,
   PhoneIncoming,
   PhoneOutgoing,
-  History
+  History,
+  UserPlus
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 interface ActiveCall {
   id: string;
@@ -174,6 +178,13 @@ const EvansCalls = () => {
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
   const [retryingTranscriptId, setRetryingTranscriptId] = useState<string | null>(null);
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
+  
+  // Add Lead Dialog state
+  const [addLeadDialogOpen, setAddLeadDialogOpen] = useState(false);
+  const [selectedCallForLead, setSelectedCallForLead] = useState<CallLog | null>(null);
+  const [newLeadName, setNewLeadName] = useState('');
+  const [newLeadEmail, setNewLeadEmail] = useState('');
+  const [newLeadCompany, setNewLeadCompany] = useState('');
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -309,6 +320,74 @@ const EvansCalls = () => {
       ...prev,
       [lenderName]: !prev[lenderName],
     }));
+  };
+
+  // Add lead mutation
+  const addLeadMutation = useMutation({
+    mutationFn: async ({ name, email, phone, company }: { name: string; email: string; phone: string; company: string }) => {
+      const { data, error } = await supabase
+        .from('leads')
+        .insert({
+          name,
+          email: email || null,
+          phone,
+          company_name: company || null,
+          source: 'phone_call',
+          status: 'discovery',
+          assigned_to: null, // Will be assigned based on current user context
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: async (lead, variables) => {
+      // Update the call record to link to this lead
+      if (selectedCallForLead) {
+        await supabase
+          .from('evan_communications')
+          .update({ lead_id: lead.id })
+          .eq('id', selectedCallForLead.id);
+      }
+      
+      toast.success(`Lead "${lead.name}" created successfully`);
+      queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
+      setAddLeadDialogOpen(false);
+      setSelectedCallForLead(null);
+      setNewLeadName('');
+      setNewLeadEmail('');
+      setNewLeadCompany('');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to create lead: ' + error.message);
+    },
+  });
+
+  const handleOpenAddLeadDialog = (call: CallLog) => {
+    setSelectedCallForLead(call);
+    setNewLeadName('');
+    setNewLeadEmail('');
+    setNewLeadCompany('');
+    setAddLeadDialogOpen(true);
+  };
+
+  const handleAddLead = () => {
+    if (!newLeadName.trim()) {
+      toast.error('Please enter a name for the lead');
+      return;
+    }
+    if (!selectedCallForLead?.phone_number) {
+      toast.error('No phone number available for this call');
+      return;
+    }
+    
+    addLeadMutation.mutate({
+      name: newLeadName.trim(),
+      email: newLeadEmail.trim(),
+      phone: selectedCallForLead.phone_number,
+      company: newLeadCompany.trim(),
+    });
   };
 
   const handleGenerateTranscript = async (call: CallLog) => {
@@ -577,43 +656,60 @@ const EvansCalls = () => {
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center gap-2 mt-2 flex-wrap">
                                 <p className="text-xs text-muted-foreground">
                                   {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
                                 </p>
-                                {call.status === 'completed' && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    disabled={retryingTranscriptId === call.id}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setSelectedTranscriptCall(call);
-                                      setTranscriptDialogOpen(true);
-                                      setTranscriptError(null);
+                                <div className="flex items-center gap-1 ml-auto">
+                                  {/* Add as Lead button - only show if no lead is linked */}
+                                  {!call.lead_id && call.phone_number && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs text-muted-foreground hover:text-primary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenAddLeadDialog(call);
+                                      }}
+                                    >
+                                      <UserPlus className="h-3 w-3 mr-1" />
+                                      Add Lead
+                                    </Button>
+                                  )}
+                                  {call.status === 'completed' && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      disabled={retryingTranscriptId === call.id}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        setSelectedTranscriptCall(call);
+                                        setTranscriptDialogOpen(true);
+                                        setTranscriptError(null);
 
-                                      // If we already have a transcript, just show it
-                                      if (call.transcript) return;
+                                        // If we already have a transcript, just show it
+                                        if (call.transcript) return;
 
-                                      // If there is no recording, we cannot generate a transcript
-                                      if (!call.recording_url) return;
+                                        // If there is no recording, we cannot generate a transcript
+                                        if (!call.recording_url) return;
 
-                                      await handleGenerateTranscript(call);
-                                    }}
-                                  >
-                                    {retryingTranscriptId === call.id ? (
-                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                    ) : (
-                                      <FileText className="h-3 w-3 mr-1" />
-                                    )}
-                                    {call.transcript
-                                      ? 'Transcript'
-                                      : retryingTranscriptId === call.id
-                                        ? 'Generating…'
-                                        : 'Generate transcript'}
-                                  </Button>
-                                )}
+                                        await handleGenerateTranscript(call);
+                                      }}
+                                    >
+                                      {retryingTranscriptId === call.id ? (
+                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                      ) : (
+                                        <FileText className="h-3 w-3 mr-1" />
+                                      )}
+                                      {call.transcript
+                                        ? 'Transcript'
+                                        : retryingTranscriptId === call.id
+                                          ? 'Generating…'
+                                          : 'Generate transcript'}
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -795,6 +891,80 @@ const EvansCalls = () => {
               </div>
             )}
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Lead Dialog */}
+      <Dialog open={addLeadDialogOpen} onOpenChange={setAddLeadDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Add as Lead
+            </DialogTitle>
+            <DialogDescription>
+              Create a new lead from this call
+              {selectedCallForLead?.phone_number && (
+                <span className="block mt-1 font-medium text-foreground">
+                  {formatPhoneNumber(selectedCallForLead.phone_number)}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="lead-name">Name *</Label>
+              <Input
+                id="lead-name"
+                placeholder="Enter lead name"
+                value={newLeadName}
+                onChange={(e) => setNewLeadName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lead-email">Email</Label>
+              <Input
+                id="lead-email"
+                type="email"
+                placeholder="Enter email address"
+                value={newLeadEmail}
+                onChange={(e) => setNewLeadEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lead-company">Company</Label>
+              <Input
+                id="lead-company"
+                placeholder="Enter company name"
+                value={newLeadCompany}
+                onChange={(e) => setNewLeadCompany(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAddLeadDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddLead}
+              disabled={addLeadMutation.isPending || !newLeadName.trim()}
+            >
+              {addLeadMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create Lead
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AdminLayout>
