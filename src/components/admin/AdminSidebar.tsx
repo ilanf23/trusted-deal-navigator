@@ -114,6 +114,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         icon: User,
         items: [
           { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
+          { title: `${employeeName}'s Leads`, url: `${employeeUrl}/leads`, icon: UserPlus },
         ],
       });
 
