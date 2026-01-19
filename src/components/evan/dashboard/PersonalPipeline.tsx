@@ -11,12 +11,12 @@ interface PersonalPipelineProps {
 }
 
 const stageConfig = [
-  { status: 'discovery', label: 'Discovery', color: 'bg-blue-500' },
-  { status: 'pre_qualification', label: 'Pre-Qual', color: 'bg-purple-500' },
-  { status: 'document_collection', label: 'Docs', color: 'bg-yellow-500' },
-  { status: 'underwriting', label: 'UW', color: 'bg-orange-500' },
-  { status: 'approval', label: 'Approval', color: 'bg-emerald-500' },
-  { status: 'funded', label: 'Funded', color: 'bg-green-500' },
+  { status: 'discovery', label: 'Discovery' },
+  { status: 'pre_qualification', label: 'Pre-Qual' },
+  { status: 'document_collection', label: 'Docs' },
+  { status: 'underwriting', label: 'UW' },
+  { status: 'approval', label: 'Approval' },
+  { status: 'funded', label: 'Funded' },
 ];
 
 export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
@@ -85,18 +85,18 @@ export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
   const maxCount = Math.max(...(pipelineData?.stages.map(s => s.count) || [1]));
 
   return (
-    <Card className="bg-gradient-to-br from-card to-card/80 border-border/50">
+    <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Kanban className="h-5 w-5 text-primary" />
+            <Kanban className="h-5 w-5 text-muted-foreground" />
             My Pipeline
           </CardTitle>
           <div className="flex gap-2">
-            <Badge variant="outline">
+            <Badge variant="secondary">
               {pipelineData?.totalDeals || 0} deals
             </Badge>
-            <Badge variant="outline" className="text-emerald-500 border-emerald-500/30">
+            <Badge variant="outline">
               {formatCurrency(pipelineData?.totalValue || 0)}
             </Badge>
           </div>
@@ -111,9 +111,9 @@ export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-8 bg-muted/30 rounded-lg overflow-hidden relative">
+                  <div className="flex-1 h-8 bg-muted/50 rounded-lg overflow-hidden relative">
                     <div
-                      className={`h-full ${stage.color} transition-all duration-500`}
+                      className="h-full bg-primary/20 transition-all duration-500"
                       style={{ width: `${(stage.count / maxCount) * 100}%` }}
                     />
                     <div className="absolute inset-0 flex items-center justify-between px-3">
@@ -133,7 +133,7 @@ export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
                 </span>
               </div>
               <div className="w-20 text-right">
-                <span className="text-xs font-medium text-emerald-500">
+                <span className="text-xs font-medium">
                   {formatCurrency(stage.fees)}
                 </span>
               </div>
@@ -142,11 +142,11 @@ export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
         </div>
 
         {/* Summary */}
-        <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center">
+        <div className="mt-4 pt-4 border-t flex justify-between items-center">
           <div>
             <p className="text-sm text-muted-foreground">Weighted Pipeline Value</p>
           </div>
-          <p className="text-xl font-bold text-primary">
+          <p className="text-xl font-bold">
             {formatCurrency(pipelineData?.totalWeightedFees || 0)}
           </p>
         </div>

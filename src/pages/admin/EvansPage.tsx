@@ -32,12 +32,12 @@ const EvansPage = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10">
-            <Rocket className="h-6 w-6 text-primary" />
+          <div className="p-2 rounded-lg border bg-card">
+            <Rocket className="h-6 w-6 text-muted-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Evan's Command Center</h1>
-            <p className="text-muted-foreground">Your sales cockpit — not an investor report</p>
+            <h1 className="text-2xl font-bold">Command Center</h1>
+            <p className="text-sm text-muted-foreground">Sales cockpit</p>
           </div>
         </div>
 

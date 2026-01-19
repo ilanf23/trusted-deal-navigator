@@ -79,22 +79,22 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
   };
 
   return (
-    <Card className="bg-gradient-to-br from-emerald-500/5 to-card border-emerald-500/20">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <DollarSign className="h-5 w-5 text-emerald-500" />
+          <DollarSign className="h-5 w-5 text-muted-foreground" />
           Commission Tracker
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-3 gap-4 mb-4">
           {/* Monthly Earned */}
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <div className="p-3 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">This Month</span>
             </div>
-            <p className="text-xl font-bold text-emerald-500">
+            <p className="text-xl font-bold">
               {formatCurrency(commission?.monthlyEarned || 0)}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -103,12 +103,12 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
           </div>
 
           {/* Pending */}
-          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <div className="p-3 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-1">
-              <Clock className="h-4 w-4 text-amber-500" />
+              <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Pending</span>
             </div>
-            <p className="text-xl font-bold text-amber-500">
+            <p className="text-xl font-bold">
               {formatCurrency(commission?.pendingCommission || 0)}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -117,12 +117,12 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
           </div>
 
           {/* YTD */}
-          <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+          <div className="p-3 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-blue-500" />
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Year to Date</span>
             </div>
-            <p className="text-xl font-bold text-blue-500">
+            <p className="text-xl font-bold">
               {formatCurrency(commission?.yearlyEarned || 0)}
             </p>
             <p className="text-xs text-muted-foreground">Total earned</p>
@@ -130,13 +130,13 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
         </div>
 
         {/* Monthly Goal Progress */}
-        <div className="p-3 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+        <div className="p-3 rounded-lg border bg-card">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
+              <Target className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Monthly Goal</span>
             </div>
-            <span className="text-sm font-bold text-primary">
+            <span className="text-sm font-bold">
               {commission?.progressPercent || 0}%
             </span>
           </div>
