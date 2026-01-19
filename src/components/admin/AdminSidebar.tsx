@@ -108,12 +108,21 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
       const employeeName = teamMember.name;
       const employeeUrl = `/admin/${employeeName.toLowerCase()}`;
 
+      // Evan's Page - their personal dashboard
       sections.push({
-        title: 'My Dashboard',
-        icon: LayoutDashboard,
+        title: `${employeeName}'s Page`,
+        icon: User,
         items: [
-          { title: 'My Overview', url: employeeUrl, icon: User },
-          { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
+          { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
+        ],
+      });
+
+      // CLX CRM section
+      sections.push({
+        title: 'CLX CRM',
+        icon: Kanban,
+        items: [
+          { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
         ],
