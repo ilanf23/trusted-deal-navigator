@@ -82,11 +82,11 @@ const navSections: NavSection[] = [
     title: 'Team',
     icon: Users,
     items: [
-      { title: 'Brad', url: '/admin/people/brad', icon: User },
-      { title: 'Adam', url: '/admin/people/adam', icon: User },
-      { title: 'Evan', url: '/admin/people/evan', icon: User },
-      { title: 'Maura', url: '/admin/people/maura', icon: User },
-      { title: 'Wendy', url: '/admin/people/wendy', icon: User },
+      { title: 'Brad', url: '/admin/brad', icon: User },
+      { title: 'Adam', url: '/admin/adam', icon: User },
+      { title: 'Evan', url: '/admin/evan', icon: User },
+      { title: 'Maura', url: '/admin/maura', icon: User },
+      { title: 'Wendy', url: '/admin/wendy', icon: User },
     ],
   },
 ];
