@@ -2,26 +2,29 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Lock } from 'lucide-react';
+import { Search, Filter, Lock, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { KanbanColumn } from '@/components/admin/KanbanColumn';
 import { LeadCard } from '@/components/admin/LeadCard';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { Link } from 'react-router-dom';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
+// Match the main CRM Board column colors
 const columns: { status: LeadStatus; title: string; color: string }[] = [
-  { status: 'discovery', title: 'Discovery', color: 'from-blue-500/20 to-blue-600/10' },
-  { status: 'pre_qualification', title: 'Pre-Qualification', color: 'from-purple-500/20 to-purple-600/10' },
-  { status: 'document_collection', title: 'Document Collection', color: 'from-yellow-500/20 to-yellow-600/10' },
-  { status: 'underwriting', title: 'Underwriting', color: 'from-orange-500/20 to-orange-600/10' },
-  { status: 'approval', title: 'Approval', color: 'from-emerald-500/20 to-emerald-600/10' },
-  { status: 'funded', title: 'Funded', color: 'from-green-500/20 to-green-600/10' },
+  { status: 'discovery', title: 'Discovery', color: 'bg-[hsl(195,55%,50%)]' },
+  { status: 'pre_qualification', title: 'Pre-Qualification', color: 'bg-[hsl(200,55%,46%)]' },
+  { status: 'document_collection', title: 'Document Collection', color: 'bg-[hsl(205,58%,42%)]' },
+  { status: 'underwriting', title: 'Underwriting', color: 'bg-[hsl(210,62%,38%)]' },
+  { status: 'approval', title: 'Approval', color: 'bg-[hsl(215,66%,34%)]' },
+  { status: 'funded', title: 'Funded', color: 'bg-[hsl(220,70%,30%)]' },
 ];
 
 const EvansPipeline = () => {
@@ -30,6 +33,12 @@ const EvansPipeline = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   // Check if current user can edit (is Evan or is owner/super admin)
   const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
@@ -127,25 +136,35 @@ const EvansPipeline = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-[calc(100vh-200px)]">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Evan's Pipeline</h1>
+          <h1 className="text-3xl font-bold">Pipeline</h1>
           <p className="text-muted-foreground">
-            {canEdit ? 'Drag and drop leads between stages' : 'View-only access to Evan\'s pipeline'}
+            {canEdit ? 'Drag and drop leads to update their status' : 'View-only access'} • {leads.length} total leads
           </p>
           {!canEdit && (
-            <Badge variant="outline" className="mt-2 gap-1 text-amber-500 border-amber-500/30">
+            <Badge variant="outline" className="mt-2 gap-1">
               <Lock className="h-3 w-3" />
               View Only
             </Badge>
           )}
         </div>
+        <div className="flex items-center gap-2">
+          <Link to="/user/evan/leads">
+            <Button variant="outline" size="sm">
+              <List className="w-4 h-4 mr-2" />
+              List View
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <div className="flex gap-4">
+      {/* Filters */}
+      <div className="flex items-center gap-4 mb-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
           <Input
             placeholder="Search leads..."
             value={searchTerm}
@@ -154,7 +173,8 @@ const EvansPipeline = () => {
           />
         </div>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-48">
+            <Filter className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Filter by source" />
           </SelectTrigger>
           <SelectContent>
@@ -166,14 +186,19 @@ const EvansPipeline = () => {
             ))}
           </SelectContent>
         </Select>
+        <div className="text-sm text-muted-foreground">
+          Showing {filteredLeads.length} of {leads.length} leads
+        </div>
       </div>
 
+      {/* Kanban Board */}
       <DndContext
-        collisionDetection={closestCenter}
+        sensors={sensors}
+        collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-6 gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-3 overflow-x-auto pb-4 flex-1">
           {columns.map((column) => (
             <KanbanColumn
               key={column.status}
