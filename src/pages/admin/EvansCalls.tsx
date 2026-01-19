@@ -330,7 +330,28 @@ const EvansCalls = () => {
 
   // Add lead mutation
   const addLeadMutation = useMutation({
-    mutationFn: async ({ name, email, phone, company }: { name: string; email: string; phone: string; company: string }) => {
+    mutationFn: async ({ name, email, phone, company, communicationId, hasTranscript }: { 
+      name: string; 
+      email: string; 
+      phone: string; 
+      company: string;
+      communicationId: string;
+      hasTranscript: boolean;
+    }) => {
+      // First, get Evan's team_member id
+      const { data: evanMember } = await supabase
+        .from('team_members')
+        .select('id')
+        .ilike('name', '%evan%')
+        .limit(1)
+        .single();
+
+      // Build notes with transcript reference
+      const callDate = selectedCallForLead ? format(new Date(selectedCallForLead.created_at), 'MMM d, yyyy h:mm a') : '';
+      const transcriptNote = hasTranscript 
+        ? `📞 Initial call: ${callDate}\n📝 Transcript available (Communication ID: ${communicationId})`
+        : `📞 Initial call: ${callDate}\n⏳ No transcript available yet`;
+
       const { data, error } = await supabase
         .from('leads')
         .insert({
@@ -340,7 +361,8 @@ const EvansCalls = () => {
           company_name: company || null,
           source: 'phone_call',
           status: 'discovery',
-          assigned_to: null, // Will be assigned based on current user context
+          assigned_to: evanMember?.id || null,
+          notes: transcriptNote,
         })
         .select()
         .single();
@@ -357,8 +379,9 @@ const EvansCalls = () => {
           .eq('id', selectedCallForLead.id);
       }
       
-      toast.success(`Lead "${lead.name}" created successfully`);
+      toast.success(`Lead "${lead.name}" added to Evan's pipeline`);
       queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
+      queryClient.invalidateQueries({ queryKey: ['evan-leads'] });
       setAddLeadDialogOpen(false);
       setSelectedCallForLead(null);
       setNewLeadName('');
@@ -393,6 +416,8 @@ const EvansCalls = () => {
       email: newLeadEmail.trim(),
       phone: selectedCallForLead.phone_number,
       company: newLeadCompany.trim(),
+      communicationId: selectedCallForLead.id,
+      hasTranscript: !!selectedCallForLead.transcript,
     });
   };
 
