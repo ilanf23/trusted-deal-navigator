@@ -16,7 +16,7 @@ import WorkingCapital from "./pages/solutions/WorkingCapital";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Questionnaire from "./pages/Questionnaire";
-import AdminDashboard from "./pages/admin/Dashboard";
+import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import AdminLeads from "./pages/admin/Leads";
 import AdminClients from "./pages/admin/Clients";
 import AdminContracts from "./pages/admin/Contracts";
@@ -29,6 +29,10 @@ import AdminRateWatch from "./pages/admin/RateWatch";
 import AdminInboxCallback from "./pages/admin/InboxCallback";
 import LenderPrograms from "./pages/admin/LenderPrograms";
 import EvansPage from "./pages/admin/EvansPage";
+import MaurasPage from "./pages/admin/MaurasPage";
+import WendysPage from "./pages/admin/WendysPage";
+import BradsPage from "./pages/admin/BradsPage";
+import AdamsPage from "./pages/admin/AdamsPage";
 import CalendarCallback from "./pages/admin/CalendarCallback";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalContracts from "./pages/portal/Contracts";
@@ -57,7 +61,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/questionnaire/:token" element={<Questionnaire />} />
             {/* Admin Routes */}
-            <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute requireAdmin><SuperAdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/leads" element={<ProtectedRoute requireAdmin><AdminLeads /></ProtectedRoute>} />
             <Route path="/admin/crm" element={<ProtectedRoute requireAdmin><CRMBoard /></ProtectedRoute>} />
             <Route path="/admin/clients" element={<ProtectedRoute requireAdmin><AdminClients /></ProtectedRoute>} />
@@ -68,7 +72,11 @@ const App = () => (
             <Route path="/admin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
             <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
             <Route path="/admin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
-            <Route path="/admin/people/evans" element={<ProtectedRoute requireAdmin><EvansPage /></ProtectedRoute>} />
+            <Route path="/admin/people/evan" element={<ProtectedRoute requireAdmin><EvansPage /></ProtectedRoute>} />
+            <Route path="/admin/people/maura" element={<ProtectedRoute requireAdmin><MaurasPage /></ProtectedRoute>} />
+            <Route path="/admin/people/wendy" element={<ProtectedRoute requireAdmin><WendysPage /></ProtectedRoute>} />
+            <Route path="/admin/people/brad" element={<ProtectedRoute requireAdmin><BradsPage /></ProtectedRoute>} />
+            <Route path="/admin/people/adam" element={<ProtectedRoute requireAdmin><AdamsPage /></ProtectedRoute>} />
             <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
             <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
             {/* Client Portal Routes - clientOnly redirects admins to /admin */}

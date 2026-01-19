@@ -5,11 +5,13 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, Target, BarChart3, Calendar, Users, Handshake, Gauge, CalendarDays } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, Target, BarChart3, Calendar, Users, Handshake, Gauge, CalendarDays, Eye, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 type TimePeriod = 'ytd' | 'mtd';
 
-const AdminDashboard = () => {
+const SuperAdminDashboard = () => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
 
   // Metrics by time period
@@ -46,20 +48,14 @@ const AdminDashboard = () => {
   const forecastAsPercentOfTarget = (weightedForecast / targetRevenue) * 100;
   
   // Team average conversion rate
-  const avgConversion = (18 + 45 + 33 + 0) / 4; // 24%
+  const avgConversion = (18 + 45 + 33 + 0) / 4;
   
-  // Pipeline health (deals in later stages vs total)
-  const totalDeals = 8 + 6 + 7 + 5 + 4 + 12; // 42
-  const lateStageDeals = 5 + 4 + 12; // 21 (Lender Management + Path to Close + Closed)
-  const pipelineHealth = (lateStageDeals / totalDeals) * 100; // 50%
+  // Pipeline health
+  const totalDeals = 8 + 6 + 7 + 5 + 4 + 12;
+  const lateStageDeals = 5 + 4 + 12;
+  const pipelineHealth = (lateStageDeals / totalDeals) * 100;
 
-  // Calculate overall confidence score (weighted average)
-  // - Pace vs Plan (capped at 100 for scoring): 25% weight
-  // - Forecast confidence: 25% weight  
-  // - Forecast as % of target: 20% weight
-  // - Pipeline health: 15% weight
-  // - Team conversion: 15% weight
-  const paceScore = Math.min(paceVsPlan, 100); // Cap at 100
+  const paceScore = Math.min(paceVsPlan, 100);
   const overallConfidence = Math.round(
     (paceScore * 0.25) +
     (forecastConfidence * 0.25) +
@@ -103,12 +99,13 @@ const AdminDashboard = () => {
     { stage: 'Closed', deals: 12, requested: '$94.2M', weightedFees: '$872K', medianDays: 0 },
   ];
 
-  // Team data
+  // Team data - now with links to their dashboards
   const teamMembers = [
-    { name: 'Brad', role: 'Owner', activeDeals: 9, avgDays: 53, closings: 2, conversion: 18 },
-    { name: 'Maura', role: 'Processor', activeDeals: 6, avgDays: 36, closings: 5, conversion: 45 },
-    { name: 'Wendy', role: 'Processor', activeDeals: 10, avgDays: 46, closings: 5, conversion: 33 },
-    { name: 'Evan', role: 'Analyst', activeDeals: 5, avgDays: 35, closings: 0, conversion: 0 },
+    { name: 'Brad', role: 'Owner', activeDeals: 9, avgDays: 53, closings: 2, conversion: 18, url: '/admin/people/brad' },
+    { name: 'Adam', role: 'Owner', activeDeals: 7, avgDays: 48, closings: 3, conversion: 22, url: '/admin/people/adam' },
+    { name: 'Maura', role: 'Processor', activeDeals: 6, avgDays: 36, closings: 5, conversion: 45, url: '/admin/people/maura' },
+    { name: 'Wendy', role: 'Processor', activeDeals: 10, avgDays: 46, closings: 5, conversion: 33, url: '/admin/people/wendy' },
+    { name: 'Evan', role: 'Analyst', activeDeals: 5, avgDays: 35, closings: 0, conversion: 0, url: '/admin/people/evan' },
   ];
 
   // Referral data
@@ -135,8 +132,11 @@ const AdminDashboard = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Performance overview and pipeline status</p>
+            <div className="flex items-center gap-2">
+              <Shield className="h-6 w-6 text-admin-blue" />
+              <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
+            </div>
+            <p className="text-muted-foreground">Company-wide performance overview</p>
           </div>
           <Select value={timePeriod} onValueChange={(value: TimePeriod) => setTimePeriod(value)}>
             <SelectTrigger className="w-[180px] bg-background">
@@ -188,7 +188,6 @@ const AdminDashboard = () => {
 
         {/* Top Row - Revenue Metrics */}
         <div className="grid gap-4 md:grid-cols-3">
-          {/* Revenue */}
           <Card className="border-2 border-admin-teal/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -206,11 +205,9 @@ const AdminDashboard = () => {
                 </div>
                 <Progress value={percentOfTarget} className="h-2" />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">You are at {percentOfTarget.toFixed(0)}% of the goal</p>
             </CardContent>
           </Card>
 
-          {/* Pace vs Plan */}
           <Card className="border-2 border-admin-blue/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -223,13 +220,12 @@ const AdminDashboard = () => {
               <p className="text-sm text-muted-foreground mt-1">ahead of schedule</p>
               <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
                 <p className="text-sm text-green-700 dark:text-green-400">
-                  You are moving faster than the planned pace
+                  Moving faster than planned pace
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Weighted Forecast */}
           <Card className="border-2 border-admin-orange/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -245,9 +241,6 @@ const AdminDashboard = () => {
                   {forecastConfidence}% confidence
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                If deals continue as expected, the system predicts about {formatCurrency(weightedForecast)} in total revenue.
-              </p>
             </CardContent>
           </Card>
         </div>
@@ -259,9 +252,6 @@ const AdminDashboard = () => {
               <BarChart3 className="h-5 w-5 text-admin-blue" />
               Pipeline by Stage
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Where deals are in the sales process. The longer a deal sits in later stages, the more valuable it becomes.
-            </p>
           </CardHeader>
           <CardContent>
             <Table>
@@ -296,9 +286,6 @@ const AdminDashboard = () => {
               <Calendar className="h-5 w-5 text-admin-blue" />
               Weekly Scorecard
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Tracking weekly execution activity. Work is happening, but no new revenue was booked this week yet.
-            </p>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
@@ -323,7 +310,7 @@ const AdminDashboard = () => {
         </Card>
 
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Team Performance */}
+          {/* Team Performance - with View Dashboard buttons */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -331,7 +318,7 @@ const AdminDashboard = () => {
                 Team Performance
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Maura and Wendy are the strongest closers. Evan needs support or better deal flow.
+                Click on team member to view their dashboard
               </p>
             </CardHeader>
             <CardContent>
@@ -340,9 +327,8 @@ const AdminDashboard = () => {
                   <TableRow>
                     <TableHead>Member</TableHead>
                     <TableHead className="text-right">Active</TableHead>
-                    <TableHead className="text-right">Avg Days</TableHead>
-                    <TableHead className="text-right">Closings</TableHead>
                     <TableHead className="text-right">Conv %</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -353,12 +339,18 @@ const AdminDashboard = () => {
                         <div className="text-xs text-muted-foreground">{member.role}</div>
                       </TableCell>
                       <TableCell className="text-right">{member.activeDeals}</TableCell>
-                      <TableCell className="text-right">{member.avgDays}</TableCell>
-                      <TableCell className="text-right">{member.closings}</TableCell>
                       <TableCell className="text-right">
                         <span className={member.conversion >= 40 ? 'text-green-600 font-medium' : member.conversion === 0 ? 'text-red-500' : ''}>
                           {member.conversion}%
                         </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={member.url}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Link>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -375,7 +367,7 @@ const AdminDashboard = () => {
                 Referral Engine
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Your best money comes from people you have not talked to recently. This is a follow-up opportunity.
+                Top revenue sources - follow up opportunities
               </p>
             </CardHeader>
             <CardContent>
@@ -403,4 +395,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default SuperAdminDashboard;
