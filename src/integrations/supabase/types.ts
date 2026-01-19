@@ -313,32 +313,41 @@ export type Database = {
       }
       evan_tasks: {
         Row: {
+          assignee_name: string | null
           created_at: string
           description: string | null
           due_date: string | null
+          estimated_hours: number | null
           id: string
           is_completed: boolean
           priority: string | null
+          status: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          assignee_name?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           is_completed?: boolean
           priority?: string | null
+          status?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          assignee_name?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
+          estimated_hours?: number | null
           id?: string
           is_completed?: boolean
           priority?: string | null
+          status?: string | null
           title?: string
           updated_at?: string
         }

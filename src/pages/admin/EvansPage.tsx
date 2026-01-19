@@ -8,6 +8,7 @@ import { HotDeals } from '@/components/evan/dashboard/HotDeals';
 import { ActivityFeed } from '@/components/evan/dashboard/ActivityFeed';
 import { CommissionTracker } from '@/components/evan/dashboard/CommissionTracker';
 import { QuickActions } from '@/components/evan/dashboard/QuickActions';
+import { TaskBoard } from '@/components/evan/dashboard/TaskBoard';
 import { Rocket } from 'lucide-react';
 
 const EvansPage = () => {
@@ -62,6 +63,9 @@ const EvansPage = () => {
             <CommissionTracker evanId={evanId} />
           </div>
         </div>
+
+        {/* Task Board */}
+        <TaskBoard />
 
         {/* Bottom Grid - Hot Deals & Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
