@@ -31,6 +31,7 @@ import AdminInboxCallback from "./pages/admin/InboxCallback";
 import LenderPrograms from "./pages/admin/LenderPrograms";
 import EvansPage from "./pages/admin/EvansPage";
 import EvansLeads from "./pages/admin/EvansLeads";
+import EvansPipeline from "./pages/admin/EvansPipeline";
 import MaurasPage from "./pages/admin/MaurasPage";
 import WendysPage from "./pages/admin/WendysPage";
 import BradsPage from "./pages/admin/BradsPage";
@@ -76,6 +77,7 @@ const App = () => (
             <Route path="/admin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
             <Route path="/user/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
             <Route path="/user/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
+            <Route path="/user/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
             <Route path="/user/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
             <Route path="/user/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
             <Route path="/admin/brad" element={<EmployeeRoute employeeName="Brad"><BradsPage /></EmployeeRoute>} />
