@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,6 +26,8 @@ interface ActiveCall {
 
 export const IncomingCallPopup = () => {
   const { teamMember } = useTeamMember();
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Only Evan can see and respond to calls
   const isEvan = teamMember?.name?.toLowerCase() === 'evan';
@@ -35,9 +38,25 @@ export const IncomingCallPopup = () => {
   const [callDuration, setCallDuration] = useState(0);
   const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [hasNavigated, setHasNavigated] = useState(false);
   
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
+
+  // Auto-navigate to calls page when an incoming call is detected
+  useEffect(() => {
+    if (incomingCall && isEvan && !hasNavigated && location.pathname !== '/user/evan/calls') {
+      setHasNavigated(true);
+      navigate('/user/evan/calls');
+    }
+  }, [incomingCall, isEvan, hasNavigated, navigate, location.pathname]);
+
+  // Reset navigation flag when call ends
+  useEffect(() => {
+    if (!incomingCall && !isConnected) {
+      setHasNavigated(false);
+    }
+  }, [incomingCall, isConnected]);
 
   // Initialize Twilio Device - Only for Evan
   const initializeTwilioDevice = useCallback(async () => {

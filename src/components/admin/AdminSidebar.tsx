@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Building2,
   ListTodo,
+  Phone,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -117,6 +118,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         items: [
           { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
           { title: "Evan's Tasks", url: '/user/evan/tasks', icon: ListTodo },
+          { title: 'Calls', url: '/user/evan/calls', icon: Phone },
         ],
         noCollapse: true,
       });
