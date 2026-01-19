@@ -101,11 +101,11 @@ const SuperAdminDashboard = () => {
 
   // Team data - now with links to their dashboards
   const teamMembers = [
-    { name: 'Brad', role: 'Owner', activeDeals: 9, avgDays: 53, closings: 2, conversion: 18, url: '/admin/people/brad' },
-    { name: 'Adam', role: 'Owner', activeDeals: 7, avgDays: 48, closings: 3, conversion: 22, url: '/admin/people/adam' },
-    { name: 'Maura', role: 'Processor', activeDeals: 6, avgDays: 36, closings: 5, conversion: 45, url: '/admin/people/maura' },
-    { name: 'Wendy', role: 'Processor', activeDeals: 10, avgDays: 46, closings: 5, conversion: 33, url: '/admin/people/wendy' },
-    { name: 'Evan', role: 'Analyst', activeDeals: 5, avgDays: 35, closings: 0, conversion: 0, url: '/admin/people/evan' },
+    { name: 'Brad', role: 'Owner', activeDeals: 9, avgDays: 53, closings: 2, conversion: 18, url: '/admin/brad' },
+    { name: 'Adam', role: 'Owner', activeDeals: 7, avgDays: 48, closings: 3, conversion: 22, url: '/admin/adam' },
+    { name: 'Maura', role: 'Processor', activeDeals: 6, avgDays: 36, closings: 5, conversion: 45, url: '/admin/maura' },
+    { name: 'Wendy', role: 'Processor', activeDeals: 10, avgDays: 46, closings: 5, conversion: 33, url: '/admin/wendy' },
+    { name: 'Evan', role: 'Analyst', activeDeals: 5, avgDays: 35, closings: 0, conversion: 0, url: '/admin/evan' },
   ];
 
   // Referral data

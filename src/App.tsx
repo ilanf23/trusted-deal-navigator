@@ -72,11 +72,11 @@ const App = () => (
             <Route path="/admin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
             <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
             <Route path="/admin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
-            <Route path="/admin/people/evan" element={<ProtectedRoute requireAdmin><EvansPage /></ProtectedRoute>} />
-            <Route path="/admin/people/maura" element={<ProtectedRoute requireAdmin><MaurasPage /></ProtectedRoute>} />
-            <Route path="/admin/people/wendy" element={<ProtectedRoute requireAdmin><WendysPage /></ProtectedRoute>} />
-            <Route path="/admin/people/brad" element={<ProtectedRoute requireAdmin><BradsPage /></ProtectedRoute>} />
-            <Route path="/admin/people/adam" element={<ProtectedRoute requireAdmin><AdamsPage /></ProtectedRoute>} />
+            <Route path="/admin/evan" element={<ProtectedRoute requireAdmin><EvansPage /></ProtectedRoute>} />
+            <Route path="/admin/maura" element={<ProtectedRoute requireAdmin><MaurasPage /></ProtectedRoute>} />
+            <Route path="/admin/wendy" element={<ProtectedRoute requireAdmin><WendysPage /></ProtectedRoute>} />
+            <Route path="/admin/brad" element={<ProtectedRoute requireAdmin><BradsPage /></ProtectedRoute>} />
+            <Route path="/admin/adam" element={<ProtectedRoute requireAdmin><AdamsPage /></ProtectedRoute>} />
             <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
             <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
             {/* Client Portal Routes - clientOnly redirects admins to /admin */}
