@@ -33,6 +33,7 @@ import EvansPage from "./pages/admin/EvansPage";
 import EvansLeads from "./pages/admin/EvansLeads";
 import EvansPipeline from "./pages/admin/EvansPipeline";
 import EvansTasks from "./pages/admin/EvansTasks";
+import EvansCalls from "./pages/admin/EvansCalls";
 import MaurasPage from "./pages/admin/MaurasPage";
 import WendysPage from "./pages/admin/WendysPage";
 import BradsPage from "./pages/admin/BradsPage";
@@ -80,6 +81,7 @@ const App = () => (
             <Route path="/user/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
             <Route path="/user/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
             <Route path="/user/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
+            <Route path="/user/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
             <Route path="/user/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
             <Route path="/user/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
             <Route path="/admin/brad" element={<EmployeeRoute employeeName="Brad"><BradsPage /></EmployeeRoute>} />
