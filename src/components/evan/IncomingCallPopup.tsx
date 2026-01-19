@@ -7,6 +7,7 @@ import { Phone, PhoneOff, User, Mic, MicOff, Volume2, VolumeX } from 'lucide-rea
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Device, Call } from '@twilio/voice-sdk';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 interface ActiveCall {
   id: string;
@@ -23,6 +24,10 @@ interface ActiveCall {
 }
 
 export const IncomingCallPopup = () => {
+  const { teamMember } = useTeamMember();
+  
+  // Only Evan can see and respond to calls
+  const isEvan = teamMember?.name?.toLowerCase() === 'evan';
   const [incomingCall, setIncomingCall] = useState<ActiveCall | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -34,8 +39,14 @@ export const IncomingCallPopup = () => {
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
 
-  // Initialize Twilio Device
+  // Initialize Twilio Device - Only for Evan
   const initializeTwilioDevice = useCallback(async () => {
+    // Only Evan should initialize Twilio
+    if (!isEvan) {
+      console.log('Not Evan, skipping Twilio initialization');
+      return null;
+    }
+    
     if (twilioDevice) {
       console.log('Twilio Device already initialized');
       return twilioDevice;
@@ -131,12 +142,14 @@ export const IncomingCallPopup = () => {
     } finally {
       setIsInitializing(false);
     }
-  }, [twilioDevice]);
+  }, [twilioDevice, isEvan]);
 
-  // Auto-initialize Twilio Device on mount
+  // Auto-initialize Twilio Device on mount - Only for Evan
   useEffect(() => {
-    initializeTwilioDevice();
-  }, [initializeTwilioDevice]);
+    if (isEvan) {
+      initializeTwilioDevice();
+    }
+  }, [initializeTwilioDevice, isEvan]);
 
   // Start call timer
   const startCallTimer = useCallback(() => {
@@ -161,7 +174,7 @@ export const IncomingCallPopup = () => {
     queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
   }, [queryClient]);
 
-  // Initial fetch for any ringing calls
+  // Initial fetch for any ringing calls - Only for Evan
   const { data: activeCalls } = useQuery({
     queryKey: ['active-calls-ringing'],
     queryFn: async () => {
@@ -176,10 +189,14 @@ export const IncomingCallPopup = () => {
       return data as ActiveCall[];
     },
     refetchInterval: 3000,
+    enabled: isEvan, // Only fetch for Evan
   });
 
-  // Subscribe to realtime changes
+  // Subscribe to realtime changes - Only for Evan
   useEffect(() => {
+    // Only Evan should subscribe to call updates
+    if (!isEvan) return;
+    
     const channel = supabase
       .channel('active-calls-realtime')
       .on(
@@ -218,7 +235,7 @@ export const IncomingCallPopup = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [incomingCall, isConnected, queryClient]);
+  }, [incomingCall, isConnected, queryClient, isEvan]);
 
   // Set incoming call from query data
   useEffect(() => {
@@ -365,7 +382,8 @@ export const IncomingCallPopup = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const showPopup = incomingCall || isConnected;
+  // Only show popup for Evan
+  const showPopup = isEvan && (incomingCall || isConnected);
 
   return (
     <AnimatePresence>
