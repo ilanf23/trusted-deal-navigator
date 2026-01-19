@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Loader2, Eye, Check } from 'lucide-react';
+import { Plus, Loader2, Eye, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
@@ -243,13 +243,11 @@ const AdminInvoices = () => {
 
         <Card>
           <CardHeader>
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+            <div className="max-w-sm">
               <Input
                 placeholder="Search invoices..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
               />
             </div>
           </CardHeader>

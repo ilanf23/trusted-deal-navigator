@@ -12,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
   Mail,
-  Search,
   RefreshCw,
   Archive,
   Trash2,
@@ -349,13 +348,12 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
             {/* Toolbar */}
             <div className="p-2 border-b flex items-center gap-2 shrink-0">
               <form onSubmit={handleSearch} className="flex-1 flex gap-1">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <div className="flex-1">
                   <Input
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 h-8 text-sm"
+                    className="h-8 text-sm"
                   />
                 </div>
               </form>

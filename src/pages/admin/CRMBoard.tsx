@@ -6,7 +6,7 @@ import { LeadCard } from '@/components/admin/LeadCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Search, Filter, LayoutGrid, List } from 'lucide-react';
+import { Loader2, Filter, LayoutGrid, List } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
@@ -218,13 +218,11 @@ const CRMBoard = () => {
 
         {/* Filters */}
         <div className="flex items-center gap-4 mb-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+          <div className="flex-1 max-w-sm">
             <Input
               placeholder="Search leads..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
             />
           </div>
           <Select value={sourceFilter} onValueChange={setSourceFilter}>

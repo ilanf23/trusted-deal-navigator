@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, X, Clock, Sparkles, FileText } from 'lucide-react';
+import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, X, Clock, Sparkles, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -371,13 +371,12 @@ const EvansLeads = () => {
         </div>
 
         {/* Search */}
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+        <div className="flex-1 max-w-xs">
           <Input
             placeholder="Search leads..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-9 rounded-xl bg-white border-border/50 focus:border-foreground/20 transition-colors"
+            className="h-9 rounded-xl bg-white border-border/50 focus:border-foreground/20 transition-colors"
           />
         </div>
       </div>

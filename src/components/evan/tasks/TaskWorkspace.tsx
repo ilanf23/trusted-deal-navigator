@@ -14,7 +14,6 @@ import {
   Calendar, 
   GanttChart, 
   Plus, 
-  Search, 
   Filter,
   SlidersHorizontal,
   Zap
@@ -99,13 +98,12 @@ export const TaskWorkspace = () => {
             New Task
           </Button>
           
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <div>
             <Input
               placeholder="Search tasks..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-64"
+              className="w-64"
             />
           </div>
 
