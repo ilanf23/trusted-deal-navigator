@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Phone, 
   User, 
@@ -89,6 +90,7 @@ interface CallLog {
   duration_seconds: number | null;
   created_at: string;
   lead_id: string | null;
+  transcript: string | null;
   leads?: {
     name: string;
     company_name: string | null;
@@ -164,6 +166,8 @@ const formatDuration = (seconds: number | null) => {
 const EvansCalls = () => {
   const [expandedLenders, setExpandedLenders] = useState<Record<string, boolean>>({});
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
+  const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
+  const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -504,8 +508,7 @@ const EvansCalls = () => {
                       {callHistory.map((call) => (
                         <div
                           key={call.id}
-                          className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
-                          onClick={() => setSelectedCallLog(call)}
+                          className="p-4 hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex items-start gap-3">
                             <div className={`p-2 rounded-full ${
@@ -538,9 +541,26 @@ const EvansCalls = () => {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
-                              </p>
+                              <div className="flex items-center justify-between mt-2">
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
+                                </p>
+                                {call.status === 'completed' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedTranscriptCall(call);
+                                      setTranscriptDialogOpen(true);
+                                    }}
+                                  >
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    Transcript
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -651,6 +671,43 @@ const EvansCalls = () => {
           </div>
         </div>
       </div>
+      {/* Transcript Dialog */}
+      <Dialog open={transcriptDialogOpen} onOpenChange={setTranscriptDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Call Transcript
+            </DialogTitle>
+            <DialogDescription>
+              {selectedTranscriptCall && (
+                <>
+                  {selectedTranscriptCall.leads?.name || formatPhoneNumber(selectedTranscriptCall.phone_number || 'Unknown')}
+                  {' • '}
+                  {format(new Date(selectedTranscriptCall.created_at), 'MMM d, yyyy h:mm a')}
+                  {' • '}
+                  {formatDuration(selectedTranscriptCall.duration_seconds)}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] mt-4">
+            {selectedTranscriptCall?.transcript ? (
+              <div className="whitespace-pre-wrap text-sm leading-relaxed p-4 bg-muted rounded-lg">
+                {selectedTranscriptCall.transcript}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No transcript available for this call</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Transcripts are generated automatically after calls are completed
+                </p>
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
