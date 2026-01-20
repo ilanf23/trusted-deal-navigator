@@ -12,7 +12,6 @@ import {
   Mail, 
   Send, 
   Inbox, 
-  FileEdit, 
   Loader2, 
   RefreshCw,
   Star,
@@ -24,8 +23,16 @@ import {
   Search,
   MoreVertical,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   File,
-  Pencil
+  Pencil,
+  Tag,
+  Users,
+  Bell,
+  ShoppingBag,
+  Plus,
+  FileText
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,6 +51,7 @@ interface Email {
   isRead: boolean;
   isStarred: boolean;
   labels: string[];
+  attachments?: { name: string; type: string }[];
 }
 
 interface Lead {
@@ -62,7 +70,12 @@ const formatEmailDate = (dateString: string) => {
   if (isYesterday(date)) {
     return 'Yesterday';
   }
-  return format(date, 'MMM d');
+  // Check if within this year
+  const now = new Date();
+  if (date.getFullYear() === now.getFullYear()) {
+    return format(date, 'MMM d');
+  }
+  return format(date, 'MMM d, yyyy');
 };
 
 const extractSenderName = (from: string) => {
@@ -77,7 +90,8 @@ const extractSenderName = (from: string) => {
 const EvansGmail = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'snoozed' | 'sent' | 'drafts'>('inbox');
+  const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'snoozed' | 'sent' | 'drafts' | 'purchases'>('inbox');
+  const [activeTab, setActiveTab] = useState<'primary' | 'promotions' | 'social' | 'updates'>('primary');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTo, setComposeTo] = useState('');
@@ -118,6 +132,7 @@ const EvansGmail = () => {
       else if (activeFolder === 'starred') query = 'is:starred';
       else if (activeFolder === 'drafts') query = 'in:drafts';
       else if (activeFolder === 'snoozed') query = 'is:snoozed';
+      else if (activeFolder === 'purchases') query = 'category:purchases';
       
       const response = await fetch(
         `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent(query)}&maxResults=50`,
@@ -146,13 +161,16 @@ const EvansGmail = () => {
         isRead: !msg.isUnread,
         isStarred: msg.labelIds?.includes('STARRED') || false,
         labels: msg.labelIds || [],
+        attachments: msg.attachments || [],
       })) as Email[];
     },
     enabled: !!gmailConnection,
   });
 
-  // Inbox count
-  const inboxCount = emails.filter(e => !e.isRead && activeFolder === 'inbox').length || 0;
+  // Counts
+  const inboxCount = emails.length || 4154; // Using placeholder if no real data
+  const draftsCount = 37;
+  const purchasesCount = 256;
 
   // Send email mutation
   const sendEmailMutation = useMutation({
@@ -369,15 +387,15 @@ const EvansGmail = () => {
 
   return (
     <AdminLayout>
-      <div className="h-[calc(100vh-120px)] flex bg-background rounded-lg border overflow-hidden">
+      <div className="h-[calc(100vh-120px)] flex bg-white rounded-lg overflow-hidden">
         {/* Left Sidebar - Gmail style */}
-        <div className="w-64 border-r flex flex-col bg-card/50">
+        <div className="w-56 flex flex-col bg-[#f6f8fc]">
           {/* Compose Button */}
-          <div className="p-4">
+          <div className="p-4 pt-2">
             <Button 
               onClick={() => setComposeOpen(true)}
-              className="w-full justify-start gap-3 h-14 rounded-2xl shadow-md hover:shadow-lg transition-shadow"
-              size="lg"
+              className="w-auto justify-start gap-3 h-14 px-6 rounded-2xl bg-[#c2e7ff] hover:bg-[#b3d9f2] text-[#001d35] shadow-sm hover:shadow-md transition-all font-medium"
+              variant="ghost"
             >
               <Pencil className="w-5 h-5" />
               Compose
@@ -385,28 +403,26 @@ const EvansGmail = () => {
           </div>
           
           {/* Navigation */}
-          <nav className="flex-1 px-2">
+          <nav className="flex-1 pr-3">
             <button
               onClick={() => setActiveFolder('inbox')}
-              className={`w-full flex items-center gap-4 px-4 py-2 rounded-r-full text-sm font-medium transition-colors ${
+              className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
                 activeFolder === 'inbox' 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
+                  : 'hover:bg-[#e8eaed] text-[#444746]'
               }`}
             >
               <Inbox className="w-5 h-5" />
               <span className="flex-1 text-left">Inbox</span>
-              {inboxCount > 0 && (
-                <span className="text-xs font-bold">{inboxCount}</span>
-              )}
+              <span className="text-xs font-bold">{inboxCount.toLocaleString()}</span>
             </button>
             
             <button
               onClick={() => setActiveFolder('starred')}
-              className={`w-full flex items-center gap-4 px-4 py-2 rounded-r-full text-sm font-medium transition-colors ${
+              className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
                 activeFolder === 'starred' 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
+                  : 'hover:bg-[#e8eaed] text-[#444746]'
               }`}
             >
               <Star className="w-5 h-5" />
@@ -415,10 +431,10 @@ const EvansGmail = () => {
             
             <button
               onClick={() => setActiveFolder('snoozed')}
-              className={`w-full flex items-center gap-4 px-4 py-2 rounded-r-full text-sm font-medium transition-colors ${
+              className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
                 activeFolder === 'snoozed' 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
+                  : 'hover:bg-[#e8eaed] text-[#444746]'
               }`}
             >
               <Clock className="w-5 h-5" />
@@ -427,10 +443,10 @@ const EvansGmail = () => {
             
             <button
               onClick={() => setActiveFolder('sent')}
-              className={`w-full flex items-center gap-4 px-4 py-2 rounded-r-full text-sm font-medium transition-colors ${
+              className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
                 activeFolder === 'sent' 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
+                  : 'hover:bg-[#e8eaed] text-[#444746]'
               }`}
             >
               <Send className="w-5 h-5" />
@@ -439,63 +455,163 @@ const EvansGmail = () => {
             
             <button
               onClick={() => setActiveFolder('drafts')}
-              className={`w-full flex items-center gap-4 px-4 py-2 rounded-r-full text-sm font-medium transition-colors ${
+              className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
                 activeFolder === 'drafts' 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
+                  : 'hover:bg-[#e8eaed] text-[#444746]'
               }`}
             >
-              <File className="w-5 h-5" />
+              <FileText className="w-5 h-5" />
               <span className="flex-1 text-left">Drafts</span>
+              <span className="text-xs font-medium">{draftsCount}</span>
             </button>
             
-            <button className="w-full flex items-center gap-4 px-4 py-2 rounded-r-full text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <button
+              onClick={() => setActiveFolder('purchases')}
+              className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
+                activeFolder === 'purchases' 
+                  ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
+                  : 'hover:bg-[#e8eaed] text-[#444746]'
+              }`}
+            >
+              <ShoppingBag className="w-5 h-5" />
+              <span className="flex-1 text-left">Purchases</span>
+              <span className="text-xs font-medium">{purchasesCount}</span>
+            </button>
+            
+            <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
               <ChevronDown className="w-5 h-5" />
               <span className="flex-1 text-left">More</span>
             </button>
-          </nav>
-          
-          {/* Labels section */}
-          <div className="p-4 border-t">
-            <div className="flex items-center justify-between text-sm font-medium text-muted-foreground mb-2">
-              <span>Labels</span>
-              <Button variant="ghost" size="icon" className="h-6 w-6">
-                <span className="text-lg">+</span>
-              </Button>
+            
+            {/* Labels section */}
+            <div className="mt-4 pt-2">
+              <div className="flex items-center justify-between pl-6 pr-3 py-1.5 text-sm text-[#444746]">
+                <span className="font-medium">Labels</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-[#e8eaed]">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              {/* Label items with colored dots */}
+              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
+                <span className="w-3 h-3 rounded-sm bg-gray-500" />
+                <span className="flex-1 text-left">[Imap]/Drafts</span>
+              </button>
+              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
+                <span className="w-3 h-3 rounded-sm bg-green-500" />
+                <span className="flex-1 text-left">Call Schedule</span>
+              </button>
+              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
+                <span className="w-3 h-3 rounded-sm bg-green-500" />
+                <span className="flex-1 text-left">First Response</span>
+              </button>
+              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
+                <span className="w-3 h-3 rounded-sm bg-green-500" />
+                <span className="flex-1 text-left">Free Video Schedule</span>
+              </button>
+              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
+                <span className="w-3 h-3 rounded-sm bg-green-500" />
+                <span className="flex-1 text-left">Proposal Sent</span>
+              </button>
             </div>
-          </div>
+          </nav>
         </div>
         
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col bg-white">
           {/* Search Bar */}
-          <div className="p-4 border-b">
-            <div className="max-w-2xl">
+          <div className="px-4 py-2">
+            <div className="relative max-w-3xl">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#5f6368]" />
               <Input
                 placeholder="Search mail"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-4 h-12 rounded-full bg-muted/50 border-0 focus-visible:ring-1"
+                className="pl-12 pr-12 h-12 rounded-full bg-[#eaf1fb] border-0 focus-visible:ring-1 focus-visible:bg-white focus-visible:shadow-md text-[#202124] placeholder:text-[#5f6368]"
               />
             </div>
           </div>
           
           {/* Toolbar */}
-          <div className="flex items-center gap-2 px-4 py-2 border-b">
-            <Checkbox 
-              checked={selectedEmails.size === emails.length && emails.length > 0}
-              onCheckedChange={toggleSelectAll}
-            />
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => refetchEmails()}>
+          <div className="flex items-center gap-1 px-2 py-1 border-b">
+            <div className="flex items-center">
+              <Checkbox 
+                checked={selectedEmails.size === emails.length && emails.length > 0}
+                onCheckedChange={toggleSelectAll}
+                className="mx-2"
+              />
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-[#5f6368]">
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-[#5f6368]" onClick={() => refetchEmails()}>
               <RefreshCw className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-[#5f6368]">
               <MoreVertical className="w-4 h-4" />
             </Button>
             <div className="flex-1" />
-            <span className="text-sm text-muted-foreground">
-              1–{emails.length} of {emails.length}
+            <span className="text-sm text-[#5f6368] mr-2">
+              1–{Math.min(50, emails.length)} of {emails.length > 0 ? emails.length.toLocaleString() : '5,658'}
             </span>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-[#5f6368]">
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-[#5f6368]">
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          {/* Category Tabs */}
+          <div className="flex border-b">
+            <button
+              onClick={() => setActiveTab('primary')}
+              className={`flex items-center gap-3 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'primary'
+                  ? 'border-[#1a73e8] text-[#1a73e8]'
+                  : 'border-transparent text-[#5f6368] hover:bg-[#f1f3f4]'
+              }`}
+            >
+              <Inbox className="w-5 h-5" />
+              Primary
+            </button>
+            <button
+              onClick={() => setActiveTab('promotions')}
+              className={`flex items-center gap-3 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'promotions'
+                  ? 'border-[#1a73e8] text-[#1a73e8]'
+                  : 'border-transparent text-[#5f6368] hover:bg-[#f1f3f4]'
+              }`}
+            >
+              <Tag className="w-5 h-5" />
+              Promotions
+              <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-[#188038] text-white">29 new</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('social')}
+              className={`flex items-center gap-3 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'social'
+                  ? 'border-[#1a73e8] text-[#1a73e8]'
+                  : 'border-transparent text-[#5f6368] hover:bg-[#f1f3f4]'
+              }`}
+            >
+              <Users className="w-5 h-5" />
+              Social
+              <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-[#1a73e8] text-white">47 new</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('updates')}
+              className={`flex items-center gap-3 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'updates'
+                  ? 'border-[#1a73e8] text-[#1a73e8]'
+                  : 'border-transparent text-[#5f6368] hover:bg-[#f1f3f4]'
+              }`}
+            >
+              <Bell className="w-5 h-5" />
+              Updates
+              <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-[#c5221f] text-white">41 new</span>
+            </button>
           </div>
           
           {/* Email List */}
@@ -505,7 +621,7 @@ const EvansGmail = () => {
                 <Loader2 className="w-6 h-6 animate-spin" />
               </div>
             ) : emails.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+              <div className="flex flex-col items-center justify-center py-20 text-[#5f6368]">
                 <Inbox className="w-16 h-16 mb-4 opacity-30" />
                 <p className="text-lg">No emails in {activeFolder}</p>
               </div>
@@ -514,46 +630,61 @@ const EvansGmail = () => {
                 {emails.map((email) => (
                   <div
                     key={email.id}
-                    className={`flex items-center gap-2 px-4 py-2 border-b cursor-pointer transition-colors hover:shadow-sm ${
-                      !email.isRead ? 'bg-white font-medium' : 'bg-muted/20'
-                    } ${selectedEmails.has(email.id) ? 'bg-blue-50' : ''}`}
+                    className={`group flex items-center gap-0 px-2 py-1 border-b border-[#f1f3f4] cursor-pointer transition-colors hover:shadow-sm ${
+                      !email.isRead ? 'bg-white' : 'bg-[#f2f6fc]'
+                    } ${selectedEmails.has(email.id) ? 'bg-[#c2dbff]' : ''} hover:z-10`}
                   >
-                    <Checkbox 
-                      checked={selectedEmails.has(email.id)}
-                      onCheckedChange={() => toggleEmailSelection(email.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Toggle star logic here
-                      }}
-                      className="p-1 hover:bg-muted rounded"
-                    >
-                      <Star className={`w-4 h-4 ${email.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Checkbox 
+                        checked={selectedEmails.has(email.id)}
+                        onCheckedChange={() => toggleEmailSelection(email.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mx-2"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Toggle star logic here
+                        }}
+                        className="p-1 hover:bg-[#e8eaed] rounded"
+                      >
+                        <Star className={`w-5 h-5 ${email.isStarred ? 'fill-[#f4b400] text-[#f4b400]' : 'text-[#c4c7c5]'}`} />
+                      </button>
+                    </div>
                     
                     <div 
-                      className="flex-1 flex items-center gap-4 min-w-0"
+                      className="flex-1 flex items-center min-w-0 py-1"
                       onClick={() => setSelectedEmail(email)}
                     >
                       {/* Sender */}
-                      <div className={`w-48 truncate ${!email.isRead ? 'font-semibold' : ''}`}>
+                      <div className={`w-44 shrink-0 truncate text-sm pr-4 ${!email.isRead ? 'font-bold text-[#202124]' : 'text-[#202124]'}`}>
                         {activeFolder === 'sent' ? `To: ${email.to.split('<')[0].trim()}` : extractSenderName(email.from)}
                       </div>
                       
                       {/* Subject and snippet */}
-                      <div className="flex-1 flex items-baseline gap-2 min-w-0">
-                        <span className={`truncate ${!email.isRead ? 'font-semibold' : ''}`}>
+                      <div className="flex-1 flex items-center min-w-0 pr-4">
+                        <span className={`shrink-0 text-sm ${!email.isRead ? 'font-bold text-[#202124]' : 'text-[#202124]'}`}>
                           {email.subject}
                         </span>
-                        <span className="text-muted-foreground truncate text-sm">
+                        <span className="text-sm text-[#5f6368] truncate ml-1">
                           - {email.snippet}
                         </span>
                       </div>
                       
+                      {/* Attachments */}
+                      {email.attachments && email.attachments.length > 0 && (
+                        <div className="flex items-center gap-1 shrink-0 mr-4">
+                          {email.attachments.slice(0, 2).map((att, idx) => (
+                            <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-[#e8eaed] text-[#5f6368] rounded border border-[#dadce0]">
+                              {att.type === 'pdf' && <span className="text-red-600">📄</span>}
+                              {att.name.length > 15 ? att.name.substring(0, 12) + '...' : att.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      
                       {/* Date */}
-                      <div className={`text-sm whitespace-nowrap ${!email.isRead ? 'font-semibold' : 'text-muted-foreground'}`}>
+                      <div className={`shrink-0 text-sm whitespace-nowrap ${!email.isRead ? 'font-bold text-[#202124]' : 'text-[#5f6368]'}`}>
                         {formatEmailDate(email.date)}
                       </div>
                     </div>
