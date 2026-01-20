@@ -37,6 +37,19 @@ const Auth = () => {
     if (user && !authLoading) {
       const email = (user.email ?? '').toLowerCase();
 
+      // Route employees to their specific dashboards
+      const employeeRoutes: Record<string, string> = {
+        'evan@test.com': '/user/evan',
+        'maura@test.com': '/user/maura',
+        'wendy@test.com': '/user/wendy',
+      };
+
+      // Check if user is an employee with a specific route
+      if (employeeRoutes[email]) {
+        navigate(employeeRoutes[email], { replace: true });
+        return;
+      }
+
       // Force this user to the admin area only
       if (email === 'ilan@maverich.ai') {
         navigate('/admin', { replace: true });
