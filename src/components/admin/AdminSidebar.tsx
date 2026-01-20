@@ -187,13 +187,13 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   }, [isOwner, teamMember]);
 
   return (
-    <Sidebar className="border-r border-border/40 bg-slate-50 dark:bg-slate-900 w-72">
-      <SidebarHeader className="h-16 flex items-center justify-center border-b border-border/40 bg-slate-50 dark:bg-slate-900">
+    <Sidebar className="border-r border-border/60 bg-slate-50 dark:bg-slate-900 w-72">
+      <SidebarHeader className="p-4 border-b border-border/40 bg-white/50 dark:bg-slate-900/50">
         <Link to={homeUrl} className="flex items-center justify-center group">
           <img 
             src="/logo.png" 
             alt="CommercialLendingX" 
-            className="max-h-[56px] max-w-full object-contain"
+            className="max-h-[200px] max-w-full object-contain"
           />
         </Link>
       </SidebarHeader>
