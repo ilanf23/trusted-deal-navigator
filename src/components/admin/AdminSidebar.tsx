@@ -31,7 +31,8 @@ import {
   SidebarHeader,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import AvatarUpload from '@/components/admin/AvatarUpload';
 import {
   Collapsible,
   CollapsibleContent,
@@ -418,14 +419,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
 
       <SidebarFooter className="p-5 border-t border-sidebar-border">
         <div className="flex items-center gap-4 mb-4 px-1">
-          <Avatar className="w-11 h-11 ring-2 ring-sidebar-border">
-            <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-base font-medium">
-              {getUserInitials(user?.email)}
-            </AvatarFallback>
-          </Avatar>
+          <AvatarUpload
+            userId={user?.id || ''}
+            currentAvatarUrl={teamMember?.avatar_url}
+            fallbackInitials={getUserInitials(user?.email)}
+            size="md"
+          />
           <div className="flex-1 min-w-0">
             <p className="text-base font-medium text-sidebar-foreground truncate">
-              {user?.email?.split('@')[0] || 'User'}
+              {teamMember?.name || user?.email?.split('@')[0] || 'User'}
             </p>
             <p className="text-sm text-sidebar-foreground/60 truncate">
               {user?.email}
