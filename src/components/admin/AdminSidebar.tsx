@@ -118,6 +118,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           ],
           noCollapse: true,
         });
+
+        // Teams section for Ilan to view team member bug reports and dev notes
+        sections.push({
+          title: 'Teams',
+          icon: Users,
+          items: [
+            { title: "Evan's Bug Reports", url: '/admin/ilan/team/evan/bugs', icon: Code2 },
+            { title: "Evan's Dev Notes", url: '/admin/ilan/team/evan/dev-notes', icon: FileText },
+          ],
+        });
       } else {
         // For regular team members (employees), show their own dashboard and limited navigation
         const employeeName = teamMember.name;
