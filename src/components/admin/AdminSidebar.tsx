@@ -211,7 +211,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                     flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200
                     ${isActive(item.url) 
                       ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                      : 'text-muted-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                      : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
                     }
                   `}
                 >
@@ -231,7 +231,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                   flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
                   ${openSections[section.title] 
                     ? 'bg-admin-blue-light text-admin-blue-dark' 
-                    : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    : 'text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   }
                 `}>
                   <div className="flex items-center gap-3">
@@ -255,7 +255,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                         flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
                         ${isActive(item.url) 
                           ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                          : 'text-muted-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                          : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
                         }
                       `}
                     >
@@ -277,7 +277,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
               flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mt-4
               ${isActive(`/team/${teamMember.name.toLowerCase()}/dev-notes`) 
                 ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                : 'text-muted-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
               }
             `}
           >
