@@ -239,12 +239,12 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar" style={{ '--sidebar-width': '18rem' } as React.CSSProperties}>
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
+      <SidebarHeader className="py-3 px-4 border-b border-sidebar-border">
         <Link to={homeUrl} className="flex items-center justify-center group">
           <img 
             src="/logo.png" 
             alt="CommercialLendingX" 
-            className="max-h-[200px] max-w-full object-contain brightness-0 invert opacity-90"
+            className="max-h-[80px] max-w-full object-contain brightness-0 invert opacity-90"
           />
         </Link>
       </SidebarHeader>
