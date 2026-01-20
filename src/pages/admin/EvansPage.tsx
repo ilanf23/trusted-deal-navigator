@@ -44,6 +44,7 @@ import {
 import { startOfYear, startOfMonth, format, eachMonthOfInterval, isAfter, isBefore, addDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { TopActions } from '@/components/evan/dashboard/TopActions';
+import { NudgesWidget } from '@/components/evan/dashboard/NudgesWidget';
 
 export type TimePeriod = 'mtd' | 'ytd';
 
@@ -521,6 +522,9 @@ const EvansPage = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Nudges Widget - Only shows if there are leads needing follow-up */}
+        <NudgesWidget evanId={evanId} />
 
         {/* Top 10 Actions Now */}
         <TopActions evanId={evanId} />
