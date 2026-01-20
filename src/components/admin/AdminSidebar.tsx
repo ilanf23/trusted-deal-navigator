@@ -137,15 +137,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         noCollapse: true,
       });
 
-      // Evan CRM section - personal leads management (no dropdown)
-      sections.push({
-        title: 'Evan CRM',
-        icon: User,
-        items: [
-          { title: "Evan's Leads", url: `${employeeUrl}/leads`, icon: UserPlus },
-        ],
-        noCollapse: true,
-      });
     }
 
     return sections;
