@@ -223,8 +223,12 @@ const AdminMessages = () => {
           <p className="text-muted-foreground mt-1">Communication center for calls and client messages</p>
         </div>
 
-        <Tabs defaultValue="call-ratings" className="w-full">
+        <Tabs defaultValue="client-messages" className="w-full">
           <TabsList>
+            <TabsTrigger value="client-messages" className="gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Client Messages
+            </TabsTrigger>
             <TabsTrigger value="call-ratings" className="gap-2">
               <Phone className="w-4 h-4" />
               Call Ratings
@@ -233,10 +237,6 @@ const AdminMessages = () => {
                   {unreadRatingsCount}
                 </Badge>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="client-messages" className="gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Client Messages
             </TabsTrigger>
           </TabsList>
 
