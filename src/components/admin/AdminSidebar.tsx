@@ -76,9 +76,26 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         icon: LayoutDashboard,
         items: [
           { title: 'Overview', url: '/admin/ilan', icon: LayoutDashboard },
+          { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
+          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
+          { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
+          { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },
+          { title: 'Clients', url: '/admin/clients', icon: Users },
+          { title: 'Contracts', url: '/admin/contracts', icon: FileText },
+          { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
+          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
           { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Bug },
         ],
-        noCollapse: true,
+      });
+
+      // Marketing section for Ilan
+      sections.push({
+        title: 'Marketing',
+        icon: BarChart3,
+        items: [
+          { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
+          { title: 'Analytics', url: '/admin/marketing', icon: BarChart3 },
+        ],
       });
 
       // Team section for Ilan
