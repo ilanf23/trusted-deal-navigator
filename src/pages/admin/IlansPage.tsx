@@ -35,50 +35,58 @@ const IlansPage = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="border-orange-200 bg-orange-50/50 dark:bg-orange-950/20">
+          <Card className="border hover:border-primary/30 transition-colors">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Open Bugs</p>
-                  <p className="text-3xl font-bold text-orange-600">{bugStats?.open || 0}</p>
+                  <p className="text-3xl font-bold text-destructive">{bugStats?.open || 0}</p>
                 </div>
-                <AlertCircle className="h-10 w-10 text-orange-500" />
+                <div className="p-3 rounded-full bg-destructive/10">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
+                </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+          <Card className="border hover:border-primary/30 transition-colors">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">In Progress</p>
-                  <p className="text-3xl font-bold text-blue-600">{bugStats?.inProgress || 0}</p>
+                  <p className="text-3xl font-bold text-primary">{bugStats?.inProgress || 0}</p>
                 </div>
-                <Clock className="h-10 w-10 text-blue-500" />
+                <div className="p-3 rounded-full bg-primary/10">
+                  <Clock className="h-8 w-8 text-primary" />
+                </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20">
+          <Card className="border hover:border-primary/30 transition-colors">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Resolved</p>
-                  <p className="text-3xl font-bold text-emerald-600">{bugStats?.resolved || 0}</p>
+                  <p className="text-3xl font-bold text-green-600">{bugStats?.resolved || 0}</p>
                 </div>
-                <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+                <div className="p-3 rounded-full bg-green-500/10">
+                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="border hover:border-primary/30 transition-colors">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Reports</p>
                   <p className="text-3xl font-bold">{bugStats?.total || 0}</p>
                 </div>
-                <Bug className="h-10 w-10 text-muted-foreground" />
+                <div className="p-3 rounded-full bg-muted">
+                  <Bug className="h-8 w-8 text-muted-foreground" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -90,8 +98,8 @@ const IlansPage = () => {
             <Card className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] hover:border-primary/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900">
-                    <Bug className="h-5 w-5 text-orange-600" />
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Bug className="h-5 w-5 text-primary" />
                   </div>
                   Bug Testing
                 </CardTitle>

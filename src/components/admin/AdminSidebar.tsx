@@ -230,13 +230,13 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   }, [isOwner, teamMember]);
 
   return (
-    <Sidebar className="border-r border-border/60 bg-slate-50 dark:bg-slate-900 w-72">
-      <SidebarHeader className="p-4 border-b border-border/40 bg-white/50 dark:bg-slate-900/50">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar w-72">
+      <SidebarHeader className="p-4 border-b border-sidebar-border">
         <Link to={homeUrl} className="flex items-center justify-center group">
           <img 
             src="/logo.png" 
             alt="CommercialLendingX" 
-            className="max-h-[200px] max-w-full object-contain"
+            className="max-h-[200px] max-w-full object-contain brightness-0 invert opacity-90"
           />
         </Link>
       </SidebarHeader>
@@ -258,8 +258,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                       <div className={`
                         flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
                         ${openSections[item.title] 
-                          ? 'bg-admin-blue-light text-admin-blue-dark' 
-                          : 'text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                          ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                          : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                         }
                       `}>
                         <item.icon className="w-5 h-5" strokeWidth={1.75} />
@@ -272,7 +272,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                       </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <div className="ml-4 mt-1 space-y-1 border-l-2 border-admin-blue/30">
+                      <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-primary/30">
                         {item.subItems.map((subItem) => (
                           <Link
                             key={subItem.title}
@@ -280,8 +280,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                             className={`
                               flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
                               ${isActive(subItem.url) 
-                                ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                                : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                                ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
+                                : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                               }
                             `}
                           >
@@ -299,8 +299,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                     className={`
                       flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200
                       ${isActive(item.url) 
-                        ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                        : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                        ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                       }
                     `}
                   >
@@ -320,8 +320,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                 <div className={`
                   flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
                   ${openSections[section.title] 
-                    ? 'bg-admin-blue-light text-admin-blue-dark' 
-                    : 'text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                   }
                 `}>
                   <div className="flex items-center gap-3">
@@ -330,13 +330,13 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                         openSections[section.title] ? '' : '-rotate-90'
                       }`} 
                     />
-                    <section.icon className={`w-5 h-5 ${openSections[section.title] ? 'text-admin-blue' : ''}`} strokeWidth={1.75} />
+                    <section.icon className={`w-5 h-5 ${openSections[section.title] ? 'text-sidebar-primary' : ''}`} strokeWidth={1.75} />
                     <span className="text-base font-medium">{section.title}</span>
                   </div>
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="ml-4 mt-1 space-y-1 border-l-2 border-admin-blue/30">
+                <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-primary/30">
                   {section.items.map((item) => (
                     item.subItems ? (
                       // Render nested collapsible for items with subItems
@@ -349,8 +349,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                           <div className={`
                             flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200 cursor-pointer
                             ${openSections[item.title] 
-                              ? 'bg-admin-blue-light text-admin-blue-dark' 
-                              : 'text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                              ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                             }
                           `}>
                             <ChevronDown 
@@ -363,7 +363,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                           </div>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <div className="ml-6 mt-1 space-y-1 border-l-2 border-admin-blue/20">
+                          <div className="ml-6 mt-1 space-y-1 border-l-2 border-sidebar-primary/20">
                             {item.subItems.map((subItem) => (
                               <Link
                                 key={subItem.title}
@@ -371,8 +371,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                                 className={`
                                   flex items-center gap-3 py-2 px-4 ml-2 rounded-lg transition-all duration-200
                                   ${isActive(subItem.url) 
-                                    ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                                    : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
+                                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                                   }
                                 `}
                               >
@@ -390,8 +390,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                         className={`
                           flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
                           ${isActive(item.url) 
-                            ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                            : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                            ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
+                            : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                           }
                         `}
                       >
@@ -408,25 +408,25 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
 
       </SidebarContent>
 
-      <SidebarFooter className="p-5 border-t border-border/40">
+      <SidebarFooter className="p-5 border-t border-sidebar-border">
         <div className="flex items-center gap-4 mb-4 px-1">
-          <Avatar className="w-11 h-11 ring-2 ring-border/50">
-            <AvatarFallback className="bg-muted text-muted-foreground text-base font-medium">
+          <Avatar className="w-11 h-11 ring-2 ring-sidebar-border">
+            <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-base font-medium">
               {getUserInitials(user?.email)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-medium text-foreground truncate">
+            <p className="text-base font-medium text-sidebar-foreground truncate">
               {user?.email?.split('@')[0] || 'User'}
             </p>
-            <p className="text-sm text-muted-foreground truncate">
+            <p className="text-sm text-sidebar-foreground/60 truncate">
               {user?.email}
             </p>
           </div>
         </div>
         <Button 
           variant="ghost" 
-          className="w-full justify-start gap-4 text-muted-foreground hover:text-foreground hover:bg-muted/60 h-12 rounded-xl text-base" 
+          className="w-full justify-start gap-4 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 h-12 rounded-xl text-base" 
           onClick={signOut}
         >
           <LogOut className="w-[22px] h-[22px]" strokeWidth={1.75} />
