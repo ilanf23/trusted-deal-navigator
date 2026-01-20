@@ -1813,6 +1813,7 @@ export type Database = {
         | "cancelled"
       lead_status:
         | "discovery"
+        | "questionnaire"
         | "pre_qualification"
         | "document_collection"
         | "underwriting"
@@ -1964,6 +1965,7 @@ export const Constants = {
       ],
       lead_status: [
         "discovery",
+        "questionnaire",
         "pre_qualification",
         "document_collection",
         "underwriting",
