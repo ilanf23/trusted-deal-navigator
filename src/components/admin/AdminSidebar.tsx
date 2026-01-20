@@ -83,6 +83,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: 'Contracts', url: '/admin/contracts', icon: FileText },
           { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+          { title: 'Bug Reporting', url: '/admin/bug-reporting', icon: Bug },
         ],
       });
 
