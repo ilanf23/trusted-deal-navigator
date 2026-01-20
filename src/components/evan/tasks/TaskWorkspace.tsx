@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useTasksData } from '@/hooks/useTasksData';
 import { Task, ViewMode } from './types';
 import { TaskTableView } from './TaskTableView';
@@ -7,21 +7,13 @@ import { TaskTimelineView } from './TaskTimelineView';
 import { TaskDetailDialog } from './TaskDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { 
   LayoutGrid, 
   Table, 
-  Calendar, 
   GanttChart, 
   Plus, 
   Search,
-  Link2,
-  Check,
-  Loader2
 } from 'lucide-react';
-
-const CALLBACK_URL = 'https://trusted-deal-navigator.lovable.app/admin/calendar-callback';
 
 export const TaskWorkspace = () => {
   const { tasks, isLoading, addTask, updateTask, deleteTask, addComment } = useTasksData();
@@ -29,62 +21,6 @@ export const TaskWorkspace = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
-  
-  // Google Calendar connection state
-  const [calendarStatus, setCalendarStatus] = useState<{ connected: boolean; email?: string } | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  // Check calendar connection status for Evan
-  useEffect(() => {
-    const checkCalendarStatus = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-
-        const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-          body: { action: 'getStatus', teamMemberName: 'evan' }
-        });
-
-        if (!error && data) {
-          setCalendarStatus(data);
-        }
-      } catch (err) {
-        console.error('Failed to check calendar status:', err);
-      }
-    };
-
-    checkCalendarStatus();
-    
-    // Listen for calendar connection updates
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'calendarConnected') {
-        checkCalendarStatus();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const connectCalendar = async () => {
-    setIsConnecting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-        body: { action: 'getAuthUrl', redirectUri: CALLBACK_URL, teamMemberName: 'evan' }
-      });
-
-      if (error) throw error;
-      if (data?.authUrl) {
-        // Store team member name for the callback to use
-        localStorage.setItem('calendarTeamMember', 'evan');
-        window.open(data.authUrl, '_blank', 'width=500,height=600');
-      }
-    } catch (err) {
-      console.error('Failed to start calendar connection:', err);
-      toast.error('Failed to connect calendar');
-    } finally {
-      setIsConnecting(false);
-    }
-  };
 
   const filteredTasks = useMemo(() => {
     if (!searchTerm) return tasks;
@@ -142,47 +78,6 @@ export const TaskWorkspace = () => {
 
   return (
     <div className="space-y-6">
-      {/* Google Calendar Connection Banner */}
-      {!calendarStatus?.connected && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-transparent border border-blue-500/20 backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-blue-500/10">
-                <Calendar className="h-6 w-6 text-blue-500" />
-              </div>
-              <div>
-                <p className="font-semibold">Connect Google Calendar</p>
-                <p className="text-sm text-muted-foreground">Sync your calendar to view tasks with your events</p>
-              </div>
-            </div>
-            <Button 
-              onClick={connectCalendar}
-              disabled={isConnecting}
-              className="rounded-full px-6"
-            >
-              {isConnecting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Link2 className="h-4 w-4 mr-2" />
-              )}
-              Connect
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Connected Calendar Banner */}
-      {calendarStatus?.connected && (
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-          <div className="p-2 rounded-lg bg-emerald-500/20">
-            <Check className="h-4 w-4 text-emerald-500" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Google Calendar connected</p>
-            <p className="text-xs text-muted-foreground">{calendarStatus.email}</p>
-          </div>
-        </div>
-      )}
 
       {/* Apple-style Toolbar */}
       <div className="flex items-center justify-between gap-4 sticky top-16 z-30 py-4 -mx-1 px-1 backdrop-blur-xl bg-background/80">
