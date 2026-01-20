@@ -2,14 +2,23 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Mail, Phone, Calendar, FileQuestion, CheckCircle2, Clock } from 'lucide-react';
+import { Building2, Mail, Phone, Calendar, CheckCircle2, Clock, PhoneIncoming, PhoneOutgoing, MessageSquare } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatDistanceToNow } from 'date-fns';
 import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 
+interface Touchpoint {
+  type: string;
+  direction: string;
+  date: string;
+}
+
 interface LeadCardProps {
   lead: Lead;
+  touchpoint?: Touchpoint;
+  onClick?: () => void;
 }
 
 const sourceColors: Record<string, string> = {
@@ -21,7 +30,35 @@ const sourceColors: Record<string, string> = {
   'Cold Call': 'bg-gray-100 text-gray-700',
 };
 
-export const LeadCard = ({ lead }: LeadCardProps) => {
+const getTouchpointIcon = (type: string, direction: string) => {
+  if (type === 'call') {
+    return direction === 'inbound' 
+      ? <PhoneIncoming className="w-3 h-3 text-green-600" />
+      : <PhoneOutgoing className="w-3 h-3 text-blue-600" />;
+  }
+  if (type === 'email') {
+    return <Mail className="w-3 h-3 text-purple-600" />;
+  }
+  if (type === 'sms') {
+    return <MessageSquare className="w-3 h-3 text-cyan-600" />;
+  }
+  return <MessageSquare className="w-3 h-3 text-muted-foreground" />;
+};
+
+const getTouchpointLabel = (type: string, direction: string) => {
+  if (type === 'call') {
+    return direction === 'inbound' ? 'Inbound call' : 'Outbound call';
+  }
+  if (type === 'email') {
+    return direction === 'inbound' ? 'Email received' : 'Email sent';
+  }
+  if (type === 'sms') {
+    return direction === 'inbound' ? 'SMS received' : 'SMS sent';
+  }
+  return type;
+};
+
+export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
   const {
     attributes,
     listeners,
@@ -39,12 +76,21 @@ export const LeadCard = ({ lead }: LeadCardProps) => {
   const questionnaireSent = !!lead.questionnaire_sent_at;
   const questionnaireCompleted = !!lead.questionnaire_completed_at;
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Only trigger onClick if not dragging
+    if (!isDragging && onClick) {
+      e.stopPropagation();
+      onClick();
+    }
+  };
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+      onClick={handleClick}
       className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
         isDragging ? 'shadow-lg ring-2 ring-primary z-50' : ''
       }`}
@@ -101,8 +147,19 @@ export const LeadCard = ({ lead }: LeadCardProps) => {
             <span>{lead.phone}</span>
           </div>
         )}
+
+        {/* Last Touchpoint */}
+        {touchpoint && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
+            {getTouchpointIcon(touchpoint.type, touchpoint.direction)}
+            <span>{getTouchpointLabel(touchpoint.type, touchpoint.direction)}</span>
+            <span className="text-muted-foreground/70">
+              {formatDistanceToNow(new Date(touchpoint.date), { addSuffix: true })}
+            </span>
+          </div>
+        )}
         
-        <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t">
+        <div className={`flex items-center gap-2 text-sm text-muted-foreground ${touchpoint ? '' : 'pt-2 border-t'}`}>
           <Calendar className="w-4 h-4" />
           <span>{new Date(lead.created_at).toLocaleDateString()}</span>
         </div>
