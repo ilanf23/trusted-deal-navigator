@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -16,12 +15,11 @@ import {
   MessageSquare, 
   Clock, 
   Send, 
-  Star, 
   CalendarIcon, 
   User, 
-  Tag,
   History,
-  Paperclip
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
 
 interface TaskDetailDialogProps {
@@ -69,26 +67,6 @@ export const TaskDetailDialog = ({
     onUpdateTask(task.id, { due_date: date?.toISOString() || null });
   };
 
-  const renderPriorityStars = (priority: string | null) => {
-    const stars = priority === 'critical' ? 5 : priority === 'high' ? 4 : priority === 'medium' ? 3 : priority === 'low' ? 2 : 1;
-    return (
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`h-5 w-5 cursor-pointer transition-colors ${
-              star <= stars ? 'fill-[#ffcb00] text-[#ffcb00]' : 'text-muted-foreground/30 hover:text-[#ffcb00]/50'
-            }`}
-            onClick={() => {
-              const priorities = ['none', 'low', 'medium', 'high', 'critical'];
-              onUpdateTask(task.id, { priority: priorities[star - 1] });
-            }}
-          />
-        ))}
-      </div>
-    );
-  };
-
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'comment': return <MessageSquare className="h-4 w-4" />;
@@ -99,47 +77,67 @@ export const TaskDetailDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <div 
-              className="w-3 h-8 rounded"
-              style={{ backgroundColor: statusConfig[task.status || 'todo']?.color }}
-            />
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-2xl border-muted-foreground/10">
+        <DialogHeader className="pb-4 border-b border-muted-foreground/10">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => onUpdateTask(task.id, { is_completed: !task.is_completed, status: task.is_completed ? 'todo' : 'done' })}
+              className="flex-shrink-0"
+            >
+              {task.is_completed ? (
+                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+              ) : (
+                <Circle className="h-6 w-6 text-muted-foreground hover:text-emerald-500 transition-colors" />
+              )}
+            </button>
             <Input
               value={editedTitle || task.title}
               onChange={(e) => setEditedTitle(e.target.value)}
               onBlur={handleSaveTitle}
-              className="text-lg font-semibold border-0 bg-transparent focus-visible:ring-0 p-0"
+              className="text-lg font-semibold border-0 bg-transparent focus-visible:ring-0 p-0 h-auto"
             />
-          </DialogTitle>
+          </div>
         </DialogHeader>
 
         <Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="updates">
-              Updates ({activities.filter(a => a.activity_type === 'comment').length})
+          <TabsList className="w-full justify-start gap-1 bg-transparent border-b border-muted-foreground/10 rounded-none p-0 h-auto">
+            <TabsTrigger 
+              value="details"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-4 py-3 text-sm"
+            >
+              Details
             </TabsTrigger>
-            <TabsTrigger value="activity">Activity Log</TabsTrigger>
+            <TabsTrigger 
+              value="updates"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-4 py-3 text-sm"
+            >
+              Comments ({activities.filter(a => a.activity_type === 'comment').length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="activity"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-4 py-3 text-sm"
+            >
+              Activity
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details" className="flex-1 space-y-4 overflow-y-auto p-1">
+          <TabsContent value="details" className="flex-1 space-y-6 overflow-y-auto p-1 mt-4">
             {/* Status */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Status
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                Status
               </label>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(statusConfig).map(([key, config]) => (
                   <button
                     key={key}
                     onClick={() => onUpdateTask(task.id, { status: key, is_completed: key === 'done' })}
-                    className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                       task.status === key 
-                        ? `${config.bg} ${config.text} ring-2 ring-offset-2 ring-current`
-                        : 'bg-muted hover:opacity-80'
+                        ? `${config.bg} ${config.text} ring-2 ring-offset-2 ring-offset-background`
+                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                     }`}
+                    style={task.status === key ? { '--tw-ring-color': config.color } as React.CSSProperties : {}}
                   >
                     {config.label}
                   </button>
@@ -148,37 +146,37 @@ export const TaskDetailDialog = ({
             </div>
 
             {/* Assignee */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <User className="h-4 w-4" /> Assignee
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <User className="h-3.5 w-3.5" /> Assignee
               </label>
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-gradient-to-br from-pink-400 to-pink-600 text-white text-xs">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9 ring-2 ring-background">
+                  <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-medium">
                     {(task.assignee_name || 'E').substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <Input
                   value={task.assignee_name || ''}
                   onChange={(e) => onUpdateTask(task.id, { assignee_name: e.target.value })}
-                  className="max-w-[200px]"
+                  className="max-w-[200px] h-9 rounded-lg"
                   placeholder="Assignee name"
                 />
               </div>
             </div>
 
             {/* Due Date */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4" /> Due Date
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <CalendarIcon className="h-3.5 w-3.5" /> Due Date
               </label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="justify-start">
+                  <Button variant="outline" className="justify-start h-9 rounded-lg font-normal">
                     {task.due_date ? format(parseISO(task.due_date), 'PPP') : 'Select date'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-50" align="start">
+                <PopoverContent className="w-auto p-0 rounded-xl" align="start">
                   <Calendar
                     mode="single"
                     selected={task.due_date ? parseISO(task.due_date) : undefined}
@@ -189,18 +187,10 @@ export const TaskDetailDialog = ({
               </Popover>
             </div>
 
-            {/* Priority */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Star className="h-4 w-4" /> Priority
-              </label>
-              {renderPriorityStars(task.priority)}
-            </div>
-
             {/* Hours */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Estimated Hours
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5" /> Estimated Hours
               </label>
               <Input
                 type="number"
@@ -208,38 +198,40 @@ export const TaskDetailDialog = ({
                 min="0"
                 value={task.estimated_hours || ''}
                 onChange={(e) => onUpdateTask(task.id, { estimated_hours: parseFloat(e.target.value) || null })}
-                className="max-w-[150px]"
+                className="max-w-[120px] h-9 rounded-lg"
                 placeholder="Hours"
               />
             </div>
 
             {/* Description */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Description</label>
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Description
+              </label>
               <Textarea
                 value={editedDescription || task.description || ''}
                 onChange={(e) => setEditedDescription(e.target.value)}
                 onBlur={handleSaveDescription}
                 placeholder="Add a description..."
-                className="min-h-[100px]"
+                className="min-h-[120px] rounded-lg resize-none"
               />
             </div>
           </TabsContent>
 
-          <TabsContent value="updates" className="flex-1 flex flex-col min-h-0">
+          <TabsContent value="updates" className="flex-1 flex flex-col min-h-0 mt-4">
             <ScrollArea className="flex-1 pr-4">
               <div className="space-y-4">
                 {activities
                   .filter(a => a.activity_type === 'comment')
                   .map((activity) => (
                     <div key={activity.id} className="flex gap-3">
-                      <Avatar className="h-8 w-8 flex-shrink-0">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-background">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-xs font-medium">
                           {(activity.created_by || 'U').substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 bg-muted/50 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-1">
+                      <div className="flex-1 bg-muted/40 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
                           <span className="font-medium text-sm">{activity.created_by}</span>
                           <span className="text-xs text-muted-foreground">
                             {format(parseISO(activity.created_at), 'MMM d, h:mm a')}
@@ -250,41 +242,48 @@ export const TaskDetailDialog = ({
                     </div>
                   ))}
                 {activities.filter(a => a.activity_type === 'comment').length === 0 && (
-                  <div className="text-center text-muted-foreground py-8">
-                    No updates yet. Be the first to comment!
+                  <div className="text-center text-muted-foreground py-12">
+                    No comments yet
                   </div>
                 )}
               </div>
             </ScrollArea>
             
             {/* Comment input */}
-            <div className="flex gap-2 pt-4 border-t mt-4">
+            <div className="flex gap-3 pt-4 border-t border-muted-foreground/10 mt-4">
               <Input
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Write an update..."
+                placeholder="Write a comment..."
+                className="rounded-full h-10"
                 onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
               />
-              <Button onClick={handleAddComment} size="icon">
+              <Button 
+                onClick={handleAddComment} 
+                size="icon"
+                className="h-10 w-10 rounded-full"
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
           </TabsContent>
 
-          <TabsContent value="activity" className="flex-1 overflow-y-auto">
-            <div className="space-y-3">
+          <TabsContent value="activity" className="flex-1 overflow-y-auto mt-4">
+            <div className="space-y-4">
               {activities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 text-sm">
-                  <div className="p-1.5 bg-muted rounded">
+                <div key={activity.id} className="flex items-start gap-3">
+                  <div className="p-2 bg-muted/50 rounded-full">
                     {getActivityIcon(activity.activity_type)}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-muted-foreground">
-                      <span className="font-medium text-foreground">{activity.created_by}</span>
-                      {activity.activity_type === 'comment' && ' added a comment'}
-                      {activity.activity_type === 'status_change' && (
-                        <> changed status to <Badge variant="secondary" className="ml-1">{activity.new_value}</Badge></>
-                      )}
+                  <div className="flex-1 pt-1">
+                    <p className="text-sm">
+                      <span className="font-medium">{activity.created_by}</span>
+                      <span className="text-muted-foreground">
+                        {activity.activity_type === 'comment' && ' added a comment'}
+                        {activity.activity_type === 'status_change' && (
+                          <> changed status to <span className="font-medium text-foreground">{activity.new_value}</span></>
+                        )}
+                      </span>
                     </p>
                     <span className="text-xs text-muted-foreground">
                       {format(parseISO(activity.created_at), 'MMM d, yyyy h:mm a')}
@@ -293,7 +292,7 @@ export const TaskDetailDialog = ({
                 </div>
               ))}
               {activities.length === 0 && (
-                <div className="text-center text-muted-foreground py-8">
+                <div className="text-center text-muted-foreground py-12">
                   No activity yet
                 </div>
               )}

@@ -14,16 +14,9 @@ import {
   Calendar, 
   GanttChart, 
   Plus, 
-  Filter,
-  SlidersHorizontal,
-  Zap
+  Search,
+  Sparkles
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 export const TaskWorkspace = () => {
   const { tasks, isLoading, addTask, updateTask, deleteTask, addComment } = useTasksData();
@@ -71,8 +64,8 @@ export const TaskWorkspace = () => {
   };
 
   const viewOptions = [
-    { mode: 'table' as ViewMode, icon: Table, label: 'Table' },
-    { mode: 'kanban' as ViewMode, icon: LayoutGrid, label: 'Kanban' },
+    { mode: 'table' as ViewMode, icon: Table, label: 'List' },
+    { mode: 'kanban' as ViewMode, icon: LayoutGrid, label: 'Board' },
     { mode: 'calendar' as ViewMode, icon: Calendar, label: 'Calendar' },
     { mode: 'timeline' as ViewMode, icon: GanttChart, label: 'Timeline' },
   ];
@@ -80,107 +73,112 @@ export const TaskWorkspace = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full border-2 border-muted-foreground/20 border-t-foreground animate-spin" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex items-center gap-4 sticky top-16 z-30 bg-background py-2">
-        <div className="flex items-center gap-2 flex-wrap flex-1">
+    <div className="space-y-6">
+      {/* Apple-style Toolbar */}
+      <div className="flex items-center justify-between gap-4 sticky top-16 z-30 py-4 -mx-1 px-1 backdrop-blur-xl bg-background/80">
+        <div className="flex items-center gap-3">
+          {/* New Task Button */}
           <Button 
             onClick={() => handleAddTask({})}
-            className="bg-[#0073ea] hover:bg-[#0060c7] text-white"
+            className="h-10 px-5 rounded-full bg-foreground text-background hover:bg-foreground/90 font-medium shadow-lg shadow-foreground/10 transition-all duration-300 hover:shadow-xl hover:shadow-foreground/20 hover:scale-[1.02]"
           >
             <Plus className="h-4 w-4 mr-2" />
             New Task
           </Button>
           
-          <div>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
             <Input
-              placeholder="Search tasks..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64"
+              className="w-64 h-10 pl-10 rounded-full border-muted-foreground/20 bg-muted/50 focus:bg-background transition-colors"
             />
           </div>
-
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Zap className="h-4 w-4 mr-2" />
-                Automate
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem>When status changes → Notify</DropdownMenuItem>
-              <DropdownMenuItem>When done → Archive</DropdownMenuItem>
-              <DropdownMenuItem>When due date passes → Alert</DropdownMenuItem>
-              <DropdownMenuItem className="text-primary">+ Create automation</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
-        {/* View Switcher */}
-        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg flex-shrink-0 min-w-max whitespace-nowrap">
+        {/* View Switcher - Pill Style */}
+        <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-full backdrop-blur-sm">
           {viewOptions.map(({ mode, icon: Icon, label }) => (
-            <Button
+            <button
               key={mode}
-              variant={viewMode === mode ? 'default' : 'ghost'}
-              size="sm"
               onClick={() => setViewMode(mode)}
-              className={viewMode === mode ? 'whitespace-nowrap' : 'text-muted-foreground whitespace-nowrap'}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                viewMode === mode 
+                  ? 'bg-background text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
             >
-              <Icon className="h-4 w-4 mr-1" />
-              {label}
-            </Button>
+              <Icon className="h-4 w-4" />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
           ))}
         </div>
       </div>
 
+      {/* Stats Bar */}
+      <div className="flex items-center gap-6 text-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="text-muted-foreground">{tasks.filter(t => t.status === 'done').length} Complete</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-blue-500" />
+          <span className="text-muted-foreground">{tasks.filter(t => t.status === 'working').length} In Progress</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-slate-400" />
+          <span className="text-muted-foreground">{tasks.filter(t => !t.status || t.status === 'todo').length} To Do</span>
+        </div>
+      </div>
+
       {/* View Content */}
-      {viewMode === 'table' && (
-        <TaskTableView
-          tasks={filteredTasks}
-          onUpdateTask={handleUpdateTask}
-          onDeleteTask={handleDeleteTask}
-          onAddTask={handleAddTask}
-          onOpenDetail={setSelectedTask}
-          selectedTasks={selectedTasks}
-          onToggleSelect={toggleTaskSelection}
-        />
-      )}
+      <div className="min-h-[500px]">
+        {viewMode === 'table' && (
+          <TaskTableView
+            tasks={filteredTasks}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+            onAddTask={handleAddTask}
+            onOpenDetail={setSelectedTask}
+            selectedTasks={selectedTasks}
+            onToggleSelect={toggleTaskSelection}
+          />
+        )}
 
-      {viewMode === 'kanban' && (
-        <TaskKanbanView
-          tasks={filteredTasks}
-          onUpdateTask={handleUpdateTask}
-          onAddTask={handleAddTask}
-          onOpenDetail={setSelectedTask}
-        />
-      )}
+        {viewMode === 'kanban' && (
+          <TaskKanbanView
+            tasks={filteredTasks}
+            onUpdateTask={handleUpdateTask}
+            onAddTask={handleAddTask}
+            onOpenDetail={setSelectedTask}
+          />
+        )}
 
-      {viewMode === 'calendar' && (
-        <TaskCalendarView
-          tasks={filteredTasks}
-          onOpenDetail={setSelectedTask}
-          onAddTask={handleAddTask}
-        />
-      )}
+        {viewMode === 'calendar' && (
+          <TaskCalendarView
+            tasks={filteredTasks}
+            onOpenDetail={setSelectedTask}
+            onAddTask={handleAddTask}
+          />
+        )}
 
-      {viewMode === 'timeline' && (
-        <TaskTimelineView
-          tasks={filteredTasks}
-          onOpenDetail={setSelectedTask}
-        />
-      )}
+        {viewMode === 'timeline' && (
+          <TaskTimelineView
+            tasks={filteredTasks}
+            onOpenDetail={setSelectedTask}
+          />
+        )}
+      </div>
 
       {/* Task Detail Dialog */}
       <TaskDetailDialog

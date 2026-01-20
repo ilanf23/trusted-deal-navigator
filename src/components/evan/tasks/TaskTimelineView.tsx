@@ -1,8 +1,9 @@
 import { Task, statusConfig } from './types';
-import { format, parseISO, differenceInDays, startOfDay, addDays, isBefore, isAfter, min, max } from 'date-fns';
+import { format, parseISO, differenceInDays, startOfDay, addDays, isToday, isWeekend } from 'date-fns';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface TaskTimelineViewProps {
   tasks: Task[];
@@ -15,10 +16,10 @@ export const TaskTimelineView = ({
 }: TaskTimelineViewProps) => {
   const [startDate, setStartDate] = useState(() => {
     const today = startOfDay(new Date());
-    return addDays(today, -7); // Start from a week ago
+    return addDays(today, -7);
   });
 
-  const daysToShow = 28; // 4 weeks
+  const daysToShow = 28;
   const days = Array.from({ length: daysToShow }, (_, i) => addDays(startDate, i));
 
   const tasksWithDates = tasks.filter(t => t.due_date);
@@ -47,39 +48,51 @@ export const TaskTimelineView = ({
   }, {} as Record<string, Task[]>);
 
   return (
-    <div className="border rounded-lg bg-card overflow-hidden">
-      {/* Header with navigation */}
-      <div className="flex items-center justify-between p-3 border-b bg-muted/20">
-        <Button variant="ghost" size="sm" onClick={shiftLeft}>
+    <div className="rounded-2xl border border-muted-foreground/10 bg-card/50 backdrop-blur-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-muted-foreground/10">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={shiftLeft}
+          className="rounded-full"
+        >
           <ChevronLeft className="h-4 w-4 mr-1" /> Previous
         </Button>
         <span className="font-medium text-sm">
-          {format(startDate, 'MMM d')} - {format(addDays(startDate, daysToShow - 1), 'MMM d, yyyy')}
+          {format(startDate, 'MMM d')} – {format(addDays(startDate, daysToShow - 1), 'MMM d, yyyy')}
         </span>
-        <Button variant="ghost" size="sm" onClick={shiftRight}>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={shiftRight}
+          className="rounded-full"
+        >
           Next <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       </div>
 
-      {/* Timeline header with days */}
-      <div className="flex border-b overflow-hidden">
-        <div className="w-32 flex-shrink-0 p-2 bg-muted/20 font-medium text-sm">
+      {/* Timeline header */}
+      <div className="flex border-b border-muted-foreground/10">
+        <div className="w-40 flex-shrink-0 px-4 py-3 font-medium text-xs text-muted-foreground uppercase tracking-wider">
           Assignee
         </div>
         <div className="flex-1 relative">
           <div className="flex">
             {days.map((day, idx) => {
-              const isToday = differenceInDays(day, new Date()) === 0;
-              const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+              const isTodayDate = isToday(day);
+              const isWeekendDay = isWeekend(day);
               return (
                 <div
                   key={idx}
-                  className={`flex-1 p-1 text-center text-xs border-r ${
-                    isToday ? 'bg-primary/20 font-bold' : isWeekend ? 'bg-muted/30' : ''
+                  className={`flex-1 py-2 text-center text-[10px] border-l border-muted-foreground/5 ${
+                    isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/30' : ''
                   }`}
                 >
-                  <div className="text-muted-foreground">{format(day, 'EEE')}</div>
-                  <div className={isToday ? 'text-primary' : ''}>{format(day, 'd')}</div>
+                  <div className="text-muted-foreground font-medium">{format(day, 'EEE')}</div>
+                  <div className={`font-semibold ${isTodayDate ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {format(day, 'd')}
+                  </div>
                 </div>
               );
             })}
@@ -88,28 +101,36 @@ export const TaskTimelineView = ({
       </div>
 
       {/* Timeline rows */}
-      <div className="divide-y">
+      <div className="divide-y divide-muted-foreground/5">
         {Object.entries(groupedByAssignee).map(([assignee, assigneeTasks]) => (
-          <div key={assignee} className="flex min-h-[60px]">
-            <div className="w-32 flex-shrink-0 p-2 bg-muted/10 font-medium text-sm flex items-center">
-              {assignee}
+          <div key={assignee} className="flex min-h-[70px]">
+            <div className="w-40 flex-shrink-0 px-4 py-3 flex items-center gap-3">
+              <Avatar className="h-7 w-7 ring-2 ring-background">
+                <AvatarFallback className="text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
+                  {assignee.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-medium text-sm truncate">{assignee}</span>
             </div>
             <div className="flex-1 relative">
               {/* Grid lines */}
               <div className="absolute inset-0 flex">
                 {days.map((day, idx) => {
-                  const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                  const isWeekendDay = isWeekend(day);
+                  const isTodayDate = isToday(day);
                   return (
                     <div
                       key={idx}
-                      className={`flex-1 border-r ${isWeekend ? 'bg-muted/20' : ''}`}
+                      className={`flex-1 border-l border-muted-foreground/5 ${
+                        isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/20' : ''
+                      }`}
                     />
                   );
                 })}
               </div>
               
               {/* Tasks */}
-              <div className="relative py-2 px-1">
+              <div className="relative py-3 px-1">
                 {assigneeTasks.map((task, taskIdx) => {
                   const pos = getTaskPosition(task);
                   if (!pos) return null;
@@ -117,13 +138,13 @@ export const TaskTimelineView = ({
                   return (
                     <div
                       key={task.id}
-                      className="absolute h-6 rounded text-xs text-white px-1.5 truncate cursor-pointer hover:opacity-90 flex items-center"
+                      className="absolute h-7 rounded-lg text-xs text-white px-2 truncate cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg flex items-center font-medium"
                       style={{
                         left: pos.left,
-                        width: pos.width,
-                        top: `${taskIdx * 28 + 4}px`,
+                        width: `calc(${pos.width} - 4px)`,
+                        top: `${taskIdx * 32 + 8}px`,
                         backgroundColor: statusConfig[task.status || 'todo']?.color,
-                        minWidth: '50px',
+                        minWidth: '60px',
                       }}
                       onClick={() => onOpenDetail(task)}
                       title={task.title}
@@ -138,7 +159,7 @@ export const TaskTimelineView = ({
         ))}
         
         {Object.keys(groupedByAssignee).length === 0 && (
-          <div className="p-8 text-center text-muted-foreground">
+          <div className="p-12 text-center text-muted-foreground">
             No tasks with due dates to display
           </div>
         )}
