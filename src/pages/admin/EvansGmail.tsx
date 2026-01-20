@@ -486,6 +486,36 @@ const EvansGmail = () => {
     }
   };
 
+  const handleDisconnectGmail = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Please log in first');
+        return;
+      }
+
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=disconnect`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        toast.success('Gmail disconnected successfully');
+        queryClient.invalidateQueries({ queryKey: ['gmail-connection'] });
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to disconnect Gmail');
+      }
+    } catch (error: any) {
+      toast.error('Failed to disconnect Gmail: ' + error.message);
+    }
+  };
+
   const handleConnectGmail = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -494,7 +524,7 @@ const EvansGmail = () => {
         return;
       }
 
-      const redirectUri = `${window.location.origin}/admin/inbox/callback`;
+      const redirectUri = `${window.location.origin}/admin/inbox-callback`;
       
       const response = await fetch(
         `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=get-oauth-url`,
@@ -820,6 +850,19 @@ const EvansGmail = () => {
               )}
             </div>
           </nav>
+          
+          {/* Disconnect Button */}
+          <div className="p-3 border-t border-[#e8eaed]">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleDisconnectGmail}
+              className="w-full justify-start gap-2 text-xs text-[#5f6368] hover:text-red-600 hover:bg-red-50"
+            >
+              <Mail className="w-4 h-4" />
+              Disconnect Gmail
+            </Button>
+          </div>
         </div>
         
         {/* Main Content */}
