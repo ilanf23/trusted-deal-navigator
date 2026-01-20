@@ -111,7 +111,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
             url: '/admin/ilan/team/evan', 
             icon: User,
             subItems: [
-              { title: 'Dev Notes', url: '/admin/ilan/team/evan/dev-notes', icon: FileText },
+              { title: 'Notes', url: '/admin/ilan/team/evan/notes', icon: FileText },
+              { title: 'Dev Notes', url: '/admin/ilan/team/evan/dev-notes', icon: Code2 },
               { title: 'Bug Reports', url: '/admin/ilan/team/evan/bugs', icon: Bug },
             ],
           },
