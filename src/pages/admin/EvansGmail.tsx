@@ -93,6 +93,12 @@ const extractSenderName = (from: string) => {
   return from.split('@')[0];
 };
 
+const extractEmailAddress = (value: string) => {
+  // Extract email from "Name <email@example.com>" format (or return as-is)
+  const match = value.match(/<([^>]+)>/);
+  return (match?.[1] || value || '').trim();
+};
+
 const EvansGmail = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -107,7 +113,8 @@ const EvansGmail = () => {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
-
+  const [editingDraftMessageId, setEditingDraftMessageId] = useState<string | null>(null);
+  const [editingDraftThreadId, setEditingDraftThreadId] = useState<string | null>(null);
   // Check Gmail connection status
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
     queryKey: ['gmail-connection'],
@@ -272,10 +279,22 @@ const EvansGmail = () => {
 
   // Send email mutation
   const sendEmailMutation = useMutation({
-    mutationFn: async ({ to, subject, body }: { to: string; subject: string; body: string }) => {
+    mutationFn: async ({
+      to,
+      subject,
+      body,
+      threadId,
+      inReplyTo,
+    }: {
+      to: string;
+      subject: string;
+      body: string;
+      threadId?: string;
+      inReplyTo?: string;
+    }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
-      
+
       const response = await fetch(
         `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send`,
         {
@@ -284,16 +303,16 @@ const EvansGmail = () => {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ to, subject, body }),
+          body: JSON.stringify({ to, subject, body, threadId, inReplyTo }),
         }
       );
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to send email');
       }
-      
+
       return data;
     },
     onSuccess: () => {
@@ -315,14 +334,50 @@ const EvansGmail = () => {
       toast.error('Please fill in all fields');
       return;
     }
-    
+
+    const draftMessageId = editingDraftMessageId;
+    const draftThreadId = editingDraftThreadId || undefined;
+
     setSending(true);
     try {
       await sendEmailMutation.mutateAsync({
         to: composeTo.trim(),
         subject: composeSubject.trim(),
         body: composeBody.trim(),
+        threadId: draftThreadId,
       });
+
+      // If we were editing a draft, remove it from Drafts after sending
+      if (draftMessageId) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            const res = await fetch(
+              `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=trash`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ messageId: draftMessageId }),
+              }
+            );
+
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err?.error || 'Failed to remove draft');
+            }
+          }
+        } catch (e: any) {
+          toast.error(`Sent, but couldn't remove draft: ${e.message}`);
+        } finally {
+          setEditingDraftMessageId(null);
+          setEditingDraftThreadId(null);
+          setSelectedEmail(null);
+          queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
+        }
+      }
     } finally {
       setSending(false);
     }
