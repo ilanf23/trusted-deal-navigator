@@ -19,6 +19,7 @@ import {
   ListTodo,
   Phone,
   Code2,
+  Bug,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -109,12 +110,13 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
     } else if (teamMember) {
       // Check if user is Ilan (developer with special dashboard)
       if (teamMember.name.toLowerCase() === 'ilan') {
+        // Dashboard section for Ilan - developer overview
         sections.push({
-          title: "Ilan's Page",
-          icon: User,
+          title: 'Dashboard',
+          icon: LayoutDashboard,
           items: [
-            { title: 'Dashboard', url: '/admin/ilan', icon: LayoutDashboard },
-            { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Code2 },
+            { title: 'Overview', url: '/admin/ilan', icon: LayoutDashboard },
+            { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Bug },
           ],
           noCollapse: true,
         });
@@ -124,7 +126,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           title: 'Teams',
           icon: Users,
           items: [
-            { title: "Evan's Bug Reports", url: '/admin/ilan/team/evan/bugs', icon: Code2 },
+            { title: "Evan's Bug Reports", url: '/admin/ilan/team/evan/bugs', icon: Bug },
             { title: "Evan's Dev Notes", url: '/admin/ilan/team/evan/dev-notes', icon: FileText },
           ],
         });
@@ -190,8 +192,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   };
 
   const isActive = (path: string) => {
-    // Exact match for base routes like /admin or /team/evan
-    if (path === '/admin' || path.match(/^\/team\/[^/]+$/)) {
+    // Exact match for base routes like /admin or /team/evan or /admin/ilan
+    if (path === '/admin' || path.match(/^\/team\/[^/]+$/) || path.match(/^\/admin\/[^/]+$/)) {
       return location.pathname === path;
     }
     return location.pathname.startsWith(path);
@@ -299,7 +301,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         ))}
 
         {/* Dev Notes - Bottom of main nav */}
-        {teamMember && !isOwner && (
+        {teamMember && !isOwner && teamMember.name.toLowerCase() !== 'ilan' && (
           <Link
             to={`/team/${teamMember.name.toLowerCase()}/dev-notes`}
             className={`
