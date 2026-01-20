@@ -17,10 +17,18 @@ const SidebarHeaderSeamMask = () => {
   if (isMobile || !open) return null;
 
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed top-0 left-[var(--sidebar-width)] z-50 h-16 w-px bg-card/90 backdrop-blur-xl"
-    />
+    <>
+      {/* Horizontal mask to blend sidebar top with header */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed top-0 left-0 z-50 h-16 w-[var(--sidebar-width)] bg-gradient-to-r from-slate-50 via-slate-50 to-transparent dark:from-slate-900 dark:via-slate-900"
+      />
+      {/* Corner blend element */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed top-16 left-[calc(var(--sidebar-width)-1px)] z-50 w-4 h-4 bg-gradient-to-br from-slate-50 to-transparent dark:from-slate-900"
+      />
+    </>
   );
 };
 
@@ -42,10 +50,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
         <main className="flex-1 flex flex-col min-h-screen">
           {/* Top Bar */}
-          <header className="h-16 flex items-center justify-between border-b border-border bg-card/90 backdrop-blur-xl sticky top-0 z-40 px-8">
+          <header className="h-16 flex items-center justify-between border-b border-border/40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl sticky top-0 z-40 px-8">
             <div className="flex items-center gap-5">
-              <SidebarTrigger className="w-11 h-11 rounded-xl hover:bg-muted transition-colors flex items-center justify-center group">
-                <Menu className="w-6 h-6 text-muted-foreground group-hover:text-foreground" />
+              <SidebarTrigger className="w-11 h-11 rounded-xl border border-border/40 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center group shadow-sm">
+                <Menu className="w-5 h-5 text-muted-foreground group-hover:text-foreground" />
               </SidebarTrigger>
             </div>
             
