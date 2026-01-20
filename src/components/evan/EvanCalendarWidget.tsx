@@ -54,8 +54,8 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
-// Fixed callback URL - use the published domain only
-const CALENDAR_CALLBACK_URL = 'https://trusted-deal-navigator.lovable.app/admin/calendar-callback';
+// Dynamic callback URL based on current environment
+const getCalendarCallbackUrl = () => `${window.location.origin}/admin/calendar-callback`;
 
 interface Appointment {
   id: string;
@@ -318,10 +318,15 @@ export const EvanCalendarWidget = () => {
     `);
 
     try {
+      const callbackUrl = getCalendarCallbackUrl();
+      
+      // Store the callback URL for the CalendarCallback page to use
+      localStorage.setItem('calendarCallbackUrl', callbackUrl);
+      
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
         body: {
           action: 'getAuthUrl',
-          redirectUri: CALENDAR_CALLBACK_URL,
+          redirectUri: callbackUrl,
         },
       });
 
