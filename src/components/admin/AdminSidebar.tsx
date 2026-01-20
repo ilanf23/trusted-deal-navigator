@@ -243,18 +243,19 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   }, [isOwner, teamMember]);
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar" style={{ '--sidebar-width': '18rem' } as React.CSSProperties}>
-      <SidebarHeader className="pt-0 pb-0 px-4 border-b border-sidebar-border">
-        <Link to={homeUrl} className="flex items-center justify-center group -mb-3">
+    <Sidebar className="border-r-0 bg-[#0a1628]" style={{ '--sidebar-width': '16rem' } as React.CSSProperties}>
+      <SidebarHeader className="pt-0 pb-0 px-3 border-b-0">
+        <Link to={homeUrl} className="flex items-center justify-center group">
           <img 
             src="/logo.png" 
             alt="CommercialLendingX" 
-            className="max-h-[160px] max-w-full object-contain brightness-0 invert opacity-90"
+            className="max-h-[140px] max-w-full object-contain brightness-0 invert opacity-95"
           />
         </Link>
+        <div className="h-px bg-white/15 mx-2 -mt-2" />
       </SidebarHeader>
       
-      <SidebarContent className="px-4 pt-4 space-y-1">
+      <SidebarContent className="px-3 pt-3 space-y-0.5">
         {navSections.map((section) => (
           section.noCollapse ? (
             // Render direct links without collapsible wrapper - use Fragment to avoid extra div
@@ -268,37 +269,37 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                 >
                   <CollapsibleTrigger className="w-full">
                     <div className={`
-                      flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
+                      flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px]
                       ${openSections[item.title] 
-                        ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                        ? 'bg-white/10 text-white' 
+                        : 'text-white/70 hover:bg-white/5 hover:text-white'
                       }
                     `}>
-                      <item.icon className="w-5 h-5" strokeWidth={1.75} />
-                      <span className="text-base font-medium">{item.title}</span>
+                      <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
+                      <span className="font-medium flex-1 text-left">{item.title}</span>
                       <ChevronDown 
-                        className={`w-4 h-4 ml-auto transition-transform duration-200 ${
+                        className={`w-3.5 h-3.5 transition-transform duration-150 opacity-60 ${
                           openSections[item.title] ? '' : '-rotate-90'
                         }`} 
                       />
                     </div>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-primary/30">
+                    <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
                       {item.subItems.map((subItem) => (
                         <Link
                           key={subItem.title}
                           to={subItem.url}
                           className={`
-                            flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
+                            flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px]
                             ${isActive(subItem.url) 
-                              ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
-                              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                              ? 'bg-white/15 text-white' 
+                              : 'text-white/60 hover:bg-white/5 hover:text-white/90'
                             }
                           `}
                         >
-                          <subItem.icon className="w-4 h-4" strokeWidth={1.75} />
-                          <span className="text-sm font-medium">{subItem.title}</span>
+                          <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.5} />
+                          <span className="font-medium">{subItem.title}</span>
                         </Link>
                       ))}
                     </div>
@@ -309,15 +310,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                   key={item.title}
                   to={item.url}
                   className={`
-                    flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200
+                    flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 text-[13px]
                     ${isActive(item.url) 
-                      ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                      ? 'bg-white/15 text-white' 
+                      : 'text-white/70 hover:bg-white/5 hover:text-white'
                     }
                   `}
                 >
-                  <item.icon className="w-5 h-5" strokeWidth={1.75} />
-                  <span className="text-base font-medium">{item.title}</span>
+                  <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
+                  <span className="font-medium">{item.title}</span>
                 </Link>
               )
             ))
@@ -329,23 +330,23 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
             >
               <CollapsibleTrigger className="w-full">
                 <div className={`
-                  flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
+                  flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px]
                   ${openSections[section.title] 
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                    ? 'bg-white/10 text-white' 
+                    : 'text-white/70 hover:bg-white/5 hover:text-white'
                   }
                 `}>
-                  <section.icon className="w-5 h-5" strokeWidth={1.75} />
-                  <span className="text-base font-medium">{section.title}</span>
+                  <section.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
+                  <span className="font-medium flex-1 text-left">{section.title}</span>
                   <ChevronDown 
-                    className={`w-4 h-4 ml-auto transition-transform duration-200 ${
+                    className={`w-3.5 h-3.5 transition-transform duration-150 opacity-60 ${
                       openSections[section.title] ? '' : '-rotate-90'
                     }`} 
                   />
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-primary/30">
+                <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
                   {section.items.map((item) => (
                     item.subItems ? (
                       // Render nested collapsible for items with subItems
@@ -356,37 +357,37 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                       >
                         <CollapsibleTrigger className="w-full">
                           <div className={`
-                            flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200 cursor-pointer
+                            flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 cursor-pointer text-[12px]
                             ${openSections[item.title] 
-                              ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                              ? 'bg-white/10 text-white' 
+                              : 'text-white/60 hover:bg-white/5 hover:text-white/90'
                             }
                           `}>
+                            <item.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.5} />
+                            <span className="font-medium flex-1 text-left">{item.title}</span>
                             <ChevronDown 
-                              className={`w-3 h-3 transition-transform duration-200 ${
+                              className={`w-3 h-3 transition-transform duration-150 opacity-60 ${
                                 openSections[item.title] ? '' : '-rotate-90'
                               }`} 
                             />
-                            <item.icon className="w-4 h-4" strokeWidth={1.75} />
-                            <span className="text-sm font-medium">{item.title}</span>
                           </div>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <div className="ml-6 mt-1 space-y-1 border-l-2 border-sidebar-primary/20">
+                          <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
                             {item.subItems.map((subItem) => (
                               <Link
                                 key={subItem.title}
                                 to={subItem.url}
                                 className={`
-                                  flex items-center gap-3 py-2 px-4 ml-2 rounded-lg transition-all duration-200
+                                  flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[11px]
                                   ${isActive(subItem.url) 
-                                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
-                                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                                    ? 'bg-white/15 text-white' 
+                                    : 'text-white/50 hover:bg-white/5 hover:text-white/80'
                                   }
                                 `}
                               >
-                                <subItem.icon className="w-4 h-4" strokeWidth={1.75} />
-                                <span className="text-sm font-medium">{subItem.title}</span>
+                                <subItem.icon className="w-3 h-3 flex-shrink-0" strokeWidth={1.5} />
+                                <span className="font-medium">{subItem.title}</span>
                               </Link>
                             ))}
                           </div>
@@ -397,15 +398,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                         key={item.title}
                         to={item.url}
                         className={`
-                          flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
+                          flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px]
                           ${isActive(item.url) 
-                            ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
-                            : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                            ? 'bg-white/15 text-white' 
+                            : 'text-white/60 hover:bg-white/5 hover:text-white/90'
                           }
                         `}
                       >
-                        <item.icon className="w-4 h-4" strokeWidth={1.75} />
-                        <span className="text-sm font-medium">{item.title}</span>
+                        <item.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.5} />
+                        <span className="font-medium">{item.title}</span>
                       </Link>
                     )
                   ))}
@@ -417,8 +418,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
 
       </SidebarContent>
 
-      <SidebarFooter className="p-5 border-t border-sidebar-border">
-        <div className="flex items-center gap-4 mb-4 px-1">
+      <SidebarFooter className="p-3 border-t border-white/10">
+        <div className="flex items-center gap-3 mb-3 px-1">
           <AvatarUpload
             userId={user?.id || ''}
             currentAvatarUrl={teamMember?.avatar_url}
@@ -426,20 +427,20 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
             size="md"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-base font-medium text-sidebar-foreground truncate">
+            <p className="text-[13px] font-medium text-white truncate">
               {teamMember?.name || user?.email?.split('@')[0] || 'User'}
             </p>
-            <p className="text-sm text-sidebar-foreground/60 truncate">
+            <p className="text-[11px] text-white/50 truncate">
               {user?.email}
             </p>
           </div>
         </div>
         <Button 
           variant="ghost" 
-          className="w-full justify-start gap-4 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 h-12 rounded-xl text-base" 
+          className="w-full justify-start gap-2.5 text-white/60 hover:text-white hover:bg-white/5 h-9 rounded-md text-[13px] px-3" 
           onClick={signOut}
         >
-          <LogOut className="w-[22px] h-[22px]" strokeWidth={1.75} />
+          <LogOut className="w-4 h-4" strokeWidth={1.5} />
           <span className="font-medium">Sign Out</span>
         </Button>
       </SidebarFooter>
