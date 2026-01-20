@@ -68,8 +68,37 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   const navSections: NavSection[] = useMemo(() => {
     const sections: NavSection[] = [];
 
-    // Dashboard section - show to owners, or customized for employees
-    if (isOwner) {
+    // Check if user is Ilan first (developer with special dashboard)
+    if (teamMember?.name.toLowerCase() === 'ilan') {
+      // Dashboard section for Ilan - developer overview
+      sections.push({
+        title: 'Dashboard',
+        icon: LayoutDashboard,
+        items: [
+          { title: 'Overview', url: '/admin/ilan', icon: LayoutDashboard },
+          { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Bug },
+        ],
+        noCollapse: true,
+      });
+
+      // Team section for Ilan
+      sections.push({
+        title: 'Team',
+        icon: Users,
+        items: [
+          { 
+            title: 'Evan', 
+            url: '/admin/ilan/team/evan', 
+            icon: User,
+            subItems: [
+              { title: 'Dev Notes', url: '/admin/ilan/team/evan/dev-notes', icon: FileText },
+              { title: 'Bug Reports', url: '/admin/ilan/team/evan/bugs', icon: Bug },
+            ],
+          },
+        ],
+      });
+    } else if (isOwner) {
+      // Dashboard section - show to owners
       sections.push({
         title: 'Dashboard',
         icon: LayoutDashboard,
@@ -96,68 +125,37 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         ],
       });
     } else if (teamMember) {
-      // Check if user is Ilan (developer with special dashboard)
-      if (teamMember.name.toLowerCase() === 'ilan') {
-        // Dashboard section for Ilan - developer overview
-        sections.push({
-          title: 'Dashboard',
-          icon: LayoutDashboard,
-          items: [
-            { title: 'Overview', url: '/admin/ilan', icon: LayoutDashboard },
-            { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Bug },
-          ],
-          noCollapse: true,
-        });
+      // For regular team members (employees), show their own dashboard and limited navigation
+      const employeeName = teamMember.name;
+      const employeeUrl = `/team/${employeeName.toLowerCase()}`;
 
-        // Team section for Ilan
-        sections.push({
-          title: 'Team',
-          icon: Users,
-          items: [
-            { 
-              title: 'Evan', 
-              url: '/admin/ilan/team/evan', 
-              icon: User,
-              subItems: [
-                { title: 'Dev Notes', url: '/admin/ilan/team/evan/dev-notes', icon: FileText },
-                { title: 'Bug Reports', url: '/admin/ilan/team/evan/bugs', icon: Bug },
-              ],
-            },
-          ],
-        });
-      } else {
-        // For regular team members (employees), show their own dashboard and limited navigation
-        const employeeName = teamMember.name;
-        const employeeUrl = `/team/${employeeName.toLowerCase()}`;
+      // Employee's Page - their personal dashboard (no dropdown)
+      sections.push({
+        title: `${employeeName}'s Page`,
+        icon: User,
+        items: [
+          { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
+          { title: `${employeeName}'s Tasks`, url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
+          { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
+          { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
+        ],
+        noCollapse: true,
+      });
 
-        // Employee's Page - their personal dashboard (no dropdown)
-        sections.push({
-          title: `${employeeName}'s Page`,
-          icon: User,
-          items: [
-            { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
-            { title: `${employeeName}'s Tasks`, url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
-            { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
-            { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
-          ],
-          noCollapse: true,
-        });
-
-        // CLX CRM section (no dropdown for employees)
-        sections.push({
-          title: 'CLX CRM',
-          icon: Kanban,
-          items: [
-            { title: `${employeeName}'s Pipeline`, url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
-            { title: `${employeeName}'s Leads`, url: `/team/${employeeName.toLowerCase()}/leads`, icon: UserPlus },
-            { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
-            { title: 'Leads', url: '/admin/leads', icon: UserPlus },
-            { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
-            { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
-          ],
-          noCollapse: true,
-        });
-      }
+      // CLX CRM section (no dropdown for employees)
+      sections.push({
+        title: 'CLX CRM',
+        icon: Kanban,
+        items: [
+          { title: `${employeeName}'s Pipeline`, url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+          { title: `${employeeName}'s Leads`, url: `/team/${employeeName.toLowerCase()}/leads`, icon: UserPlus },
+          { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
+          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
+          { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
+          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+        ],
+        noCollapse: true,
+      });
     }
 
     return sections;
