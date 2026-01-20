@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Mail, Phone, Building2, Calendar, FileText, User, DollarSign, Clock, Save, Landmark, PhoneCall, ChevronDown, ChevronUp, Play } from 'lucide-react';
+import { Loader2, Mail, Phone, Building2, Calendar, FileText, User, DollarSign, Clock, Save, Landmark, PhoneCall, ChevronDown, ChevronUp, Play, PhoneIncoming, PhoneOutgoing, MessageSquare, History } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -50,6 +50,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [responses, setResponses] = useState<LeadResponse | null>(null);
   const [assignedPrograms, setAssignedPrograms] = useState<AssignedProgram[]>([]);
   const [communications, setCommunications] = useState<Communication[]>([]);
+  const [allTouchpoints, setAllTouchpoints] = useState<Communication[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingComms, setLoadingComms] = useState(false);
   const [notes, setNotes] = useState('');
@@ -64,6 +65,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       fetchResponses();
       fetchAssignedPrograms();
       fetchCommunications();
+      fetchAllTouchpoints();
     }
   }, [lead, open]);
 
@@ -124,6 +126,63 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     } finally {
       setLoadingComms(false);
     }
+  };
+
+  const fetchAllTouchpoints = async () => {
+    if (!lead) return;
+    try {
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('*')
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAllTouchpoints(data || []);
+    } catch (error) {
+      console.error('Error fetching touchpoints:', error);
+    }
+  };
+
+  const getTouchpointIcon = (type: string, direction: string) => {
+    if (type === 'call') {
+      return direction === 'inbound' 
+        ? <PhoneIncoming className="w-4 h-4 text-green-600" />
+        : <PhoneOutgoing className="w-4 h-4 text-blue-600" />;
+    }
+    if (type === 'email') {
+      return <Mail className="w-4 h-4 text-purple-600" />;
+    }
+    if (type === 'sms') {
+      return <MessageSquare className="w-4 h-4 text-cyan-600" />;
+    }
+    return <MessageSquare className="w-4 h-4 text-muted-foreground" />;
+  };
+
+  const getTouchpointLabel = (type: string, direction: string) => {
+    if (type === 'call') {
+      return direction === 'inbound' ? 'Inbound Call' : 'Outbound Call';
+    }
+    if (type === 'email') {
+      return direction === 'inbound' ? 'Email Received' : 'Email Sent';
+    }
+    if (type === 'sms') {
+      return direction === 'inbound' ? 'SMS Received' : 'SMS Sent';
+    }
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
+  const getTouchpointBg = (type: string, direction: string) => {
+    if (type === 'call') {
+      return direction === 'inbound' ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200';
+    }
+    if (type === 'email') {
+      return 'bg-purple-50 border-purple-200';
+    }
+    if (type === 'sms') {
+      return 'bg-cyan-50 border-cyan-200';
+    }
+    return 'bg-muted border-border';
   };
 
   const handleSaveNotes = async () => {
@@ -238,6 +297,73 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Touchpoint Timeline */}
+            <Separator />
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <History className="w-4 h-4" />
+                Touchpoint Timeline ({allTouchpoints.length})
+              </h3>
+              
+              {allTouchpoints.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground bg-muted/50 rounded-lg">
+                  <History className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No touchpoints yet</p>
+                  <p className="text-sm mt-1">Calls, emails, and SMS will appear here</p>
+                </div>
+              ) : (
+                <div className="relative">
+                  {/* Timeline line */}
+                  <div className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-border" />
+                  
+                  <div className="space-y-3">
+                    {allTouchpoints.map((tp, index) => (
+                      <div key={tp.id} className="relative flex gap-3">
+                        {/* Timeline dot */}
+                        <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 ${getTouchpointBg(tp.communication_type, tp.direction)}`}>
+                          {getTouchpointIcon(tp.communication_type, tp.direction)}
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 pb-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium">
+                              {getTouchpointLabel(tp.communication_type, tp.direction)}
+                            </p>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(tp.created_at), 'MMM d, yyyy h:mm a')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                            {tp.phone_number && <span>{tp.phone_number}</span>}
+                            {tp.duration_seconds && (
+                              <>
+                                <span>•</span>
+                                <span>{formatDuration(tp.duration_seconds)}</span>
+                              </>
+                            )}
+                            {tp.status && (
+                              <>
+                                <span>•</span>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {tp.status}
+                                </Badge>
+                              </>
+                            )}
+                          </div>
+                          {tp.content && (
+                            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 bg-muted/30 p-2 rounded">
+                              {tp.content}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Call Transcripts Section */}
