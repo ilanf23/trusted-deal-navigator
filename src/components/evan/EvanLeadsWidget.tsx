@@ -12,6 +12,7 @@ type LeadStatus = Database['public']['Enums']['lead_status'];
 
 const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
   discovery: { label: 'Discovery', color: 'bg-slate-500' },
+  questionnaire: { label: 'Questionnaire', color: 'bg-indigo-500' },
   pre_qualification: { label: 'Pre-Qual', color: 'bg-blue-500' },
   document_collection: { label: 'Docs', color: 'bg-yellow-500' },
   underwriting: { label: 'Underwriting', color: 'bg-orange-500' },
