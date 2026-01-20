@@ -257,72 +257,70 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
       <SidebarContent className="px-4 pt-4 space-y-1">
         {navSections.map((section) => (
           section.noCollapse ? (
-            // Render direct links without collapsible wrapper
-            <div key={section.title} className="space-y-1">
-              {section.items.map((item) => (
-                item.subItems ? (
-                  // Render collapsible for items with subItems
-                  <Collapsible
-                    key={item.title}
-                    open={openSections[item.title]}
-                    onOpenChange={() => toggleSection(item.title)}
-                  >
-                    <CollapsibleTrigger className="w-full">
-                      <div className={`
-                        flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
-                        ${openSections[item.title] 
-                          ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
-                        }
-                      `}>
-                        <item.icon className="w-5 h-5" strokeWidth={1.75} />
-                        <span className="text-base font-medium">{item.title}</span>
-                        <ChevronDown 
-                          className={`w-4 h-4 ml-auto transition-transform duration-200 ${
-                            openSections[item.title] ? '' : '-rotate-90'
-                          }`} 
-                        />
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-primary/30">
-                        {item.subItems.map((subItem) => (
-                          <Link
-                            key={subItem.title}
-                            to={subItem.url}
-                            className={`
-                              flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
-                              ${isActive(subItem.url) 
-                                ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
-                                : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
-                              }
-                            `}
-                          >
-                            <subItem.icon className="w-4 h-4" strokeWidth={1.75} />
-                            <span className="text-sm font-medium">{subItem.title}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ) : (
-                  <Link
-                    key={item.title}
-                    to={item.url}
-                    className={`
-                      flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200
-                      ${isActive(item.url) 
-                        ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
+            // Render direct links without collapsible wrapper - use Fragment to avoid extra div
+            section.items.map((item) => (
+              item.subItems ? (
+                // Render collapsible for items with subItems
+                <Collapsible
+                  key={item.title}
+                  open={openSections[item.title]}
+                  onOpenChange={() => toggleSection(item.title)}
+                >
+                  <CollapsibleTrigger className="w-full">
+                    <div className={`
+                      flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
+                      ${openSections[item.title] 
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
                         : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                       }
-                    `}
-                  >
-                    <item.icon className="w-5 h-5" strokeWidth={1.75} />
-                    <span className="text-base font-medium">{item.title}</span>
-                  </Link>
-                )
-              ))}
-            </div>
+                    `}>
+                      <item.icon className="w-5 h-5" strokeWidth={1.75} />
+                      <span className="text-base font-medium">{item.title}</span>
+                      <ChevronDown 
+                        className={`w-4 h-4 ml-auto transition-transform duration-200 ${
+                          openSections[item.title] ? '' : '-rotate-90'
+                        }`} 
+                      />
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-primary/30">
+                      {item.subItems.map((subItem) => (
+                        <Link
+                          key={subItem.title}
+                          to={subItem.url}
+                          className={`
+                            flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
+                            ${isActive(subItem.url) 
+                              ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
+                              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                            }
+                          `}
+                        >
+                          <subItem.icon className="w-4 h-4" strokeWidth={1.75} />
+                          <span className="text-sm font-medium">{subItem.title}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : (
+                <Link
+                  key={item.title}
+                  to={item.url}
+                  className={`
+                    flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200
+                    ${isActive(item.url) 
+                      ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md' 
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                    }
+                  `}
+                >
+                  <item.icon className="w-5 h-5" strokeWidth={1.75} />
+                  <span className="text-base font-medium">{item.title}</span>
+                </Link>
+              )
+            ))
           ) : (
             <Collapsible
               key={section.title}
