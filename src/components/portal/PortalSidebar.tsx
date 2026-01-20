@@ -24,11 +24,11 @@ import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.png';
 
 const menuItems = [
-  { title: 'Dashboard', url: '/portal', icon: LayoutDashboard },
-  { title: 'Contracts', url: '/portal/contracts', icon: FileText },
-  { title: 'Invoices', url: '/portal/invoices', icon: Receipt },
-  { title: 'Messages', url: '/portal/messages', icon: MessageSquare },
-  { title: 'Profile', url: '/portal/profile', icon: User },
+  { title: 'Dashboard', url: '/user', icon: LayoutDashboard },
+  { title: 'Contracts', url: '/user/contracts', icon: FileText },
+  { title: 'Invoices', url: '/user/invoices', icon: Receipt },
+  { title: 'Messages', url: '/user/messages', icon: MessageSquare },
+  { title: 'Profile', url: '/user/profile', icon: User },
 ];
 
 const PortalSidebar = () => {
@@ -36,8 +36,8 @@ const PortalSidebar = () => {
   const { signOut, user } = useAuth();
 
   const isActive = (path: string) => {
-    if (path === '/portal') {
-      return location.pathname === '/portal';
+    if (path === '/user') {
+      return location.pathname === '/user';
     }
     return location.pathname.startsWith(path);
   };
@@ -45,7 +45,7 @@ const PortalSidebar = () => {
   return (
     <Sidebar className="border-r border-border">
       <SidebarHeader className="p-4 border-b border-border">
-        <Link to="/portal" className="flex items-center">
+        <Link to="/user" className="flex items-center">
           <img
             src={logo}
             alt="Commercial Lending X logo"

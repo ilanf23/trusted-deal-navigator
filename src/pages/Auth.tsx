@@ -37,14 +37,14 @@ const Auth = () => {
     if (user && !authLoading) {
       const email = (user.email ?? '').toLowerCase();
 
-      // Route employees to their specific dashboards
+      // Route team members (employees) to their specific dashboards
       const employeeRoutes: Record<string, string> = {
-        'evan@test.com': '/user/evan',
-        'maura@test.com': '/user/maura',
-        'wendy@test.com': '/user/wendy',
+        'evan@test.com': '/team/evan',
+        'maura@test.com': '/team/maura',
+        'wendy@test.com': '/team/wendy',
       };
 
-      // Check if user is an employee with a specific route
+      // Check if user is a team member with a specific route
       if (employeeRoutes[email]) {
         navigate(employeeRoutes[email], { replace: true });
         return;
@@ -62,7 +62,7 @@ const Auth = () => {
       } else if (isAdmin) {
         navigate('/admin', { replace: true });
       } else {
-        navigate('/portal', { replace: true });
+        navigate('/user', { replace: true });
       }
     }
   }, [user, isAdmin, authLoading, navigate, location]);
