@@ -38,6 +38,78 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format, isToday, isYesterday, differenceInDays, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card';
+
+// Email templates for quick draft creation
+const EMAIL_TEMPLATES = [
+  {
+    id: 'deal-status',
+    name: 'Deal Status Update',
+    subject: 'Deal status update and next steps',
+    body: `Hi {{Borrower Name}},
+
+Quick update on where things stand with the lenders.
+
+Wendy has completed outreach and we are currently in active review with {{Lender Name}}. They are working through the file now, with initial feedback expected shortly. On our side, the package is in good shape and nothing additional is needed from you at the moment.
+
+While the lender reviews, we're:
+• Monitoring timing closely
+• Preparing for likely follow-up questions
+• Keeping a backup option warm in parallel
+
+Next step will be lender feedback, and I'll update you as soon as that comes in. If anything changes on your timeline or priorities, let me know so we can factor it in.
+
+Best,
+Evan`,
+  },
+  {
+    id: 'lender-quiet',
+    name: 'Lender Review Timing',
+    subject: 'Update on lender review timing',
+    body: `Hi {{Borrower Name}},
+
+I wanted to proactively check in and share where we are.
+
+Lender review is still in progress. This part of the process can take a bit longer than expected while credit and committee align internally, and that's what's happening here. Wendy is actively following up and keeping pressure on timing.
+
+Importantly:
+• Your deal is still moving forward
+• There are no red flags at this point
+• No new requests are outstanding from you
+
+If review extends beyond our comfort window, we're prepared to escalate or pivot as needed. I'll continue to manage that on our end and keep you posted.
+
+Thanks,
+Evan`,
+  },
+  {
+    id: 'closing-progress',
+    name: 'Closing Progress Update',
+    subject: 'Closing progress and remaining items',
+    body: `Hi {{Borrower Name}},
+
+We're making good progress toward closing, and I want to outline where things stand and what's left.
+
+On the lender side:
+• Wendy is finalizing outstanding conditions with {{Lender Name}}
+• Closing checklist items are actively being cleared
+
+On your side, the remaining items are:
+• {{Condition / Document 1}}
+• {{Condition / Document 2}}
+
+Once those are in, we'll be in position to push toward clear-to-close. Timing still looks aligned with our target, assuming no surprises from third parties.
+
+As always, I'll let you know immediately if anything shifts. Appreciate the momentum here.
+
+Best,
+Evan`,
+  },
+];
 
 interface Email {
   id: string;
@@ -258,6 +330,45 @@ const EvansGmail = () => {
     onSuccess: ({ lead }) => {
       toast.success(`Draft created for ${lead.name}`);
       queryClient.invalidateQueries({ queryKey: ['gmail-nudge-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to create draft: ' + error.message);
+    },
+  });
+
+  // Create template draft
+  const createTemplateDraft = useMutation({
+    mutationFn: async (template: typeof EMAIL_TEMPLATES[0]) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            to: '', 
+            subject: template.subject, 
+            body: template.body 
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create draft');
+      }
+
+      return { template, draftId: data.id };
+    },
+    onSuccess: ({ template }) => {
+      toast.success(`Draft created from "${template.name}" template`);
+      setActiveFolder('drafts');
       queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
     },
     onError: (error: any) => {
@@ -599,17 +710,43 @@ const EvansGmail = () => {
               <span className="text-xs font-medium">{draftsCount}</span>
             </button>
             
-            <button
-              onClick={() => setActiveFolder('templates')}
-              className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
-                activeFolder === 'templates' 
-                  ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
-                  : 'hover:bg-[#e8eaed] text-[#444746]'
-              }`}
-            >
-              <File className="w-5 h-5" />
-              <span className="flex-1 text-left">Templates</span>
-            </button>
+            <HoverCard openDelay={100} closeDelay={200}>
+              <HoverCardTrigger asChild>
+                <button
+                  className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
+                    activeFolder === 'templates' 
+                      ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
+                      : 'hover:bg-[#e8eaed] text-[#444746]'
+                  }`}
+                >
+                  <File className="w-5 h-5" />
+                  <span className="flex-1 text-left">Templates</span>
+                  <span className="text-xs text-[#5f6368]">{EMAIL_TEMPLATES.length}</span>
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent side="right" align="start" className="w-72 p-2">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground px-2 py-1">
+                    Click a template to create a draft
+                  </p>
+                  {EMAIL_TEMPLATES.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => createTemplateDraft.mutate(template)}
+                      disabled={createTemplateDraft.isPending}
+                      className="w-full flex flex-col items-start gap-0.5 px-3 py-2 rounded-lg text-left transition-colors hover:bg-[#e8eaed] disabled:opacity-50"
+                    >
+                      <span className="text-sm font-medium text-[#202124]">
+                        {template.name}
+                      </span>
+                      <span className="text-xs text-[#5f6368] line-clamp-1">
+                        {template.subject}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </HoverCardContent>
+            </HoverCard>
             
             {/* Nudges section - Waiting on Borrower */}
             <div className="mt-4 pt-2 border-t border-[#e8eaed]">
