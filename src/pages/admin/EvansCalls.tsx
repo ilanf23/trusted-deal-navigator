@@ -189,6 +189,20 @@ const EvansCalls = () => {
   const [newLeadEmail, setNewLeadEmail] = useState('');
   const [newLeadCompany, setNewLeadCompany] = useState('');
   
+  // Automation confirmation dialog state
+  const [automationConfirmOpen, setAutomationConfirmOpen] = useState(false);
+  const [pendingAutomationData, setPendingAutomationData] = useState<{
+    leadId: string;
+    leadName: string;
+    leadEmail: string | null;
+    leadPhone: string | null;
+    communicationId: string;
+    transcript: string | null;
+    direction: string;
+    callDate: string;
+  } | null>(null);
+  const [runningAutomation, setRunningAutomation] = useState(false);
+  
   // AI Assistant state
   const [showAssistant, setShowAssistant] = useState(true);
 
@@ -386,40 +400,17 @@ const EvansCalls = () => {
       
       toast.success(`Lead "${lead.name}" added to Evan's pipeline`);
       
-      // Trigger the automation workflow (task creation, AI analysis, email to Adam/Brad)
-      toast.info('Running automation workflow...', { duration: 2000 });
-      
-      try {
-        const { data: automationResult, error: automationError } = await supabase.functions.invoke('call-to-lead-automation', {
-          body: {
-            leadId: lead.id,
-            communicationId: variables.communicationId,
-            leadName: lead.name,
-            leadEmail: lead.email,
-            leadPhone: lead.phone,
-            transcript: transcript,
-            callDirection: direction,
-            callDate: callDate,
-          },
-        });
-
-        if (automationError) {
-          console.error('Automation error:', automationError);
-          toast.error('Automation partially failed - check tasks manually');
-        } else {
-          console.log('Automation result:', automationResult);
-          const rating = automationResult?.callRating;
-          if (rating) {
-            toast.success(`✅ Task created, call rated ${rating}/10, notification sent to Adam & Brad`);
-          } else {
-            toast.success('✅ Follow-up task created');
-          }
-          queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
-        }
-      } catch (err) {
-        console.error('Failed to run automation:', err);
-        toast.warning('Lead created but automation failed - create follow-up task manually');
-      }
+      // Store data for potential automation and show confirmation dialog
+      setPendingAutomationData({
+        leadId: lead.id,
+        leadName: lead.name,
+        leadEmail: lead.email,
+        leadPhone: lead.phone,
+        communicationId: variables.communicationId,
+        transcript: transcript,
+        direction: direction,
+        callDate: callDate,
+      });
       
       queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
@@ -428,6 +419,9 @@ const EvansCalls = () => {
       setNewLeadName('');
       setNewLeadEmail('');
       setNewLeadCompany('');
+      
+      // Show automation confirmation dialog
+      setAutomationConfirmOpen(true);
     },
     onError: (error: any) => {
       toast.error('Failed to create lead: ' + error.message);
@@ -486,6 +480,56 @@ const EvansCalls = () => {
     } finally {
       setRetryingTranscriptId(null);
     }
+  };
+
+  // Run automation workflow
+  const handleRunAutomation = async () => {
+    if (!pendingAutomationData) return;
+    
+    setRunningAutomation(true);
+    toast.info('Running automation workflow...', { duration: 2000 });
+    
+    try {
+      const { data: automationResult, error: automationError } = await supabase.functions.invoke('call-to-lead-automation', {
+        body: {
+          leadId: pendingAutomationData.leadId,
+          communicationId: pendingAutomationData.communicationId,
+          leadName: pendingAutomationData.leadName,
+          leadEmail: pendingAutomationData.leadEmail,
+          leadPhone: pendingAutomationData.leadPhone,
+          transcript: pendingAutomationData.transcript,
+          callDirection: pendingAutomationData.direction,
+          callDate: pendingAutomationData.callDate,
+        },
+      });
+
+      if (automationError) {
+        console.error('Automation error:', automationError);
+        toast.error('Automation partially failed - check tasks manually');
+      } else {
+        console.log('Automation result:', automationResult);
+        const rating = automationResult?.callRating;
+        if (rating) {
+          toast.success(`✅ Task created, call rated ${rating}/10, notification sent to Adam & Brad`);
+        } else {
+          toast.success('✅ Follow-up task created');
+        }
+        queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+      }
+    } catch (err) {
+      console.error('Failed to run automation:', err);
+      toast.error('Automation failed - create follow-up task manually');
+    } finally {
+      setRunningAutomation(false);
+      setAutomationConfirmOpen(false);
+      setPendingAutomationData(null);
+    }
+  };
+
+  const handleSkipAutomation = () => {
+    setAutomationConfirmOpen(false);
+    setPendingAutomationData(null);
+    toast.info('Automation skipped - lead created without follow-up task');
   };
 
   const isLoading = callsLoading || programsLoading;
@@ -1076,6 +1120,75 @@ const EvansCalls = () => {
                 <>
                   <UserPlus className="h-4 w-4 mr-2" />
                   Create Lead
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Automation Confirmation Dialog */}
+      <Dialog open={automationConfirmOpen} onOpenChange={(open) => {
+        if (!open && !runningAutomation) {
+          handleSkipAutomation();
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-admin-blue" />
+              Run Automation?
+            </DialogTitle>
+            <DialogDescription>
+              Would you like to run the automation workflow for this lead? This will:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="text-admin-teal">•</span>
+                Analyze the call transcript with AI
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-admin-teal">•</span>
+                Rate the lead quality (1-10)
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-admin-teal">•</span>
+                Create a follow-up task in your tasks list
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-admin-teal">•</span>
+                Draft a personalized follow-up email in Gmail
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-admin-teal">•</span>
+                Send rating notification to Adam & Brad
+              </li>
+            </ul>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={handleSkipAutomation}
+              disabled={runningAutomation}
+            >
+              Skip
+            </Button>
+            <Button
+              onClick={handleRunAutomation}
+              disabled={runningAutomation}
+              className="bg-admin-blue hover:bg-admin-blue/90"
+            >
+              {runningAutomation ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Run Automation
                 </>
               )}
             </Button>
