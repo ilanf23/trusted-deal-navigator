@@ -201,13 +201,13 @@ const EvansGmail = () => {
   });
 
   // Fetch emails from Gmail API
-  const { data: emails = [], isLoading: emailsLoading, refetch: refetchEmails } = useQuery({
+  const { data: emailsData, isLoading: emailsLoading, refetch: refetchEmails } = useQuery({
     queryKey: ['gmail-emails', activeFolder],
     queryFn: async () => {
-      if (!gmailConnection) return [];
+      if (!gmailConnection) return { emails: [], totalCount: 0 };
       
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return [];
+      if (!session) return { emails: [], totalCount: 0 };
       
       let query = 'in:inbox';
       if (activeFolder === 'sent') query = 'in:sent';
@@ -230,7 +230,7 @@ const EvansGmail = () => {
         throw new Error(data.error || 'Failed to fetch emails');
       }
       
-      return (data?.messages || []).map((msg: any) => ({
+      const emails = (data?.messages || []).map((msg: any) => ({
         id: msg.id,
         threadId: msg.threadId,
         subject: msg.subject || '(No Subject)',
@@ -244,8 +244,66 @@ const EvansGmail = () => {
         labels: msg.labelIds || [],
         attachments: msg.attachments || [],
       })) as Email[];
+
+      return { 
+        emails, 
+        totalCount: data?.resultSizeEstimate || emails.length 
+      };
     },
     enabled: !!gmailConnection,
+  });
+
+  const emails = emailsData?.emails || [];
+  const currentFolderCount = emailsData?.totalCount || 0;
+
+  // Fetch inbox count separately (for sidebar display when not on inbox)
+  const { data: inboxCountData } = useQuery({
+    queryKey: ['gmail-inbox-count'],
+    queryFn: async () => {
+      if (!gmailConnection) return 0;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return 0;
+      
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent('in:inbox')}&maxResults=1`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
+      
+      const data = await response.json();
+      return data?.resultSizeEstimate || 0;
+    },
+    enabled: !!gmailConnection,
+    staleTime: 60000, // Cache for 1 minute
+  });
+
+  // Fetch drafts count separately (for sidebar display when not on drafts)
+  const { data: draftsCountData } = useQuery({
+    queryKey: ['gmail-drafts-count'],
+    queryFn: async () => {
+      if (!gmailConnection) return 0;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return 0;
+      
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent('in:drafts')}&maxResults=1`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
+      
+      const data = await response.json();
+      return data?.resultSizeEstimate || 0;
+    },
+    enabled: !!gmailConnection,
+    staleTime: 60000, // Cache for 1 minute
   });
 
   // Fetch Evan's team member ID
@@ -378,9 +436,9 @@ const EvansGmail = () => {
     },
   });
 
-  // Counts
-  const inboxCount = emails.length || 4154; // Using placeholder if no real data
-  const draftsCount = 37;
+  // Use real counts from API
+  const inboxCount = activeFolder === 'inbox' ? currentFolderCount : (inboxCountData || 0);
+  const draftsCount = activeFolder === 'drafts' ? currentFolderCount : (draftsCountData || 0);
 
   // Send email mutation
   const sendEmailMutation = useMutation({

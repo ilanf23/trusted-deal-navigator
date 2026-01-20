@@ -432,6 +432,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         messages,
         nextPageToken: messagesData.nextPageToken,
+        resultSizeEstimate: messagesData.resultSizeEstimate || messages.length,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
