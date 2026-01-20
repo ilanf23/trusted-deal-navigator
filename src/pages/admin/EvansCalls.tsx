@@ -328,15 +328,18 @@ const EvansCalls = () => {
     }));
   };
 
-  // Add lead mutation
+  // Add lead mutation with full automation workflow
   const addLeadMutation = useMutation({
-    mutationFn: async ({ name, email, phone, company, communicationId, hasTranscript }: { 
+    mutationFn: async ({ name, email, phone, company, communicationId, hasTranscript, transcript, direction, callDate }: { 
       name: string; 
       email: string; 
       phone: string; 
       company: string;
       communicationId: string;
       hasTranscript: boolean;
+      transcript: string | null;
+      direction: string;
+      callDate: string;
     }) => {
       // First, get Evan's team_member id
       const { data: evanMember } = await supabase
@@ -347,7 +350,6 @@ const EvansCalls = () => {
         .single();
 
       // Build notes with transcript reference
-      const callDate = selectedCallForLead ? format(new Date(selectedCallForLead.created_at), 'MMM d, yyyy h:mm a') : '';
       const transcriptNote = hasTranscript 
         ? `📞 Initial call: ${callDate}\n📝 Transcript available (Communication ID: ${communicationId})`
         : `📞 Initial call: ${callDate}\n⏳ No transcript available yet`;
@@ -368,9 +370,12 @@ const EvansCalls = () => {
         .single();
       
       if (error) throw error;
-      return data;
+      
+      return { lead: data, transcript, direction, callDate };
     },
-    onSuccess: async (lead, variables) => {
+    onSuccess: async (result, variables) => {
+      const { lead, transcript, direction, callDate } = result;
+      
       // Update the call record to link to this lead
       if (selectedCallForLead) {
         await supabase
@@ -380,8 +385,44 @@ const EvansCalls = () => {
       }
       
       toast.success(`Lead "${lead.name}" added to Evan's pipeline`);
+      
+      // Trigger the automation workflow (task creation, AI analysis, email to Adam/Brad)
+      toast.info('Running automation workflow...', { duration: 2000 });
+      
+      try {
+        const { data: automationResult, error: automationError } = await supabase.functions.invoke('call-to-lead-automation', {
+          body: {
+            leadId: lead.id,
+            communicationId: variables.communicationId,
+            leadName: lead.name,
+            leadEmail: lead.email,
+            leadPhone: lead.phone,
+            transcript: transcript,
+            callDirection: direction,
+            callDate: callDate,
+          },
+        });
+
+        if (automationError) {
+          console.error('Automation error:', automationError);
+          toast.error('Automation partially failed - check tasks manually');
+        } else {
+          console.log('Automation result:', automationResult);
+          const rating = automationResult?.callRating;
+          if (rating) {
+            toast.success(`✅ Task created, call rated ${rating}/10, notification sent to Adam & Brad`);
+          } else {
+            toast.success('✅ Follow-up task created');
+          }
+          queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+        }
+      } catch (err) {
+        console.error('Failed to run automation:', err);
+        toast.warning('Lead created but automation failed - create follow-up task manually');
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
-      queryClient.invalidateQueries({ queryKey: ['evan-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       setAddLeadDialogOpen(false);
       setSelectedCallForLead(null);
       setNewLeadName('');
@@ -411,6 +452,8 @@ const EvansCalls = () => {
       return;
     }
     
+    const callDate = selectedCallForLead ? format(new Date(selectedCallForLead.created_at), 'MMM d, yyyy h:mm a') : '';
+    
     addLeadMutation.mutate({
       name: newLeadName.trim(),
       email: newLeadEmail.trim(),
@@ -418,6 +461,9 @@ const EvansCalls = () => {
       company: newLeadCompany.trim(),
       communicationId: selectedCallForLead.id,
       hasTranscript: !!selectedCallForLead.transcript,
+      transcript: selectedCallForLead.transcript || null,
+      direction: selectedCallForLead.direction,
+      callDate: callDate,
     });
   };
 
