@@ -95,9 +95,9 @@ export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
         isDragging ? 'shadow-lg ring-2 ring-primary z-50' : ''
       }`}
     >
-      <CardContent className="p-4 space-y-2.5">
+      <CardContent className="p-3 space-y-1">
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-semibold text-sm leading-tight">{lead.name}</h4>
+          <h4 className="font-semibold text-sm leading-tight truncate">{lead.name}</h4>
           <div className="flex items-center gap-1 shrink-0">
             {/* Questionnaire Status Indicator */}
             {questionnaireSent && (
@@ -119,50 +119,15 @@ export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
                 </TooltipContent>
               </Tooltip>
             )}
-            {lead.source && (
-              <Badge variant="secondary" className={`text-xs ${sourceColors[lead.source] || 'bg-gray-100 text-gray-700'}`}>
-                {lead.source}
-              </Badge>
-            )}
           </div>
         </div>
         
         {lead.company_name && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Building2 className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Building2 className="w-3 h-3" />
             <span className="truncate">{lead.company_name}</span>
           </div>
         )}
-        
-        {lead.email && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Mail className="w-4 h-4" />
-            <span className="truncate">{lead.email}</span>
-          </div>
-        )}
-        
-        {lead.phone && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Phone className="w-4 h-4" />
-            <span>{lead.phone}</span>
-          </div>
-        )}
-
-        {/* Last Touchpoint */}
-        {touchpoint && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
-            {getTouchpointIcon(touchpoint.type, touchpoint.direction)}
-            <span>{getTouchpointLabel(touchpoint.type, touchpoint.direction)}</span>
-            <span className="text-muted-foreground/70">
-              {formatDistanceToNow(new Date(touchpoint.date), { addSuffix: true })}
-            </span>
-          </div>
-        )}
-        
-        <div className={`flex items-center gap-2 text-sm text-muted-foreground ${touchpoint ? '' : 'pt-2 border-t'}`}>
-          <Calendar className="w-4 h-4" />
-          <span>{new Date(lead.created_at).toLocaleDateString()}</span>
-        </div>
       </CardContent>
     </Card>
   );
