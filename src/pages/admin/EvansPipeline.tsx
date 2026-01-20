@@ -14,6 +14,7 @@ import { LeadCard } from '@/components/admin/LeadCard';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { Link } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
+import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -34,6 +35,7 @@ const EvansPipeline = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -73,6 +75,38 @@ const EvansPipeline = () => {
       return data as Lead[];
     },
     enabled: !!evanId,
+  });
+
+  // Fetch last touchpoint for each lead
+  const { data: touchpoints = {} } = useQuery({
+    queryKey: ['evans-pipeline-touchpoints', leads.map(l => l.id)],
+    queryFn: async () => {
+      if (leads.length === 0) return {};
+      
+      const leadIds = leads.map(l => l.id);
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('lead_id, communication_type, direction, created_at')
+        .in('lead_id', leadIds)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Group by lead_id and take the most recent
+      const touchpointMap: Record<string, { type: string; direction: string; date: string }> = {};
+      (data || []).forEach((comm) => {
+        if (comm.lead_id && !touchpointMap[comm.lead_id]) {
+          touchpointMap[comm.lead_id] = {
+            type: comm.communication_type,
+            direction: comm.direction,
+            date: comm.created_at,
+          };
+        }
+      });
+      
+      return touchpointMap;
+    },
+    enabled: leads.length > 0,
   });
 
   const sources = [...new Set(leads.map(lead => lead.source).filter(Boolean))];
@@ -205,15 +239,28 @@ const EvansPipeline = () => {
               title={column.title}
               color={column.color}
               leads={getLeadsByStatus(column.status)}
+              touchpoints={touchpoints}
+              onLeadClick={(lead) => setDetailDialogLead(lead)}
             />
           ))}
         </div>
 
         <DragOverlay>
-          {activeLead && <LeadCard lead={activeLead} />}
+          {activeLead && <LeadCard lead={activeLead} touchpoint={touchpoints[activeLead.id]} />}
         </DragOverlay>
       </DndContext>
       </div>
+
+      {/* Lead Detail Dialog */}
+      <LeadDetailDialog
+        lead={detailDialogLead}
+        open={!!detailDialogLead}
+        onOpenChange={(open) => !open && setDetailDialogLead(null)}
+        onLeadUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+        }}
+      />
     </AdminLayout>
   );
 };
