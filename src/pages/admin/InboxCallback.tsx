@@ -54,11 +54,20 @@ const InboxCallback = () => {
         if (response.ok && data.success) {
           setStatus('success');
           setMessage(`Connected successfully! (${data.email})`);
-          setTimeout(() => navigate('/admin'), 1500);
+          
+          // Check for return path
+          const returnPath = localStorage.getItem('gmail_return_path');
+          localStorage.removeItem('gmail_return_path');
+          
+          setTimeout(() => navigate(returnPath || '/admin'), 1500);
         } else {
           setStatus('error');
           setMessage(data.error || 'Failed to connect Gmail.');
-          setTimeout(() => navigate('/admin'), 3000);
+          
+          const returnPath = localStorage.getItem('gmail_return_path');
+          localStorage.removeItem('gmail_return_path');
+          
+          setTimeout(() => navigate(returnPath || '/admin'), 3000);
         }
       } catch (err: any) {
         setStatus('error');

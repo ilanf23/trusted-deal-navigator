@@ -103,16 +103,40 @@ const EvansGmail = () => {
     queryFn: async () => {
       if (!gmailConnection) return [];
       
-      const { data, error } = await supabase.functions.invoke('gmail-api', {
-        body: { 
-          action: 'list',
-          folder: activeTab === 'sent' ? 'SENT' : 'INBOX',
-          maxResults: 50
-        },
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
       
-      if (error) throw error;
-      return (data?.emails || []) as Email[];
+      const query = activeTab === 'sent' ? 'in:sent' : 'in:inbox';
+      
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent(query)}&maxResults=50`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch emails');
+      }
+      
+      // Transform messages to Email format
+      return (data?.messages || []).map((msg: any) => ({
+        id: msg.id,
+        threadId: msg.threadId,
+        subject: msg.subject || '(No Subject)',
+        from: msg.from || '',
+        to: msg.to || '',
+        date: msg.date || new Date().toISOString(),
+        snippet: msg.snippet || '',
+        body: msg.body || '',
+        isRead: !msg.isUnread,
+        isStarred: msg.labelIds?.includes('STARRED') || false,
+        labels: msg.labelIds || [],
+      })) as Email[];
     },
     enabled: !!gmailConnection,
   });
@@ -120,16 +144,28 @@ const EvansGmail = () => {
   // Send email mutation
   const sendEmailMutation = useMutation({
     mutationFn: async ({ to, subject, body }: { to: string; subject: string; body: string }) => {
-      const { data, error } = await supabase.functions.invoke('gmail-api', {
-        body: { 
-          action: 'send',
-          to,
-          subject,
-          body,
-        },
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
       
-      if (error) throw error;
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ to, subject, body }),
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+      
+      return data;
       return data;
     },
     onSuccess: () => {
@@ -174,14 +210,34 @@ const EvansGmail = () => {
 
   const handleConnectGmail = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('gmail-api', {
-        body: { action: 'auth-url' },
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Please log in first');
+        return;
+      }
+
+      const redirectUri = `${window.location.origin}/admin/inbox/callback`;
       
-      if (error) throw error;
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=get-oauth-url`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ redirect_uri: redirectUri }),
+        }
+      );
       
-      if (data?.authUrl) {
-        window.open(data.authUrl, '_blank', 'width=600,height=700');
+      const data = await response.json();
+      
+      if (data?.url) {
+        // Store the return path in localStorage
+        localStorage.setItem('gmail_return_path', '/user/evan/gmail');
+        window.location.href = data.url;
+      } else {
+        toast.error('Failed to get OAuth URL');
       }
     } catch (error: any) {
       toast.error('Failed to start Gmail connection: ' + error.message);
