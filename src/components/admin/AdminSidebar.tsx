@@ -171,8 +171,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   };
 
   const isActive = (path: string) => {
-    if (path === '/admin') {
-      return location.pathname === '/admin';
+    // Exact match for base routes like /admin or /team/evan
+    if (path === '/admin' || path.match(/^\/team\/[^/]+$/)) {
+      return location.pathname === path;
     }
     return location.pathname.startsWith(path);
   };
@@ -190,8 +191,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   }, [isOwner, teamMember]);
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-gradient-to-b from-sidebar to-white/90 backdrop-blur-xl w-72">
-      <SidebarHeader className="p-4 border-b border-sidebar-border/50">
+    <Sidebar className="border-r border-border/60 bg-slate-50 dark:bg-slate-900 w-72">
+      <SidebarHeader className="p-4 border-b border-border/40 bg-white/50 dark:bg-slate-900/50">
         <Link to={homeUrl} className="flex items-center justify-center group">
           <img 
             src="/logo.png" 
