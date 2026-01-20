@@ -155,7 +155,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: `${employeeName}'s Tasks`, url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
           { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
           { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
-          { title: 'Bug Reporting', url: `/team/${employeeName.toLowerCase()}/bug-reporting`, icon: Bug },
         ],
         noCollapse: true,
       });
@@ -169,9 +168,19 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: `${employeeName}'s Leads`, url: `/team/${employeeName.toLowerCase()}/leads`, icon: UserPlus },
           { title: 'CRM', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
+        ],
+      });
+
+      // Standalone pages below CRM
+      sections.push({
+        title: 'Tools',
+        icon: TrendingDown,
+        items: [
           { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+          { title: 'Bug Reporting', url: `/team/${employeeName.toLowerCase()}/bug-reporting`, icon: Bug },
         ],
+        noCollapse: true,
       });
     }
 
