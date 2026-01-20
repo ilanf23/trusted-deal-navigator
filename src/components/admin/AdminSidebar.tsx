@@ -230,7 +230,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   }, [isOwner, teamMember]);
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar w-72">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar" style={{ '--sidebar-width': '18rem' } as React.CSSProperties}>
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <Link to={homeUrl} className="flex items-center justify-center group">
           <img 
