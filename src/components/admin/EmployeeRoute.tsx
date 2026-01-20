@@ -31,8 +31,11 @@ const EmployeeRoute = ({ children, employeeName }: EmployeeRouteProps) => {
 
   // Check if user can access this specific employee's dashboard
   if (!canAccessDashboard(employeeName)) {
-    // Redirect to their own dashboard - use /team/ path for team members, /admin/ for owners
-    const redirectPath = teamMember.is_owner 
+    // Redirect to their own dashboard
+    // Ilan, Brad, Adam use /admin/ paths; other team members use /team/ paths
+    const adminUsers = ['ilan', 'brad', 'adam'];
+    const isAdminUser = adminUsers.includes(teamMember.name.toLowerCase());
+    const redirectPath = isAdminUser 
       ? `/admin/${teamMember.name.toLowerCase()}`
       : `/team/${teamMember.name.toLowerCase()}`;
     return <Navigate to={redirectPath} replace />;

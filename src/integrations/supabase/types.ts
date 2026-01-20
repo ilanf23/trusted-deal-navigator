@@ -64,6 +64,57 @@ export type Database = {
           },
         ]
       }
+      bug_reports: {
+        Row: {
+          assigned_to: string | null
+          browser_info: string | null
+          created_at: string
+          description: string | null
+          id: string
+          page_url: string | null
+          priority: string | null
+          resolved_at: string | null
+          screenshot_url: string | null
+          status: string | null
+          submitted_by: string | null
+          submitted_by_email: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          browser_info?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          page_url?: string | null
+          priority?: string | null
+          resolved_at?: string | null
+          screenshot_url?: string | null
+          status?: string | null
+          submitted_by?: string | null
+          submitted_by_email?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          browser_info?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          page_url?: string | null
+          priority?: string | null
+          resolved_at?: string | null
+          screenshot_url?: string | null
+          status?: string | null
+          submitted_by?: string | null
+          submitted_by_email?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       calendar_connections: {
         Row: {
           access_token: string
