@@ -17,7 +17,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
   Line,
   Area,
   AreaChart,
@@ -28,60 +27,35 @@ import {
   TrendingDown, 
   DollarSign, 
   Target, 
-  Users, 
   BarChart3, 
-  PieChartIcon,
   Activity,
   ArrowUpRight,
   ArrowDownRight,
-  Briefcase
+  Briefcase,
+  Loader2
 } from 'lucide-react';
-import { startOfYear, startOfMonth, format, subMonths } from 'date-fns';
+import { startOfYear, startOfMonth, format, subMonths, eachMonthOfInterval, startOfDay, subDays, eachDayOfInterval, getDay } from 'date-fns';
 
 export type TimePeriod = 'mtd' | 'ytd';
 
-// Mock data for charts
-const monthlyRevenueData = [
-  { month: 'Jan', revenue: 42000, target: 45000, deals: 3 },
-  { month: 'Feb', revenue: 38000, target: 45000, deals: 2 },
-  { month: 'Mar', revenue: 52000, target: 45000, deals: 4 },
-  { month: 'Apr', revenue: 48000, target: 45000, deals: 3 },
-  { month: 'May', revenue: 61000, target: 45000, deals: 5 },
-  { month: 'Jun', revenue: 55000, target: 45000, deals: 4 },
-  { month: 'Jul', revenue: 44000, target: 45000, deals: 3 },
-  { month: 'Aug', revenue: 67000, target: 45000, deals: 5 },
-  { month: 'Sep', revenue: 51000, target: 45000, deals: 4 },
-  { month: 'Oct', revenue: 58000, target: 45000, deals: 4 },
-  { month: 'Nov', revenue: 49000, target: 45000, deals: 3 },
-  { month: 'Dec', revenue: 35000, target: 45000, deals: 2 },
-];
+const STAGE_COLORS: Record<string, string> = {
+  discovery: '#94a3b8',
+  pre_qualification: '#60a5fa',
+  document_collection: '#818cf8',
+  underwriting: '#a78bfa',
+  approval: '#22c55e',
+  funded: '#10b981',
+};
 
-const pipelineStageData = [
-  { name: 'Discovery', value: 8, amount: 2400000, color: '#94a3b8' },
-  { name: 'Pre-Qual', value: 5, amount: 1800000, color: '#60a5fa' },
-  { name: 'Docs', value: 4, amount: 1450000, color: '#818cf8' },
-  { name: 'Underwriting', value: 3, amount: 980000, color: '#a78bfa' },
-  { name: 'Approval', value: 2, amount: 720000, color: '#22c55e' },
-];
-
-const dealSourceData = [
-  { name: 'Referral', value: 42, color: '#3b82f6' },
-  { name: 'Website', value: 28, color: '#22c55e' },
-  { name: 'Cold Call', value: 18, color: '#f59e0b' },
-  { name: 'Other', value: 12, color: '#94a3b8' },
-];
-
-const weeklyActivityData = [
-  { day: 'Mon', calls: 12, emails: 24, meetings: 3 },
-  { day: 'Tue', calls: 8, emails: 18, meetings: 2 },
-  { day: 'Wed', calls: 15, emails: 22, meetings: 4 },
-  { day: 'Thu', calls: 10, emails: 28, meetings: 2 },
-  { day: 'Fri', calls: 14, emails: 20, meetings: 5 },
-];
+const SOURCE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#94a3b8'];
 
 const EvansPage = () => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
 
+  const now = new Date();
+  const periodStart = timePeriod === 'ytd' ? startOfYear(now) : startOfMonth(now);
+
+  // Fetch Evan's team member ID
   const { data: evanTeamMember } = useQuery({
     queryKey: ['evan-team-member'],
     queryFn: async () => {
@@ -97,25 +71,269 @@ const EvansPage = () => {
 
   const evanId = evanTeamMember?.id;
 
-  // Calculate metrics based on time period
+  // Fetch leads with their responses (for loan amounts)
+  const { data: leadsData, isLoading: leadsLoading } = useQuery({
+    queryKey: ['evan-leads-analytics', evanId, timePeriod],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select(`
+          id,
+          name,
+          status,
+          source,
+          created_at,
+          converted_at,
+          lead_responses (
+            loan_amount,
+            funding_amount
+          )
+        `)
+        .gte('created_at', periodStart.toISOString());
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: true,
+  });
+
+  // Fetch communications for activity data
+  const { data: communicationsData, isLoading: commsLoading } = useQuery({
+    queryKey: ['evan-communications-analytics', timePeriod],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('id, communication_type, direction, created_at, duration_seconds')
+        .gte('created_at', periodStart.toISOString())
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch all leads for pipeline (not just period-filtered)
+  const { data: pipelineData, isLoading: pipelineLoading } = useQuery({
+    queryKey: ['evan-pipeline-analytics'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select(`
+          id,
+          status,
+          lead_responses (
+            loan_amount,
+            funding_amount
+          )
+        `)
+        .neq('status', 'funded');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch funded leads for revenue calculation
+  const { data: fundedLeads, isLoading: fundedLoading } = useQuery({
+    queryKey: ['evan-funded-analytics', timePeriod],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select(`
+          id,
+          converted_at,
+          lead_responses (
+            loan_amount
+          )
+        `)
+        .eq('status', 'funded')
+        .gte('converted_at', periodStart.toISOString());
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Calculate metrics
   const metrics = useMemo(() => {
-    const data = timePeriod === 'ytd' ? monthlyRevenueData : monthlyRevenueData.slice(-1);
-    const totalRevenue = data.reduce((sum, m) => sum + m.revenue, 0);
-    const totalTarget = data.reduce((sum, m) => sum + m.target, 0);
-    const totalDeals = data.reduce((sum, m) => sum + m.deals, 0);
-    const avgDealSize = totalDeals > 0 ? totalRevenue / totalDeals : 0;
-    const paceVsPlan = totalTarget > 0 ? Math.round((totalRevenue / totalTarget) * 100) : 0;
+    if (!leadsData && !pipelineData && !fundedLeads) {
+      return {
+        totalRevenue: 0,
+        totalDeals: 0,
+        avgDealSize: 0,
+        pipelineValue: 0,
+        pipelineDeals: 0,
+        winRate: 0,
+      };
+    }
+
+    // Revenue from funded deals (assuming 2% fee)
+    const fundedDealsWithAmount = fundedLeads?.filter(
+      (lead) => lead.lead_responses && lead.lead_responses.length > 0 && lead.lead_responses[0]?.loan_amount
+    ) || [];
     
+    const totalLoanVolume = fundedDealsWithAmount.reduce(
+      (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0),
+      0
+    );
+    const totalRevenue = totalLoanVolume * 0.02; // 2% fee
+    const totalDeals = fundedDealsWithAmount.length;
+    const avgDealSize = totalDeals > 0 ? totalRevenue / totalDeals : 0;
+
+    // Pipeline value
+    const pipelineLeadsWithAmount = pipelineData?.filter(
+      (lead) => lead.lead_responses && lead.lead_responses.length > 0
+    ) || [];
+    const pipelineValue = pipelineLeadsWithAmount.reduce(
+      (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02,
+      0
+    );
+    const pipelineDeals = pipelineData?.length || 0;
+
+    // Win rate (funded / total leads in period)
+    const totalLeadsInPeriod = leadsData?.length || 0;
+    const winRate = totalLeadsInPeriod > 0 ? Math.round((totalDeals / totalLeadsInPeriod) * 100) : 0;
+
     return {
       totalRevenue,
-      totalTarget,
       totalDeals,
       avgDealSize,
-      paceVsPlan,
-      pipelineValue: pipelineStageData.reduce((sum, s) => sum + s.amount, 0),
-      pipelineDeals: pipelineStageData.reduce((sum, s) => sum + s.value, 0),
+      pipelineValue,
+      pipelineDeals,
+      winRate,
     };
-  }, [timePeriod]);
+  }, [leadsData, pipelineData, fundedLeads]);
+
+  // Monthly revenue chart data
+  const monthlyRevenueData = useMemo(() => {
+    const months = eachMonthOfInterval({
+      start: startOfYear(now),
+      end: now,
+    });
+
+    return months.map((month) => {
+      const monthStart = month;
+      const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+      
+      const monthlyFunded = fundedLeads?.filter((lead) => {
+        const convertedAt = lead.converted_at ? new Date(lead.converted_at) : null;
+        return convertedAt && convertedAt >= monthStart && convertedAt <= monthEnd;
+      }) || [];
+
+      const revenue = monthlyFunded.reduce(
+        (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02,
+        0
+      );
+
+      return {
+        month: format(month, 'MMM'),
+        revenue,
+        target: 50000, // $50K monthly target
+        deals: monthlyFunded.length,
+      };
+    });
+  }, [fundedLeads, now]);
+
+  // Pipeline stage data
+  const pipelineStageData = useMemo(() => {
+    if (!pipelineData) return [];
+
+    const stageMap: Record<string, { count: number; amount: number }> = {};
+    
+    pipelineData.forEach((lead) => {
+      const status = lead.status;
+      if (!stageMap[status]) {
+        stageMap[status] = { count: 0, amount: 0 };
+      }
+      stageMap[status].count++;
+      stageMap[status].amount += (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02;
+    });
+
+    const stageOrder = ['discovery', 'pre_qualification', 'document_collection', 'underwriting', 'approval'];
+    const stageLabels: Record<string, string> = {
+      discovery: 'Discovery',
+      pre_qualification: 'Pre-Qual',
+      document_collection: 'Docs',
+      underwriting: 'Underwriting',
+      approval: 'Approval',
+    };
+
+    return stageOrder
+      .filter((stage) => stageMap[stage])
+      .map((stage) => ({
+        name: stageLabels[stage] || stage,
+        value: stageMap[stage].count,
+        amount: stageMap[stage].amount,
+        color: STAGE_COLORS[stage] || '#94a3b8',
+      }));
+  }, [pipelineData]);
+
+  // Deal sources chart data
+  const dealSourceData = useMemo(() => {
+    if (!leadsData) return [];
+
+    const sourceMap: Record<string, number> = {};
+    leadsData.forEach((lead) => {
+      const source = lead.source || 'Other';
+      sourceMap[source] = (sourceMap[source] || 0) + 1;
+    });
+
+    const total = Object.values(sourceMap).reduce((sum, count) => sum + count, 0);
+    
+    return Object.entries(sourceMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([name, count], index) => ({
+        name,
+        value: total > 0 ? Math.round((count / total) * 100) : 0,
+        color: SOURCE_COLORS[index] || '#94a3b8',
+      }));
+  }, [leadsData]);
+
+  // Weekly activity data
+  const weeklyActivityData = useMemo(() => {
+    if (!communicationsData) return [];
+
+    const last7Days = eachDayOfInterval({
+      start: subDays(now, 6),
+      end: now,
+    });
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    return last7Days.map((day) => {
+      const dayStart = startOfDay(day);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const dayCommunications = communicationsData.filter((comm) => {
+        const commDate = new Date(comm.created_at);
+        return commDate >= dayStart && commDate < dayEnd;
+      });
+
+      const calls = dayCommunications.filter((c) => c.communication_type === 'call').length;
+      const emails = dayCommunications.filter((c) => c.communication_type === 'email').length;
+      const meetings = dayCommunications.filter((c) => c.communication_type === 'meeting').length;
+
+      return {
+        day: dayNames[getDay(day)],
+        calls,
+        emails,
+        meetings,
+      };
+    });
+  }, [communicationsData, now]);
+
+  // Activity totals
+  const activityTotals = useMemo(() => {
+    if (!communicationsData) return { calls: 0, emails: 0, meetings: 0 };
+
+    return {
+      calls: communicationsData.filter((c) => c.communication_type === 'call').length,
+      emails: communicationsData.filter((c) => c.communication_type === 'email').length,
+      meetings: communicationsData.filter((c) => c.communication_type === 'meeting').length,
+    };
+  }, [communicationsData]);
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -124,6 +342,25 @@ const EvansPage = () => {
   };
 
   const periodLabel = timePeriod === 'ytd' ? 'Year to Date' : 'Month to Date';
+  const isLoading = leadsLoading || commsLoading || pipelineLoading || fundedLoading;
+
+  // Calculate quarterly revenue for annual goal
+  const quarterlyRevenue = useMemo(() => {
+    if (!fundedLeads) return [0, 0, 0, 0];
+
+    const quarters = [0, 0, 0, 0];
+    fundedLeads?.forEach((lead) => {
+      if (lead.converted_at) {
+        const month = new Date(lead.converted_at).getMonth();
+        const quarter = Math.floor(month / 3);
+        quarters[quarter] += (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02;
+      }
+    });
+    return quarters;
+  }, [fundedLeads]);
+
+  const annualTarget = 600000;
+  const ytdRevenue = monthlyRevenueData.reduce((sum, m) => sum + m.revenue, 0);
 
   return (
     <AdminLayout>
@@ -140,41 +377,44 @@ const EvansPage = () => {
             </div>
           </div>
           
-          <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
-            <TabsList className="bg-muted/50">
-              <TabsTrigger value="mtd">MTD</TabsTrigger>
-              <TabsTrigger value="ytd">YTD</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-3">
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
+              <TabsList className="bg-muted/50">
+                <TabsTrigger value="mtd">MTD</TabsTrigger>
+                <TabsTrigger value="ytd">YTD</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
 
         {/* KPI Cards Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-100">
+          <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-100 dark:from-blue-950/30 dark:to-background dark:border-blue-900/30">
             <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Revenue</p>
                   <p className="text-2xl font-bold mt-1">{formatCurrency(metrics.totalRevenue)}</p>
                   <div className="flex items-center gap-1 mt-1">
-                    {metrics.paceVsPlan >= 100 ? (
+                    {metrics.totalRevenue > 0 ? (
                       <ArrowUpRight className="h-3 w-3 text-green-500" />
                     ) : (
                       <ArrowDownRight className="h-3 w-3 text-amber-500" />
                     )}
-                    <span className={`text-xs ${metrics.paceVsPlan >= 100 ? 'text-green-600' : 'text-amber-600'}`}>
-                      {metrics.paceVsPlan}% of target
+                    <span className="text-xs text-muted-foreground">
+                      {periodLabel}
                     </span>
                   </div>
                 </div>
-                <div className="p-3 rounded-full bg-blue-100">
-                  <DollarSign className="h-5 w-5 text-blue-600" />
+                <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/50">
+                  <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-white border-green-100">
+          <Card className="bg-gradient-to-br from-green-50 to-white border-green-100 dark:from-green-950/30 dark:to-background dark:border-green-900/30">
             <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -184,14 +424,14 @@ const EvansPage = () => {
                     Avg: {formatCurrency(metrics.avgDealSize)}
                   </p>
                 </div>
-                <div className="p-3 rounded-full bg-green-100">
-                  <Briefcase className="h-5 w-5 text-green-600" />
+                <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/50">
+                  <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100">
+          <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100 dark:from-purple-950/30 dark:to-background dark:border-purple-900/30">
             <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -201,26 +441,30 @@ const EvansPage = () => {
                     {metrics.pipelineDeals} active deals
                   </p>
                 </div>
-                <div className="p-3 rounded-full bg-purple-100">
-                  <Target className="h-5 w-5 text-purple-600" />
+                <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/50">
+                  <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-amber-50 to-white border-amber-100">
+          <Card className="bg-gradient-to-br from-amber-50 to-white border-amber-100 dark:from-amber-950/30 dark:to-background dark:border-amber-900/30">
             <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Win Rate</p>
-                  <p className="text-2xl font-bold mt-1">34%</p>
+                  <p className="text-2xl font-bold mt-1">{metrics.winRate}%</p>
                   <div className="flex items-center gap-1 mt-1">
-                    <TrendingUp className="h-3 w-3 text-green-500" />
-                    <span className="text-xs text-green-600">+5% vs last period</span>
+                    {metrics.winRate >= 30 ? (
+                      <TrendingUp className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3 text-amber-500" />
+                    )}
+                    <span className="text-xs text-muted-foreground">Conversion rate</span>
                   </div>
                 </div>
-                <div className="p-3 rounded-full bg-amber-100">
-                  <Activity className="h-5 w-5 text-amber-600" />
+                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/50">
+                  <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                 </div>
               </div>
             </CardContent>
@@ -301,31 +545,37 @@ const EvansPage = () => {
             </CardHeader>
             <CardContent>
               <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={dealSourceData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {dealSourceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value: number) => [`${value}%`, '']}
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                {dealSourceData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={dealSourceData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {dealSourceData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value: number) => [`${value}%`, '']}
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                    No data available
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2 mt-2">
                 {dealSourceData.map((source) => (
@@ -334,7 +584,7 @@ const EvansPage = () => {
                       className="w-3 h-3 rounded-full" 
                       style={{ backgroundColor: source.color }}
                     />
-                    <span className="text-xs text-muted-foreground">{source.name}</span>
+                    <span className="text-xs text-muted-foreground truncate">{source.name}</span>
                     <span className="text-xs font-medium ml-auto">{source.value}%</span>
                   </div>
                 ))}
@@ -357,43 +607,49 @@ const EvansPage = () => {
             </CardHeader>
             <CardContent>
               <div className="h-[240px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart 
-                    data={pipelineStageData} 
-                    layout="vertical"
-                    margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      tick={{ fontSize: 12 }} 
-                      tickLine={false} 
-                      axisLine={false}
-                      width={70}
-                    />
-                    <Tooltip 
-                      formatter={(value: number, name: string) => [
-                        name === 'value' ? `${value} deals` : formatCurrency(value),
-                        name === 'value' ? 'Deals' : 'Value'
-                      ]}
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Bar 
-                      dataKey="value" 
-                      radius={[0, 4, 4, 0]}
+                {pipelineStageData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={pipelineStageData} 
+                      layout="vertical"
+                      margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
                     >
-                      {pipelineStageData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        tick={{ fontSize: 12 }} 
+                        tickLine={false} 
+                        axisLine={false}
+                        width={80}
+                      />
+                      <Tooltip 
+                        formatter={(value: number, name: string) => [
+                          name === 'value' ? `${value} deals` : formatCurrency(value),
+                          name === 'value' ? 'Deals' : 'Value'
+                        ]}
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Bar 
+                        dataKey="value" 
+                        radius={[0, 4, 4, 0]}
+                      >
+                        {pipelineStageData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                    No deals in pipeline
+                  </div>
+                )}
               </div>
               <div className="flex items-center justify-between pt-4 border-t mt-4">
                 <span className="text-sm text-muted-foreground">Total Pipeline</span>
@@ -408,7 +664,7 @@ const EvansPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-base">Weekly Activity</CardTitle>
-                  <CardDescription>Calls, emails & meetings</CardDescription>
+                  <CardDescription>Calls, emails & meetings (last 7 days)</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -439,15 +695,15 @@ const EvansPage = () => {
               </div>
               <div className="grid grid-cols-3 gap-4 pt-4 border-t mt-4">
                 <div className="text-center">
-                  <p className="text-xl font-bold text-blue-600">59</p>
+                  <p className="text-xl font-bold text-blue-600">{activityTotals.calls}</p>
                   <p className="text-xs text-muted-foreground">Total Calls</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xl font-bold text-green-600">112</p>
+                  <p className="text-xl font-bold text-green-600">{activityTotals.emails}</p>
                   <p className="text-xs text-muted-foreground">Total Emails</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xl font-bold text-amber-600">16</p>
+                  <p className="text-xl font-bold text-amber-600">{activityTotals.meetings}</p>
                   <p className="text-xs text-muted-foreground">Total Meetings</p>
                 </div>
               </div>
@@ -463,34 +719,34 @@ const EvansPage = () => {
                 <CardTitle className="text-base">Annual Goal Progress</CardTitle>
                 <CardDescription>Road to $600K revenue target</CardDescription>
               </div>
-              <Badge variant={metrics.paceVsPlan >= 100 ? 'default' : 'secondary'}>
-                {metrics.paceVsPlan >= 100 ? 'On Track' : 'Behind Pace'}
+              <Badge variant={ytdRevenue >= annualTarget * 0.8 ? 'default' : 'secondary'}>
+                {ytdRevenue >= annualTarget * 0.8 ? 'On Track' : 'Behind Pace'}
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-3xl font-bold">{formatCurrency(metrics.totalRevenue)}</span>
+                <span className="text-3xl font-bold">{formatCurrency(ytdRevenue)}</span>
                 <span className="text-lg text-muted-foreground">of $600K</span>
               </div>
-              <Progress value={(metrics.totalRevenue / 600000) * 100} className="h-3" />
+              <Progress value={(ytdRevenue / annualTarget) * 100} className="h-3" />
               <div className="grid grid-cols-4 gap-4 pt-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Q1</p>
-                  <p className="font-semibold">{formatCurrency(132000)}</p>
+                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[0])}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Q2</p>
-                  <p className="font-semibold">{formatCurrency(164000)}</p>
+                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[1])}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Q3</p>
-                  <p className="font-semibold">{formatCurrency(162000)}</p>
+                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[2])}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Q4</p>
-                  <p className="font-semibold">{formatCurrency(142000)}</p>
+                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[3])}</p>
                 </div>
               </div>
             </div>
