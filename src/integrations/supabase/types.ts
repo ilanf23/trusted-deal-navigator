@@ -123,6 +123,7 @@ export type Database = {
           email: string
           id: string
           refresh_token: string
+          team_member_name: string | null
           token_expiry: string
           updated_at: string
           user_id: string
@@ -134,6 +135,7 @@ export type Database = {
           email: string
           id?: string
           refresh_token: string
+          team_member_name?: string | null
           token_expiry: string
           updated_at?: string
           user_id: string
@@ -145,6 +147,7 @@ export type Database = {
           email?: string
           id?: string
           refresh_token?: string
+          team_member_name?: string | null
           token_expiry?: string
           updated_at?: string
           user_id?: string

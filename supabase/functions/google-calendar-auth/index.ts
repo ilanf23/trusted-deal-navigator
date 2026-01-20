@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     }
 
     const userId = claimsData.user.id;
-    const { action, code, redirectUri } = await req.json();
+    const { action, code, redirectUri, teamMemberName } = await req.json();
 
     if (action === 'getAuthUrl') {
       // Generate Google OAuth URL for Calendar access
@@ -107,18 +107,31 @@ Deno.serve(async (req) => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
 
+      // If team member name is provided, use that as the key, otherwise use user_id
+      const upsertData: Record<string, unknown> = {
+        user_id: userId,
+        email: userInfo.email,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        token_expiry: tokenExpiry,
+        calendar_id: 'primary',
+      };
+      
+      if (teamMemberName) {
+        upsertData.team_member_name = teamMemberName;
+      }
+
+      // Delete existing connection for this team member if exists
+      if (teamMemberName) {
+        await supabaseAdmin
+          .from('calendar_connections')
+          .delete()
+          .eq('team_member_name', teamMemberName);
+      }
+
       const { error: upsertError } = await supabaseAdmin
         .from('calendar_connections')
-        .upsert({
-          user_id: userId,
-          email: userInfo.email,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          token_expiry: tokenExpiry,
-          calendar_id: 'primary',
-        }, {
-          onConflict: 'user_id',
-        });
+        .insert(upsertData);
 
       if (upsertError) {
         console.error('Failed to save tokens:', upsertError);
@@ -140,10 +153,15 @@ Deno.serve(async (req) => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       );
 
-      const { error } = await supabaseAdmin
-        .from('calendar_connections')
-        .delete()
-        .eq('user_id', userId);
+      // Delete by team member name if provided, otherwise by user_id
+      let query = supabaseAdmin.from('calendar_connections').delete();
+      if (teamMemberName) {
+        query = query.eq('team_member_name', teamMemberName);
+      } else {
+        query = query.eq('user_id', userId);
+      }
+      
+      const { error } = await query;
 
       if (error) {
         console.error('Failed to disconnect:', error);
@@ -160,11 +178,23 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'getStatus') {
-      const { data, error } = await supabase
+      const supabaseAdmin = createClient(
+        supabaseUrl,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      
+      // Query by team member name if provided, otherwise by user_id
+      let query = supabaseAdmin
         .from('calendar_connections')
-        .select('email, calendar_id, updated_at')
-        .eq('user_id', userId)
-        .single();
+        .select('email, calendar_id, updated_at, team_member_name');
+      
+      if (teamMemberName) {
+        query = query.eq('team_member_name', teamMemberName);
+      } else {
+        query = query.eq('user_id', userId);
+      }
+      
+      const { data, error } = await query.single();
 
       if (error || !data) {
         return new Response(
