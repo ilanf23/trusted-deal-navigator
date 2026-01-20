@@ -160,9 +160,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         noCollapse: true,
       });
 
-      // CLX CRM section (no dropdown for employees)
+      // CRM section (collapsible dropdown)
       sections.push({
-        title: 'CLX CRM',
+        title: 'CRM',
         icon: Kanban,
         items: [
           { title: `${employeeName}'s Pipeline`, url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
@@ -172,7 +172,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
         ],
-        noCollapse: true,
       });
     }
 
