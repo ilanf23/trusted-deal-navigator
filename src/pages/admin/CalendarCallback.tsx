@@ -3,8 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
-// Fixed callback URL - use the published domain
-const CALLBACK_URL = 'https://trusted-deal-navigator.lovable.app/admin/calendar-callback';
+// Dynamic callback URL - use the current origin
+const getCallbackUrl = () => {
+  // First check if we stored the callback URL from the initiating page
+  const storedUrl = localStorage.getItem('calendarCallbackUrl');
+  if (storedUrl) {
+    return storedUrl;
+  }
+  // Fallback to current origin
+  return `${window.location.origin}/admin/calendar-callback`;
+};
 
 export default function CalendarCallback() {
   const navigate = useNavigate();
@@ -77,14 +85,19 @@ export default function CalendarCallback() {
         // Get team member name from localStorage (set before OAuth redirect)
         const teamMemberName = localStorage.getItem('calendarTeamMember') || undefined;
         
+        const callbackUrl = getCallbackUrl();
+        
         const { data, error: exchangeError } = await supabase.functions.invoke('google-calendar-auth', {
           body: {
             action: 'exchangeCode',
             code,
-            redirectUri: CALLBACK_URL,
+            redirectUri: callbackUrl,
             teamMemberName,
           },
         });
+        
+        // Clean up the stored callback URL
+        localStorage.removeItem('calendarCallbackUrl');
         
         // Clean up stored team member name
         localStorage.removeItem('calendarTeamMember');
