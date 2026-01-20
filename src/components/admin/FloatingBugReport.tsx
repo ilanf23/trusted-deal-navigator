@@ -83,7 +83,7 @@ const FloatingBugReport = () => {
         className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group"
         title="Report a bug"
       >
-        <Bug className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        <Bug className="w-8 h-8 group-hover:scale-110 transition-transform" />
       </button>
 
       {/* Dialog */}
