@@ -14,7 +14,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -43,27 +42,37 @@ const PortalSidebar = () => {
   };
 
   return (
-    <Sidebar className="border-r border-border">
-      <SidebarHeader className="p-4 border-b border-border">
-        <Link to="/user" className="flex items-center">
+    <Sidebar className="border-r-0 bg-[#0a1628]">
+      <SidebarHeader className="p-0 border-b-0">
+        <Link to="/user" className="flex items-center justify-center py-4">
           <img
             src={logo}
             alt="Commercial Lending X logo"
-            className="h-40 w-auto object-contain"
+            className="h-32 w-auto object-contain"
             loading="lazy"
           />
         </Link>
+        <div className="h-px bg-white/20 mx-4 -mt-2" />
       </SidebarHeader>
       
-      <SidebarContent>
+      <SidebarContent className="px-3 pt-4">
         <SidebarGroup>
-          <SidebarGroupLabel>Client Portal</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <Link to={item.url} className="flex items-center gap-3">
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive(item.url)}
+                    className={`
+                      flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all
+                      ${isActive(item.url) 
+                        ? 'bg-white/10 text-white' 
+                        : 'text-white/70 hover:bg-white/5 hover:text-white'
+                      }
+                    `}
+                  >
+                    <Link to={item.url}>
                       <item.icon className="w-5 h-5" />
                       <span>{item.title}</span>
                     </Link>
@@ -75,11 +84,15 @@ const PortalSidebar = () => {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-border">
-        <div className="text-sm text-muted-foreground mb-2 truncate">
+      <SidebarFooter className="p-4 border-t border-white/10">
+        <div className="text-xs text-white/50 mb-3 truncate font-medium">
           {user?.email}
         </div>
-        <Button variant="outline" className="w-full" onClick={signOut}>
+        <Button 
+          variant="outline" 
+          className="w-full bg-transparent border-white/20 text-white/80 hover:bg-white/10 hover:text-white hover:border-white/30 text-sm font-medium"
+          onClick={signOut}
+        >
           <LogOut className="w-4 h-4 mr-2" />
           Sign Out
         </Button>
