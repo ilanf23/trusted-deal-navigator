@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,11 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Loader2, FileText, Phone, Mail, Building2, X, ChevronRight, User, Calendar, Clock, Sparkles } from 'lucide-react';
+import { Plus, Loader2, FileText, Phone, Mail, Building2, X, ChevronRight, User, Calendar, Clock, Sparkles, Users, PhoneIncoming, PhoneOutgoing, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -40,6 +41,7 @@ const AdminLeads = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadWithOwner | null>(null);
@@ -171,15 +173,73 @@ const AdminLeads = () => {
     }
   };
 
+  // Fetch touchpoints for all leads
+  const { data: touchpoints = {} } = useQuery({
+    queryKey: ['admin-leads-touchpoints', leads.map(l => l.id)],
+    queryFn: async () => {
+      if (leads.length === 0) return {};
+      
+      const leadIds = leads.map(l => l.id);
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('lead_id, communication_type, direction, created_at')
+        .in('lead_id', leadIds)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      const touchpointMap: Record<string, { type: string; direction: string; date: string }> = {};
+      (data || []).forEach((comm) => {
+        if (comm.lead_id && !touchpointMap[comm.lead_id]) {
+          touchpointMap[comm.lead_id] = {
+            type: comm.communication_type,
+            direction: comm.direction,
+            date: comm.created_at,
+          };
+        }
+      });
+      
+      return touchpointMap;
+    },
+    enabled: leads.length > 0,
+  });
+
+  const getTouchpointIcon = (type: string, direction: string) => {
+    if (type === 'call') {
+      return direction === 'inbound' 
+        ? <PhoneIncoming className="w-3 h-3 text-green-600" />
+        : <PhoneOutgoing className="w-3 h-3 text-blue-600" />;
+    }
+    if (type === 'email') {
+      return <Mail className="w-3 h-3 text-purple-600" />;
+    }
+    if (type === 'sms') {
+      return <MessageSquare className="w-3 h-3 text-cyan-600" />;
+    }
+    return <MessageSquare className="w-3 h-3 text-muted-foreground" />;
+  };
+
+  const getTouchpointLabel = (type: string, direction: string) => {
+    if (type === 'call') {
+      return direction === 'inbound' ? 'Inbound call' : 'Outbound call';
+    }
+    if (type === 'email') {
+      return direction === 'inbound' ? 'Email received' : 'Email sent';
+    }
+    if (type === 'sms') {
+      return direction === 'inbound' ? 'SMS received' : 'SMS sent';
+    }
+    return type;
+  };
+
   const filteredLeads = leads.filter((lead) => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      lead.name.toLowerCase().includes(searchLower) ||
-      lead.email?.toLowerCase().includes(searchLower) ||
-      lead.company_name?.toLowerCase().includes(searchLower) ||
-      lead.phone?.toLowerCase().includes(searchLower)
-    );
+    const matchesSearch = !search || 
+      lead.name.toLowerCase().includes(search.toLowerCase()) ||
+      lead.email?.toLowerCase().includes(search.toLowerCase()) ||
+      lead.company_name?.toLowerCase().includes(search.toLowerCase()) ||
+      lead.phone?.toLowerCase().includes(search.toLowerCase());
+    const matchesOwner = ownerFilter === 'all' || lead.assigned_to === ownerFilter;
+    return matchesSearch && matchesOwner;
   });
 
   const statusCounts = leads.reduce((acc, lead) => {
@@ -343,6 +403,22 @@ const AdminLeads = () => {
             ))}
           </div>
 
+          {/* Owner Filter */}
+          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+            <SelectTrigger className="w-40 h-9 rounded-xl">
+              <Users className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Filter by owner" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all" className="rounded-lg">All Sales Reps</SelectItem>
+              {teamMembers.map((member) => (
+                <SelectItem key={member.id} value={member.id} className="rounded-lg">
+                  {member.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* Search */}
           <div className="flex-1 max-w-xs">
             <Input
@@ -376,11 +452,12 @@ const AdminLeads = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-border/50">
-                      <TableHead className="w-[200px]">Lead</TableHead>
-                      <TableHead className="w-[150px]">Contact</TableHead>
+                      <TableHead className="w-[180px]">Lead</TableHead>
+                      <TableHead className="w-[130px]">Contact</TableHead>
+                      <TableHead className="w-[140px]">Last Touchpoint</TableHead>
                       <TableHead className="w-[90px]">Owner</TableHead>
-                      <TableHead className="w-[90px]">Status</TableHead>
-                      <TableHead className="w-[100px]">Created</TableHead>
+                      <TableHead className="w-[80px]">Status</TableHead>
+                      <TableHead className="w-[90px]">Created</TableHead>
                       <TableHead className="w-[40px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -435,6 +512,23 @@ const AdminLeads = () => {
                               </p>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {touchpoints[lead.id] ? (
+                            <div className="flex items-center gap-2">
+                              {getTouchpointIcon(touchpoints[lead.id].type, touchpoints[lead.id].direction)}
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-medium text-foreground truncate">
+                                  {getTouchpointLabel(touchpoints[lead.id].type, touchpoints[lead.id].direction)}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {formatDistanceToNow(new Date(touchpoints[lead.id].date), { addSuffix: true })}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground/50">No contact yet</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <span className="text-[12px] font-medium text-foreground/80">

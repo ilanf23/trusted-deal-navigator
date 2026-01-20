@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { KanbanColumn } from '@/components/admin/KanbanColumn';
 import { LeadCard } from '@/components/admin/LeadCard';
+import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Filter, List } from 'lucide-react';
+import { Loader2, Filter, List, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
@@ -15,6 +16,11 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
+type TeamMember = Database['public']['Tables']['team_members']['Row'];
+
+interface LeadWithOwner extends Lead {
+  team_member?: TeamMember | null;
+}
 
 // Subtle gradient progression from lighter (left) to darker (right)
 const columns: { status: LeadStatus; title: string; color: string }[] = [
@@ -27,11 +33,14 @@ const columns: { status: LeadStatus; title: string; color: string }[] = [
 ];
 
 const CRMBoard = () => {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const queryClient = useQueryClient();
+  const [leads, setLeads] = useState<LeadWithOwner[]>([]);
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [sources, setSources] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -40,37 +49,63 @@ const CRMBoard = () => {
     })
   );
 
-  // Get Evan's team member ID first
-  const { data: evanTeamMember, isLoading: evanLoading } = useQuery({
-    queryKey: ['evan-team-member'],
+  // Fetch all team members for owner filter
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['team-members'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('team_members')
-        .select('id')
-        .ilike('name', 'evan')
-        .single();
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
       if (error) throw error;
-      return data;
+      return data as TeamMember[];
     },
   });
 
-  const evanId = evanTeamMember?.id;
-
-  // Fetch leads assigned to Evan (the real pipeline data)
+  // Fetch ALL leads (company-wide) with owner info
   const { data: leadsData, isLoading: leadsLoading, refetch: refetchLeads } = useQuery({
-    queryKey: ['crm-leads', evanId],
+    queryKey: ['crm-all-leads'],
     queryFn: async () => {
-      if (!evanId) return [];
       const { data, error } = await supabase
         .from('leads')
-        .select('*')
-        .eq('assigned_to', evanId)
+        .select('*, team_member:team_members(id, name, email, role)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return (data as LeadWithOwner[]) || [];
     },
-    enabled: !!evanId,
+  });
+
+  // Fetch touchpoints for all leads
+  const { data: touchpoints = {} } = useQuery({
+    queryKey: ['crm-all-touchpoints', leads.map(l => l.id)],
+    queryFn: async () => {
+      if (leads.length === 0) return {};
+      
+      const leadIds = leads.map(l => l.id);
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('lead_id, communication_type, direction, created_at')
+        .in('lead_id', leadIds)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      const touchpointMap: Record<string, { type: string; direction: string; date: string }> = {};
+      (data || []).forEach((comm) => {
+        if (comm.lead_id && !touchpointMap[comm.lead_id]) {
+          touchpointMap[comm.lead_id] = {
+            type: comm.communication_type,
+            direction: comm.direction,
+            date: comm.created_at,
+          };
+        }
+      });
+      
+      return touchpointMap;
+    },
+    enabled: leads.length > 0,
   });
 
   // Update local state when data changes
@@ -81,8 +116,6 @@ const CRMBoard = () => {
       setSources(uniqueSources);
     }
   }, [leadsData]);
-
-  const loading = evanLoading || leadsLoading;
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -110,7 +143,6 @@ const CRMBoard = () => {
         description: 'Pre-qualification questionnaire has been sent to the lead.',
       });
 
-      // Refresh leads to show updated questionnaire_sent_at
       refetchLeads();
     } catch (error) {
       console.error('Error invoking edge function:', error);
@@ -131,13 +163,11 @@ const CRMBoard = () => {
     const leadId = active.id as string;
     const newStatus = over.id as LeadStatus;
 
-    // Check if dropped on a column
     if (!columns.find(c => c.status === newStatus)) return;
 
     const lead = leads.find(l => l.id === leadId);
     if (!lead || lead.status === newStatus) return;
 
-    // Check if moving from discovery to pre_qualification
     const isMovingToPreQual = lead.status === 'discovery' && newStatus === 'pre_qualification';
     const hasEmail = !!lead.email;
     const alreadySentQuestionnaire = !!lead.questionnaire_sent_at;
@@ -169,7 +199,6 @@ const CRMBoard = () => {
         description: `${lead.name} moved to ${columns.find(c => c.status === newStatus)?.title}` 
       });
 
-      // Send pre-qualification email if applicable
       if (isMovingToPreQual && hasEmail && !alreadySentQuestionnaire) {
         sendPrequalificationEmail(leadId);
       } else if (isMovingToPreQual && !hasEmail) {
@@ -181,7 +210,6 @@ const CRMBoard = () => {
       }
     } catch (error) {
       console.error('Error updating lead:', error);
-      // Revert on error
       setLeads(prev => prev.map(l => 
         l.id === leadId ? { ...l, status: lead.status } : l
       ));
@@ -196,8 +224,9 @@ const CRMBoard = () => {
       lead.company_name?.toLowerCase().includes(search.toLowerCase());
     
     const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
+    const matchesOwner = ownerFilter === 'all' || lead.assigned_to === ownerFilter;
     
-    return matchesSearch && matchesSource;
+    return matchesSearch && matchesSource && matchesOwner;
   });
 
   const getLeadsByStatus = (status: LeadStatus) => 
@@ -205,7 +234,7 @@ const CRMBoard = () => {
 
   const activeLead = leads.find(l => l.id === activeId);
 
-  if (loading) {
+  if (leadsLoading) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
@@ -221,9 +250,9 @@ const CRMBoard = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold">CRM Board</h1>
+            <h1 className="text-3xl font-bold">Company Pipeline</h1>
             <p className="text-muted-foreground">
-              Drag and drop leads to update their status • {leads.length} total leads
+              All sales reps • Drag and drop leads to update status • {leads.length} total leads
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -245,6 +274,18 @@ const CRMBoard = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+            <SelectTrigger className="w-48">
+              <Users className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Filter by owner" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sales Reps</SelectItem>
+              {teamMembers.map(member => (
+                <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={sourceFilter} onValueChange={setSourceFilter}>
             <SelectTrigger className="w-48">
               <Filter className="w-4 h-4 mr-2" />
@@ -277,15 +318,27 @@ const CRMBoard = () => {
                 title={column.title}
                 color={column.color}
                 leads={getLeadsByStatus(column.status)}
+                touchpoints={touchpoints}
+                onLeadClick={(lead) => setDetailDialogLead(lead)}
               />
             ))}
           </div>
 
           <DragOverlay>
-            {activeLead && <LeadCard lead={activeLead} />}
+            {activeLead && <LeadCard lead={activeLead} touchpoint={touchpoints[activeLead.id]} />}
           </DragOverlay>
         </DndContext>
       </div>
+
+      {/* Lead Detail Dialog */}
+      <LeadDetailDialog
+        lead={detailDialogLead}
+        open={!!detailDialogLead}
+        onOpenChange={(open) => !open && setDetailDialogLead(null)}
+        onLeadUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ['crm-all-leads'] });
+        }}
+      />
     </AdminLayout>
   );
 };
