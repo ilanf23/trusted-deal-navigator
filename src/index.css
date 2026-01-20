@@ -98,63 +98,63 @@
     --sidebar-ring: 212.7 26.8% 83.9%;
   }
 
-  /* Admin Portal - Refined Warm Neutral Design System with Gold Accent */
+  /* Admin Portal - Blue, Orange & White Design System */
   .admin-portal {
-    /* Warm neutral background palette */
-    --background: 40 8% 97%;
-    --foreground: 30 10% 12%;
-    --card: 40 6% 99%;
-    --card-foreground: 30 10% 12%;
-    --popover: 40 6% 99%;
-    --popover-foreground: 30 10% 12%;
+    /* Clean white background */
+    --background: 0 0% 98%;
+    --foreground: 220 15% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
     
-    /* Primary: Warm gold accent */
-    --primary: 42 65% 48%;
-    --primary-foreground: 40 10% 98%;
+    /* Primary: Blue */
+    --primary: 217 91% 50%;
+    --primary-foreground: 0 0% 100%;
     
-    /* Secondary: Warm neutral */
-    --secondary: 35 8% 94%;
-    --secondary-foreground: 30 8% 30%;
+    /* Secondary: Light blue tint */
+    --secondary: 217 50% 96%;
+    --secondary-foreground: 217 91% 35%;
     
-    /* Muted: Warm grays */
-    --muted: 35 10% 94%;
-    --muted-foreground: 30 6% 45%;
+    /* Muted: Neutral grays */
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 45%;
     
-    /* Accent: Same as primary gold */
-    --accent: 42 65% 48%;
-    --accent-foreground: 40 10% 98%;
+    /* Accent: Orange */
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
     
-    /* Highlight uses primary */
-    --highlight: 42 65% 52%;
-    --highlight-foreground: 40 10% 98%;
+    /* Highlight: Orange */
+    --highlight: 25 95% 53%;
+    --highlight-foreground: 0 0% 100%;
     
     /* Destructive stays red */
-    --destructive: 0 65% 51%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     
-    /* Borders: Warm subtle gray */
-    --border: 35 12% 88%;
-    --input: 35 12% 88%;
-    --ring: 42 65% 48%;
+    /* Borders: Light gray */
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 217 91% 50%;
     --radius: 0.75rem;
     
-    /* Unified Admin Color Palette - Monochromatic */
-    --admin-accent: 42 65% 48%;
-    --admin-accent-light: 42 50% 95%;
-    --admin-accent-dark: 42 65% 38%;
-    --admin-neutral: 35 8% 50%;
-    --admin-neutral-light: 35 8% 94%;
-    --admin-neutral-dark: 35 8% 30%;
+    /* Admin Color Palette - Blue & Orange */
+    --admin-blue: 217 91% 50%;
+    --admin-blue-light: 217 91% 96%;
+    --admin-blue-dark: 217 91% 40%;
+    --admin-orange: 25 95% 53%;
+    --admin-orange-light: 25 95% 95%;
+    --admin-orange-dark: 25 95% 43%;
     
-    /* Dark sidebar with gold accents */
-    --sidebar-background: 30 12% 10%;
-    --sidebar-foreground: 35 15% 80%;
-    --sidebar-primary: 42 65% 55%;
-    --sidebar-primary-foreground: 30 12% 10%;
-    --sidebar-accent: 30 12% 16%;
-    --sidebar-accent-foreground: 35 15% 90%;
-    --sidebar-border: 30 10% 18%;
-    --sidebar-ring: 42 65% 48%;
+    /* Dark sidebar with blue accents */
+    --sidebar-background: 220 20% 12%;
+    --sidebar-foreground: 220 15% 85%;
+    --sidebar-primary: 217 91% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 18%;
+    --sidebar-accent-foreground: 220 15% 95%;
+    --sidebar-border: 220 15% 20%;
+    --sidebar-ring: 217 91% 50%;
     
     /* Refined Shadows */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
@@ -164,7 +164,8 @@
     --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
     --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.15);
     --shadow-glow: 0 0 40px -10px rgb(0 0 0 / 0.1);
-    --shadow-accent: 0 4px 14px -3px hsl(42 65% 48% / 0.2);
+    --shadow-blue: 0 4px 14px -3px hsl(217 91% 50% / 0.25);
+    --shadow-orange: 0 4px 14px -3px hsl(25 95% 53% / 0.25);
     --shadow-inset: inset 0 1px 2px 0 rgb(0 0 0 / 0.04);
   }
 }
