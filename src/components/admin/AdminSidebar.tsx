@@ -331,21 +331,19 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
             >
               <CollapsibleTrigger className="w-full">
                 <div className={`
-                  flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
+                  flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
                   ${openSections[section.title] 
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
                     : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                   }
                 `}>
-                  <div className="flex items-center gap-3">
-                    <ChevronDown 
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        openSections[section.title] ? '' : '-rotate-90'
-                      }`} 
-                    />
-                    <section.icon className={`w-5 h-5 ${openSections[section.title] ? 'text-sidebar-primary' : ''}`} strokeWidth={1.75} />
-                    <span className="text-base font-medium">{section.title}</span>
-                  </div>
+                  <section.icon className="w-5 h-5" strokeWidth={1.75} />
+                  <span className="text-base font-medium">{section.title}</span>
+                  <ChevronDown 
+                    className={`w-4 h-4 ml-auto transition-transform duration-200 ${
+                      openSections[section.title] ? '' : '-rotate-90'
+                    }`} 
+                  />
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
