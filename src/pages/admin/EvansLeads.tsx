@@ -12,11 +12,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, X, Clock, Sparkles, FileText } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, ChevronDown, X, Clock, Sparkles, FileText, PhoneCall, PhoneIncoming, PhoneOutgoing, Play } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import AdminLayout from '@/components/admin/AdminLayout';
+
+type Communication = Database['public']['Tables']['evan_communications']['Row'];
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -38,6 +41,7 @@ const EvansLeads = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [previewLead, setPreviewLead] = useState<Lead | null>(null);
+  const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -47,6 +51,55 @@ const EvansLeads = () => {
     status: 'discovery' as LeadStatus,
     notes: '',
   });
+
+  // Fetch communications for selected lead
+  const { data: communications = [] } = useQuery({
+    queryKey: ['lead-communications', previewLead?.id],
+    queryFn: async () => {
+      if (!previewLead?.id) return [];
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('*')
+        .eq('lead_id', previewLead.id)
+        .eq('communication_type', 'call')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as Communication[];
+    },
+    enabled: !!previewLead?.id,
+  });
+
+  const toggleTranscript = (commId: string) => {
+    setExpandedTranscripts(prev => {
+      const next = new Set(prev);
+      if (next.has(commId)) {
+        next.delete(commId);
+      } else {
+        next.add(commId);
+      }
+      return next;
+    });
+  };
+
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return 'Unknown duration';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatTranscript = (transcript: string | null) => {
+    if (!transcript) return null;
+    return transcript.split('\n').map((line, index) => {
+      const isAgent = line.toLowerCase().startsWith('agent:');
+      const isCaller = line.toLowerCase().startsWith('caller:');
+      return (
+        <p key={index} className={`text-[13px] py-1 ${isAgent ? 'text-blue-600' : isCaller ? 'text-foreground' : 'text-muted-foreground'}`}>
+          {line}
+        </p>
+      );
+    });
+  };
 
   // Get Evan's team member ID
   const { data: evanTeamMember } = useQuery({
@@ -601,7 +654,86 @@ const EvansLeads = () => {
                 {/* Notes */}
                 {previewLead.notes && (
                   <>
+                {/* Call Transcripts */}
+                {communications.length > 0 && (
+                  <>
                     <div className="section-divider" />
+                    <div>
+                      <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                        Call Transcripts ({communications.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {communications.map((comm) => (
+                          <Collapsible
+                            key={comm.id}
+                            open={expandedTranscripts.has(comm.id)}
+                            onOpenChange={() => toggleTranscript(comm.id)}
+                          >
+                            <CollapsibleTrigger asChild>
+                              <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
+                                    {comm.direction === 'inbound' ? (
+                                      <PhoneIncoming className="w-4 h-4 text-green-600" />
+                                    ) : (
+                                      <PhoneOutgoing className="w-4 h-4 text-blue-600" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-[13px] font-medium text-foreground">
+                                      {comm.direction === 'inbound' ? 'Inbound Call' : 'Outbound Call'}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {format(new Date(comm.created_at), 'MMM d, yyyy h:mm a')} · {formatDuration(comm.duration_seconds)}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {comm.transcript ? (
+                                    <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-600 border-emerald-200">
+                                      Transcript
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200">
+                                      No Transcript
+                                    </Badge>
+                                  )}
+                                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedTranscripts.has(comm.id) ? 'rotate-180' : ''}`} />
+                                </div>
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="mt-2 p-3 rounded-xl bg-muted/20 border border-border/50">
+                                {comm.recording_url && (
+                                  <a
+                                    href={comm.recording_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-[12px] text-blue-600 hover:text-blue-700 mb-3 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                                  >
+                                    <Play className="w-3 h-3" />
+                                    Play Recording
+                                  </a>
+                                )}
+                                {comm.transcript ? (
+                                  <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                                    {formatTranscript(comm.transcript)}
+                                  </div>
+                                ) : (
+                                  <p className="text-[13px] text-muted-foreground italic">
+                                    No transcript available for this call.
+                                  </p>
+                                )}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="section-divider" />
                     <div>
                       <h4 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Notes</h4>
                       <p className="text-[13px] text-foreground p-3 rounded-xl bg-muted/30 whitespace-pre-wrap">
