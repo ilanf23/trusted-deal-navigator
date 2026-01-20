@@ -16,7 +16,6 @@ import {
   Loader2, 
   RefreshCw,
   Star,
-  Clock,
   ArrowLeft,
   Trash2,
   Reply,
@@ -28,10 +27,7 @@ import {
   ChevronRight,
   File,
   Pencil,
-  Tag,
-  Users,
   Bell,
-  ShoppingBag,
   Plus,
   FileText,
   Zap,
@@ -102,8 +98,7 @@ const extractEmailAddress = (value: string) => {
 const EvansGmail = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'snoozed' | 'sent' | 'drafts' | 'purchases'>('inbox');
-  const [activeTab, setActiveTab] = useState<'primary' | 'promotions' | 'social' | 'updates'>('primary');
+  const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'sent' | 'drafts' | 'templates'>('inbox');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTo, setComposeTo] = useState('');
@@ -144,8 +139,7 @@ const EvansGmail = () => {
       if (activeFolder === 'sent') query = 'in:sent';
       else if (activeFolder === 'starred') query = 'is:starred';
       else if (activeFolder === 'drafts') query = 'in:drafts';
-      else if (activeFolder === 'snoozed') query = 'is:snoozed';
-      else if (activeFolder === 'purchases') query = 'category:purchases';
+      else if (activeFolder === 'templates') query = 'in:inbox'; // placeholder for templates
       
       const response = await fetch(
         `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent(query)}&maxResults=50`,
@@ -272,10 +266,8 @@ const EvansGmail = () => {
   });
 
   // Counts
-
   const inboxCount = emails.length || 4154; // Using placeholder if no real data
   const draftsCount = 37;
-  const purchasesCount = 256;
 
   // Send email mutation
   const sendEmailMutation = useMutation({
@@ -583,18 +575,6 @@ const EvansGmail = () => {
             </button>
             
             <button
-              onClick={() => setActiveFolder('snoozed')}
-              className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
-                activeFolder === 'snoozed' 
-                  ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
-                  : 'hover:bg-[#e8eaed] text-[#444746]'
-              }`}
-            >
-              <Clock className="w-5 h-5" />
-              <span className="flex-1 text-left">Snoozed</span>
-            </button>
-            
-            <button
               onClick={() => setActiveFolder('sent')}
               className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
                 activeFolder === 'sent' 
@@ -620,21 +600,15 @@ const EvansGmail = () => {
             </button>
             
             <button
-              onClick={() => setActiveFolder('purchases')}
+              onClick={() => setActiveFolder('templates')}
               className={`w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm transition-colors ${
-                activeFolder === 'purchases' 
+                activeFolder === 'templates' 
                   ? 'bg-[#d3e3fd] text-[#001d35] font-bold' 
                   : 'hover:bg-[#e8eaed] text-[#444746]'
               }`}
             >
-              <ShoppingBag className="w-5 h-5" />
-              <span className="flex-1 text-left">Purchases</span>
-              <span className="text-xs font-medium">{purchasesCount}</span>
-            </button>
-            
-            <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
-              <ChevronDown className="w-5 h-5" />
-              <span className="flex-1 text-left">More</span>
+              <File className="w-5 h-5" />
+              <span className="flex-1 text-left">Templates</span>
             </button>
             
             {/* Nudges section - Waiting on Borrower */}
@@ -754,57 +728,6 @@ const EvansGmail = () => {
             <Button variant="ghost" size="icon" className="h-8 w-8 text-[#5f6368]">
               <ChevronRight className="w-4 h-4" />
             </Button>
-          </div>
-          
-          {/* Category Tabs */}
-          <div className="flex border-b">
-            <button
-              onClick={() => setActiveTab('primary')}
-              className={`flex items-center gap-3 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'primary'
-                  ? 'border-[#1a73e8] text-[#1a73e8]'
-                  : 'border-transparent text-[#5f6368] hover:bg-[#f1f3f4]'
-              }`}
-            >
-              <Inbox className="w-5 h-5" />
-              Primary
-            </button>
-            <button
-              onClick={() => setActiveTab('promotions')}
-              className={`flex items-center gap-3 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'promotions'
-                  ? 'border-[#1a73e8] text-[#1a73e8]'
-                  : 'border-transparent text-[#5f6368] hover:bg-[#f1f3f4]'
-              }`}
-            >
-              <Tag className="w-5 h-5" />
-              Promotions
-              <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-[#188038] text-white">29 new</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('social')}
-              className={`flex items-center gap-3 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'social'
-                  ? 'border-[#1a73e8] text-[#1a73e8]'
-                  : 'border-transparent text-[#5f6368] hover:bg-[#f1f3f4]'
-              }`}
-            >
-              <Users className="w-5 h-5" />
-              Social
-              <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-[#1a73e8] text-white">47 new</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('updates')}
-              className={`flex items-center gap-3 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'updates'
-                  ? 'border-[#1a73e8] text-[#1a73e8]'
-                  : 'border-transparent text-[#5f6368] hover:bg-[#f1f3f4]'
-              }`}
-            >
-              <Bell className="w-5 h-5" />
-              Updates
-              <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-[#c5221f] text-white">41 new</span>
-            </button>
           </div>
           
           {/* Email List */}
