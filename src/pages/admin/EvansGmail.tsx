@@ -470,13 +470,12 @@ const EvansGmail = () => {
         <div className="flex-1 flex flex-col">
           {/* Search Bar */}
           <div className="p-4 border-b">
-            <div className="relative max-w-2xl">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <div className="max-w-2xl">
               <Input
                 placeholder="Search mail"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-12 rounded-full bg-muted/50 border-0 focus-visible:ring-1"
+                className="pl-4 h-12 rounded-full bg-muted/50 border-0 focus-visible:ring-1"
               />
             </div>
           </div>
