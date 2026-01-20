@@ -1,5 +1,5 @@
 import { Task, statusConfig } from './types';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, startOfWeek, endOfWeek, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, startOfWeek, endOfWeek, addMonths, subMonths, isToday } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
@@ -32,22 +32,32 @@ export const TaskCalendarView = ({
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
 
   return (
-    <div className="border rounded-lg bg-card overflow-hidden">
+    <div className="rounded-2xl border border-muted-foreground/10 bg-card/50 backdrop-blur-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-muted/20">
-        <Button variant="ghost" size="icon" onClick={prevMonth}>
+      <div className="flex items-center justify-between p-5 border-b border-muted-foreground/10">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={prevMonth}
+          className="h-9 w-9 rounded-full hover:bg-muted"
+        >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <h2 className="font-semibold text-lg">{format(currentMonth, 'MMMM yyyy')}</h2>
-        <Button variant="ghost" size="icon" onClick={nextMonth}>
+        <h2 className="font-semibold text-lg tracking-tight">{format(currentMonth, 'MMMM yyyy')}</h2>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={nextMonth}
+          className="h-9 w-9 rounded-full hover:bg-muted"
+        >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Week days header */}
-      <div className="grid grid-cols-7 border-b bg-muted/10">
+      <div className="grid grid-cols-7 border-b border-muted-foreground/10">
         {weekDays.map(day => (
-          <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
+          <div key={day} className="py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {day}
           </div>
         ))}
@@ -58,33 +68,43 @@ export const TaskCalendarView = ({
         {days.map((day, idx) => {
           const dayTasks = getTasksForDay(day);
           const isCurrentMonth = isSameMonth(day, currentMonth);
-          const isToday = isSameDay(day, new Date());
+          const isTodayDate = isToday(day);
           
           return (
             <div
               key={idx}
-              className={`min-h-[100px] p-1 border-b border-r ${
-                !isCurrentMonth ? 'bg-muted/30 text-muted-foreground' : ''
-              } ${isToday ? 'bg-primary/5' : ''}`}
+              className={`min-h-[120px] p-2 border-b border-r border-muted-foreground/5 transition-colors hover:bg-muted/30 cursor-pointer ${
+                !isCurrentMonth ? 'bg-muted/20' : ''
+              }`}
               onClick={() => onAddTask({ due_date: day.toISOString() })}
             >
-              <div className={`text-sm font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
+              <div className={`flex items-center justify-center w-7 h-7 rounded-full mb-1 text-sm font-medium ${
+                isTodayDate 
+                  ? 'bg-foreground text-background' 
+                  : !isCurrentMonth 
+                    ? 'text-muted-foreground/50' 
+                    : ''
+              }`}>
                 {format(day, 'd')}
               </div>
               
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {dayTasks.slice(0, 3).map(task => (
                   <div
                     key={task.id}
-                    className="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80"
-                    style={{ backgroundColor: statusConfig[task.status || 'todo']?.color, color: 'white' }}
+                    className="text-xs py-1 px-2 rounded-md truncate cursor-pointer transition-all hover:scale-[1.02]"
+                    style={{ 
+                      backgroundColor: `${statusConfig[task.status || 'todo']?.color}20`,
+                      color: statusConfig[task.status || 'todo']?.color,
+                      borderLeft: `2px solid ${statusConfig[task.status || 'todo']?.color}`
+                    }}
                     onClick={(e) => { e.stopPropagation(); onOpenDetail(task); }}
                   >
                     {task.title}
                   </div>
                 ))}
                 {dayTasks.length > 3 && (
-                  <div className="text-xs text-muted-foreground px-1">
+                  <div className="text-xs text-muted-foreground px-2 font-medium">
                     +{dayTasks.length - 3} more
                   </div>
                 )}
