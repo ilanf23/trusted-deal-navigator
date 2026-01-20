@@ -406,22 +406,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           )
         ))}
 
-        {/* Dev Notes - Bottom of main nav */}
-        {teamMember && !isOwner && teamMember.name.toLowerCase() !== 'ilan' && (
-          <Link
-            to={`/team/${teamMember.name.toLowerCase()}/dev-notes`}
-            className={`
-              flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mt-4
-              ${isActive(`/team/${teamMember.name.toLowerCase()}/dev-notes`) 
-                ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
-              }
-            `}
-          >
-            <Code2 className="w-5 h-5" strokeWidth={1.75} />
-            <span className="text-base font-medium">Dev Notes</span>
-          </Link>
-        )}
       </SidebarContent>
 
       <SidebarFooter className="p-5 border-t border-border/40">
