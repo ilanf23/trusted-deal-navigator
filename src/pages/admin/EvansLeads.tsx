@@ -13,8 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, ChevronDown, X, Clock, Sparkles, FileText, PhoneCall, PhoneIncoming, PhoneOutgoing, Play } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, ChevronDown, X, Clock, Sparkles, FileText, PhoneCall, PhoneIncoming, PhoneOutgoing, Play, MessageSquare } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -133,6 +133,39 @@ const EvansLeads = () => {
       return data as Lead[];
     },
     enabled: !!evanId,
+  });
+
+  // Fetch last touchpoint for each lead
+  const { data: touchpoints = {} } = useQuery({
+    queryKey: ['evans-leads-touchpoints', leads.map(l => l.id)],
+    queryFn: async () => {
+      if (leads.length === 0) return {};
+      
+      // Get the most recent communication for each lead
+      const leadIds = leads.map(l => l.id);
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('lead_id, communication_type, direction, created_at')
+        .in('lead_id', leadIds)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Group by lead_id and take the most recent
+      const touchpointMap: Record<string, { type: string; direction: string; date: string }> = {};
+      (data || []).forEach((comm) => {
+        if (comm.lead_id && !touchpointMap[comm.lead_id]) {
+          touchpointMap[comm.lead_id] = {
+            type: comm.communication_type,
+            direction: comm.direction,
+            date: comm.created_at,
+          };
+        }
+      });
+      
+      return touchpointMap;
+    },
+    enabled: leads.length > 0,
   });
 
   const createMutation = useMutation({
@@ -456,81 +489,121 @@ const EvansLeads = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-border/50">
-                    <TableHead className="w-[200px]">Lead</TableHead>
-                    <TableHead className="w-[150px]">Contact</TableHead>
-                    <TableHead className="w-[90px]">Status</TableHead>
-                    <TableHead className="w-[100px]">Created</TableHead>
+                    <TableHead className="w-[180px]">Lead</TableHead>
+                    <TableHead className="w-[130px]">Contact</TableHead>
+                    <TableHead className="w-[140px]">Last Touchpoint</TableHead>
+                    <TableHead className="w-[80px]">Status</TableHead>
+                    <TableHead className="w-[90px]">Created</TableHead>
                     <TableHead className="w-[40px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLeads.map((lead, index) => (
-                    <TableRow 
-                      key={lead.id} 
-                      className={`
-                        cursor-pointer transition-colors border-border/30
-                        ${previewLead?.id === lead.id 
-                          ? 'bg-accent/5 border-l-2 border-l-foreground' 
-                          : 'hover:bg-muted/40'
-                        }
-                      `}
-                      style={{ animationDelay: `${index * 30}ms` }}
-                      onClick={() => setPreviewLead(lead)}
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-foreground/70">
-                              {lead.name.charAt(0).toUpperCase()}
-                            </span>
+                  {filteredLeads.map((lead, index) => {
+                    const touchpoint = touchpoints[lead.id];
+                    const getTouchpointIcon = () => {
+                      if (!touchpoint) return <MessageSquare className="w-3 h-3 text-muted-foreground/50" />;
+                      if (touchpoint.type === 'call') {
+                        if (touchpoint.direction === 'inbound') return <PhoneIncoming className="w-3 h-3 text-blue-500" />;
+                        return <PhoneOutgoing className="w-3 h-3 text-green-500" />;
+                      }
+                      if (touchpoint.type === 'email') return <Mail className="w-3 h-3 text-purple-500" />;
+                      if (touchpoint.type === 'sms') return <MessageSquare className="w-3 h-3 text-cyan-500" />;
+                      return <MessageSquare className="w-3 h-3 text-muted-foreground" />;
+                    };
+                    const getTouchpointLabel = () => {
+                      if (!touchpoint) return 'No contact yet';
+                      const typeLabels: Record<string, string> = {
+                        call: touchpoint.direction === 'inbound' ? 'Inbound call' : 'Outbound call',
+                        email: 'Email',
+                        sms: 'SMS',
+                      };
+                      return typeLabels[touchpoint.type] || touchpoint.type;
+                    };
+                    
+                    return (
+                      <TableRow 
+                        key={lead.id} 
+                        className={`
+                          cursor-pointer transition-colors border-border/30
+                          ${previewLead?.id === lead.id 
+                            ? 'bg-accent/5 border-l-2 border-l-foreground' 
+                            : 'hover:bg-muted/40'
+                          }
+                        `}
+                        style={{ animationDelay: `${index * 30}ms` }}
+                        onClick={() => setPreviewLead(lead)}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-semibold text-foreground/70">
+                                {lead.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-medium text-foreground truncate">{lead.name}</p>
+                              {lead.company_name && (
+                                <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                                  <Building2 className="w-3 h-3 flex-shrink-0" />
+                                  {lead.company_name}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-medium text-foreground truncate">{lead.name}</p>
-                            {lead.company_name && (
-                              <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
-                                <Building2 className="w-3 h-3 flex-shrink-0" />
-                                {lead.company_name}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-0.5">
+                            {lead.phone && (
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                <Phone className="w-3 h-3" />
+                                {lead.phone}
+                              </p>
+                            )}
+                            {lead.email && (
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate max-w-[120px]">
+                                <Mail className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">{lead.email}</span>
                               </p>
                             )}
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          {lead.phone && (
-                            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                              <Phone className="w-3 h-3" />
-                              {lead.phone}
-                            </p>
-                          )}
-                          {lead.email && (
-                            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
-                              <Mail className="w-3 h-3" />
-                              {lead.email}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusConfig[lead.status].bg} ${statusConfig[lead.status].color}`}>
-                            {statusConfig[lead.status].label}
-                          </span>
-                          {lead.questionnaire_completed_at && (
-                            <FileText className="w-3.5 h-3.5 text-emerald-500" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-[11px] text-muted-foreground">
-                          {format(new Date(lead.created_at), 'MMM d, yyyy')}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getTouchpointIcon()}
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-medium text-foreground truncate">
+                                {getTouchpointLabel()}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {touchpoint 
+                                  ? formatDistanceToNow(new Date(touchpoint.date), { addSuffix: true })
+                                  : '—'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusConfig[lead.status].bg} ${statusConfig[lead.status].color}`}>
+                              {statusConfig[lead.status].label}
+                            </span>
+                            {lead.questionnaire_completed_at && (
+                              <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-[11px] text-muted-foreground">
+                            {format(new Date(lead.created_at), 'MMM d')}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
