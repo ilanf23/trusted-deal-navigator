@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { KanbanColumn } from '@/components/admin/KanbanColumn';
@@ -6,7 +7,7 @@ import { LeadCard } from '@/components/admin/LeadCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Filter, LayoutGrid, List } from 'lucide-react';
+import { Loader2, Filter, List } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
@@ -27,7 +28,6 @@ const columns: { status: LeadStatus; title: string; color: string }[] = [
 
 const CRMBoard = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [sources, setSources] = useState<string[]>([]);
@@ -40,29 +40,49 @@ const CRMBoard = () => {
     })
   );
 
-  const fetchLeads = async () => {
-    try {
+  // Get Evan's team member ID first
+  const { data: evanTeamMember, isLoading: evanLoading } = useQuery({
+    queryKey: ['evan-team-member'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id')
+        .ilike('name', 'evan')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const evanId = evanTeamMember?.id;
+
+  // Fetch leads assigned to Evan (the real pipeline data)
+  const { data: leadsData, isLoading: leadsLoading, refetch: refetchLeads } = useQuery({
+    queryKey: ['crm-leads', evanId],
+    queryFn: async () => {
+      if (!evanId) return [];
       const { data, error } = await supabase
         .from('leads')
         .select('*')
+        .eq('assigned_to', evanId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setLeads(data || []);
-      
-      const uniqueSources = [...new Set(data?.map(l => l.source).filter(Boolean))] as string[];
-      setSources(uniqueSources);
-    } catch (error) {
-      console.error('Error fetching leads:', error);
-      toast({ title: 'Error', description: 'Failed to fetch leads', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data || [];
+    },
+    enabled: !!evanId,
+  });
 
+  // Update local state when data changes
   useEffect(() => {
-    fetchLeads();
-  }, []);
+    if (leadsData) {
+      setLeads(leadsData);
+      const uniqueSources = [...new Set(leadsData.map(l => l.source).filter(Boolean))] as string[];
+      setSources(uniqueSources);
+    }
+  }, [leadsData]);
+
+  const loading = evanLoading || leadsLoading;
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -91,7 +111,7 @@ const CRMBoard = () => {
       });
 
       // Refresh leads to show updated questionnaire_sent_at
-      fetchLeads();
+      refetchLeads();
     } catch (error) {
       console.error('Error invoking edge function:', error);
       toast({
