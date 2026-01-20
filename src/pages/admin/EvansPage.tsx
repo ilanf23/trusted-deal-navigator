@@ -48,16 +48,17 @@ import { NudgesWidget } from '@/components/evan/dashboard/NudgesWidget';
 
 export type TimePeriod = 'mtd' | 'ytd';
 
+// Monochromatic chart colors - warm neutrals with gold accent
 const STAGE_COLORS: Record<string, string> = {
-  discovery: '#94a3b8',
-  pre_qualification: '#60a5fa',
-  document_collection: '#818cf8',
-  underwriting: '#a78bfa',
-  approval: '#22c55e',
-  funded: '#10b981',
+  discovery: 'hsl(35, 8%, 70%)',
+  pre_qualification: 'hsl(35, 8%, 58%)',
+  document_collection: 'hsl(35, 8%, 46%)',
+  underwriting: 'hsl(42, 65%, 48%)',
+  approval: 'hsl(42, 65%, 55%)',
+  funded: 'hsl(142, 50%, 45%)',
 };
 
-const SOURCE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#94a3b8'];
+const SOURCE_COLORS = ['hsl(42, 65%, 48%)', 'hsl(35, 8%, 60%)', 'hsl(35, 8%, 45%)', 'hsl(35, 8%, 75%)', 'hsl(35, 8%, 30%)', 'hsl(42, 50%, 70%)'];
 
 const EvansPage = () => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
@@ -442,7 +443,7 @@ const EvansPage = () => {
 
         {/* KPI Cards Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-100 dark:from-blue-950/30 dark:to-background dark:border-blue-900/30">
+          <Card className="border hover:border-primary/30 transition-colors">
             <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -450,23 +451,23 @@ const EvansPage = () => {
                   <p className="text-2xl font-bold mt-1">{formatCurrency(metrics.totalRevenue)}</p>
                   <div className="flex items-center gap-1 mt-1">
                     {metrics.totalRevenue > 0 ? (
-                      <ArrowUpRight className="h-3 w-3 text-green-500" />
+                      <ArrowUpRight className="h-3 w-3 text-green-600" />
                     ) : (
-                      <ArrowDownRight className="h-3 w-3 text-amber-500" />
+                      <ArrowDownRight className="h-3 w-3 text-red-500" />
                     )}
                     <span className="text-xs text-muted-foreground">
                       {periodLabel}
                     </span>
                   </div>
                 </div>
-                <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/50">
-                  <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="p-3 rounded-full bg-primary/10">
+                  <DollarSign className="h-5 w-5 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-white border-green-100 dark:from-green-950/30 dark:to-background dark:border-green-900/30">
+          <Card className="border hover:border-primary/30 transition-colors">
             <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -476,14 +477,14 @@ const EvansPage = () => {
                     Avg: {formatCurrency(metrics.avgDealSize)}
                   </p>
                 </div>
-                <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/50">
-                  <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div className="p-3 rounded-full bg-muted">
+                  <Briefcase className="h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100 dark:from-purple-950/30 dark:to-background dark:border-purple-900/30">
+          <Card className="border hover:border-primary/30 transition-colors">
             <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -493,14 +494,14 @@ const EvansPage = () => {
                     {metrics.pipelineDeals} active deals
                   </p>
                 </div>
-                <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/50">
-                  <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <div className="p-3 rounded-full bg-muted">
+                  <Target className="h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-amber-50 to-white border-amber-100 dark:from-amber-950/30 dark:to-background dark:border-amber-900/30">
+          <Card className="border hover:border-primary/30 transition-colors">
             <CardContent className="pt-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -508,15 +509,15 @@ const EvansPage = () => {
                   <p className="text-2xl font-bold mt-1">{metrics.winRate}%</p>
                   <div className="flex items-center gap-1 mt-1">
                     {metrics.winRate >= 30 ? (
-                      <TrendingUp className="h-3 w-3 text-green-500" />
+                      <TrendingUp className="h-3 w-3 text-green-600" />
                     ) : (
-                      <TrendingDown className="h-3 w-3 text-amber-500" />
+                      <TrendingDown className="h-3 w-3 text-red-500" />
                     )}
                     <span className="text-xs text-muted-foreground">Conversion rate</span>
                   </div>
                 </div>
-                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/50">
-                  <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <div className="p-3 rounded-full bg-muted">
+                  <Activity className="h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>

@@ -257,19 +257,19 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
   const getStageColor = (status: string) => {
     switch (status) {
       case 'approval': return 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400';
-      case 'underwriting': return 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400';
-      case 'document_collection': return 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400';
-      case 'pre_qualification': return 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400';
-      case 'discovery': return 'bg-slate-100 text-slate-700 dark:bg-slate-950/50 dark:text-slate-400';
+      case 'underwriting': return 'bg-primary/10 text-primary';
+      case 'document_collection': return 'bg-muted text-muted-foreground';
+      case 'pre_qualification': return 'bg-muted text-muted-foreground';
+      case 'discovery': return 'bg-muted text-muted-foreground';
       default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const getUrgencyIndicator = (score: number) => {
-    if (score >= 4) return { color: 'text-red-500', label: 'Critical' };
-    if (score >= 3) return { color: 'text-amber-500', label: 'High' };
-    if (score >= 2) return { color: 'text-blue-500', label: 'Medium' };
-    return { color: 'text-slate-400', label: 'Low' };
+    if (score >= 4) return { color: 'text-destructive', label: 'Critical' };
+    if (score >= 3) return { color: 'text-primary', label: 'High' };
+    if (score >= 2) return { color: 'text-muted-foreground', label: 'Medium' };
+    return { color: 'text-muted-foreground/60', label: 'Low' };
   };
 
   const stageLabels: Record<string, string> = {
@@ -372,7 +372,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
                           </div>
 
                           {item.blockerSeverity >= 4 && (
-                            <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                            <div className="flex items-center gap-1 text-xs text-destructive">
                               <AlertTriangle className="h-3 w-3" />
                               Blocker
                             </div>
@@ -380,7 +380,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
                         </div>
 
                         {/* Impact statement */}
-                        <div className="flex items-center gap-1.5 mt-2 text-xs text-green-600 dark:text-green-400">
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-green-600">
                           <ArrowRight className="h-3 w-3" />
                           <span>{item.impact}</span>
                         </div>

@@ -66,19 +66,15 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         admin: {
-          blue: {
-            DEFAULT: "hsl(var(--admin-blue, 217 91% 50%))",
-            light: "hsl(var(--admin-blue-light, 217 91% 95%))",
-            dark: "hsl(var(--admin-blue-dark, 217 91% 40%))",
+          accent: {
+            DEFAULT: "hsl(var(--admin-accent, 42 65% 48%))",
+            light: "hsl(var(--admin-accent-light, 42 50% 95%))",
+            dark: "hsl(var(--admin-accent-dark, 42 65% 38%))",
           },
-          orange: {
-            DEFAULT: "hsl(var(--admin-orange, 25 95% 53%))",
-            light: "hsl(var(--admin-orange-light, 25 95% 95%))",
-            dark: "hsl(var(--admin-orange-dark, 25 95% 43%))",
-          },
-          teal: {
-            DEFAULT: "hsl(var(--admin-teal, 175 70% 40%))",
-            light: "hsl(var(--admin-teal-light, 175 70% 95%))",
+          neutral: {
+            DEFAULT: "hsl(var(--admin-neutral, 35 8% 50%))",
+            light: "hsl(var(--admin-neutral-light, 35 8% 94%))",
+            dark: "hsl(var(--admin-neutral-dark, 35 8% 30%))",
           },
         },
       },

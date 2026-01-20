@@ -107,12 +107,12 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
   }
 
   return (
-    <Card className="border-amber-200 dark:border-amber-900/50 bg-gradient-to-br from-amber-50/50 via-background to-background dark:from-amber-950/20">
+    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
-              <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Bell className="h-5 w-5 text-primary" />
             </div>
             <div>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -164,7 +164,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
                           {lead.company_name}
                         </p>
                       )}
-                      <div className="flex items-center gap-1 mt-1 text-xs text-amber-600 dark:text-amber-400">
+                      <div className="flex items-center gap-1 mt-1 text-xs text-primary">
                         <Clock className="h-3 w-3" />
                         <span>{daysSince} days since last activity</span>
                       </div>
