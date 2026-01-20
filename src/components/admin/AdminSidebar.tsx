@@ -100,43 +100,56 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         items: [
           { title: 'Brad', url: '/admin/brad', icon: User },
           { title: 'Adam', url: '/admin/adam', icon: User },
+          { title: 'Ilan', url: '/admin/ilan', icon: User },
           { title: 'Evan', url: '/team/evan', icon: User },
           { title: 'Maura', url: '/team/maura', icon: User },
           { title: 'Wendy', url: '/team/wendy', icon: User },
         ],
       });
     } else if (teamMember) {
-      // For regular team members (employees), show their own dashboard and limited navigation
-      const employeeName = teamMember.name;
-      const employeeUrl = `/team/${employeeName.toLowerCase()}`;
+      // Check if user is Ilan (developer with special dashboard)
+      if (teamMember.name.toLowerCase() === 'ilan') {
+        sections.push({
+          title: "Ilan's Page",
+          icon: User,
+          items: [
+            { title: 'Dashboard', url: '/admin/ilan', icon: LayoutDashboard },
+            { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Code2 },
+          ],
+          noCollapse: true,
+        });
+      } else {
+        // For regular team members (employees), show their own dashboard and limited navigation
+        const employeeName = teamMember.name;
+        const employeeUrl = `/team/${employeeName.toLowerCase()}`;
 
-      // Employee's Page - their personal dashboard (no dropdown)
-      sections.push({
-        title: `${employeeName}'s Page`,
-        icon: User,
-        items: [
-          { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
-          { title: `${employeeName}'s Tasks`, url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
-          { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
-          { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
-        ],
-        noCollapse: true,
-      });
+        // Employee's Page - their personal dashboard (no dropdown)
+        sections.push({
+          title: `${employeeName}'s Page`,
+          icon: User,
+          items: [
+            { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
+            { title: `${employeeName}'s Tasks`, url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
+            { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
+            { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
+          ],
+          noCollapse: true,
+        });
 
-      // CLX CRM section (no dropdown for employees)
-      sections.push({
-        title: 'CLX CRM',
-        icon: Kanban,
-        items: [
-          { title: `${employeeName}'s Pipeline`, url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
-          { title: `${employeeName}'s Leads`, url: `/team/${employeeName.toLowerCase()}/leads`, icon: UserPlus },
-          { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
-          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
-          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
-        ],
-        noCollapse: true,
-      });
-
+        // CLX CRM section (no dropdown for employees)
+        sections.push({
+          title: 'CLX CRM',
+          icon: Kanban,
+          items: [
+            { title: `${employeeName}'s Pipeline`, url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+            { title: `${employeeName}'s Leads`, url: `/team/${employeeName.toLowerCase()}/leads`, icon: UserPlus },
+            { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
+            { title: 'Leads', url: '/admin/leads', icon: UserPlus },
+            { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+          ],
+          noCollapse: true,
+        });
+      }
     }
 
     return sections;
@@ -181,9 +194,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
 
   // Determine home page based on user role
   const homeUrl = useMemo(() => {
-    if (isOwner) return '/admin';
-    if (teamMember) return `/team/${teamMember.name.toLowerCase()}`;
-    return '/admin';
+    if (!teamMember) return '/admin';
+    
+    // Ilan, Brad, Adam use /admin/ paths; other team members use /team/ paths
+    const adminUsers = ['ilan', 'brad', 'adam'];
+    const isAdminUser = adminUsers.includes(teamMember.name.toLowerCase());
+    
+    if (isOwner && !isAdminUser) return '/admin';
+    if (isAdminUser) return `/admin/${teamMember.name.toLowerCase()}`;
+    return `/team/${teamMember.name.toLowerCase()}`;
   }, [isOwner, teamMember]);
 
   return (
