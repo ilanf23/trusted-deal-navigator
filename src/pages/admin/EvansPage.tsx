@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { startOfYear, startOfMonth, format, eachMonthOfInterval, isAfter, isBefore, addDays } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { TopActions } from '@/components/evan/dashboard/TopActions';
 
 export type TimePeriod = 'mtd' | 'ytd';
 
@@ -520,6 +521,9 @@ const EvansPage = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Top 10 Actions Now */}
+        <TopActions evanId={evanId} />
 
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
