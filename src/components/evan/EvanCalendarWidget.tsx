@@ -825,6 +825,31 @@ export const EvanCalendarWidget = () => {
       </CardHeader>
 
       <CardContent className="flex-1 overflow-y-auto pt-2">
+        {/* Google Calendar Connection Banner */}
+        {!calendarStatus?.connected && !isConnecting && (
+          <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-primary/10">
+                  <CalendarIcon className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Connect Google Calendar</p>
+                  <p className="text-xs text-muted-foreground">Sync your events to see them here</p>
+                </div>
+              </div>
+              <Button 
+                onClick={connectCalendar}
+                size="sm"
+                className="shrink-0"
+              >
+                <Link2 className="h-4 w-4 mr-2" />
+                Connect
+              </Button>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
