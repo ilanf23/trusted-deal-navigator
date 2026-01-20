@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   BarChart, 
   Bar, 
@@ -20,7 +23,6 @@ import {
   Line,
   Area,
   AreaChart,
-  Legend
 } from 'recharts';
 import { 
   TrendingUp, 
@@ -32,9 +34,15 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Briefcase,
-  Loader2
+  Loader2,
+  Calculator,
+  CheckCircle2,
+  Circle,
+  Clock,
+  CalendarDays
 } from 'lucide-react';
-import { startOfYear, startOfMonth, format, subMonths, eachMonthOfInterval, startOfDay, subDays, eachDayOfInterval, getDay } from 'date-fns';
+import { startOfYear, startOfMonth, format, eachMonthOfInterval, isAfter, isBefore, addDays } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 export type TimePeriod = 'mtd' | 'ytd';
 
@@ -51,6 +59,8 @@ const SOURCE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#
 
 const EvansPage = () => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
+  const [calcLoanAmount, setCalcLoanAmount] = useState<string>('500000');
+  const [calcExtraDeals, setCalcExtraDeals] = useState<string>('0');
 
   const now = new Date();
   const periodStart = timePeriod === 'ytd' ? startOfYear(now) : startOfMonth(now);
@@ -97,15 +107,17 @@ const EvansPage = () => {
     enabled: true,
   });
 
-  // Fetch communications for activity data
-  const { data: communicationsData, isLoading: commsLoading } = useQuery({
-    queryKey: ['evan-communications-analytics', timePeriod],
+  // Fetch upcoming tasks
+  const { data: upcomingTasks, isLoading: tasksLoading } = useQuery({
+    queryKey: ['evan-upcoming-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
-        .select('id, communication_type, direction, created_at, duration_seconds')
-        .gte('created_at', periodStart.toISOString())
-        .order('created_at', { ascending: true });
+        .from('evan_tasks')
+        .select('*')
+        .eq('is_completed', false)
+        .lte('due_date', addDays(now, 7).toISOString())
+        .order('due_date', { ascending: true })
+        .limit(6);
       
       if (error) throw error;
       return data;
@@ -167,7 +179,6 @@ const EvansPage = () => {
       };
     }
 
-    // Revenue from funded deals (assuming 2% fee)
     const fundedDealsWithAmount = fundedLeads?.filter(
       (lead) => lead.lead_responses && lead.lead_responses.length > 0 && lead.lead_responses[0]?.loan_amount
     ) || [];
@@ -176,11 +187,10 @@ const EvansPage = () => {
       (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0),
       0
     );
-    const totalRevenue = totalLoanVolume * 0.02; // 2% fee
+    const totalRevenue = totalLoanVolume * 0.02;
     const totalDeals = fundedDealsWithAmount.length;
     const avgDealSize = totalDeals > 0 ? totalRevenue / totalDeals : 0;
 
-    // Pipeline value
     const pipelineLeadsWithAmount = pipelineData?.filter(
       (lead) => lead.lead_responses && lead.lead_responses.length > 0
     ) || [];
@@ -190,7 +200,6 @@ const EvansPage = () => {
     );
     const pipelineDeals = pipelineData?.length || 0;
 
-    // Win rate (funded / total leads in period)
     const totalLeadsInPeriod = leadsData?.length || 0;
     const winRate = totalLeadsInPeriod > 0 ? Math.round((totalDeals / totalLeadsInPeriod) * 100) : 0;
 
@@ -228,7 +237,7 @@ const EvansPage = () => {
       return {
         month: format(month, 'MMM'),
         revenue,
-        target: 50000, // $50K monthly target
+        target: 50000,
         deals: monthlyFunded.length,
       };
     });
@@ -290,50 +299,26 @@ const EvansPage = () => {
       }));
   }, [leadsData]);
 
-  // Weekly activity data
-  const weeklyActivityData = useMemo(() => {
-    if (!communicationsData) return [];
-
-    const last7Days = eachDayOfInterval({
-      start: subDays(now, 6),
-      end: now,
-    });
-
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    return last7Days.map((day) => {
-      const dayStart = startOfDay(day);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
-
-      const dayCommunications = communicationsData.filter((comm) => {
-        const commDate = new Date(comm.created_at);
-        return commDate >= dayStart && commDate < dayEnd;
-      });
-
-      const calls = dayCommunications.filter((c) => c.communication_type === 'call').length;
-      const emails = dayCommunications.filter((c) => c.communication_type === 'email').length;
-      const meetings = dayCommunications.filter((c) => c.communication_type === 'meeting').length;
-
-      return {
-        day: dayNames[getDay(day)],
-        calls,
-        emails,
-        meetings,
-      };
-    });
-  }, [communicationsData, now]);
-
-  // Activity totals
-  const activityTotals = useMemo(() => {
-    if (!communicationsData) return { calls: 0, emails: 0, meetings: 0 };
-
+  // Commission calculator
+  const commissionCalc = useMemo(() => {
+    const loanAmount = parseFloat(calcLoanAmount) || 0;
+    const extraDeals = parseInt(calcExtraDeals) || 0;
+    
+    // Base commission: 2% of loan amount
+    const baseCommission = loanAmount * 0.02;
+    
+    // Extra bonus: 10% additional per extra deal closed
+    const bonusMultiplier = 1 + (extraDeals * 0.10);
+    const totalCommission = baseCommission * bonusMultiplier;
+    const bonusAmount = totalCommission - baseCommission;
+    
     return {
-      calls: communicationsData.filter((c) => c.communication_type === 'call').length,
-      emails: communicationsData.filter((c) => c.communication_type === 'email').length,
-      meetings: communicationsData.filter((c) => c.communication_type === 'meeting').length,
+      baseCommission,
+      bonusAmount,
+      totalCommission,
+      bonusPercentage: extraDeals * 10,
     };
-  }, [communicationsData]);
+  }, [calcLoanAmount, calcExtraDeals]);
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -341,8 +326,17 @@ const EvansPage = () => {
     return `$${value.toFixed(0)}`;
   };
 
+  const formatCurrencyFull = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
   const periodLabel = timePeriod === 'ytd' ? 'Year to Date' : 'Month to Date';
-  const isLoading = leadsLoading || commsLoading || pipelineLoading || fundedLoading;
+  const isLoading = leadsLoading || pipelineLoading || fundedLoading;
 
   // Calculate quarterly revenue for annual goal
   const quarterlyRevenue = useMemo(() => {
@@ -361,6 +355,20 @@ const EvansPage = () => {
 
   const annualTarget = 600000;
   const ytdRevenue = monthlyRevenueData.reduce((sum, m) => sum + m.revenue, 0);
+
+  const getPriorityColor = (priority: string | null) => {
+    switch (priority) {
+      case 'high': return 'text-red-600 bg-red-50 dark:bg-red-950/50';
+      case 'medium': return 'text-amber-600 bg-amber-50 dark:bg-amber-950/50';
+      case 'low': return 'text-green-600 bg-green-50 dark:bg-green-950/50';
+      default: return 'text-muted-foreground bg-muted';
+    }
+  };
+
+  const isOverdue = (dueDate: string | null) => {
+    if (!dueDate) return false;
+    return isBefore(new Date(dueDate), now);
+  };
 
   return (
     <AdminLayout>
@@ -387,6 +395,48 @@ const EvansPage = () => {
             </Tabs>
           </div>
         </div>
+
+        {/* Annual Goal Progress - Now at the top */}
+        <Card className="bg-gradient-to-r from-primary/5 via-background to-primary/5 border-primary/20">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Annual Goal Progress</CardTitle>
+                <CardDescription>Road to $600K revenue target</CardDescription>
+              </div>
+              <Badge variant={ytdRevenue >= annualTarget * 0.8 ? 'default' : 'secondary'}>
+                {ytdRevenue >= annualTarget * 0.8 ? 'On Track' : 'Behind Pace'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-3xl font-bold">{formatCurrency(ytdRevenue)}</span>
+                <span className="text-lg text-muted-foreground">of $600K</span>
+              </div>
+              <Progress value={(ytdRevenue / annualTarget) * 100} className="h-4" />
+              <div className="grid grid-cols-4 gap-4 pt-2">
+                <div className="text-center p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs text-muted-foreground mb-1">Q1</p>
+                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[0])}</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs text-muted-foreground mb-1">Q2</p>
+                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[1])}</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs text-muted-foreground mb-1">Q3</p>
+                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[2])}</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs text-muted-foreground mb-1">Q4</p>
+                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[3])}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* KPI Cards Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -658,95 +708,139 @@ const EvansPage = () => {
             </CardContent>
           </Card>
 
-          {/* Activity Chart */}
+          {/* Upcoming To-Do Section */}
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-base">Weekly Activity</CardTitle>
-                  <CardDescription>Calls, emails & meetings (last 7 days)</CardDescription>
+                  <CardTitle className="text-base">Upcoming To-Do</CardTitle>
+                  <CardDescription>Tasks due in the next 7 days</CardDescription>
                 </div>
+                <Link to="/user/evan/tasks">
+                  <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">
+                    View All
+                  </Badge>
+                </Link>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-[240px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyActivityData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="day" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Legend 
-                      iconType="circle" 
-                      iconSize={8}
-                      wrapperStyle={{ fontSize: '12px' }}
-                    />
-                    <Bar dataKey="calls" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Calls" />
-                    <Bar dataKey="emails" fill="#22c55e" radius={[4, 4, 0, 0]} name="Emails" />
-                    <Bar dataKey="meetings" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Meetings" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t mt-4">
-                <div className="text-center">
-                  <p className="text-xl font-bold text-blue-600">{activityTotals.calls}</p>
-                  <p className="text-xs text-muted-foreground">Total Calls</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xl font-bold text-green-600">{activityTotals.emails}</p>
-                  <p className="text-xs text-muted-foreground">Total Emails</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xl font-bold text-amber-600">{activityTotals.meetings}</p>
-                  <p className="text-xs text-muted-foreground">Total Meetings</p>
-                </div>
+              <div className="space-y-3">
+                {tasksLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : upcomingTasks && upcomingTasks.length > 0 ? (
+                  upcomingTasks.map((task) => (
+                    <div 
+                      key={task.id} 
+                      className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="mt-0.5">
+                        {task.is_completed ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Circle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{task.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {task.due_date && (
+                            <div className={`flex items-center gap-1 text-xs ${isOverdue(task.due_date) ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              {isOverdue(task.due_date) ? (
+                                <Clock className="h-3 w-3" />
+                              ) : (
+                                <CalendarDays className="h-3 w-3" />
+                              )}
+                              {format(new Date(task.due_date), 'MMM d')}
+                            </div>
+                          )}
+                          {task.priority && (
+                            <Badge variant="secondary" className={`text-xs py-0 px-1.5 ${getPriorityColor(task.priority)}`}>
+                              {task.priority}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground text-sm">
+                    <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                    <p>No upcoming tasks!</p>
+                    <p className="text-xs mt-1">You're all caught up</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Bottom Row - Target Progress */}
+        {/* Commission Calculator */}
         <Card>
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle className="text-base">Annual Goal Progress</CardTitle>
-                <CardDescription>Road to $600K revenue target</CardDescription>
+                <CardTitle className="text-base">Commission Calculator</CardTitle>
+                <CardDescription>Estimate your earnings with bonus for extra deals</CardDescription>
               </div>
-              <Badge variant={ytdRevenue >= annualTarget * 0.8 ? 'default' : 'secondary'}>
-                {ytdRevenue >= annualTarget * 0.8 ? 'On Track' : 'Behind Pace'}
-              </Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-3xl font-bold">{formatCurrency(ytdRevenue)}</span>
-                <span className="text-lg text-muted-foreground">of $600K</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Inputs */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="loanAmount">Loan Amount</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="loanAmount"
+                      type="number"
+                      value={calcLoanAmount}
+                      onChange={(e) => setCalcLoanAmount(e.target.value)}
+                      className="pl-9"
+                      placeholder="500000"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="extraDeals">Extra Deals Closed This Period</Label>
+                  <Input
+                    id="extraDeals"
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={calcExtraDeals}
+                    onChange={(e) => setCalcExtraDeals(e.target.value)}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    +10% commission bonus per extra deal
+                  </p>
+                </div>
               </div>
-              <Progress value={(ytdRevenue / annualTarget) * 100} className="h-3" />
-              <div className="grid grid-cols-4 gap-4 pt-2">
-                <div>
-                  <p className="text-sm text-muted-foreground">Q1</p>
-                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[0])}</p>
+
+              {/* Results */}
+              <div className="md:col-span-2 grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-muted/50 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Base Commission (2%)</p>
+                  <p className="text-xl font-bold">{formatCurrencyFull(commissionCalc.baseCommission)}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Q2</p>
-                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[1])}</p>
+                <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 text-center">
+                  <p className="text-xs text-green-600 dark:text-green-400 mb-1">
+                    Bonus (+{commissionCalc.bonusPercentage}%)
+                  </p>
+                  <p className="text-xl font-bold text-green-600 dark:text-green-400">
+                    +{formatCurrencyFull(commissionCalc.bonusAmount)}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Q3</p>
-                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[2])}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Q4</p>
-                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[3])}</p>
+                <div className="p-4 rounded-lg bg-primary/10 text-center">
+                  <p className="text-xs text-primary mb-1">Total Commission</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCurrencyFull(commissionCalc.totalCommission)}
+                  </p>
                 </div>
               </div>
             </div>
