@@ -50,9 +50,9 @@ const Auth = () => {
         return;
       }
 
-      // Force this user to the admin area only
+      // Force this user to admin/ilan
       if (email === 'ilan@maverich.ai') {
-        navigate('/admin', { replace: true });
+        navigate('/admin/ilan', { replace: true });
         return;
       }
 
