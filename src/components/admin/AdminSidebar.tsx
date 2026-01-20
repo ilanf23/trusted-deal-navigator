@@ -119,6 +119,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
           { title: "Evan's Tasks", url: '/user/evan/tasks', icon: ListTodo },
           { title: 'Calls', url: '/user/evan/calls', icon: Phone },
+          { title: 'Gmail', url: '/user/evan/gmail', icon: Mail },
         ],
         noCollapse: true,
       });
