@@ -105,6 +105,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           items: [
             { title: 'Overview', url: '/admin/ilan', icon: LayoutDashboard },
             { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Bug },
+          ],
+          noCollapse: true,
+        });
+
+        // Team section for Ilan
+        sections.push({
+          title: 'Team',
+          icon: Users,
+          items: [
             { 
               title: 'Evan', 
               url: '/admin/ilan/team/evan', 
@@ -115,7 +124,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
               ],
             },
           ],
-          noCollapse: true,
         });
       } else {
         // For regular team members (employees), show their own dashboard and limited navigation
