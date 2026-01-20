@@ -136,15 +136,15 @@ export const AvatarUpload = ({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`relative group cursor-pointer ${className}`}
+        className={`relative cursor-pointer ${className} group/avatar`}
       >
-        <Avatar className={`${sizeClasses[size]} ring-2 ring-sidebar-border transition-all group-hover:ring-sidebar-primary`}>
+        <Avatar className={`${sizeClasses[size]} ring-2 ring-sidebar-border transition-all group-hover/avatar:ring-sidebar-primary`}>
           <AvatarImage src={currentAvatarUrl || undefined} alt="Profile" />
           <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-base font-medium">
             {fallbackInitials}
           </AvatarFallback>
         </Avatar>
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover/avatar:opacity-100 transition-opacity">
           <Camera className="w-4 h-4 text-white" />
         </div>
       </button>
