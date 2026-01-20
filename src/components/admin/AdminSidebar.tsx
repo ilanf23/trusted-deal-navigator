@@ -101,15 +101,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         items: [
           { title: 'Brad', url: '/admin/brad', icon: User },
           { title: 'Adam', url: '/admin/adam', icon: User },
-          { title: 'Evan', url: '/user/evan', icon: User },
-          { title: 'Maura', url: '/user/maura', icon: User },
-          { title: 'Wendy', url: '/user/wendy', icon: User },
+          { title: 'Evan', url: '/team/evan', icon: User },
+          { title: 'Maura', url: '/team/maura', icon: User },
+          { title: 'Wendy', url: '/team/wendy', icon: User },
         ],
       });
     } else if (teamMember) {
-      // For regular employees, show their own dashboard and limited navigation
+      // For regular team members (employees), show their own dashboard and limited navigation
       const employeeName = teamMember.name;
-      const employeeUrl = `/user/${employeeName.toLowerCase()}`;
+      const employeeUrl = `/team/${employeeName.toLowerCase()}`;
 
       // Employee's Page - their personal dashboard (no dropdown)
       sections.push({
@@ -117,9 +117,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         icon: User,
         items: [
           { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
-          { title: "Evan's Tasks", url: '/user/evan/tasks', icon: ListTodo },
-          { title: 'Calls', url: '/user/evan/calls', icon: Phone },
-          { title: 'Gmail', url: '/user/evan/gmail', icon: Mail },
+          { title: `${employeeName}'s Tasks`, url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
+          { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
+          { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
         ],
         noCollapse: true,
       });
@@ -129,8 +129,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         title: 'CLX CRM',
         icon: Kanban,
         items: [
-          { title: "Evan's Pipeline", url: '/user/evan/pipeline', icon: Kanban },
-          { title: "Evan's Leads", url: '/user/evan/leads', icon: UserPlus },
+          { title: `${employeeName}'s Pipeline`, url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+          { title: `${employeeName}'s Leads`, url: `/team/${employeeName.toLowerCase()}/leads`, icon: UserPlus },
           { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
@@ -183,7 +183,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   // Determine home page based on user role
   const homeUrl = useMemo(() => {
     if (isOwner) return '/admin';
-    if (teamMember) return `/user/${teamMember.name.toLowerCase()}`;
+    if (teamMember) return `/team/${teamMember.name.toLowerCase()}`;
     return '/admin';
   }, [isOwner, teamMember]);
 

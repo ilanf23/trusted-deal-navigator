@@ -78,24 +78,26 @@ const App = () => (
             <Route path="/admin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
             <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
             <Route path="/admin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
-            <Route path="/user/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
-            <Route path="/user/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
-            <Route path="/user/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
-            <Route path="/user/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
-            <Route path="/user/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
-            <Route path="/user/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
-            <Route path="/user/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
-            <Route path="/user/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
+            {/* Team Member Routes (employees like Evan, Maura, Wendy) */}
+            <Route path="/team/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
+            <Route path="/team/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
+            <Route path="/team/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
+            <Route path="/team/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
+            <Route path="/team/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
+            <Route path="/team/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
+            <Route path="/team/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
+            <Route path="/team/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
+            {/* Founder/Admin Routes (Brad, Adam) */}
             <Route path="/admin/brad" element={<EmployeeRoute employeeName="Brad"><BradsPage /></EmployeeRoute>} />
             <Route path="/admin/adam" element={<EmployeeRoute employeeName="Adam"><AdamsPage /></EmployeeRoute>} />
             <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
             <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
-            {/* Client Portal Routes - clientOnly redirects admins to /admin */}
-            <Route path="/portal" element={<ProtectedRoute clientOnly><PortalDashboard /></ProtectedRoute>} />
-            <Route path="/portal/contracts" element={<ProtectedRoute clientOnly><PortalContracts /></ProtectedRoute>} />
-            <Route path="/portal/invoices" element={<ProtectedRoute clientOnly><PortalInvoices /></ProtectedRoute>} />
-            <Route path="/portal/messages" element={<ProtectedRoute clientOnly><PortalMessages /></ProtectedRoute>} />
-            <Route path="/portal/profile" element={<ProtectedRoute clientOnly><PortalProfile /></ProtectedRoute>} />
+            {/* Client Portal Routes - /user/{name} for clients */}
+            <Route path="/user" element={<ProtectedRoute clientOnly><PortalDashboard /></ProtectedRoute>} />
+            <Route path="/user/contracts" element={<ProtectedRoute clientOnly><PortalContracts /></ProtectedRoute>} />
+            <Route path="/user/invoices" element={<ProtectedRoute clientOnly><PortalInvoices /></ProtectedRoute>} />
+            <Route path="/user/messages" element={<ProtectedRoute clientOnly><PortalMessages /></ProtectedRoute>} />
+            <Route path="/user/profile" element={<ProtectedRoute clientOnly><PortalProfile /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
