@@ -252,6 +252,14 @@ export const EvanCalendarWidget = () => {
   const connectCalendar = async () => {
     setIsConnecting(true);
 
+    // First, verify the user has an active session before doing anything
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error('Please log in to connect Google Calendar');
+      setIsConnecting(false);
+      return;
+    }
+
     // Open the popup IMMEDIATELY and SYNCHRONOUSLY to avoid popup blockers
     // This must happen before any async operation
     const width = 500;
