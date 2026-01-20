@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Mail, Phone, Building2, Calendar, FileText, User, DollarSign, Clock, Save, Landmark } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Loader2, Mail, Phone, Building2, Calendar, FileText, User, DollarSign, Clock, Save, Landmark, PhoneCall, ChevronDown, ChevronUp, Play } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -14,6 +15,7 @@ import type { Database } from '@/integrations/supabase/types';
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadResponse = Database['public']['Tables']['lead_responses']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
+type Communication = Database['public']['Tables']['evan_communications']['Row'];
 
 interface AssignedProgram {
   id: string;
@@ -47,16 +49,21 @@ interface LeadDetailDialogProps {
 const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetailDialogProps) => {
   const [responses, setResponses] = useState<LeadResponse | null>(null);
   const [assignedPrograms, setAssignedPrograms] = useState<AssignedProgram[]>([]);
+  const [communications, setCommunications] = useState<Communication[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingComms, setLoadingComms] = useState(false);
   const [notes, setNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [expandedTranscripts, setExpandedTranscripts] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   useEffect(() => {
     if (lead && open) {
       setNotes(lead.notes || '');
+      setExpandedTranscripts({});
       fetchResponses();
       fetchAssignedPrograms();
+      fetchCommunications();
     }
   }, [lead, open]);
 
@@ -99,6 +106,26 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     }
   };
 
+  const fetchCommunications = async () => {
+    if (!lead) return;
+    setLoadingComms(true);
+    try {
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('*')
+        .eq('lead_id', lead.id)
+        .eq('communication_type', 'call')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCommunications(data || []);
+    } catch (error) {
+      console.error('Error fetching communications:', error);
+    } finally {
+      setLoadingComms(false);
+    }
+  };
+
   const handleSaveNotes = async () => {
     if (!lead) return;
     setSavingNotes(true);
@@ -119,6 +146,20 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     }
   };
 
+  const toggleTranscript = (commId: string) => {
+    setExpandedTranscripts(prev => ({
+      ...prev,
+      [commId]: !prev[commId]
+    }));
+  };
+
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   if (!lead) return null;
 
   const formatDate = (date: string | null) => {
@@ -130,6 +171,9 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     if (!amount) return 'N/A';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
   };
+
+  const callsWithTranscripts = communications.filter(c => c.transcript);
+  const callsWithoutTranscripts = communications.filter(c => !c.transcript);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -194,6 +238,93 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Call Transcripts Section */}
+            <Separator />
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <PhoneCall className="w-4 h-4" />
+                Call Transcripts ({callsWithTranscripts.length})
+              </h3>
+              
+              {loadingComms ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+              ) : callsWithTranscripts.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground bg-muted/50 rounded-lg">
+                  <PhoneCall className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No call transcripts available</p>
+                  {callsWithoutTranscripts.length > 0 && (
+                    <p className="text-sm mt-1">{callsWithoutTranscripts.length} call(s) without transcripts</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {callsWithTranscripts.map((comm) => (
+                    <Collapsible
+                      key={comm.id}
+                      open={expandedTranscripts[comm.id]}
+                      onOpenChange={() => toggleTranscript(comm.id)}
+                    >
+                      <div className="border rounded-lg overflow-hidden">
+                        <CollapsibleTrigger asChild>
+                          <button className="w-full p-3 flex items-center justify-between hover:bg-muted/50 transition-colors text-left">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-full ${comm.direction === 'inbound' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-blue-100 dark:bg-blue-900/50'}`}>
+                                <PhoneCall className={`w-4 h-4 ${comm.direction === 'inbound' ? 'text-green-600' : 'text-blue-600'}`} />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {comm.direction === 'inbound' ? 'Inbound Call' : 'Outbound Call'}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{format(new Date(comm.created_at), 'MMM d, yyyy h:mm a')}</span>
+                                  <span>•</span>
+                                  <span>{formatDuration(comm.duration_seconds)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                Transcript Available
+                              </Badge>
+                              {expandedTranscripts[comm.id] ? (
+                                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="border-t p-4 bg-muted/30">
+                            {comm.recording_url && (
+                              <div className="mb-3">
+                                <a 
+                                  href={comm.recording_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                                >
+                                  <Play className="w-4 h-4" />
+                                  Play Recording
+                                </a>
+                              </div>
+                            )}
+                            <div className="prose prose-sm max-w-none">
+                              <div className="whitespace-pre-wrap text-sm leading-relaxed font-mono bg-background p-3 rounded-lg border">
+                                {comm.transcript}
+                              </div>
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* How We Met */}
