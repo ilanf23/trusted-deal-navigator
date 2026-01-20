@@ -18,6 +18,139 @@ interface RequestBody {
   callDate: string;
 }
 
+// Helper function to refresh Gmail access token
+async function refreshGmailAccessToken(refreshToken: string): Promise<string> {
+  const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')!;
+  const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to refresh Gmail token');
+  }
+
+  const tokens = await response.json();
+  return tokens.access_token;
+}
+
+// Helper function to get valid Gmail access token for Evan
+async function getEvanGmailAccessToken(supabase: any): Promise<{ accessToken: string; email: string } | null> {
+  // Get Evan's team member record to find his user_id
+  const { data: evanTeamMember } = await supabase
+    .from('team_members')
+    .select('user_id')
+    .ilike('name', '%evan%')
+    .single();
+
+  if (!evanTeamMember?.user_id) {
+    console.log("Evan's user_id not found in team_members");
+    return null;
+  }
+
+  // Get Evan's Gmail connection
+  const { data: connection, error } = await supabase
+    .from('gmail_connections')
+    .select('*')
+    .eq('user_id', evanTeamMember.user_id)
+    .single();
+
+  if (error || !connection) {
+    console.log("Evan's Gmail not connected");
+    return null;
+  }
+
+  // Check if token needs refresh
+  const tokenExpiry = new Date(connection.token_expiry);
+  const now = new Date();
+
+  if (tokenExpiry.getTime() - now.getTime() < 5 * 60 * 1000) {
+    console.log('Refreshing Evan\'s Gmail access token...');
+    try {
+      const newAccessToken = await refreshGmailAccessToken(connection.refresh_token);
+      const newExpiry = new Date(Date.now() + 3600 * 1000);
+
+      await supabase
+        .from('gmail_connections')
+        .update({
+          access_token: newAccessToken,
+          token_expiry: newExpiry.toISOString(),
+        })
+        .eq('user_id', evanTeamMember.user_id);
+
+      return { accessToken: newAccessToken, email: connection.email };
+    } catch (e) {
+      console.error('Failed to refresh token:', e);
+      return null;
+    }
+  }
+
+  return { accessToken: connection.access_token, email: connection.email };
+}
+
+// Helper function to create a Gmail draft
+async function createGmailDraft(
+  accessToken: string,
+  fromEmail: string,
+  to: string,
+  subject: string,
+  htmlBody: string
+): Promise<boolean> {
+  // Convert HTML to plain text for better compatibility
+  const plainBody = htmlBody
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim();
+
+  const email = [
+    `From: ${fromEmail}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    plainBody,
+  ].join('\r\n');
+
+  const encodedEmail = btoa(unescape(encodeURIComponent(email)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: { raw: encodedEmail },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Failed to create Gmail draft:', error);
+    return false;
+  }
+
+  const result = await response.json();
+  console.log('Gmail draft created:', result.id);
+  return true;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -39,6 +172,7 @@ serve(async (req) => {
 
     let callRating = 5;
     let ratingReasoning = "No transcript available for analysis.";
+    let followUpEmailSubject = "";
     let followUpEmailContent = "";
 
     // Step 1: Use AI to analyze the call transcript and generate rating + follow-up email
@@ -61,8 +195,8 @@ Respond with a JSON object (no markdown) with these exact fields:
   "rating": <number 1-10>,
   "reasoning": "<detailed reasoning>",
   "followUpEmail": {
-    "subject": "<email subject>",
-    "body": "<email body in HTML format>"
+    "subject": "<email subject line>",
+    "body": "<email body - professional, warm, and personalized based on the call>"
   }
 }`;
 
@@ -94,6 +228,7 @@ Respond with a JSON object (no markdown) with these exact fields:
               const analysis = JSON.parse(cleanedContent);
               callRating = analysis.rating || 5;
               ratingReasoning = analysis.reasoning || "Analysis completed.";
+              followUpEmailSubject = analysis.followUpEmail?.subject || `Following up on our conversation - ${leadName}`;
               followUpEmailContent = analysis.followUpEmail?.body || "";
               
               console.log("AI Analysis complete - Rating:", callRating);
@@ -130,7 +265,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
 
 **Next Steps:**
 1. Review call transcript in Leads section
-2. Send personalized follow-up email
+2. Send personalized follow-up email (draft created in Gmail)
 3. Schedule discovery meeting if qualified`,
         priority: callRating >= 7 ? 'high' : callRating >= 5 ? 'medium' : 'low',
         status: 'todo',
@@ -156,9 +291,49 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
       });
     }
 
-    // Step 3: Store the follow-up email content in the lead notes
+    // Step 3: Create Gmail draft for Evan if lead has email
+    let gmailDraftCreated = false;
+    
     if (followUpEmailContent && leadEmail) {
-      const updatedNotes = `📞 Initial call: ${callDate}\n📝 Transcript available (Communication ID: ${communicationId})\n\n📧 **AI-Generated Follow-up Email:**\n${followUpEmailContent}`;
+      console.log("Creating Gmail draft for Evan...");
+      
+      const gmailCreds = await getEvanGmailAccessToken(supabase);
+      
+      if (gmailCreds) {
+        try {
+          gmailDraftCreated = await createGmailDraft(
+            gmailCreds.accessToken,
+            gmailCreds.email,
+            leadEmail,
+            followUpEmailSubject,
+            followUpEmailContent
+          );
+          
+          if (gmailDraftCreated) {
+            console.log("Gmail draft created successfully");
+          }
+        } catch (draftError) {
+          console.error("Failed to create Gmail draft:", draftError);
+        }
+      } else {
+        console.log("Evan's Gmail not connected - skipping draft creation");
+      }
+    }
+
+    // Step 4: Store the follow-up email content in the lead notes
+    if (followUpEmailContent && leadEmail) {
+      const draftNote = gmailDraftCreated 
+        ? '✅ Gmail draft created automatically' 
+        : '📧 Email content generated (Gmail not connected)';
+        
+      const updatedNotes = `📞 Initial call: ${callDate}
+📝 Transcript available (Communication ID: ${communicationId})
+${draftNote}
+
+📧 **AI-Generated Follow-up Email:**
+Subject: ${followUpEmailSubject}
+
+${followUpEmailContent}`;
       
       await supabase
         .from('leads')
@@ -166,7 +341,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
         .eq('id', leadId);
     }
 
-    // Step 4: Send rating notification email to Adam and Brad
+    // Step 5: Send rating notification email to Adam and Brad
     console.log("Sending rating notification to Adam and Brad...");
 
     const ratingEmoji = callRating >= 8 ? '🌟' : callRating >= 6 ? '👍' : callRating >= 4 ? '📊' : '⚠️';
@@ -187,6 +362,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
     .details { background: white; border-radius: 8px; padding: 15px; margin-top: 15px; }
     .label { font-weight: 600; color: #475569; }
     .footer { text-align: center; padding: 20px; color: #64748b; font-size: 12px; }
+    .draft-badge { display: inline-block; background: #22c55e; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -199,6 +375,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
       <div class="rating-box">
         <div class="rating-number">${callRating}/10</div>
         <div class="rating-label">Call Quality Score</div>
+        ${gmailDraftCreated ? '<div class="draft-badge">✉️ Gmail Draft Created</div>' : ''}
       </div>
       
       <div class="details">
@@ -228,7 +405,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
 </body>
 </html>`;
 
-    // Step 5: Save notification to database for in-app viewing
+    // Step 6: Save notification to database for in-app viewing
     console.log("Saving call rating notification to database...");
     
     const { data: notification, error: notificationError } = await supabase
@@ -277,6 +454,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
         ratingReasoning,
         taskId: task?.id,
         followUpEmailGenerated: !!followUpEmailContent,
+        gmailDraftCreated,
       }),
       {
         status: 200,
