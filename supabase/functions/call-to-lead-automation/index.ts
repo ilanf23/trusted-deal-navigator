@@ -228,7 +228,33 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
 </body>
 </html>`;
 
-    // Send to Adam and Brad
+    // Step 5: Save notification to database for in-app viewing
+    console.log("Saving call rating notification to database...");
+    
+    const { data: notification, error: notificationError } = await supabase
+      .from('call_rating_notifications')
+      .insert({
+        lead_id: leadId,
+        communication_id: communicationId,
+        lead_name: leadName,
+        lead_phone: leadPhone,
+        lead_email: leadEmail,
+        call_date: callDate,
+        call_direction: callDirection,
+        call_rating: callRating,
+        rating_reasoning: ratingReasoning,
+        transcript_preview: transcript ? transcript.substring(0, 500) : null,
+      })
+      .select()
+      .single();
+
+    if (notificationError) {
+      console.error("Failed to save notification:", notificationError);
+    } else {
+      console.log("Notification saved:", notification.id);
+    }
+
+    // Send to Adam and Brad via email
     const recipients = ['adam@company.com', 'ilan@maverich.ai']; // Brad's email is ilan@maverich.ai
 
     try {
