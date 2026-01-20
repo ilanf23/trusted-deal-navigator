@@ -3,7 +3,6 @@ import { useTasksData } from '@/hooks/useTasksData';
 import { Task, ViewMode } from './types';
 import { TaskTableView } from './TaskTableView';
 import { TaskKanbanView } from './TaskKanbanView';
-import { TaskCalendarView } from './TaskCalendarView';
 import { TaskTimelineView } from './TaskTimelineView';
 import { TaskDetailDialog } from './TaskDetailDialog';
 import { Button } from '@/components/ui/button';
@@ -128,7 +127,6 @@ export const TaskWorkspace = () => {
   const viewOptions = [
     { mode: 'table' as ViewMode, icon: Table, label: 'List' },
     { mode: 'kanban' as ViewMode, icon: LayoutGrid, label: 'Board' },
-    { mode: 'calendar' as ViewMode, icon: Calendar, label: 'Calendar' },
     { mode: 'timeline' as ViewMode, icon: GanttChart, label: 'Timeline' },
   ];
 
@@ -268,13 +266,6 @@ export const TaskWorkspace = () => {
           />
         )}
 
-        {viewMode === 'calendar' && (
-          <TaskCalendarView
-            tasks={filteredTasks}
-            onOpenDetail={setSelectedTask}
-            onAddTask={handleAddTask}
-          />
-        )}
 
         {viewMode === 'timeline' && (
           <TaskTimelineView
