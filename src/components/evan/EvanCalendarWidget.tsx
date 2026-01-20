@@ -54,8 +54,30 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
-// Dynamic callback URL based on current environment
-const getCalendarCallbackUrl = () => `${window.location.origin}/admin/calendar-callback`;
+// OAuth cannot complete inside the embedded editor preview domain.
+// When running on *.lovableproject.com, redirect users to the standalone preview URL.
+const isEmbeddedLovablePreview = () => {
+  try {
+    return (
+      window.location.hostname.endsWith('.lovableproject.com') ||
+      window.self !== window.top
+    );
+  } catch {
+    // Accessing window.top can throw due to cross-origin restrictions
+    return true;
+  }
+};
+
+const getCanonicalOrigin = () => {
+  const host = window.location.hostname;
+  if (host.endsWith('.lovableproject.com')) {
+    const id = host.replace('.lovableproject.com', '');
+    return `https://id-preview--${id}.lovable.app`;
+  }
+  return window.location.origin;
+};
+
+const getCalendarCallbackUrl = () => `${getCanonicalOrigin()}/admin/calendar-callback`;
 
 interface Appointment {
   id: string;
@@ -252,6 +274,15 @@ export const EvanCalendarWidget = () => {
   const connectCalendar = async () => {
     setIsConnecting(true);
 
+    // Google blocks OAuth inside the embedded editor preview (iframe); use standalone preview.
+    if (isEmbeddedLovablePreview()) {
+      const targetUrl = `${getCanonicalOrigin()}${window.location.pathname}${window.location.search}`;
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      toast.error('Open the standalone preview tab to connect Google Calendar.');
+      setIsConnecting(false);
+      return;
+    }
+
     // First, verify the user has an active session before doing anything
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -319,6 +350,7 @@ export const EvanCalendarWidget = () => {
 
     try {
       const callbackUrl = getCalendarCallbackUrl();
+      console.info('[Google Calendar OAuth] redirectUri:', callbackUrl);
       
       // Store the callback URL for the CalendarCallback page to use
       localStorage.setItem('calendarCallbackUrl', callbackUrl);
