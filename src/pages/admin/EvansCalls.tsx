@@ -738,8 +738,8 @@ const EvansCalls = () => {
                                   {format(new Date(call.created_at), 'MMM d, yyyy h:mm a')}
                                 </p>
                                 <div className="flex items-center gap-1 ml-auto">
-                                  {/* Add as Lead button - only show if no lead is linked */}
-                                  {!call.lead_id && call.phone_number && (
+                                  {/* Add as Lead button - always show for calls with phone numbers */}
+                                  {call.phone_number && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
