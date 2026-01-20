@@ -42,6 +42,7 @@ import BradsPage from "./pages/admin/BradsPage";
 import AdamsPage from "./pages/admin/AdamsPage";
 import IlansPage from "./pages/admin/IlansPage";
 import BugTesting from "./pages/admin/BugTesting";
+import BugReporting from "./pages/admin/BugReporting";
 import IlanTeamEvanBugs from "./pages/admin/IlanTeamEvanBugs";
 import IlanTeamEvanDevNotes from "./pages/admin/IlanTeamEvanDevNotes";
 import CalendarCallback from "./pages/admin/CalendarCallback";
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/admin/contracts" element={<ProtectedRoute requireAdmin><AdminContracts /></ProtectedRoute>} />
             <Route path="/admin/invoices" element={<ProtectedRoute requireAdmin><AdminInvoices /></ProtectedRoute>} />
             <Route path="/admin/messages" element={<ProtectedRoute requireAdmin><AdminMessages /></ProtectedRoute>} />
+            <Route path="/admin/bug-reporting" element={<ProtectedRoute requireAdmin><BugReporting /></ProtectedRoute>} />
             <Route path="/admin/marketing" element={<ProtectedRoute requireAdmin><AdminMarketing /></ProtectedRoute>} />
             <Route path="/admin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
             <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
