@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import AdminSidebar from './AdminSidebar';
 import FloatingInbox from './FloatingInbox';
+import FloatingBugReport from './FloatingBugReport';
 import AIEmailAssistant from './AIEmailAssistant';
 import { IncomingCallPopup } from '@/components/evan/IncomingCallPopup';
 import { Menu } from 'lucide-react';
@@ -63,6 +64,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           onUseEmail={() => {}}
         />
         <IncomingCallPopup />
+        <FloatingBugReport />
       </div>
     </SidebarProvider>
   );
