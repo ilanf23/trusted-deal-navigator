@@ -26,13 +26,13 @@ const EmployeeRoute = ({ children, employeeName }: EmployeeRouteProps) => {
 
   // If user is not a team member at all, they can't access employee dashboards
   if (!teamMember) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   // Check if user can access this specific employee's dashboard
   if (!canAccessDashboard(employeeName)) {
-    // Redirect to their own dashboard
-    return <Navigate to={`/admin/${teamMember.name.toLowerCase()}`} replace />;
+    // Redirect to their own dashboard - use /user/ path for employees
+    return <Navigate to={`/user/${teamMember.name.toLowerCase()}`} replace />;
   }
 
   return <>{children}</>;

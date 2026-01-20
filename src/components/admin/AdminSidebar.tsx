@@ -188,10 +188,17 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
     return email.charAt(0).toUpperCase();
   };
 
+  // Determine home page based on user role
+  const homeUrl = useMemo(() => {
+    if (isOwner) return '/admin';
+    if (teamMember) return `/user/${teamMember.name.toLowerCase()}`;
+    return '/admin';
+  }, [isOwner, teamMember]);
+
   return (
     <Sidebar className="border-r border-sidebar-border bg-gradient-to-b from-sidebar to-white/90 backdrop-blur-xl w-72">
       <SidebarHeader className="p-4 border-b border-sidebar-border/50">
-        <Link to="/admin" className="flex items-center justify-center group">
+        <Link to={homeUrl} className="flex items-center justify-center group">
           <img 
             src="/logo.png" 
             alt="CommercialLendingX" 
