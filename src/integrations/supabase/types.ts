@@ -689,6 +689,177 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_activities: {
+        Row: {
+          activity_type: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string
+          title: string | null
+        }
+        Insert: {
+          activity_type: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id: string
+          title?: string | null
+        }
+        Update: {
+          activity_type?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_addresses: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          address_type: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          lead_id: string
+          state: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          address_type?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          lead_id: string
+          state?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          address_type?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          lead_id?: string
+          state?: string | null
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_addresses_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_connections: {
+        Row: {
+          connected_company: string | null
+          connected_lead_id: string | null
+          connected_name: string | null
+          created_at: string
+          id: string
+          lead_id: string
+          notes: string | null
+          relationship_type: string | null
+        }
+        Insert: {
+          connected_company?: string | null
+          connected_lead_id?: string | null
+          connected_name?: string | null
+          created_at?: string
+          id?: string
+          lead_id: string
+          notes?: string | null
+          relationship_type?: string | null
+        }
+        Update: {
+          connected_company?: string | null
+          connected_lead_id?: string | null
+          connected_name?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          relationship_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_connections_connected_lead_id_fkey"
+            columns: ["connected_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_connections_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_emails: {
+        Row: {
+          created_at: string
+          email: string
+          email_type: string | null
+          id: string
+          is_primary: boolean | null
+          lead_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          email_type?: string | null
+          id?: string
+          is_primary?: boolean | null
+          lead_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          email_type?: string | null
+          id?: string
+          is_primary?: boolean | null
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_emails_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_lender_programs: {
         Row: {
           created_at: string
@@ -730,6 +901,73 @@ export type Database = {
             columns: ["program_id"]
             isOneToOne: false
             referencedRelation: "lender_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_other_contacts: {
+        Row: {
+          contact_type: string
+          contact_value: string
+          created_at: string
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          contact_type: string
+          contact_value: string
+          created_at?: string
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          contact_type?: string
+          contact_value?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_other_contacts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_phones: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          lead_id: string
+          phone_number: string
+          phone_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          lead_id: string
+          phone_number: string
+          phone_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          lead_id?: string
+          phone_number?: string
+          phone_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_phones_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -937,15 +1175,79 @@ export type Database = {
           },
         ]
       }
-      leads: {
+      lead_tasks: {
         Row: {
           assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          lead_id: string
+          priority: string | null
+          status: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id: string
+          priority?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string
+          priority?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          about: string | null
+          assigned_to: string | null
           company_name: string | null
+          contact_type: string | null
           converted_at: string | null
           converted_to_client_id: string | null
           created_at: string
           email: string | null
           id: string
+          known_as: string | null
+          linkedin: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -955,16 +1257,24 @@ export type Database = {
           questionnaire_token: string | null
           source: string | null
           status: Database["public"]["Enums"]["lead_status"]
+          tags: string[] | null
+          title: string | null
+          twitter: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          about?: string | null
           assigned_to?: string | null
           company_name?: string | null
+          contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          known_as?: string | null
+          linkedin?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -974,16 +1284,24 @@ export type Database = {
           questionnaire_token?: string | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          title?: string | null
+          twitter?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          about?: string | null
           assigned_to?: string | null
           company_name?: string | null
+          contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          known_as?: string | null
+          linkedin?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
@@ -993,7 +1311,11 @@ export type Database = {
           questionnaire_token?: string | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
+          tags?: string[] | null
+          title?: string | null
+          twitter?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: [
           {
