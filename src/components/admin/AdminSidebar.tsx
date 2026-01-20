@@ -14,9 +14,7 @@ import {
   Newspaper,
   User,
   Mail,
-  Sparkles,
   ChevronDown,
-  ChevronRight,
   Building2,
   ListTodo,
   Phone,
@@ -121,7 +119,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: `${employeeName}'s Tasks`, url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
           { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
           { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
-          { title: 'Dev Notes', url: `/team/${employeeName.toLowerCase()}/dev-notes`, icon: Code2 },
         ],
         noCollapse: true,
       });
@@ -161,7 +158,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   };
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(getSectionOpenState);
-  const [toolsOpen, setToolsOpen] = useState(false);
 
   const toggleSection = (sectionTitle: string) => {
     setOpenSections((prev) => ({
@@ -273,64 +269,22 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           )
         ))}
 
-        {/* Tools Section */}
-        <Collapsible open={toolsOpen} onOpenChange={setToolsOpen}>
-          <CollapsibleTrigger className="w-full">
-            <div className={`
-              flex items-center justify-between py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer
-              ${toolsOpen 
-                ? 'bg-admin-orange-light text-admin-orange-dark' 
-                : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+        {/* Dev Notes - Bottom of main nav */}
+        {teamMember && !isOwner && (
+          <Link
+            to={`/team/${teamMember.name.toLowerCase()}/dev-notes`}
+            className={`
+              flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-200 mt-4
+              ${isActive(`/team/${teamMember.name.toLowerCase()}/dev-notes`) 
+                ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
+                : 'text-muted-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
               }
-            `}>
-              <div className="flex items-center gap-3">
-                <ChevronDown 
-                  className={`w-4 h-4 transition-transform duration-200 ${
-                    toolsOpen ? '' : '-rotate-90'
-                  }`} 
-                />
-                <Sparkles className={`w-5 h-5 ${toolsOpen ? 'text-admin-orange' : ''}`} strokeWidth={1.75} />
-                <span className="text-base font-medium">Tools</span>
-              </div>
-            </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="ml-4 mt-1 space-y-1 border-l-2 border-admin-orange/30">
-              <button
-                onClick={onInboxToggle}
-                className={`
-                  w-full flex items-center justify-between gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
-                  ${inboxOpen 
-                    ? 'bg-gradient-to-r from-admin-orange to-admin-orange-dark text-white shadow-md' 
-                    : 'text-muted-foreground hover:bg-admin-orange-light hover:text-admin-orange-dark'
-                  }
-                `}
-              >
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4" strokeWidth={1.75} />
-                  <span className="text-sm font-medium">Email</span>
-                </div>
-                <ChevronRight className="w-4 h-4 opacity-40" />
-              </button>
-              <button
-                onClick={onAIAssistantToggle}
-                className={`
-                  w-full flex items-center justify-between gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
-                  ${aiAssistantOpen 
-                    ? 'bg-gradient-to-r from-admin-orange to-admin-orange-dark text-white shadow-md' 
-                    : 'text-muted-foreground hover:bg-admin-orange-light hover:text-admin-orange-dark'
-                  }
-                `}
-              >
-                <div className="flex items-center gap-3">
-                  <Sparkles className="w-4 h-4" strokeWidth={1.75} />
-                  <span className="text-sm font-medium">AI Agent</span>
-                </div>
-                <ChevronRight className="w-4 h-4 opacity-40" />
-              </button>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+            `}
+          >
+            <Code2 className="w-5 h-5" strokeWidth={1.75} />
+            <span className="text-base font-medium">Dev Notes</span>
+          </Link>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-5 border-t border-border/40">
