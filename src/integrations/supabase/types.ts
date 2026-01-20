@@ -100,6 +100,69 @@ export type Database = {
         }
         Relationships: []
       }
+      call_rating_notifications: {
+        Row: {
+          call_date: string
+          call_direction: string
+          call_rating: number
+          communication_id: string | null
+          created_at: string
+          id: string
+          lead_email: string | null
+          lead_id: string | null
+          lead_name: string
+          lead_phone: string | null
+          rating_reasoning: string | null
+          read_at: string | null
+          transcript_preview: string | null
+        }
+        Insert: {
+          call_date: string
+          call_direction?: string
+          call_rating: number
+          communication_id?: string | null
+          created_at?: string
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          lead_name: string
+          lead_phone?: string | null
+          rating_reasoning?: string | null
+          read_at?: string | null
+          transcript_preview?: string | null
+        }
+        Update: {
+          call_date?: string
+          call_direction?: string
+          call_rating?: number
+          communication_id?: string | null
+          created_at?: string
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          lead_name?: string
+          lead_phone?: string | null
+          rating_reasoning?: string | null
+          read_at?: string | null
+          transcript_preview?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_rating_notifications_communication_id_fkey"
+            columns: ["communication_id"]
+            isOneToOne: false
+            referencedRelation: "evan_communications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_rating_notifications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           client_id: string
