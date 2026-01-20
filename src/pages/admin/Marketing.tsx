@@ -18,6 +18,7 @@ const COLORS = ['hsl(217, 71%, 22%)', 'hsl(32, 95%, 44%)', 'hsl(187, 71%, 35%)',
 
 const statusColors: Record<LeadStatus, string> = {
   discovery: 'bg-blue-100 text-blue-800',
+  questionnaire: 'bg-indigo-100 text-indigo-800',
   pre_qualification: 'bg-cyan-100 text-cyan-800',
   document_collection: 'bg-yellow-100 text-yellow-800',
   underwriting: 'bg-orange-100 text-orange-800',
