@@ -130,13 +130,13 @@ const IlansGmail = () => {
   });
 
   // Fetch emails from Gmail API
-  const { data: emailsData, isLoading: emailsLoading, refetch: refetchEmails } = useQuery({
+  const { data: emailsData, isLoading: emailsLoading, refetch: refetchEmails, error: emailsError } = useQuery({
     queryKey: ['ilan-gmail-emails', activeFolder],
     queryFn: async () => {
-      if (!gmailConnection) return { emails: [], totalCount: 0 };
+      if (!gmailConnection) return { emails: [], totalCount: 0, needsAuth: false };
       
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return { emails: [], totalCount: 0 };
+      if (!session) return { emails: [], totalCount: 0, needsAuth: false };
       
       let query = 'in:inbox';
       if (activeFolder === 'sent') query = 'in:sent';
@@ -155,6 +155,10 @@ const IlansGmail = () => {
       const data = await response.json();
       
       if (!response.ok) {
+        // Check if token is invalid and needs re-auth
+        if (data.needsAuth) {
+          return { emails: [], totalCount: 0, needsAuth: true };
+        }
         throw new Error(data.error || 'Failed to fetch emails');
       }
       
@@ -175,14 +179,17 @@ const IlansGmail = () => {
 
       return { 
         emails, 
-        totalCount: data?.resultSizeEstimate || emails.length 
+        totalCount: data?.resultSizeEstimate || emails.length,
+        needsAuth: false
       };
     },
     enabled: !!gmailConnection,
+    retry: false,
   });
 
   const emails = emailsData?.emails || [];
   const currentFolderCount = emailsData?.totalCount || 0;
+  const needsReauth = emailsData?.needsAuth === true;
 
   // Fetch inbox count separately
   const { data: inboxCountData } = useQuery({
@@ -481,6 +488,47 @@ const IlansGmail = () => {
               </>
             )}
           </Button>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  // Token expired/revoked - need to reconnect
+  if (needsReauth) {
+    return (
+      <AdminLayout>
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] space-y-6">
+          <div className="p-6 rounded-full bg-amber-100 dark:bg-amber-900/30">
+            <Mail className="h-16 w-16 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-semibold">Gmail Session Expired</h2>
+            <p className="text-muted-foreground max-w-md">
+              Your Gmail connection needs to be refreshed. Please reconnect to continue accessing your emails.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={disconnectGmail}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Disconnect
+            </Button>
+            <Button onClick={async () => {
+              await disconnectGmail();
+              setTimeout(() => connectGmail(), 500);
+            }} size="lg" disabled={isConnecting}>
+              {isConnecting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Reconnecting...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Reconnect Gmail
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </AdminLayout>
     );
