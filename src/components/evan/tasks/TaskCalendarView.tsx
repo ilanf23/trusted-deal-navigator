@@ -1,8 +1,19 @@
 import { Task, statusConfig } from './types';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, startOfWeek, endOfWeek, addMonths, subMonths, isToday } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Appointment {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string | null;
+  appointment_type: string | null;
+  google_event_id: string | null;
+}
 
 interface TaskCalendarViewProps {
   tasks: Task[];
@@ -17,6 +28,25 @@ export const TaskCalendarView = ({
 }: TaskCalendarViewProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
+  // Fetch Google Calendar appointments
+  const { data: appointments = [] } = useQuery({
+    queryKey: ['evan-appointments-calendar', currentMonth.toISOString()],
+    queryFn: async () => {
+      const monthStart = startOfMonth(currentMonth);
+      const monthEnd = endOfMonth(currentMonth);
+      
+      const { data, error } = await supabase
+        .from('evan_appointments')
+        .select('id, title, start_time, end_time, appointment_type, google_event_id')
+        .gte('start_time', monthStart.toISOString())
+        .lte('start_time', monthEnd.toISOString())
+        .order('start_time', { ascending: true });
+      
+      if (error) throw error;
+      return data as Appointment[];
+    },
+  });
+  
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const calendarStart = startOfWeek(monthStart);
@@ -27,6 +57,9 @@ export const TaskCalendarView = ({
 
   const getTasksForDay = (date: Date) => 
     tasks.filter(task => task.due_date && isSameDay(parseISO(task.due_date), date));
+
+  const getAppointmentsForDay = (date: Date) =>
+    appointments.filter(apt => isSameDay(parseISO(apt.start_time), date));
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
@@ -67,8 +100,10 @@ export const TaskCalendarView = ({
       <div className="grid grid-cols-7">
         {days.map((day, idx) => {
           const dayTasks = getTasksForDay(day);
+          const dayAppointments = getAppointmentsForDay(day);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isTodayDate = isToday(day);
+          const totalItems = dayTasks.length + dayAppointments.length;
           
           return (
             <div
@@ -89,7 +124,23 @@ export const TaskCalendarView = ({
               </div>
               
               <div className="space-y-1">
-                {dayTasks.slice(0, 3).map(task => (
+                {/* Google Calendar Appointments (blue with calendar icon) */}
+                {dayAppointments.slice(0, 2).map(apt => (
+                  <div
+                    key={`apt-${apt.id}`}
+                    className="text-xs py-1 px-2 rounded-md truncate flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <CalendarIcon className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{apt.title}</span>
+                    <span className="text-[10px] opacity-70 flex-shrink-0">
+                      {format(parseISO(apt.start_time), 'h:mm a')}
+                    </span>
+                  </div>
+                ))}
+                
+                {/* Tasks */}
+                {dayTasks.slice(0, dayAppointments.length >= 2 ? 1 : 2).map(task => (
                   <div
                     key={task.id}
                     className="text-xs py-1 px-2 rounded-md truncate cursor-pointer transition-all hover:scale-[1.02]"
@@ -103,9 +154,10 @@ export const TaskCalendarView = ({
                     {task.title}
                   </div>
                 ))}
-                {dayTasks.length > 3 && (
+                
+                {totalItems > 3 && (
                   <div className="text-xs text-muted-foreground px-2 font-medium">
-                    +{dayTasks.length - 3} more
+                    +{totalItems - 3} more
                   </div>
                 )}
               </div>
