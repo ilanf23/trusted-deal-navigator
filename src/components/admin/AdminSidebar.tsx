@@ -165,9 +165,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         title: 'CRM',
         icon: Kanban,
         items: [
-          { title: `${employeeName}'s Pipeline`, url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+          { title: `${employeeName}'s CRM`, url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
           { title: `${employeeName}'s Leads`, url: `/team/${employeeName.toLowerCase()}/leads`, icon: UserPlus },
-          { title: 'Pipeline', url: '/admin/crm', icon: Kanban },
+          { title: 'CRM', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
