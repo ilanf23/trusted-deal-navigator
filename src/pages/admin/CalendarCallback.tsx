@@ -74,13 +74,20 @@ export default function CalendarCallback() {
       }
 
       try {
+        // Get team member name from localStorage (set before OAuth redirect)
+        const teamMemberName = localStorage.getItem('calendarTeamMember') || undefined;
+        
         const { data, error: exchangeError } = await supabase.functions.invoke('google-calendar-auth', {
           body: {
             action: 'exchangeCode',
             code,
             redirectUri: CALLBACK_URL,
+            teamMemberName,
           },
         });
+        
+        // Clean up stored team member name
+        localStorage.removeItem('calendarTeamMember');
 
         if (exchangeError) throw exchangeError;
 

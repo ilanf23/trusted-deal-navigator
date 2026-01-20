@@ -35,7 +35,7 @@ export const TaskWorkspace = () => {
   const [calendarStatus, setCalendarStatus] = useState<{ connected: boolean; email?: string } | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Check calendar connection status
+  // Check calendar connection status for Evan
   useEffect(() => {
     const checkCalendarStatus = async () => {
       try {
@@ -43,7 +43,7 @@ export const TaskWorkspace = () => {
         if (!session) return;
 
         const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-          body: { action: 'getStatus' }
+          body: { action: 'getStatus', teamMemberName: 'evan' }
         });
 
         if (!error && data) {
@@ -70,11 +70,13 @@ export const TaskWorkspace = () => {
     setIsConnecting(true);
     try {
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-        body: { action: 'getAuthUrl', redirectUri: CALLBACK_URL }
+        body: { action: 'getAuthUrl', redirectUri: CALLBACK_URL, teamMemberName: 'evan' }
       });
 
       if (error) throw error;
       if (data?.authUrl) {
+        // Store team member name for the callback to use
+        localStorage.setItem('calendarTeamMember', 'evan');
         window.open(data.authUrl, '_blank', 'width=500,height=600');
       }
     } catch (err) {
