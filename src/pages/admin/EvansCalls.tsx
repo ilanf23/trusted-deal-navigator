@@ -509,10 +509,20 @@ const EvansCalls = () => {
       } else {
         console.log('Automation result:', automationResult);
         const rating = automationResult?.callRating;
+        const draftCreated = automationResult?.gmailDraftCreated;
+        
         if (rating) {
-          toast.success(`✅ Task created, call rated ${rating}/10, notification sent to Adam & Brad`);
+          const draftMessage = draftCreated 
+            ? ', Gmail draft ready' 
+            : (pendingAutomationData?.leadEmail ? '' : ' (no email for draft)');
+          toast.success(`✅ Task created, call rated ${rating}/10${draftMessage}`);
         } else {
           toast.success('✅ Follow-up task created');
+        }
+        
+        // Refresh Gmail emails if draft was created
+        if (draftCreated) {
+          queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
         }
         queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
       }
