@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RichTextInput } from '@/components/ui/rich-text-input';
 import { Send, Loader2, Phone, Star, PhoneIncoming, PhoneOutgoing, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -383,23 +382,15 @@ const AdminMessages = () => {
                         </div>
                       </ScrollArea>
                       <div className="p-4 border-t">
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }}
-                          className="flex gap-2"
-                        >
-                          <Input
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder="Type a message..."
-                            disabled={sending}
-                          />
-                          <Button type="submit" disabled={sending || !newMessage.trim()}>
-                            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                          </Button>
-                        </form>
+                        <RichTextInput
+                          value={newMessage}
+                          onChange={setNewMessage}
+                          onSubmit={handleSendMessage}
+                          placeholder="Type a message..."
+                          disabled={sending}
+                          sending={sending}
+                          channelName={selectedConvo?.client_email?.split('@')[0]}
+                        />
                       </div>
                     </CardContent>
                   </>
