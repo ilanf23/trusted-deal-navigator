@@ -801,17 +801,13 @@ const EvansPage = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="loanAmount">Loan Amount</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="loanAmount"
-                      type="number"
-                      value={calcLoanAmount}
-                      onChange={(e) => setCalcLoanAmount(e.target.value)}
-                      className="pl-9"
-                      placeholder="500000"
-                    />
-                  </div>
+                  <Input
+                    id="loanAmount"
+                    type="number"
+                    value={calcLoanAmount}
+                    onChange={(e) => setCalcLoanAmount(e.target.value)}
+                    placeholder="500000"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="extraDeals">Extra Deals Closed This Period</Label>

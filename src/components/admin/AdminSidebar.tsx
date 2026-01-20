@@ -20,7 +20,6 @@ import {
   Building2,
   ListTodo,
   Phone,
-  Target,
   Code2,
   type LucideIcon,
 } from 'lucide-react';
@@ -119,7 +118,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         icon: User,
         items: [
           { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
-          { title: 'Deal Cockpit', url: `/team/${employeeName.toLowerCase()}/cockpit`, icon: Target },
           { title: `${employeeName}'s Tasks`, url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
           { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
           { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
