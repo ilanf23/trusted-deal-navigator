@@ -22,7 +22,6 @@ type LeadStatus = Database['public']['Enums']['lead_status'];
 // Match the main CRM Board column colors
 const columns: { status: LeadStatus; title: string; color: string }[] = [
   { status: 'discovery', title: 'Discovery', color: 'bg-[hsl(195,55%,50%)]' },
-  { status: 'questionnaire', title: 'Questionnaire', color: 'bg-[hsl(198,55%,48%)]' },
   { status: 'pre_qualification', title: 'Pre-Qualification', color: 'bg-[hsl(200,55%,46%)]' },
   { status: 'document_collection', title: 'Document Collection', color: 'bg-[hsl(205,58%,42%)]' },
   { status: 'underwriting', title: 'Underwriting', color: 'bg-[hsl(210,62%,38%)]' },
