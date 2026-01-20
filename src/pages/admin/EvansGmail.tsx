@@ -31,13 +31,14 @@ import {
   Plus,
   FileText,
   Zap,
-  ExternalLink
+  ExternalLink,
+  LogOut
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format, isToday, isYesterday, differenceInDays, subDays } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   HoverCard,
   HoverCardContent,
@@ -169,6 +170,7 @@ const extractEmailAddress = (value: string) => {
 
 const EvansGmail = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'sent' | 'drafts' | 'templates'>('inbox');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -524,7 +526,8 @@ const EvansGmail = () => {
         return;
       }
 
-      const redirectUri = `${window.location.origin}/admin/inbox-callback`;
+      // Must match the route in src/App.tsx and the redirect URI registered in Google Console
+      const redirectUri = `${window.location.origin}/admin/inbox/callback`;
       
       const response = await fetch(
         `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=get-oauth-url`,
@@ -541,13 +544,23 @@ const EvansGmail = () => {
       const data = await response.json();
       
       if (data?.url) {
-        localStorage.setItem('gmail_return_path', '/user/evan/gmail');
+        localStorage.setItem('gmail_return_path', '/team/evan/gmail');
         window.location.href = data.url;
       } else {
         toast.error('Failed to get OAuth URL');
       }
     } catch (error: any) {
       toast.error('Failed to start Gmail connection: ' + error.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success('Logged out');
+      navigate('/auth');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to log out');
     }
   };
 
@@ -851,8 +864,8 @@ const EvansGmail = () => {
             </div>
           </nav>
           
-          {/* Disconnect Button */}
-          <div className="p-3 border-t border-[#e8eaed]">
+          {/* Account actions */}
+          <div className="p-3 border-t border-[#e8eaed] space-y-1">
             <Button 
               variant="ghost" 
               size="sm"
@@ -861,6 +874,15 @@ const EvansGmail = () => {
             >
               <Mail className="w-4 h-4" />
               Disconnect Gmail
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="w-full justify-start gap-2 text-xs text-[#5f6368] hover:text-[#202124] hover:bg-[#e8eaed]"
+            >
+              <LogOut className="w-4 h-4" />
+              Log out
             </Button>
           </div>
         </div>
