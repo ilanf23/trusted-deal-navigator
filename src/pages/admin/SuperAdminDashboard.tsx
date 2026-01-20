@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -8,10 +9,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Target, BarChart3, Calendar, Users, Handshake, Gauge, CalendarDays, Eye, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTeamMember } from '@/hooks/useTeamMember';
+
 type TimePeriod = 'ytd' | 'mtd';
+
 const SuperAdminDashboard = () => {
+  const navigate = useNavigate();
+  const { teamMember, isOwner, loading } = useTeamMember();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
 
+  // Redirect non-owner employees to their team dashboard
+  useEffect(() => {
+    if (!loading && teamMember && !isOwner) {
+      const adminUsers = ['ilan', 'brad', 'adam'];
+      const name = teamMember.name.toLowerCase();
+      if (adminUsers.includes(name)) {
+        navigate(`/admin/${name}`, { replace: true });
+      } else {
+        navigate(`/team/${name}`, { replace: true });
+      }
+    }
+  }, [loading, teamMember, isOwner, navigate]);
   // Metrics by time period
   const metrics = {
     ytd: {
@@ -204,7 +222,7 @@ const SuperAdminDashboard = () => {
           <div>
             <div className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-admin-blue" />
-              <h1 className="text-3xl font-bold">Evan's Dashboard</h1>
+              <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             </div>
             <p className="text-muted-foreground">Company-wide performance overview</p>
           </div>
