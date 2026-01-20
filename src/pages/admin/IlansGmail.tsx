@@ -313,7 +313,7 @@ const IlansGmail = () => {
     }
   };
 
-  // Connect Gmail
+  // Connect Gmail - full page redirect
   const connectGmail = async () => {
     setIsConnecting(true);
     
@@ -324,81 +324,8 @@ const IlansGmail = () => {
       return;
     }
 
-    // Check if in embedded preview
-    const isEmbedded = window.location.hostname.endsWith('.lovableproject.com') || 
-      (() => { try { return window.self !== window.top; } catch { return true; } })();
-    
-    if (isEmbedded) {
-      const host = window.location.hostname;
-      let targetOrigin = window.location.origin;
-      if (host.endsWith('.lovableproject.com')) {
-        const id = host.replace('.lovableproject.com', '');
-        targetOrigin = `https://id-preview--${id}.lovable.app`;
-      }
-      window.open(`${targetOrigin}/admin/ilan/gmail`, '_blank', 'noopener,noreferrer');
-      toast.info('Open the standalone preview tab to connect Gmail.');
-      setIsConnecting(false);
-      return;
-    }
-
-    const width = 500;
-    const height = 650;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    const popup = window.open(
-      '',
-      'gmail-auth',
-      `width=${width},height=${height},left=${left},top=${top},popup=1`
-    );
-
-    if (!popup || popup.closed) {
-      toast.error('Popup blocked. Please allow popups for this site.');
-      setIsConnecting(false);
-      return;
-    }
-
-    popup.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Connecting to Gmail...</title>
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #ea4335 0%, #fbbc05 100%);
-              color: white;
-            }
-            .spinner {
-              width: 40px;
-              height: 40px;
-              border: 3px solid rgba(255,255,255,0.3);
-              border-radius: 50%;
-              border-top-color: white;
-              animation: spin 1s ease-in-out infinite;
-            }
-            @keyframes spin { to { transform: rotate(360deg); } }
-            p { margin-top: 20px; font-size: 16px; }
-          </style>
-        </head>
-        <body>
-          <div class="spinner"></div>
-          <p>Connecting to Gmail...</p>
-        </body>
-      </html>
-    `);
-
     try {
       const callbackUrl = getGmailCallbackUrl();
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
       
       const response = await fetch(
         `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=get-oauth-url`,
@@ -416,18 +343,10 @@ const IlansGmail = () => {
       if (!response.ok) throw new Error(data.error || 'Failed to get auth URL');
       if (!data?.url) throw new Error('Missing auth URL');
 
-      popup.location.href = data.url;
-
-      const pollTimer = window.setInterval(() => {
-        if (popup.closed) {
-          window.clearInterval(pollTimer);
-          setIsConnecting(false);
-          refetchConnection();
-        }
-      }, 500);
+      // Full page redirect instead of popup
+      window.location.href = data.url;
     } catch (err) {
       console.error('Failed to get auth URL:', err);
-      try { popup.close(); } catch {}
       toast.error('Failed to connect Gmail');
       setIsConnecting(false);
     }
