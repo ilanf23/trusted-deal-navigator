@@ -95,20 +95,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: 'Analytics', url: '/admin/marketing', icon: BarChart3 },
         ],
       });
-
-      // Employee Users section for owners - can see all dashboards
-      sections.push({
-        title: 'Employee Users',
-        icon: Users,
-        items: [
-          { title: 'Brad', url: '/admin/brad', icon: User },
-          { title: 'Adam', url: '/admin/adam', icon: User },
-          { title: 'Ilan', url: '/admin/ilan', icon: User },
-          { title: 'Evan', url: '/team/evan', icon: User },
-          { title: 'Maura', url: '/team/maura', icon: User },
-          { title: 'Wendy', url: '/team/wendy', icon: User },
-        ],
-      });
     } else if (teamMember) {
       // Check if user is Ilan (developer with special dashboard)
       if (teamMember.name.toLowerCase() === 'ilan') {
