@@ -210,6 +210,7 @@ Deno.serve(async (req) => {
                   synced_at: new Date().toISOString(),
                   sync_status: 'synced',
                   appointment_type: 'imported',
+                  team_member_name: connection.team_member_name || 'evan',
                 });
               totalImported++;
             }
@@ -410,6 +411,7 @@ Deno.serve(async (req) => {
               synced_at: new Date().toISOString(),
               sync_status: 'synced',
               appointment_type: 'imported',
+              team_member_name: connection.team_member_name || 'evan',
             });
           imported++;
         }
