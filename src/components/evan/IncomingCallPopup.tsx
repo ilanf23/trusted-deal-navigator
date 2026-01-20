@@ -501,10 +501,10 @@ export const IncomingCallPopup = () => {
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700"
                     onClick={() => answerCall.mutate()}
-                    disabled={answerCall.isPending || isInitializing}
+                    disabled={answerCall.isPending || isInitializing || !activeCall}
                   >
                     <Phone className="h-4 w-4 mr-2" />
-                    {isInitializing ? 'Connecting...' : 'Answer'}
+                    {isInitializing ? 'Connecting...' : !activeCall ? 'Waiting...' : 'Answer'}
                   </Button>
                 </div>
               )}
