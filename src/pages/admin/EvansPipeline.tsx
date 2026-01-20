@@ -112,7 +112,7 @@ const EvansPipeline = () => {
   const sources = [...new Set(leads.map(lead => lead.source).filter(Boolean))];
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: LeadStatus }) => {
+    mutationFn: async ({ id, status, previousStatus }: { id: string; status: LeadStatus; previousStatus: LeadStatus }) => {
       if (!canEdit) throw new Error('Not authorized to update this lead');
       const updates: Partial<Lead> = { status };
       if (status === 'pre_qualification') {
@@ -122,11 +122,31 @@ const EvansPipeline = () => {
       }
       const { error } = await supabase.from('leads').update(updates).eq('id', id);
       if (error) throw error;
+
+      // Send questionnaire email when moving from discovery to pre_qualification
+      if (previousStatus === 'discovery' && status === 'pre_qualification') {
+        try {
+          const { error: emailError } = await supabase.functions.invoke('send-prequalification-email', {
+            body: { leadId: id },
+          });
+          if (emailError) {
+            console.error('Failed to send questionnaire email:', emailError);
+            toast.error('Lead moved but questionnaire email failed to send');
+          } else {
+            toast.success('Questionnaire email sent!');
+          }
+        } catch (err) {
+          console.error('Error sending questionnaire email:', err);
+        }
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      if (!(variables.previousStatus === 'discovery' && variables.status === 'pre_qualification')) {
+        toast.success('Lead status updated');
+      }
     },
     onError: () => toast.error('Failed to update lead status'),
   });
@@ -146,7 +166,7 @@ const EvansPipeline = () => {
     const lead = leads.find(l => l.id === leadId);
 
     if (lead && lead.status !== newStatus) {
-      updateStatusMutation.mutate({ id: leadId, status: newStatus });
+      updateStatusMutation.mutate({ id: leadId, status: newStatus, previousStatus: lead.status });
     }
   };
 
