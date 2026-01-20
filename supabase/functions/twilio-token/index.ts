@@ -95,33 +95,46 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
     // Verify user
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // Create client with user's auth header for JWT validation
+    const supabaseAnon = createClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      { global: { headers: { Authorization: authHeader } } }
+    );
     
-    if (authError || !user) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: authError } = await supabaseAnon.auth.getClaims(token);
+    
+    if (authError || !claimsData?.claims) {
+      console.error('Auth error:', authError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const userId = claimsData.claims.sub as string;
+    
+    // Create admin client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Check admin role
     const { data: roleData } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('role', 'admin')
       .single();
 
@@ -133,7 +146,7 @@ Deno.serve(async (req) => {
     }
 
     // Generate identity for this user
-    const identity = `evan-${user.id.substring(0, 8)}`;
+    const identity = `evan-${userId.substring(0, 8)}`;
     
     console.log('Creating access token for identity:', identity, 'with TwiML App:', twimlAppSid);
     

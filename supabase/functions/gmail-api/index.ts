@@ -314,22 +314,32 @@ Deno.serve(async (req) => {
     // Create Supabase client with service role for admin operations
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    // Verify JWT and get user
+    // Create client with user's auth header for JWT validation
+    const supabaseAnon = createClient(
+      SUPABASE_URL,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    
+    // Verify JWT using getClaims
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const { data: claimsData, error: authError } = await supabaseAnon.auth.getClaims(token);
 
-    if (authError || !user) {
+    if (authError || !claimsData?.claims) {
+      console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    const userId = claimsData.claims.sub as string;
+
     // Check if user is admin
     const { data: roleData } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('role', 'admin')
       .single();
 
@@ -345,7 +355,7 @@ Deno.serve(async (req) => {
 
     // Handle OAuth callback
     if (action === 'oauth-callback') {
-      return handleOAuthCallback(req, supabaseAdmin, user.id);
+      return handleOAuthCallback(req, supabaseAdmin, userId);
     }
 
     // Get OAuth URL for connecting Gmail
@@ -371,7 +381,7 @@ Deno.serve(async (req) => {
       const { data: connection } = await supabaseAdmin
         .from('gmail_connections')
         .select('email, created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
       return new Response(JSON.stringify({
@@ -388,7 +398,7 @@ Deno.serve(async (req) => {
       await supabaseAdmin
         .from('gmail_connections')
         .delete()
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -398,7 +408,7 @@ Deno.serve(async (req) => {
     // All other actions require a valid Gmail connection
     let accessToken: string;
     try {
-      accessToken = await getValidAccessToken(supabaseAdmin, user.id);
+      accessToken = await getValidAccessToken(supabaseAdmin, userId);
     } catch (e) {
       return new Response(JSON.stringify({ error: 'Gmail not connected', needsAuth: true }), {
         status: 400,
