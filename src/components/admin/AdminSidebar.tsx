@@ -21,6 +21,7 @@ import {
   ListTodo,
   Phone,
   Target,
+  Code2,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,6 +123,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: `${employeeName}'s Tasks`, url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
           { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
           { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
+          { title: 'Dev Notes', url: `/team/${employeeName.toLowerCase()}/dev-notes`, icon: Code2 },
         ],
         noCollapse: true,
       });
