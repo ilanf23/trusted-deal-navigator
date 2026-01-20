@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Mail, 
   Send, 
@@ -32,12 +33,15 @@ import {
   Bell,
   ShoppingBag,
   Plus,
-  FileText
+  FileText,
+  Zap,
+  ExternalLink
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { format, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday, differenceInDays, subDays } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 interface Email {
   id: string;
@@ -60,6 +64,8 @@ interface Lead {
   email: string | null;
   phone: string | null;
   company_name: string | null;
+  status: string;
+  updated_at: string;
 }
 
 const formatEmailDate = (dateString: string) => {
@@ -167,7 +173,99 @@ const EvansGmail = () => {
     enabled: !!gmailConnection,
   });
 
+  // Fetch Evan's team member ID
+  const { data: evanTeamMember } = useQuery({
+    queryKey: ['evan-team-member'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id')
+        .ilike('name', 'evan')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const evanId = evanTeamMember?.id;
+
+  // Fetch leads needing nudges (no contact in 7+ days)
+  const { data: nudgeLeads = [], isLoading: nudgesLoading } = useQuery({
+    queryKey: ['gmail-nudge-leads', evanId],
+    queryFn: async () => {
+      if (!evanId) return [];
+      
+      const oneWeekAgo = subDays(new Date(), 7).toISOString();
+      
+      // Get leads assigned to Evan that haven't been updated in a week
+      const { data: leads, error } = await supabase
+        .from('leads')
+        .select('id, name, email, phone, company_name, status, updated_at')
+        .eq('assigned_to', evanId)
+        .neq('status', 'funded')
+        .lt('updated_at', oneWeekAgo)
+        .order('updated_at', { ascending: true })
+        .limit(20);
+      
+      if (error) throw error;
+
+      // Filter to only leads with emails
+      return (leads || []).filter(l => l.email) as Lead[];
+    },
+    enabled: !!evanId,
+  });
+
+  // Create nudge email draft
+  const createNudgeDraft = useMutation({
+    mutationFn: async (lead: Lead) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const daysSince = differenceInDays(new Date(), new Date(lead.updated_at));
+      const subject = `Following up - ${lead.company_name || lead.name}`;
+      const body = `Hi ${lead.name.split(' ')[0]},\n\nI wanted to follow up and see if you had any questions about the financing options we discussed.\n\nPlease let me know if there's anything I can help with.\n\nBest regards,\nEvan`;
+
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            to: lead.email, 
+            subject, 
+            body 
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create draft');
+      }
+
+      // Update lead's updated_at to prevent repeated nudges
+      await supabase
+        .from('leads')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', lead.id);
+
+      return { lead, draftId: data.id };
+    },
+    onSuccess: ({ lead }) => {
+      toast.success(`Draft created for ${lead.name}`);
+      queryClient.invalidateQueries({ queryKey: ['gmail-nudge-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to create draft: ' + error.message);
+    },
+  });
+
   // Counts
+
   const inboxCount = emails.length || 4154; // Using placeholder if no real data
   const draftsCount = 37;
   const purchasesCount = 256;
@@ -484,36 +582,76 @@ const EvansGmail = () => {
               <span className="flex-1 text-left">More</span>
             </button>
             
-            {/* Labels section */}
-            <div className="mt-4 pt-2">
+            {/* Nudges section - Waiting on Borrower */}
+            <div className="mt-4 pt-2 border-t border-[#e8eaed]">
               <div className="flex items-center justify-between pl-6 pr-3 py-1.5 text-sm text-[#444746]">
-                <span className="font-medium">Labels</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-[#e8eaed]">
-                  <Plus className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Nudges</span>
+                  {nudgeLeads.length > 0 && (
+                    <span className="flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                      {nudgeLeads.length}
+                    </span>
+                  )}
+                </div>
+                <Link to="/user/evan/pipeline">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-[#e8eaed]" title="View Pipeline">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Button>
+                </Link>
               </div>
               
-              {/* Label items with colored dots */}
-              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
-                <span className="w-3 h-3 rounded-sm bg-gray-500" />
-                <span className="flex-1 text-left">[Imap]/Drafts</span>
-              </button>
-              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
-                <span className="w-3 h-3 rounded-sm bg-green-500" />
-                <span className="flex-1 text-left">Call Schedule</span>
-              </button>
-              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
-                <span className="w-3 h-3 rounded-sm bg-green-500" />
-                <span className="flex-1 text-left">First Response</span>
-              </button>
-              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
-                <span className="w-3 h-3 rounded-sm bg-green-500" />
-                <span className="flex-1 text-left">Free Video Schedule</span>
-              </button>
-              <button className="w-full flex items-center gap-4 pl-6 pr-3 py-1.5 rounded-r-full text-sm text-[#444746] hover:bg-[#e8eaed] transition-colors">
-                <span className="w-3 h-3 rounded-sm bg-green-500" />
-                <span className="flex-1 text-left">Proposal Sent</span>
-              </button>
+              {/* Nudge subtitle */}
+              <div className="pl-6 pr-3 pb-2 text-xs text-[#5f6368]">
+                Waiting on borrower (7+ days)
+              </div>
+              
+              {/* Nudge items - one-click follow-ups */}
+              {nudgesLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#5f6368]" />
+                </div>
+              ) : nudgeLeads.length === 0 ? (
+                <div className="pl-6 pr-3 py-3 text-xs text-[#5f6368]">
+                  ✓ All caught up!
+                </div>
+              ) : (
+                <ScrollArea className="max-h-48">
+                  {nudgeLeads.slice(0, 8).map((lead) => {
+                    const daysSince = differenceInDays(new Date(), new Date(lead.updated_at));
+                    return (
+                      <Tooltip key={lead.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => createNudgeDraft.mutate(lead)}
+                            disabled={createNudgeDraft.isPending}
+                            className="w-full flex items-center gap-3 pl-6 pr-3 py-2 rounded-r-full text-sm text-[#444746] hover:bg-[#fef7e0] transition-colors group disabled:opacity-50"
+                          >
+                            <Zap className="w-4 h-4 text-amber-500 group-hover:text-amber-600" />
+                            <span className="flex-1 text-left truncate text-xs">
+                              {lead.name.split(' ')[0]}
+                              {lead.company_name && <span className="text-[#5f6368]"> · {lead.company_name.slice(0, 12)}</span>}
+                            </span>
+                            <span className="text-[10px] text-red-500 font-medium">{daysSince}d</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs">
+                          <p className="font-medium">{lead.name}</p>
+                          <p className="text-muted-foreground">{lead.email}</p>
+                          <p className="text-amber-600 mt-1">Click to create follow-up draft</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                  {nudgeLeads.length > 8 && (
+                    <Link 
+                      to="/user/evan/pipeline"
+                      className="block pl-6 pr-3 py-2 text-xs text-[#1a73e8] hover:underline"
+                    >
+                      +{nudgeLeads.length - 8} more in pipeline
+                    </Link>
+                  )}
+                </ScrollArea>
+              )}
             </div>
           </nav>
         </div>

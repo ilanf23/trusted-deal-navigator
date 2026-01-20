@@ -506,6 +506,51 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Create draft
+    if (action === 'create-draft') {
+      const body = await req.json();
+      const { to, subject, body: emailBody } = body;
+      
+      if (!to || !subject || !emailBody) {
+        return new Response(JSON.stringify({ error: 'Missing to, subject, or body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const email = [
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        'Content-Type: text/plain; charset=utf-8',
+        '',
+        emailBody,
+      ].join('\r\n');
+
+      const encodedEmail = btoa(email).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+      const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: { raw: encodedEmail }
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('Create draft error:', error);
+        throw new Error('Failed to create draft');
+      }
+
+      const result = await response.json();
+      return new Response(JSON.stringify({ success: true, id: result.id }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ error: 'Unknown action' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
