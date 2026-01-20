@@ -252,14 +252,16 @@ export const EvanCalendarWidget = () => {
   const connectCalendar = async () => {
     setIsConnecting(true);
 
-    // Open the popup immediately (must be synchronous to avoid popup blockers)
+    // Open the popup IMMEDIATELY and SYNCHRONOUSLY to avoid popup blockers
+    // This must happen before any async operation
     const width = 500;
     const height = 650;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
 
+    // Create popup with a loading message immediately
     const popup = window.open(
-      'about:blank',
+      '',
       'google-calendar-auth',
       `width=${width},height=${height},left=${left},top=${top},popup=1`
     );
@@ -269,6 +271,43 @@ export const EvanCalendarWidget = () => {
       setIsConnecting(false);
       return;
     }
+
+    // Write a loading message to the popup immediately
+    popup.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Connecting to Google Calendar...</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+            }
+            .spinner {
+              width: 40px;
+              height: 40px;
+              border: 3px solid rgba(255,255,255,0.3);
+              border-radius: 50%;
+              border-top-color: white;
+              animation: spin 1s ease-in-out infinite;
+            }
+            @keyframes spin { to { transform: rotate(360deg); } }
+            p { margin-top: 20px; font-size: 16px; }
+          </style>
+        </head>
+        <body>
+          <div class="spinner"></div>
+          <p>Connecting to Google Calendar...</p>
+        </body>
+      </html>
+    `);
 
     try {
       const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
@@ -281,7 +320,7 @@ export const EvanCalendarWidget = () => {
       if (error) throw error;
       if (!data?.authUrl) throw new Error('Missing authUrl');
 
-      // Navigate the already-open popup to Google
+      // Navigate the already-open popup to Google OAuth
       popup.location.href = data.authUrl;
 
       // Poll to check if popup is closed (user cancelled)
