@@ -28,7 +28,7 @@ export const TaskCalendarView = ({
 }: TaskCalendarViewProps) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
-  // Fetch Google Calendar appointments
+  // Fetch Google Calendar appointments - filtered to Evan's calendar only
   const { data: appointments = [] } = useQuery({
     queryKey: ['evan-appointments-calendar', currentMonth.toISOString()],
     queryFn: async () => {
@@ -38,6 +38,7 @@ export const TaskCalendarView = ({
       const { data, error } = await supabase
         .from('evan_appointments')
         .select('id, title, start_time, end_time, appointment_type, google_event_id')
+        .eq('team_member_name', 'evan')
         .gte('start_time', monthStart.toISOString())
         .lte('start_time', monthEnd.toISOString())
         .order('start_time', { ascending: true });

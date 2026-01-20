@@ -305,6 +305,7 @@ export type Database = {
           start_time: string
           sync_status: string | null
           synced_at: string | null
+          team_member_name: string | null
           title: string
           updated_at: string
         }
@@ -320,6 +321,7 @@ export type Database = {
           start_time: string
           sync_status?: string | null
           synced_at?: string | null
+          team_member_name?: string | null
           title: string
           updated_at?: string
         }
@@ -335,6 +337,7 @@ export type Database = {
           start_time?: string
           sync_status?: string | null
           synced_at?: string | null
+          team_member_name?: string | null
           title?: string
           updated_at?: string
         }
