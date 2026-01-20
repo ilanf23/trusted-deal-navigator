@@ -78,6 +78,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
         icon: LayoutDashboard,
         items: [
           { title: 'Overview', url: '/admin/ilan', icon: LayoutDashboard },
+          { title: 'Gmail', url: '/admin/ilan/gmail', icon: Mail },
           { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },

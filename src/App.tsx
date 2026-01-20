@@ -42,6 +42,7 @@ import WendysPage from "./pages/admin/WendysPage";
 import BradsPage from "./pages/admin/BradsPage";
 import AdamsPage from "./pages/admin/AdamsPage";
 import IlansPage from "./pages/admin/IlansPage";
+import IlansGmail from "./pages/admin/IlansGmail";
 import BugTesting from "./pages/admin/BugTesting";
 import BugReporting from "./pages/admin/BugReporting";
 import IlanTeamEvanBugs from "./pages/admin/IlanTeamEvanBugs";
@@ -103,6 +104,7 @@ const App = () => (
             <Route path="/admin/adam" element={<EmployeeRoute employeeName="Adam"><AdamsPage /></EmployeeRoute>} />
             <Route path="/admin/ilan" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
             <Route path="/admin/ilan/bugs" element={<EmployeeRoute employeeName="Ilan"><BugTesting /></EmployeeRoute>} />
+            <Route path="/admin/ilan/gmail" element={<EmployeeRoute employeeName="Ilan"><IlansGmail /></EmployeeRoute>} />
             <Route path="/admin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
             <Route path="/admin/ilan/team/evan/dev-notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanDevNotes /></EmployeeRoute>} />
             <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
