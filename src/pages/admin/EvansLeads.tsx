@@ -18,6 +18,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import AdminLayout from '@/components/admin/AdminLayout';
+import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 
 type Communication = Database['public']['Tables']['evan_communications']['Row'];
 
@@ -41,6 +42,7 @@ const EvansLeads = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [previewLead, setPreviewLead] = useState<Lead | null>(null);
+  const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
   const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     name: '',
@@ -531,7 +533,7 @@ const EvansLeads = () => {
                           }
                         `}
                         style={{ animationDelay: `${index * 30}ms` }}
-                        onClick={() => setPreviewLead(lead)}
+                        onClick={() => setDetailDialogLead(lead)}
                       >
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -869,6 +871,16 @@ const EvansLeads = () => {
         )}
       </div>
       </div>
+
+      {/* Lead Detail Dialog */}
+      <LeadDetailDialog
+        lead={detailDialogLead}
+        open={!!detailDialogLead}
+        onOpenChange={(open) => !open && setDetailDialogLead(null)}
+        onLeadUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+        }}
+      />
     </AdminLayout>
   );
 };
