@@ -397,17 +397,26 @@ const IlansGmail = () => {
     try {
       const callbackUrl = getGmailCallbackUrl();
       
-      const { data, error } = await supabase.functions.invoke('gmail-api', {
-        body: {
-          action: 'getAuthUrl',
-          redirectUri: callbackUrl,
-        },
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=get-oauth-url`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ redirect_uri: callbackUrl }),
+        }
+      );
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to get auth URL');
+      if (!data?.url) throw new Error('Missing auth URL');
 
-      if (error) throw error;
-      if (!data?.authUrl) throw new Error('Missing authUrl');
-
-      popup.location.href = data.authUrl;
+      popup.location.href = data.url;
 
       const pollTimer = window.setInterval(() => {
         if (popup.closed) {
