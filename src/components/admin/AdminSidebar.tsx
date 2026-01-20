@@ -49,6 +49,7 @@ interface NavItem {
   title: string;
   url: string;
   icon: LucideIcon;
+  subItems?: NavItem[];
 }
 
 interface NavSection {
@@ -126,8 +127,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           title: 'Teams',
           icon: Users,
           items: [
-            { title: "Evan's Bug Reports", url: '/admin/ilan/team/evan/bugs', icon: Bug },
-            { title: "Evan's Dev Notes", url: '/admin/ilan/team/evan/dev-notes', icon: FileText },
+            { 
+              title: 'Evan', 
+              url: '/admin/ilan/team/evan', 
+              icon: User,
+              subItems: [
+                { title: 'Bug Reports', url: '/admin/ilan/team/evan/bugs', icon: Bug },
+                { title: 'Dev Notes', url: '/admin/ilan/team/evan/dev-notes', icon: FileText },
+              ],
+            },
           ],
         });
       } else {
@@ -279,20 +287,67 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
               <CollapsibleContent>
                 <div className="ml-4 mt-1 space-y-1 border-l-2 border-admin-blue/30">
                   {section.items.map((item) => (
-                    <Link
-                      key={item.title}
-                      to={item.url}
-                      className={`
-                        flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
-                        ${isActive(item.url) 
-                          ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
-                          : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
-                        }
-                      `}
-                    >
-                      <item.icon className="w-4 h-4" strokeWidth={1.75} />
-                      <span className="text-sm font-medium">{item.title}</span>
-                    </Link>
+                    item.subItems ? (
+                      // Render nested collapsible for items with subItems
+                      <Collapsible
+                        key={item.title}
+                        open={openSections[item.title]}
+                        onOpenChange={() => toggleSection(item.title)}
+                      >
+                        <CollapsibleTrigger className="w-full">
+                          <div className={`
+                            flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200 cursor-pointer
+                            ${openSections[item.title] 
+                              ? 'bg-admin-blue-light text-admin-blue-dark' 
+                              : 'text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                            }
+                          `}>
+                            <ChevronDown 
+                              className={`w-3 h-3 transition-transform duration-200 ${
+                                openSections[item.title] ? '' : '-rotate-90'
+                              }`} 
+                            />
+                            <item.icon className="w-4 h-4" strokeWidth={1.75} />
+                            <span className="text-sm font-medium">{item.title}</span>
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="ml-6 mt-1 space-y-1 border-l-2 border-admin-blue/20">
+                            {item.subItems.map((subItem) => (
+                              <Link
+                                key={subItem.title}
+                                to={subItem.url}
+                                className={`
+                                  flex items-center gap-3 py-2 px-4 ml-2 rounded-lg transition-all duration-200
+                                  ${isActive(subItem.url) 
+                                    ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
+                                    : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                                  }
+                                `}
+                              >
+                                <subItem.icon className="w-4 h-4" strokeWidth={1.75} />
+                                <span className="text-sm font-medium">{subItem.title}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      <Link
+                        key={item.title}
+                        to={item.url}
+                        className={`
+                          flex items-center gap-3 py-2.5 px-4 ml-2 rounded-lg transition-all duration-200
+                          ${isActive(item.url) 
+                            ? 'bg-gradient-to-r from-admin-blue to-admin-blue-dark text-white shadow-md' 
+                            : 'text-foreground hover:bg-admin-blue-light hover:text-admin-blue-dark'
+                          }
+                        `}
+                      >
+                        <item.icon className="w-4 h-4" strokeWidth={1.75} />
+                        <span className="text-sm font-medium">{item.title}</span>
+                      </Link>
+                    )
                   ))}
                 </div>
               </CollapsibleContent>
