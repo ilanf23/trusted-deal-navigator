@@ -88,21 +88,28 @@ Deno.serve(async (req) => {
     // Note: transcribe attribute on <Dial> is deprecated - recordings are handled via recordingStatusCallback
     const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-call-status`;
 
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Dial timeout="60" answerOnBridge="true" record="record-from-answer-dual" recordingStatusCallback="${statusCallbackUrl}" recordingStatusCallbackEvent="completed">
-    ${adminRoles && adminRoles.length > 0
+    // Build the client targets with proper formatting
+    const clientTargets = adminRoles && adminRoles.length > 0
       ? adminRoles
           .map(
-            (role) => `<Client statusCallback="${statusCallbackUrl}" statusCallbackEvent="initiated ringing answered completed">
+            (role) => `    <Client statusCallback="${statusCallbackUrl}" statusCallbackEvent="initiated ringing answered completed">
       <Identity>evan-${role.user_id.substring(0, 8)}</Identity>
     </Client>`
           )
-          .join('\n    ')
-      : `<Client statusCallback="${statusCallbackUrl}" statusCallbackEvent="initiated ringing answered completed">
+          .join('\n')
+      : `    <Client statusCallback="${statusCallbackUrl}" statusCallbackEvent="initiated ringing answered completed">
       <Identity>evan-admin</Identity>
-    </Client>`}
+    </Client>`;
+
+    // Include a fallback action if no one answers - this prevents instant hangup
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial timeout="30" answerOnBridge="true" record="record-from-answer-dual" recordingStatusCallback="${statusCallbackUrl}" recordingStatusCallbackEvent="completed" action="${statusCallbackUrl}">
+${clientTargets}
   </Dial>
+  <Say>We're sorry, no one is available to take your call right now. Please leave a message after the beep, or try again later.</Say>
+  <Record maxLength="120" transcribe="false" recordingStatusCallback="${statusCallbackUrl}" />
+  <Say>Thank you for your message. Goodbye.</Say>
 </Response>`;
 
     console.log('TwiML response:', twiml);
