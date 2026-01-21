@@ -527,75 +527,72 @@ const EvansPipeline = () => {
           {/* Table Header with Column Dropdowns */}
           <div className="sticky top-0 z-10 bg-slate-50/60 border-b border-slate-200 min-w-max">
             <div 
-              className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex"
+              className="text-sm font-semibold text-slate-600 uppercase tracking-wider"
+              style={{ 
+                display: 'grid',
+                gridTemplateColumns: `${getGridTemplate()} 48px`
+              }}
             >
-              <div 
-                style={{ 
-                  display: 'grid',
-                  gridTemplateColumns: getGridTemplate()
-                }}
-              >
-                {getVisibleColumns().map((column, colIndex) => {
-                  const isLastColumn = colIndex === getVisibleColumns().length - 1;
-                  
-                  // Consistent cell styling with 8px increments
-                  const getCellPadding = () => {
-                    if (column.id === 'checkbox' || column.id === 'avatar') return 'px-2'; // 8px
-                    return 'px-4'; // 16px
-                  };
-                  
-                  const cellClass = cn(
-                    "flex items-center min-h-[48px]", // 48px = 6 * 8px
-                    getCellPadding(),
-                    !isLastColumn && "border-r border-slate-200"
-                  );
-                  
-                  // Special handling for checkbox column - add select all
-                  if (column.id === 'checkbox') {
-                    return (
-                      <div key={column.id} className={cn(cellClass, "justify-center")}>
-                        <Checkbox
-                          checked={isAllSelected}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              selectAllLeads();
-                            } else {
-                              clearSelection();
-                            }
-                          }}
-                          className="rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                        />
-                      </div>
-                    );
-                  }
-                  if (column.id === 'avatar') {
-                    return <div key={column.id} className={cn(cellClass, "justify-center")}></div>;
-                  }
-
-                  // Help text for specific columns
-                  const helpTexts: Record<string, string> = {
-                    name: "Lead's full name. Click any row to open the full lead detail dialog.",
-                    contact: "Quick actions to call or email the lead. Click 'Call' to initiate a Twilio call, or 'Email' to compose in Gmail.",
-                    last_touch: "Most recent communication with this lead (call, email, or SMS). Helps identify leads that need follow-up.",
-                  };
-
+              {getVisibleColumns().map((column, colIndex) => {
+                const isLastColumn = colIndex === getVisibleColumns().length - 1;
+                
+                // Consistent cell styling with 8px increments
+                const getCellPadding = () => {
+                  if (column.id === 'checkbox' || column.id === 'avatar') return 'px-2'; // 8px
+                  return 'px-4'; // 16px
+                };
+                
+                const cellClass = cn(
+                  "flex items-center min-h-[48px]", // 48px = 6 * 8px
+                  getCellPadding(),
+                  "border-r border-slate-200"
+                );
+                
+                // Special handling for checkbox column - add select all
+                if (column.id === 'checkbox') {
                   return (
-                    <div key={column.id} className={cellClass}>
-                      <PipelineColumnHeader
-                        column={column}
-                        helpText={helpTexts[column.id]}
-                        onInsertColumn={(position, type, isMagic) => insertColumn(column.id, position, type, isMagic)}
-                        onDeleteColumn={() => deleteColumn(column.id)}
-                        onHideColumn={() => hideColumn(column.id)}
-                        onFreezeColumn={() => freezeColumn(column.id)}
-                        onMoveColumn={(direction) => moveColumn(column.id, direction)}
+                    <div key={column.id} className={cn(cellClass, "justify-center")}>
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            selectAllLeads();
+                          } else {
+                            clearSelection();
+                          }
+                        }}
+                        className="rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                       />
                     </div>
                   );
-                })}
-              </div>
+                }
+                if (column.id === 'avatar') {
+                  return <div key={column.id} className={cn(cellClass, "justify-center")}></div>;
+                }
+
+                // Help text for specific columns
+                const helpTexts: Record<string, string> = {
+                  name: "Lead's full name. Click any row to open the full lead detail dialog.",
+                  contact: "Quick actions to call or email the lead. Click 'Call' to initiate a Twilio call, or 'Email' to compose in Gmail.",
+                  last_touch: "Most recent communication with this lead (call, email, or SMS). Helps identify leads that need follow-up.",
+                };
+
+                return (
+                  <div key={column.id} className={cellClass}>
+                    <PipelineColumnHeader
+                      column={column}
+                      helpText={helpTexts[column.id]}
+                      onInsertColumn={(position, type, isMagic) => insertColumn(column.id, position, type, isMagic)}
+                      onDeleteColumn={() => deleteColumn(column.id)}
+                      onHideColumn={() => hideColumn(column.id)}
+                      onFreezeColumn={() => freezeColumn(column.id)}
+                      onMoveColumn={(direction) => moveColumn(column.id, direction)}
+                    />
+                  </div>
+                );
+              })}
               {/* Add Column Button at the end */}
-              <div className="flex items-center justify-center px-2 min-h-[48px] border-r border-slate-200">
+              <div className="flex items-center justify-center px-2 min-h-[48px]">
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
@@ -694,7 +691,7 @@ const EvansPipeline = () => {
                         className="border-b border-slate-200 min-w-max"
                         style={{ 
                           display: 'grid',
-                          gridTemplateColumns: getGridTemplate()
+                          gridTemplateColumns: `${getGridTemplate()} 48px`
                         }}
                       >
                         {getVisibleColumns().map((column, colIndex) => {
@@ -704,7 +701,7 @@ const EvansPipeline = () => {
                               key={column.id}
                               className={cn(
                                 "flex items-center min-h-[48px]",
-                                !isLastColumn && "border-r border-slate-200",
+                                "border-r border-slate-200",
                                 (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
                               )}
                             >
@@ -714,6 +711,8 @@ const EvansPipeline = () => {
                             </div>
                           );
                         })}
+                        {/* Empty cell for alignment with + column */}
+                        <div className="min-h-[48px]" />
                       </div>
                     ) : (
                       <TooltipProvider>
@@ -926,7 +925,7 @@ const EvansPipeline = () => {
                                 className="hover:bg-slate-50 cursor-pointer text-base transition-colors border-b border-slate-200 min-w-max"
                                 style={{ 
                                   display: 'grid',
-                                  gridTemplateColumns: getGridTemplate()
+                                  gridTemplateColumns: `${getGridTemplate()} 48px`
                                 }}
                                 onClick={() => setDetailDialogLead(lead)}
                               >
@@ -937,7 +936,7 @@ const EvansPipeline = () => {
                                       key={column.id} 
                                       className={cn(
                                         "flex items-center min-h-[48px] overflow-hidden",
-                                        !isLastColumn && "border-r border-slate-200",
+                                        "border-r border-slate-200",
                                         (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4 justify-start"
                                       )}
                                     >
@@ -945,6 +944,8 @@ const EvansPipeline = () => {
                                     </div>
                                   );
                                 })}
+                                {/* Empty cell for alignment with + column */}
+                                <div className="min-h-[48px]" />
                               </div>
                             );
                           })}
