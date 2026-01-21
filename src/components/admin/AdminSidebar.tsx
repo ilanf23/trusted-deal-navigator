@@ -22,6 +22,7 @@ import {
   Bug,
   Calendar,
   Sparkles,
+  Plus,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +36,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AvatarUpload from '@/components/admin/AvatarUpload';
+import CreatePipelineModal from '@/components/admin/CreatePipelineModal';
 import {
   Collapsible,
   CollapsibleContent,
@@ -209,6 +211,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   };
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(getSectionOpenState);
+  const [createPipelineOpen, setCreatePipelineOpen] = useState(false);
 
   const toggleSection = (sectionTitle: string) => {
     setOpenSections((prev) => ({
@@ -411,6 +414,17 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                       </Link>
                     )
                   ))}
+                  
+                  {/* Add New Pipeline button for CRM section */}
+                  {section.title === 'CRM' && teamMember && (
+                    <button
+                      onClick={() => setCreatePipelineOpen(true)}
+                      className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px] tracking-tight text-[#0066FF]/80 hover:bg-[#0066FF]/10 hover:text-[#0066FF] w-full"
+                    >
+                      <Plus className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} />
+                      <span className="font-semibold">New Pipeline</span>
+                    </button>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -461,6 +475,19 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           <span className="font-medium">Sign Out</span>
         </Button>
       </SidebarFooter>
+      
+      {/* Create Pipeline Modal */}
+      {teamMember && (
+        <CreatePipelineModal
+          open={createPipelineOpen}
+          onOpenChange={setCreatePipelineOpen}
+          ownerId={teamMember.id}
+          onPipelineCreated={(pipelineId) => {
+            console.log('Pipeline created:', pipelineId);
+            // Could navigate to the new pipeline here
+          }}
+        />
+      )}
     </Sidebar>
   );
 };
