@@ -42,18 +42,41 @@ interface NewProgram {
   max_loan: string;
   interest_range: string;
   term: string;
+  // New fields from user's format
+  call_status: string;
+  last_contact: string;
+  next_call: string;
+  location: string;
+  looking_for: string;
+  contact_name: string;
+  phone: string;
+  email: string;
+  lender_type: string;
+  loan_types: string;
+  states: string;
 }
 
 const emptyProgram: NewProgram = {
   lender_name: '',
   lender_specialty: '',
   program_name: '',
-  program_type: 'Conventional',
+  program_type: '',
   description: '',
   min_loan: '',
   max_loan: '',
   interest_range: '',
   term: '',
+  call_status: 'N',
+  last_contact: '',
+  next_call: '',
+  location: '',
+  looking_for: '',
+  contact_name: '',
+  phone: '',
+  email: '',
+  lender_type: '',
+  loan_types: '',
+  states: '',
 };
 
 const formatCurrency = (amount: number | null) => {
@@ -226,18 +249,42 @@ const LenderPrograms = () => {
 
         headers.forEach((header, idx) => {
           const value = values[idx] || '';
-          if (header.includes('lender') && header.includes('name')) program.lender_name = value;
-          else if (header.includes('specialty') || header.includes('lender_specialty')) program.lender_specialty = value;
-          else if (header.includes('program') && header.includes('name')) program.program_name = value;
-          else if (header.includes('program') && header.includes('type')) program.program_type = value || 'Conventional';
-          else if (header.includes('description')) program.description = value;
-          else if (header.includes('min') && header.includes('loan')) program.min_loan = value;
-          else if (header.includes('max') && header.includes('loan')) program.max_loan = value;
-          else if (header.includes('interest') || header.includes('rate')) program.interest_range = value;
-          else if (header.includes('term')) program.term = value;
+          const h = header.toLowerCase();
+          
+          // Map your CSV headers to our fields
+          if (h === 'institution' || (h.includes('lender') && h.includes('name'))) program.lender_name = value;
+          else if (h === 'call y/n' || h === 'call') program.call_status = value || 'N';
+          else if (h === 'last contact') program.last_contact = value;
+          else if (h === 'next call') program.next_call = value;
+          else if (h === 'location') program.location = value;
+          else if (h === 'looking for') program.looking_for = value;
+          else if (h === 'name' || h === 'contact name') program.contact_name = value;
+          else if (h === 'phone') program.phone = value;
+          else if (h === 'email') program.email = value;
+          else if (h === 'type of lender' || h === 'lender type') program.lender_type = value;
+          else if (h === 'types of loans' || h === 'loan types') program.loan_types = value;
+          else if (h === 'loan size') {
+            // Parse loan size into min/max if it contains a range
+            program.min_loan = value;
+            program.max_loan = value;
+          }
+          else if (h === 'states') program.states = value;
+          // Legacy field mappings
+          else if (h.includes('specialty')) program.lender_specialty = value;
+          else if (h.includes('program') && h.includes('name')) program.program_name = value;
+          else if (h.includes('program') && h.includes('type')) program.program_type = value;
+          else if (h.includes('description')) program.description = value;
+          else if (h.includes('min') && h.includes('loan')) program.min_loan = value;
+          else if (h.includes('max') && h.includes('loan')) program.max_loan = value;
+          else if (h.includes('interest') || h.includes('rate')) program.interest_range = value;
+          else if (h.includes('term')) program.term = value;
         });
 
-        if (program.lender_name && program.program_name) {
+        // For your format, use Institution as lender_name and generate program_name from loan types
+        if (program.lender_name) {
+          if (!program.program_name) {
+            program.program_name = program.loan_types || 'General Lending';
+          }
           programs.push(program);
         }
       }
@@ -260,12 +307,24 @@ const LenderPrograms = () => {
         lender_name: p.lender_name,
         lender_specialty: p.lender_specialty || null,
         program_name: p.program_name,
-        program_type: p.program_type || 'Conventional',
+        program_type: p.program_type || p.lender_type || 'Other',
         description: p.description || null,
         min_loan: parseCurrencyValue(p.min_loan),
         max_loan: parseCurrencyValue(p.max_loan),
         interest_range: p.interest_range || null,
         term: p.term || null,
+        // New fields
+        call_status: p.call_status || 'N',
+        last_contact: p.last_contact ? new Date(p.last_contact).toISOString() : null,
+        next_call: p.next_call ? new Date(p.next_call).toISOString() : null,
+        location: p.location || null,
+        looking_for: p.looking_for || null,
+        contact_name: p.contact_name || null,
+        phone: p.phone || null,
+        email: p.email || null,
+        lender_type: p.lender_type || null,
+        loan_types: p.loan_types || null,
+        states: p.states || null,
       }));
 
       const { error } = await supabase.from('lender_programs').insert(insertData);
@@ -385,24 +444,26 @@ const LenderPrograms = () => {
                       <table className="w-full text-sm">
                         <thead className="bg-muted sticky top-0">
                           <tr>
-                            <th className="text-left p-2">Lender</th>
-                            <th className="text-left p-2">Program</th>
+                            <th className="text-left p-2">Institution</th>
+                            <th className="text-left p-2">Contact</th>
                             <th className="text-left p-2">Type</th>
-                            <th className="text-left p-2">Loan Range</th>
+                            <th className="text-left p-2">Loan Types</th>
+                            <th className="text-left p-2">States</th>
                           </tr>
                         </thead>
                         <tbody>
                           {parsedPrograms.slice(0, 20).map((p, i) => (
                             <tr key={i} className="border-t">
                               <td className="p-2">{p.lender_name}</td>
-                              <td className="p-2">{p.program_name}</td>
-                              <td className="p-2">{p.program_type}</td>
-                              <td className="p-2">{p.min_loan} - {p.max_loan}</td>
+                              <td className="p-2">{p.contact_name || p.email || '-'}</td>
+                              <td className="p-2">{p.lender_type || p.program_type || '-'}</td>
+                              <td className="p-2">{p.loan_types || p.program_name || '-'}</td>
+                              <td className="p-2">{p.states || '-'}</td>
                             </tr>
                           ))}
                           {parsedPrograms.length > 20 && (
                             <tr className="border-t">
-                              <td colSpan={4} className="p-2 text-center text-muted-foreground">
+                              <td colSpan={5} className="p-2 text-center text-muted-foreground">
                                 ... and {parsedPrograms.length - 20} more
                               </td>
                             </tr>
@@ -413,10 +474,10 @@ const LenderPrograms = () => {
                   )}
 
                   <div className="bg-muted/50 rounded-lg p-4">
-                    <h4 className="font-medium text-sm mb-2">CSV Format Example:</h4>
+                    <h4 className="font-medium text-sm mb-2">Your CSV Format (supported):</h4>
                     <code className="text-xs text-muted-foreground block overflow-x-auto whitespace-pre">
-lender_name,lender_specialty,program_name,program_type,description,min_loan,max_loan,interest_range,term
-"First National Bank","Commercial RE","CRE Term Loan","Conventional","Standard commercial loan","500K","10M","6.5% - 8%","5-25 years"
+Institution,Call Y/N,Last Contact,Next Call,Location,Looking For,NAME,PHONE,EMAIL,TYPE OF LENDER,TYPES OF LOANS,Loan Size,States
+"First National Bank","Y","2024-01-15","2024-02-01","New York","CRE deals","John Smith","555-123-4567","john@fnb.com","Bank","SBA, Conventional","$500K-$10M","NY, NJ, CT"
                     </code>
                   </div>
                 </div>
