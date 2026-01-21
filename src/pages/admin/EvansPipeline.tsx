@@ -523,9 +523,9 @@ const EvansPipeline = () => {
         </div>
 
         {/* Grouped Table View */}
-        <div className="flex-1 overflow-auto border border-slate-200 rounded-md bg-white">
+        <div className="flex-1 overflow-auto border border-slate-300 rounded-md bg-white">
           {/* Table Header with Column Dropdowns */}
-          <div className="sticky top-0 z-10 bg-slate-50 border-b border-slate-300">
+          <div className="sticky top-0 z-10 bg-slate-50 border-b-2 border-slate-300">
             <div 
               className="text-sm font-semibold text-slate-600 uppercase tracking-wider"
               style={{ 
@@ -536,8 +536,8 @@ const EvansPipeline = () => {
               {getVisibleColumns().map((column, colIndex) => {
                 const isLastColumn = colIndex === getVisibleColumns().length - 1;
                 const cellClass = cn(
-                  "flex items-center px-4 py-4 border-r border-slate-200",
-                  isLastColumn && "border-r-0"
+                  "flex items-center px-4 py-4",
+                  !isLastColumn && "border-r border-slate-300"
                 );
                 
                 // Special handling for checkbox column - add select all
@@ -649,10 +649,7 @@ const EvansPipeline = () => {
                   {/* Section Header - spans full width with grid alignment */}
                   <CollapsibleTrigger asChild>
                     <div
-                      className={cn(
-                        "cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-200",
-                        stage.borderColor
-                      )}
+                      className="cursor-pointer hover:bg-slate-50/50 transition-colors bg-slate-50"
                       style={{ 
                         display: 'grid',
                         gridTemplateColumns: getGridTemplate()
@@ -666,8 +663,8 @@ const EvansPipeline = () => {
                           <div 
                             key={column.id}
                             className={cn(
-                              "flex items-center border-r border-slate-200 min-h-[52px]",
-                              isLastColumn && "border-r-0",
+                              "flex items-center min-h-[52px]",
+                              !isLastColumn && "border-r border-slate-300",
                               column.id === 'checkbox' && "px-2 justify-center",
                               column.id === 'avatar' && "px-2 justify-center",
                               column.id !== 'checkbox' && column.id !== 'avatar' && "px-4"
@@ -718,7 +715,6 @@ const EvansPipeline = () => {
                   <CollapsibleContent>
                     {stageLeads.length === 0 ? (
                       <div 
-                        className="border-b border-slate-200"
                         style={{ 
                           display: 'grid',
                           gridTemplateColumns: getGridTemplate()
@@ -730,8 +726,8 @@ const EvansPipeline = () => {
                             <div 
                               key={column.id}
                               className={cn(
-                                "flex items-center border-r border-slate-200 min-h-[48px]",
-                                isLastColumn && "border-r-0",
+                                "flex items-center min-h-[48px]",
+                                !isLastColumn && "border-r border-slate-300",
                                 column.id === 'checkbox' && "px-2 justify-center",
                                 column.id === 'avatar' && "px-2 justify-center",
                                 column.id !== 'checkbox' && column.id !== 'avatar' && "px-4"
@@ -952,10 +948,7 @@ const EvansPipeline = () => {
                             return (
                               <div
                                 key={lead.id}
-                                className={cn(
-                                  "hover:bg-slate-50/80 cursor-pointer items-center text-base transition-colors min-h-[56px]",
-                                  idx < stageLeads.length - 1 && "border-b border-slate-100"
-                                )}
+                                className="hover:bg-slate-50/80 cursor-pointer items-center text-base transition-colors min-h-[56px]"
                                 style={{ 
                                   display: 'grid',
                                   gridTemplateColumns: getGridTemplate()
@@ -968,8 +961,8 @@ const EvansPipeline = () => {
                                     <div 
                                       key={column.id} 
                                       className={cn(
-                                        "flex items-center px-4 py-3 border-r border-slate-200 min-h-[56px]",
-                                        isLastColumn && "border-r-0",
+                                        "flex items-center px-4 py-3 min-h-[56px]",
+                                        !isLastColumn && "border-r border-slate-300",
                                         column.id === 'checkbox' && "px-2 justify-center",
                                         column.id === 'avatar' && "px-2"
                                       )}
