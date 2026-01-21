@@ -247,16 +247,17 @@ const PipelineColumnHeader = ({
   };
 
   return (
-    <div className="flex items-center gap-1 group relative pr-3 border-r border-slate-200 last:border-r-0">
+    <div className="flex items-center gap-1.5 group relative">
       {getColumnIcon()}
       <span className={cn(
+        "text-sm",
         column.type === 'magic' && 'text-purple-600',
         column.isFrozen && 'font-bold'
       )}>
         {column.name}
       </span>
-      {column.isFrozen && <Lock className="h-2.5 w-2.5 text-slate-400" />}
-      {helpText && <HelpTooltip content={helpText} side="bottom" iconClassName="h-3 w-3" />}
+      {column.isFrozen && <Lock className="h-3 w-3 text-slate-400" />}
+      {helpText && <HelpTooltip content={helpText} side="bottom" iconClassName="h-4 w-4" />}
       
       {showDropdown && (
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
