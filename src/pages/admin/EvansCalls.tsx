@@ -237,10 +237,6 @@ const EvansCalls = () => {
     lenderType: '',
     loanTypes: '',
   });
-  
-  // Pagination state for lender programs
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -398,17 +394,6 @@ const EvansCalls = () => {
     });
   }, [allPrograms, lenderFilters]);
 
-  // Paginated programs
-  const totalPages = Math.ceil(filteredPrograms.length / ITEMS_PER_PAGE);
-  const paginatedPrograms = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredPrograms.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredPrograms, currentPage]);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [lenderFilters]);
 
   const hasActiveFilters = Object.values(lenderFilters).some(v => v.trim() !== '');
 
@@ -999,7 +984,7 @@ const EvansCalls = () => {
                       <div className="flex-shrink-0">
                         <CardTitle className="text-lg font-semibold">Lender Programs</CardTitle>
                         <CardDescription className="text-xs">
-                          Showing {paginatedPrograms.length} of {filteredPrograms.length} programs{leadContext ? ' • Matching to lead' : ''}
+                          {filteredPrograms.length} programs{leadContext ? ' • Matching to lead' : ''}
                         </CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1029,39 +1014,39 @@ const EvansCalls = () => {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-0 flex-1 min-h-0">
-                    <ScrollArea className="h-full">
-                      {filteredPrograms.length === 0 ? (
-                        <div className="text-center py-12">
-                          <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                          <p className="text-muted-foreground text-sm">
-                            {allPrograms.length === 0 ? 'No lender programs available' : 'No lenders match your filters'}
-                          </p>
-                          {allPrograms.length === 0 ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-3"
-                              onClick={() => navigate('/admin/lender-programs')}
-                            >
-                              Add Lenders
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="mt-3"
-                              onClick={clearAllFilters}
-                            >
-                              Clear Filters
-                            </Button>
-                          )}
-                        </div>
-                      ) : (
-                        <>
+                  <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
+                    {filteredPrograms.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                        <p className="text-muted-foreground text-sm">
+                          {allPrograms.length === 0 ? 'No lender programs available' : 'No lenders match your filters'}
+                        </p>
+                        {allPrograms.length === 0 ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3"
+                            onClick={() => navigate('/admin/lender-programs')}
+                          >
+                            Add Lenders
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-3"
+                            onClick={clearAllFilters}
+                          >
+                            Clear Filters
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="h-full overflow-auto">
+                        <div className="min-w-[900px]">
                           <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted/50">
+                            <TableHeader className="sticky top-0 z-10 bg-muted">
+                              <TableRow>
                                 <TableHead className="text-xs font-semibold w-[180px]">Institution</TableHead>
                                 <TableHead className="text-xs font-semibold w-[300px]">Looking For</TableHead>
                                 <TableHead className="text-xs font-semibold w-[120px]">Contact</TableHead>
@@ -1071,7 +1056,7 @@ const EvansCalls = () => {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {paginatedPrograms.map((program) => (
+                              {filteredPrograms.map((program) => (
                                 <TableRow key={program.id} className="min-h-[48px]">
                                   <TableCell className="py-2 px-2">
                                     <div className="font-medium text-sm">{program.lender_name}</div>
@@ -1108,37 +1093,9 @@ const EvansCalls = () => {
                               ))}
                             </TableBody>
                           </Table>
-                          {/* Pagination Controls */}
-                          {totalPages > 1 && (
-                            <div className="flex items-center justify-between px-4 py-3 border-t bg-slate-50/50">
-                              <div className="text-xs text-muted-foreground">
-                                Page {currentPage} of {totalPages}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                  disabled={currentPage === 1}
-                                  className="h-7 w-7 p-0"
-                                >
-                                  <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                  disabled={currentPage === totalPages}
-                                  className="h-7 w-7 p-0"
-                                >
-                                  <ChevronRight className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </ScrollArea>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
