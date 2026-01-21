@@ -243,7 +243,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
   }, [isOwner, teamMember]);
 
   return (
-    <Sidebar className="border-r-0 bg-[#0a1628]" style={{ '--sidebar-width': '16rem' } as React.CSSProperties}>
+    <Sidebar className="border-r-0 bg-[#0a1628] font-sans" style={{ '--sidebar-width': '16rem', fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" } as React.CSSProperties}>
       <SidebarHeader className="pt-0 pb-0 px-3 border-b-0">
         <Link to={homeUrl} className="flex items-center justify-center group">
           <img 
@@ -269,14 +269,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                 >
                   <CollapsibleTrigger className="w-full">
                     <div className={`
-                      flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px]
+                      flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px] tracking-tight
                       ${openSections[item.title] 
                         ? 'bg-white/10 text-white' 
                         : 'text-white/70 hover:bg-white/5 hover:text-white'
                       }
                     `}>
-                      <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
-                      <span className="font-medium flex-1 text-left">{item.title}</span>
+                      <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
+                      <span className="font-semibold flex-1 text-left">{item.title}</span>
                       <ChevronDown 
                         className={`w-3.5 h-3.5 transition-transform duration-150 opacity-60 ${
                           openSections[item.title] ? '' : '-rotate-90'
@@ -291,15 +291,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                           key={subItem.title}
                           to={subItem.url}
                           className={`
-                            flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px]
+                            flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px] tracking-tight
                             ${isActive(subItem.url) 
                               ? 'bg-white/15 text-white' 
                               : 'text-white/60 hover:bg-white/5 hover:text-white/90'
                             }
                           `}
                         >
-                          <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.5} />
-                          <span className="font-medium">{subItem.title}</span>
+                          <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.75} />
+                          <span className="font-semibold">{subItem.title}</span>
                         </Link>
                       ))}
                     </div>
@@ -310,15 +310,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                   key={item.title}
                   to={item.url}
                   className={`
-                    flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 text-[13px]
+                    flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 text-[13px] tracking-tight
                     ${isActive(item.url) 
                       ? 'bg-white/15 text-white' 
                       : 'text-white/70 hover:bg-white/5 hover:text-white'
                     }
                   `}
                 >
-                  <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
-                  <span className="font-medium">{item.title}</span>
+                  <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
+                  <span className="font-semibold">{item.title}</span>
                 </Link>
               )
             ))
@@ -330,14 +330,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
             >
               <CollapsibleTrigger className="w-full">
                 <div className={`
-                  flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px]
+                  flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px] tracking-tight
                   ${openSections[section.title] 
                     ? 'bg-white/10 text-white' 
                     : 'text-white/70 hover:bg-white/5 hover:text-white'
                   }
                 `}>
-                  <section.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
-                  <span className="font-medium flex-1 text-left">{section.title}</span>
+                  <section.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
+                  <span className="font-semibold flex-1 text-left">{section.title}</span>
                   <ChevronDown 
                     className={`w-3.5 h-3.5 transition-transform duration-150 opacity-60 ${
                       openSections[section.title] ? '' : '-rotate-90'
@@ -357,14 +357,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                       >
                         <CollapsibleTrigger className="w-full">
                           <div className={`
-                            flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 cursor-pointer text-[12px]
+                            flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 cursor-pointer text-[12px] tracking-tight
                             ${openSections[item.title] 
                               ? 'bg-white/10 text-white' 
                               : 'text-white/60 hover:bg-white/5 hover:text-white/90'
                             }
                           `}>
-                            <item.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.5} />
-                            <span className="font-medium flex-1 text-left">{item.title}</span>
+                            <item.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.75} />
+                            <span className="font-semibold flex-1 text-left">{item.title}</span>
                             <ChevronDown 
                               className={`w-3 h-3 transition-transform duration-150 opacity-60 ${
                                 openSections[item.title] ? '' : '-rotate-90'
@@ -379,15 +379,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                                 key={subItem.title}
                                 to={subItem.url}
                                 className={`
-                                  flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[11px]
+                                  flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[11px] tracking-tight
                                   ${isActive(subItem.url) 
                                     ? 'bg-white/15 text-white' 
                                     : 'text-white/50 hover:bg-white/5 hover:text-white/80'
                                   }
                                 `}
                               >
-                                <subItem.icon className="w-3 h-3 flex-shrink-0" strokeWidth={1.5} />
-                                <span className="font-medium">{subItem.title}</span>
+                                <subItem.icon className="w-3 h-3 flex-shrink-0" strokeWidth={1.75} />
+                                <span className="font-semibold">{subItem.title}</span>
                               </Link>
                             ))}
                           </div>
@@ -398,15 +398,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
                         key={item.title}
                         to={item.url}
                         className={`
-                          flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px]
+                          flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px] tracking-tight
                           ${isActive(item.url) 
                             ? 'bg-white/15 text-white' 
                             : 'text-white/60 hover:bg-white/5 hover:text-white/90'
                           }
                         `}
                       >
-                        <item.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.5} />
-                        <span className="font-medium">{item.title}</span>
+                        <item.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.75} />
+                        <span className="font-semibold">{item.title}</span>
                       </Link>
                     )
                   ))}
@@ -427,10 +427,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
             size="md"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-white truncate">
+            <p className="text-[13px] font-semibold text-white truncate tracking-tight">
               {teamMember?.name || user?.email?.split('@')[0] || 'User'}
             </p>
-            <p className="text-[11px] text-white/50 truncate">
+            <p className="text-[11px] text-white/50 truncate tracking-tight">
               {user?.email}
             </p>
           </div>
