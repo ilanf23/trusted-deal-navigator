@@ -274,7 +274,6 @@ const LenderPrograms = () => {
           if (h === 'institution' || (h.includes('lender') && h.includes('name'))) program.lender_name = value;
           else if (h === 'call y/n' || h === 'call' || h.includes('call y')) program.call_status = value || 'N';
           else if (h === 'last contact' || (h.includes('last') && h.includes('contact'))) program.last_contact = value;
-          else if (h === 'next call' || (h.includes('next') && h.includes('call'))) program.next_call = value;
           else if (h === 'location') program.location = value;
           else if (h === 'looking for' || h.includes('looking')) program.looking_for = value;
           else if (h === 'name' || h === 'contact name' || h === 'contact') program.contact_name = value;
