@@ -24,6 +24,18 @@ interface Program {
   max_loan: number | null;
   interest_range: string | null;
   term: string | null;
+  // New fields
+  call_status: string | null;
+  last_contact: string | null;
+  next_call: string | null;
+  location: string | null;
+  looking_for: string | null;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  lender_type: string | null;
+  loan_types: string | null;
+  states: string | null;
 }
 
 interface GroupedLender {
@@ -708,8 +720,25 @@ const LenderPrograms = () => {
                                   <Badge className={`text-xs ${getTypeBadgeClass(program.program_type)}`}>
                                     {program.program_type}
                                   </Badge>
+                                  {program.call_status && (
+                                    <Badge variant={program.call_status === 'Y' ? 'default' : 'secondary'} className="text-xs">
+                                      Call: {program.call_status}
+                                    </Badge>
+                                  )}
                                 </div>
-                                <p className="text-sm text-muted-foreground leading-relaxed">{program.description}</p>
+                                {/* Looking For / Description */}
+                                {(program.looking_for || program.description) && (
+                                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                                    {program.looking_for || program.description}
+                                  </p>
+                                )}
+                                {/* Loan Types */}
+                                {program.loan_types && (
+                                  <p className="text-sm mb-2">
+                                    <span className="font-medium text-admin-blue-dark">Loan Types:</span>{' '}
+                                    <span className="text-muted-foreground">{program.loan_types}</span>
+                                  </p>
+                                )}
                               </div>
                               <Button
                                 variant="ghost"
@@ -723,6 +752,58 @@ const LenderPrograms = () => {
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
+                            
+                            {/* Contact & Location Info Row */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-3 border-t border-b border-admin-blue/10 mb-4">
+                              {program.contact_name && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Contact</p>
+                                  <p className="text-sm font-medium">{program.contact_name}</p>
+                                </div>
+                              )}
+                              {program.phone && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Phone</p>
+                                  <a href={`tel:${program.phone}`} className="text-sm font-medium text-admin-blue hover:underline">
+                                    {program.phone}
+                                  </a>
+                                </div>
+                              )}
+                              {program.email && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Email</p>
+                                  <a href={`mailto:${program.email}`} className="text-sm font-medium text-admin-blue hover:underline truncate block">
+                                    {program.email}
+                                  </a>
+                                </div>
+                              )}
+                              {program.location && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Location</p>
+                                  <p className="text-sm font-medium">{program.location}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* States & Lender Type Row */}
+                            {(program.states || program.lender_type) && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                {program.states && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">States Covered</p>
+                                    <p className="text-sm font-medium">{program.states}</p>
+                                  </div>
+                                )}
+                                {program.lender_type && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Lender Type</p>
+                                    <p className="text-sm font-medium">{program.lender_type}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Financial Details Row */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-admin-blue/10">
                               <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-lg bg-admin-teal-light">
@@ -731,7 +812,9 @@ const LenderPrograms = () => {
                                 <div>
                                   <p className="text-xs text-muted-foreground">Loan Range</p>
                                   <p className="text-sm font-medium text-admin-teal">
-                                    {formatCurrency(program.min_loan)} - {formatCurrency(program.max_loan)}
+                                    {program.min_loan || program.max_loan 
+                                      ? `${formatCurrency(program.min_loan)} - ${formatCurrency(program.max_loan)}`
+                                      : 'N/A'}
                                   </p>
                                 </div>
                               </div>
