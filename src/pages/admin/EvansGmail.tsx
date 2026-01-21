@@ -451,7 +451,7 @@ const EvansGmail = () => {
     return format(date, 'MMM d');
   };
 
-  // Create nudge email draft
+  // Create nudge email draft and follow-up task
   const createNudgeDraft = useMutation({
     mutationFn: async (lead: Lead) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -488,12 +488,32 @@ const EvansGmail = () => {
         .update({ updated_at: new Date().toISOString() })
         .eq('id', lead.id);
 
-      return { lead, draftId: data.id };
+      // Create a follow-up task linked to the lead
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(9, 0, 0, 0); // Set to 9 AM tomorrow
+
+      await supabase
+        .from('evan_tasks')
+        .insert({
+          title: `Follow up with ${lead.name}`,
+          description: `Nudge triggered: No contact in ${daysSince} days. Draft email created - review and send follow-up to ${lead.email}.${lead.company_name ? ` Company: ${lead.company_name}` : ''}`,
+          lead_id: lead.id,
+          priority: daysSince > 14 ? 'high' : 'medium',
+          status: 'todo',
+          group_name: 'To Do',
+          due_date: tomorrow.toISOString(),
+          assignee_name: 'Evan',
+          tags: ['follow-up', 'nudge'],
+        });
+
+      return { lead, draftId: data.id, daysSince };
     },
     onSuccess: ({ lead }) => {
-      toast.success(`Draft created for ${lead.name}`);
+      toast.success(`Draft & follow-up task created for ${lead.name}`);
       queryClient.invalidateQueries({ queryKey: ['gmail-nudge-leads'] });
       queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
+      queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
     },
     onError: (error: any) => {
       toast.error('Failed to create draft: ' + error.message);
