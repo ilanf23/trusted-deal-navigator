@@ -33,7 +33,9 @@ import {
   UserPlus,
   Sparkles,
   MessageSquare,
-  Plus
+  Plus,
+  Filter,
+  X
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
@@ -221,8 +223,18 @@ const EvansCalls = () => {
   // AI Assistant state
   const [showAssistant, setShowAssistant] = useState(true);
   
-  // Lender program filter state
-  const [lenderFilter, setLenderFilter] = useState('');
+  // Lender filter panel state
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [lenderFilters, setLenderFilters] = useState({
+    institution: '',
+    lookingFor: '',
+    contact: '',
+    phone: '',
+    loanSize: '',
+    states: '',
+    lenderType: '',
+    loanTypes: '',
+  });
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -366,21 +378,35 @@ const EvansCalls = () => {
     };
   }, [matchedLead, leadResponse]);
 
-  // Filter lender programs based on search text
+  // Filter lender programs based on individual filters
   const filteredPrograms = useMemo(() => {
-    if (!lenderFilter.trim()) return allPrograms;
-    const search = lenderFilter.toLowerCase();
-    return allPrograms.filter((program) => 
-      program.lender_name?.toLowerCase().includes(search) ||
-      program.looking_for?.toLowerCase().includes(search) ||
-      program.contact_name?.toLowerCase().includes(search) ||
-      program.loan_types?.toLowerCase().includes(search) ||
-      program.lender_type?.toLowerCase().includes(search) ||
-      program.states?.toLowerCase().includes(search) ||
-      program.loan_size_text?.toLowerCase().includes(search) ||
-      program.location?.toLowerCase().includes(search)
-    );
-  }, [allPrograms, lenderFilter]);
+    return allPrograms.filter((program) => {
+      if (lenderFilters.institution && !program.lender_name?.toLowerCase().includes(lenderFilters.institution.toLowerCase())) return false;
+      if (lenderFilters.lookingFor && !program.looking_for?.toLowerCase().includes(lenderFilters.lookingFor.toLowerCase())) return false;
+      if (lenderFilters.contact && !program.contact_name?.toLowerCase().includes(lenderFilters.contact.toLowerCase())) return false;
+      if (lenderFilters.phone && !program.phone?.toLowerCase().includes(lenderFilters.phone.toLowerCase())) return false;
+      if (lenderFilters.loanSize && !program.loan_size_text?.toLowerCase().includes(lenderFilters.loanSize.toLowerCase())) return false;
+      if (lenderFilters.states && !program.states?.toLowerCase().includes(lenderFilters.states.toLowerCase())) return false;
+      if (lenderFilters.lenderType && !program.lender_type?.toLowerCase().includes(lenderFilters.lenderType.toLowerCase())) return false;
+      if (lenderFilters.loanTypes && !program.loan_types?.toLowerCase().includes(lenderFilters.loanTypes.toLowerCase())) return false;
+      return true;
+    });
+  }, [allPrograms, lenderFilters]);
+
+  const hasActiveFilters = Object.values(lenderFilters).some(v => v.trim() !== '');
+
+  const clearAllFilters = () => {
+    setLenderFilters({
+      institution: '',
+      lookingFor: '',
+      contact: '',
+      phone: '',
+      loanSize: '',
+      states: '',
+      lenderType: '',
+      loanTypes: '',
+    });
+  };
 
   const toggleLender = (lenderName: string) => {
     setExpandedLenders((prev) => ({
@@ -914,23 +940,31 @@ const EvansCalls = () => {
                           {filteredPrograms.length} of {allPrograms.length} programs{leadContext ? ' • Matching to lead' : ''}
                         </CardDescription>
                       </div>
-                      <div className="flex-1 max-w-xs">
-                        <Input
-                          placeholder="Filter lenders..."
-                          value={lenderFilter}
-                          onChange={(e) => setLenderFilter(e.target.value)}
-                          className="h-8 text-sm pl-3"
-                        />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant={showFilterPanel ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShowFilterPanel(!showFilterPanel)}
+                          className="gap-1 text-xs"
+                        >
+                          <Filter className="h-3.5 w-3.5" />
+                          Filter
+                          {hasActiveFilters && (
+                            <span className="ml-1 bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full">
+                              {Object.values(lenderFilters).filter(v => v.trim()).length}
+                            </span>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate('/admin/lender-programs')}
+                          className="gap-1 text-xs flex-shrink-0"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Manage
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate('/admin/lender-programs')}
-                        className="gap-1 text-xs flex-shrink-0"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Manage
-                      </Button>
                     </div>
                   </CardHeader>
                   <CardContent className="p-0 flex-1 min-h-0">
@@ -939,7 +973,7 @@ const EvansCalls = () => {
                         <div className="text-center py-12">
                           <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                           <p className="text-muted-foreground text-sm">
-                            {allPrograms.length === 0 ? 'No lender programs available' : 'No lenders match your filter'}
+                            {allPrograms.length === 0 ? 'No lender programs available' : 'No lenders match your filters'}
                           </p>
                           {allPrograms.length === 0 ? (
                             <Button
@@ -955,9 +989,9 @@ const EvansCalls = () => {
                               variant="ghost"
                               size="sm"
                               className="mt-3"
-                              onClick={() => setLenderFilter('')}
+                              onClick={clearAllFilters}
                             >
-                              Clear Filter
+                              Clear Filters
                             </Button>
                           )}
                         </div>
@@ -1017,8 +1051,124 @@ const EvansCalls = () => {
                 </Card>
               </div>
 
-              {/* AI Assistant Panel - Clickable header to collapse */}
-              {showAssistant ? (
+              {/* Filter Panel - Separate collapsible card */}
+              {showFilterPanel ? (
+                <div className="xl:col-span-2 h-full">
+                  <Card className="h-full flex flex-col border-slate-300">
+                    <CardHeader 
+                      className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors bg-slate-50"
+                      onClick={() => setShowFilterPanel(false)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg bg-slate-700">
+                            <Filter className="h-4 w-4 text-white" />
+                          </div>
+                          <CardTitle className="text-base">Filter Lenders</CardTitle>
+                          {hasActiveFilters && (
+                            <Badge variant="secondary" className="text-xs">
+                              {Object.values(lenderFilters).filter(v => v.trim()).length} active
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {hasActiveFilters && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                clearAllFilters();
+                              }}
+                              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Clear
+                            </Button>
+                          )}
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 p-4 min-h-0 overflow-auto">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">Institution</Label>
+                          <Input
+                            placeholder="Filter by institution..."
+                            value={lenderFilters.institution}
+                            onChange={(e) => setLenderFilters(prev => ({ ...prev, institution: e.target.value }))}
+                            className="h-8 text-sm pl-3"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">Looking For</Label>
+                          <Input
+                            placeholder="Filter by looking for..."
+                            value={lenderFilters.lookingFor}
+                            onChange={(e) => setLenderFilters(prev => ({ ...prev, lookingFor: e.target.value }))}
+                            className="h-8 text-sm pl-3"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">Contact Name</Label>
+                          <Input
+                            placeholder="Filter by contact..."
+                            value={lenderFilters.contact}
+                            onChange={(e) => setLenderFilters(prev => ({ ...prev, contact: e.target.value }))}
+                            className="h-8 text-sm pl-3"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">Phone</Label>
+                          <Input
+                            placeholder="Filter by phone..."
+                            value={lenderFilters.phone}
+                            onChange={(e) => setLenderFilters(prev => ({ ...prev, phone: e.target.value }))}
+                            className="h-8 text-sm pl-3"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">Loan Size</Label>
+                          <Input
+                            placeholder="Filter by loan size..."
+                            value={lenderFilters.loanSize}
+                            onChange={(e) => setLenderFilters(prev => ({ ...prev, loanSize: e.target.value }))}
+                            className="h-8 text-sm pl-3"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">States</Label>
+                          <Input
+                            placeholder="Filter by states..."
+                            value={lenderFilters.states}
+                            onChange={(e) => setLenderFilters(prev => ({ ...prev, states: e.target.value }))}
+                            className="h-8 text-sm pl-3"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">Lender Type</Label>
+                          <Input
+                            placeholder="Filter by lender type..."
+                            value={lenderFilters.lenderType}
+                            onChange={(e) => setLenderFilters(prev => ({ ...prev, lenderType: e.target.value }))}
+                            className="h-8 text-sm pl-3"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">Loan Types</Label>
+                          <Input
+                            placeholder="Filter by loan types..."
+                            value={lenderFilters.loanTypes}
+                            onChange={(e) => setLenderFilters(prev => ({ ...prev, loanTypes: e.target.value }))}
+                            className="h-8 text-sm pl-3"
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : showAssistant ? (
                 <div className="xl:col-span-2 h-full">
                   <Card className="h-full flex flex-col border-admin-blue/20">
                     {/* Clickable header to collapse */}
