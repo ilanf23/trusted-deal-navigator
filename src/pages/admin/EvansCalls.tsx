@@ -220,6 +220,9 @@ const EvansCalls = () => {
   
   // AI Assistant state
   const [showAssistant, setShowAssistant] = useState(true);
+  
+  // Lender program filter state
+  const [lenderFilter, setLenderFilter] = useState('');
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -362,6 +365,22 @@ const EvansCalls = () => {
       propertyType: leadResponse?.business_type || undefined,
     };
   }, [matchedLead, leadResponse]);
+
+  // Filter lender programs based on search text
+  const filteredPrograms = useMemo(() => {
+    if (!lenderFilter.trim()) return allPrograms;
+    const search = lenderFilter.toLowerCase();
+    return allPrograms.filter((program) => 
+      program.lender_name?.toLowerCase().includes(search) ||
+      program.looking_for?.toLowerCase().includes(search) ||
+      program.contact_name?.toLowerCase().includes(search) ||
+      program.loan_types?.toLowerCase().includes(search) ||
+      program.lender_type?.toLowerCase().includes(search) ||
+      program.states?.toLowerCase().includes(search) ||
+      program.loan_size_text?.toLowerCase().includes(search) ||
+      program.location?.toLowerCase().includes(search)
+    );
+  }, [allPrograms, lenderFilter]);
 
   const toggleLender = (lenderName: string) => {
     setExpandedLenders((prev) => ({
@@ -888,18 +907,26 @@ const EvansCalls = () => {
               <div className={showAssistant ? "xl:col-span-3" : "xl:col-span-5"}>
               <Card className="h-full flex flex-col border-slate-200">
                   <CardHeader className="flex-shrink-0 pb-3 border-b bg-slate-50/50">
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-shrink-0">
                         <CardTitle className="text-lg font-semibold">Deal Matcher</CardTitle>
                         <CardDescription className="text-xs">
-                          {allPrograms.length} lender programs • {leadContext ? 'Matching to current lead' : 'No lead selected'}
+                          {filteredPrograms.length} of {allPrograms.length} programs{leadContext ? ' • Matching to lead' : ''}
                         </CardDescription>
+                      </div>
+                      <div className="flex-1 max-w-xs">
+                        <Input
+                          placeholder="Filter lenders..."
+                          value={lenderFilter}
+                          onChange={(e) => setLenderFilter(e.target.value)}
+                          className="h-8 text-sm pl-3"
+                        />
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => navigate('/admin/lender-programs')}
-                        className="gap-1 text-xs"
+                        className="gap-1 text-xs flex-shrink-0"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         Manage
@@ -908,18 +935,31 @@ const EvansCalls = () => {
                   </CardHeader>
                   <CardContent className="p-0 flex-1 min-h-0">
                     <ScrollArea className="h-full">
-                      {allPrograms.length === 0 ? (
+                      {filteredPrograms.length === 0 ? (
                         <div className="text-center py-12">
                           <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                          <p className="text-muted-foreground text-sm">No lender programs available</p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-3"
-                            onClick={() => navigate('/admin/lender-programs')}
-                          >
-                            Add Lenders
-                          </Button>
+                          <p className="text-muted-foreground text-sm">
+                            {allPrograms.length === 0 ? 'No lender programs available' : 'No lenders match your filter'}
+                          </p>
+                          {allPrograms.length === 0 ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-3"
+                              onClick={() => navigate('/admin/lender-programs')}
+                            >
+                              Add Lenders
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-3"
+                              onClick={() => setLenderFilter('')}
+                            >
+                              Clear Filter
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <Table>
@@ -934,7 +974,7 @@ const EvansCalls = () => {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {allPrograms.map((program) => (
+                            {filteredPrograms.map((program) => (
                               <TableRow key={program.id} className="min-h-[48px]">
                                 <TableCell className="py-2 px-2">
                                   <div className="font-medium text-sm">{program.lender_name}</div>
