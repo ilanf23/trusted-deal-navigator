@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import type { PipelineColumn, ColumnType, MagicColumnType } from '@/components/admin/PipelineColumnHeader';
-import { customColumnTypes, magicColumnTypes } from '@/components/admin/PipelineColumnHeader';
+import { customColumnTypes, allMagicColumns } from '@/components/admin/PipelineColumnHeader';
 
 // Default foundational columns that cannot be deleted
 const defaultFoundationalColumns: PipelineColumn[] = [
@@ -34,7 +34,7 @@ export const usePipelineColumns = () => {
     let newColumn: PipelineColumn;
     
     if (isMagic) {
-      const magicType = magicColumnTypes.find(m => m.type === type);
+      const magicType = allMagicColumns.find(m => m.type === type);
       newColumn = {
         id: `magic-${type}-${Date.now()}`,
         name: magicType?.label || type,
