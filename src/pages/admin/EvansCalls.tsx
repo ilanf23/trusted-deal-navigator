@@ -82,6 +82,15 @@ interface Program {
   max_loan: number | null;
   interest_range: string | null;
   term: string | null;
+  call_status: string | null;
+  location: string | null;
+  looking_for: string | null;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  lender_type: string | null;
+  loan_types: string | null;
+  states: string | null;
 }
 
 interface GroupedLender {
@@ -934,18 +943,29 @@ const EvansCalls = () => {
                                           key={program.id}
                                           className="p-4 rounded-lg border border-admin-blue/10 bg-gradient-to-r from-admin-blue-light/20 to-transparent"
                                         >
-                                          <div className="flex items-start justify-between gap-3 mb-3">
-                                            <div>
-                                              <div className="flex items-center gap-2 mb-1">
-                                                <h4 className="font-medium text-sm">{program.program_name}</h4>
-                                                <Badge className={`text-xs ${getTypeBadgeClass(program.program_type)}`}>
-                                                  {program.program_type}
-                                                </Badge>
-                                              </div>
-                                              <p className="text-xs text-muted-foreground">{program.description}</p>
-                                            </div>
+                                          {/* Loan Types & Lender Type badges */}
+                                          <div className="flex items-center gap-2 flex-wrap mb-3">
+                                            {program.loan_types?.split(',').map((type) => (
+                                              <Badge key={type.trim()} variant="outline" className="text-xs">
+                                                {type.trim()}
+                                              </Badge>
+                                            ))}
+                                            {program.lender_type && (
+                                              <Badge className="bg-muted text-muted-foreground text-xs">
+                                                {program.lender_type}
+                                              </Badge>
+                                            )}
                                           </div>
-                                          <div className="grid grid-cols-3 gap-3 text-xs">
+
+                                          {/* Description / Looking For */}
+                                          {(program.looking_for || program.description) && (
+                                            <p className="text-sm text-muted-foreground mb-3">
+                                              {program.looking_for || program.description}
+                                            </p>
+                                          )}
+
+                                          {/* Financial Details Row */}
+                                          <div className="grid grid-cols-3 gap-3 text-xs mb-3">
                                             <div className="flex items-center gap-2">
                                               <DollarSign className="w-3 h-3 text-admin-teal" />
                                               <span className="text-muted-foreground">
@@ -961,6 +981,40 @@ const EvansCalls = () => {
                                               <span className="text-muted-foreground">{program.term || 'N/A'}</span>
                                             </div>
                                           </div>
+
+                                          {/* Contact Info */}
+                                          {(program.contact_name || program.phone || program.email) && (
+                                            <div className="border-t pt-3 mt-3 space-y-1.5">
+                                              {program.contact_name && (
+                                                <div className="flex items-center gap-2 text-xs">
+                                                  <User className="w-3 h-3 text-muted-foreground" />
+                                                  <span>{program.contact_name}</span>
+                                                </div>
+                                              )}
+                                              <div className="flex items-center gap-4 text-xs">
+                                                {program.phone && (
+                                                  <a href={`tel:${program.phone}`} className="flex items-center gap-1.5 text-admin-blue hover:underline">
+                                                    <Phone className="w-3 h-3" />
+                                                    {program.phone}
+                                                  </a>
+                                                )}
+                                                {program.email && (
+                                                  <a href={`mailto:${program.email}`} className="flex items-center gap-1.5 text-admin-blue hover:underline">
+                                                    <Mail className="w-3 h-3" />
+                                                    {program.email}
+                                                  </a>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* States & Location */}
+                                          {(program.states || program.location) && (
+                                            <div className="border-t pt-3 mt-3 text-xs text-muted-foreground">
+                                              {program.states && <p><span className="font-medium">States:</span> {program.states}</p>}
+                                              {program.location && <p><span className="font-medium">Location:</span> {program.location}</p>}
+                                            </div>
+                                          )}
                                         </div>
                                       ))}
                                     </div>
