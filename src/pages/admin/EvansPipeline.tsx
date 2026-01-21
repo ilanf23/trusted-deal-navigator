@@ -369,7 +369,7 @@ const EvansPipeline = () => {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full font-['Inter',_'SF_Pro_Display',_system-ui,_sans-serif]">
         {/* Header - 8px spacing system: mb-6 = 24px */}
         <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
           <div className="flex items-center gap-4">
@@ -396,12 +396,12 @@ const EvansPipeline = () => {
                     }
                   }}
                   autoFocus
-                  className="text-2xl font-semibold tracking-tight text-slate-900 bg-transparent border-b-2 border-[#0066FF] outline-none px-0 py-0"
+                  className="text-xl font-medium tracking-tight text-slate-800 bg-transparent border-b-2 border-[#0066FF] outline-none px-0 py-0"
                   style={{ width: `${Math.max(editingNameValue.length, 8)}ch` }}
                 />
               ) : (
                 <h1 
-                  className="text-2xl font-semibold tracking-tight text-slate-900 cursor-pointer hover:text-[#0066FF] transition-colors"
+                  className="text-xl font-medium tracking-tight text-slate-800 cursor-pointer hover:text-[#0066FF] transition-colors"
                   onClick={() => {
                     if (canEdit) {
                       setEditingNameValue(pipelineName);
@@ -422,7 +422,7 @@ const EvansPipeline = () => {
                 side="bottom"
               />
             </div>
-            <span className="text-sm text-slate-500 font-medium whitespace-nowrap">{totalLeads} leads</span>
+            <span className="text-[13px] text-slate-500 font-normal whitespace-nowrap">{totalLeads} leads</span>
             {!canEdit && (
               <Badge variant="outline" className="gap-1 text-slate-500 border-slate-300 flex-shrink-0">
                 <Lock className="h-3 w-3" />
@@ -568,7 +568,7 @@ const EvansPipeline = () => {
           {/* Table Header with Column Dropdowns */}
           <div className="sticky top-0 z-10 bg-slate-50/60 border-b border-slate-200 min-w-max">
             <div 
-              className="text-sm font-semibold text-slate-600 uppercase tracking-wider"
+              className="text-[11px] font-medium text-slate-500 uppercase tracking-widest"
               style={{ 
                 display: 'grid',
                 gridTemplateColumns: `${getGridTemplate()} 48px`
@@ -710,7 +710,7 @@ const EvansPipeline = () => {
                       
                       {/* Stage badge pill */}
                       <span 
-                        className="font-semibold text-base px-4 py-1.5 rounded-full whitespace-nowrap"
+                        className="font-medium text-sm px-4 py-1.5 rounded-full whitespace-nowrap"
                         style={{ 
                           backgroundColor: stage.hexColor,
                           color: 'white'
@@ -851,7 +851,7 @@ const EvansPipeline = () => {
                                     </Avatar>
                                   );
                                 case 'name':
-                                  return <div className="font-medium text-slate-900 truncate">{lead.name}</div>;
+                                  return <div className="font-normal text-[13px] text-slate-800 truncate">{lead.name}</div>;
                                 case 'stage':
                                   return (
                                     <DropdownMenu>
@@ -912,7 +912,7 @@ const EvansPipeline = () => {
                                     </DropdownMenu>
                                   );
                                 case 'company':
-                                  return <div className="text-slate-600 truncate text-[13px]">{lead.company_name || '—'}</div>;
+                                  return <div className="text-slate-500 truncate text-[13px]">{lead.company_name || '—'}</div>;
                                 case 'contact':
                                   return (
                                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -957,12 +957,12 @@ const EvansPipeline = () => {
                                     </div>
                                   );
                                 case 'owner':
-                                  return <div className="text-xs text-slate-600 truncate">{ownerName || <span className="text-slate-300">—</span>}</div>;
+                                  return <div className="text-[12px] text-slate-500 truncate">{ownerName || <span className="text-slate-300">—</span>}</div>;
                                 case 'source':
-                                  return <div className="text-xs text-slate-500">{lead.source || <span className="text-slate-300">—</span>}</div>;
+                                  return <div className="text-[12px] text-slate-400">{lead.source || <span className="text-slate-300">—</span>}</div>;
                                 case 'last_touch':
                                   return (
-                                    <div className="text-xs text-slate-500">
+                                    <div className="text-[12px] text-slate-400">
                                       {touchpoint ? <span className="capitalize">{touchpoint.type}</span> : <span className="text-slate-300">—</span>}
                                     </div>
                                   );
