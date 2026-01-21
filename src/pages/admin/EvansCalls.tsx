@@ -406,37 +406,64 @@ const EvansCalls = () => {
   // Parse loan size text to extract numeric values
   const parseLoanSizeText = (text: string | null): { min: number; max: number } | null => {
     if (!text) return null;
-    const cleaned = text.replace(/[,$]/g, '').toLowerCase();
+    const cleaned = text.replace(/[$,]/g, '').toLowerCase().trim();
     
     // Extract numbers with K/M/B suffixes
     const parseNumber = (str: string): number => {
-      const match = str.match(/([\d.]+)\s*(k|m|b|mm)?/i);
+      const match = str.match(/([\d.]+)\s*(k|m|mm|b|million|mil)?/i);
       if (!match) return 0;
       let num = parseFloat(match[1]);
       const suffix = (match[2] || '').toLowerCase();
       if (suffix === 'k') num *= 1000;
-      else if (suffix === 'm' || suffix === 'mm') num *= 1000000;
+      else if (suffix === 'm' || suffix === 'mm' || suffix === 'million' || suffix === 'mil') num *= 1000000;
       else if (suffix === 'b') num *= 1000000000;
+      // If no suffix and number is small (likely in millions written as "1-10" meaning 1M-10M)
+      else if (num <= 100 && !suffix) {
+        // Check if context suggests millions (common in loan industry)
+        if (cleaned.includes('mm') || cleaned.includes('million') || cleaned.includes('mil')) {
+          num *= 1000000;
+        }
+      }
       return num;
     };
 
-    // Look for range patterns like "1M - 5M" or "1-5M" or "$1M-$5M"
-    const rangeMatch = cleaned.match(/([\d.]+\s*[kmb]?)\s*[-–to]+\s*([\d.]+\s*[kmb]?)/i);
+    // Look for range patterns like "1M - 5M" or "1-5M" or "$1M-$5M" or "1MM-10MM"
+    const rangeMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*[-–to]+\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
     if (rangeMatch) {
-      return { min: parseNumber(rangeMatch[1]), max: parseNumber(rangeMatch[2]) };
+      const min = parseNumber(rangeMatch[1]);
+      const max = parseNumber(rangeMatch[2]);
+      // If both numbers are small and no suffix, they might be in millions
+      if (min <= 100 && max <= 100 && min > 0) {
+        return { min: min * 1000000, max: max * 1000000 };
+      }
+      return { min, max };
     }
 
     // Look for "up to" or "max" patterns
-    const upToMatch = cleaned.match(/up\s*to\s*([\d.]+\s*[kmb]?)/i);
+    const upToMatch = cleaned.match(/up\s*to\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
     if (upToMatch) {
       return { min: 0, max: parseNumber(upToMatch[1]) };
     }
 
-    // Look for single number (treat as max)
-    const singleMatch = cleaned.match(/([\d.]+\s*[kmb]?)/i);
+    // Look for "minimum" or "min" patterns like "min $1M" or "$1M minimum"
+    const minMatch = cleaned.match(/(?:min(?:imum)?)\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i) ||
+                     cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*(?:min(?:imum)?|\+)/i);
+    if (minMatch) {
+      return { min: parseNumber(minMatch[1]), max: Infinity };
+    }
+
+    // Look for single number with + (e.g., "$1M+")
+    const plusMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*\+/i);
+    if (plusMatch) {
+      return { min: parseNumber(plusMatch[1]), max: Infinity };
+    }
+
+    // Look for single number (treat as approximate - use as both min and max with some flex)
+    const singleMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
     if (singleMatch) {
       const val = parseNumber(singleMatch[1]);
-      return { min: 0, max: val };
+      // For single values, assume they can go somewhat below and above
+      return { min: val * 0.5, max: val * 2 };
     }
 
     return null;
@@ -455,11 +482,14 @@ const EvansCalls = () => {
       return programRange.max >= category.min;
     }
 
-    // Check if the lender can service loans in this category range
-    // This means the lender's range must overlap with the category:
-    // - Lender's minimum must be <= category maximum (can do small enough loans)
-    // - Lender's maximum must be >= category minimum (can do large enough loans)
-    return programRange.min <= category.max && programRange.max >= category.min;
+    // A lender matches a category if:
+    // 1. Their minimum is not above the category maximum (they can do loans small enough)
+    // 2. Their maximum is not below the category minimum (they can do loans large enough)
+    // This is true overlap logic
+    const lenderCanDoSmallEnough = programRange.min <= category.max;
+    const lenderCanDoLargeEnough = programRange.max >= category.min;
+    
+    return lenderCanDoSmallEnough && lenderCanDoLargeEnough;
   };
 
   // Filter lender programs based on individual filters
