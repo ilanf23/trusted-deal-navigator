@@ -455,9 +455,11 @@ const EvansCalls = () => {
       return programRange.max >= category.min;
     }
 
-    // Check if program's loan range is fully contained within the category
-    // OR if the program's minimum starts within the category range
-    return programRange.min >= category.min && programRange.min <= category.max;
+    // Check if the lender can service loans in this category range
+    // This means the lender's range must overlap with the category:
+    // - Lender's minimum must be <= category maximum (can do small enough loans)
+    // - Lender's maximum must be >= category minimum (can do large enough loans)
+    return programRange.min <= category.max && programRange.max >= category.min;
   };
 
   // Filter lender programs based on individual filters
