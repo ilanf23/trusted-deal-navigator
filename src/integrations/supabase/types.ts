@@ -1351,6 +1351,7 @@ export type Database = {
           lender_name: string
           lender_specialty: string | null
           lender_type: string | null
+          loan_size_text: string | null
           loan_types: string | null
           location: string | null
           looking_for: string | null
@@ -1376,6 +1377,7 @@ export type Database = {
           lender_name: string
           lender_specialty?: string | null
           lender_type?: string | null
+          loan_size_text?: string | null
           loan_types?: string | null
           location?: string | null
           looking_for?: string | null
@@ -1401,6 +1403,7 @@ export type Database = {
           lender_name?: string
           lender_specialty?: string | null
           lender_type?: string | null
+          loan_size_text?: string | null
           loan_types?: string | null
           location?: string | null
           looking_for?: string | null
