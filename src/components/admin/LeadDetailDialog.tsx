@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Loader2, Mail, Phone, Building2, Calendar, FileText, User, Clock, 
   PhoneCall, ChevronDown, ChevronUp, Play, PhoneIncoming, PhoneOutgoing, 
@@ -286,6 +287,17 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   
   // Activity search state
   const [activitySearch, setActivitySearch] = useState('');
+  
+  // Quick action states
+  const [showAddComment, setShowAddComment] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [showScheduleMeeting, setShowScheduleMeeting] = useState(false);
+  const [showAttachFile, setShowAttachFile] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDueDate, setNewTaskDueDate] = useState('');
+  const [meetingTitle, setMeetingTitle] = useState('');
+  const [meetingDate, setMeetingDate] = useState('');
 
   // Reset when lead changes
   useEffect(() => {
@@ -518,6 +530,67 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     updateContactInfo.mutate({ tags: updatedTags });
   };
 
+  // Quick action mutations
+  const addComment = useMutation({
+    mutationFn: async (comment: string) => {
+      if (!lead) return;
+      const { error } = await supabase.from('lead_activities').insert({
+        lead_id: lead.id,
+        activity_type: 'comment',
+        title: 'Comment added',
+        content: comment,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-activities', lead?.id] });
+      setNewComment('');
+      setShowAddComment(false);
+      toast({ title: 'Comment added' });
+    },
+  });
+
+  const addTask = useMutation({
+    mutationFn: async ({ title, dueDate }: { title: string; dueDate?: string }) => {
+      if (!lead) return;
+      const { error } = await supabase.from('lead_tasks').insert({
+        lead_id: lead.id,
+        title,
+        due_date: dueDate || null,
+        priority: 'medium',
+        status: 'pending',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead?.id] });
+      setNewTaskTitle('');
+      setNewTaskDueDate('');
+      setShowAddTask(false);
+      toast({ title: 'Task created' });
+    },
+  });
+
+  const addMeeting = useMutation({
+    mutationFn: async ({ title, date }: { title: string; date: string }) => {
+      if (!lead) return;
+      const { error } = await supabase.from('lead_activities').insert({
+        lead_id: lead.id,
+        activity_type: 'meeting',
+        title: title || 'Scheduled meeting',
+        content: `Meeting scheduled for ${date}`,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-activities', lead?.id] });
+      setMeetingTitle('');
+      setMeetingDate('');
+      setShowScheduleMeeting(false);
+      toast({ title: 'Meeting scheduled' });
+    },
+  });
+
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return '0:00';
     const mins = Math.floor(seconds / 60);
@@ -715,10 +788,118 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                   className="h-9 text-sm border-slate-200 bg-slate-50 focus:bg-white pl-3"
                 />
               </div>
-              <Button variant="ghost" size="icon" title="Add comment"><MessageSquare className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="icon" title="Add task"><CheckCircle2 className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="icon" title="Schedule meeting"><Calendar className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="icon" title="Attach file"><FileText className="w-4 h-4" /></Button>
+              {/* Add Comment */}
+              <Popover open={showAddComment} onOpenChange={setShowAddComment}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" title="Add comment">
+                    <MessageSquare className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-3" align="end">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Add Comment</p>
+                    <Textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Write a comment..."
+                      className="min-h-[80px] text-sm"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setShowAddComment(false)}>Cancel</Button>
+                      <Button size="sm" onClick={() => addComment.mutate(newComment)} disabled={!newComment.trim()}>
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Add Task */}
+              <Popover open={showAddTask} onOpenChange={setShowAddTask}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" title="Add task">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-3" align="end">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Create Task</p>
+                    <Input
+                      value={newTaskTitle}
+                      onChange={(e) => setNewTaskTitle(e.target.value)}
+                      placeholder="Task title"
+                      className="text-sm"
+                    />
+                    <Input
+                      type="date"
+                      value={newTaskDueDate}
+                      onChange={(e) => setNewTaskDueDate(e.target.value)}
+                      className="text-sm"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setShowAddTask(false)}>Cancel</Button>
+                      <Button size="sm" onClick={() => addTask.mutate({ title: newTaskTitle, dueDate: newTaskDueDate })} disabled={!newTaskTitle.trim()}>
+                        Create
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Schedule Meeting */}
+              <Popover open={showScheduleMeeting} onOpenChange={setShowScheduleMeeting}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" title="Schedule meeting">
+                    <Calendar className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-3" align="end">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Schedule Meeting</p>
+                    <Input
+                      value={meetingTitle}
+                      onChange={(e) => setMeetingTitle(e.target.value)}
+                      placeholder="Meeting title"
+                      className="text-sm"
+                    />
+                    <Input
+                      type="datetime-local"
+                      value={meetingDate}
+                      onChange={(e) => setMeetingDate(e.target.value)}
+                      className="text-sm"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setShowScheduleMeeting(false)}>Cancel</Button>
+                      <Button size="sm" onClick={() => addMeeting.mutate({ title: meetingTitle, date: meetingDate })} disabled={!meetingDate}>
+                        Schedule
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Attach File */}
+              <Popover open={showAttachFile} onOpenChange={setShowAttachFile}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" title="Attach file">
+                    <FileText className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-3" align="end">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">Attach File</p>
+                    <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center">
+                      <FileText className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                      <p className="text-sm text-slate-500">Drag & drop files here</p>
+                      <p className="text-xs text-slate-400 mt-1">or click to browse</p>
+                      <input type="file" className="hidden" />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => setShowAttachFile(false)}>Close</Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Tabs */}
