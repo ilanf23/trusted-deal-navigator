@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 import { 
   Mail, 
   Send, 
@@ -32,7 +33,9 @@ import {
   FileText,
   Zap,
   ExternalLink,
-  LogOut
+  LogOut,
+  User,
+  Clock
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -136,6 +139,24 @@ interface Lead {
   status: string;
   updated_at: string;
 }
+
+interface LeadEmailInfo {
+  id: string;
+  name: string;
+  company_name: string | null;
+  status: string;
+  lastEmailedAt: string | null;
+}
+
+const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+  discovery: { label: 'Discovery', color: 'text-blue-700', bg: 'bg-blue-100' },
+  questionnaire: { label: 'Questionnaire', color: 'text-purple-700', bg: 'bg-purple-100' },
+  pre_qualification: { label: 'Pre-Qual', color: 'text-indigo-700', bg: 'bg-indigo-100' },
+  document_collection: { label: 'Docs', color: 'text-orange-700', bg: 'bg-orange-100' },
+  underwriting: { label: 'Underwriting', color: 'text-amber-700', bg: 'bg-amber-100' },
+  approval: { label: 'Approval', color: 'text-emerald-700', bg: 'bg-emerald-100' },
+  funded: { label: 'Funded', color: 'text-green-700', bg: 'bg-green-100' },
+};
 
 const formatEmailDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -347,6 +368,88 @@ const EvansGmail = () => {
     },
     enabled: !!evanId,
   });
+
+  // Fetch all CRM leads for email matching
+  const { data: allCrmLeads = [] } = useQuery({
+    queryKey: ['crm-leads-for-gmail', evanId],
+    queryFn: async () => {
+      if (!evanId) return [];
+      
+      const { data: leads, error } = await supabase
+        .from('leads')
+        .select('id, name, email, company_name, status')
+        .eq('assigned_to', evanId)
+        .not('email', 'is', null);
+      
+      if (error) throw error;
+      return leads || [];
+    },
+    enabled: !!evanId,
+  });
+
+  // Fetch last email dates for leads (from evan_communications)
+  const { data: lastEmailDates = {} } = useQuery({
+    queryKey: ['lead-last-email-dates', evanId],
+    queryFn: async () => {
+      if (!evanId) return {};
+      
+      // Get the most recent email communication for each lead
+      const { data: comms, error } = await supabase
+        .from('evan_communications')
+        .select('lead_id, created_at')
+        .eq('communication_type', 'email')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Build a map of lead_id -> last email date
+      const dateMap: Record<string, string> = {};
+      (comms || []).forEach(comm => {
+        if (comm.lead_id && !dateMap[comm.lead_id]) {
+          dateMap[comm.lead_id] = comm.created_at;
+        }
+      });
+      
+      return dateMap;
+    },
+    enabled: !!evanId,
+  });
+
+  // Build a map of email -> lead info for quick lookup
+  const emailToLeadMap = useMemo(() => {
+    const map = new Map<string, LeadEmailInfo>();
+    allCrmLeads.forEach(lead => {
+      if (lead.email) {
+        const normalizedEmail = lead.email.toLowerCase().trim();
+        map.set(normalizedEmail, {
+          id: lead.id,
+          name: lead.name,
+          company_name: lead.company_name,
+          status: lead.status,
+          lastEmailedAt: lastEmailDates[lead.id] || null,
+        });
+      }
+    });
+    return map;
+  }, [allCrmLeads, lastEmailDates]);
+
+  // Helper to find lead info from email address
+  const findLeadFromEmail = (emailStr: string): LeadEmailInfo | null => {
+    const extracted = extractEmailAddress(emailStr).toLowerCase().trim();
+    return emailToLeadMap.get(extracted) || null;
+  };
+
+  // Format last emailed time
+  const formatLastEmailed = (dateStr: string | null): string => {
+    if (!dateStr) return 'Never';
+    const date = new Date(dateStr);
+    const days = differenceInDays(new Date(), date);
+    if (days === 0) return 'Today';
+    if (days === 1) return '1 day ago';
+    if (days < 7) return `${days} days ago`;
+    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+    return format(date, 'MMM d');
+  };
 
   // Create nudge email draft
   const createNudgeDraft = useMutation({
@@ -1002,69 +1105,125 @@ const EvansGmail = () => {
               </div>
             ) : (
               <div>
-                {emails.map((email) => (
-                  <div
-                    key={email.id}
-                    className={`group flex items-center gap-0 px-2 py-1 border-b border-[#f1f3f4] cursor-pointer transition-colors hover:shadow-sm ${
-                      !email.isRead ? 'bg-white' : 'bg-[#f2f6fc]'
-                    } ${selectedEmails.has(email.id) ? 'bg-[#c2dbff]' : ''} hover:z-10`}
-                  >
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Checkbox 
-                        checked={selectedEmails.has(email.id)}
-                        onCheckedChange={() => toggleEmailSelection(email.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mx-2"
-                      />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Toggle star logic here
-                        }}
-                        className="p-1 hover:bg-[#e8eaed] rounded"
-                      >
-                        <Star className={`w-5 h-5 ${email.isStarred ? 'fill-[#f4b400] text-[#f4b400]' : 'text-[#c4c7c5]'}`} />
-                      </button>
-                    </div>
-                    
-                    <div 
-                      className="flex-1 flex items-center min-w-0 py-1"
-                      onClick={() => setSelectedEmail(email)}
+                {emails.map((email) => {
+                  // Check if email is from/to a CRM lead
+                  const emailAddress = activeFolder === 'sent' ? email.to : email.from;
+                  const leadInfo = findLeadFromEmail(emailAddress);
+                  const status = leadInfo ? statusConfig[leadInfo.status] : null;
+                  
+                  return (
+                    <div
+                      key={email.id}
+                      className={`group flex items-center gap-0 px-2 py-1 border-b border-[#f1f3f4] cursor-pointer transition-colors hover:shadow-sm ${
+                        !email.isRead ? 'bg-white' : 'bg-[#f2f6fc]'
+                      } ${selectedEmails.has(email.id) ? 'bg-[#c2dbff]' : ''} hover:z-10`}
                     >
-                      {/* Sender */}
-                      <div className={`w-44 shrink-0 truncate text-sm pr-4 ${!email.isRead ? 'font-bold text-[#202124]' : 'text-[#202124]'}`}>
-                        {activeFolder === 'sent' ? `To: ${email.to.split('<')[0].trim()}` : extractSenderName(email.from)}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Checkbox 
+                          checked={selectedEmails.has(email.id)}
+                          onCheckedChange={() => toggleEmailSelection(email.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mx-2"
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Toggle star logic here
+                          }}
+                          className="p-1 hover:bg-[#e8eaed] rounded"
+                        >
+                          <Star className={`w-5 h-5 ${email.isStarred ? 'fill-[#f4b400] text-[#f4b400]' : 'text-[#c4c7c5]'}`} />
+                        </button>
                       </div>
                       
-                      {/* Subject and snippet */}
-                      <div className="flex-1 flex items-center min-w-0 pr-4">
-                        <span className={`shrink-0 text-sm ${!email.isRead ? 'font-bold text-[#202124]' : 'text-[#202124]'}`}>
-                          {email.subject}
-                        </span>
-                        <span className="text-sm text-[#5f6368] truncate ml-1">
-                          - {email.snippet}
-                        </span>
-                      </div>
-                      
-                      {/* Attachments */}
-                      {email.attachments && email.attachments.length > 0 && (
-                        <div className="flex items-center gap-1 shrink-0 mr-4">
-                          {email.attachments.slice(0, 2).map((att, idx) => (
-                            <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-[#e8eaed] text-[#5f6368] rounded border border-[#dadce0]">
-                              {att.type === 'pdf' && <span className="text-red-600">📄</span>}
-                              {att.name.length > 15 ? att.name.substring(0, 12) + '...' : att.name}
-                            </span>
-                          ))}
+                      <div 
+                        className="flex-1 flex items-center min-w-0 py-1"
+                        onClick={() => setSelectedEmail(email)}
+                      >
+                        {/* Sender with CRM badge */}
+                        <div className={`w-48 shrink-0 flex items-center gap-2 pr-2 ${!email.isRead ? 'font-bold text-[#202124]' : 'text-[#202124]'}`}>
+                          <span className="truncate text-sm">
+                            {activeFolder === 'sent' ? `To: ${email.to.split('<')[0].trim()}` : extractSenderName(email.from)}
+                          </span>
+                          {leadInfo && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="shrink-0">
+                                  <User className="w-3.5 h-3.5 text-primary" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                <p className="font-medium">{leadInfo.name}</p>
+                                {leadInfo.company_name && <p className="text-muted-foreground">{leadInfo.company_name}</p>}
+                                <p className="text-primary mt-1">CRM Lead</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
-                      )}
-                      
-                      {/* Date */}
-                      <div className={`shrink-0 text-sm whitespace-nowrap ${!email.isRead ? 'font-bold text-[#202124]' : 'text-[#5f6368]'}`}>
-                        {formatEmailDate(email.date)}
+                        
+                        {/* CRM Status Badge */}
+                        {leadInfo && status && (
+                          <div className="shrink-0 mr-2">
+                            <Badge 
+                              variant="secondary" 
+                              className={`text-[10px] px-1.5 py-0 h-5 font-medium ${status.bg} ${status.color} border-0`}
+                            >
+                              {status.label}
+                            </Badge>
+                          </div>
+                        )}
+                        
+                        {/* Subject and snippet */}
+                        <div className="flex-1 flex items-center min-w-0 pr-2">
+                          <span className={`shrink-0 text-sm ${!email.isRead ? 'font-bold text-[#202124]' : 'text-[#202124]'}`}>
+                            {email.subject}
+                          </span>
+                          <span className="text-sm text-[#5f6368] truncate ml-1">
+                            - {email.snippet}
+                          </span>
+                        </div>
+                        
+                        {/* Last emailed button for CRM leads */}
+                        {leadInfo && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button 
+                                className="shrink-0 flex items-center gap-1 px-2 py-0.5 mr-2 text-[10px] font-medium text-[#5f6368] bg-[#e8eaed] hover:bg-[#dadce0] rounded transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Could navigate to lead or show more info
+                                }}
+                              >
+                                <Clock className="w-3 h-3" />
+                                {formatLastEmailed(leadInfo.lastEmailedAt)}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              Last email sent to this lead: {leadInfo.lastEmailedAt ? format(new Date(leadInfo.lastEmailedAt), 'MMM d, yyyy h:mm a') : 'Never'}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        
+                        {/* Attachments */}
+                        {email.attachments && email.attachments.length > 0 && (
+                          <div className="flex items-center gap-1 shrink-0 mr-2">
+                            {email.attachments.slice(0, 2).map((att, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-[#e8eaed] text-[#5f6368] rounded border border-[#dadce0]">
+                                {att.type === 'pdf' && <span className="text-red-600">📄</span>}
+                                {att.name.length > 15 ? att.name.substring(0, 12) + '...' : att.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Date */}
+                        <div className={`shrink-0 text-sm whitespace-nowrap ${!email.isRead ? 'font-bold text-[#202124]' : 'text-[#5f6368]'}`}>
+                          {formatEmailDate(email.date)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
