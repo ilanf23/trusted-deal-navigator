@@ -461,13 +461,13 @@ const EvansPipeline = () => {
                     Settings
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-white z-50">
-                  <DropdownMenuItem onClick={() => setStageManagerOpen(true)} className="cursor-pointer">
-                    <Layers className="h-4 w-4 mr-2" />
+                <DropdownMenuContent align="end" className="w-56 bg-white z-50 p-2">
+                  <DropdownMenuItem onClick={() => setStageManagerOpen(true)} className="cursor-pointer py-3 px-4 text-sm">
+                    <Layers className="h-5 w-5 mr-3" />
                     Stages
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setColumnManagerOpen(true)} className="cursor-pointer">
-                    <ColumnsIcon className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem onClick={() => setColumnManagerOpen(true)} className="cursor-pointer py-3 px-4 text-sm">
+                    <ColumnsIcon className="h-5 w-5 mr-3" />
                     Columns
                   </DropdownMenuItem>
                 </DropdownMenuContent>
