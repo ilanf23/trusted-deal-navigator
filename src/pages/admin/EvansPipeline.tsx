@@ -38,12 +38,12 @@ type LeadStatus = Database['public']['Enums']['lead_status'];
 
 // Brand colors: Blue (#0066FF) for early stages, Orange (#FF8000) for later stages
 const stages: { status: LeadStatus; title: string; bgColor: string; borderColor: string; textColor: string; barColor: string; hexColor: string }[] = [
-  { status: 'discovery', title: 'Disc', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#0066FF]', hexColor: '#0066FF' },
-  { status: 'pre_qualification', title: 'Pre-Q', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#1a75ff]', hexColor: '#1a75ff' },
-  { status: 'document_collection', title: 'Docs', bgColor: 'bg-[#3385ff]/10', borderColor: 'border-[#3385ff]', textColor: 'text-[#3385ff]', barColor: 'bg-[#3385ff]', hexColor: '#3385ff' },
-  { status: 'underwriting', title: 'U/W', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#FF8000]', hexColor: '#FF8000' },
-  { status: 'approval', title: 'Appr', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#e67300]', hexColor: '#e67300' },
-  { status: 'funded', title: 'Fund', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600', hexColor: '#059669' },
+  { status: 'discovery', title: 'Discovery', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#0066FF]', hexColor: '#0066FF' },
+  { status: 'pre_qualification', title: 'Pre-Qual', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#1a75ff]', hexColor: '#1a75ff' },
+  { status: 'document_collection', title: 'Doc Collection', bgColor: 'bg-[#3385ff]/10', borderColor: 'border-[#3385ff]', textColor: 'text-[#3385ff]', barColor: 'bg-[#3385ff]', hexColor: '#3385ff' },
+  { status: 'underwriting', title: 'Underwriting', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#FF8000]', hexColor: '#FF8000' },
+  { status: 'approval', title: 'Approval', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#e67300]', hexColor: '#e67300' },
+  { status: 'funded', title: 'Funded', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600', hexColor: '#059669' },
 ];
 
 const EvansPipeline = () => {
@@ -657,19 +657,15 @@ const EvansPipeline = () => {
                   {/* Section Header - Full-width colored bar with 8px spacing */}
                   <CollapsibleTrigger asChild>
                     <div
-                      className="cursor-pointer transition-colors flex items-center justify-center min-h-[48px] px-4 gap-2"
+                      className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-2"
                       style={{ 
                         backgroundColor: stage.hexColor,
                       }}
                     >
-                      {/* Collapse indicator - left */}
-                      {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4 text-white/70 flex-shrink-0" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-white/70 flex-shrink-0" />
-                      )}
+                      {/* Checkbox placeholder for alignment - matches 48px column */}
+                      <div className="w-4 h-4 rounded border-2 border-white/50 flex-shrink-0" />
                       
-                      {/* Stage title - centered */}
+                      {/* Stage title - with text wrapping */}
                       <span className="text-white font-bold text-base whitespace-nowrap">
                         {stage.title}
                       </span>
@@ -678,6 +674,13 @@ const EvansPipeline = () => {
                       <span className="text-white/80 text-sm font-medium whitespace-nowrap">
                         ({stageLeads.length})
                       </span>
+                      
+                      {/* Collapse indicator */}
+                      {isCollapsed ? (
+                        <ChevronRight className="h-4 w-4 text-white/70 ml-auto flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-white/70 ml-auto flex-shrink-0" />
+                      )}
                     </div>
                   </CollapsibleTrigger>
 
