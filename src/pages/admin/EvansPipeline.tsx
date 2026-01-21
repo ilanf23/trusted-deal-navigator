@@ -455,19 +455,19 @@ const EvansPipeline = () => {
                                 <div className="text-slate-600 truncate text-[13px]">
                                   {lead.company_name || '—'}
                                 </div>
-                                <div className="flex items-center gap-2 text-slate-500">
+                                <div className="flex items-center gap-1.5 text-slate-500">
                                   {lead.phone && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <button
                                           onClick={(e) => handleCall(e, lead)}
                                           disabled={isCallingThis}
-                                          className="flex items-center justify-center h-6 w-6 rounded-full bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50"
+                                          className="flex items-center justify-center h-7 w-7 rounded-full bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50 border border-green-200"
                                         >
                                           {isCallingThis ? (
-                                            <Loader2 className="h-3 w-3 text-green-600 animate-spin" />
+                                            <Loader2 className="h-3.5 w-3.5 text-green-600 animate-spin" />
                                           ) : (
-                                            <Phone className="h-3 w-3 text-green-600" />
+                                            <Phone className="h-3.5 w-3.5 text-green-600" />
                                           )}
                                         </button>
                                       </TooltipTrigger>
@@ -481,9 +481,9 @@ const EvansPipeline = () => {
                                       <TooltipTrigger asChild>
                                         <button
                                           onClick={(e) => handleEmail(e, lead)}
-                                          className="flex items-center justify-center h-6 w-6 rounded-full bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors"
+                                          className="flex items-center justify-center h-7 w-7 rounded-full bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors border border-[#0066FF]/20"
                                         >
-                                          <Mail className="h-3 w-3 text-[#0066FF]" />
+                                          <Mail className="h-3.5 w-3.5 text-[#0066FF]" />
                                         </button>
                                       </TooltipTrigger>
                                       <TooltipContent side="top">
