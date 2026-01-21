@@ -1650,6 +1650,129 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_column_values: {
+        Row: {
+          assigned_to_id: string | null
+          boolean_value: boolean | null
+          column_id: string
+          contact_value: Json | null
+          created_at: string
+          date_value: string | null
+          dropdown_value: string | null
+          id: string
+          lead_id: string
+          number_value: number | null
+          tag_values: string[] | null
+          text_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to_id?: string | null
+          boolean_value?: boolean | null
+          column_id: string
+          contact_value?: Json | null
+          created_at?: string
+          date_value?: string | null
+          dropdown_value?: string | null
+          id?: string
+          lead_id: string
+          number_value?: number | null
+          tag_values?: string[] | null
+          text_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to_id?: string | null
+          boolean_value?: boolean | null
+          column_id?: string
+          contact_value?: Json | null
+          created_at?: string
+          date_value?: string | null
+          dropdown_value?: string | null
+          id?: string
+          lead_id?: string
+          number_value?: number | null
+          tag_values?: string[] | null
+          text_value?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_column_values_assigned_to_id_fkey"
+            columns: ["assigned_to_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_column_values_column_id_fkey"
+            columns: ["column_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_columns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_column_values_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_columns: {
+        Row: {
+          column_type: Database["public"]["Enums"]["pipeline_column_type"]
+          created_at: string
+          formula: string | null
+          id: string
+          is_frozen: boolean
+          is_visible: boolean
+          name: string
+          options: Json | null
+          pipeline_id: string
+          position: number
+          settings: Json | null
+          updated_at: string
+        }
+        Insert: {
+          column_type?: Database["public"]["Enums"]["pipeline_column_type"]
+          created_at?: string
+          formula?: string | null
+          id?: string
+          is_frozen?: boolean
+          is_visible?: boolean
+          name: string
+          options?: Json | null
+          pipeline_id: string
+          position?: number
+          settings?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          column_type?: Database["public"]["Enums"]["pipeline_column_type"]
+          created_at?: string
+          formula?: string | null
+          id?: string
+          is_frozen?: boolean
+          is_visible?: boolean
+          name?: string
+          options?: Json | null
+          pipeline_id?: string
+          position?: number
+          settings?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_columns_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_leads: {
         Row: {
           added_at: string
@@ -2088,6 +2211,15 @@ export type Database = {
         | "underwriting"
         | "approval"
         | "funded"
+      pipeline_column_type:
+        | "free_form"
+        | "date"
+        | "checkbox"
+        | "dropdown"
+        | "tag"
+        | "formula"
+        | "assigned_to"
+        | "contact"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2240,6 +2372,16 @@ export const Constants = {
         "underwriting",
         "approval",
         "funded",
+      ],
+      pipeline_column_type: [
+        "free_form",
+        "date",
+        "checkbox",
+        "dropdown",
+        "tag",
+        "formula",
+        "assigned_to",
+        "contact",
       ],
     },
   },
