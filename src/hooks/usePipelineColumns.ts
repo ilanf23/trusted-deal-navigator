@@ -5,16 +5,16 @@ import { customColumnTypes, allMagicColumns } from '@/components/admin/PipelineC
 
 // Default foundational columns that cannot be deleted
 const defaultFoundationalColumns: PipelineColumn[] = [
-  { id: 'checkbox', name: '', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '32px' },
-  { id: 'avatar', name: '', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '32px' },
-  { id: 'name', name: 'Name', type: 'foundational', isVisible: true, isFrozen: true, canDelete: false, canRename: false, width: 'minmax(140px,1.2fr)' },
-  { id: 'stage', name: 'Stage', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '90px' },
-  { id: 'company', name: 'Company', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: 'minmax(100px,1fr)' },
-  { id: 'contact', name: 'Contact', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: 'minmax(140px,1fr)' },
-  { id: 'owner', name: 'Owner', type: 'foundational', columnType: 'assigned_to', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '90px' },
-  { id: 'source', name: 'Source', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '80px' },
-  { id: 'last_touch', name: 'Last Touch', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '100px' },
-  { id: 'updated', name: 'Updated', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '90px' },
+  { id: 'checkbox', name: '', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '40px' },
+  { id: 'avatar', name: '', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '44px' },
+  { id: 'name', name: 'Name', type: 'foundational', isVisible: true, isFrozen: true, canDelete: false, canRename: false, width: 'minmax(160px,1.5fr)' },
+  { id: 'stage', name: 'Stage', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '130px' },
+  { id: 'company', name: 'Company', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: 'minmax(140px,1fr)' },
+  { id: 'contact', name: 'Contact', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: 'minmax(160px,1.2fr)' },
+  { id: 'owner', name: 'Owner', type: 'foundational', columnType: 'assigned_to', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '100px' },
+  { id: 'source', name: 'Source', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '100px' },
+  { id: 'last_touch', name: 'Last Touch', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '110px' },
+  { id: 'updated', name: 'Updated', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '100px' },
 ];
 
 export const usePipelineColumns = () => {
