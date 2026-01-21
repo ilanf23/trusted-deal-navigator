@@ -49,6 +49,7 @@ import IlanTeamEvanBugs from "./pages/admin/IlanTeamEvanBugs";
 import IlanTeamEvanDevNotes from "./pages/admin/IlanTeamEvanDevNotes";
 import IlanTeamEvanNotes from "./pages/admin/IlanTeamEvanNotes";
 import CalendarCallback from "./pages/admin/CalendarCallback";
+import SheetsCallback from "./pages/admin/SheetsCallback";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
@@ -111,6 +112,7 @@ const App = () => (
             <Route path="/admin/ilan/team/evan/notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanNotes /></EmployeeRoute>} />
             <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
             <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
+            <Route path="/admin/sheets-callback" element={<SheetsCallback />} />
             {/* Client Portal Routes - /user/{name} for clients */}
             <Route path="/user" element={<ProtectedRoute clientOnly><PortalDashboard /></ProtectedRoute>} />
             <Route path="/user/contracts" element={<ProtectedRoute clientOnly><PortalContracts /></ProtectedRoute>} />
