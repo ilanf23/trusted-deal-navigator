@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Phone, 
   User, 
@@ -229,7 +230,6 @@ const EvansCalls = () => {
     institution: '',
     lookingFor: '',
     contact: '',
-    phone: '',
     loanSize: '',
     states: '',
     lenderType: '',
@@ -381,13 +381,12 @@ const EvansCalls = () => {
   // Filter lender programs based on individual filters
   const filteredPrograms = useMemo(() => {
     return allPrograms.filter((program) => {
-      if (lenderFilters.institution && !program.lender_name?.toLowerCase().includes(lenderFilters.institution.toLowerCase())) return false;
+      if (lenderFilters.institution && program.lender_name !== lenderFilters.institution) return false;
       if (lenderFilters.lookingFor && !program.looking_for?.toLowerCase().includes(lenderFilters.lookingFor.toLowerCase())) return false;
-      if (lenderFilters.contact && !program.contact_name?.toLowerCase().includes(lenderFilters.contact.toLowerCase())) return false;
-      if (lenderFilters.phone && !program.phone?.toLowerCase().includes(lenderFilters.phone.toLowerCase())) return false;
-      if (lenderFilters.loanSize && !program.loan_size_text?.toLowerCase().includes(lenderFilters.loanSize.toLowerCase())) return false;
+      if (lenderFilters.contact && program.contact_name !== lenderFilters.contact) return false;
+      if (lenderFilters.loanSize && program.loan_size_text !== lenderFilters.loanSize) return false;
       if (lenderFilters.states && !program.states?.toLowerCase().includes(lenderFilters.states.toLowerCase())) return false;
-      if (lenderFilters.lenderType && !program.lender_type?.toLowerCase().includes(lenderFilters.lenderType.toLowerCase())) return false;
+      if (lenderFilters.lenderType && program.lender_type !== lenderFilters.lenderType) return false;
       if (lenderFilters.loanTypes && !program.loan_types?.toLowerCase().includes(lenderFilters.loanTypes.toLowerCase())) return false;
       return true;
     });
@@ -400,13 +399,49 @@ const EvansCalls = () => {
       institution: '',
       lookingFor: '',
       contact: '',
-      phone: '',
       loanSize: '',
       states: '',
       lenderType: '',
       loanTypes: '',
     });
   };
+
+  // Extract unique values for dropdown options
+  const filterOptions = useMemo(() => {
+    const getUniqueValues = (key: keyof Program) => {
+      const values = allPrograms
+        .map(p => p[key])
+        .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+        .map(v => v.trim());
+      return [...new Set(values)].sort();
+    };
+
+    // For states, split by comma and get unique individual states
+    const getUniqueStates = () => {
+      const states = allPrograms
+        .flatMap(p => (p.states || '').split(',').map(s => s.trim()))
+        .filter(s => s !== '');
+      return [...new Set(states)].sort();
+    };
+
+    // For loan types, split by comma and get unique individual types
+    const getUniqueLoanTypes = () => {
+      const types = allPrograms
+        .flatMap(p => (p.loan_types || '').split(',').map(t => t.trim()))
+        .filter(t => t !== '');
+      return [...new Set(types)].sort();
+    };
+
+    return {
+      institutions: getUniqueValues('lender_name'),
+      contacts: getUniqueValues('contact_name'),
+      phones: getUniqueValues('phone'),
+      loanSizes: getUniqueValues('loan_size_text'),
+      states: getUniqueStates(),
+      lenderTypes: getUniqueValues('lender_type'),
+      loanTypes: getUniqueLoanTypes(),
+    };
+  }, [allPrograms]);
 
   const toggleLender = (lenderName: string) => {
     setExpandedLenders((prev) => ({
@@ -1094,17 +1129,25 @@ const EvansCalls = () => {
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Institution</Label>
-                          <Input
-                            placeholder="Filter by institution..."
+                          <Select
                             value={lenderFilters.institution}
-                            onChange={(e) => setLenderFilters(prev => ({ ...prev, institution: e.target.value }))}
-                            className="h-8 text-sm pl-3"
-                          />
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, institution: value === '__all__' ? '' : value }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm bg-white">
+                              <SelectValue placeholder="All institutions" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-50 max-h-[200px]">
+                              <SelectItem value="__all__">All institutions</SelectItem>
+                              {filterOptions.institutions.map((inst) => (
+                                <SelectItem key={inst} value={inst}>{inst}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Looking For</Label>
                           <Input
-                            placeholder="Filter by looking for..."
+                            placeholder="Type to search..."
                             value={lenderFilters.lookingFor}
                             onChange={(e) => setLenderFilters(prev => ({ ...prev, lookingFor: e.target.value }))}
                             className="h-8 text-sm pl-3"
@@ -1112,57 +1155,88 @@ const EvansCalls = () => {
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Contact Name</Label>
-                          <Input
-                            placeholder="Filter by contact..."
+                          <Select
                             value={lenderFilters.contact}
-                            onChange={(e) => setLenderFilters(prev => ({ ...prev, contact: e.target.value }))}
-                            className="h-8 text-sm pl-3"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">Phone</Label>
-                          <Input
-                            placeholder="Filter by phone..."
-                            value={lenderFilters.phone}
-                            onChange={(e) => setLenderFilters(prev => ({ ...prev, phone: e.target.value }))}
-                            className="h-8 text-sm pl-3"
-                          />
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, contact: value === '__all__' ? '' : value }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm bg-white">
+                              <SelectValue placeholder="All contacts" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-50 max-h-[200px]">
+                              <SelectItem value="__all__">All contacts</SelectItem>
+                              {filterOptions.contacts.map((contact) => (
+                                <SelectItem key={contact} value={contact}>{contact}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Loan Size</Label>
-                          <Input
-                            placeholder="Filter by loan size..."
+                          <Select
                             value={lenderFilters.loanSize}
-                            onChange={(e) => setLenderFilters(prev => ({ ...prev, loanSize: e.target.value }))}
-                            className="h-8 text-sm pl-3"
-                          />
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, loanSize: value === '__all__' ? '' : value }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm bg-white">
+                              <SelectValue placeholder="All loan sizes" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-50 max-h-[200px]">
+                              <SelectItem value="__all__">All loan sizes</SelectItem>
+                              {filterOptions.loanSizes.map((size) => (
+                                <SelectItem key={size} value={size}>{size}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">States</Label>
-                          <Input
-                            placeholder="Filter by states..."
+                          <Select
                             value={lenderFilters.states}
-                            onChange={(e) => setLenderFilters(prev => ({ ...prev, states: e.target.value }))}
-                            className="h-8 text-sm pl-3"
-                          />
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, states: value === '__all__' ? '' : value }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm bg-white">
+                              <SelectValue placeholder="All states" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-50 max-h-[200px]">
+                              <SelectItem value="__all__">All states</SelectItem>
+                              {filterOptions.states.map((state) => (
+                                <SelectItem key={state} value={state}>{state}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Lender Type</Label>
-                          <Input
-                            placeholder="Filter by lender type..."
+                          <Select
                             value={lenderFilters.lenderType}
-                            onChange={(e) => setLenderFilters(prev => ({ ...prev, lenderType: e.target.value }))}
-                            className="h-8 text-sm pl-3"
-                          />
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, lenderType: value === '__all__' ? '' : value }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm bg-white">
+                              <SelectValue placeholder="All lender types" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-50 max-h-[200px]">
+                              <SelectItem value="__all__">All lender types</SelectItem>
+                              {filterOptions.lenderTypes.map((type) => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Loan Types</Label>
-                          <Input
-                            placeholder="Filter by loan types..."
+                          <Select
                             value={lenderFilters.loanTypes}
-                            onChange={(e) => setLenderFilters(prev => ({ ...prev, loanTypes: e.target.value }))}
-                            className="h-8 text-sm pl-3"
-                          />
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, loanTypes: value === '__all__' ? '' : value }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm bg-white">
+                              <SelectValue placeholder="All loan types" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-50 max-h-[200px]">
+                              <SelectItem value="__all__">All loan types</SelectItem>
+                              {filterOptions.loanTypes.map((type) => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </CardContent>
