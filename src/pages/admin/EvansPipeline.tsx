@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -16,6 +16,8 @@ import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
 import StageManagerModal from '@/components/admin/StageManagerModal';
 import ColumnManagerModal from '@/components/admin/ColumnManagerModal';
 import PipelineColumnHeader from '@/components/admin/PipelineColumnHeader';
+import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
+import MoveBoxesModal from '@/components/admin/MoveBoxesModal';
 import { usePipelineColumns } from '@/hooks/usePipelineColumns';
 import HelpTooltip from '@/components/ui/help-tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -23,6 +25,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +61,8 @@ const EvansPipeline = () => {
   const [pipelineName, setPipelineName] = useState('Main Pipeline');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingNameValue, setEditingNameValue] = useState('');
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [moveBoxesOpen, setMoveBoxesOpen] = useState(false);
   
   // Pipeline columns management
   const {
@@ -262,6 +267,48 @@ const EvansPipeline = () => {
       .toUpperCase()
       .slice(0, 2);
   };
+
+  // Selection helpers
+  const toggleLeadSelection = (leadId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedLeadIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(leadId)) {
+        newSet.delete(leadId);
+      } else {
+        newSet.add(leadId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllInStage = (status: LeadStatus) => {
+    const stageLeads = getLeadsByStatus(status);
+    const stageLeadIds = stageLeads.map(l => l.id);
+    const allSelected = stageLeadIds.every(id => selectedLeadIds.has(id));
+    
+    setSelectedLeadIds(prev => {
+      const newSet = new Set(prev);
+      if (allSelected) {
+        stageLeadIds.forEach(id => newSet.delete(id));
+      } else {
+        stageLeadIds.forEach(id => newSet.add(id));
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllLeads = () => {
+    setSelectedLeadIds(new Set(filteredLeads.map(l => l.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedLeadIds(new Set());
+  };
+
+  const isAllSelected = useMemo(() => {
+    return filteredLeads.length > 0 && filteredLeads.every(l => selectedLeadIds.has(l.id));
+  }, [filteredLeads, selectedLeadIds]);
 
   const stageCounts = stages.map(stage => ({
     ...stage,
@@ -487,8 +534,25 @@ const EvansPipeline = () => {
               }}
             >
               {getVisibleColumns().map((column) => {
-                // Special handling for checkbox and avatar columns
-                if (column.id === 'checkbox' || column.id === 'avatar') {
+                // Special handling for checkbox column - add select all
+                if (column.id === 'checkbox') {
+                  return (
+                    <div key={column.id} className="flex items-center justify-center">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            selectAllLeads();
+                          } else {
+                            clearSelection();
+                          }
+                        }}
+                        className="border-slate-300 data-[state=checked]:bg-[#0066FF] data-[state=checked]:border-[#0066FF]"
+                      />
+                    </div>
+                  );
+                }
+                if (column.id === 'avatar') {
                   return <div key={column.id}></div>;
                 }
 
@@ -629,10 +693,11 @@ const EvansPipeline = () => {
                                 case 'checkbox':
                                   return (
                                     <div className="flex items-center justify-center">
-                                      <input 
-                                        type="checkbox" 
-                                        className="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]/20" 
+                                      <Checkbox
+                                        checked={selectedLeadIds.has(lead.id)}
+                                        onCheckedChange={() => toggleLeadSelection(lead.id)}
                                         onClick={(e) => e.stopPropagation()}
+                                        className="border-slate-300 data-[state=checked]:bg-[#0066FF] data-[state=checked]:border-[#0066FF]"
                                       />
                                     </div>
                                   );
@@ -801,6 +866,17 @@ const EvansPipeline = () => {
             })}
           </div>
         </div>
+
+        {/* Bulk Selection Toolbar */}
+        {selectedLeadIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+            <PipelineBulkToolbar
+              selectedCount={selectedLeadIds.size}
+              onClearSelection={clearSelection}
+              onMoveBoxes={() => setMoveBoxesOpen(true)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Lead Detail Dialog */}
@@ -849,6 +925,14 @@ const EvansPipeline = () => {
         onColumnsChange={() => {
           queryClient.invalidateQueries({ queryKey: ['pipeline-columns'] });
         }}
+      />
+
+      {/* Move Boxes Modal */}
+      <MoveBoxesModal
+        open={moveBoxesOpen}
+        onOpenChange={setMoveBoxesOpen}
+        selectedLeadIds={Array.from(selectedLeadIds)}
+        onMoveComplete={clearSelection}
       />
     </AdminLayout>
   );
