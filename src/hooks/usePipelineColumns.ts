@@ -6,6 +6,7 @@ import { customColumnTypes, allMagicColumns } from '@/components/admin/PipelineC
 // Default foundational columns that cannot be deleted
 // 8px spacing system: 8/16/24/32/40/48px
 const defaultFoundationalColumns: PipelineColumn[] = [
+  { id: 'spacer_left', name: '', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '24px' },
   { id: 'checkbox', name: '', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '48px' },
   { id: 'avatar', name: '', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '48px' },
   { id: 'name', name: 'Name', type: 'foundational', isVisible: true, isFrozen: true, canDelete: false, canRename: false, width: 'minmax(176px, 1.5fr)' },
@@ -98,11 +99,11 @@ export const usePipelineColumns = () => {
     const columnIndex = columns.findIndex(c => c.id === columnId);
     if (columnIndex === -1) return;
     
-    // Don't move checkbox/avatar columns
-    if (columnIndex <= 1 || (direction === 'left' && columnIndex <= 2)) return;
+    // Don't move spacer_left/checkbox/avatar columns
+    if (columnIndex <= 2 || (direction === 'left' && columnIndex <= 3)) return;
     
     const newIndex = direction === 'left' ? columnIndex - 1 : columnIndex + 1;
-    if (newIndex < 2 || newIndex >= columns.length) return;
+    if (newIndex < 3 || newIndex >= columns.length) return;
 
     const newColumns = [...columns];
     const [removed] = newColumns.splice(columnIndex, 1);

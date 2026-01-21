@@ -579,6 +579,7 @@ const EvansPipeline = () => {
                 
                 // Consistent cell styling with 8px increments
                 const getCellPadding = () => {
+                  if (column.id === 'spacer_left') return 'px-0'; // No padding for spacer
                   if (column.id === 'checkbox' || column.id === 'avatar') return 'px-2'; // 8px
                   return 'px-4'; // 16px
                 };
@@ -589,6 +590,10 @@ const EvansPipeline = () => {
                   "border-r border-slate-200"
                 );
                 
+                // Special handling for spacer column
+                if (column.id === 'spacer_left') {
+                  return <div key={column.id} className={cn(cellClass, "justify-center")}></div>;
+                }
                 // Special handling for checkbox column - add select all
                 if (column.id === 'checkbox') {
                   return (
@@ -754,6 +759,7 @@ const EvansPipeline = () => {
                             className={cn(
                               "flex items-center min-h-[48px]",
                               "border-r border-slate-200",
+                              column.id === 'spacer_left' ? "px-0" :
                               (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
                             )}
                           >
@@ -796,6 +802,7 @@ const EvansPipeline = () => {
                               className={cn(
                                 "flex items-center min-h-[48px]",
                                 "border-r border-slate-200",
+                                column.id === 'spacer_left' ? "px-0" :
                                 (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
                               )}
                             >
@@ -822,6 +829,8 @@ const EvansPipeline = () => {
                             // Render cell content based on column
                             const renderCellContent = (column: typeof columns[0]) => {
                               switch (column.id) {
+                                case 'spacer_left':
+                                  return null;
                                 case 'checkbox':
                                   return (
                                     <div className="flex items-center justify-center">
@@ -1031,6 +1040,7 @@ const EvansPipeline = () => {
                                       className={cn(
                                         "flex items-center min-h-[48px] overflow-hidden",
                                         "border-r border-slate-200",
+                                        column.id === 'spacer_left' ? "px-0" :
                                         (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4 justify-start"
                                       )}
                                     >
