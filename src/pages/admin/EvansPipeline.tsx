@@ -657,29 +657,38 @@ const EvansPipeline = () => {
                   {/* Section Header - Full-width colored bar with 8px spacing */}
                   <CollapsibleTrigger asChild>
                     <div
-                      className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-2"
-                      style={{ 
-                        backgroundColor: stage.hexColor,
-                      }}
+                      className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-3 bg-slate-100 border-b border-slate-200"
                     >
-                      {/* Checkbox placeholder for alignment - matches 48px column */}
-                      <div className="w-4 h-4 rounded border-2 border-white/50 flex-shrink-0" />
+                      {/* Checkbox placeholder for alignment */}
+                      <div className="w-5 h-5 rounded border border-slate-300 flex-shrink-0" />
                       
-                      {/* Stage title - with text wrapping */}
-                      <span className="text-white font-bold text-base whitespace-nowrap">
+                      {/* Stage badge pill */}
+                      <span 
+                        className="font-semibold text-base px-4 py-1.5 rounded-full whitespace-nowrap"
+                        style={{ 
+                          backgroundColor: stage.hexColor,
+                          color: 'white'
+                        }}
+                      >
                         {stage.title}
                       </span>
                       
-                      {/* Lead count */}
-                      <span className="text-white/80 text-sm font-medium whitespace-nowrap">
-                        ({stageLeads.length})
-                      </span>
+                      {/* Add button */}
+                      <button 
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
+                      
+                      {/* Spacer */}
+                      <div className="flex-1" />
                       
                       {/* Collapse indicator */}
                       {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4 text-white/70 ml-auto flex-shrink-0" />
+                        <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
                       ) : (
-                        <ChevronDown className="h-4 w-4 text-white/70 ml-auto flex-shrink-0" />
+                        <ChevronDown className="h-4 w-4 text-slate-400 flex-shrink-0" />
                       )}
                     </div>
                   </CollapsibleTrigger>
