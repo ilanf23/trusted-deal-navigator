@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Task, TaskActivity, statusConfig } from './types';
 import { useTaskActivities } from '@/hooks/useTasksData';
+import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -10,6 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, parseISO } from 'date-fns';
 import { 
   MessageSquare, 
@@ -19,7 +22,8 @@ import {
   User, 
   History,
   CheckCircle2,
-  Circle
+  Circle,
+  Building2
 } from 'lucide-react';
 
 interface TaskDetailDialogProps {
@@ -41,6 +45,19 @@ export const TaskDetailDialog = ({
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
   const { data: activities = [] } = useTaskActivities(task?.id || null);
+
+  // Fetch leads for the customer dropdown
+  const { data: leads = [] } = useQuery({
+    queryKey: ['leads-for-tasks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, name, company_name')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
 
   if (!task) return null;
 
@@ -163,6 +180,34 @@ export const TaskDetailDialog = ({
                   placeholder="Assignee name"
                 />
               </div>
+            </div>
+
+            {/* Related Customer */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Building2 className="h-3.5 w-3.5" /> Related Customer
+              </label>
+              <Select 
+                value={task.lead_id || 'none'} 
+                onValueChange={(value) => onUpdateTask(task.id, { lead_id: value === 'none' ? null : value })}
+              >
+                <SelectTrigger className="max-w-[300px] h-9 rounded-lg">
+                  <SelectValue placeholder="Select a customer" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl max-h-[200px]">
+                  <SelectItem value="none" className="rounded-lg">No customer</SelectItem>
+                  {leads.map((lead) => (
+                    <SelectItem key={lead.id} value={lead.id} className="rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span>{lead.name}</span>
+                        {lead.company_name && (
+                          <span className="text-muted-foreground text-xs">({lead.company_name})</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Due Date */}

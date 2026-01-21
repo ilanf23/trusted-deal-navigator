@@ -10,6 +10,12 @@ export interface Task {
   assignee_name: string | null;
   group_name: string | null;
   tags: string[] | null;
+  lead_id: string | null;
+  lead?: {
+    id: string;
+    name: string;
+    company_name: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
 }

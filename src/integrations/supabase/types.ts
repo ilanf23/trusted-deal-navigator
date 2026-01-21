@@ -526,6 +526,7 @@ export type Database = {
           group_name: string | null
           id: string
           is_completed: boolean
+          lead_id: string | null
           priority: string | null
           status: string | null
           tags: string[] | null
@@ -541,6 +542,7 @@ export type Database = {
           group_name?: string | null
           id?: string
           is_completed?: boolean
+          lead_id?: string | null
           priority?: string | null
           status?: string | null
           tags?: string[] | null
@@ -556,13 +558,22 @@ export type Database = {
           group_name?: string | null
           id?: string
           is_completed?: boolean
+          lead_id?: string | null
           priority?: string | null
           status?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "evan_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       gmail_connections: {
         Row: {
