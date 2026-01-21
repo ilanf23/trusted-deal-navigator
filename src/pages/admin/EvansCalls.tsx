@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +31,8 @@ import {
   History,
   UserPlus,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  Plus
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
@@ -174,6 +176,7 @@ const formatDuration = (seconds: number | null) => {
 };
 
 const EvansCalls = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [expandedLenders, setExpandedLenders] = useState<Record<string, boolean>>({});
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
@@ -860,14 +863,25 @@ const EvansCalls = () => {
               <div className={showAssistant ? "xl:col-span-3" : "xl:col-span-5"}>
                 <Card className="h-full flex flex-col">
                   <CardHeader className="flex-shrink-0">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <CardTitle>Lender Programs</CardTitle>
-                        <CardDescription>
-                          {lenders.length} lenders available
-                        </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <CardTitle>Lender Programs</CardTitle>
+                          <CardDescription>
+                            {lenders.length} lenders available
+                          </CardDescription>
+                        </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate('/admin/lender-programs')}
+                        className="gap-1"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add
+                      </Button>
                     </div>
                   </CardHeader>
                   <CardContent className="p-0 flex-1 min-h-0">
