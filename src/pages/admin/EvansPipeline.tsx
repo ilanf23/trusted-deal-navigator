@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers } from 'lucide-react';
+import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -14,6 +14,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
 import StageManagerModal from '@/components/admin/StageManagerModal';
+import ColumnManagerModal from '@/components/admin/ColumnManagerModal';
 import HelpTooltip from '@/components/ui/help-tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -51,6 +52,7 @@ const EvansPipeline = () => {
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
   const [sharingModalOpen, setSharingModalOpen] = useState(false);
   const [stageManagerOpen, setStageManagerOpen] = useState(false);
+  const [columnManagerOpen, setColumnManagerOpen] = useState(false);
   const [pipelineName, setPipelineName] = useState('Main Pipeline');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingNameValue, setEditingNameValue] = useState('');
@@ -361,6 +363,10 @@ const EvansPipeline = () => {
                   <DropdownMenuItem onClick={() => setStageManagerOpen(true)} className="cursor-pointer">
                     <Layers className="h-4 w-4 mr-2" />
                     Stages
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setColumnManagerOpen(true)} className="cursor-pointer">
+                    <Columns className="h-4 w-4 mr-2" />
+                    Columns
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -688,6 +694,16 @@ const EvansPipeline = () => {
           // For now, just show a toast - full persistence requires database migration
           toast.success(`Saved ${updatedStages.length} stages`);
           console.log('Updated stages:', updatedStages);
+        }}
+      />
+
+      {/* Column Manager Modal */}
+      <ColumnManagerModal
+        open={columnManagerOpen}
+        onOpenChange={setColumnManagerOpen}
+        pipelineId={undefined} // Will be connected when pipelines are persisted
+        onColumnsChange={() => {
+          queryClient.invalidateQueries({ queryKey: ['pipeline-columns'] });
         }}
       />
     </AdminLayout>
