@@ -688,31 +688,6 @@ const EvansPipeline = () => {
                     ) : (
                       <TooltipProvider>
                         <div>
-                          {/* Section Header Row */}
-                          <div 
-                            className="bg-slate-50/50 border-b border-slate-200"
-                            style={{ 
-                              display: 'grid',
-                              gridTemplateColumns: getGridTemplate()
-                            }}
-                          >
-                            {getVisibleColumns().map((column, colIndex) => {
-                              const isLastColumn = colIndex === getVisibleColumns().length - 1;
-                              return (
-                                <div 
-                                  key={column.id}
-                                  className={cn(
-                                    "flex items-center px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider border-r border-slate-200",
-                                    isLastColumn && "border-r-0",
-                                    column.id === 'checkbox' && "px-2 justify-center",
-                                    column.id === 'avatar' && "px-2"
-                                  )}
-                                >
-                                  {column.id !== 'checkbox' && column.id !== 'avatar' && column.name}
-                                </div>
-                              );
-                            })}
-                          </div>
                           {stageLeads.map((lead, idx) => {
                             const touchpoint = touchpoints[lead.id];
                             const ownerName = lead.assigned_to ? teamMemberMap[lead.assigned_to] : null;
