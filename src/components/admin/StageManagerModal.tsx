@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GripVertical, Plus, Trash2, Palette, Check } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Popover,
@@ -17,6 +17,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import HelpTooltip from '@/components/ui/help-tooltip';
+import ColorWheel from '@/components/ui/color-wheel';
 
 interface Stage {
   id: string;
@@ -244,24 +245,25 @@ const StageManagerModal = ({
                       title="Click to change color"
                     />
                   </PopoverTrigger>
-                  <PopoverContent className="w-64 p-3" align="start">
-                    <div className="space-y-3">
+                  <PopoverContent className="w-72 p-4" align="start">
+                    <div className="space-y-4">
                       <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Choose Color
                       </div>
                       
-                      {/* Color Wheel Input */}
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <input
-                            type="color"
-                            value={stage.color}
-                            onChange={(e) => handleUpdateStage(stage.id, 'color', e.target.value)}
-                            className="w-16 h-16 rounded-full cursor-pointer border-0 p-0 appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-2 [&::-webkit-color-swatch]:border-white [&::-webkit-color-swatch]:shadow-lg [&::-moz-color-swatch]:rounded-full [&::-moz-color-swatch]:border-2 [&::-moz-color-swatch]:border-white"
-                            title="Color wheel"
+                      {/* Interactive Color Wheel */}
+                      <div className="flex gap-4">
+                        <ColorWheel
+                          value={stage.color}
+                          onChange={(color) => handleUpdateStage(stage.id, 'color', color)}
+                          size={120}
+                        />
+                        <div className="flex-1 flex flex-col justify-center">
+                          <div className="text-xs text-slate-500 mb-1">Current Color</div>
+                          <div 
+                            className="w-full h-10 rounded-lg border-2 border-white shadow-md mb-3"
+                            style={{ backgroundColor: stage.color }}
                           />
-                        </div>
-                        <div className="flex-1">
                           <div className="text-xs text-slate-500 mb-1">Hex Value</div>
                           <Input
                             value={stage.color}
