@@ -5,17 +5,18 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail } from 'lucide-react';
+import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -32,11 +33,13 @@ const stages: { status: LeadStatus; title: string; bgColor: string; borderColor:
 
 const EvansPipeline = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { teamMember, isOwner } = useTeamMember();
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<LeadStatus, boolean>>({} as Record<LeadStatus, boolean>);
+  const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
 
   const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
 
@@ -99,6 +102,67 @@ const EvansPipeline = () => {
     },
     enabled: leads.length > 0,
   });
+
+  // Fetch team members for "Assigned To" column
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['team-members-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id, name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const teamMemberMap = teamMembers.reduce((acc, tm) => {
+    acc[tm.id] = tm.name;
+    return acc;
+  }, {} as Record<string, string>);
+
+  // Call mutation
+  const makeCallMutation = useMutation({
+    mutationFn: async ({ phone, leadId }: { phone: string; leadId: string }) => {
+      const { data, error } = await supabase.functions.invoke('twilio-call', {
+        body: {
+          to: phone,
+          leadId: leadId,
+        },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-touchpoints'] });
+      toast.success(`Call initiated to ${data.to}!`);
+      setCallingLeadId(null);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to initiate call: ${error.message}`);
+      setCallingLeadId(null);
+    },
+  });
+
+  const handleCall = (e: React.MouseEvent, lead: Lead) => {
+    e.stopPropagation();
+    if (!lead.phone) {
+      toast.error('No phone number available');
+      return;
+    }
+    setCallingLeadId(lead.id);
+    makeCallMutation.mutate({ phone: lead.phone, leadId: lead.id });
+  };
+
+  const handleEmail = (e: React.MouseEvent, lead: Lead) => {
+    e.stopPropagation();
+    if (!lead.email) {
+      toast.error('No email address available');
+      return;
+    }
+    // Navigate to Gmail with compose pre-filled
+    navigate(`/team/evan/gmail?compose=true&to=${encodeURIComponent(lead.email)}&name=${encodeURIComponent(lead.name)}`);
+  };
 
   const sources = [...new Set(leads.map(lead => lead.source).filter(Boolean))];
 
@@ -278,13 +342,14 @@ const EvansPipeline = () => {
         <div className="flex-1 overflow-auto border border-slate-200 rounded-md bg-white">
           {/* Table Header */}
           <div className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
-            <div className="grid grid-cols-[32px_32px_minmax(160px,1.5fr)_100px_minmax(120px,1fr)_minmax(160px,1.2fr)_100px_120px_100px] gap-3 px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <div className="grid grid-cols-[32px_32px_minmax(140px,1.2fr)_90px_minmax(100px,1fr)_minmax(140px,1fr)_90px_80px_100px_90px] gap-3 px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">
               <div></div>
               <div></div>
               <div>Name</div>
               <div>Stage</div>
               <div>Company</div>
               <div>Contact</div>
+              <div>Owner</div>
               <div>Source</div>
               <div>Last Touch</div>
               <div>Updated</div>
@@ -344,82 +409,113 @@ const EvansPipeline = () => {
                         No leads in this stage
                       </div>
                     ) : (
-                      <div>
-                        {stageLeads.map((lead, idx) => {
-                          const touchpoint = touchpoints[lead.id];
-                          return (
-                            <div
-                              key={lead.id}
-                              className={cn(
-                                "grid grid-cols-[32px_32px_minmax(160px,1.5fr)_100px_minmax(120px,1fr)_minmax(160px,1.2fr)_100px_120px_100px] gap-3 px-4 py-2.5 hover:bg-slate-50/80 cursor-pointer items-center text-sm transition-colors",
-                                idx < stageLeads.length - 1 && "border-b border-slate-50"
-                              )}
-                              onClick={() => setDetailDialogLead(lead)}
-                            >
-                              <div className="flex items-center justify-center">
-                                <input 
-                                  type="checkbox" 
-                                  className="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]/20" 
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              </div>
-                              <div>
-                                <Avatar className="h-7 w-7 bg-[#0066FF]">
-                                  <AvatarFallback className="text-[10px] text-white font-semibold bg-[#0066FF]">
-                                    {getInitials(lead.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                              </div>
-                              <div className="font-medium text-slate-900 truncate">{lead.name}</div>
-                              <div>
-                                <Badge 
-                                  variant="outline" 
-                                  className={cn(
-                                    "text-[10px] font-medium px-1.5 py-0 rounded",
-                                    stage.bgColor,
-                                    stage.textColor,
-                                    "border-transparent"
+                      <TooltipProvider>
+                        <div>
+                          {stageLeads.map((lead, idx) => {
+                            const touchpoint = touchpoints[lead.id];
+                            const ownerName = lead.assigned_to ? teamMemberMap[lead.assigned_to] : null;
+                            const isCallingThis = callingLeadId === lead.id;
+                            return (
+                              <div
+                                key={lead.id}
+                                className={cn(
+                                  "grid grid-cols-[32px_32px_minmax(140px,1.2fr)_90px_minmax(100px,1fr)_minmax(140px,1fr)_90px_80px_100px_90px] gap-3 px-4 py-2.5 hover:bg-slate-50/80 cursor-pointer items-center text-sm transition-colors",
+                                  idx < stageLeads.length - 1 && "border-b border-slate-50"
+                                )}
+                                onClick={() => setDetailDialogLead(lead)}
+                              >
+                                <div className="flex items-center justify-center">
+                                  <input 
+                                    type="checkbox" 
+                                    className="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]/20" 
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div>
+                                  <Avatar className="h-7 w-7 bg-[#0066FF]">
+                                    <AvatarFallback className="text-[10px] text-white font-semibold bg-[#0066FF]">
+                                      {getInitials(lead.name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
+                                <div className="font-medium text-slate-900 truncate">{lead.name}</div>
+                                <div>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                      "text-[10px] font-medium px-1.5 py-0 rounded",
+                                      stage.bgColor,
+                                      stage.textColor,
+                                      "border-transparent"
+                                    )}
+                                  >
+                                    {stage.title}
+                                  </Badge>
+                                </div>
+                                <div className="text-slate-600 truncate text-[13px]">
+                                  {lead.company_name || '—'}
+                                </div>
+                                <div className="flex items-center gap-2 text-slate-500">
+                                  {lead.phone && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          onClick={(e) => handleCall(e, lead)}
+                                          disabled={isCallingThis}
+                                          className="flex items-center justify-center h-6 w-6 rounded-full bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50"
+                                        >
+                                          {isCallingThis ? (
+                                            <Loader2 className="h-3 w-3 text-green-600 animate-spin" />
+                                          ) : (
+                                            <Phone className="h-3 w-3 text-green-600" />
+                                          )}
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <p>Call {lead.phone}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
                                   )}
-                                >
-                                  {stage.title}
-                                </Badge>
+                                  {lead.email && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          onClick={(e) => handleEmail(e, lead)}
+                                          className="flex items-center justify-center h-6 w-6 rounded-full bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors"
+                                        >
+                                          <Mail className="h-3 w-3 text-[#0066FF]" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <p>Email {lead.email}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  {!lead.phone && !lead.email && <span className="text-slate-300">—</span>}
+                                </div>
+                                <div className="text-xs text-slate-600 truncate">
+                                  {ownerName || <span className="text-slate-300">—</span>}
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                  {lead.source || <span className="text-slate-300">—</span>}
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                  {touchpoint ? (
+                                    <span className="capitalize">
+                                      {touchpoint.type}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300">—</span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-slate-400">
+                                  {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}
+                                </div>
                               </div>
-                              <div className="text-slate-600 truncate text-[13px]">
-                                {lead.company_name || '—'}
-                              </div>
-                              <div className="flex items-center gap-2 text-slate-500">
-                                {lead.phone && (
-                                  <div className="flex items-center gap-1 text-xs">
-                                    <Phone className="h-3 w-3 text-slate-400" />
-                                  </div>
-                                )}
-                                {lead.email && (
-                                  <div className="flex items-center gap-1 text-xs truncate">
-                                    <Mail className="h-3 w-3 text-slate-400" />
-                                    <span className="truncate max-w-[110px] text-[12px]">{lead.email}</span>
-                                  </div>
-                                )}
-                                {!lead.phone && !lead.email && <span className="text-slate-300">—</span>}
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                {lead.source || <span className="text-slate-300">—</span>}
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                {touchpoint ? (
-                                  <span className="capitalize">
-                                    {touchpoint.type}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-300">—</span>
-                                )}
-                              </div>
-                              <div className="text-xs text-slate-400">
-                                {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      </TooltipProvider>
                     )}
                   </CollapsibleContent>
                 </Collapsible>
