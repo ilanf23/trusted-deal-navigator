@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns as ColumnsIcon } from 'lucide-react';
+import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns as ColumnsIcon, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -830,7 +830,18 @@ const EvansPipeline = () => {
                             const renderCellContent = (column: typeof columns[0]) => {
                               switch (column.id) {
                                 case 'spacer_left':
-                                  return null;
+                                  return (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDetailDialogLead(lead);
+                                      }}
+                                      className="p-1 text-[#0066FF] hover:text-[#0052cc] transition-colors"
+                                      title="Open lead details"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                    </button>
+                                  );
                                 case 'checkbox':
                                   return (
                                     <div className="flex items-center justify-center">
