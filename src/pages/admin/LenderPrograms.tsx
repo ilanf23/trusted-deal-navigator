@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,10 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Building2, DollarSign, Percent, Clock, ChevronDown, ChevronUp, Loader2, Plus, Upload, FileText, X, Trash2 } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Building2, Loader2, Plus, Upload, FileText, X, Trash2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { LenderProgramCard } from '@/components/evan/LenderProgramCard';
 
 interface Program {
   id: string;
@@ -24,7 +24,6 @@ interface Program {
   max_loan: number | null;
   interest_range: string | null;
   term: string | null;
-  // New fields
   call_status: string | null;
   last_contact: string | null;
   next_call: string | null;
@@ -36,6 +35,7 @@ interface Program {
   lender_type: string | null;
   loan_types: string | null;
   states: string | null;
+  loan_size_text: string | null;
 }
 
 interface GroupedLender {
@@ -103,23 +103,6 @@ const formatCurrency = (amount: number | null) => {
   return `$${amount}`;
 };
 
-const getTypeBadgeClass = (type: string) => {
-  switch (type) {
-    case 'SBA':
-      return 'bg-admin-blue text-white border-0';
-    case 'Conventional':
-      return 'bg-admin-teal text-white border-0';
-    case 'Bridge':
-      return 'bg-admin-orange text-white border-0';
-    case 'Construction':
-      return 'bg-gradient-to-r from-admin-orange to-admin-orange-dark text-white border-0';
-    case 'CMBS':
-      return 'bg-admin-blue-dark text-white border-0';
-    default:
-      return 'bg-muted text-muted-foreground';
-  }
-};
-
 const parseCurrencyValue = (value: string): number | null => {
   if (!value) return null;
   const cleaned = value.replace(/[$,\s]/g, '').toLowerCase();
@@ -135,8 +118,7 @@ const parseCurrencyValue = (value: string): number | null => {
 };
 
 const LenderPrograms = () => {
-  const [expandedLenders, setExpandedLenders] = useState<Record<string, boolean>>({});
-  const [lenders, setLenders] = useState<GroupedLender[]>([]);
+  const [allPrograms, setAllPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -145,6 +127,7 @@ const LenderPrograms = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [parsedPrograms, setParsedPrograms] = useState<NewProgram[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -161,19 +144,7 @@ const LenderPrograms = () => {
 
       if (error) throw error;
 
-      const grouped = (data || []).reduce((acc: Record<string, GroupedLender>, program) => {
-        if (!acc[program.lender_name]) {
-          acc[program.lender_name] = {
-            name: program.lender_name,
-            specialty: program.lender_specialty || '',
-            programs: [],
-          };
-        }
-        acc[program.lender_name].programs.push(program);
-        return acc;
-      }, {});
-
-      setLenders(Object.values(grouped));
+      setAllPrograms(data || []);
     } catch (error) {
       console.error('Error fetching programs:', error);
     } finally {
@@ -181,12 +152,17 @@ const LenderPrograms = () => {
     }
   };
 
-  const toggleLender = (lenderName: string) => {
-    setExpandedLenders((prev) => ({
-      ...prev,
-      [lenderName]: !prev[lenderName],
-    }));
-  };
+  const filteredPrograms = allPrograms.filter(program => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      program.lender_name.toLowerCase().includes(query) ||
+      program.program_name.toLowerCase().includes(query) ||
+      program.loan_types?.toLowerCase().includes(query) ||
+      program.states?.toLowerCase().includes(query) ||
+      program.lender_type?.toLowerCase().includes(query)
+    );
+  });
 
   const handleAddProgram = async () => {
     if (!newProgram.lender_name || !newProgram.program_name) {
@@ -413,23 +389,24 @@ const LenderPrograms = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-admin-blue-dark">Lender Programs</h1>
-            <p className="text-muted-foreground mt-1">
-              {lenders.length > 0 ? (
-                <>Browse lending programs from our network of <span className="font-semibold text-admin-orange">{lenders.length} lenders</span></>
+            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Lender Programs</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              {allPrograms.length > 0 ? (
+                <>Manage <span className="font-medium text-slate-700">{allPrograms.length} lender programs</span></>
               ) : (
                 'Add lenders to start building your lending network'
               )}
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Upload className="w-4 h-4" />
+                <Button variant="outline" size="sm" className="gap-2 text-slate-600">
+                  <Upload className="w-4 h-4" strokeWidth={1.5} />
                   Bulk Upload
                 </Button>
               </DialogTrigger>
@@ -441,7 +418,7 @@ const LenderPrograms = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4 flex-1 overflow-auto">
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                  <div className="border-2 border-dashed border-slate-200 rounded-md p-6 text-center">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -451,21 +428,21 @@ const LenderPrograms = () => {
                     />
                     {!uploadedFile ? (
                       <div className="space-y-3">
-                        <FileText className="w-10 h-10 text-muted-foreground mx-auto" />
+                        <FileText className="w-10 h-10 text-slate-400 mx-auto" strokeWidth={1.5} />
                         <div>
-                          <p className="text-sm text-muted-foreground mb-2">Drag and drop or</p>
-                          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                          <p className="text-sm text-slate-500 mb-2">Drag and drop or</p>
+                          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                             Choose File
                           </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground">Supports CSV files</p>
+                        <p className="text-xs text-slate-400">Supports CSV files</p>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-3">
-                        <FileText className="w-8 h-8 text-admin-blue flex-shrink-0" />
+                        <FileText className="w-8 h-8 text-slate-600 flex-shrink-0" strokeWidth={1.5} />
                         <div className="text-left min-w-0">
-                          <p className="font-medium truncate">{uploadedFile.name}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="font-medium text-slate-900 truncate">{uploadedFile.name}</p>
+                          <p className="text-sm text-slate-500">
                             {parsedPrograms.length} lenders parsed
                           </p>
                         </div>
@@ -477,29 +454,29 @@ const LenderPrograms = () => {
                   </div>
 
                   {parsedPrograms.length > 0 && (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border border-slate-200 rounded-md overflow-hidden">
                       <div className="max-h-48 overflow-auto">
                         <table className="w-full text-sm table-fixed">
-                          <thead className="bg-muted sticky top-0">
+                          <thead className="bg-slate-50 sticky top-0">
                             <tr>
-                              <th className="text-left p-2 w-1/4">Institution</th>
-                              <th className="text-left p-2 w-1/4">Contact</th>
-                              <th className="text-left p-2 w-1/4">Type</th>
-                              <th className="text-left p-2 w-1/4">States</th>
+                              <th className="text-left p-2 w-1/4 text-slate-600 font-medium">Institution</th>
+                              <th className="text-left p-2 w-1/4 text-slate-600 font-medium">Contact</th>
+                              <th className="text-left p-2 w-1/4 text-slate-600 font-medium">Type</th>
+                              <th className="text-left p-2 w-1/4 text-slate-600 font-medium">States</th>
                             </tr>
                           </thead>
                           <tbody>
                             {parsedPrograms.slice(0, 15).map((p, i) => (
-                              <tr key={i} className="border-t">
-                                <td className="p-2 truncate" title={p.lender_name}>{p.lender_name}</td>
-                                <td className="p-2 truncate" title={p.contact_name || p.email || '-'}>{p.contact_name || p.email || '-'}</td>
-                                <td className="p-2 truncate" title={p.lender_type || p.program_type || '-'}>{p.lender_type || p.program_type || '-'}</td>
-                                <td className="p-2 truncate" title={p.states || '-'}>{p.states || '-'}</td>
+                              <tr key={i} className="border-t border-slate-100">
+                                <td className="p-2 truncate text-slate-700" title={p.lender_name}>{p.lender_name}</td>
+                                <td className="p-2 truncate text-slate-600" title={p.contact_name || p.email || '-'}>{p.contact_name || p.email || '-'}</td>
+                                <td className="p-2 truncate text-slate-600" title={p.lender_type || p.program_type || '-'}>{p.lender_type || p.program_type || '-'}</td>
+                                <td className="p-2 truncate text-slate-600" title={p.states || '-'}>{p.states || '-'}</td>
                               </tr>
                             ))}
                             {parsedPrograms.length > 15 && (
-                              <tr className="border-t bg-muted/30">
-                                <td colSpan={4} className="p-2 text-center text-muted-foreground text-xs">
+                              <tr className="border-t bg-slate-50">
+                                <td colSpan={4} className="p-2 text-center text-slate-500 text-xs">
                                   ... and {parsedPrograms.length - 15} more lenders
                                 </td>
                               </tr>
@@ -510,9 +487,9 @@ const LenderPrograms = () => {
                     </div>
                   )}
 
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <h4 className="font-medium text-xs mb-1">Supported CSV columns:</h4>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="bg-slate-50 rounded-md p-3">
+                    <h4 className="font-medium text-xs text-slate-700 mb-1">Supported CSV columns:</h4>
+                    <p className="text-xs text-slate-500">
                       Institution, Call Y/N, Last Contact, Next Call, Location, Looking For, NAME, PHONE, EMAIL, TYPE OF LENDER, TYPES OF LOANS, Loan Size, States
                     </p>
                   </div>
@@ -529,8 +506,8 @@ const LenderPrograms = () => {
 
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2 bg-admin-blue hover:bg-admin-blue-dark">
-                  <Plus className="w-4 h-4" />
+                <Button size="sm" className="gap-2 bg-slate-900 hover:bg-slate-800">
+                  <Plus className="w-4 h-4" strokeWidth={1.5} />
                   Add Lender
                 </Button>
               </DialogTrigger>
@@ -653,164 +630,59 @@ const LenderPrograms = () => {
           </div>
         </div>
 
-        {lenders.length === 0 ? (
-          <Card className="border-dashed border-2">
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.5} />
+          <Input
+            placeholder="Search lenders, loan types, states..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-white border-slate-200"
+          />
+        </div>
+
+        {allPrograms.length === 0 ? (
+          <Card className="border-dashed border-2 border-slate-200">
             <CardContent className="py-16 text-center">
-              <Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Lenders Yet</h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              <Building2 className="w-16 h-16 text-slate-300 mx-auto mb-4" strokeWidth={1.5} />
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">No Lenders Yet</h3>
+              <p className="text-slate-500 mb-6 max-w-md mx-auto">
                 Start building your lending network by adding lenders one at a time or uploading a CSV file with all your lender programs.
               </p>
               <div className="flex gap-3 justify-center">
                 <Button variant="outline" onClick={() => setUploadDialogOpen(true)} className="gap-2">
-                  <Upload className="w-4 h-4" />
+                  <Upload className="w-4 h-4" strokeWidth={1.5} />
                   Bulk Upload CSV
                 </Button>
-                <Button onClick={() => setAddDialogOpen(true)} className="gap-2 bg-admin-blue hover:bg-admin-blue-dark">
-                  <Plus className="w-4 h-4" />
+                <Button onClick={() => setAddDialogOpen(true)} className="gap-2 bg-slate-900 hover:bg-slate-800">
+                  <Plus className="w-4 h-4" strokeWidth={1.5} />
                   Add First Lender
                 </Button>
               </div>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-5">
-            {lenders.map((lender) => (
-              <Collapsible
-                key={lender.name}
-                open={expandedLenders[lender.name]}
-                onOpenChange={() => toggleLender(lender.name)}
-              >
-                <Card className="overflow-hidden border-admin-blue/10 border-2 hover:border-admin-blue/30 transition-all">
-                  <CollapsibleTrigger className="w-full">
-                    <CardHeader className="cursor-pointer hover:bg-admin-blue-light/30 transition-colors py-5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark flex items-center justify-center shadow-md">
-                            <Building2 className="w-6 h-6 text-white" />
-                          </div>
-                          <div className="text-left">
-                            <CardTitle className="text-lg text-admin-blue-dark">{lender.name}</CardTitle>
-                            <CardDescription>{lender.specialty}</CardDescription>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge className="bg-admin-orange text-white border-0">{lender.programs.length} Programs</Badge>
-                          {expandedLenders[lender.name] ? (
-                            <ChevronUp className="w-5 h-5 text-admin-blue" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0 pb-5">
-                      <div className="space-y-4">
-                        {lender.programs.map((program) => (
-                          <div
-                            key={program.id}
-                            className="p-5 rounded-xl border border-admin-blue/10 bg-gradient-to-r from-admin-blue-light/30 to-transparent hover:from-admin-blue-light/50 transition-colors group"
-                          >
-                            <div className="flex items-start justify-between gap-4 mb-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h4 className="font-semibold text-admin-blue-dark text-base">{program.program_name}</h4>
-                                  <Badge className={`text-xs ${getTypeBadgeClass(program.program_type)}`}>
-                                    {program.program_type}
-                                  </Badge>
-                                  {program.call_status && (
-                                    <Badge variant={program.call_status === 'Y' ? 'default' : 'secondary'} className="text-xs">
-                                      Call: {program.call_status}
-                                    </Badge>
-                                  )}
-                                </div>
-                                {/* Looking For / Description */}
-                                {(program.looking_for || program.description) && (
-                                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                                    {program.looking_for || program.description}
-                                  </p>
-                                )}
-                                {/* Loan Types */}
-                                {program.loan_types && (
-                                  <p className="text-sm mb-2">
-                                    <span className="font-medium text-admin-blue-dark">Loan Types:</span>{' '}
-                                    <span className="text-muted-foreground">{program.loan_types}</span>
-                                  </p>
-                                )}
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteProgram(program.id);
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                            
-                            {/* Contact & Location Info Row */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-3 border-t border-b border-admin-blue/10 mb-4">
-                              {program.contact_name && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Contact</p>
-                                  <p className="text-sm font-medium">{program.contact_name}</p>
-                                </div>
-                              )}
-                              {program.phone && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Phone</p>
-                                  <a href={`tel:${program.phone}`} className="text-sm font-medium text-admin-blue hover:underline">
-                                    {program.phone}
-                                  </a>
-                                </div>
-                              )}
-                              {program.email && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Email</p>
-                                  <a href={`mailto:${program.email}`} className="text-sm font-medium text-admin-blue hover:underline truncate block">
-                                    {program.email}
-                                  </a>
-                                </div>
-                              )}
-                              {program.location && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Location</p>
-                                  <p className="text-sm font-medium">{program.location}</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* States & Lender Type Row */}
-                            {(program.states || program.lender_type) && (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                {program.states && (
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">States Covered</p>
-                                    <p className="text-sm font-medium">{program.states}</p>
-                                  </div>
-                                )}
-                                {program.lender_type && (
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Lender Type</p>
-                                    <p className="text-sm font-medium">{program.lender_type}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filteredPrograms.map((program) => (
+              <div key={program.id} className="relative group">
+                <LenderProgramCard program={program} />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-3 right-12 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 w-8"
+                  onClick={() => handleDeleteProgram(program.id)}
+                >
+                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                </Button>
+              </div>
             ))}
+          </div>
+        )}
+
+        {filteredPrograms.length === 0 && allPrograms.length > 0 && (
+          <div className="text-center py-12">
+            <Search className="w-12 h-12 text-slate-300 mx-auto mb-3" strokeWidth={1.5} />
+            <p className="text-slate-500">No lenders match your search</p>
           </div>
         )}
       </div>
