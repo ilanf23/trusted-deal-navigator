@@ -380,36 +380,6 @@ const EvansCalls = () => {
     };
   }, [matchedLead, leadResponse]);
 
-  // Filter lender programs based on individual filters
-  const filteredPrograms = useMemo(() => {
-    return allPrograms.filter((program) => {
-      if (lenderFilters.institution && program.lender_name !== lenderFilters.institution) return false;
-      if (lenderFilters.lookingFor && !program.looking_for?.toLowerCase().includes(lenderFilters.lookingFor.toLowerCase())) return false;
-      if (lenderFilters.contact && program.contact_name !== lenderFilters.contact) return false;
-      if (lenderFilters.loanSize && !programMatchesLoanCategory(program, lenderFilters.loanSize)) return false;
-      if (lenderFilters.states && !program.states?.toLowerCase().includes(lenderFilters.states.toLowerCase())) return false;
-      if (lenderFilters.lenderType && program.lender_type !== lenderFilters.lenderType) return false;
-      if (lenderFilters.loanTypes && !program.loan_types?.toLowerCase().includes(lenderFilters.loanTypes.toLowerCase())) return false;
-      return true;
-    });
-  }, [allPrograms, lenderFilters]);
-
-
-  const hasActiveFilters = Object.values(lenderFilters).some(v => v.trim() !== '');
-
-  const clearAllFilters = () => {
-    setLenderFilters({
-      institution: '',
-      lookingFor: '',
-      contact: '',
-      loanSize: '',
-      states: '',
-      lenderType: '',
-      loanTypes: '',
-    });
-  };
-
-  // Extract unique values for dropdown options
   // Valid US state abbreviations
   const VALID_STATE_ABBREVS = new Set([
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -483,6 +453,37 @@ const EvansCalls = () => {
     // Check if ranges overlap
     return programRange.max >= category.min && programRange.min <= category.max;
   };
+
+  // Filter lender programs based on individual filters
+  const filteredPrograms = useMemo(() => {
+    return allPrograms.filter((program) => {
+      if (lenderFilters.institution && program.lender_name !== lenderFilters.institution) return false;
+      if (lenderFilters.lookingFor && !program.looking_for?.toLowerCase().includes(lenderFilters.lookingFor.toLowerCase())) return false;
+      if (lenderFilters.contact && program.contact_name !== lenderFilters.contact) return false;
+      if (lenderFilters.loanSize && !programMatchesLoanCategory(program, lenderFilters.loanSize)) return false;
+      if (lenderFilters.states && !program.states?.toLowerCase().includes(lenderFilters.states.toLowerCase())) return false;
+      if (lenderFilters.lenderType && program.lender_type !== lenderFilters.lenderType) return false;
+      if (lenderFilters.loanTypes && !program.loan_types?.toLowerCase().includes(lenderFilters.loanTypes.toLowerCase())) return false;
+      return true;
+    });
+  }, [allPrograms, lenderFilters]);
+
+
+  const hasActiveFilters = Object.values(lenderFilters).some(v => v.trim() !== '');
+
+  const clearAllFilters = () => {
+    setLenderFilters({
+      institution: '',
+      lookingFor: '',
+      contact: '',
+      loanSize: '',
+      states: '',
+      lenderType: '',
+      loanTypes: '',
+    });
+  };
+
+  // Extract unique values for dropdown options
 
   const filterOptions = useMemo(() => {
     const getUniqueValues = (key: keyof Program) => {
