@@ -386,7 +386,7 @@ const EvansCalls = () => {
       if (lenderFilters.institution && program.lender_name !== lenderFilters.institution) return false;
       if (lenderFilters.lookingFor && !program.looking_for?.toLowerCase().includes(lenderFilters.lookingFor.toLowerCase())) return false;
       if (lenderFilters.contact && program.contact_name !== lenderFilters.contact) return false;
-      if (lenderFilters.loanSize && program.loan_size_text !== lenderFilters.loanSize) return false;
+      if (lenderFilters.loanSize && !programMatchesLoanCategory(program, lenderFilters.loanSize)) return false;
       if (lenderFilters.states && !program.states?.toLowerCase().includes(lenderFilters.states.toLowerCase())) return false;
       if (lenderFilters.lenderType && program.lender_type !== lenderFilters.lenderType) return false;
       if (lenderFilters.loanTypes && !program.loan_types?.toLowerCase().includes(lenderFilters.loanTypes.toLowerCase())) return false;
@@ -419,6 +419,71 @@ const EvansCalls = () => {
     'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
   ]);
 
+  // Standardized loan size categories (10 buckets)
+  const LOAN_SIZE_CATEGORIES = [
+    { label: 'Under $100K', min: 0, max: 100000 },
+    { label: '$100K - $250K', min: 100000, max: 250000 },
+    { label: '$250K - $500K', min: 250000, max: 500000 },
+    { label: '$500K - $1M', min: 500000, max: 1000000 },
+    { label: '$1M - $2.5M', min: 1000000, max: 2500000 },
+    { label: '$2.5M - $5M', min: 2500000, max: 5000000 },
+    { label: '$5M - $10M', min: 5000000, max: 10000000 },
+    { label: '$10M - $25M', min: 10000000, max: 25000000 },
+    { label: '$25M - $50M', min: 25000000, max: 50000000 },
+    { label: '$50M+', min: 50000000, max: Infinity },
+  ];
+
+  // Parse loan size text to extract numeric values
+  const parseLoanSizeText = (text: string | null): { min: number; max: number } | null => {
+    if (!text) return null;
+    const cleaned = text.replace(/[,$]/g, '').toLowerCase();
+    
+    // Extract numbers with K/M/B suffixes
+    const parseNumber = (str: string): number => {
+      const match = str.match(/([\d.]+)\s*(k|m|b|mm)?/i);
+      if (!match) return 0;
+      let num = parseFloat(match[1]);
+      const suffix = (match[2] || '').toLowerCase();
+      if (suffix === 'k') num *= 1000;
+      else if (suffix === 'm' || suffix === 'mm') num *= 1000000;
+      else if (suffix === 'b') num *= 1000000000;
+      return num;
+    };
+
+    // Look for range patterns like "1M - 5M" or "1-5M" or "$1M-$5M"
+    const rangeMatch = cleaned.match(/([\d.]+\s*[kmb]?)\s*[-–to]+\s*([\d.]+\s*[kmb]?)/i);
+    if (rangeMatch) {
+      return { min: parseNumber(rangeMatch[1]), max: parseNumber(rangeMatch[2]) };
+    }
+
+    // Look for "up to" or "max" patterns
+    const upToMatch = cleaned.match(/up\s*to\s*([\d.]+\s*[kmb]?)/i);
+    if (upToMatch) {
+      return { min: 0, max: parseNumber(upToMatch[1]) };
+    }
+
+    // Look for single number (treat as max)
+    const singleMatch = cleaned.match(/([\d.]+\s*[kmb]?)/i);
+    if (singleMatch) {
+      const val = parseNumber(singleMatch[1]);
+      return { min: 0, max: val };
+    }
+
+    return null;
+  };
+
+  // Check if a program's loan size falls within a category
+  const programMatchesLoanCategory = (program: Program, categoryLabel: string): boolean => {
+    const category = LOAN_SIZE_CATEGORIES.find(c => c.label === categoryLabel);
+    if (!category) return false;
+
+    const programRange = parseLoanSizeText(program.loan_size_text);
+    if (!programRange) return false;
+
+    // Check if ranges overlap
+    return programRange.max >= category.min && programRange.min <= category.max;
+  };
+
   const filterOptions = useMemo(() => {
     const getUniqueValues = (key: keyof Program) => {
       const values = allPrograms
@@ -448,7 +513,7 @@ const EvansCalls = () => {
       institutions: getUniqueValues('lender_name'),
       contacts: getUniqueValues('contact_name'),
       phones: getUniqueValues('phone'),
-      loanSizes: getUniqueValues('loan_size_text'),
+      loanSizes: LOAN_SIZE_CATEGORIES.map(c => c.label),
       states: getUniqueStates(),
       lenderTypes: getUniqueValues('lender_type'),
       loanTypes: getUniqueLoanTypes(),
