@@ -315,8 +315,14 @@ const LenderPrograms = () => {
         term: p.term || null,
         // New fields
         call_status: p.call_status || 'N',
-        last_contact: p.last_contact ? new Date(p.last_contact).toISOString() : null,
-        next_call: p.next_call ? new Date(p.next_call).toISOString() : null,
+        last_contact: p.last_contact ? (() => {
+          const d = new Date(p.last_contact);
+          return isNaN(d.getTime()) ? null : d.toISOString();
+        })() : null,
+        next_call: p.next_call ? (() => {
+          const d = new Date(p.next_call);
+          return isNaN(d.getTime()) ? null : d.toISOString();
+        })() : null,
         location: p.location || null,
         looking_for: p.looking_for || null,
         contact_name: p.contact_name || null,
