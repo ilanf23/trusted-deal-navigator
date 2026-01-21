@@ -217,9 +217,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [activeTab, setActiveTab] = useState('all');
   const [expandedTranscripts, setExpandedTranscripts] = useState<Record<string, boolean>>({});
   
-  // Collapsible sections state
+  // Collapsible sections state (legacy - kept for compatibility)
   const [customColumnsOpen, setCustomColumnsOpen] = useState(true);
-  const [contactsOpen, setContactsOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
   const [magicColumnsOpen, setMagicColumnsOpen] = useState(true);
 
@@ -239,8 +238,43 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     urgency: false,
   });
 
+  // Contact info state
+  const [contactInfo, setContactInfo] = useState({
+    knownAs: '',
+    contactTitle: '',
+    contactType: 'potential_customer' as 'customer' | 'potential_customer' | 'referral_source' | 'lender',
+    website: '',
+    linkedin: '',
+    twitter: '',
+    other: [] as string[],
+    about: '',
+    tags: [] as string[],
+  });
+
   // Notes state
   const [notesContent, setNotesContent] = useState('');
+  
+  // Collapsible section states
+  const [contactInfoOpen, setContactInfoOpen] = useState(true);
+  const [phonesOpen, setPhonesOpen] = useState(true);
+  const [emailsOpen, setEmailsOpen] = useState(true);
+  const [addressesOpen, setAddressesOpen] = useState(true);
+  const [socialOpen, setSocialOpen] = useState(true);
+  const [tagsOpen, setTagsOpen] = useState(true);
+  const [aboutOpen, setAboutOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(true);
+  
+  // New phone/email/address input states
+  const [newPhone, setNewPhone] = useState('');
+  const [newPhoneType, setNewPhoneType] = useState('mobile');
+  const [newEmail, setNewEmail] = useState('');
+  const [newEmailType, setNewEmailType] = useState('work');
+  const [newTag, setNewTag] = useState('');
+  const [showAddPhone, setShowAddPhone] = useState(false);
+  const [showAddEmail, setShowAddEmail] = useState(false);
+  const [showAddTag, setShowAddTag] = useState(false);
 
   // AI states
   const [aiLoading, setAiLoading] = useState<'summarize' | 'ask' | 'autofill' | null>(null);
@@ -263,11 +297,25 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         propertyType: placeholder.propertyType,
         urgency: placeholder.urgency === 'High',
       });
+      setContactInfo({
+        knownAs: lead.known_as || '',
+        contactTitle: lead.title || '',
+        contactType: (lead.contact_type as any) || 'potential_customer',
+        website: lead.website || '',
+        linkedin: lead.linkedin || '',
+        twitter: lead.twitter || '',
+        other: [],
+        about: lead.about || '',
+        tags: lead.tags || [],
+      });
       setNotesContent(placeholder.notes || lead.notes || '');
       setAiSummary(null);
       setAiAnswer(null);
       setShowAskDialog(false);
       setAiQuestion('');
+      setShowAddPhone(false);
+      setShowAddEmail(false);
+      setShowAddTag(false);
     }
   }, [lead, open]);
 
@@ -381,17 +429,91 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
   });
 
-  const addContact = useMutation({
+  const addContactEmail = useMutation({
     mutationFn: async (email: string) => {
       if (!lead) return;
-      const { error } = await supabase.from('lead_emails').insert({ lead_id: lead.id, email, email_type: 'work' });
+      const { error } = await supabase.from('lead_emails').insert({ lead_id: lead.id, email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] });
-      toast({ title: 'Contact added' });
+      setNewEmail('');
+      setShowAddEmail(false);
+      toast({ title: 'Email added' });
     },
   });
+
+  const addContactPhone = useMutation({
+    mutationFn: async (phone: string) => {
+      if (!lead) return;
+      const { error } = await supabase.from('lead_phones').insert({ lead_id: lead.id, phone_number: phone, phone_type: newPhoneType });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead?.id] });
+      setNewPhone('');
+      setShowAddPhone(false);
+      toast({ title: 'Phone added' });
+    },
+  });
+
+  const deletePhone = useMutation({
+    mutationFn: async (phoneId: string) => {
+      const { error } = await supabase.from('lead_phones').delete().eq('id', phoneId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead?.id] });
+      toast({ title: 'Phone removed' });
+    },
+  });
+
+  const deleteEmail = useMutation({
+    mutationFn: async (emailId: string) => {
+      const { error } = await supabase.from('lead_emails').delete().eq('id', emailId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] });
+      toast({ title: 'Email removed' });
+    },
+  });
+
+  const updateContactInfo = useMutation({
+    mutationFn: async (updates: Partial<typeof contactInfo>) => {
+      if (!lead) return;
+      const { error } = await supabase.from('leads').update({
+        known_as: updates.knownAs ?? contactInfo.knownAs,
+        title: updates.contactTitle ?? contactInfo.contactTitle,
+        contact_type: updates.contactType ?? contactInfo.contactType,
+        website: updates.website ?? contactInfo.website,
+        linkedin: updates.linkedin ?? contactInfo.linkedin,
+        twitter: updates.twitter ?? contactInfo.twitter,
+        about: updates.about ?? contactInfo.about,
+        tags: updates.tags ?? contactInfo.tags,
+      }).eq('id', lead.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+      onLeadUpdated?.();
+    },
+  });
+
+  const handleAddTag = () => {
+    if (!newTag.trim()) return;
+    const updatedTags = [...contactInfo.tags, newTag.trim()];
+    setContactInfo(prev => ({ ...prev, tags: updatedTags }));
+    updateContactInfo.mutate({ tags: updatedTags });
+    setNewTag('');
+    setShowAddTag(false);
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const updatedTags = contactInfo.tags.filter(t => t !== tagToRemove);
+    setContactInfo(prev => ({ ...prev, tags: updatedTags }));
+    updateContactInfo.mutate({ tags: updatedTags });
+  };
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return '0:00';
@@ -921,106 +1043,462 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-2">
-                {/* Custom Columns Section */}
-                <Collapsible open={customColumnsOpen} onOpenChange={setCustomColumnsOpen}>
+                {/* Contact Info Section */}
+                <Collapsible open={contactInfoOpen} onOpenChange={setContactInfoOpen}>
                   <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
                     <GripVertical className="w-4 h-4 text-slate-300" />
-                    <span className="font-medium text-sm text-slate-700">Custom Columns</span>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !customColumnsOpen && "-rotate-90")} />
+                    <User className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Contact Info</span>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !contactInfoOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-3 pt-3">
-                    <div className="grid grid-cols-3 gap-4">
+                  <CollapsibleContent className="space-y-3 pt-3 pl-6">
+                    <div className="space-y-3">
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Address</p>
+                        <p className="text-xs text-slate-400 mb-1">Contact Name</p>
+                        <p className="text-sm text-slate-900 font-medium">{lead.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Known As</p>
                         <Input 
-                          value={customFields.address} 
-                          onChange={(e) => setCustomFields(p => ({ ...p, address: e.target.value }))}
+                          value={contactInfo.knownAs} 
+                          onChange={(e) => setContactInfo(p => ({ ...p, knownAs: e.target.value }))}
+                          onBlur={() => updateContactInfo.mutate({ knownAs: contactInfo.knownAs })}
                           className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
-                          placeholder=""
+                          placeholder="Nickname or alias"
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Loan Type</p>
+                        <p className="text-xs text-slate-400 mb-1">Company</p>
+                        <p className="text-sm text-slate-900">{lead.company_name || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Title</p>
                         <Input 
-                          value={customFields.loanType} 
-                          onChange={(e) => setCustomFields(p => ({ ...p, loanType: e.target.value }))}
+                          value={contactInfo.contactTitle} 
+                          onChange={(e) => setContactInfo(p => ({ ...p, contactTitle: e.target.value }))}
+                          onBlur={() => updateContactInfo.mutate({ contactTitle: contactInfo.contactTitle })}
                           className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                          placeholder="Job title"
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Loan Amount</p>
-                        <Input 
-                          value={customFields.loanAmount} 
-                          onChange={(e) => setCustomFields(p => ({ ...p, loanAmount: e.target.value }))}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
-                        />
+                        <p className="text-xs text-slate-400 mb-1">Contact Type</p>
+                        <Select 
+                          value={contactInfo.contactType} 
+                          onValueChange={(v: 'customer' | 'potential_customer' | 'referral_source' | 'lender') => {
+                            setContactInfo(p => ({ ...p, contactType: v }));
+                            updateContactInfo.mutate({ contactType: v });
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-sm border-slate-200">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white z-50">
+                            <SelectItem value="customer">Customer</SelectItem>
+                            <SelectItem value="potential_customer">Potential Customer</SelectItem>
+                            <SelectItem value="referral_source">Referral Source</SelectItem>
+                            <SelectItem value="lender">Lender</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-xs text-slate-400 mb-1">Business Type</p>
-                        <Input 
-                          value={customFields.businessType} 
-                          onChange={(e) => setCustomFields(p => ({ ...p, businessType: e.target.value }))}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
-                        />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400 mb-1">Property Type</p>
-                        <Input 
-                          value={customFields.propertyType} 
-                          onChange={(e) => setCustomFields(p => ({ ...p, propertyType: e.target.value }))}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
-                        />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400 mb-1">High Priority</p>
-                        <div className="flex items-center h-8">
-                          <Checkbox 
-                            checked={customFields.urgency} 
-                            onCheckedChange={(checked) => setCustomFields(p => ({ ...p, urgency: !!checked }))}
-                          />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Phone Numbers Section */}
+                <Collapsible open={phonesOpen} onOpenChange={setPhonesOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <Phone className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Phone Numbers</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">{phones.length || (lead.phone ? 1 : 0)}</Badge>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !phonesOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-3 pl-6">
+                    {lead.phone && phones.length === 0 && (
+                      <div className="flex items-center justify-between py-1">
+                        <div>
+                          <p className="text-sm text-slate-900">{lead.phone}</p>
+                          <p className="text-xs text-slate-400">Primary</p>
                         </div>
                       </div>
-                    </div>
+                    )}
+                    {phones.map(p => (
+                      <div key={p.id} className="flex items-center justify-between py-1 group">
+                        <div>
+                          <p className="text-sm text-slate-900">{p.phone_number}</p>
+                          <p className="text-xs text-slate-400 capitalize">{p.phone_type}</p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="w-6 h-6 opacity-0 group-hover:opacity-100"
+                          onClick={() => deletePhone.mutate(p.id)}
+                        >
+                          <Trash2 className="w-3 h-3 text-slate-400" />
+                        </Button>
+                      </div>
+                    ))}
+                    {showAddPhone ? (
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <Input 
+                            value={newPhone}
+                            onChange={(e) => setNewPhone(e.target.value)}
+                            placeholder="Phone number"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <Select value={newPhoneType} onValueChange={setNewPhoneType}>
+                          <SelectTrigger className="w-24 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white z-50">
+                            <SelectItem value="mobile">Mobile</SelectItem>
+                            <SelectItem value="work">Work</SelectItem>
+                            <SelectItem value="home">Home</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" className="h-8" onClick={() => addContactPhone.mutate(newPhone)}>Add</Button>
+                        <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowAddPhone(false)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button variant="link" className="text-blue-600 text-sm p-0 h-auto" onClick={() => setShowAddPhone(true)}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add phone
+                      </Button>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Email Addresses Section */}
+                <Collapsible open={emailsOpen} onOpenChange={setEmailsOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <Mail className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Email Addresses</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">{emails.length || (lead.email ? 1 : 0)}</Badge>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !emailsOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-3 pl-6">
+                    {lead.email && emails.length === 0 && (
+                      <div className="flex items-center justify-between py-1">
+                        <div>
+                          <p className="text-sm text-slate-900">{lead.email}</p>
+                          <p className="text-xs text-slate-400">Primary</p>
+                        </div>
+                      </div>
+                    )}
+                    {emails.map(e => (
+                      <div key={e.id} className="flex items-center justify-between py-1 group">
+                        <div>
+                          <p className="text-sm text-slate-900">{e.email}</p>
+                          <p className="text-xs text-slate-400 capitalize">{e.email_type}</p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="w-6 h-6 opacity-0 group-hover:opacity-100"
+                          onClick={() => deleteEmail.mutate(e.id)}
+                        >
+                          <Trash2 className="w-3 h-3 text-slate-400" />
+                        </Button>
+                      </div>
+                    ))}
+                    {showAddEmail ? (
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <Input 
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            placeholder="Email address"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <Select value={newEmailType} onValueChange={setNewEmailType}>
+                          <SelectTrigger className="w-24 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white z-50">
+                            <SelectItem value="work">Work</SelectItem>
+                            <SelectItem value="personal">Personal</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" className="h-8" onClick={() => addContactEmail.mutate(newEmail)}>Add</Button>
+                        <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowAddEmail(false)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button variant="link" className="text-blue-600 text-sm p-0 h-auto" onClick={() => setShowAddEmail(true)}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add email
+                      </Button>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Addresses Section */}
+                <Collapsible open={addressesOpen} onOpenChange={setAddressesOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <MapPin className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Addresses</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">{addresses.length}</Badge>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !addressesOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-3 pl-6">
+                    {addresses.length === 0 ? (
+                      <p className="text-sm text-slate-400 italic">No addresses on file</p>
+                    ) : (
+                      addresses.map(addr => (
+                        <div key={addr.id} className="py-1">
+                          <p className="text-xs text-slate-400 capitalize mb-1">{addr.address_type}</p>
+                          <p className="text-sm text-slate-900">
+                            {[addr.address_line_1, addr.address_line_2, addr.city, addr.state, addr.zip_code].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                      ))
+                    )}
                     <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
                       <Plus className="w-4 h-4 mr-1" />
-                      Add
+                      Add address
                     </Button>
                   </CollapsibleContent>
                 </Collapsible>
 
                 <Separator />
 
-                {/* Contacts and Organizations Section */}
-                <Collapsible open={contactsOpen} onOpenChange={setContactsOpen}>
+                {/* Social & Web Section */}
+                <Collapsible open={socialOpen} onOpenChange={setSocialOpen}>
                   <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
                     <GripVertical className="w-4 h-4 text-slate-300" />
-                    <span className="font-medium text-sm text-slate-700">Contacts and organizations</span>
-                    <Mail className="w-4 h-4 text-slate-400 ml-auto" />
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !contactsOpen && "-rotate-90")} />
+                    <Globe className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Social & Web</span>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !socialOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-3 pt-3">
-                    {allEmails.map((email, idx) => (
-                      <div key={email.id || idx} className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="text-sm bg-teal-600 text-white">
-                            {email.email.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-900 truncate">{email.email}</p>
-                          <p className="text-xs text-slate-400 truncate">{email.email}</p>
-                        </div>
-                        <Button variant="ghost" size="icon" className="w-6 h-6">
-                          <Plus className="w-4 h-4 text-slate-400" />
-                        </Button>
+                  <CollapsibleContent className="space-y-3 pt-3 pl-6">
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Website</p>
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-slate-400" />
+                        <Input 
+                          value={contactInfo.website} 
+                          onChange={(e) => setContactInfo(p => ({ ...p, website: e.target.value }))}
+                          onBlur={() => updateContactInfo.mutate({ website: contactInfo.website })}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 flex-1"
+                          placeholder="https://..."
+                        />
                       </div>
-                    ))}
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">LinkedIn</p>
+                      <div className="flex items-center gap-2">
+                        <Linkedin className="w-4 h-4 text-blue-600" />
+                        <Input 
+                          value={contactInfo.linkedin} 
+                          onChange={(e) => setContactInfo(p => ({ ...p, linkedin: e.target.value }))}
+                          onBlur={() => updateContactInfo.mutate({ linkedin: contactInfo.linkedin })}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 flex-1"
+                          placeholder="LinkedIn profile URL"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Twitter</p>
+                      <div className="flex items-center gap-2">
+                        <Twitter className="w-4 h-4 text-sky-500" />
+                        <Input 
+                          value={contactInfo.twitter} 
+                          onChange={(e) => setContactInfo(p => ({ ...p, twitter: e.target.value }))}
+                          onBlur={() => updateContactInfo.mutate({ twitter: contactInfo.twitter })}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 flex-1"
+                          placeholder="@handle"
+                        />
+                      </div>
+                    </div>
                     <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
                       <Plus className="w-4 h-4 mr-1" />
-                      Add contact
-                      {allEmails.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{allEmails.length}</Badge>}
+                      Add other link
+                    </Button>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Tags Section */}
+                <Collapsible open={tagsOpen} onOpenChange={setTagsOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <Tag className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Tags</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">{contactInfo.tags.length}</Badge>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !tagsOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-3 pl-6">
+                    <div className="flex flex-wrap gap-2">
+                      {contactInfo.tags.map((tag, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs flex items-center gap-1">
+                          {tag}
+                          <X 
+                            className="w-3 h-3 cursor-pointer hover:text-red-500" 
+                            onClick={() => handleRemoveTag(tag)}
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+                    {showAddTag ? (
+                      <div className="flex gap-2 items-center">
+                        <Input 
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          placeholder="e.g., attorney, referral source"
+                          className="h-8 text-sm flex-1"
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                        />
+                        <Button size="sm" className="h-8" onClick={handleAddTag}>Add</Button>
+                        <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowAddTag(false)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button variant="link" className="text-blue-600 text-sm p-0 h-auto" onClick={() => setShowAddTag(true)}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add tag
+                      </Button>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* About Section */}
+                <Collapsible open={aboutOpen} onOpenChange={setAboutOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">About</span>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !aboutOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-3 pl-6">
+                    <Textarea 
+                      value={contactInfo.about}
+                      onChange={(e) => setContactInfo(p => ({ ...p, about: e.target.value }))}
+                      onBlur={() => updateContactInfo.mutate({ about: contactInfo.about })}
+                      placeholder="Background info about this contact..."
+                      className="min-h-[80px] text-sm border-slate-200 resize-none"
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* History / Log Activity Section */}
+                <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <History className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">History</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">{activities.length + communications.length}</Badge>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !historyOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-3 pl-6">
+                    <div className="flex gap-2 mb-3">
+                      <Button variant="outline" size="sm" className="text-xs">
+                        <PhoneCall className="w-3 h-3 mr-1" />
+                        Log Call
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-xs">
+                        <Mail className="w-3 h-3 mr-1" />
+                        Log Email
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-xs">
+                        <MessageSquare className="w-3 h-3 mr-1" />
+                        Add Note
+                      </Button>
+                    </div>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {[...activities, ...communications.map(c => ({ 
+                        ...c, 
+                        activity_type: c.communication_type,
+                        title: `${c.direction === 'inbound' ? 'Inbound' : 'Outbound'} ${c.communication_type}`,
+                        content: c.content 
+                      }))].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10).map((item) => (
+                        <div key={item.id} className="flex items-start gap-2 py-1 text-xs">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5" />
+                          <div>
+                            <p className="text-slate-700">{item.title || item.activity_type}</p>
+                            <p className="text-slate-400">{format(new Date(item.created_at), 'MMM d, yyyy')}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Connections Section */}
+                <Collapsible open={connectionsOpen} onOpenChange={setConnectionsOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <Users className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Connections</span>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !connectionsOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-3 pl-6">
+                    <p className="text-sm text-slate-400 italic">No connections linked</p>
+                    <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Link person or company
+                    </Button>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Tasks Section */}
+                <Collapsible open={tasksOpen} onOpenChange={setTasksOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <ListTodo className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Tasks</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">{tasks.filter(t => t.status !== 'completed').length}</Badge>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !tasksOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-3 pl-6">
+                    {tasks.length === 0 ? (
+                      <p className="text-sm text-slate-400 italic">No tasks assigned</p>
+                    ) : (
+                      tasks.slice(0, 5).map(task => (
+                        <div key={task.id} className="flex items-start gap-2 py-1">
+                          {task.status === 'completed' ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
+                          ) : (
+                            <Circle className="w-4 h-4 text-slate-300 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className={cn("text-sm", task.status === 'completed' && "line-through text-slate-400")}>{task.title}</p>
+                            {task.due_date && (
+                              <p className="text-xs text-slate-400">Due {format(new Date(task.due_date), 'MMM d')}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add task
                     </Button>
                   </CollapsibleContent>
                 </Collapsible>
@@ -1031,10 +1509,11 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                 <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
                   <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
                     <GripVertical className="w-4 h-4 text-slate-300" />
+                    <MessageSquare className="w-4 h-4 text-slate-500" />
                     <span className="font-medium text-sm text-slate-700">Notes</span>
                     <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !notesOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-3">
+                  <CollapsibleContent className="pt-3 pl-6">
                     <Textarea 
                       value={notesContent}
                       onChange={(e) => setNotesContent(e.target.value)}
@@ -1056,46 +1535,37 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                 <Collapsible open={magicColumnsOpen} onOpenChange={setMagicColumnsOpen}>
                   <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
                     <GripVertical className="w-4 h-4 text-slate-300" />
+                    <Sparkles className="w-4 h-4 text-purple-500" />
                     <span className="font-medium text-sm text-slate-700">Magic Columns</span>
                     <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !magicColumnsOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-3 pt-3">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-xs text-slate-400 mb-1">Date of Last Email</p>
-                        <p className="text-sm text-slate-900">
-                          {lastEmailDate ? format(new Date(lastEmailDate), 'MMM d yyyy') : '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400 mb-1">Date of Next Due Task</p>
-                        <p className="text-sm text-slate-900">
-                          {nextDueTask?.due_date ? format(new Date(nextDueTask.due_date), 'MMM d yyyy') : '—'}
-                        </p>
-                      </div>
+                  <CollapsibleContent className="space-y-3 pt-3 pl-6">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Days in Stage</p>
-                        <p className="text-sm text-slate-900">{daysInStage}</p>
+                        <p className="text-sm text-slate-900 font-medium">{daysInStage}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Last Interaction</p>
+                        <p className="text-sm text-slate-900">
+                          {lastInteractionDate ? format(new Date(lastInteractionDate), 'MMM d') : '—'}
+                        </p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Date of Last Interaction</p>
+                        <p className="text-xs text-slate-400 mb-1">Next Due Task</p>
                         <p className="text-sm text-slate-900">
-                          {lastInteractionDate ? format(new Date(lastInteractionDate), 'MMM d yyyy') : '—'}
+                          {nextDueTask?.due_date ? format(new Date(nextDueTask.due_date), 'MMM d') : '—'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Date of Last Tracked View</p>
+                        <p className="text-xs text-slate-400 mb-1">Last Email</p>
                         <p className="text-sm text-slate-900">
-                          {lead.updated_at ? format(new Date(lead.updated_at), 'MMM d yyyy') : '—'}
+                          {lastEmailDate ? format(new Date(lastEmailDate), 'MMM d') : '—'}
                         </p>
                       </div>
                     </div>
-                    <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add
-                    </Button>
                   </CollapsibleContent>
                 </Collapsible>
               </div>
