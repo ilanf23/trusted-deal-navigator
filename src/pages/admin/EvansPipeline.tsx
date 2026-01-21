@@ -701,16 +701,22 @@ const EvansPipeline = () => {
                   onOpenChange={() => toggleSection(stage.status)}
                 >
                   {/* Section Header - Full-width colored bar with 8px spacing */}
-                  <CollapsibleTrigger asChild>
-                    <div
-                      className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-3 bg-slate-100 border-b border-slate-200"
-                    >
-                      {/* Checkbox placeholder for alignment */}
-                      <div className="w-5 h-5 rounded border border-slate-300 flex-shrink-0" />
-                      
-                      {/* Stage badge pill */}
+                  <div
+                    className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-3 bg-slate-100 border-b border-slate-200"
+                  >
+                    {/* Stage selection checkbox */}
+                    <Checkbox
+                      checked={stageLeads.length > 0 && stageLeads.every(l => selectedLeadIds.has(l.id))}
+                      onCheckedChange={() => toggleAllInStage(stage.status)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
+                      disabled={stageLeads.length === 0}
+                    />
+                    
+                    {/* Stage badge pill - clickable to collapse */}
+                    <CollapsibleTrigger asChild>
                       <span 
-                        className="font-medium text-sm px-4 py-1.5 rounded-full whitespace-nowrap"
+                        className="font-medium text-sm px-4 py-1.5 rounded-full whitespace-nowrap cursor-pointer hover:opacity-90 transition-opacity"
                         style={{ 
                           backgroundColor: stage.hexColor,
                           color: 'white'
@@ -718,29 +724,36 @@ const EvansPipeline = () => {
                       >
                         {stage.title}
                       </span>
-                      
-                      {/* Add button */}
-                      <button 
-                        className="text-slate-400 hover:text-slate-600 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddLead(stage.status);
-                        }}
-                      >
-                        <Plus className="h-5 w-5" />
+                    </CollapsibleTrigger>
+                    
+                    {/* Add button */}
+                    <button 
+                      className="text-slate-400 hover:text-slate-600 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddLead(stage.status);
+                      }}
+                    >
+                      <Plus className="h-5 w-5" />
+                    </button>
+                    
+                    {/* Spacer */}
+                    <div className="flex-1" />
+                    
+                    {/* Lead count badge */}
+                    <span className="text-xs text-slate-500">{stageLeads.length} leads</span>
+                    
+                    {/* Collapse indicator */}
+                    <CollapsibleTrigger asChild>
+                      <button className="p-1 hover:bg-slate-200 rounded transition-colors">
+                        {isCollapsed ? (
+                          <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                        )}
                       </button>
-                      
-                      {/* Spacer */}
-                      <div className="flex-1" />
-                      
-                      {/* Collapse indicator */}
-                      {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                      )}
-                    </div>
-                  </CollapsibleTrigger>
+                    </CollapsibleTrigger>
+                  </div>
 
                   {/* Section Content */}
                   <CollapsibleContent>
