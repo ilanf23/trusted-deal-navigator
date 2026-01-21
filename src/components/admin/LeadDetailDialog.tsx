@@ -1,27 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
-  Loader2, Mail, Phone, Building2, Calendar, FileText, User, Clock, Save, 
+  Loader2, Mail, Phone, Building2, Calendar, FileText, User, Clock, 
   PhoneCall, ChevronDown, ChevronUp, Play, PhoneIncoming, PhoneOutgoing, 
   MessageSquare, History, Plus, Trash2, Globe, Linkedin, Twitter, MapPin,
-  Link2, Users, ListTodo, Tag, Edit2, CheckCircle2, Circle, Copy, ExternalLink,
-  Briefcase
+  Link2, Users, ListTodo, Tag, CheckCircle2, Circle, X, GripVertical,
+  Briefcase, FileSpreadsheet, MessagesSquare, Video, Sparkles, HelpCircle, Columns
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow, differenceInDays } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
+
+type LeadStatus = Database['public']['Enums']['lead_status'];
 
 interface Lead {
   id: string;
@@ -37,7 +41,6 @@ interface Lead {
   updated_at: string;
   questionnaire_sent_at: string | null;
   questionnaire_completed_at: string | null;
-  // New fields
   known_as: string | null;
   title: string | null;
   contact_type: string | null;
@@ -77,23 +80,6 @@ interface LeadAddress {
   is_primary: boolean;
 }
 
-interface LeadOtherContact {
-  id: string;
-  lead_id: string;
-  contact_type: string;
-  contact_value: string;
-}
-
-interface LeadConnection {
-  id: string;
-  lead_id: string;
-  connected_lead_id: string | null;
-  connected_name: string | null;
-  connected_company: string | null;
-  relationship_type: string | null;
-  notes: string | null;
-}
-
 interface LeadActivity {
   id: string;
   lead_id: string;
@@ -121,6 +107,7 @@ interface LeadTask {
 interface TeamMember {
   id: string;
   name: string;
+  avatar_url?: string | null;
 }
 
 interface Communication {
@@ -135,23 +122,14 @@ interface Communication {
   created_at: string;
 }
 
-const statusColors: Record<string, string> = {
-  discovery: 'bg-blue-100 text-blue-800',
-  pre_qualification: 'bg-cyan-100 text-cyan-800',
-  document_collection: 'bg-yellow-100 text-yellow-800',
-  underwriting: 'bg-orange-100 text-orange-800',
-  approval: 'bg-green-100 text-green-800',
-  funded: 'bg-purple-100 text-purple-800',
-};
-
-const contactTypes = [
-  { value: 'customer', label: 'Customer' },
-  { value: 'potential_customer', label: 'Potential Customer' },
-  { value: 'referral_source', label: 'Referral Source' },
-  { value: 'lender', label: 'Lender' },
+const stages = [
+  { status: 'discovery', title: 'Discovery', color: '#0066FF' },
+  { status: 'pre_qualification', title: 'Pre-Qual', color: '#1a75ff' },
+  { status: 'document_collection', title: 'Doc Collection', color: '#3385ff' },
+  { status: 'underwriting', title: 'Underwriting', color: '#FF8000' },
+  { status: 'approval', title: 'Approval', color: '#e67300' },
+  { status: 'funded', title: 'Funded', color: '#059669' },
 ];
-
-const defaultTags = ['Attorney', 'Referral Source', 'Appraiser', 'CPA', 'Insurance Agent', 'Title Company', 'Real Estate Agent'];
 
 interface LeadDetailDialogProps {
   lead: Lead | null;
@@ -163,60 +141,33 @@ interface LeadDetailDialogProps {
 const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetailDialogProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('contact');
-  const [editMode, setEditMode] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
   const [expandedTranscripts, setExpandedTranscripts] = useState<Record<string, boolean>>({});
   
-  // Form states
-  const [formData, setFormData] = useState({
-    name: '',
-    known_as: '',
-    company_name: '',
-    title: '',
-    contact_type: 'potential_customer',
-    tags: [] as string[],
-    about: '',
-    notes: '',
-    website: '',
-    linkedin: '',
-    twitter: '',
+  // Collapsible sections state
+  const [customColumnsOpen, setCustomColumnsOpen] = useState(true);
+  const [contactsOpen, setContactsOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(true);
+  const [magicColumnsOpen, setMagicColumnsOpen] = useState(true);
+
+  // Custom column values (local state for demo)
+  const [customFields, setCustomFields] = useState({
+    address: '',
+    brandColor: '',
+    brandGoals: '',
+    businessType: '',
+    contentNeeds: '',
+    freeVideo: false,
   });
 
-  // New item states
-  const [newPhone, setNewPhone] = useState({ phone_number: '', phone_type: 'mobile' });
-  const [newEmail, setNewEmail] = useState({ email: '', email_type: 'work' });
-  const [newAddress, setNewAddress] = useState({ 
-    address_type: 'business', address_line_1: '', address_line_2: '', 
-    city: '', state: '', zip_code: '', country: 'USA' 
-  });
-  const [newOtherContact, setNewOtherContact] = useState({ contact_type: '', contact_value: '' });
-  const [newConnection, setNewConnection] = useState({ 
-    connected_name: '', connected_company: '', relationship_type: '', notes: '' 
-  });
-  const [newActivity, setNewActivity] = useState({ activity_type: 'note', title: '', content: '' });
-  const [newTask, setNewTask] = useState({ 
-    title: '', description: '', due_date: '', priority: 'medium', assigned_to: '' 
-  });
-  const [newTag, setNewTag] = useState('');
+  // Notes state
+  const [notesContent, setNotesContent] = useState('');
 
-  // Reset form when lead changes
+  // Reset when lead changes
   useEffect(() => {
     if (lead && open) {
-      setFormData({
-        name: lead.name || '',
-        known_as: lead.known_as || '',
-        company_name: lead.company_name || '',
-        title: lead.title || '',
-        contact_type: lead.contact_type || 'potential_customer',
-        tags: lead.tags || [],
-        about: lead.about || '',
-        notes: lead.notes || '',
-        website: lead.website || '',
-        linkedin: lead.linkedin || '',
-        twitter: lead.twitter || '',
-      });
-      setActiveTab('contact');
-      setEditMode(false);
+      setActiveTab('all');
+      setNotesContent(lead.notes || '');
     }
   }, [lead, open]);
 
@@ -251,26 +202,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!lead && open,
   });
 
-  const { data: otherContacts = [] } = useQuery({
-    queryKey: ['lead-other-contacts', lead?.id],
-    queryFn: async () => {
-      if (!lead) return [];
-      const { data } = await supabase.from('lead_other_contacts').select('*').eq('lead_id', lead.id);
-      return (data || []) as LeadOtherContact[];
-    },
-    enabled: !!lead && open,
-  });
-
-  const { data: connections = [] } = useQuery({
-    queryKey: ['lead-connections', lead?.id],
-    queryFn: async () => {
-      if (!lead) return [];
-      const { data } = await supabase.from('lead_connections').select('*').eq('lead_id', lead.id);
-      return (data || []) as LeadConnection[];
-    },
-    enabled: !!lead && open,
-  });
-
   const { data: activities = [] } = useQuery({
     queryKey: ['lead-activities', lead?.id],
     queryFn: async () => {
@@ -294,7 +225,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members'],
     queryFn: async () => {
-      const { data } = await supabase.from('team_members').select('id, name').eq('is_active', true);
+      const { data } = await supabase.from('team_members').select('id, name, avatar_url').eq('is_active', true);
       return (data || []) as TeamMember[];
     },
     enabled: open,
@@ -310,400 +241,57 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!lead && open,
   });
 
-  // Query for related deals (same company)
-  const { data: relatedDeals = [] } = useQuery({
-    queryKey: ['related-deals', lead?.company_name],
-    queryFn: async () => {
-      if (!lead || !lead.company_name) return [];
-      const { data } = await supabase
-        .from('leads')
-        .select('id, name, company_name, status, created_at')
-        .ilike('company_name', lead.company_name)
-        .neq('id', lead.id)
-        .order('created_at', { ascending: false });
-      return (data || []) as { id: string; name: string; company_name: string; status: string; created_at: string }[];
-    },
-    enabled: !!lead && !!lead.company_name && open,
-  });
-
-  // Query for linked deals (via lead_connections with connected_lead_id)
-  const { data: linkedDeals = [] } = useQuery({
-    queryKey: ['linked-deals', lead?.id],
-    queryFn: async () => {
-      if (!lead) return [];
-      // First get connections that have a linked lead
-      const { data: connectionData } = await supabase
-        .from('lead_connections')
-        .select('id, connected_lead_id, relationship_type, notes')
-        .eq('lead_id', lead.id)
-        .not('connected_lead_id', 'is', null);
-      
-      if (!connectionData || connectionData.length === 0) return [];
-      
-      // Then fetch the linked lead details
-      const leadIds = connectionData.map(c => c.connected_lead_id).filter(Boolean) as string[];
-      const { data: leadsData } = await supabase
-        .from('leads')
-        .select('id, name, company_name, status')
-        .in('id', leadIds);
-      
-      // Combine the data
-      return connectionData.map(conn => ({
-        ...conn,
-        linkedLead: leadsData?.find(l => l.id === conn.connected_lead_id) || null
-      }));
-    },
-    enabled: !!lead && open,
-  });
-
   // Mutations
-  const saveLead = useMutation({
+  const updateLeadStatus = useMutation({
+    mutationFn: async (newStatus: string) => {
+      if (!lead) return;
+      const { error } = await supabase.from('leads').update({ status: newStatus as LeadStatus }).eq('id', lead.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+      onLeadUpdated?.();
+      toast({ title: 'Stage updated' });
+    },
+  });
+
+  const updateLeadAssignment = useMutation({
+    mutationFn: async (assignedTo: string) => {
+      if (!lead) return;
+      const { error } = await supabase.from('leads').update({ assigned_to: assignedTo }).eq('id', lead.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+      onLeadUpdated?.();
+      toast({ title: 'Assignment updated' });
+    },
+  });
+
+  const saveNotes = useMutation({
     mutationFn: async () => {
       if (!lead) return;
-      const { error } = await supabase.from('leads').update({
-        name: formData.name,
-        known_as: formData.known_as || null,
-        company_name: formData.company_name || null,
-        title: formData.title || null,
-        contact_type: formData.contact_type,
-        tags: formData.tags,
-        about: formData.about || null,
-        notes: formData.notes || null,
-        website: formData.website || null,
-        linkedin: formData.linkedin || null,
-        twitter: formData.twitter || null,
-      }).eq('id', lead.id);
+      const { error } = await supabase.from('leads').update({ notes: notesContent }).eq('id', lead.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'Lead updated' });
-      setEditMode(false);
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       onLeadUpdated?.();
-    },
-    onError: () => toast({ title: 'Error saving lead', variant: 'destructive' }),
-  });
-
-  const addPhone = useMutation({
-    mutationFn: async () => {
-      if (!lead || !newPhone.phone_number) return;
-      const { error } = await supabase.from('lead_phones').insert({ 
-        lead_id: lead.id, ...newPhone 
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead?.id] });
-      setNewPhone({ phone_number: '', phone_type: 'mobile' });
+      toast({ title: 'Notes saved' });
     },
   });
 
-  const deletePhone = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_phones').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lead-phones', lead?.id] }),
-  });
-
-  const addEmail = useMutation({
-    mutationFn: async () => {
-      if (!lead || !newEmail.email) return;
-      const { error } = await supabase.from('lead_emails').insert({ 
-        lead_id: lead.id, ...newEmail 
-      });
+  const addContact = useMutation({
+    mutationFn: async (email: string) => {
+      if (!lead) return;
+      const { error } = await supabase.from('lead_emails').insert({ lead_id: lead.id, email, email_type: 'work' });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] });
-      setNewEmail({ email: '', email_type: 'work' });
+      toast({ title: 'Contact added' });
     },
   });
-
-  const deleteEmail = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_emails').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] }),
-  });
-
-  const addAddress = useMutation({
-    mutationFn: async () => {
-      if (!lead || !newAddress.address_line_1) return;
-      const { error } = await supabase.from('lead_addresses').insert({ 
-        lead_id: lead.id, ...newAddress 
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead?.id] });
-      setNewAddress({ address_type: 'business', address_line_1: '', address_line_2: '', city: '', state: '', zip_code: '', country: 'USA' });
-    },
-  });
-
-  const deleteAddress = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_addresses').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead?.id] }),
-  });
-
-  const addOtherContact = useMutation({
-    mutationFn: async () => {
-      if (!lead || !newOtherContact.contact_value) return;
-      const { error } = await supabase.from('lead_other_contacts').insert({ 
-        lead_id: lead.id, ...newOtherContact 
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-other-contacts', lead?.id] });
-      setNewOtherContact({ contact_type: '', contact_value: '' });
-    },
-  });
-
-  const deleteOtherContact = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_other_contacts').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lead-other-contacts', lead?.id] }),
-  });
-
-  const addConnection = useMutation({
-    mutationFn: async () => {
-      if (!lead || !newConnection.connected_name) return;
-      const { error } = await supabase.from('lead_connections').insert({ 
-        lead_id: lead.id, ...newConnection 
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-connections', lead?.id] });
-      setNewConnection({ connected_name: '', connected_company: '', relationship_type: '', notes: '' });
-    },
-  });
-
-  const deleteConnection = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_connections').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lead-connections', lead?.id] }),
-  });
-
-  const addActivity = useMutation({
-    mutationFn: async () => {
-      if (!lead || !newActivity.content) return;
-      const { error } = await supabase.from('lead_activities').insert({ 
-        lead_id: lead.id, 
-        activity_type: newActivity.activity_type,
-        title: newActivity.title || null,
-        content: newActivity.content,
-        created_by: 'User'
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-activities', lead?.id] });
-      setNewActivity({ activity_type: 'note', title: '', content: '' });
-      toast({ title: 'Activity logged' });
-    },
-  });
-
-  const addTask = useMutation({
-    mutationFn: async () => {
-      if (!lead || !newTask.title) return;
-      const { error } = await supabase.from('lead_tasks').insert({ 
-        lead_id: lead.id, 
-        title: newTask.title,
-        description: newTask.description || null,
-        due_date: newTask.due_date || null,
-        priority: newTask.priority,
-        assigned_to: newTask.assigned_to || null,
-        created_by: 'User'
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead?.id] });
-      setNewTask({ title: '', description: '', due_date: '', priority: 'medium', assigned_to: '' });
-      toast({ title: 'Task created' });
-    },
-  });
-
-  const toggleTaskStatus = useMutation({
-    mutationFn: async (task: LeadTask) => {
-      const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-      const { error } = await supabase.from('lead_tasks').update({ 
-        status: newStatus,
-        completed_at: newStatus === 'completed' ? new Date().toISOString() : null
-      }).eq('id', task.id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead?.id] }),
-  });
-
-  const deleteTask = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_tasks').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead?.id] }),
-  });
-
-  // State for new deal creation
-  const [newDealSuffix, setNewDealSuffix] = useState('');
-  const [showNewDealForm, setShowNewDealForm] = useState(false);
-
-  // Create new deal from this lead (duplicate with suffix)
-  const createNewDeal = useMutation({
-    mutationFn: async () => {
-      if (!lead || !newDealSuffix.trim()) return;
-      
-      const newDealName = `${lead.company_name || lead.name} - ${newDealSuffix.trim()}`;
-      
-      // Create the new lead
-      const { data: newLead, error } = await supabase.from('leads').insert({
-        name: newDealName,
-        company_name: lead.company_name,
-        email: lead.email,
-        phone: lead.phone,
-        source: lead.source,
-        assigned_to: lead.assigned_to,
-        contact_type: lead.contact_type,
-        status: 'discovery',
-        tags: lead.tags,
-        website: lead.website,
-        linkedin: lead.linkedin,
-        twitter: lead.twitter,
-      }).select().single();
-      
-      if (error) throw error;
-      
-      // Link the deals together
-      if (newLead) {
-        // Link from new deal to original
-        await supabase.from('lead_connections').insert({
-          lead_id: newLead.id,
-          connected_lead_id: lead.id,
-          connected_name: lead.name,
-          connected_company: lead.company_name,
-          relationship_type: 'related_deal',
-          notes: 'Original deal',
-        });
-        
-        // Link from original to new deal
-        await supabase.from('lead_connections').insert({
-          lead_id: lead.id,
-          connected_lead_id: newLead.id,
-          connected_name: newDealName,
-          connected_company: lead.company_name,
-          relationship_type: 'related_deal',
-          notes: 'New deal created from this one',
-        });
-
-        // Copy phones, emails, addresses
-        if (phones.length > 0) {
-          await supabase.from('lead_phones').insert(
-            phones.map(p => ({ lead_id: newLead.id, phone_number: p.phone_number, phone_type: p.phone_type, is_primary: p.is_primary }))
-          );
-        }
-        if (emails.length > 0) {
-          await supabase.from('lead_emails').insert(
-            emails.map(e => ({ lead_id: newLead.id, email: e.email, email_type: e.email_type, is_primary: e.is_primary }))
-          );
-        }
-        if (addresses.length > 0) {
-          await supabase.from('lead_addresses').insert(
-            addresses.map(a => ({ 
-              lead_id: newLead.id, 
-              address_type: a.address_type,
-              address_line_1: a.address_line_1,
-              address_line_2: a.address_line_2,
-              city: a.city,
-              state: a.state,
-              zip_code: a.zip_code,
-              country: a.country,
-              is_primary: a.is_primary 
-            }))
-          );
-        }
-      }
-      
-      return newLead;
-    },
-    onSuccess: (newLead) => {
-      queryClient.invalidateQueries({ queryKey: ['related-deals'] });
-      queryClient.invalidateQueries({ queryKey: ['linked-deals'] });
-      queryClient.invalidateQueries({ queryKey: ['lead-connections'] });
-      onLeadUpdated?.();
-      setNewDealSuffix('');
-      setShowNewDealForm(false);
-      toast({ title: 'New deal created', description: `Created and linked to this deal` });
-    },
-    onError: () => toast({ title: 'Error creating deal', variant: 'destructive' }),
-  });
-
-  // Link to existing deal
-  const [linkDealId, setLinkDealId] = useState('');
-  
-  const linkDeal = useMutation({
-    mutationFn: async (targetLeadId: string) => {
-      if (!lead) return;
-      
-      // Get target lead info
-      const { data: targetLead } = await supabase.from('leads').select('name, company_name').eq('id', targetLeadId).single();
-      
-      // Create bidirectional link
-      await supabase.from('lead_connections').insert({
-        lead_id: lead.id,
-        connected_lead_id: targetLeadId,
-        connected_name: targetLead?.name,
-        connected_company: targetLead?.company_name,
-        relationship_type: 'related_deal',
-      });
-      
-      await supabase.from('lead_connections').insert({
-        lead_id: targetLeadId,
-        connected_lead_id: lead.id,
-        connected_name: lead.name,
-        connected_company: lead.company_name,
-        relationship_type: 'related_deal',
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['linked-deals'] });
-      queryClient.invalidateQueries({ queryKey: ['lead-connections'] });
-      setLinkDealId('');
-      toast({ title: 'Deals linked' });
-    },
-  });
-
-  // Unlink deal
-  const unlinkDeal = useMutation({
-    mutationFn: async (connectionId: string) => {
-      const { error } = await supabase.from('lead_connections').delete().eq('id', connectionId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['linked-deals'] });
-      queryClient.invalidateQueries({ queryKey: ['lead-connections'] });
-      toast({ title: 'Deal unlinked' });
-    },
-  });
-
-  const addTag = () => {
-    if (newTag && !formData.tags.includes(newTag)) {
-      setFormData(prev => ({ ...prev, tags: [...prev.tags, newTag] }));
-      setNewTag('');
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
-  };
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return '0:00';
@@ -712,369 +300,146 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'phone_call': return <Phone className="w-4 h-4" />;
-      case 'email': return <Mail className="w-4 h-4" />;
-      case 'meeting': return <Users className="w-4 h-4" />;
-      default: return <FileText className="w-4 h-4" />;
-    }
-  };
-
   if (!lead) return null;
+
+  // Get assigned team member
+  const assignedMember = teamMembers.find(t => t.id === lead.assigned_to);
+  const currentStage = stages.find(s => s.status === lead.status);
+
+  // Get all emails for contacts section
+  const allEmails = emails.length > 0 ? emails : (lead.email ? [{ id: 'legacy', email: lead.email, email_type: 'primary' }] : []);
+
+  // Calculate magic column values
+  const daysInStage = differenceInDays(new Date(), new Date(lead.updated_at));
+  const lastEmailDate = communications.find(c => c.communication_type === 'email')?.created_at;
+  const lastInteractionDate = communications.length > 0 ? communications[0].created_at : null;
+  const nextDueTask = tasks.find(t => t.status !== 'completed' && t.due_date);
+
+  // Combine activities for timeline
+  const timelineItems = [
+    ...activities.map(a => ({ ...a, _type: 'activity' as const })),
+    ...communications.map(c => ({ ...c, _type: 'communication' as const, activity_type: c.communication_type, title: null, content: null }))
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl">
-                  {formData.name || lead.name}
-                  {formData.known_as && <span className="text-muted-foreground font-normal"> ({formData.known_as})</span>}
-                </DialogTitle>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge className={statusColors[lead.status] || 'bg-gray-100'}>{lead.status.replace('_', ' ')}</Badge>
-                  {formData.contact_type && (
-                    <Badge variant="outline">{contactTypes.find(c => c.value === formData.contact_type)?.label}</Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-            <Button variant={editMode ? "default" : "outline"} size="sm" onClick={() => editMode ? saveLead.mutate() : setEditMode(true)}>
-              {editMode ? (saveLead.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-1" /> Save</>) : <><Edit2 className="w-4 h-4 mr-1" /> Edit</>}
+      <DialogContent className="max-w-6xl max-h-[90vh] p-0 gap-0 overflow-hidden">
+        {/* Header Bar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-slate-50">
+          <div className="flex items-center gap-4">
+            <Mail className="w-5 h-5 text-slate-500" />
+            <span className="text-sm text-slate-600">
+              You are adding & sharing all threads with <span className="font-semibold">{allEmails[0]?.email || 'No email'}</span>.
+              <span className="text-slate-400 ml-2">Someone have threads listed below but haven't shared yet</span>
+              <HelpCircle className="w-4 h-4 inline ml-1 text-slate-400" />
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="link" className="text-blue-600 text-sm p-0">Request access</Button>
+            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
+              <X className="w-4 h-4" />
             </Button>
           </div>
-        </DialogHeader>
+        </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-          <div className="px-6 border-b">
-            <TabsList className="h-12 bg-transparent p-0 gap-4">
-              <TabsTrigger value="contact" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1">Contact</TabsTrigger>
-              <TabsTrigger value="about" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1">About</TabsTrigger>
-              <TabsTrigger value="history" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1">History ({activities.length + communications.length})</TabsTrigger>
-              <TabsTrigger value="connections" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1">Connections ({connections.length})</TabsTrigger>
-              <TabsTrigger value="tasks" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1">Tasks ({tasks.length})</TabsTrigger>
-            </TabsList>
-          </div>
+        {/* Main Content - Two Column Layout */}
+        <div className="flex h-[calc(90vh-60px)]">
+          {/* Left Panel - Activity Timeline */}
+          <div className="flex-1 flex flex-col border-r">
+            {/* Action Bar */}
+            <div className="flex items-center gap-2 px-4 py-2 border-b bg-white">
+              <div className="flex-1 flex items-center gap-2 bg-slate-100 rounded-md px-3 py-2">
+                <Plus className="w-4 h-4 text-rose-400" />
+                <span className="text-sm text-slate-500">Sorry, you can't add anything to this Box with your current permissions</span>
+              </div>
+              <Button variant="ghost" size="icon"><MessageSquare className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon"><CheckCircle2 className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon"><Calendar className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon"><FileText className="w-4 h-4" /></Button>
+            </div>
 
-          <ScrollArea className="h-[calc(90vh-180px)]">
-            {/* Contact Tab */}
-            <TabsContent value="contact" className="p-6 m-0 space-y-6">
-              {/* Basic Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Contact Name</Label>
-                  <Input value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} disabled={!editMode} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Known As</Label>
-                  <Input value={formData.known_as} onChange={e => setFormData(p => ({ ...p, known_as: e.target.value }))} disabled={!editMode} placeholder="Nickname" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Company</Label>
-                  <Input value={formData.company_name} onChange={e => setFormData(p => ({ ...p, company_name: e.target.value }))} disabled={!editMode} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input value={formData.title} onChange={e => setFormData(p => ({ ...p, title: e.target.value }))} disabled={!editMode} placeholder="Job Title" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Contact Type</Label>
-                  <Select value={formData.contact_type} onValueChange={v => setFormData(p => ({ ...p, contact_type: v }))} disabled={!editMode}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {contactTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Assigned To</Label>
-                  <Input value={teamMembers.find(t => t.id === lead.assigned_to)?.name || 'Unassigned'} disabled />
-                </div>
+            {/* Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <div className="px-4 border-b">
+                <TabsList className="h-12 bg-transparent p-0 gap-0">
+                  <TabsTrigger value="all" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">All</TabsTrigger>
+                  <TabsTrigger value="emails" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Emails</TabsTrigger>
+                  <TabsTrigger value="files" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Files</TabsTrigger>
+                  <TabsTrigger value="comments" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Comments</TabsTrigger>
+                  <TabsTrigger value="tasks" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Tasks</TabsTrigger>
+                  <TabsTrigger value="calls" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Call Logs</TabsTrigger>
+                  <TabsTrigger value="meetings" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Meeting Notes</TabsTrigger>
+                </TabsList>
               </div>
 
-              {/* Tags */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Tag className="w-4 h-4" /> Tags</Label>
-                <div className="flex flex-wrap gap-2">
-                  {formData.tags.map(tag => (
-                    <Badge key={tag} variant="secondary" className="gap-1">
-                      {tag}
-                      {editMode && <button onClick={() => removeTag(tag)} className="ml-1 hover:text-destructive">×</button>}
-                    </Badge>
-                  ))}
-                  {editMode && (
-                    <div className="flex gap-1">
-                      <Select value={newTag} onValueChange={setNewTag}>
-                        <SelectTrigger className="w-[150px] h-7"><SelectValue placeholder="Add tag..." /></SelectTrigger>
-                        <SelectContent>
-                          {defaultTags.filter(t => !formData.tags.includes(t)).map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" variant="ghost" onClick={addTag} disabled={!newTag}><Plus className="w-4 h-4" /></Button>
-                    </div>
-                  )}
-                </div>
+              {/* AI Action Bar */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b bg-white">
+                <Sparkles className="w-4 h-4 text-blue-500" />
+                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Summarize
+                </Button>
+                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Ask a question
+                </Button>
+                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                  <Columns className="w-4 h-4 mr-2" />
+                  Autofill columns
+                </Button>
+                <X className="w-4 h-4 text-slate-400 ml-auto cursor-pointer hover:text-slate-600" />
               </div>
 
-              <Separator />
-
-              {/* Phone Numbers */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2"><Phone className="w-4 h-4" /> Phone Numbers</Label>
-                {phones.map(p => (
-                  <div key={p.id} className="flex items-center gap-2">
-                    <Badge variant="outline" className="w-16 justify-center">{p.phone_type}</Badge>
-                    <span className="flex-1">{p.phone_number}</span>
-                    {editMode && <Button size="icon" variant="ghost" onClick={() => deletePhone.mutate(p.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
-                  </div>
-                ))}
-                {/* Show legacy phone if no phones in new table */}
-                {phones.length === 0 && lead.phone && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Badge variant="outline" className="w-16 justify-center">primary</Badge>
-                    <span>{lead.phone}</span>
-                  </div>
-                )}
-                {editMode && (
-                  <div className="flex gap-2">
-                    <Select value={newPhone.phone_type} onValueChange={v => setNewPhone(p => ({ ...p, phone_type: v }))}>
-                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mobile">Mobile</SelectItem>
-                        <SelectItem value="work">Work</SelectItem>
-                        <SelectItem value="home">Home</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input placeholder="Phone number" value={newPhone.phone_number} onChange={e => setNewPhone(p => ({ ...p, phone_number: e.target.value }))} className="flex-1" />
-                    <Button size="icon" onClick={() => addPhone.mutate()}><Plus className="w-4 h-4" /></Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Emails */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2"><Mail className="w-4 h-4" /> Email Addresses</Label>
-                {emails.map(e => (
-                  <div key={e.id} className="flex items-center gap-2">
-                    <Badge variant="outline" className="w-16 justify-center">{e.email_type}</Badge>
-                    <span className="flex-1">{e.email}</span>
-                    {editMode && <Button size="icon" variant="ghost" onClick={() => deleteEmail.mutate(e.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
-                  </div>
-                ))}
-                {emails.length === 0 && lead.email && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Badge variant="outline" className="w-16 justify-center">primary</Badge>
-                    <span>{lead.email}</span>
-                  </div>
-                )}
-                {editMode && (
-                  <div className="flex gap-2">
-                    <Select value={newEmail.email_type} onValueChange={v => setNewEmail(p => ({ ...p, email_type: v }))}>
-                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="work">Work</SelectItem>
-                        <SelectItem value="personal">Personal</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input placeholder="Email address" value={newEmail.email} onChange={e => setNewEmail(p => ({ ...p, email: e.target.value }))} className="flex-1" />
-                    <Button size="icon" onClick={() => addEmail.mutate()}><Plus className="w-4 h-4" /></Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Addresses */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Addresses</Label>
-                {addresses.map(a => (
-                  <Card key={a.id}>
-                    <CardContent className="p-3 flex items-start justify-between">
-                      <div>
-                        <Badge variant="outline" className="mb-2">{a.address_type}</Badge>
-                        <p className="text-sm">{a.address_line_1}</p>
-                        {a.address_line_2 && <p className="text-sm">{a.address_line_2}</p>}
-                        <p className="text-sm">{a.city}, {a.state} {a.zip_code}</p>
+              {/* Timeline Content */}
+              <ScrollArea className="flex-1">
+                <div className="p-4 space-y-1">
+                  {/* All Tab Content */}
+                  <TabsContent value="all" className="m-0 space-y-1">
+                    {timelineItems.length === 0 ? (
+                      <div className="text-center py-12 text-slate-400">
+                        <Mail className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>No activity yet</p>
                       </div>
-                      {editMode && <Button size="icon" variant="ghost" onClick={() => deleteAddress.mutate(a.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
-                    </CardContent>
-                  </Card>
-                ))}
-                {editMode && (
-                  <Card>
-                    <CardContent className="p-3 space-y-2">
-                      <div className="flex gap-2">
-                        <Select value={newAddress.address_type} onValueChange={v => setNewAddress(p => ({ ...p, address_type: v }))}>
-                          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="home">Home</SelectItem>
-                            <SelectItem value="business">Business</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input placeholder="Address Line 1" value={newAddress.address_line_1} onChange={e => setNewAddress(p => ({ ...p, address_line_1: e.target.value }))} className="flex-1" />
-                      </div>
-                      <Input placeholder="Address Line 2" value={newAddress.address_line_2} onChange={e => setNewAddress(p => ({ ...p, address_line_2: e.target.value }))} />
-                      <div className="flex gap-2">
-                        <Input placeholder="City" value={newAddress.city} onChange={e => setNewAddress(p => ({ ...p, city: e.target.value }))} className="flex-1" />
-                        <Input placeholder="State" value={newAddress.state} onChange={e => setNewAddress(p => ({ ...p, state: e.target.value }))} className="w-20" />
-                        <Input placeholder="ZIP" value={newAddress.zip_code} onChange={e => setNewAddress(p => ({ ...p, zip_code: e.target.value }))} className="w-24" />
-                      </div>
-                      <Button size="sm" onClick={() => addAddress.mutate()}><Plus className="w-4 h-4 mr-1" /> Add Address</Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {/* Social & Web */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2"><Globe className="w-4 h-4" /> Web & Social</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="Website" value={formData.website} onChange={e => setFormData(p => ({ ...p, website: e.target.value }))} disabled={!editMode} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Linkedin className="w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="LinkedIn" value={formData.linkedin} onChange={e => setFormData(p => ({ ...p, linkedin: e.target.value }))} disabled={!editMode} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Twitter className="w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="Twitter" value={formData.twitter} onChange={e => setFormData(p => ({ ...p, twitter: e.target.value }))} disabled={!editMode} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Other Contacts */}
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2"><Link2 className="w-4 h-4" /> Other Contact Methods</Label>
-                {otherContacts.map(c => (
-                  <div key={c.id} className="flex items-center gap-2">
-                    <Badge variant="outline" className="w-24 justify-center">{c.contact_type}</Badge>
-                    <span className="flex-1">{c.contact_value}</span>
-                    {editMode && <Button size="icon" variant="ghost" onClick={() => deleteOtherContact.mutate(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
-                  </div>
-                ))}
-                {editMode && (
-                  <div className="flex gap-2">
-                    <Input placeholder="Type (e.g., Skype)" value={newOtherContact.contact_type} onChange={e => setNewOtherContact(p => ({ ...p, contact_type: e.target.value }))} className="w-32" />
-                    <Input placeholder="Value" value={newOtherContact.contact_value} onChange={e => setNewOtherContact(p => ({ ...p, contact_value: e.target.value }))} className="flex-1" />
-                    <Button size="icon" onClick={() => addOtherContact.mutate()}><Plus className="w-4 h-4" /></Button>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            {/* About Tab */}
-            <TabsContent value="about" className="p-6 m-0 space-y-6">
-              <div className="space-y-2">
-                <Label>About / Background</Label>
-                <Textarea 
-                  value={formData.about} 
-                  onChange={e => setFormData(p => ({ ...p, about: e.target.value }))} 
-                  disabled={!editMode}
-                  placeholder="Background information about this contact..."
-                  className="min-h-[150px]"
-                />
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea 
-                  value={formData.notes} 
-                  onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} 
-                  disabled={!editMode}
-                  placeholder="Additional notes..."
-                  className="min-h-[150px]"
-                />
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Label>Timeline</Label>
-                <div className="text-sm space-y-1 text-muted-foreground">
-                  <p><Calendar className="w-4 h-4 inline mr-2" />Created: {format(new Date(lead.created_at), 'MMM d, yyyy h:mm a')}</p>
-                  <p><Clock className="w-4 h-4 inline mr-2" />Updated: {format(new Date(lead.updated_at), 'MMM d, yyyy h:mm a')}</p>
-                  {lead.questionnaire_sent_at && <p><FileText className="w-4 h-4 inline mr-2" />Questionnaire Sent: {format(new Date(lead.questionnaire_sent_at), 'MMM d, yyyy')}</p>}
-                  {lead.questionnaire_completed_at && <p><CheckCircle2 className="w-4 h-4 inline mr-2 text-green-600" />Questionnaire Completed: {format(new Date(lead.questionnaire_completed_at), 'MMM d, yyyy')}</p>}
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* History Tab */}
-            <TabsContent value="history" className="p-6 m-0 space-y-6">
-              {/* Log Activity */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Log Activity</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex gap-2">
-                    <Select value={newActivity.activity_type} onValueChange={v => setNewActivity(p => ({ ...p, activity_type: v }))}>
-                      <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="note">Note</SelectItem>
-                        <SelectItem value="phone_call">Phone Call</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="meeting">Meeting</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input placeholder="Title (optional)" value={newActivity.title} onChange={e => setNewActivity(p => ({ ...p, title: e.target.value }))} className="flex-1" />
-                  </div>
-                  <Textarea placeholder="Details..." value={newActivity.content} onChange={e => setNewActivity(p => ({ ...p, content: e.target.value }))} />
-                  <Button onClick={() => addActivity.mutate()} disabled={!newActivity.content}>
-                    <Plus className="w-4 h-4 mr-1" /> Log Activity
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Separator />
-
-              {/* Activity Timeline */}
-              <div className="space-y-3">
-                <h3 className="font-semibold flex items-center gap-2"><History className="w-4 h-4" /> Activity History</h3>
-                
-                {/* Combined activities and communications */}
-                {[...activities.map(a => ({ ...a, _type: 'activity' as const })), ...communications.map(c => ({ ...c, _type: 'communication' as const, activity_type: c.communication_type }))]
-                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                  .map(item => (
-                    <Card key={item.id}>
-                      <CardContent className="p-3">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                    ) : (
+                      timelineItems.map((item, idx) => (
+                        <div key={item.id} className="flex items-start gap-3 py-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                          <div className="w-5 h-5 mt-1">
                             {item._type === 'communication' ? (
-                              item.direction === 'inbound' ? <PhoneIncoming className="w-4 h-4 text-green-600" /> : <PhoneOutgoing className="w-4 h-4 text-blue-600" />
-                            ) : getActivityIcon(item.activity_type)}
+                              item.direction === 'inbound' ? 
+                                <PhoneIncoming className="w-5 h-5 text-green-600" /> : 
+                                <PhoneOutgoing className="w-5 h-5 text-blue-600" />
+                            ) : (
+                              <Mail className="w-5 h-5 text-slate-400" />
+                            )}
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className="font-medium text-sm">
-                                {item._type === 'communication' 
-                                  ? `${item.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call`
-                                  : (item as LeadActivity).title || item.activity_type.replace('_', ' ')}
-                              </p>
-                              <span className="text-xs text-muted-foreground">{format(new Date(item.created_at), 'MMM d, yyyy h:mm a')}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-medium text-sm text-slate-900">
+                                  {item._type === 'communication' 
+                                    ? `${item.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call`
+                                    : item.title || 'Activity'}
+                                </p>
+                                <p className="text-sm text-slate-600 truncate mt-0.5">
+                                  {item._type === 'activity' 
+                                    ? (item as LeadActivity).content 
+                                    : `Duration: ${formatDuration((item as Communication).duration_seconds)}`}
+                                </p>
+                              </div>
+                              <span className="text-xs text-slate-400 whitespace-nowrap">
+                                {formatDistanceToNow(new Date(item.created_at), { addSuffix: false })} ago
+                              </span>
                             </div>
-                            {item._type === 'communication' && (item as Communication).duration_seconds && (
-                              <p className="text-xs text-muted-foreground mt-1">Duration: {formatDuration((item as Communication).duration_seconds)}</p>
-                            )}
-                            {(item as LeadActivity).content && (
-                              <p className="text-sm text-muted-foreground mt-1">{(item as LeadActivity).content}</p>
-                            )}
                             {item._type === 'communication' && (item as Communication).transcript && (
                               <Collapsible open={expandedTranscripts[item.id]} onOpenChange={() => setExpandedTranscripts(p => ({ ...p, [item.id]: !p[item.id] }))}>
                                 <CollapsibleTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="mt-2">
-                                    {expandedTranscripts[item.id] ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
+                                  <Button variant="ghost" size="sm" className="mt-1 text-xs">
+                                    {expandedTranscripts[item.id] ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
                                     View Transcript
                                   </Button>
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
-                                  <div className="mt-2 p-3 bg-muted rounded text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
+                                  <div className="mt-2 p-2 bg-slate-100 rounded text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
                                     {(item as Communication).transcript}
                                   </div>
                                 </CollapsibleContent>
@@ -1082,299 +447,357 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                             )}
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                
-                {activities.length === 0 && communications.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No activity history yet</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
+                      ))
+                    )}
 
-            {/* Connections Tab */}
-            <TabsContent value="connections" className="p-6 m-0 space-y-6">
-              {/* Related Deals Section - Same Company */}
-              {lead?.company_name && (
-                <Card className="border-purple-200 bg-purple-50/30">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Briefcase className="w-4 h-4 text-purple-600" />
-                        Related Deals
-                        {relatedDeals.length > 0 && (
-                          <Badge variant="secondary" className="bg-purple-100 text-purple-700">{relatedDeals.length}</Badge>
-                        )}
-                      </CardTitle>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setShowNewDealForm(true)}
-                        className="text-purple-700 border-purple-300 hover:bg-purple-100"
+                    {/* Stage Change Event */}
+                    <div className="flex items-center gap-3 py-3 text-sm text-slate-600">
+                      <div className="w-2 h-2 rounded-full bg-blue-600" />
+                      <span className="font-medium">Stage changed to</span>
+                      <Badge 
+                        className="text-white text-xs"
+                        style={{ backgroundColor: currentStage?.color }}
                       >
-                        <Copy className="w-4 h-4 mr-1" />
-                        New Deal
+                        {currentStage?.title}
+                      </Badge>
+                    </div>
+                  </TabsContent>
+
+                  {/* Emails Tab */}
+                  <TabsContent value="emails" className="m-0">
+                    <div className="text-center py-12 text-slate-400">
+                      <Mail className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No emails yet</p>
+                      <p className="text-sm mt-2">Want to see emails sent to/from your team?</p>
+                      <Button variant="default" size="sm" className="mt-4 bg-blue-600 hover:bg-blue-700">
+                        <Users className="w-4 h-4 mr-2" />
+                        Invite teammates
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">Other deals with {lead.company_name}</p>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {/* New Deal Form */}
-                    {showNewDealForm && (
-                      <div className="p-3 border rounded-lg bg-white space-y-2">
-                        <p className="text-sm font-medium">Create new deal for {lead.company_name}</p>
-                        <div className="flex gap-2">
-                          <span className="text-sm text-muted-foreground py-2">{lead.company_name} -</span>
-                          <Input 
-                            placeholder="e.g., Q2 Expansion, Phase 2, Refinance"
-                            value={newDealSuffix}
-                            onChange={(e) => setNewDealSuffix(e.target.value)}
-                            className="flex-1"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={() => createNewDeal.mutate()} 
-                            disabled={!newDealSuffix.trim() || createNewDeal.isPending}
-                            size="sm"
-                          >
-                            {createNewDeal.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
-                            Create & Link
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => { setShowNewDealForm(false); setNewDealSuffix(''); }}>
-                            Cancel
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Contact info will be copied to the new deal</p>
-                      </div>
-                    )}
+                  </TabsContent>
 
-                    {/* Related Deals List */}
-                    {relatedDeals.length > 0 ? (
-                      <div className="space-y-2">
-                        {relatedDeals.map(deal => (
-                          <div key={deal.id} className="flex items-center justify-between p-2 bg-white rounded-lg border">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                                <Briefcase className="w-4 h-4 text-purple-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-sm">{deal.name}</p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Badge variant="outline" className="text-[10px] py-0">{deal.status.replace('_', ' ')}</Badge>
-                                  <span>Created {format(new Date(deal.created_at), 'MMM d, yyyy')}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => linkDeal.mutate(deal.id)}
-                              disabled={linkedDeals.some(ld => ld.connected_lead_id === deal.id)}
-                            >
-                              {linkedDeals.some(ld => ld.connected_lead_id === deal.id) ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <>
-                                  <Link2 className="w-4 h-4 mr-1" />
-                                  Link
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : !showNewDealForm && (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        No other deals for this company yet
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                  {/* Files Tab */}
+                  <TabsContent value="files" className="m-0">
+                    <div className="text-center py-12 text-slate-400">
+                      <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No files attached</p>
+                    </div>
+                  </TabsContent>
 
-              {/* Linked Deals Section */}
-              {linkedDeals.length > 0 && (
-                <Card className="border-blue-200">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Link2 className="w-4 h-4 text-blue-600" />
-                      Linked Deals
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-700">{linkedDeals.length}</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {linkedDeals.map(link => (
-                      <div key={link.id} className="flex items-center justify-between p-2 bg-blue-50/50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Link2 className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{link.linkedLead?.name || 'Unknown Deal'}</p>
-                            {link.linkedLead?.company_name && (
-                              <p className="text-xs text-muted-foreground">{link.linkedLead.company_name}</p>
+                  {/* Comments Tab */}
+                  <TabsContent value="comments" className="m-0">
+                    <div className="text-center py-12 text-slate-400">
+                      <MessagesSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No comments yet</p>
+                    </div>
+                  </TabsContent>
+
+                  {/* Tasks Tab */}
+                  <TabsContent value="tasks" className="m-0 space-y-2">
+                    {tasks.length === 0 ? (
+                      <div className="text-center py-12 text-slate-400">
+                        <ListTodo className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>No tasks yet</p>
+                      </div>
+                    ) : (
+                      tasks.map(task => (
+                        <div key={task.id} className="flex items-start gap-3 py-2 px-3 hover:bg-slate-50 rounded">
+                          {task.status === 'completed' ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                          ) : (
+                            <Circle className="w-5 h-5 text-slate-300 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className={cn("text-sm", task.status === 'completed' && "line-through text-slate-400")}>{task.title}</p>
+                            {task.due_date && (
+                              <p className="text-xs text-slate-400 mt-0.5">Due {format(new Date(task.due_date), 'MMM d')}</p>
                             )}
                           </div>
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => unlinkDeal.mutate(link.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
+                      ))
+                    )}
+                  </TabsContent>
+
+                  {/* Call Logs Tab */}
+                  <TabsContent value="calls" className="m-0 space-y-2">
+                    {communications.filter(c => c.communication_type === 'call').length === 0 ? (
+                      <div className="text-center py-12 text-slate-400">
+                        <Phone className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>No call logs</p>
+                      </div>
+                    ) : (
+                      communications.filter(c => c.communication_type === 'call').map(call => (
+                        <div key={call.id} className="flex items-start gap-3 py-2 px-3 hover:bg-slate-50 rounded">
+                          {call.direction === 'inbound' ? (
+                            <PhoneIncoming className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <PhoneOutgoing className="w-5 h-5 text-blue-600" />
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{call.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call</p>
+                            <p className="text-xs text-slate-400">
+                              {formatDuration(call.duration_seconds)} • {format(new Date(call.created_at), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </TabsContent>
+
+                  {/* Meeting Notes Tab */}
+                  <TabsContent value="meetings" className="m-0">
+                    <div className="text-center py-12 text-slate-400">
+                      <Video className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No meeting notes</p>
+                    </div>
+                  </TabsContent>
+                </div>
+              </ScrollArea>
+            </Tabs>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="w-[380px] flex flex-col bg-white">
+            {/* Stage & Assigned To Header */}
+            <div className="flex items-start justify-between px-4 py-4 border-b">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Stage</p>
+                <Select value={lead.status} onValueChange={(v) => updateLeadStatus.mutate(v)}>
+                  <SelectTrigger className="w-[180px] h-9 border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-sm" 
+                        style={{ backgroundColor: currentStage?.color }}
+                      />
+                      <span className="text-sm">{currentStage?.title}</span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {stages.map(s => (
+                      <SelectItem key={s.status} value={s.status}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: s.color }} />
+                          {s.title}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Assigned To</p>
+                <Select value={lead.assigned_to || ''} onValueChange={(v) => updateLeadAssignment.mutate(v)}>
+                  <SelectTrigger className="w-[120px] h-9 border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-6 h-6">
+                        <AvatarFallback className="text-xs bg-emerald-600 text-white">
+                          {assignedMember?.name?.charAt(0) || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm truncate">{assignedMember?.name || 'Unassigned'}</span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {teamMembers.map(t => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-5 h-5">
+                            <AvatarFallback className="text-[10px] bg-emerald-600 text-white">
+                              {t.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          {t.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <ScrollArea className="flex-1">
+              <div className="p-4 space-y-2">
+                {/* Custom Columns Section */}
+                <Collapsible open={customColumnsOpen} onOpenChange={setCustomColumnsOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <span className="font-medium text-sm text-slate-700">Custom Columns</span>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !customColumnsOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 pt-3">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Address</p>
+                        <Input 
+                          value={customFields.address} 
+                          onChange={(e) => setCustomFields(p => ({ ...p, address: e.target.value }))}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                          placeholder=""
+                        />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Mood of brand / brand color</p>
+                        <Input 
+                          value={customFields.brandColor} 
+                          onChange={(e) => setCustomFields(p => ({ ...p, brandColor: e.target.value }))}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Brand Goals</p>
+                        <Input 
+                          value={customFields.brandGoals} 
+                          onChange={(e) => setCustomFields(p => ({ ...p, brandGoals: e.target.value }))}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Business Type</p>
+                        <Input 
+                          value={customFields.businessType} 
+                          onChange={(e) => setCustomFields(p => ({ ...p, businessType: e.target.value }))}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Content needs</p>
+                        <Input 
+                          value={customFields.contentNeeds} 
+                          onChange={(e) => setCustomFields(p => ({ ...p, contentNeeds: e.target.value }))}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Free Video</p>
+                        <div className="flex items-center h-8">
+                          <Checkbox 
+                            checked={customFields.freeVideo} 
+                            onCheckedChange={(checked) => setCustomFields(p => ({ ...p, freeVideo: !!checked }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add
+                    </Button>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Contacts and Organizations Section */}
+                <Collapsible open={contactsOpen} onOpenChange={setContactsOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <span className="font-medium text-sm text-slate-700">Contacts and organizations</span>
+                    <Mail className="w-4 h-4 text-slate-400 ml-auto" />
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !contactsOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 pt-3">
+                    {allEmails.map((email, idx) => (
+                      <div key={email.id || idx} className="flex items-center gap-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="text-sm bg-teal-600 text-white">
+                            {email.email.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-slate-900 truncate">{email.email}</p>
+                          <p className="text-xs text-slate-400 truncate">{email.email}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="w-6 h-6">
+                          <Plus className="w-4 h-4 text-slate-400" />
                         </Button>
                       </div>
                     ))}
-                  </CardContent>
-                </Card>
-              )}
+                    <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add contact
+                      {allEmails.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{allEmails.length}</Badge>}
+                    </Button>
+                  </CollapsibleContent>
+                </Collapsible>
 
-              {/* People Connections */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Add Connection</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input placeholder="Name" value={newConnection.connected_name} onChange={e => setNewConnection(p => ({ ...p, connected_name: e.target.value }))} />
-                    <Input placeholder="Company" value={newConnection.connected_company} onChange={e => setNewConnection(p => ({ ...p, connected_company: e.target.value }))} />
-                  </div>
-                  <div className="flex gap-2">
-                    <Select value={newConnection.relationship_type} onValueChange={v => setNewConnection(p => ({ ...p, relationship_type: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Relationship type" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="colleague">Colleague</SelectItem>
-                        <SelectItem value="spouse">Spouse</SelectItem>
-                        <SelectItem value="referrer">Referrer</SelectItem>
-                        <SelectItem value="attorney">Attorney</SelectItem>
-                        <SelectItem value="cpa">CPA</SelectItem>
-                        <SelectItem value="business_partner">Business Partner</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input placeholder="Notes" value={newConnection.notes} onChange={e => setNewConnection(p => ({ ...p, notes: e.target.value }))} className="flex-1" />
-                  </div>
-                  <Button onClick={() => addConnection.mutate()} disabled={!newConnection.connected_name}>
-                    <Plus className="w-4 h-4 mr-1" /> Add Connection
-                  </Button>
-                </CardContent>
-              </Card>
+                <Separator />
 
-              <div className="space-y-3">
-                {connections.filter(c => c.relationship_type !== 'related_deal').map(c => (
-                  <Card key={c.id}>
-                    <CardContent className="p-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                          <Users className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{c.connected_name}</p>
-                          {c.connected_company && <p className="text-sm text-muted-foreground">{c.connected_company}</p>}
-                          {c.relationship_type && <Badge variant="outline" className="mt-1">{c.relationship_type}</Badge>}
-                        </div>
+                {/* Notes Section */}
+                <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <span className="font-medium text-sm text-slate-700">Notes</span>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !notesOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-3">
+                    <Textarea 
+                      value={notesContent}
+                      onChange={(e) => setNotesContent(e.target.value)}
+                      onBlur={() => notesContent !== lead.notes && saveNotes.mutate()}
+                      placeholder="Add notes..."
+                      className="min-h-[60px] text-sm border-slate-200 resize-none"
+                    />
+                    {lead.updated_at && (
+                      <p className="text-xs text-slate-400 mt-2">
+                        Last updated: {format(new Date(lead.updated_at), 'M/d/yy')}
+                      </p>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Magic Columns Section */}
+                <Collapsible open={magicColumnsOpen} onOpenChange={setMagicColumnsOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <span className="font-medium text-sm text-slate-700">Magic Columns</span>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !magicColumnsOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 pt-3">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Date of Last Email</p>
+                        <p className="text-sm text-slate-900">
+                          {lastEmailDate ? format(new Date(lastEmailDate), 'MMM d yyyy') : '—'}
+                        </p>
                       </div>
-                      <Button size="icon" variant="ghost" onClick={() => deleteConnection.mutate(c.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-                {connections.filter(c => c.relationship_type !== 'related_deal').length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No people connections yet</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Tasks Tab */}
-            <TabsContent value="tasks" className="p-6 m-0 space-y-6">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Create Task</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Input placeholder="Task title" value={newTask.title} onChange={e => setNewTask(p => ({ ...p, title: e.target.value }))} />
-                  <Textarea placeholder="Description (optional)" value={newTask.description} onChange={e => setNewTask(p => ({ ...p, description: e.target.value }))} />
-                  <div className="flex gap-2">
-                    <Input type="date" value={newTask.due_date} onChange={e => setNewTask(p => ({ ...p, due_date: e.target.value }))} className="w-40" />
-                    <Select value={newTask.priority} onValueChange={v => setNewTask(p => ({ ...p, priority: v }))}>
-                      <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={newTask.assigned_to} onValueChange={v => setNewTask(p => ({ ...p, assigned_to: v }))}>
-                      <SelectTrigger className="flex-1"><SelectValue placeholder="Assign to..." /></SelectTrigger>
-                      <SelectContent>
-                        {teamMembers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={() => addTask.mutate()} disabled={!newTask.title}>
-                    <Plus className="w-4 h-4 mr-1" /> Create Task
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <div className="space-y-3">
-                {tasks.map(t => (
-                  <Card key={t.id} className={t.status === 'completed' ? 'opacity-60' : ''}>
-                    <CardContent className="p-3 flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <button onClick={() => toggleTaskStatus.mutate(t)} className="mt-0.5">
-                          {t.status === 'completed' ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-muted-foreground hover:text-primary" />
-                          )}
-                        </button>
-                        <div>
-                          <p className={`font-medium ${t.status === 'completed' ? 'line-through' : ''}`}>{t.title}</p>
-                          {t.description && <p className="text-sm text-muted-foreground mt-1">{t.description}</p>}
-                          <div className="flex items-center gap-2 mt-2">
-                            {t.due_date && (
-                              <Badge variant="outline" className="text-xs">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                {format(new Date(t.due_date), 'MMM d')}
-                              </Badge>
-                            )}
-                            <Badge variant={t.priority === 'high' ? 'destructive' : t.priority === 'medium' ? 'default' : 'secondary'} className="text-xs">
-                              {t.priority}
-                            </Badge>
-                            {t.assigned_to && (
-                              <Badge variant="outline" className="text-xs">
-                                {teamMembers.find(m => m.id === t.assigned_to)?.name}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Date of Next Due Task</p>
+                        <p className="text-sm text-slate-900">
+                          {nextDueTask?.due_date ? format(new Date(nextDueTask.due_date), 'MMM d yyyy') : '—'}
+                        </p>
                       </div>
-                      <Button size="icon" variant="ghost" onClick={() => deleteTask.mutate(t.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-                {tasks.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <ListTodo className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No tasks yet</p>
-                  </div>
-                )}
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Days in Stage</p>
+                        <p className="text-sm text-slate-900">{daysInStage}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Date of Last Interaction</p>
+                        <p className="text-sm text-slate-900">
+                          {lastInteractionDate ? format(new Date(lastInteractionDate), 'MMM d yyyy') : '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Date of Last Tracked View</p>
+                        <p className="text-sm text-slate-900">
+                          {lead.updated_at ? format(new Date(lead.updated_at), 'MMM d yyyy') : '—'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add
+                    </Button>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
-            </TabsContent>
-          </ScrollArea>
-        </Tabs>
+            </ScrollArea>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
