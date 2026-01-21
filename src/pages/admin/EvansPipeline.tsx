@@ -329,9 +329,9 @@ const EvansPipeline = () => {
   return (
     <AdminLayout>
       <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
+        {/* Header - 8px spacing system: mb-6 = 24px */}
+        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               {isEditingName ? (
                 <input
@@ -372,8 +372,8 @@ const EvansPipeline = () => {
                   {pipelineName}
                 </h1>
               )}
-              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-semibold px-1.5 py-0">
-                <Star className="h-2.5 w-2.5 mr-0.5 fill-amber-500" />
+              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-semibold px-2 py-0.5 flex-shrink-0">
+                <Star className="h-2.5 w-2.5 mr-1 fill-amber-500" />
                 MAIN
               </Badge>
               <HelpTooltip 
@@ -381,9 +381,9 @@ const EvansPipeline = () => {
                 side="bottom"
               />
             </div>
-            <span className="text-sm text-slate-500 font-medium">{totalLeads} leads</span>
+            <span className="text-sm text-slate-500 font-medium whitespace-nowrap">{totalLeads} leads</span>
             {!canEdit && (
-              <Badge variant="outline" className="gap-1 text-slate-500 border-slate-300">
+              <Badge variant="outline" className="gap-1 text-slate-500 border-slate-300 flex-shrink-0">
                 <Lock className="h-3 w-3" />
                 View Only
               </Badge>
@@ -391,12 +391,12 @@ const EvansPipeline = () => {
           </div>
           <div className="flex items-center gap-2">
             {canEdit && evanId && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSharingModalOpen(true)}
-                  className="border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5"
+                  className="border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 h-9"
                 >
                   <Users className="w-4 h-4 mr-2" />
                   Share
@@ -408,7 +408,7 @@ const EvansPipeline = () => {
               </div>
             )}
             <Link to="/user/evan/leads">
-              <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50">
+              <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-9">
                 <List className="w-4 h-4 mr-2" />
                 List View
               </Button>
@@ -416,11 +416,11 @@ const EvansPipeline = () => {
             {canEdit && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-10 w-10 p-0">
-                    <MoreVertical className="h-6 w-6 text-slate-500" />
+                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                    <MoreVertical className="h-5 w-5 text-slate-500" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 bg-white z-50">
                   <DropdownMenuItem onClick={() => setStageManagerOpen(true)} className="cursor-pointer">
                     <Layers className="h-4 w-4 mr-2" />
                     Stages
@@ -435,15 +435,15 @@ const EvansPipeline = () => {
           </div>
         </div>
 
-        {/* Pipeline Progress Bar - Streak Style */}
-        <div className="mb-3 flex items-center gap-3">
+        {/* Pipeline Progress Bar - 8px spacing: mb-8 = 32px */}
+        <div className="mb-2 flex items-center gap-2">
           <span className="text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
           <HelpTooltip 
             content="Click any stage to jump to that section. Each segment shows the count of leads in that stage. Drag leads between stages in the table below to update their status."
             side="right"
           />
         </div>
-        <div className="flex h-[72px] mb-8">
+        <div className="flex h-16 mb-6">
           {stageCounts.map((stage, index) => {
             const isFirst = index === 0;
             const isLast = index === stageCounts.length - 1;
@@ -467,15 +467,15 @@ const EvansPipeline = () => {
                   )}
                   style={{
                     clipPath: isLast 
-                      ? 'polygon(0 0, calc(100% - 0px) 0, 100% 50%, calc(100% - 0px) 100%, 0 100%, 16px 50%)'
+                      ? 'polygon(0 0, calc(100% - 0px) 0, 100% 50%, calc(100% - 0px) 100%, 0 100%, 12px 50%)'
                       : isFirst
-                        ? 'polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 0 50%)'
-                        : 'polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%)'
+                        ? 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 0 50%)'
+                        : 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)'
                   }}
                 >
                   <div className="flex flex-col items-center text-white pl-2">
-                    <span className="text-3xl font-bold tracking-tight leading-none">{stage.count}</span>
-                    <span className="text-xs font-semibold uppercase tracking-wider opacity-95 mt-1">{stage.title}</span>
+                    <span className="text-2xl font-bold tracking-tight leading-none">{stage.count}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-95 mt-0.5 whitespace-nowrap">{stage.title}</span>
                   </div>
                 </div>
               </div>
@@ -483,14 +483,14 @@ const EvansPipeline = () => {
           })}
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-5 mb-5">
-          <div className="flex items-center gap-2 flex-1 max-w-md">
+        {/* Filters - 8px spacing: gap-4 = 16px, mb-4 = 16px */}
+        <div className="flex items-center gap-4 mb-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 max-w-md min-w-[200px]">
             <Input
               placeholder="Search leads..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-11 pl-4 text-base border-slate-200 focus:border-[#0066FF] focus:ring-[#0066FF]/20"
+              className="h-10 pl-4 text-sm border-slate-200 focus:border-[#0066FF] focus:ring-[#0066FF]/20"
             />
             <HelpTooltip 
               content="Search by lead name, email, or company. Results filter in real-time as you type."
@@ -499,11 +499,11 @@ const EvansPipeline = () => {
           </div>
           <div className="flex items-center gap-2">
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-52 h-11 border-slate-200">
-                <Filter className="w-5 h-5 mr-2 text-slate-400" />
+              <SelectTrigger className="w-48 h-10 border-slate-200">
+                <Filter className="w-4 h-4 mr-2 text-slate-400" />
                 <SelectValue placeholder="Filter by source" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white z-50">
                 <SelectItem value="all">All Sources</SelectItem>
                 {sources.map((source) => (
                   <SelectItem key={source} value={source!}>
@@ -517,15 +517,15 @@ const EvansPipeline = () => {
               side="right"
             />
           </div>
-          <div className="text-base text-slate-500">
+          <div className="text-sm text-slate-500 whitespace-nowrap">
             Showing {filteredLeads.length} of {leads.length} leads
           </div>
         </div>
 
-        {/* Grouped Table View */}
-        <div className="flex-1 overflow-auto border border-slate-300 rounded-md bg-white">
+        {/* Grouped Table View - 8px spacing system */}
+        <div className="flex-1 overflow-x-auto overflow-y-auto border border-slate-300 rounded-md bg-white">
           {/* Table Header with Column Dropdowns */}
-          <div className="sticky top-0 z-10 bg-slate-50 border-b-2 border-slate-300">
+          <div className="sticky top-0 z-10 bg-slate-50 border-b-2 border-slate-300 min-w-max">
             <div 
               className="text-sm font-semibold text-slate-600 uppercase tracking-wider"
               style={{ 
@@ -535,15 +535,23 @@ const EvansPipeline = () => {
             >
               {getVisibleColumns().map((column, colIndex) => {
                 const isLastColumn = colIndex === getVisibleColumns().length - 1;
+                
+                // Consistent cell styling with 8px increments
+                const getCellPadding = () => {
+                  if (column.id === 'checkbox' || column.id === 'avatar') return 'px-2'; // 8px
+                  return 'px-4'; // 16px
+                };
+                
                 const cellClass = cn(
-                  "flex items-center px-4 py-3 min-h-[44px]",
+                  "flex items-center min-h-[48px]", // 48px = 6 * 8px
+                  getCellPadding(),
                   !isLastColumn && "border-r border-slate-200"
                 );
                 
                 // Special handling for checkbox column - add select all
                 if (column.id === 'checkbox') {
                   return (
-                    <div key={column.id} className={cn(cellClass, "justify-center px-3")}>
+                    <div key={column.id} className={cn(cellClass, "justify-center")}>
                       <Checkbox
                         checked={isAllSelected}
                         onCheckedChange={(checked) => {
@@ -559,7 +567,7 @@ const EvansPipeline = () => {
                   );
                 }
                 if (column.id === 'avatar') {
-                  return <div key={column.id} className={cn(cellClass, "px-2 justify-center")}></div>;
+                  return <div key={column.id} className={cn(cellClass, "justify-center")}></div>;
                 }
 
                 // Help text for specific columns
@@ -584,7 +592,7 @@ const EvansPipeline = () => {
                 );
               })}
               {/* Add Column Button at the end */}
-              <div className="flex items-center justify-center px-2 py-4">
+              <div className="flex items-center justify-center px-2 min-h-[48px]">
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
@@ -595,7 +603,7 @@ const EvansPipeline = () => {
                     <Plus className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 bg-white z-50">
                   <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase">Add Column</div>
                   <DropdownMenuItem 
                     onClick={() => {
@@ -646,32 +654,32 @@ const EvansPipeline = () => {
                   open={!isCollapsed}
                   onOpenChange={() => toggleSection(stage.status)}
                 >
-                  {/* Section Header - Full-width colored bar like Streak */}
+                  {/* Section Header - Full-width colored bar with 8px spacing */}
                   <CollapsibleTrigger asChild>
                     <div
-                      className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-3"
+                      className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-2"
                       style={{ 
                         backgroundColor: stage.hexColor,
                       }}
                     >
-                      {/* Checkbox placeholder for alignment */}
-                      <div className="w-5 h-5 rounded border-2 border-white/50 flex-shrink-0" />
+                      {/* Checkbox placeholder for alignment - matches 48px column */}
+                      <div className="w-4 h-4 rounded border-2 border-white/50 flex-shrink-0" />
                       
-                      {/* Stage title */}
-                      <span className="text-white font-bold text-lg">
+                      {/* Stage title - with text wrapping */}
+                      <span className="text-white font-bold text-base whitespace-nowrap">
                         {stage.title}
                       </span>
                       
                       {/* Lead count */}
-                      <span className="text-white/80 text-sm font-medium">
+                      <span className="text-white/80 text-sm font-medium whitespace-nowrap">
                         ({stageLeads.length})
                       </span>
                       
                       {/* Collapse indicator */}
                       {isCollapsed ? (
-                        <ChevronRight className="h-5 w-5 text-white/70 ml-auto flex-shrink-0" />
+                        <ChevronRight className="h-4 w-4 text-white/70 ml-auto flex-shrink-0" />
                       ) : (
-                        <ChevronDown className="h-5 w-5 text-white/70 ml-auto flex-shrink-0" />
+                        <ChevronDown className="h-4 w-4 text-white/70 ml-auto flex-shrink-0" />
                       )}
                     </div>
                   </CollapsibleTrigger>
@@ -680,7 +688,7 @@ const EvansPipeline = () => {
                   <CollapsibleContent>
                     {stageLeads.length === 0 ? (
                       <div 
-                        className="border-b border-slate-200"
+                        className="border-b border-slate-200 min-w-max"
                         style={{ 
                           display: 'grid',
                           gridTemplateColumns: getGridTemplate()
@@ -692,15 +700,13 @@ const EvansPipeline = () => {
                             <div 
                               key={column.id}
                               className={cn(
-                                "flex items-center min-h-[44px] border-b border-slate-200",
+                                "flex items-center min-h-[48px]",
                                 !isLastColumn && "border-r border-slate-200",
-                                column.id === 'checkbox' && "px-3 justify-center",
-                                column.id === 'avatar' && "px-2 justify-center",
-                                column.id !== 'checkbox' && column.id !== 'avatar' && "px-4"
+                                (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
                               )}
                             >
                               {column.id === 'name' && (
-                                <span className="text-sm text-slate-400 italic">No leads in this stage</span>
+                                <span className="text-sm text-slate-400 italic whitespace-nowrap">No leads in this stage</span>
                               )}
                             </div>
                           );
@@ -747,12 +753,12 @@ const EvansPipeline = () => {
                                       <DropdownMenuTrigger asChild>
                                         <button 
                                           onClick={(e) => e.stopPropagation()}
-                                          className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                                          className="flex items-center gap-1 hover:opacity-80 transition-opacity max-w-full"
                                         >
                                           <Badge 
                                             variant="outline" 
                                             className={cn(
-                                              "text-[11px] font-medium px-2 py-0.5 rounded cursor-pointer",
+                                              "text-[11px] font-medium px-2 py-0.5 rounded cursor-pointer whitespace-nowrap",
                                               stageEntry?.bgColor,
                                               stageEntry?.textColor,
                                               "border-transparent"
@@ -760,7 +766,7 @@ const EvansPipeline = () => {
                                           >
                                             {stageEntry?.title}
                                           </Badge>
-                                          <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                                          <ChevronDown className="h-3 w-3 text-slate-400 flex-shrink-0" />
                                         </button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="start" className="w-44 bg-white z-50">
@@ -804,24 +810,24 @@ const EvansPipeline = () => {
                                   return <div className="text-slate-600 truncate text-[13px]">{lead.company_name || '—'}</div>;
                                 case 'contact':
                                   return (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-shrink-0">
                                       {lead.phone && (
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <button
                                               onClick={(e) => handleCall(e, lead)}
                                               disabled={isCallingThis}
-                                              className="inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50 border border-green-300"
+                                              className="inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50 border border-green-300 flex-shrink-0"
                                             >
                                               {isCallingThis ? (
-                                                <Loader2 className="h-4 w-4 text-green-700 animate-spin" />
+                                                <Loader2 className="h-3.5 w-3.5 text-green-700 animate-spin" />
                                               ) : (
-                                                <Phone className="h-4 w-4 text-green-700" />
+                                                <Phone className="h-3.5 w-3.5 text-green-700" />
                                               )}
                                               <span className="text-xs font-medium text-green-700">Call</span>
                                             </button>
                                           </TooltipTrigger>
-                                          <TooltipContent side="top">
+                                          <TooltipContent side="top" className="bg-white z-50">
                                             <p>Call {lead.phone}</p>
                                           </TooltipContent>
                                         </Tooltip>
@@ -831,13 +837,13 @@ const EvansPipeline = () => {
                                           <TooltipTrigger asChild>
                                             <button
                                               onClick={(e) => handleEmail(e, lead)}
-                                              className="inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors border border-[#0066FF]/30"
+                                              className="inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors border border-[#0066FF]/30 flex-shrink-0"
                                             >
-                                              <Mail className="h-4 w-4 text-[#0066FF]" />
+                                              <Mail className="h-3.5 w-3.5 text-[#0066FF]" />
                                               <span className="text-xs font-medium text-[#0066FF]">Email</span>
                                             </button>
                                           </TooltipTrigger>
-                                          <TooltipContent side="top">
+                                          <TooltipContent side="top" className="bg-white z-50">
                                             <p>Email {lead.email}</p>
                                           </TooltipContent>
                                         </Tooltip>
@@ -914,7 +920,7 @@ const EvansPipeline = () => {
                             return (
                               <div
                                 key={lead.id}
-                                className="hover:bg-slate-50 cursor-pointer items-center text-base transition-colors border-b border-slate-200"
+                                className="hover:bg-slate-50 cursor-pointer text-base transition-colors border-b border-slate-200 min-w-max"
                                 style={{ 
                                   display: 'grid',
                                   gridTemplateColumns: getGridTemplate()
@@ -927,12 +933,9 @@ const EvansPipeline = () => {
                                     <div 
                                       key={column.id} 
                                       className={cn(
-                                        "flex items-center py-3 min-h-[48px]",
+                                        "flex items-center min-h-[48px] overflow-hidden",
                                         !isLastColumn && "border-r border-slate-200",
-                                        column.id === 'checkbox' && "px-2 justify-center",
-                                        column.id === 'avatar' && "px-2 justify-center",
-                                        column.id === 'stage' && "px-2",
-                                        column.id !== 'checkbox' && column.id !== 'avatar' && column.id !== 'stage' && "px-4"
+                                        (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
                                       )}
                                     >
                                       {renderCellContent(column)}
