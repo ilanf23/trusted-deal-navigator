@@ -1340,44 +1340,77 @@ export type Database = {
       }
       lender_programs: {
         Row: {
+          call_status: string | null
+          contact_name: string | null
           created_at: string
           description: string | null
+          email: string | null
           id: string
           interest_range: string | null
+          last_contact: string | null
           lender_name: string
           lender_specialty: string | null
+          lender_type: string | null
+          loan_types: string | null
+          location: string | null
+          looking_for: string | null
           max_loan: number | null
           min_loan: number | null
+          next_call: string | null
+          phone: string | null
           program_name: string
           program_type: string
+          states: string | null
           term: string | null
           updated_at: string
         }
         Insert: {
+          call_status?: string | null
+          contact_name?: string | null
           created_at?: string
           description?: string | null
+          email?: string | null
           id?: string
           interest_range?: string | null
+          last_contact?: string | null
           lender_name: string
           lender_specialty?: string | null
+          lender_type?: string | null
+          loan_types?: string | null
+          location?: string | null
+          looking_for?: string | null
           max_loan?: number | null
           min_loan?: number | null
+          next_call?: string | null
+          phone?: string | null
           program_name: string
           program_type: string
+          states?: string | null
           term?: string | null
           updated_at?: string
         }
         Update: {
+          call_status?: string | null
+          contact_name?: string | null
           created_at?: string
           description?: string | null
+          email?: string | null
           id?: string
           interest_range?: string | null
+          last_contact?: string | null
           lender_name?: string
           lender_specialty?: string | null
+          lender_type?: string | null
+          loan_types?: string | null
+          location?: string | null
+          looking_for?: string | null
           max_loan?: number | null
           min_loan?: number | null
+          next_call?: string | null
+          phone?: string | null
           program_name?: string
           program_type?: string
+          states?: string | null
           term?: string | null
           updated_at?: string
         }
