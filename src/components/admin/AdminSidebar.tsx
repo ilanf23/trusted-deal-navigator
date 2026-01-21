@@ -44,8 +44,8 @@ import {
 interface AdminSidebarProps {
   onInboxToggle: () => void;
   inboxOpen: boolean;
-  onAIAssistantToggle?: () => void;
-  aiAssistantOpen?: boolean;
+  onAIToggle?: () => void;
+  aiChatOpen?: boolean;
 }
 
 interface NavItem {
@@ -62,7 +62,7 @@ interface NavSection {
   noCollapse?: boolean;
 }
 
-const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssistantOpen }: AdminSidebarProps) => {
+const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: AdminSidebarProps) => {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { teamMember, isOwner, loading: teamLoading } = useTeamMember();
@@ -161,7 +161,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: 'Calendar', url: `/team/${employeeName.toLowerCase()}/calendar`, icon: Calendar },
           { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
           { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
-          { title: 'AI', url: `/team/${employeeName.toLowerCase()}/ai`, icon: Sparkles },
         ],
         noCollapse: true,
       });
@@ -421,6 +420,22 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-white/10">
+        {/* AI Assistant Button */}
+        {onAIToggle && (
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start gap-2.5 h-9 rounded-md text-[13px] px-3 mb-2 ${
+              aiChatOpen 
+                ? 'bg-primary/20 text-primary hover:bg-primary/30' 
+                : 'text-white/70 hover:text-white hover:bg-white/5'
+            }`}
+            onClick={onAIToggle}
+          >
+            <Sparkles className="w-4 h-4" strokeWidth={1.75} />
+            <span className="font-semibold">AI Assistant</span>
+          </Button>
+        )}
+
         <div className="flex items-center gap-3 mb-3 px-1">
           <AvatarUpload
             userId={user?.id || ''}

@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import AdminSidebar from './AdminSidebar';
 import FloatingInbox from './FloatingInbox';
 import FloatingBugReport from './FloatingBugReport';
+import FloatingAIChat from './FloatingAIChat';
 import AIEmailAssistant from './AIEmailAssistant';
 import { IncomingCallPopup } from '@/components/evan/IncomingCallPopup';
 import { Menu } from 'lucide-react';
@@ -15,7 +16,7 @@ interface AdminLayoutProps {
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [inboxOpen, setInboxOpen] = useState(false);
-  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
 
   return (
     <SidebarProvider>
@@ -23,8 +24,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <AdminSidebar 
           onInboxToggle={() => setInboxOpen(!inboxOpen)} 
           inboxOpen={inboxOpen}
-          onAIAssistantToggle={() => setAiAssistantOpen(!aiAssistantOpen)}
-          aiAssistantOpen={aiAssistantOpen}
+          onAIToggle={() => setAiChatOpen(!aiChatOpen)}
+          aiChatOpen={aiChatOpen}
         />
 
         <main className="flex-1 flex flex-col min-h-screen">
@@ -57,9 +58,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         </main>
         
         <FloatingInbox isOpen={inboxOpen} onClose={() => setInboxOpen(false)} />
+        <FloatingAIChat isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
         <AIEmailAssistant 
-          isOpen={aiAssistantOpen} 
-          onClose={() => setAiAssistantOpen(false)}
+          isOpen={false} 
+          onClose={() => {}}
           lead={null}
           onUseEmail={() => {}}
         />
