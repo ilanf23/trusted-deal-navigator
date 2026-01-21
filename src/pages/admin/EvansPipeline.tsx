@@ -416,8 +416,8 @@ const EvansPipeline = () => {
             {canEdit && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <MoreVertical className="h-4 w-4 text-slate-500" />
+                  <Button variant="ghost" size="sm" className="h-10 w-10 p-0">
+                    <MoreVertical className="h-6 w-6 text-slate-500" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -436,14 +436,14 @@ const EvansPipeline = () => {
         </div>
 
         {/* Pipeline Progress Bar - Streak Style */}
-        <div className="mb-2 flex items-center gap-2">
-          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
+        <div className="mb-3 flex items-center gap-3">
+          <span className="text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
           <HelpTooltip 
             content="Click any stage to jump to that section. Each segment shows the count of leads in that stage. Drag leads between stages in the table below to update their status."
             side="right"
           />
         </div>
-        <div className="flex h-14 mb-6">
+        <div className="flex h-[72px] mb-8">
           {stageCounts.map((stage, index) => {
             const isFirst = index === 0;
             const isLast = index === stageCounts.length - 1;
@@ -474,8 +474,8 @@ const EvansPipeline = () => {
                   }}
                 >
                   <div className="flex flex-col items-center text-white pl-2">
-                    <span className="text-2xl font-bold tracking-tight leading-none">{stage.count}</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-95 mt-0.5">{stage.title}</span>
+                    <span className="text-3xl font-bold tracking-tight leading-none">{stage.count}</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider opacity-95 mt-1">{stage.title}</span>
                   </div>
                 </div>
               </div>
@@ -484,23 +484,23 @@ const EvansPipeline = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex items-center gap-1 flex-1 max-w-sm">
+        <div className="flex items-center gap-5 mb-5">
+          <div className="flex items-center gap-2 flex-1 max-w-md">
             <Input
               placeholder="Search leads..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-3 border-slate-200 focus:border-[#0066FF] focus:ring-[#0066FF]/20"
+              className="h-11 pl-4 text-base border-slate-200 focus:border-[#0066FF] focus:ring-[#0066FF]/20"
             />
             <HelpTooltip 
               content="Search by lead name, email, or company. Results filter in real-time as you type."
               side="right"
             />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-48 border-slate-200">
-                <Filter className="w-4 h-4 mr-2 text-slate-400" />
+              <SelectTrigger className="w-52 h-11 border-slate-200">
+                <Filter className="w-5 h-5 mr-2 text-slate-400" />
                 <SelectValue placeholder="Filter by source" />
               </SelectTrigger>
               <SelectContent>
@@ -517,7 +517,7 @@ const EvansPipeline = () => {
               side="right"
             />
           </div>
-          <div className="text-sm text-slate-500">
+          <div className="text-base text-slate-500">
             Showing {filteredLeads.length} of {leads.length} leads
           </div>
         </div>
@@ -527,7 +527,7 @@ const EvansPipeline = () => {
           {/* Table Header with Column Dropdowns */}
           <div className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
             <div 
-              className="gap-3 px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider"
+              className="gap-4 px-5 py-4 text-sm font-semibold text-slate-600 uppercase tracking-wider"
               style={{ 
                 display: 'grid',
                 gridTemplateColumns: getGridTemplate()
@@ -582,9 +582,9 @@ const EvansPipeline = () => {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-6 w-6 p-0 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5"
+                    className="h-8 w-8 p-0 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -641,19 +641,19 @@ const EvansPipeline = () => {
                   <CollapsibleTrigger asChild>
                     <div
                       className={cn(
-                        "flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-slate-50 transition-colors border-l-[3px] border-b border-b-slate-100",
+                        "flex items-center gap-4 px-5 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors border-l-4 border-b border-b-slate-100",
                         stage.borderColor
                       )}
                     >
                       {isCollapsed ? (
-                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                        <ChevronRight className="h-5 w-5 text-slate-400" />
                       ) : (
-                        <ChevronDown className="h-4 w-4 text-slate-400" />
+                        <ChevronDown className="h-5 w-5 text-slate-400" />
                       )}
                       <Badge 
                         variant="outline"
                         className={cn(
-                          "font-semibold text-xs px-2 py-0.5 rounded",
+                          "font-semibold text-sm px-3 py-1 rounded",
                           stage.bgColor,
                           stage.textColor,
                           stage.borderColor
@@ -661,11 +661,11 @@ const EvansPipeline = () => {
                       >
                         {stage.title}
                       </Badge>
-                      <span className="text-xs text-slate-500 font-medium">
+                      <span className="text-sm text-slate-500 font-medium">
                         {stageLeads.length} {stageLeads.length === 1 ? 'lead' : 'leads'}
                       </span>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 ml-1 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5">
-                        <Plus className="h-3.5 w-3.5" />
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-1 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5">
+                        <Plus className="h-5 w-5" />
                       </Button>
                     </div>
                   </CollapsibleTrigger>
@@ -673,7 +673,7 @@ const EvansPipeline = () => {
                   {/* Section Content */}
                   <CollapsibleContent>
                     {stageLeads.length === 0 ? (
-                      <div className="px-12 py-4 text-sm text-slate-400 italic border-b border-slate-100">
+                      <div className="px-12 py-5 text-base text-slate-400 italic border-b border-slate-100">
                         No leads in this stage
                       </div>
                     ) : (
@@ -840,7 +840,7 @@ const EvansPipeline = () => {
                               <div
                                 key={lead.id}
                                 className={cn(
-                                  "gap-3 px-4 py-2.5 hover:bg-slate-50/80 cursor-pointer items-center text-sm transition-colors",
+                                  "gap-4 px-5 py-4 hover:bg-slate-50/80 cursor-pointer items-center text-base transition-colors min-h-[56px]",
                                   idx < stageLeads.length - 1 && "border-b border-slate-50"
                                 )}
                                 style={{ 

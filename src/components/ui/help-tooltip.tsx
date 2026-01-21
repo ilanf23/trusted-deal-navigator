@@ -17,12 +17,12 @@ const HelpTooltip = ({ content, side = 'top', className, iconClassName }: HelpTo
           <button
             type="button"
             className={cn(
-              "inline-flex items-center justify-center p-0.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0066FF]/20",
+              "inline-flex items-center justify-center p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0066FF]/20",
               className
             )}
             onClick={(e) => e.stopPropagation()}
           >
-            <HelpCircle className={cn("h-3.5 w-3.5", iconClassName)} />
+            <HelpCircle className={cn("h-5 w-5", iconClassName)} />
           </button>
         </TooltipTrigger>
         <TooltipContent 
