@@ -242,6 +242,14 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   // Notes state
   const [notesContent, setNotesContent] = useState('');
 
+  // AI states
+  const [aiLoading, setAiLoading] = useState<'summarize' | 'ask' | 'autofill' | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [showAskDialog, setShowAskDialog] = useState(false);
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const [showAiBar, setShowAiBar] = useState(true);
+
   // Reset when lead changes
   useEffect(() => {
     if (lead && open) {
@@ -256,6 +264,10 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         urgency: placeholder.urgency === 'High',
       });
       setNotesContent(placeholder.notes || lead.notes || '');
+      setAiSummary(null);
+      setAiAnswer(null);
+      setShowAskDialog(false);
+      setAiQuestion('');
     }
   }, [lead, open]);
 
@@ -388,6 +400,122 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // AI action handlers
+  const buildLeadContext = () => ({
+    name: lead?.name || '',
+    email: lead?.email,
+    phone: lead?.phone,
+    company: lead?.company_name,
+    status: lead?.status || '',
+    source: lead?.source,
+    notes: notesContent,
+    activities: activities.map(a => ({
+      type: a.activity_type,
+      content: a.content || a.title || '',
+      date: format(new Date(a.created_at), 'MMM d, yyyy'),
+    })),
+    communications: communications.map(c => ({
+      type: c.communication_type,
+      direction: c.direction,
+      duration: c.duration_seconds,
+      transcript: c.transcript,
+      date: format(new Date(c.created_at), 'MMM d, yyyy'),
+    })),
+    tasks: tasks.map(t => ({
+      title: t.title,
+      status: t.status,
+      due_date: t.due_date ? format(new Date(t.due_date), 'MMM d, yyyy') : null,
+      priority: t.priority,
+    })),
+    customFields: {
+      address: customFields.address,
+      loanType: customFields.loanType,
+      loanAmount: customFields.loanAmount,
+      businessType: customFields.businessType,
+      propertyType: customFields.propertyType,
+    },
+  });
+
+  const handleSummarize = async () => {
+    if (!lead) return;
+    setAiLoading('summarize');
+    setAiSummary(null);
+    
+    try {
+      const response = await supabase.functions.invoke('lead-ai-assistant', {
+        body: { action: 'summarize', leadContext: buildLeadContext() }
+      });
+      
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) {
+        toast({ title: response.data.error, variant: 'destructive' });
+      } else {
+        setAiSummary(response.data?.result || 'No summary generated');
+      }
+    } catch (err) {
+      console.error('Summarize error:', err);
+      toast({ title: 'Failed to generate summary', variant: 'destructive' });
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
+  const handleAskQuestion = async () => {
+    if (!lead || !aiQuestion.trim()) return;
+    setAiLoading('ask');
+    setAiAnswer(null);
+    
+    try {
+      const response = await supabase.functions.invoke('lead-ai-assistant', {
+        body: { action: 'ask', leadContext: buildLeadContext(), question: aiQuestion }
+      });
+      
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) {
+        toast({ title: response.data.error, variant: 'destructive' });
+      } else {
+        setAiAnswer(response.data?.result || 'No answer generated');
+      }
+    } catch (err) {
+      console.error('Ask error:', err);
+      toast({ title: 'Failed to get answer', variant: 'destructive' });
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
+  const handleAutofill = async () => {
+    if (!lead) return;
+    setAiLoading('autofill');
+    
+    try {
+      const response = await supabase.functions.invoke('lead-ai-assistant', {
+        body: { action: 'autofill', leadContext: buildLeadContext() }
+      });
+      
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) {
+        toast({ title: response.data.error, variant: 'destructive' });
+      } else if (response.data?.result) {
+        const result = response.data.result;
+        setCustomFields(prev => ({
+          ...prev,
+          address: result.address || prev.address,
+          loanType: result.loanType || prev.loanType,
+          loanAmount: result.loanAmount || prev.loanAmount,
+          businessType: result.businessType || prev.businessType,
+          propertyType: result.propertyType || prev.propertyType,
+        }));
+        toast({ title: 'Fields autofilled by AI' });
+      }
+    } catch (err) {
+      console.error('Autofill error:', err);
+      toast({ title: 'Failed to autofill fields', variant: 'destructive' });
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
   if (!lead) return null;
 
   // Get assigned team member
@@ -461,22 +589,110 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
               </div>
 
               {/* AI Action Bar */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b bg-white">
-                <Sparkles className="w-4 h-4 text-blue-500" />
-                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Summarize
-                </Button>
-                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
-                  <HelpCircle className="w-4 h-4 mr-2" />
-                  Ask a question
-                </Button>
-                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
-                  <Columns className="w-4 h-4 mr-2" />
-                  Autofill columns
-                </Button>
-                <X className="w-4 h-4 text-slate-400 ml-auto cursor-pointer hover:text-slate-600" />
-              </div>
+              {showAiBar && (
+                <div className="flex items-center gap-3 px-4 py-3 border-b bg-white">
+                  <Sparkles className="w-4 h-4 text-blue-500" />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    onClick={handleSummarize}
+                    disabled={aiLoading !== null}
+                  >
+                    {aiLoading === 'summarize' ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4 mr-2" />
+                    )}
+                    Summarize
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    onClick={() => setShowAskDialog(true)}
+                    disabled={aiLoading !== null}
+                  >
+                    <HelpCircle className="w-4 h-4 mr-2" />
+                    Ask a question
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    onClick={handleAutofill}
+                    disabled={aiLoading !== null}
+                  >
+                    {aiLoading === 'autofill' ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Columns className="w-4 h-4 mr-2" />
+                    )}
+                    Autofill columns
+                  </Button>
+                  <X 
+                    className="w-4 h-4 text-slate-400 ml-auto cursor-pointer hover:text-slate-600" 
+                    onClick={() => setShowAiBar(false)}
+                  />
+                </div>
+              )}
+
+              {/* Ask Question Dialog */}
+              {showAskDialog && (
+                <div className="px-4 py-3 border-b bg-blue-50 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">Ask a question about this lead</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="e.g., What's the best next step for this deal?"
+                      value={aiQuestion}
+                      onChange={(e) => setAiQuestion(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAskQuestion()}
+                      className="flex-1 text-sm"
+                    />
+                    <Button 
+                      size="sm" 
+                      onClick={handleAskQuestion}
+                      disabled={aiLoading === 'ask' || !aiQuestion.trim()}
+                    >
+                      {aiLoading === 'ask' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Ask'}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => { setShowAskDialog(false); setAiAnswer(null); setAiQuestion(''); }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {aiAnswer && (
+                    <div className="p-3 bg-white rounded-md border border-blue-200 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
+                      {aiAnswer}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* AI Summary Display */}
+              {aiSummary && (
+                <div className="px-4 py-3 border-b bg-purple-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      <span className="text-sm font-medium text-purple-800">AI Summary</span>
+                    </div>
+                    <X 
+                      className="w-4 h-4 text-purple-400 cursor-pointer hover:text-purple-600" 
+                      onClick={() => setAiSummary(null)}
+                    />
+                  </div>
+                  <div className="p-3 bg-white rounded-md border border-purple-200 text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
+                    {aiSummary}
+                  </div>
+                </div>
+              )}
 
               {/* Timeline Content */}
               <ScrollArea className="flex-1">
