@@ -674,9 +674,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
           </div>
           <div className="flex items-center gap-3">
             <Button variant="link" className="text-blue-600 text-sm p-0">Request access</Button>
-            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-              <X className="w-4 h-4" />
-            </Button>
           </div>
         </div>
 
