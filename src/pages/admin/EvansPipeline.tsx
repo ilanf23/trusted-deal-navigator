@@ -274,36 +274,42 @@ const EvansPipeline = () => {
           </div>
         </div>
 
-        {/* Pipeline Progress Bar */}
-        <div className="flex h-16 mb-6 rounded-md overflow-hidden border border-slate-200 shadow-sm">
+        {/* Pipeline Progress Bar - Streak Style */}
+        <div className="flex h-14 mb-6">
           {stageCounts.map((stage, index) => {
-            const percentage = totalLeads > 0 ? (stage.count / totalLeads) * 100 : 100 / stages.length;
+            const isFirst = index === 0;
+            const isLast = index === stageCounts.length - 1;
+            
             return (
               <div
                 key={stage.status}
-                className={cn(
-                  stage.barColor,
-                  "flex items-center justify-center text-white font-medium transition-all cursor-pointer hover:brightness-110 relative"
-                )}
-                style={{ flex: Math.max(percentage, 10) }}
+                className="relative flex-1 cursor-pointer group"
                 onClick={() => {
                   const element = document.getElementById(`section-${stage.status}`);
                   element?.scrollIntoView({ behavior: 'smooth' });
                 }}
               >
-                <div className="flex flex-col items-center z-10">
-                  <span className="text-2xl font-bold tracking-tight">{stage.count}</span>
-                  <span className="text-[11px] font-medium opacity-90 uppercase tracking-wide">{stage.title}</span>
-                </div>
-                {/* Chevron separator */}
-                {index < stages.length - 1 && (
-                  <div className="absolute right-0 top-0 h-full w-4 overflow-hidden">
-                    <div 
-                      className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rotate-45 bg-white/20"
-                      style={{ transform: 'translateY(-50%) translateX(50%) rotate(45deg)' }}
-                    />
+                {/* Main segment */}
+                <div 
+                  className={cn(
+                    "absolute inset-0 flex items-center justify-center transition-all group-hover:brightness-110",
+                    stage.barColor,
+                    isFirst && "rounded-l-md",
+                    isLast && "rounded-r-md"
+                  )}
+                  style={{
+                    clipPath: isLast 
+                      ? 'polygon(0 0, calc(100% - 0px) 0, 100% 50%, calc(100% - 0px) 100%, 0 100%, 16px 50%)'
+                      : isFirst
+                        ? 'polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 0 50%)'
+                        : 'polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%)'
+                  }}
+                >
+                  <div className="flex flex-col items-center text-white pl-2">
+                    <span className="text-2xl font-bold tracking-tight leading-none">{stage.count}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-95 mt-0.5">{stage.title}</span>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}
