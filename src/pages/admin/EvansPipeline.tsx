@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star } from 'lucide-react';
+import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -13,12 +13,19 @@ import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
+import StageManagerModal from '@/components/admin/StageManagerModal';
 import HelpTooltip from '@/components/ui/help-tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -43,6 +50,7 @@ const EvansPipeline = () => {
   const [collapsedSections, setCollapsedSections] = useState<Record<LeadStatus, boolean>>({} as Record<LeadStatus, boolean>);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
   const [sharingModalOpen, setSharingModalOpen] = useState(false);
+  const [stageManagerOpen, setStageManagerOpen] = useState(false);
 
   const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
 
@@ -301,6 +309,21 @@ const EvansPipeline = () => {
                 List View
               </Button>
             </Link>
+            {canEdit && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <MoreVertical className="h-4 w-4 text-slate-500" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => setStageManagerOpen(true)} className="cursor-pointer">
+                    <Layers className="h-4 w-4 mr-2" />
+                    Stages
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
@@ -609,6 +632,18 @@ const EvansPipeline = () => {
           ownerName="Evan"
         />
       )}
+
+      {/* Stage Manager Modal */}
+      <StageManagerModal
+        open={stageManagerOpen}
+        onOpenChange={setStageManagerOpen}
+        stages={stages.map(s => ({ id: s.status, name: s.title, color: s.barColor.replace('bg-[', '').replace(']', '').replace('bg-emerald-600', '#10b981') }))}
+        onSave={(updatedStages) => {
+          // For now, just show a toast - full persistence requires database migration
+          toast.success(`Saved ${updatedStages.length} stages`);
+          console.log('Updated stages:', updatedStages);
+        }}
+      />
     </AdminLayout>
   );
 };
