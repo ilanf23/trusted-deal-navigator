@@ -448,7 +448,7 @@ const EvansPipeline = () => {
                 />
               </div>
             )}
-            <Link to="/user/evan/leads">
+            <Link to="/team/evan/leads">
               <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-9">
                 <List className="w-4 h-4 mr-2" />
                 List View
