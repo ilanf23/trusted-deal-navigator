@@ -48,17 +48,25 @@ import { NudgesWidget } from '@/components/evan/dashboard/NudgesWidget';
 
 export type TimePeriod = 'mtd' | 'ytd';
 
-// Monochromatic chart colors - warm neutrals with gold accent
+// Brand-aligned chart colors - Blue (#0066FF) and Orange (#FF8000) palette
 const STAGE_COLORS: Record<string, string> = {
-  discovery: 'hsl(35, 8%, 70%)',
-  pre_qualification: 'hsl(35, 8%, 58%)',
-  document_collection: 'hsl(35, 8%, 46%)',
-  underwriting: 'hsl(42, 65%, 48%)',
-  approval: 'hsl(42, 65%, 55%)',
-  funded: 'hsl(142, 50%, 45%)',
+  discovery: 'hsl(217, 91%, 60%)',      // Primary blue
+  pre_qualification: 'hsl(217, 91%, 50%)', // Darker blue
+  document_collection: 'hsl(217, 91%, 40%)', // Even darker blue
+  underwriting: 'hsl(30, 100%, 50%)',    // Brand orange
+  approval: 'hsl(30, 100%, 45%)',        // Darker orange
+  funded: 'hsl(142, 50%, 45%)',          // Success green (keep for contrast)
 };
 
-const SOURCE_COLORS = ['hsl(42, 65%, 48%)', 'hsl(35, 8%, 60%)', 'hsl(35, 8%, 45%)', 'hsl(35, 8%, 75%)', 'hsl(35, 8%, 30%)', 'hsl(42, 50%, 70%)'];
+// Brand colors for Deal Sources pie chart
+const SOURCE_COLORS = [
+  'hsl(217, 91%, 50%)',   // Primary blue
+  'hsl(30, 100%, 50%)',   // Brand orange
+  'hsl(217, 91%, 65%)',   // Light blue
+  'hsl(30, 100%, 65%)',   // Light orange
+  'hsl(217, 91%, 35%)',   // Dark blue
+  'hsl(30, 100%, 35%)',   // Dark orange
+];
 
 const EvansPage = () => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
