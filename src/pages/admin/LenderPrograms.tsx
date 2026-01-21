@@ -803,40 +803,6 @@ const LenderPrograms = () => {
                               </div>
                             )}
 
-                            {/* Financial Details Row */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-admin-blue/10">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-admin-teal-light">
-                                  <DollarSign className="w-4 h-4 text-admin-teal" />
-                                </div>
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Loan Range</p>
-                                  <p className="text-sm font-medium text-admin-teal">
-                                    {program.min_loan || program.max_loan 
-                                      ? `${formatCurrency(program.min_loan)} - ${formatCurrency(program.max_loan)}`
-                                      : 'N/A'}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-admin-blue-light">
-                                  <Percent className="w-4 h-4 text-admin-blue" />
-                                </div>
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Interest Rate</p>
-                                  <p className="text-sm font-medium text-admin-blue">{program.interest_range || 'N/A'}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-admin-orange-light">
-                                  <Clock className="w-4 h-4 text-admin-orange" />
-                                </div>
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Term</p>
-                                  <p className="text-sm font-medium text-admin-orange">{program.term || 'N/A'}</p>
-                                </div>
-                              </div>
-                            </div>
                           </div>
                         ))}
                       </div>
