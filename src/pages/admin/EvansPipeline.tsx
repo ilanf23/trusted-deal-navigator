@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users } from 'lucide-react';
+import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -13,6 +13,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
+import HelpTooltip from '@/components/ui/help-tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -256,8 +257,18 @@ const EvansPipeline = () => {
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Pipeline</h1>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Main Pipeline</h1>
+              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-semibold px-1.5 py-0">
+                <Star className="h-2.5 w-2.5 mr-0.5 fill-amber-500" />
+                MAIN
+              </Badge>
+              <HelpTooltip 
+                content="Your main pipeline tracks all your primary leads through the sales process. You can create additional pipelines for specific lead types like referrals or hot deals."
+                side="bottom"
+              />
+            </div>
             <span className="text-sm text-slate-500 font-medium">{totalLeads} leads</span>
             {!canEdit && (
               <Badge variant="outline" className="gap-1 text-slate-500 border-slate-300">
@@ -268,15 +279,21 @@ const EvansPipeline = () => {
           </div>
           <div className="flex items-center gap-2">
             {canEdit && evanId && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSharingModalOpen(true)}
-                className="border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5"
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Share
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSharingModalOpen(true)}
+                  className="border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Share
+                </Button>
+                <HelpTooltip 
+                  content="Share this pipeline with team members. You can give them view-only or full edit access to collaborate on leads."
+                  side="bottom"
+                />
+              </div>
             )}
             <Link to="/user/evan/leads">
               <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50">
@@ -288,6 +305,13 @@ const EvansPipeline = () => {
         </div>
 
         {/* Pipeline Progress Bar - Streak Style */}
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
+          <HelpTooltip 
+            content="Click any stage to jump to that section. Each segment shows the count of leads in that stage. Drag leads between stages in the table below to update their status."
+            side="right"
+          />
+        </div>
         <div className="flex h-14 mb-6">
           {stageCounts.map((stage, index) => {
             const isFirst = index === 0;
@@ -330,28 +354,38 @@ const EvansPipeline = () => {
 
         {/* Filters */}
         <div className="flex items-center gap-4 mb-4">
-          <div className="flex-1 max-w-sm">
+          <div className="flex items-center gap-1 flex-1 max-w-sm">
             <Input
               placeholder="Search leads..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-3 border-slate-200 focus:border-[#0066FF] focus:ring-[#0066FF]/20"
             />
+            <HelpTooltip 
+              content="Search by lead name, email, or company. Results filter in real-time as you type."
+              side="right"
+            />
           </div>
-          <Select value={sourceFilter} onValueChange={setSourceFilter}>
-            <SelectTrigger className="w-48 border-slate-200">
-              <Filter className="w-4 h-4 mr-2 text-slate-400" />
-              <SelectValue placeholder="Filter by source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              {sources.map((source) => (
-                <SelectItem key={source} value={source!}>
-                  {source}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1">
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="w-48 border-slate-200">
+                <Filter className="w-4 h-4 mr-2 text-slate-400" />
+                <SelectValue placeholder="Filter by source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                {sources.map((source) => (
+                  <SelectItem key={source} value={source!}>
+                    {source}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <HelpTooltip 
+              content="Filter leads by their acquisition source (e.g., Website, Referral, Cold Call). Helps focus on specific lead channels."
+              side="right"
+            />
+          </div>
           <div className="text-sm text-slate-500">
             Showing {filteredLeads.length} of {leads.length} leads
           </div>
@@ -364,13 +398,22 @@ const EvansPipeline = () => {
             <div className="grid grid-cols-[32px_32px_minmax(140px,1.2fr)_90px_minmax(100px,1fr)_minmax(140px,1fr)_90px_80px_100px_90px] gap-3 px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">
               <div></div>
               <div></div>
-              <div>Name</div>
+              <div className="flex items-center gap-1">
+                Name
+                <HelpTooltip content="Lead's full name. Click any row to open the full lead detail dialog." side="bottom" iconClassName="h-3 w-3" />
+              </div>
               <div>Stage</div>
               <div>Company</div>
-              <div>Contact</div>
+              <div className="flex items-center gap-1">
+                Contact
+                <HelpTooltip content="Quick actions to call or email the lead. Click 'Call' to initiate a Twilio call, or 'Email' to compose in Gmail." side="bottom" iconClassName="h-3 w-3" />
+              </div>
               <div>Owner</div>
               <div>Source</div>
-              <div>Last Touch</div>
+              <div className="flex items-center gap-1">
+                Last Touch
+                <HelpTooltip content="Most recent communication with this lead (call, email, or SMS). Helps identify leads that need follow-up." side="bottom" iconClassName="h-3 w-3" />
+              </div>
               <div>Updated</div>
             </div>
           </div>
