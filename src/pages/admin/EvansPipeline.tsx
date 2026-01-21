@@ -525,7 +525,7 @@ const EvansPipeline = () => {
         {/* Grouped Table View - 8px spacing system */}
         <div className="flex-1 overflow-x-auto overflow-y-auto border border-slate-300 rounded-md bg-white">
           {/* Table Header with Column Dropdowns */}
-          <div className="sticky top-0 z-10 bg-slate-50 border-b-2 border-slate-300 min-w-max">
+          <div className="sticky top-0 z-10 bg-slate-50/60 border-b border-slate-200 min-w-max">
             <div 
               className="text-sm font-semibold text-slate-600 uppercase tracking-wider"
               style={{ 
