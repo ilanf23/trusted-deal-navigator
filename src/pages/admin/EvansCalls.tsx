@@ -450,8 +450,14 @@ const EvansCalls = () => {
     const programRange = parseLoanSizeText(program.loan_size_text);
     if (!programRange) return false;
 
-    // Check if ranges overlap
-    return programRange.max >= category.min && programRange.min <= category.max;
+    // For the last category ($50M+), check if program handles loans at or above $50M
+    if (category.max === Infinity) {
+      return programRange.max >= category.min;
+    }
+
+    // Check if program's loan range is fully contained within the category
+    // OR if the program's minimum starts within the category range
+    return programRange.min >= category.min && programRange.min <= category.max;
   };
 
   // Filter lender programs based on individual filters
