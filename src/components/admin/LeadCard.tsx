@@ -95,7 +95,7 @@ export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
         isDragging ? 'shadow-lg ring-2 ring-primary z-50' : ''
       }`}
     >
-      <CardContent className="p-3 space-y-1">
+      <CardContent className="p-3 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <h4 className="font-semibold text-sm leading-tight truncate">{lead.name}</h4>
           <div className="flex items-center gap-1 shrink-0">
@@ -126,6 +126,31 @@ export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Building2 className="w-3 h-3" />
             <span className="truncate">{lead.company_name}</span>
+          </div>
+        )}
+
+        {/* Last Touchpoint Indicator */}
+        {touchpoint ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1 border-t border-border/50">
+                {getTouchpointIcon(touchpoint.type, touchpoint.direction)}
+                <span className="truncate">
+                  {getTouchpointLabel(touchpoint.type, touchpoint.direction)}
+                </span>
+                <span className="text-[10px] opacity-70 ml-auto">
+                  {formatDistanceToNow(new Date(touchpoint.date), { addSuffix: true })}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {getTouchpointLabel(touchpoint.type, touchpoint.direction)} - {new Date(touchpoint.date).toLocaleDateString()}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/50 pt-1 border-t border-border/50">
+            <Calendar className="w-3 h-3" />
+            <span>No contact yet</span>
           </div>
         )}
       </CardContent>
