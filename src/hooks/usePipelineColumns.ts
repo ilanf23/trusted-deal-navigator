@@ -15,7 +15,6 @@ const defaultFoundationalColumns: PipelineColumn[] = [
   { id: 'owner', name: 'Owner', type: 'foundational', columnType: 'assigned_to', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '104px' },
   { id: 'source', name: 'Source', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '104px' },
   { id: 'last_touch', name: 'Last Touch', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '112px' },
-  { id: 'updated', name: 'Updated', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '104px' },
 ];
 
 export const usePipelineColumns = () => {
