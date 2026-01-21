@@ -109,7 +109,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_tasks')
-        .select('id, title, due_date, priority, description')
+        .select('id, title, due_date, priority, description, lead_id')
         .eq('is_completed', false)
         .order('due_date', { ascending: true });
 
@@ -123,6 +123,30 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
 
     const now = new Date();
     const actionsList: ActionItem[] = [];
+
+    // First, add pending tasks as actions (these take priority when they have due dates)
+    tasks?.forEach((task) => {
+      // Find the associated lead if any
+      const leadId = (task as any).lead_id;
+      const lead = leadId ? leadsData.find(l => l.id === leadId) : null;
+      
+      actionsList.push({
+        id: `task-${task.id}`,
+        leadId: leadId || '',
+        leadName: lead?.name || 'General Task',
+        companyName: lead?.company_name || undefined,
+        action: task.title,
+        actionType: 'follow_up',
+        impact: task.description || 'Complete this task',
+        urgencyScore: task.priority === 'high' ? 5 : task.priority === 'medium' ? 3 : 1,
+        closeProximity: lead ? STAGE_CLOSE_PROXIMITY[lead.status] || 1 : 1,
+        blockerSeverity: task.priority === 'high' ? 4 : 2,
+        waitingTime: 0,
+        dueDate: task.due_date || undefined,
+        status: lead?.status || 'discovery',
+        loanAmount: lead?.lead_responses?.[0]?.loan_amount || undefined,
+      });
+    });
 
     leadsData.forEach((lead) => {
       const lastComm = communications?.find((c) => c.lead_id === lead.id);
@@ -236,11 +260,21 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
       });
     });
 
-    // Sort by urgency score (descending) and take top 10
+    // Sort by due date (soonest first), then by urgency score for items without due dates
     return actionsList
-      .sort((a, b) => b.urgencyScore - a.urgencyScore)
+      .sort((a, b) => {
+        // Items with due dates come first, sorted chronologically (soonest first)
+        if (a.dueDate && b.dueDate) {
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        }
+        // Items with due dates come before items without
+        if (a.dueDate && !b.dueDate) return -1;
+        if (!a.dueDate && b.dueDate) return 1;
+        // For items without due dates, sort by urgency score (highest first)
+        return b.urgencyScore - a.urgencyScore;
+      })
       .slice(0, 10);
-  }, [leadsData, communications]);
+  }, [leadsData, communications, tasks]);
 
   const formatWaitingTime = (hours: number) => {
     if (hours < 24) return `${Math.round(hours)}h`;
@@ -366,10 +400,17 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
                             {stageLabels[item.status] || item.status}
                           </Badge>
                           
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            {formatWaitingTime(item.waitingTime)} waiting
-                          </div>
+                          {item.dueDate ? (
+                            <div className="flex items-center gap-1 text-xs text-primary font-medium">
+                              <Clock className="h-3 w-3" />
+                              Due {format(new Date(item.dueDate), 'MMM d, h:mm a')}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {formatWaitingTime(item.waitingTime)} waiting
+                            </div>
+                          )}
 
                           {item.blockerSeverity >= 4 && (
                             <div className="flex items-center gap-1 text-xs text-destructive">
