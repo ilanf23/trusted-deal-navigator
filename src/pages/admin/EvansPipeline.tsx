@@ -416,8 +416,8 @@ const EvansPipeline = () => {
             {canEdit && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
-                    <MoreVertical className="h-5 w-5 text-slate-500" />
+                  <Button variant="outline" size="sm" className="h-9 border-slate-200 text-slate-600 hover:bg-slate-50">
+                    Settings
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48 bg-white z-50">
