@@ -720,13 +720,50 @@ const EvansPipeline = () => {
                                 default:
                                   // Handle magic columns
                                   if (column.type === 'magic') {
+                                    const daysInPipeline = differenceInDays(new Date(), new Date(lead.created_at));
+                                    
                                     switch (column.magicType) {
+                                      // Creation Data
+                                      case 'created_date':
+                                        return <div className="text-xs text-purple-600">{new Date(lead.created_at).toLocaleDateString()}</div>;
+                                      case 'days_in_pipeline':
+                                        return <div className="text-xs text-purple-600 font-medium">{daysInPipeline}d</div>;
+                                      case 'last_updated':
+                                        return <div className="text-xs text-purple-600">{formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })}</div>;
+                                      
+                                      // Freshness (relative indicator)
+                                      case 'freshness':
+                                        const freshnessColor = daysSinceUpdate <= 1 ? 'text-green-600' : daysSinceUpdate <= 7 ? 'text-yellow-600' : 'text-red-600';
+                                        const freshnessLabel = daysSinceUpdate <= 1 ? '🟢 Fresh' : daysSinceUpdate <= 7 ? '🟡 Warm' : '🔴 Stale';
+                                        return <div className={cn("text-xs font-medium", freshnessColor)}>{freshnessLabel}</div>;
+                                      
+                                      // Stage Data
                                       case 'days_in_stage':
                                         return <div className="text-xs text-purple-600 font-medium">{daysSinceUpdate}d</div>;
+                                      case 'stage_entered_date':
+                                        return <div className="text-xs text-purple-600">{lead.qualified_at ? new Date(lead.qualified_at).toLocaleDateString() : '—'}</div>;
+                                      
+                                      // Contact Data
                                       case 'days_since_contact':
-                                        return <div className="text-xs text-purple-600">{touchpoint ? '—' : `${daysSinceUpdate}d`}</div>;
+                                        return <div className="text-xs text-purple-600">{touchpoint ? `${daysSinceUpdate}d` : '—'}</div>;
+                                      case 'last_contact_type':
+                                        return <div className="text-xs text-purple-600 capitalize">{touchpoint?.type || '—'}</div>;
+                                      
+                                      // Summary counts (placeholder - would need actual data)
+                                      case 'email_count':
+                                      case 'call_count':
+                                      case 'task_count':
+                                      case 'file_count':
+                                      case 'comment_count':
+                                      case 'meeting_count':
+                                        return <div className="text-xs text-purple-600">0</div>;
+                                      
+                                      // ID
+                                      case 'lead_id':
+                                        return <div className="text-xs text-purple-600 font-mono truncate" title={lead.id}>{lead.id.slice(0, 8)}...</div>;
+                                      
                                       default:
-                                        return <div className="text-xs text-slate-400">—</div>;
+                                        return <div className="text-xs text-purple-400 italic">—</div>;
                                     }
                                   }
                                   // Handle custom columns - show placeholder for now
