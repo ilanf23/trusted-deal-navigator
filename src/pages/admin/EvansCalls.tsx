@@ -964,24 +964,6 @@ const EvansCalls = () => {
                                             </p>
                                           )}
 
-                                          {/* Financial Details Row */}
-                                          <div className="grid grid-cols-3 gap-3 text-xs mb-3">
-                                            <div className="flex items-center gap-2">
-                                              <DollarSign className="w-3 h-3 text-admin-teal" />
-                                              <span className="text-muted-foreground">
-                                                {formatCurrency(program.min_loan)} - {formatCurrency(program.max_loan)}
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <Percent className="w-3 h-3 text-admin-blue" />
-                                              <span className="text-muted-foreground">{program.interest_range || 'N/A'}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <Clock className="w-3 h-3 text-admin-orange" />
-                                              <span className="text-muted-foreground">{program.term || 'N/A'}</span>
-                                            </div>
-                                          </div>
-
                                           {/* Contact Info */}
                                           {(program.contact_name || program.phone || program.email) && (
                                             <div className="border-t pt-3 mt-3 space-y-1.5">
