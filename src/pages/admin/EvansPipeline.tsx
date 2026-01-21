@@ -935,7 +935,7 @@ const EvansPipeline = () => {
                                       className={cn(
                                         "flex items-center min-h-[48px] overflow-hidden",
                                         !isLastColumn && "border-r border-slate-200",
-                                        (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
+                                        (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4 justify-start"
                                       )}
                                     >
                                       {renderCellContent(column)}
