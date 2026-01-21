@@ -1,17 +1,17 @@
 import { useEffect, useState, useRef } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Building2, Loader2, Plus, Upload, FileText, X, Trash2, Search } from 'lucide-react';
+import { Building2, Loader2, Plus, Upload, FileText, X, Trash2, Search, Phone, Mail, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { LenderProgramCard } from '@/components/evan/LenderProgramCard';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface Program {
   id: string;
@@ -665,20 +665,83 @@ const LenderPrograms = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredPrograms.map((program) => (
-              <div key={program.id} className="relative group">
-                <LenderProgramCard program={program} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-3 right-12 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 w-8"
-                  onClick={() => handleDeleteProgram(program.id)}
-                >
-                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                </Button>
+          <div className="bg-white rounded-md border border-slate-200 overflow-hidden">
+            <ScrollArea className="w-full">
+              <div className="min-w-[1400px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50 hover:bg-slate-50">
+                      <TableHead className="w-[200px] font-semibold text-slate-700">Institution</TableHead>
+                      <TableHead className="w-[120px] font-semibold text-slate-700">Lender Type</TableHead>
+                      <TableHead className="w-[150px] font-semibold text-slate-700">Loan Size</TableHead>
+                      <TableHead className="w-[180px] font-semibold text-slate-700">Loan Types</TableHead>
+                      <TableHead className="w-[120px] font-semibold text-slate-700">States</TableHead>
+                      <TableHead className="w-[120px] font-semibold text-slate-700">Location</TableHead>
+                      <TableHead className="w-[140px] font-semibold text-slate-700">Contact</TableHead>
+                      <TableHead className="w-[130px] font-semibold text-slate-700">Phone</TableHead>
+                      <TableHead className="w-[180px] font-semibold text-slate-700">Email</TableHead>
+                      <TableHead className="w-[200px] font-semibold text-slate-700">Looking For</TableHead>
+                      <TableHead className="w-[60px] font-semibold text-slate-700">Call</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPrograms.map((program) => (
+                      <TableRow key={program.id} className="hover:bg-slate-50 group">
+                        <TableCell className="font-medium text-slate-900">{program.lender_name}</TableCell>
+                        <TableCell className="text-slate-600 text-sm">{program.lender_type || '-'}</TableCell>
+                        <TableCell className="text-slate-700 font-medium text-sm">{program.loan_size_text || '-'}</TableCell>
+                        <TableCell className="text-slate-600 text-sm max-w-[180px] truncate" title={program.loan_types || ''}>
+                          {program.loan_types || '-'}
+                        </TableCell>
+                        <TableCell className="text-slate-600 text-sm max-w-[120px] truncate" title={program.states || ''}>
+                          {program.states || '-'}
+                        </TableCell>
+                        <TableCell className="text-slate-600 text-sm">{program.location || '-'}</TableCell>
+                        <TableCell className="text-slate-600 text-sm">{program.contact_name || '-'}</TableCell>
+                        <TableCell className="text-sm">
+                          {program.phone ? (
+                            <a href={`tel:${program.phone}`} className="text-slate-600 hover:text-slate-900 flex items-center gap-1">
+                              <Phone className="w-3 h-3" strokeWidth={1.5} />
+                              {program.phone}
+                            </a>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell className="text-sm max-w-[180px] truncate">
+                          {program.email ? (
+                            <a href={`mailto:${program.email}`} className="text-slate-600 hover:text-slate-900 flex items-center gap-1">
+                              <Mail className="w-3 h-3" strokeWidth={1.5} />
+                              <span className="truncate">{program.email}</span>
+                            </a>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell className="text-slate-500 text-sm max-w-[200px] truncate" title={program.looking_for || ''}>
+                          {program.looking_for || '-'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-medium ${
+                            program.call_status === 'Y' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {program.call_status || 'N'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteProgram(program.id)}
+                          >
+                            <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            ))}
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </div>
         )}
 
