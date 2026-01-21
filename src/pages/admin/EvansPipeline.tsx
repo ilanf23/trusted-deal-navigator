@@ -51,6 +51,9 @@ const EvansPipeline = () => {
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
   const [sharingModalOpen, setSharingModalOpen] = useState(false);
   const [stageManagerOpen, setStageManagerOpen] = useState(false);
+  const [pipelineName, setPipelineName] = useState('Main Pipeline');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingNameValue, setEditingNameValue] = useState('');
 
   const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
 
@@ -267,13 +270,51 @@ const EvansPipeline = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Main Pipeline</h1>
+              {isEditingName ? (
+                <input
+                  type="text"
+                  value={editingNameValue}
+                  onChange={(e) => setEditingNameValue(e.target.value)}
+                  onBlur={() => {
+                    if (editingNameValue.trim()) {
+                      setPipelineName(editingNameValue.trim());
+                    }
+                    setIsEditingName(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (editingNameValue.trim()) {
+                        setPipelineName(editingNameValue.trim());
+                      }
+                      setIsEditingName(false);
+                    } else if (e.key === 'Escape') {
+                      setIsEditingName(false);
+                    }
+                  }}
+                  autoFocus
+                  className="text-2xl font-semibold tracking-tight text-slate-900 bg-transparent border-b-2 border-[#0066FF] outline-none px-0 py-0"
+                  style={{ width: `${Math.max(editingNameValue.length, 8)}ch` }}
+                />
+              ) : (
+                <h1 
+                  className="text-2xl font-semibold tracking-tight text-slate-900 cursor-pointer hover:text-[#0066FF] transition-colors"
+                  onClick={() => {
+                    if (canEdit) {
+                      setEditingNameValue(pipelineName);
+                      setIsEditingName(true);
+                    }
+                  }}
+                  title={canEdit ? "Click to edit pipeline name" : undefined}
+                >
+                  {pipelineName}
+                </h1>
+              )}
               <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-semibold px-1.5 py-0">
                 <Star className="h-2.5 w-2.5 mr-0.5 fill-amber-500" />
                 MAIN
               </Badge>
               <HelpTooltip 
-                content="Your main pipeline tracks all your primary leads through the sales process. You can create additional pipelines for specific lead types like referrals or hot deals."
+                content="Click the pipeline name to rename it. Your main pipeline tracks all your primary leads through the sales process."
                 side="bottom"
               />
             </div>
@@ -638,6 +679,11 @@ const EvansPipeline = () => {
         open={stageManagerOpen}
         onOpenChange={setStageManagerOpen}
         stages={stages.map(s => ({ id: s.status, name: s.title, color: s.barColor.replace('bg-[', '').replace(']', '').replace('bg-emerald-600', '#10b981') }))}
+        pipelineName={pipelineName}
+        onPipelineNameChange={(name) => {
+          setPipelineName(name);
+          toast.success('Pipeline name updated');
+        }}
         onSave={(updatedStages) => {
           // For now, just show a toast - full persistence requires database migration
           toast.success(`Saved ${updatedStages.length} stages`);
