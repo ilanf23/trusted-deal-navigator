@@ -314,6 +314,20 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     approval: 'Approval',
   };
 
+  // Helper to truncate and clean impact text
+  const formatImpactText = (text: string, maxLength: number = 60) => {
+    if (!text) return '';
+    // Remove markdown-style formatting
+    let cleaned = text
+      .replace(/\*\*/g, '')
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    if (cleaned.length <= maxLength) return cleaned;
+    return cleaned.substring(0, maxLength).trim() + '...';
+  };
+
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
       <CardHeader className="pb-3">
@@ -347,10 +361,11 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
           </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-3">
+            <div className="space-y-2">
               {actions.map((item, index) => {
                 const Icon = ACTION_ICONS[item.actionType];
                 const urgency = getUrgencyIndicator(item.urgencyScore);
+                const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
 
                 return (
                   <Link
@@ -358,73 +373,57 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
                     to={`/user/evan/leads?highlight=${item.leadId}`}
                     className="block"
                   >
-                    <div className="group flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all cursor-pointer">
+                    <div className="group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all cursor-pointer">
                       {/* Rank number */}
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-muted flex items-center justify-center">
-                        <span className="text-xs font-bold text-muted-foreground">
-                          {index + 1}
-                        </span>
+                      <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
+                        index < 3 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {index + 1}
                       </div>
 
                       {/* Action icon */}
-                      <div className={`flex-shrink-0 p-2 rounded-lg bg-muted/50 ${urgency.color}`}>
+                      <div className={`flex-shrink-0 p-2 rounded-lg ${
+                        isOverdue ? 'bg-destructive/10 text-destructive' : 'bg-muted/50 ' + urgency.color
+                      }`}>
                         <Icon className="h-4 w-4" />
                       </div>
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium truncate">
-                              {item.leadName}
-                              {item.companyName && (
-                                <span className="text-muted-foreground font-normal">
-                                  {' '}· {item.companyName}
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-sm text-foreground mt-0.5">
-                              {item.action}
-                            </p>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold truncate">
+                            {item.action}
+                          </p>
                           {item.loanAmount && (
-                            <span className="text-xs font-medium text-muted-foreground flex-shrink-0">
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 shrink-0">
                               {formatCurrency(item.loanAmount)}
-                            </span>
+                            </Badge>
                           )}
                         </div>
-
-                        {/* Impact & metadata */}
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <Badge variant="secondary" className={`text-xs py-0 px-1.5 ${getStageColor(item.status)}`}>
-                            {stageLabels[item.status] || item.status}
-                          </Badge>
-                          
-                          {item.dueDate ? (
-                            <div className="flex items-center gap-1 text-xs text-primary font-medium">
-                              <Clock className="h-3 w-3" />
-                              Due {format(new Date(item.dueDate), 'MMM d, h:mm a')}
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {formatWaitingTime(item.waitingTime)} waiting
-                            </div>
-                          )}
-
-                          {item.blockerSeverity >= 4 && (
-                            <div className="flex items-center gap-1 text-xs text-destructive">
-                              <AlertTriangle className="h-3 w-3" />
-                              Blocker
-                            </div>
-                          )}
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground truncate">
+                            {item.leadName}
+                            {item.companyName && ` · ${item.companyName}`}
+                          </span>
                         </div>
+                      </div>
 
-                        {/* Impact statement */}
-                        <div className="flex items-center gap-1.5 mt-2 text-xs text-green-600">
-                          <ArrowRight className="h-3 w-3" />
-                          <span>{item.impact}</span>
-                        </div>
+                      {/* Right side metadata */}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <Badge variant="secondary" className={`text-[10px] py-0 px-1.5 ${getStageColor(item.status)}`}>
+                          {stageLabels[item.status] || item.status}
+                        </Badge>
+                        
+                        {item.dueDate ? (
+                          <span className={`text-[10px] font-medium ${isOverdue ? 'text-destructive' : 'text-primary'}`}>
+                            {isOverdue ? 'Overdue' : format(new Date(item.dueDate), 'MMM d')}
+                          </span>
+                        ) : item.waitingTime > 0 ? (
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatWaitingTime(item.waitingTime)}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </Link>
