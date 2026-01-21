@@ -927,10 +927,12 @@ const EvansPipeline = () => {
                                     <div 
                                       key={column.id} 
                                       className={cn(
-                                        "flex items-center px-4 py-3 min-h-[48px]",
+                                        "flex items-center py-3 min-h-[48px]",
                                         !isLastColumn && "border-r border-slate-200",
-                                        column.id === 'checkbox' && "px-3 justify-center",
-                                        column.id === 'avatar' && "px-2 justify-center"
+                                        column.id === 'checkbox' && "px-2 justify-center",
+                                        column.id === 'avatar' && "px-2 justify-center",
+                                        column.id === 'stage' && "px-2",
+                                        column.id !== 'checkbox' && column.id !== 'avatar' && column.id !== 'stage' && "px-4"
                                       )}
                                     >
                                       {renderCellContent(column)}
