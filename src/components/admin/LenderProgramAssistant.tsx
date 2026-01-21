@@ -2,9 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, Bot, User, Loader2, Sparkles, X } from 'lucide-react';
+import { Send, Bot, User, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Message {
@@ -84,24 +83,8 @@ export function LenderProgramAssistant({ leadContext, onClose }: LenderProgramAs
   };
 
   return (
-    <Card className="flex flex-col h-full border-admin-blue/20">
-      <CardHeader className="pb-3 border-b flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark">
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
-            <CardTitle className="text-base">Program Advisor</CardTitle>
-          </div>
-          {onClose && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0 min-h-0">
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+    <div className="flex flex-col h-full">
+      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="space-y-4">
               <div className="text-center py-6">
@@ -169,25 +152,24 @@ export function LenderProgramAssistant({ leadContext, onClose }: LenderProgramAs
             </div>
           )}
         </ScrollArea>
-        <form onSubmit={handleSubmit} className="p-3 border-t flex-shrink-0">
-          <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about lender programs..."
-              disabled={isLoading}
-              className="text-sm"
-            />
-            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      <form onSubmit={handleSubmit} className="p-3 border-t flex-shrink-0">
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about lender programs..."
+            disabled={isLoading}
+            className="text-sm"
+          />
+          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }

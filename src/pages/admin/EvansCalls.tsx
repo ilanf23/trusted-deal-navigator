@@ -854,12 +854,12 @@ const EvansCalls = () => {
           </div>
 
           {/* Right Column - Lender Programs & AI Assistant */}
-          <div className="lg:col-span-2 relative">
-            <div className="h-[calc(100vh-280px)]">
-              {/* Lender Programs - Always full width now */}
-              <Card className="h-full flex flex-col">
-                <CardHeader className="flex-shrink-0">
-                  <div className="flex items-center justify-between">
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-[calc(100vh-280px)]">
+              {/* Lender Programs */}
+              <div className={showAssistant ? "xl:col-span-3" : "xl:col-span-5"}>
+                <Card className="h-full flex flex-col">
+                  <CardHeader className="flex-shrink-0">
                     <div className="flex items-center gap-2">
                       <Building2 className="h-5 w-5 text-muted-foreground" />
                       <div>
@@ -869,129 +869,149 @@ const EvansCalls = () => {
                         </CardDescription>
                       </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0 flex-1 min-h-0">
-                  <ScrollArea className="h-full">
-                    <div className="p-6 pt-0 space-y-4">
-                      {lenders.length === 0 ? (
-                        <div className="text-center py-12">
-                          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                          <p className="text-muted-foreground">No lender programs available</p>
-                          <p className="text-sm text-muted-foreground mt-1">Add lenders from the Lender Programs page</p>
-                        </div>
-                      ) : (
-                        lenders.map((lender) => (
-                          <Collapsible
-                            key={lender.name}
-                            open={expandedLenders[lender.name]}
-                            onOpenChange={() => toggleLender(lender.name)}
-                          >
-                            <Card className="overflow-hidden border-admin-blue/10 border hover:border-admin-blue/30 transition-all">
-                              <CollapsibleTrigger className="w-full">
-                                <CardHeader className="cursor-pointer hover:bg-admin-blue-light/30 transition-colors py-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark flex items-center justify-center shadow-sm">
-                                        <Building2 className="w-5 h-5 text-white" />
+                  </CardHeader>
+                  <CardContent className="p-0 flex-1 min-h-0">
+                    <ScrollArea className="h-full">
+                      <div className="p-6 pt-0 space-y-4">
+                        {lenders.length === 0 ? (
+                          <div className="text-center py-12">
+                            <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                            <p className="text-muted-foreground">No lender programs available</p>
+                            <p className="text-sm text-muted-foreground mt-1">Add lenders from the Lender Programs page</p>
+                          </div>
+                        ) : (
+                          lenders.map((lender) => (
+                            <Collapsible
+                              key={lender.name}
+                              open={expandedLenders[lender.name]}
+                              onOpenChange={() => toggleLender(lender.name)}
+                            >
+                              <Card className="overflow-hidden border-admin-blue/10 border hover:border-admin-blue/30 transition-all">
+                                <CollapsibleTrigger className="w-full">
+                                  <CardHeader className="cursor-pointer hover:bg-admin-blue-light/30 transition-colors py-4">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark flex items-center justify-center shadow-sm">
+                                          <Building2 className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="text-left">
+                                          <p className="font-semibold text-admin-blue-dark">{lender.name}</p>
+                                          <p className="text-xs text-muted-foreground">{lender.specialty}</p>
+                                        </div>
                                       </div>
-                                      <div className="text-left">
-                                        <p className="font-semibold text-admin-blue-dark">{lender.name}</p>
-                                        <p className="text-xs text-muted-foreground">{lender.specialty}</p>
+                                      <div className="flex items-center gap-2">
+                                        <Badge className="bg-admin-orange text-white border-0 text-xs">
+                                          {lender.programs.length} Programs
+                                        </Badge>
+                                        {expandedLenders[lender.name] ? (
+                                          <ChevronUp className="w-4 h-4 text-admin-blue" />
+                                        ) : (
+                                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                        )}
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <Badge className="bg-admin-orange text-white border-0 text-xs">
-                                        {lender.programs.length} Programs
-                                      </Badge>
-                                      {expandedLenders[lender.name] ? (
-                                        <ChevronUp className="w-4 h-4 text-admin-blue" />
-                                      ) : (
-                                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                                      )}
-                                    </div>
-                                  </div>
-                                </CardHeader>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <CardContent className="pt-0 pb-4">
-                                  <div className="space-y-3">
-                                    {lender.programs.map((program) => (
-                                      <div
-                                        key={program.id}
-                                        className="p-4 rounded-lg border border-admin-blue/10 bg-gradient-to-r from-admin-blue-light/20 to-transparent"
-                                      >
-                                        <div className="flex items-start justify-between gap-3 mb-3">
-                                          <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <h4 className="font-medium text-sm">{program.program_name}</h4>
-                                              <Badge className={`text-xs ${getTypeBadgeClass(program.program_type)}`}>
-                                                {program.program_type}
-                                              </Badge>
+                                  </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  <CardContent className="pt-0 pb-4">
+                                    <div className="space-y-3">
+                                      {lender.programs.map((program) => (
+                                        <div
+                                          key={program.id}
+                                          className="p-4 rounded-lg border border-admin-blue/10 bg-gradient-to-r from-admin-blue-light/20 to-transparent"
+                                        >
+                                          <div className="flex items-start justify-between gap-3 mb-3">
+                                            <div>
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <h4 className="font-medium text-sm">{program.program_name}</h4>
+                                                <Badge className={`text-xs ${getTypeBadgeClass(program.program_type)}`}>
+                                                  {program.program_type}
+                                                </Badge>
+                                              </div>
+                                              <p className="text-xs text-muted-foreground">{program.description}</p>
                                             </div>
-                                            <p className="text-xs text-muted-foreground">{program.description}</p>
+                                          </div>
+                                          <div className="grid grid-cols-3 gap-3 text-xs">
+                                            <div className="flex items-center gap-2">
+                                              <DollarSign className="w-3 h-3 text-admin-teal" />
+                                              <span className="text-muted-foreground">
+                                                {formatCurrency(program.min_loan)} - {formatCurrency(program.max_loan)}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Percent className="w-3 h-3 text-admin-blue" />
+                                              <span className="text-muted-foreground">{program.interest_range || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Clock className="w-3 h-3 text-admin-orange" />
+                                              <span className="text-muted-foreground">{program.term || 'N/A'}</span>
+                                            </div>
                                           </div>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-3 text-xs">
-                                          <div className="flex items-center gap-2">
-                                            <DollarSign className="w-3 h-3 text-admin-teal" />
-                                            <span className="text-muted-foreground">
-                                              {formatCurrency(program.min_loan)} - {formatCurrency(program.max_loan)}
-                                            </span>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            <Percent className="w-3 h-3 text-admin-blue" />
-                                            <span className="text-muted-foreground">{program.interest_range || 'N/A'}</span>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            <Clock className="w-3 h-3 text-admin-orange" />
-                                            <span className="text-muted-foreground">{program.term || 'N/A'}</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </CardContent>
-                              </CollapsibleContent>
-                            </Card>
-                          </Collapsible>
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Floating AI Assistant - Collapsible popup */}
-            {showAssistant ? (
-              <div className="absolute bottom-4 right-4 w-80 h-96 z-50 shadow-xl rounded-lg overflow-hidden">
-                <LenderProgramAssistant
-                  leadContext={
-                    matchedLead
-                      ? {
-                          name: matchedLead.name,
-                          company: matchedLead.company_name || undefined,
-                          loanType: leadResponse?.loan_type || undefined,
-                          loanAmount: leadResponse?.loan_amount || undefined,
-                          purpose: leadResponse?.funding_purpose || undefined,
-                          annualRevenue: leadResponse?.annual_revenue || undefined,
-                          businessType: leadResponse?.business_type || undefined,
-                        }
-                      : undefined
-                  }
-                  onClose={() => setShowAssistant(false)}
-                />
+                                      ))}
+                                    </div>
+                                  </CardContent>
+                                </CollapsibleContent>
+                              </Card>
+                            </Collapsible>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
               </div>
-            ) : (
-              <Button
-                onClick={() => setShowAssistant(true)}
-                className="absolute bottom-4 right-4 z-50 h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark hover:from-admin-blue-dark hover:to-admin-blue"
-                size="icon"
-              >
-                <Sparkles className="h-6 w-6 text-white" />
-              </Button>
-            )}
+
+              {/* AI Assistant Panel - Clickable header to collapse */}
+              {showAssistant ? (
+                <div className="xl:col-span-2 h-full">
+                  <Card className="h-full flex flex-col border-admin-blue/20">
+                    {/* Clickable header to collapse */}
+                    <CardHeader 
+                      className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setShowAssistant(false)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark">
+                            <Sparkles className="h-4 w-4 text-white" />
+                          </div>
+                          <CardTitle className="text-base">Program Advisor</CardTitle>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 p-0 min-h-0">
+                      <LenderProgramAssistant
+                        leadContext={
+                          matchedLead
+                            ? {
+                                name: matchedLead.name,
+                                company: matchedLead.company_name || undefined,
+                                loanType: leadResponse?.loan_type || undefined,
+                                loanAmount: leadResponse?.loan_amount || undefined,
+                                purpose: leadResponse?.funding_purpose || undefined,
+                                annualRevenue: leadResponse?.annual_revenue || undefined,
+                                businessType: leadResponse?.business_type || undefined,
+                              }
+                            : undefined
+                        }
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <div className="fixed bottom-20 right-6 z-50">
+                  <Button
+                    onClick={() => setShowAssistant(true)}
+                    className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark hover:from-admin-blue-dark hover:to-admin-blue overflow-visible"
+                    size="icon"
+                  >
+                    <Sparkles className="h-10 w-10 text-white -m-2" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
