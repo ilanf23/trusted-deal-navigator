@@ -24,6 +24,8 @@ import {
   Clock, 
   ChevronDown, 
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
   PhoneOff,
   AlertCircle,
@@ -235,6 +237,10 @@ const EvansCalls = () => {
     lenderType: '',
     loanTypes: '',
   });
+  
+  // Pagination state for lender programs
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -391,6 +397,18 @@ const EvansCalls = () => {
       return true;
     });
   }, [allPrograms, lenderFilters]);
+
+  // Paginated programs
+  const totalPages = Math.ceil(filteredPrograms.length / ITEMS_PER_PAGE);
+  const paginatedPrograms = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredPrograms.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredPrograms, currentPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [lenderFilters]);
 
   const hasActiveFilters = Object.values(lenderFilters).some(v => v.trim() !== '');
 
@@ -979,9 +997,9 @@ const EvansCalls = () => {
                   <CardHeader className="flex-shrink-0 pb-3 border-b bg-slate-50/50">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-shrink-0">
-                        <CardTitle className="text-lg font-semibold">Deal Matcher</CardTitle>
+                        <CardTitle className="text-lg font-semibold">Lender Programs</CardTitle>
                         <CardDescription className="text-xs">
-                          {filteredPrograms.length} of {allPrograms.length} programs{leadContext ? ' • Matching to lead' : ''}
+                          Showing {paginatedPrograms.length} of {filteredPrograms.length} programs{leadContext ? ' • Matching to lead' : ''}
                         </CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1040,55 +1058,85 @@ const EvansCalls = () => {
                           )}
                         </div>
                       ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/50">
-                              <TableHead className="text-xs font-semibold w-[180px]">Institution</TableHead>
-                              <TableHead className="text-xs font-semibold w-[300px]">Looking For</TableHead>
-                              <TableHead className="text-xs font-semibold w-[120px]">Contact</TableHead>
-                              <TableHead className="text-xs font-semibold w-[130px]">Phone</TableHead>
-                              <TableHead className="text-xs font-semibold w-[100px]">Loan Size</TableHead>
-                              <TableHead className="text-xs font-semibold w-[120px]">States</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredPrograms.map((program) => (
-                              <TableRow key={program.id} className="min-h-[48px]">
-                                <TableCell className="py-2 px-2">
-                                  <div className="font-medium text-sm">{program.lender_name}</div>
-                                  {program.lender_type && (
-                                    <div className="text-xs text-muted-foreground">{program.lender_type}</div>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-2 px-2">
-                                  <div className="text-sm whitespace-pre-wrap break-words line-clamp-3">
-                                    {program.looking_for || program.description || '—'}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="py-2 px-2">
-                                  <div className="text-sm">{program.contact_name || '—'}</div>
-                                </TableCell>
-                                <TableCell className="py-2 px-2">
-                                  {program.phone ? (
-                                    <a href={`tel:${program.phone}`} className="text-sm text-admin-blue hover:underline">
-                                      {program.phone}
-                                    </a>
-                                  ) : (
-                                    <span className="text-sm text-muted-foreground">—</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-2 px-2">
-                                  <div className="text-sm">{program.loan_size_text || '—'}</div>
-                                </TableCell>
-                                <TableCell className="py-2 px-2">
-                                  <div className="text-sm truncate max-w-[100px]" title={program.states || ''}>
-                                    {program.states || '—'}
-                                  </div>
-                                </TableCell>
+                        <>
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead className="text-xs font-semibold w-[180px]">Institution</TableHead>
+                                <TableHead className="text-xs font-semibold w-[300px]">Looking For</TableHead>
+                                <TableHead className="text-xs font-semibold w-[120px]">Contact</TableHead>
+                                <TableHead className="text-xs font-semibold w-[130px]">Phone</TableHead>
+                                <TableHead className="text-xs font-semibold w-[100px]">Loan Size</TableHead>
+                                <TableHead className="text-xs font-semibold w-[120px]">States</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {paginatedPrograms.map((program) => (
+                                <TableRow key={program.id} className="min-h-[48px]">
+                                  <TableCell className="py-2 px-2">
+                                    <div className="font-medium text-sm">{program.lender_name}</div>
+                                    {program.lender_type && (
+                                      <div className="text-xs text-muted-foreground">{program.lender_type}</div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="py-2 px-2">
+                                    <div className="text-sm whitespace-pre-wrap break-words line-clamp-3">
+                                      {program.looking_for || program.description || '—'}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="py-2 px-2">
+                                    <div className="text-sm">{program.contact_name || '—'}</div>
+                                  </TableCell>
+                                  <TableCell className="py-2 px-2">
+                                    {program.phone ? (
+                                      <a href={`tel:${program.phone}`} className="text-sm text-admin-blue hover:underline">
+                                        {program.phone}
+                                      </a>
+                                    ) : (
+                                      <span className="text-sm text-muted-foreground">—</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="py-2 px-2">
+                                    <div className="text-sm">{program.loan_size_text || '—'}</div>
+                                  </TableCell>
+                                  <TableCell className="py-2 px-2">
+                                    <div className="text-sm truncate max-w-[100px]" title={program.states || ''}>
+                                      {program.states || '—'}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                          {/* Pagination Controls */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t bg-slate-50/50">
+                              <div className="text-xs text-muted-foreground">
+                                Page {currentPage} of {totalPages}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                  disabled={currentPage === 1}
+                                  className="h-7 w-7 p-0"
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={currentPage === totalPages}
+                                  className="h-7 w-7 p-0"
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </ScrollArea>
                   </CardContent>
