@@ -91,6 +91,7 @@ interface Program {
   lender_type: string | null;
   loan_types: string | null;
   states: string | null;
+  loan_size_text: string | null;
 }
 
 interface GroupedLender {
@@ -1000,23 +1001,27 @@ const EvansCalls = () => {
                                           </div>
                                         )}
 
-                                        {/* Location & States */}
-                                        {(program.states || program.location) && (
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {program.location && (
-                                              <div className="bg-slate-50 rounded-lg p-4">
-                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Location</p>
-                                                <p className="text-sm font-medium text-slate-900">{program.location}</p>
-                                              </div>
-                                            )}
-                                            {program.states && (
-                                              <div className="bg-slate-50 rounded-lg p-4">
-                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">States</p>
-                                                <p className="text-sm font-medium text-slate-900">{program.states}</p>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
+                                        {/* Loan Range, Location & States */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                          {program.loan_size_text && (
+                                            <div className="bg-emerald-50 rounded-lg p-4">
+                                              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Loan Range</p>
+                                              <p className="text-sm font-semibold text-emerald-900">{program.loan_size_text}</p>
+                                            </div>
+                                          )}
+                                          {program.location && (
+                                            <div className="bg-slate-50 rounded-lg p-4">
+                                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Location</p>
+                                              <p className="text-sm font-medium text-slate-900">{program.location}</p>
+                                            </div>
+                                          )}
+                                          {program.states && (
+                                            <div className="bg-slate-50 rounded-lg p-4">
+                                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">States</p>
+                                              <p className="text-sm font-medium text-slate-900">{program.states}</p>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     ))}
                                   </CardContent>
