@@ -37,13 +37,13 @@ type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 // Brand colors: Blue (#0066FF) for early stages, Orange (#FF8000) for later stages
-const stages: { status: LeadStatus; title: string; bgColor: string; borderColor: string; textColor: string; barColor: string }[] = [
-  { status: 'discovery', title: 'Discovery', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#0066FF]' },
-  { status: 'pre_qualification', title: 'Pre-Qual', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#1a75ff]' },
-  { status: 'document_collection', title: 'Doc Collection', bgColor: 'bg-[#3385ff]/10', borderColor: 'border-[#3385ff]', textColor: 'text-[#3385ff]', barColor: 'bg-[#3385ff]' },
-  { status: 'underwriting', title: 'Underwriting', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#FF8000]' },
-  { status: 'approval', title: 'Approval', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#e67300]' },
-  { status: 'funded', title: 'Funded', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600' },
+const stages: { status: LeadStatus; title: string; bgColor: string; borderColor: string; textColor: string; barColor: string; hexColor: string }[] = [
+  { status: 'discovery', title: 'Discovery', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#0066FF]', hexColor: '#0066FF' },
+  { status: 'pre_qualification', title: 'Pre-Qual', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#1a75ff]', hexColor: '#1a75ff' },
+  { status: 'document_collection', title: 'Doc Collection', bgColor: 'bg-[#3385ff]/10', borderColor: 'border-[#3385ff]', textColor: 'text-[#3385ff]', barColor: 'bg-[#3385ff]', hexColor: '#3385ff' },
+  { status: 'underwriting', title: 'Underwriting', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#FF8000]', hexColor: '#FF8000' },
+  { status: 'approval', title: 'Approval', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#e67300]', hexColor: '#e67300' },
+  { status: 'funded', title: 'Funded', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600', hexColor: '#059669' },
 ];
 
 const EvansPipeline = () => {
@@ -722,17 +722,62 @@ const EvansPipeline = () => {
                                   return <div className="font-medium text-slate-900 truncate">{lead.name}</div>;
                                 case 'stage':
                                   return (
-                                    <Badge 
-                                      variant="outline" 
-                                      className={cn(
-                                        "text-[10px] font-medium px-1.5 py-0 rounded",
-                                        stageEntry?.bgColor,
-                                        stageEntry?.textColor,
-                                        "border-transparent"
-                                      )}
-                                    >
-                                      {stageEntry?.title}
-                                    </Badge>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <button 
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                                        >
+                                          <Badge 
+                                            variant="outline" 
+                                            className={cn(
+                                              "text-[11px] font-medium px-2 py-0.5 rounded cursor-pointer",
+                                              stageEntry?.bgColor,
+                                              stageEntry?.textColor,
+                                              "border-transparent"
+                                            )}
+                                          >
+                                            {stageEntry?.title}
+                                          </Badge>
+                                          <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="start" className="w-44 bg-white z-50">
+                                        <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase">Move to Stage</div>
+                                        {stages.map((s) => (
+                                          <DropdownMenuItem
+                                            key={s.status}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (s.status !== lead.status) {
+                                                updateStatusMutation.mutate({ 
+                                                  id: lead.id, 
+                                                  status: s.status, 
+                                                  previousStatus: lead.status 
+                                                });
+                                              }
+                                            }}
+                                            className={cn(
+                                              "cursor-pointer gap-2",
+                                              s.status === lead.status && "bg-slate-100"
+                                            )}
+                                          >
+                                            <div 
+                                              className="w-3 h-3 rounded-full flex-shrink-0" 
+                                              style={{ backgroundColor: s.hexColor }}
+                                            />
+                                            <span className={cn(
+                                              s.status === lead.status && "font-semibold"
+                                            )}>
+                                              {s.title}
+                                            </span>
+                                            {s.status === lead.status && (
+                                              <span className="ml-auto text-[#0066FF]">✓</span>
+                                            )}
+                                          </DropdownMenuItem>
+                                        ))}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   );
                                 case 'company':
                                   return <div className="text-slate-600 truncate text-[13px]">{lead.company_name || '—'}</div>;
