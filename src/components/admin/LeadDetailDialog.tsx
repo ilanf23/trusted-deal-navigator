@@ -283,6 +283,9 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const [showAiBar, setShowAiBar] = useState(true);
+  
+  // Activity search state
+  const [activitySearch, setActivitySearch] = useState('');
 
   // Reset when lead changes
   useEffect(() => {
@@ -657,7 +660,28 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const timelineItems = [
     ...activities.map(a => ({ ...a, _type: 'activity' as const })),
     ...communications.map(c => ({ ...c, _type: 'communication' as const, activity_type: c.communication_type, title: null, content: null }))
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  ]
+    .filter(item => {
+      if (!activitySearch.trim()) return true;
+      const searchLower = activitySearch.toLowerCase();
+      if (item._type === 'activity') {
+        const activity = item as LeadActivity & { _type: 'activity' };
+        return (
+          activity.title?.toLowerCase().includes(searchLower) ||
+          activity.content?.toLowerCase().includes(searchLower) ||
+          activity.activity_type?.toLowerCase().includes(searchLower)
+        );
+      } else {
+        const comm = item as Communication & { _type: 'communication' };
+        return (
+          comm.communication_type?.toLowerCase().includes(searchLower) ||
+          comm.content?.toLowerCase().includes(searchLower) ||
+          comm.transcript?.toLowerCase().includes(searchLower) ||
+          comm.direction?.toLowerCase().includes(searchLower)
+        );
+      }
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -681,16 +705,20 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         <div className="flex h-[calc(90vh-60px)]">
           {/* Left Panel - Activity Timeline */}
           <div className="flex-1 flex flex-col border-r">
-            {/* Action Bar */}
+            {/* Search Bar */}
             <div className="flex items-center gap-2 px-4 py-2 border-b bg-white">
-              <div className="flex-1 flex items-center gap-2 bg-slate-100 rounded-md px-3 py-2">
-                <Plus className="w-4 h-4 text-rose-400" />
-                <span className="text-sm text-slate-500">Sorry, you can't add anything to this Box with your current permissions</span>
+              <div className="flex-1">
+                <Input
+                  value={activitySearch}
+                  onChange={(e) => setActivitySearch(e.target.value)}
+                  placeholder="Search activity, emails, calls..."
+                  className="h-9 text-sm border-slate-200 bg-slate-50 focus:bg-white pl-3"
+                />
               </div>
-              <Button variant="ghost" size="icon"><MessageSquare className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="icon"><CheckCircle2 className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="icon"><Calendar className="w-4 h-4" /></Button>
-              <Button variant="ghost" size="icon"><FileText className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" title="Add comment"><MessageSquare className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" title="Add task"><CheckCircle2 className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" title="Schedule meeting"><Calendar className="w-4 h-4" /></Button>
+              <Button variant="ghost" size="icon" title="Attach file"><FileText className="w-4 h-4" /></Button>
             </div>
 
             {/* Tabs */}
