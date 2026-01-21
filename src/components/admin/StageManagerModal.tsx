@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { GripVertical, Plus, Trash2, Palette } from 'lucide-react';
+import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface Stage {
   id: string;
@@ -26,20 +30,26 @@ interface StageManagerModalProps {
   onSave: (stages: Stage[]) => void;
 }
 
-const colorOptions = [
-  { name: 'Blue', value: '#0066FF' },
-  { name: 'Light Blue', value: '#3385ff' },
-  { name: 'Orange', value: '#FF8000' },
-  { name: 'Dark Orange', value: '#e67300' },
-  { name: 'Green', value: '#10b981' },
-  { name: 'Purple', value: '#8b5cf6' },
-  { name: 'Pink', value: '#ec4899' },
-  { name: 'Slate', value: '#64748b' },
+// Brand and suggested colors
+const presetColors = [
+  '#0066FF', // Brand Blue
+  '#3385ff', // Light Blue
+  '#FF8000', // Brand Orange
+  '#e67300', // Dark Orange
+  '#10b981', // Green
+  '#059669', // Dark Green
+  '#8b5cf6', // Purple
+  '#6366f1', // Indigo
+  '#ec4899', // Pink
+  '#ef4444', // Red
+  '#f59e0b', // Amber
+  '#64748b', // Slate
 ];
 
 const StageManagerModal = ({ open, onOpenChange, stages, onSave }: StageManagerModalProps) => {
   const [localStages, setLocalStages] = useState<Stage[]>(stages);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [openColorPicker, setOpenColorPicker] = useState<string | null>(null);
 
   const handleAddStage = () => {
     const newStage: Stage = {
@@ -120,10 +130,81 @@ const StageManagerModal = ({ open, onOpenChange, stages, onSave }: StageManagerM
                 <GripVertical className="h-5 w-5" />
               </div>
               
-              <div 
-                className="w-4 h-4 rounded-full flex-shrink-0"
-                style={{ backgroundColor: stage.color }}
-              />
+              {/* Color Picker Button */}
+              <Popover 
+                open={openColorPicker === stage.id} 
+                onOpenChange={(isOpen) => setOpenColorPicker(isOpen ? stage.id : null)}
+              >
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-8 h-8 rounded-lg flex-shrink-0 border-2 border-white shadow-md hover:scale-110 transition-transform cursor-pointer"
+                    style={{ backgroundColor: stage.color }}
+                    title="Click to change color"
+                  />
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <div className="space-y-3">
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Choose Color
+                    </div>
+                    
+                    {/* Color Wheel Input */}
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <input
+                          type="color"
+                          value={stage.color}
+                          onChange={(e) => handleUpdateStage(stage.id, 'color', e.target.value)}
+                          className="w-16 h-16 rounded-full cursor-pointer border-0 p-0 appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-2 [&::-webkit-color-swatch]:border-white [&::-webkit-color-swatch]:shadow-lg [&::-moz-color-swatch]:rounded-full [&::-moz-color-swatch]:border-2 [&::-moz-color-swatch]:border-white"
+                          title="Color wheel"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-xs text-slate-500 mb-1">Hex Value</div>
+                        <Input
+                          value={stage.color}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val.match(/^#[0-9A-Fa-f]{0,6}$/)) {
+                              handleUpdateStage(stage.id, 'color', val);
+                            }
+                          }}
+                          className="h-8 text-sm font-mono uppercase"
+                          placeholder="#0066FF"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Preset Colors */}
+                    <div>
+                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
+                        Preset Colors
+                      </div>
+                      <div className="grid grid-cols-6 gap-2">
+                        {presetColors.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => {
+                              handleUpdateStage(stage.id, 'color', color);
+                              setOpenColorPicker(null);
+                            }}
+                            className={cn(
+                              "w-8 h-8 rounded-lg transition-all hover:scale-110 border-2",
+                              stage.color.toLowerCase() === color.toLowerCase() 
+                                ? "border-slate-900 shadow-md" 
+                                : "border-white shadow-sm"
+                            )}
+                            style={{ backgroundColor: color }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
               
               <div className="flex-1">
                 <Input
@@ -134,44 +215,16 @@ const StageManagerModal = ({ open, onOpenChange, stages, onSave }: StageManagerM
                 />
               </div>
               
-              <div className="flex items-center gap-1">
-                <div className="relative group">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                  >
-                    <Palette className="h-4 w-4 text-slate-500" />
-                  </Button>
-                  <div className="absolute right-0 top-full mt-1 p-2 bg-white border border-slate-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 grid grid-cols-4 gap-1">
-                    {colorOptions.map((color) => (
-                      <button
-                        key={color.value}
-                        type="button"
-                        onClick={() => handleUpdateStage(stage.id, 'color', color.value)}
-                        className={cn(
-                          "w-6 h-6 rounded-full transition-transform hover:scale-110",
-                          stage.color === color.value && "ring-2 ring-offset-1 ring-slate-400"
-                        )}
-                        style={{ backgroundColor: color.value }}
-                        title={color.name}
-                      />
-                    ))}
-                  </div>
-                </div>
-                
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-slate-400 hover:text-red-500"
-                  onClick={() => handleRemoveStage(stage.id)}
-                  disabled={localStages.length <= 2}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-slate-400 hover:text-red-500"
+                onClick={() => handleRemoveStage(stage.id)}
+                disabled={localStages.length <= 2}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           ))}
         </div>
