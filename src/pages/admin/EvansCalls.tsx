@@ -407,6 +407,15 @@ const EvansCalls = () => {
   };
 
   // Extract unique values for dropdown options
+  // Valid US state abbreviations
+  const VALID_STATE_ABBREVS = new Set([
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+  ]);
+
   const filterOptions = useMemo(() => {
     const getUniqueValues = (key: keyof Program) => {
       const values = allPrograms
@@ -416,11 +425,11 @@ const EvansCalls = () => {
       return [...new Set(values)].sort();
     };
 
-    // For states, split by comma and get unique individual states
+    // For states, split by comma and get unique individual states (only valid abbreviations)
     const getUniqueStates = () => {
       const states = allPrograms
-        .flatMap(p => (p.states || '').split(',').map(s => s.trim()))
-        .filter(s => s !== '');
+        .flatMap(p => (p.states || '').split(/[,\s]+/).map(s => s.trim().toUpperCase()))
+        .filter(s => VALID_STATE_ABBREVS.has(s));
       return [...new Set(states)].sort();
     };
 
