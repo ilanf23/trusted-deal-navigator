@@ -131,6 +131,79 @@ const stages = [
   { status: 'funded', title: 'Funded', color: '#059669' },
 ];
 
+// Placeholder data for Evan's CRM leads
+const leadPlaceholderData: Record<string, {
+  address: string;
+  loanType: string;
+  loanAmount: string;
+  businessType: string;
+  propertyType: string;
+  urgency: string;
+  notes: string;
+}> = {
+  // Ilan Samuel Fridman
+  '6f00ff2c-4a3a-43af-9f68-88c99411fb59': {
+    address: '2847 Lake Shore Dr, Chicago, IL 60614',
+    loanType: 'SBA 7(a)',
+    loanAmount: '$850,000',
+    businessType: 'Tech Startup',
+    propertyType: 'Office Space',
+    urgency: 'High',
+    notes: 'Initial discovery call completed. Technical difficulties during first call - needs follow-up.',
+  },
+  // Sarah Rodriguez - Meridian Development Group
+  '7768d0c3-ca10-4955-bee0-2af42f0a061a': {
+    address: '1250 N Clark St, Chicago, IL 60610',
+    loanType: 'Bridge Loan',
+    loanAmount: '$3,200,000',
+    businessType: 'Real Estate Development',
+    propertyType: 'Multi-Family (24 units)',
+    urgency: 'Medium',
+    notes: 'Multi-family project in Lincoln Park. Needs bridge financing for 18 months until permanent financing.',
+  },
+  // James Patterson - Patterson Holdings LLC
+  'b6329460-e111-4f61-bf18-fc892dab614b': {
+    address: '445 Park Ave, New York, NY 10022',
+    loanType: 'SBA 504',
+    loanAmount: '$1,800,000',
+    businessType: 'Restaurant Franchise',
+    propertyType: 'Retail/Restaurant',
+    urgency: 'High',
+    notes: 'Expanding Chipotle franchise - 3 new locations in NYC metro. Strong financials, 10+ years experience.',
+  },
+  // Michael Chen - TechVest Capital
+  'e20d9ba8-18dd-4190-8f7b-c7081c8e1f2b': {
+    address: '580 California St, San Francisco, CA 94104',
+    loanType: 'Commercial Real Estate',
+    loanAmount: '$2,500,000',
+    businessType: 'Investment Firm',
+    propertyType: 'Class A Office',
+    urgency: 'Medium',
+    notes: 'Commercial property acquisition in Financial District. Pre-qualified, waiting on additional docs.',
+  },
+  // Emily Wang - Sunrise Healthcare Partners
+  '341f4f1c-fbdb-43b6-a25a-7f0e38a7237e': {
+    address: '9500 Gilman Dr, La Jolla, CA 92093',
+    loanType: 'Medical Practice Loan',
+    loanAmount: '$4,200,000',
+    businessType: 'Healthcare',
+    propertyType: 'Medical Office Building',
+    urgency: 'High',
+    notes: 'Acquiring existing MOB near UCSD. Deal in underwriting - strong cash flow, excellent credit.',
+  },
+};
+
+// Default placeholder for leads not in the mapping
+const defaultPlaceholder = {
+  address: '',
+  loanType: 'Conventional',
+  loanAmount: '',
+  businessType: '',
+  propertyType: '',
+  urgency: 'Medium',
+  notes: '',
+};
+
 interface LeadDetailDialogProps {
   lead: Lead | null;
   open: boolean;
@@ -150,14 +223,20 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [notesOpen, setNotesOpen] = useState(true);
   const [magicColumnsOpen, setMagicColumnsOpen] = useState(true);
 
+  // Get placeholder data for current lead
+  const getPlaceholderData = () => {
+    if (!lead) return defaultPlaceholder;
+    return leadPlaceholderData[lead.id] || defaultPlaceholder;
+  };
+
   // Custom column values (local state for demo)
   const [customFields, setCustomFields] = useState({
     address: '',
-    brandColor: '',
-    brandGoals: '',
+    loanType: '',
+    loanAmount: '',
     businessType: '',
-    contentNeeds: '',
-    freeVideo: false,
+    propertyType: '',
+    urgency: false,
   });
 
   // Notes state
@@ -167,7 +246,16 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   useEffect(() => {
     if (lead && open) {
       setActiveTab('all');
-      setNotesContent(lead.notes || '');
+      const placeholder = getPlaceholderData();
+      setCustomFields({
+        address: placeholder.address,
+        loanType: placeholder.loanType,
+        loanAmount: placeholder.loanAmount,
+        businessType: placeholder.businessType,
+        propertyType: placeholder.propertyType,
+        urgency: placeholder.urgency === 'High',
+      });
+      setNotesContent(placeholder.notes || lead.notes || '');
     }
   }, [lead, open]);
 
@@ -636,18 +724,18 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Mood of brand / brand color</p>
+                        <p className="text-xs text-slate-400 mb-1">Loan Type</p>
                         <Input 
-                          value={customFields.brandColor} 
-                          onChange={(e) => setCustomFields(p => ({ ...p, brandColor: e.target.value }))}
+                          value={customFields.loanType} 
+                          onChange={(e) => setCustomFields(p => ({ ...p, loanType: e.target.value }))}
                           className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Brand Goals</p>
+                        <p className="text-xs text-slate-400 mb-1">Loan Amount</p>
                         <Input 
-                          value={customFields.brandGoals} 
-                          onChange={(e) => setCustomFields(p => ({ ...p, brandGoals: e.target.value }))}
+                          value={customFields.loanAmount} 
+                          onChange={(e) => setCustomFields(p => ({ ...p, loanAmount: e.target.value }))}
                           className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
                         />
                       </div>
@@ -662,19 +750,19 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Content needs</p>
+                        <p className="text-xs text-slate-400 mb-1">Property Type</p>
                         <Input 
-                          value={customFields.contentNeeds} 
-                          onChange={(e) => setCustomFields(p => ({ ...p, contentNeeds: e.target.value }))}
+                          value={customFields.propertyType} 
+                          onChange={(e) => setCustomFields(p => ({ ...p, propertyType: e.target.value }))}
                           className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Free Video</p>
+                        <p className="text-xs text-slate-400 mb-1">High Priority</p>
                         <div className="flex items-center h-8">
                           <Checkbox 
-                            checked={customFields.freeVideo} 
-                            onCheckedChange={(checked) => setCustomFields(p => ({ ...p, freeVideo: !!checked }))}
+                            checked={customFields.urgency} 
+                            onCheckedChange={(checked) => setCustomFields(p => ({ ...p, urgency: !!checked }))}
                           />
                         </div>
                       </div>
