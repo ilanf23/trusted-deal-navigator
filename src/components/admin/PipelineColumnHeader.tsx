@@ -247,7 +247,7 @@ const PipelineColumnHeader = ({
   };
 
   return (
-    <div className="flex items-center gap-1 group">
+    <div className="flex items-center gap-1 group relative pr-3 border-r border-slate-200 last:border-r-0">
       {getColumnIcon()}
       <span className={cn(
         column.type === 'magic' && 'text-purple-600',
