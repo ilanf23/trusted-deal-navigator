@@ -536,14 +536,14 @@ const EvansPipeline = () => {
               {getVisibleColumns().map((column, colIndex) => {
                 const isLastColumn = colIndex === getVisibleColumns().length - 1;
                 const cellClass = cn(
-                  "flex items-center px-4 py-4",
-                  !isLastColumn && "border-r border-slate-300"
+                  "flex items-center px-4 py-3 min-h-[44px]",
+                  !isLastColumn && "border-r border-slate-200"
                 );
                 
                 // Special handling for checkbox column - add select all
                 if (column.id === 'checkbox') {
                   return (
-                    <div key={column.id} className={cn(cellClass, "justify-center px-2")}>
+                    <div key={column.id} className={cn(cellClass, "justify-center px-3")}>
                       <Checkbox
                         checked={isAllSelected}
                         onCheckedChange={(checked) => {
@@ -559,7 +559,7 @@ const EvansPipeline = () => {
                   );
                 }
                 if (column.id === 'avatar') {
-                  return <div key={column.id} className={cn(cellClass, "px-2")}></div>;
+                  return <div key={column.id} className={cn(cellClass, "px-2 justify-center")}></div>;
                 }
 
                 // Help text for specific columns
@@ -646,68 +646,33 @@ const EvansPipeline = () => {
                   open={!isCollapsed}
                   onOpenChange={() => toggleSection(stage.status)}
                 >
-                  {/* Section Header - spans full width with grid alignment */}
+                  {/* Section Header - Full-width colored bar like Streak */}
                   <CollapsibleTrigger asChild>
                     <div
-                      className="cursor-pointer hover:bg-slate-50/50 transition-colors bg-slate-50"
+                      className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-3"
                       style={{ 
-                        display: 'grid',
-                        gridTemplateColumns: getGridTemplate()
+                        backgroundColor: stage.hexColor,
                       }}
                     >
-                      {getVisibleColumns().map((column, colIndex) => {
-                        const isLastColumn = colIndex === getVisibleColumns().length - 1;
-                        const isFirstContentColumn = colIndex === 0;
-                        
-                        return (
-                          <div 
-                            key={column.id}
-                            className={cn(
-                              "flex items-center min-h-[52px]",
-                              !isLastColumn && "border-r border-slate-300",
-                              column.id === 'checkbox' && "px-2 justify-center",
-                              column.id === 'avatar' && "px-2 justify-center",
-                              column.id !== 'checkbox' && column.id !== 'avatar' && "px-4"
-                            )}
-                          >
-                            {isFirstContentColumn && (
-                              <div className="flex items-center gap-3">
-                                {isCollapsed ? (
-                                  <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0" />
-                                ) : (
-                                  <ChevronDown className="h-5 w-5 text-slate-400 flex-shrink-0" />
-                                )}
-                              </div>
-                            )}
-                            {column.id === 'name' && (
-                              <div className="flex items-center gap-3 ml-2">
-                                <Badge 
-                                  variant="outline"
-                                  className={cn(
-                                    "font-semibold text-sm px-3 py-1 rounded flex-shrink-0",
-                                    stage.bgColor,
-                                    stage.textColor,
-                                    stage.borderColor
-                                  )}
-                                >
-                                  {stage.title}
-                                </Badge>
-                                <span className="text-sm text-slate-500 font-medium whitespace-nowrap">
-                                  {stageLeads.length} {stageLeads.length === 1 ? 'lead' : 'leads'}
-                                </span>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5 flex-shrink-0"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {/* Checkbox placeholder for alignment */}
+                      <div className="w-5 h-5 rounded border-2 border-white/50 flex-shrink-0" />
+                      
+                      {/* Stage title */}
+                      <span className="text-white font-bold text-lg">
+                        {stage.title}
+                      </span>
+                      
+                      {/* Lead count */}
+                      <span className="text-white/80 text-sm font-medium">
+                        ({stageLeads.length})
+                      </span>
+                      
+                      {/* Collapse indicator */}
+                      {isCollapsed ? (
+                        <ChevronRight className="h-5 w-5 text-white/70 ml-auto flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-white/70 ml-auto flex-shrink-0" />
+                      )}
                     </div>
                   </CollapsibleTrigger>
 
@@ -715,6 +680,7 @@ const EvansPipeline = () => {
                   <CollapsibleContent>
                     {stageLeads.length === 0 ? (
                       <div 
+                        className="border-b border-slate-200"
                         style={{ 
                           display: 'grid',
                           gridTemplateColumns: getGridTemplate()
@@ -726,9 +692,9 @@ const EvansPipeline = () => {
                             <div 
                               key={column.id}
                               className={cn(
-                                "flex items-center min-h-[48px]",
-                                !isLastColumn && "border-r border-slate-300",
-                                column.id === 'checkbox' && "px-2 justify-center",
+                                "flex items-center min-h-[44px] border-b border-slate-200",
+                                !isLastColumn && "border-r border-slate-200",
+                                column.id === 'checkbox' && "px-3 justify-center",
                                 column.id === 'avatar' && "px-2 justify-center",
                                 column.id !== 'checkbox' && column.id !== 'avatar' && "px-4"
                               )}
@@ -948,7 +914,7 @@ const EvansPipeline = () => {
                             return (
                               <div
                                 key={lead.id}
-                                className="hover:bg-slate-50/80 cursor-pointer items-center text-base transition-colors min-h-[56px]"
+                                className="hover:bg-slate-50 cursor-pointer items-center text-base transition-colors border-b border-slate-200"
                                 style={{ 
                                   display: 'grid',
                                   gridTemplateColumns: getGridTemplate()
@@ -961,10 +927,10 @@ const EvansPipeline = () => {
                                     <div 
                                       key={column.id} 
                                       className={cn(
-                                        "flex items-center px-4 py-3 min-h-[56px]",
-                                        !isLastColumn && "border-r border-slate-300",
-                                        column.id === 'checkbox' && "px-2 justify-center",
-                                        column.id === 'avatar' && "px-2"
+                                        "flex items-center px-4 py-3 min-h-[48px]",
+                                        !isLastColumn && "border-r border-slate-200",
+                                        column.id === 'checkbox' && "px-3 justify-center",
+                                        column.id === 'avatar' && "px-2 justify-center"
                                       )}
                                     >
                                       {renderCellContent(column)}
