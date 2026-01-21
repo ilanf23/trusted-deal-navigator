@@ -36,7 +36,7 @@ const COLUMNS = [
   { key: 'call_status', label: 'Call Y/N', width: 80, editable: true },
   { key: 'last_contact', label: 'Last Contact', width: 110, editable: true },
   { key: 'location', label: 'Location', width: 140, editable: true },
-  { key: 'looking_for', label: 'Looking For', width: 350, editable: true },
+  { key: 'looking_for', label: 'Looking For', width: 500, editable: true },
   { key: 'contact_name', label: 'NAME', width: 150, editable: true },
   { key: 'phone', label: 'PHONE', width: 140, editable: true },
   { key: 'email', label: 'EMAIL', width: 200, editable: true },
