@@ -1051,7 +1051,7 @@ const EvansPipeline = () => {
                                       className={cn(
                                         "flex items-center min-h-[48px] overflow-hidden",
                                         "border-r border-slate-200",
-                                        column.id === 'spacer_left' ? "px-0" :
+                                        column.id === 'spacer_left' ? "px-0 justify-center" :
                                         (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4 justify-start"
                                       )}
                                     >
