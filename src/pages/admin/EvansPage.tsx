@@ -248,7 +248,7 @@ const EvansPage = () => {
       return {
         month: format(month, 'MMM'),
         revenue,
-        target: 50000,
+        target: 125000, // $1.5M / 12 months
         deals: monthlyFunded.length,
       };
     });
@@ -364,7 +364,7 @@ const EvansPage = () => {
     return quarters;
   }, [fundedLeads]);
 
-  const annualTarget = 600000;
+  const annualTarget = 1500000; // $1.5M goal
   const ytdRevenue = monthlyRevenueData.reduce((sum, m) => sum + m.revenue, 0);
 
   const getPriorityColor = (priority: string | null) => {
@@ -413,7 +413,7 @@ const EvansPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-lg">Annual Goal Progress</CardTitle>
-                <CardDescription>Road to $600K revenue target</CardDescription>
+                <CardDescription>Road to $1.5M revenue target</CardDescription>
               </div>
               <Badge variant={ytdRevenue >= annualTarget * 0.8 ? 'default' : 'secondary'}>
                 {ytdRevenue >= annualTarget * 0.8 ? 'On Track' : 'Behind Pace'}
@@ -424,7 +424,7 @@ const EvansPage = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-3xl font-bold">{formatCurrency(ytdRevenue)}</span>
-                <span className="text-lg text-muted-foreground">of $600K</span>
+                <span className="text-lg text-muted-foreground">of $1.5M</span>
               </div>
               <Progress value={(ytdRevenue / annualTarget) * 100} className="h-4" />
               <div className="grid grid-cols-4 gap-4 pt-2">
