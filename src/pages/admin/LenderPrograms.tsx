@@ -394,15 +394,15 @@ const LenderPrograms = () => {
                   Bulk Upload
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
                 <DialogHeader>
                   <DialogTitle>Bulk Upload Lender Programs</DialogTitle>
                   <DialogDescription>
-                    Upload a CSV file with lender program data. The file should include columns for: lender_name, program_name, program_type, description, min_loan, max_loan, interest_range, term
+                    Upload a CSV file with your lender data.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                <div className="space-y-4 py-4 flex-1 overflow-auto">
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -411,8 +411,8 @@ const LenderPrograms = () => {
                       className="hidden"
                     />
                     {!uploadedFile ? (
-                      <div className="space-y-4">
-                        <FileText className="w-12 h-12 text-muted-foreground mx-auto" />
+                      <div className="space-y-3">
+                        <FileText className="w-10 h-10 text-muted-foreground mx-auto" />
                         <div>
                           <p className="text-sm text-muted-foreground mb-2">Drag and drop or</p>
                           <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
@@ -422,70 +422,67 @@ const LenderPrograms = () => {
                         <p className="text-xs text-muted-foreground">Supports CSV files</p>
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-center gap-2">
-                          <FileText className="w-8 h-8 text-admin-blue" />
-                          <div className="text-left">
-                            <p className="font-medium">{uploadedFile.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {parsedPrograms.length} programs parsed
-                            </p>
-                          </div>
-                          <Button variant="ghost" size="icon" onClick={clearUpload}>
-                            <X className="w-4 h-4" />
-                          </Button>
+                      <div className="flex items-center justify-center gap-3">
+                        <FileText className="w-8 h-8 text-admin-blue flex-shrink-0" />
+                        <div className="text-left min-w-0">
+                          <p className="font-medium truncate">{uploadedFile.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {parsedPrograms.length} lenders parsed
+                          </p>
                         </div>
+                        <Button variant="ghost" size="icon" onClick={clearUpload} className="flex-shrink-0">
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
                     )}
                   </div>
 
                   {parsedPrograms.length > 0 && (
-                    <div className="max-h-64 overflow-auto border rounded-lg">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted sticky top-0">
-                          <tr>
-                            <th className="text-left p-2">Institution</th>
-                            <th className="text-left p-2">Contact</th>
-                            <th className="text-left p-2">Type</th>
-                            <th className="text-left p-2">Loan Types</th>
-                            <th className="text-left p-2">States</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {parsedPrograms.slice(0, 20).map((p, i) => (
-                            <tr key={i} className="border-t">
-                              <td className="p-2">{p.lender_name}</td>
-                              <td className="p-2">{p.contact_name || p.email || '-'}</td>
-                              <td className="p-2">{p.lender_type || p.program_type || '-'}</td>
-                              <td className="p-2">{p.loan_types || p.program_name || '-'}</td>
-                              <td className="p-2">{p.states || '-'}</td>
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="max-h-48 overflow-auto">
+                        <table className="w-full text-sm table-fixed">
+                          <thead className="bg-muted sticky top-0">
+                            <tr>
+                              <th className="text-left p-2 w-1/4">Institution</th>
+                              <th className="text-left p-2 w-1/4">Contact</th>
+                              <th className="text-left p-2 w-1/4">Type</th>
+                              <th className="text-left p-2 w-1/4">States</th>
                             </tr>
-                          ))}
-                          {parsedPrograms.length > 20 && (
-                            <tr className="border-t">
-                              <td colSpan={5} className="p-2 text-center text-muted-foreground">
-                                ... and {parsedPrograms.length - 20} more
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {parsedPrograms.slice(0, 15).map((p, i) => (
+                              <tr key={i} className="border-t">
+                                <td className="p-2 truncate" title={p.lender_name}>{p.lender_name}</td>
+                                <td className="p-2 truncate" title={p.contact_name || p.email || '-'}>{p.contact_name || p.email || '-'}</td>
+                                <td className="p-2 truncate" title={p.lender_type || p.program_type || '-'}>{p.lender_type || p.program_type || '-'}</td>
+                                <td className="p-2 truncate" title={p.states || '-'}>{p.states || '-'}</td>
+                              </tr>
+                            ))}
+                            {parsedPrograms.length > 15 && (
+                              <tr className="border-t bg-muted/30">
+                                <td colSpan={4} className="p-2 text-center text-muted-foreground text-xs">
+                                  ... and {parsedPrograms.length - 15} more lenders
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
 
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <h4 className="font-medium text-sm mb-2">Your CSV Format (supported):</h4>
-                    <code className="text-xs text-muted-foreground block overflow-x-auto whitespace-pre">
-Institution,Call Y/N,Last Contact,Next Call,Location,Looking For,NAME,PHONE,EMAIL,TYPE OF LENDER,TYPES OF LOANS,Loan Size,States
-"First National Bank","Y","2024-01-15","2024-02-01","New York","CRE deals","John Smith","555-123-4567","john@fnb.com","Bank","SBA, Conventional","$500K-$10M","NY, NJ, CT"
-                    </code>
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <h4 className="font-medium text-xs mb-1">Supported CSV columns:</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Institution, Call Y/N, Last Contact, Next Call, Location, Looking For, NAME, PHONE, EMAIL, TYPE OF LENDER, TYPES OF LOANS, Loan Size, States
+                    </p>
                   </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="flex-shrink-0">
                   <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>Cancel</Button>
                   <Button onClick={handleBulkUpload} disabled={uploading || parsedPrograms.length === 0}>
                     {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-                    Upload {parsedPrograms.length} Programs
+                    Upload {parsedPrograms.length} Lenders
                   </Button>
                 </DialogFooter>
               </DialogContent>
