@@ -646,44 +646,103 @@ const EvansPipeline = () => {
                   open={!isCollapsed}
                   onOpenChange={() => toggleSection(stage.status)}
                 >
-                  {/* Section Header */}
+                  {/* Section Header - spans full width with grid alignment */}
                   <CollapsibleTrigger asChild>
                     <div
                       className={cn(
-                        "flex items-center gap-4 px-5 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors border-l-4 border-b border-b-slate-100",
+                        "cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-200",
                         stage.borderColor
                       )}
+                      style={{ 
+                        display: 'grid',
+                        gridTemplateColumns: getGridTemplate()
+                      }}
                     >
-                      {isCollapsed ? (
-                        <ChevronRight className="h-5 w-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-slate-400" />
-                      )}
-                      <Badge 
-                        variant="outline"
-                        className={cn(
-                          "font-semibold text-sm px-3 py-1 rounded",
-                          stage.bgColor,
-                          stage.textColor,
-                          stage.borderColor
-                        )}
-                      >
-                        {stage.title}
-                      </Badge>
-                      <span className="text-sm text-slate-500 font-medium">
-                        {stageLeads.length} {stageLeads.length === 1 ? 'lead' : 'leads'}
-                      </span>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-1 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5">
-                        <Plus className="h-5 w-5" />
-                      </Button>
+                      {getVisibleColumns().map((column, colIndex) => {
+                        const isLastColumn = colIndex === getVisibleColumns().length - 1;
+                        const isFirstContentColumn = colIndex === 0;
+                        
+                        return (
+                          <div 
+                            key={column.id}
+                            className={cn(
+                              "flex items-center border-r border-slate-200 min-h-[52px]",
+                              isLastColumn && "border-r-0",
+                              column.id === 'checkbox' && "px-2 justify-center",
+                              column.id === 'avatar' && "px-2 justify-center",
+                              column.id !== 'checkbox' && column.id !== 'avatar' && "px-4"
+                            )}
+                          >
+                            {isFirstContentColumn && (
+                              <div className="flex items-center gap-3">
+                                {isCollapsed ? (
+                                  <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                                ) : (
+                                  <ChevronDown className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                                )}
+                              </div>
+                            )}
+                            {column.id === 'name' && (
+                              <div className="flex items-center gap-3 ml-2">
+                                <Badge 
+                                  variant="outline"
+                                  className={cn(
+                                    "font-semibold text-sm px-3 py-1 rounded flex-shrink-0",
+                                    stage.bgColor,
+                                    stage.textColor,
+                                    stage.borderColor
+                                  )}
+                                >
+                                  {stage.title}
+                                </Badge>
+                                <span className="text-sm text-slate-500 font-medium whitespace-nowrap">
+                                  {stageLeads.length} {stageLeads.length === 1 ? 'lead' : 'leads'}
+                                </span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5 flex-shrink-0"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </CollapsibleTrigger>
 
                   {/* Section Content */}
                   <CollapsibleContent>
                     {stageLeads.length === 0 ? (
-                      <div className="px-12 py-5 text-base text-slate-400 italic border-b border-slate-100">
-                        No leads in this stage
+                      <div 
+                        className="border-b border-slate-200"
+                        style={{ 
+                          display: 'grid',
+                          gridTemplateColumns: getGridTemplate()
+                        }}
+                      >
+                        {getVisibleColumns().map((column, colIndex) => {
+                          const isLastColumn = colIndex === getVisibleColumns().length - 1;
+                          return (
+                            <div 
+                              key={column.id}
+                              className={cn(
+                                "flex items-center border-r border-slate-200 min-h-[48px]",
+                                isLastColumn && "border-r-0",
+                                column.id === 'checkbox' && "px-2 justify-center",
+                                column.id === 'avatar' && "px-2 justify-center",
+                                column.id !== 'checkbox' && column.id !== 'avatar' && "px-4"
+                              )}
+                            >
+                              {column.id === 'name' && (
+                                <span className="text-sm text-slate-400 italic">No leads in this stage</span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <TooltipProvider>
