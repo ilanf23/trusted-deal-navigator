@@ -21,6 +21,7 @@ import {
   Code2,
   Bug,
   Calendar,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -160,6 +161,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIAssistantToggle, aiAssista
           { title: 'Calendar', url: `/team/${employeeName.toLowerCase()}/calendar`, icon: Calendar },
           { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
           { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
+          { title: 'AI', url: `/team/${employeeName.toLowerCase()}/ai`, icon: Sparkles },
         ],
         noCollapse: true,
       });

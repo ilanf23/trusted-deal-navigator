@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.twilio-transcription]
 verify_jwt = false
+
+[functions.evan-ai-assistant]
+verify_jwt = false
