@@ -525,19 +525,25 @@ const EvansPipeline = () => {
         {/* Grouped Table View */}
         <div className="flex-1 overflow-auto border border-slate-200 rounded-md bg-white">
           {/* Table Header with Column Dropdowns */}
-          <div className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+          <div className="sticky top-0 z-10 bg-slate-50 border-b border-slate-300">
             <div 
-              className="gap-4 px-5 py-4 text-sm font-semibold text-slate-600 uppercase tracking-wider"
+              className="text-sm font-semibold text-slate-600 uppercase tracking-wider"
               style={{ 
                 display: 'grid',
                 gridTemplateColumns: getGridTemplate()
               }}
             >
-              {getVisibleColumns().map((column) => {
+              {getVisibleColumns().map((column, colIndex) => {
+                const isLastColumn = colIndex === getVisibleColumns().length - 1;
+                const cellClass = cn(
+                  "flex items-center px-4 py-4 border-r border-slate-200",
+                  isLastColumn && "border-r-0"
+                );
+                
                 // Special handling for checkbox column - add select all
                 if (column.id === 'checkbox') {
                   return (
-                    <div key={column.id} className="flex items-center justify-center">
+                    <div key={column.id} className={cn(cellClass, "justify-center px-2")}>
                       <Checkbox
                         checked={isAllSelected}
                         onCheckedChange={(checked) => {
@@ -553,7 +559,7 @@ const EvansPipeline = () => {
                   );
                 }
                 if (column.id === 'avatar') {
-                  return <div key={column.id}></div>;
+                  return <div key={column.id} className={cn(cellClass, "px-2")}></div>;
                 }
 
                 // Help text for specific columns
@@ -564,20 +570,22 @@ const EvansPipeline = () => {
                 };
 
                 return (
-                  <PipelineColumnHeader
-                    key={column.id}
-                    column={column}
-                    helpText={helpTexts[column.id]}
-                    onInsertColumn={(position, type, isMagic) => insertColumn(column.id, position, type, isMagic)}
-                    onDeleteColumn={() => deleteColumn(column.id)}
-                    onHideColumn={() => hideColumn(column.id)}
-                    onFreezeColumn={() => freezeColumn(column.id)}
-                    onMoveColumn={(direction) => moveColumn(column.id, direction)}
-                  />
+                  <div key={column.id} className={cellClass}>
+                    <PipelineColumnHeader
+                      column={column}
+                      helpText={helpTexts[column.id]}
+                      onInsertColumn={(position, type, isMagic) => insertColumn(column.id, position, type, isMagic)}
+                      onDeleteColumn={() => deleteColumn(column.id)}
+                      onHideColumn={() => hideColumn(column.id)}
+                      onFreezeColumn={() => freezeColumn(column.id)}
+                      onMoveColumn={(direction) => moveColumn(column.id, direction)}
+                    />
+                  </div>
                 );
               })}
               {/* Add Column Button at the end */}
-              <DropdownMenu>
+              <div className="flex items-center justify-center px-2 py-4">
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
@@ -621,6 +629,7 @@ const EvansPipeline = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
             </div>
           </div>
 
@@ -840,8 +849,8 @@ const EvansPipeline = () => {
                               <div
                                 key={lead.id}
                                 className={cn(
-                                  "gap-4 px-5 py-4 hover:bg-slate-50/80 cursor-pointer items-center text-base transition-colors min-h-[56px]",
-                                  idx < stageLeads.length - 1 && "border-b border-slate-50"
+                                  "hover:bg-slate-50/80 cursor-pointer items-center text-base transition-colors min-h-[56px]",
+                                  idx < stageLeads.length - 1 && "border-b border-slate-100"
                                 )}
                                 style={{ 
                                   display: 'grid',
@@ -849,11 +858,22 @@ const EvansPipeline = () => {
                                 }}
                                 onClick={() => setDetailDialogLead(lead)}
                               >
-                                {getVisibleColumns().map((column) => (
-                                  <div key={column.id}>
-                                    {renderCellContent(column)}
-                                  </div>
-                                ))}
+                                {getVisibleColumns().map((column, colIndex) => {
+                                  const isLastColumn = colIndex === getVisibleColumns().length - 1;
+                                  return (
+                                    <div 
+                                      key={column.id} 
+                                      className={cn(
+                                        "flex items-center px-4 py-3 border-r border-slate-200 min-h-[56px]",
+                                        isLastColumn && "border-r-0",
+                                        column.id === 'checkbox' && "px-2 justify-center",
+                                        column.id === 'avatar' && "px-2"
+                                      )}
+                                    >
+                                      {renderCellContent(column)}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             );
                           })}
