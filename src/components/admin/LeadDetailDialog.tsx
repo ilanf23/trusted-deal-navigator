@@ -15,7 +15,8 @@ import {
   Loader2, Mail, Phone, Building2, Calendar, FileText, User, Clock, Save, 
   PhoneCall, ChevronDown, ChevronUp, Play, PhoneIncoming, PhoneOutgoing, 
   MessageSquare, History, Plus, Trash2, Globe, Linkedin, Twitter, MapPin,
-  Link2, Users, ListTodo, Tag, Edit2, CheckCircle2, Circle
+  Link2, Users, ListTodo, Tag, Edit2, CheckCircle2, Circle, Copy, ExternalLink,
+  Briefcase
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -309,6 +310,52 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!lead && open,
   });
 
+  // Query for related deals (same company)
+  const { data: relatedDeals = [] } = useQuery({
+    queryKey: ['related-deals', lead?.company_name],
+    queryFn: async () => {
+      if (!lead || !lead.company_name) return [];
+      const { data } = await supabase
+        .from('leads')
+        .select('id, name, company_name, status, created_at')
+        .ilike('company_name', lead.company_name)
+        .neq('id', lead.id)
+        .order('created_at', { ascending: false });
+      return (data || []) as { id: string; name: string; company_name: string; status: string; created_at: string }[];
+    },
+    enabled: !!lead && !!lead.company_name && open,
+  });
+
+  // Query for linked deals (via lead_connections with connected_lead_id)
+  const { data: linkedDeals = [] } = useQuery({
+    queryKey: ['linked-deals', lead?.id],
+    queryFn: async () => {
+      if (!lead) return [];
+      // First get connections that have a linked lead
+      const { data: connectionData } = await supabase
+        .from('lead_connections')
+        .select('id, connected_lead_id, relationship_type, notes')
+        .eq('lead_id', lead.id)
+        .not('connected_lead_id', 'is', null);
+      
+      if (!connectionData || connectionData.length === 0) return [];
+      
+      // Then fetch the linked lead details
+      const leadIds = connectionData.map(c => c.connected_lead_id).filter(Boolean) as string[];
+      const { data: leadsData } = await supabase
+        .from('leads')
+        .select('id, name, company_name, status')
+        .in('id', leadIds);
+      
+      // Combine the data
+      return connectionData.map(conn => ({
+        ...conn,
+        linkedLead: leadsData?.find(l => l.id === conn.connected_lead_id) || null
+      }));
+    },
+    enabled: !!lead && open,
+  });
+
   // Mutations
   const saveLead = useMutation({
     mutationFn: async () => {
@@ -504,6 +551,147 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead?.id] }),
+  });
+
+  // State for new deal creation
+  const [newDealSuffix, setNewDealSuffix] = useState('');
+  const [showNewDealForm, setShowNewDealForm] = useState(false);
+
+  // Create new deal from this lead (duplicate with suffix)
+  const createNewDeal = useMutation({
+    mutationFn: async () => {
+      if (!lead || !newDealSuffix.trim()) return;
+      
+      const newDealName = `${lead.company_name || lead.name} - ${newDealSuffix.trim()}`;
+      
+      // Create the new lead
+      const { data: newLead, error } = await supabase.from('leads').insert({
+        name: newDealName,
+        company_name: lead.company_name,
+        email: lead.email,
+        phone: lead.phone,
+        source: lead.source,
+        assigned_to: lead.assigned_to,
+        contact_type: lead.contact_type,
+        status: 'discovery',
+        tags: lead.tags,
+        website: lead.website,
+        linkedin: lead.linkedin,
+        twitter: lead.twitter,
+      }).select().single();
+      
+      if (error) throw error;
+      
+      // Link the deals together
+      if (newLead) {
+        // Link from new deal to original
+        await supabase.from('lead_connections').insert({
+          lead_id: newLead.id,
+          connected_lead_id: lead.id,
+          connected_name: lead.name,
+          connected_company: lead.company_name,
+          relationship_type: 'related_deal',
+          notes: 'Original deal',
+        });
+        
+        // Link from original to new deal
+        await supabase.from('lead_connections').insert({
+          lead_id: lead.id,
+          connected_lead_id: newLead.id,
+          connected_name: newDealName,
+          connected_company: lead.company_name,
+          relationship_type: 'related_deal',
+          notes: 'New deal created from this one',
+        });
+
+        // Copy phones, emails, addresses
+        if (phones.length > 0) {
+          await supabase.from('lead_phones').insert(
+            phones.map(p => ({ lead_id: newLead.id, phone_number: p.phone_number, phone_type: p.phone_type, is_primary: p.is_primary }))
+          );
+        }
+        if (emails.length > 0) {
+          await supabase.from('lead_emails').insert(
+            emails.map(e => ({ lead_id: newLead.id, email: e.email, email_type: e.email_type, is_primary: e.is_primary }))
+          );
+        }
+        if (addresses.length > 0) {
+          await supabase.from('lead_addresses').insert(
+            addresses.map(a => ({ 
+              lead_id: newLead.id, 
+              address_type: a.address_type,
+              address_line_1: a.address_line_1,
+              address_line_2: a.address_line_2,
+              city: a.city,
+              state: a.state,
+              zip_code: a.zip_code,
+              country: a.country,
+              is_primary: a.is_primary 
+            }))
+          );
+        }
+      }
+      
+      return newLead;
+    },
+    onSuccess: (newLead) => {
+      queryClient.invalidateQueries({ queryKey: ['related-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['linked-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-connections'] });
+      onLeadUpdated?.();
+      setNewDealSuffix('');
+      setShowNewDealForm(false);
+      toast({ title: 'New deal created', description: `Created and linked to this deal` });
+    },
+    onError: () => toast({ title: 'Error creating deal', variant: 'destructive' }),
+  });
+
+  // Link to existing deal
+  const [linkDealId, setLinkDealId] = useState('');
+  
+  const linkDeal = useMutation({
+    mutationFn: async (targetLeadId: string) => {
+      if (!lead) return;
+      
+      // Get target lead info
+      const { data: targetLead } = await supabase.from('leads').select('name, company_name').eq('id', targetLeadId).single();
+      
+      // Create bidirectional link
+      await supabase.from('lead_connections').insert({
+        lead_id: lead.id,
+        connected_lead_id: targetLeadId,
+        connected_name: targetLead?.name,
+        connected_company: targetLead?.company_name,
+        relationship_type: 'related_deal',
+      });
+      
+      await supabase.from('lead_connections').insert({
+        lead_id: targetLeadId,
+        connected_lead_id: lead.id,
+        connected_name: lead.name,
+        connected_company: lead.company_name,
+        relationship_type: 'related_deal',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['linked-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-connections'] });
+      setLinkDealId('');
+      toast({ title: 'Deals linked' });
+    },
+  });
+
+  // Unlink deal
+  const unlinkDeal = useMutation({
+    mutationFn: async (connectionId: string) => {
+      const { error } = await supabase.from('lead_connections').delete().eq('id', connectionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['linked-deals'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-connections'] });
+      toast({ title: 'Deal unlinked' });
+    },
   });
 
   const addTag = () => {
@@ -909,6 +1097,144 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
             {/* Connections Tab */}
             <TabsContent value="connections" className="p-6 m-0 space-y-6">
+              {/* Related Deals Section - Same Company */}
+              {lead?.company_name && (
+                <Card className="border-purple-200 bg-purple-50/30">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-purple-600" />
+                        Related Deals
+                        {relatedDeals.length > 0 && (
+                          <Badge variant="secondary" className="bg-purple-100 text-purple-700">{relatedDeals.length}</Badge>
+                        )}
+                      </CardTitle>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowNewDealForm(true)}
+                        className="text-purple-700 border-purple-300 hover:bg-purple-100"
+                      >
+                        <Copy className="w-4 h-4 mr-1" />
+                        New Deal
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Other deals with {lead.company_name}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* New Deal Form */}
+                    {showNewDealForm && (
+                      <div className="p-3 border rounded-lg bg-white space-y-2">
+                        <p className="text-sm font-medium">Create new deal for {lead.company_name}</p>
+                        <div className="flex gap-2">
+                          <span className="text-sm text-muted-foreground py-2">{lead.company_name} -</span>
+                          <Input 
+                            placeholder="e.g., Q2 Expansion, Phase 2, Refinance"
+                            value={newDealSuffix}
+                            onChange={(e) => setNewDealSuffix(e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={() => createNewDeal.mutate()} 
+                            disabled={!newDealSuffix.trim() || createNewDeal.isPending}
+                            size="sm"
+                          >
+                            {createNewDeal.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                            Create & Link
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => { setShowNewDealForm(false); setNewDealSuffix(''); }}>
+                            Cancel
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Contact info will be copied to the new deal</p>
+                      </div>
+                    )}
+
+                    {/* Related Deals List */}
+                    {relatedDeals.length > 0 ? (
+                      <div className="space-y-2">
+                        {relatedDeals.map(deal => (
+                          <div key={deal.id} className="flex items-center justify-between p-2 bg-white rounded-lg border">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                <Briefcase className="w-4 h-4 text-purple-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm">{deal.name}</p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Badge variant="outline" className="text-[10px] py-0">{deal.status.replace('_', ' ')}</Badge>
+                                  <span>Created {format(new Date(deal.created_at), 'MMM d, yyyy')}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => linkDeal.mutate(deal.id)}
+                              disabled={linkedDeals.some(ld => ld.connected_lead_id === deal.id)}
+                            >
+                              {linkedDeals.some(ld => ld.connected_lead_id === deal.id) ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <>
+                                  <Link2 className="w-4 h-4 mr-1" />
+                                  Link
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : !showNewDealForm && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No other deals for this company yet
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Linked Deals Section */}
+              {linkedDeals.length > 0 && (
+                <Card className="border-blue-200">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Link2 className="w-4 h-4 text-blue-600" />
+                      Linked Deals
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700">{linkedDeals.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {linkedDeals.map(link => (
+                      <div key={link.id} className="flex items-center justify-between p-2 bg-blue-50/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                            <Link2 className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{link.linkedLead?.name || 'Unknown Deal'}</p>
+                            {link.linkedLead?.company_name && (
+                              <p className="text-xs text-muted-foreground">{link.linkedLead.company_name}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => unlinkDeal.mutate(link.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* People Connections */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Add Connection</CardTitle>
@@ -940,7 +1266,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
               </Card>
 
               <div className="space-y-3">
-                {connections.map(c => (
+                {connections.filter(c => c.relationship_type !== 'related_deal').map(c => (
                   <Card key={c.id}>
                     <CardContent className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -959,10 +1285,10 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                     </CardContent>
                   </Card>
                 ))}
-                {connections.length === 0 && (
+                {connections.filter(c => c.relationship_type !== 'related_deal').length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No connections yet</p>
+                    <p>No people connections yet</p>
                   </div>
                 )}
               </div>
