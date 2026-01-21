@@ -7,6 +7,7 @@ import { Building2, Loader2, Save, Trash2, Search, Plus, Upload } from 'lucide-r
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import * as XLSX from 'xlsx';
 
 interface LenderRow {
   id: string;
@@ -284,17 +285,163 @@ const LenderPrograms = () => {
     }
   };
 
-  // CSV Upload handler
+  // File Upload handler (CSV and Excel)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
-      toast.error('Please upload a CSV file');
+    const isCSV = file.name.endsWith('.csv') || file.type === 'text/csv';
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || 
+                    file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                    file.type === 'application/vnd.ms-excel';
+
+    if (!isCSV && !isExcel) {
+      toast.error('Please upload a CSV or Excel file (.csv, .xlsx, .xls)');
       return;
     }
 
-    parseAndUploadCSV(file);
+    if (isExcel) {
+      parseAndUploadExcel(file);
+    } else {
+      parseAndUploadCSV(file);
+    }
+  };
+
+  // Parse Excel files
+  const parseAndUploadExcel = async (file: File) => {
+    setUploading(true);
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Get first sheet
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Convert to JSON array (as array of arrays)
+        const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
+        
+        if (jsonData.length < 2) {
+          toast.error('Excel file must have a header row and at least one data row');
+          setUploading(false);
+          return;
+        }
+
+        const headers = (jsonData[0] || []).map(h => (h || '').toString().trim().toLowerCase());
+        console.log('Excel Headers:', headers);
+        
+        const programs = parseRowsToPrograms(headers, jsonData.slice(1));
+
+        if (programs.length === 0) {
+          toast.error('No valid lender data found in Excel file');
+          setUploading(false);
+          return;
+        }
+
+        // Insert into database
+        const { error } = await supabase.from('lender_programs').insert(programs);
+        
+        if (error) throw error;
+
+        toast.success(`Imported ${programs.length} lenders from Excel`);
+        fetchPrograms();
+      } catch (error) {
+        console.error('Error parsing/uploading Excel:', error);
+        toast.error('Failed to import Excel file');
+      } finally {
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Shared row parsing logic
+  const parseRowsToPrograms = (headers: string[], rows: string[][]) => {
+    const programs: Array<{
+      lender_name: string;
+      call_status: string | null;
+      last_contact: string | null;
+      next_call: string | null;
+      location: string | null;
+      looking_for: string | null;
+      contact_name: string | null;
+      phone: string | null;
+      email: string | null;
+      lender_type: string | null;
+      loan_types: string | null;
+      loan_size_text: string | null;
+      states: string | null;
+      program_name: string;
+      program_type: string;
+    }> = [];
+
+    for (const row of rows) {
+      let lender_name = '';
+      let call_status = '';
+      let last_contact = '';
+      let next_call = '';
+      let location = '';
+      let looking_for = '';
+      let contact_name = '';
+      let phone = '';
+      let email = '';
+      let lender_type = '';
+      let loan_types = '';
+      let loan_size_text = '';
+      let states = '';
+
+      headers.forEach((header, idx) => {
+        const value = (row[idx] || '').toString().trim();
+        const h = header.toLowerCase();
+        
+        if (h === 'institution' || (h.includes('lender') && h.includes('name'))) lender_name = value;
+        else if (h === 'call y/n' || h === 'call' || h.includes('call')) call_status = value || 'N';
+        else if (h === 'last contact' || (h.includes('last') && h.includes('contact'))) last_contact = value;
+        else if (h === 'next call' || (h.includes('next') && h.includes('call'))) next_call = value;
+        else if (h === 'location') location = value;
+        else if (h === 'looking for' || h.includes('looking')) looking_for = value;
+        else if (h === 'name' || h === 'contact name' || h === 'contact') contact_name = value;
+        else if (h === 'phone' || h.includes('phone')) phone = value;
+        else if (h === 'email' || h.includes('email')) email = value;
+        else if (h === 'type of lender' || h === 'lender type' || h.includes('type of lender') || h.includes('lender type')) lender_type = value;
+        else if (h === 'types of loans' || h === 'loan types' || h.includes('types of loan') || h.includes('loan type')) loan_types = value;
+        else if (h === 'loan size' || h.includes('loan size') || h.includes('loansize') || h === 'size') loan_size_text = value;
+        else if (h === 'states' || h.includes('state')) states = value;
+      });
+
+      if (lender_name) {
+        programs.push({
+          lender_name,
+          call_status: call_status || 'N',
+          last_contact: last_contact ? (() => {
+            const d = new Date(last_contact);
+            return isNaN(d.getTime()) ? null : d.toISOString();
+          })() : null,
+          next_call: next_call ? (() => {
+            const d = new Date(next_call);
+            return isNaN(d.getTime()) ? null : d.toISOString();
+          })() : null,
+          location: location || null,
+          looking_for: looking_for || null,
+          contact_name: contact_name || null,
+          phone: phone || null,
+          email: email || null,
+          lender_type: lender_type || null,
+          loan_types: loan_types || null,
+          loan_size_text: loan_size_text || null,
+          states: states || null,
+          program_name: loan_types || 'General',
+          program_type: lender_type || 'Other',
+        });
+      }
+    }
+
+    return programs;
   };
 
   const detectDelimiter = (text: string): string => {
@@ -465,7 +612,7 @@ const LenderPrograms = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx,.xls"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -477,7 +624,7 @@ const LenderPrograms = () => {
               disabled={uploading}
             >
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" strokeWidth={1.75} />}
-              Upload CSV
+              Upload CSV/Excel
             </Button>
             {dirtyCount > 0 && (
               <Button onClick={handleSaveAll} disabled={saving} className="gap-2 bg-green-600 hover:bg-green-700">
