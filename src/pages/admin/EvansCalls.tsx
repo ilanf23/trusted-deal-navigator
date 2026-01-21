@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Phone, 
   User, 
@@ -38,7 +39,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { LenderProgramAssistant } from '@/components/admin/LenderProgramAssistant';
-import { LenderProgramCard } from '@/components/evan/LenderProgramCard';
 
 interface ActiveCall {
   id: string;
@@ -908,30 +908,70 @@ const EvansCalls = () => {
                   </CardHeader>
                   <CardContent className="p-0 flex-1 min-h-0">
                     <ScrollArea className="h-full">
-                      <div className="p-4 space-y-4">
-                        {allPrograms.length === 0 ? (
-                          <div className="text-center py-12">
-                            <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                            <p className="text-muted-foreground text-sm">No lender programs available</p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-3"
-                              onClick={() => navigate('/admin/lender-programs')}
-                            >
-                              Add Lenders
-                            </Button>
-                          </div>
-                        ) : (
-                          allPrograms.map((program) => (
-                            <LenderProgramCard
-                              key={program.id}
-                              program={program}
-                              leadContext={leadContext}
-                            />
-                          ))
-                        )}
-                      </div>
+                      {allPrograms.length === 0 ? (
+                        <div className="text-center py-12">
+                          <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                          <p className="text-muted-foreground text-sm">No lender programs available</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3"
+                            onClick={() => navigate('/admin/lender-programs')}
+                          >
+                            Add Lenders
+                          </Button>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/50">
+                              <TableHead className="text-xs font-semibold w-[180px]">Institution</TableHead>
+                              <TableHead className="text-xs font-semibold w-[300px]">Looking For</TableHead>
+                              <TableHead className="text-xs font-semibold w-[120px]">Contact</TableHead>
+                              <TableHead className="text-xs font-semibold w-[130px]">Phone</TableHead>
+                              <TableHead className="text-xs font-semibold w-[100px]">Loan Size</TableHead>
+                              <TableHead className="text-xs font-semibold w-[120px]">States</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {allPrograms.map((program) => (
+                              <TableRow key={program.id} className="min-h-[48px]">
+                                <TableCell className="py-2 px-2">
+                                  <div className="font-medium text-sm">{program.lender_name}</div>
+                                  {program.lender_type && (
+                                    <div className="text-xs text-muted-foreground">{program.lender_type}</div>
+                                  )}
+                                </TableCell>
+                                <TableCell className="py-2 px-2">
+                                  <div className="text-sm whitespace-pre-wrap break-words line-clamp-3">
+                                    {program.looking_for || program.description || '—'}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-2 px-2">
+                                  <div className="text-sm">{program.contact_name || '—'}</div>
+                                </TableCell>
+                                <TableCell className="py-2 px-2">
+                                  {program.phone ? (
+                                    <a href={`tel:${program.phone}`} className="text-sm text-admin-blue hover:underline">
+                                      {program.phone}
+                                    </a>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="py-2 px-2">
+                                  <div className="text-sm">{program.loan_size_text || '—'}</div>
+                                </TableCell>
+                                <TableCell className="py-2 px-2">
+                                  <div className="text-sm truncate max-w-[100px]" title={program.states || ''}>
+                                    {program.states || '—'}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
                     </ScrollArea>
                   </CardContent>
                 </Card>
