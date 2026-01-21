@@ -936,70 +936,89 @@ const EvansCalls = () => {
                                   </CardHeader>
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
-                                  <CardContent className="pt-0 pb-4">
-                                    <div className="space-y-3">
-                                      {lender.programs.map((program) => (
-                                        <div
-                                          key={program.id}
-                                          className="p-4 rounded-lg border border-admin-blue/10 bg-gradient-to-r from-admin-blue-light/20 to-transparent"
-                                        >
-                                          {/* Loan Types & Lender Type badges */}
-                                          <div className="flex items-center gap-2 flex-wrap mb-3">
-                                            {program.loan_types?.split(',').map((type) => (
-                                              <Badge key={type.trim()} variant="outline" className="text-xs">
+                                  <CardContent className="pt-0 pb-5 px-5">
+                                    {lender.programs.map((program) => (
+                                      <div key={program.id} className="space-y-4">
+                                        {/* Lender Type Badge */}
+                                        {program.lender_type && (
+                                          <div className="flex items-center gap-2">
+                                            <Badge className="bg-slate-100 text-slate-700 border-0 text-sm font-medium px-3 py-1">
+                                              {program.lender_type}
+                                            </Badge>
+                                          </div>
+                                        )}
+
+                                        {/* Loan Types - Larger, cleaner display */}
+                                        {program.loan_types && (
+                                          <div className="flex flex-wrap gap-2">
+                                            {program.loan_types.split(',').map((type) => (
+                                              <Badge 
+                                                key={type.trim()} 
+                                                variant="outline" 
+                                                className="text-sm font-medium px-3 py-1.5 bg-white border-admin-blue/20 text-admin-blue-dark"
+                                              >
                                                 {type.trim()}
                                               </Badge>
                                             ))}
-                                            {program.lender_type && (
-                                              <Badge className="bg-muted text-muted-foreground text-xs">
-                                                {program.lender_type}
-                                              </Badge>
+                                          </div>
+                                        )}
+
+                                        {/* Description / Looking For */}
+                                        {(program.looking_for || program.description) && (
+                                          <p className="text-sm text-muted-foreground leading-relaxed">
+                                            {program.looking_for || program.description}
+                                          </p>
+                                        )}
+
+                                        {/* Contact Section */}
+                                        {(program.contact_name || program.phone || program.email) && (
+                                          <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Contact</p>
+                                            {program.contact_name && (
+                                              <p className="text-sm font-medium text-slate-900">{program.contact_name}</p>
+                                            )}
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                              {program.phone && (
+                                                <a 
+                                                  href={`tel:${program.phone}`} 
+                                                  className="inline-flex items-center gap-2 text-sm text-admin-blue hover:underline font-medium"
+                                                >
+                                                  <Phone className="w-4 h-4" />
+                                                  {program.phone}
+                                                </a>
+                                              )}
+                                              {program.email && (
+                                                <a 
+                                                  href={`mailto:${program.email}`} 
+                                                  className="inline-flex items-center gap-2 text-sm text-admin-blue hover:underline font-medium"
+                                                >
+                                                  <Mail className="w-4 h-4" />
+                                                  {program.email}
+                                                </a>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Location & States */}
+                                        {(program.states || program.location) && (
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {program.location && (
+                                              <div className="bg-slate-50 rounded-lg p-4">
+                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Location</p>
+                                                <p className="text-sm font-medium text-slate-900">{program.location}</p>
+                                              </div>
+                                            )}
+                                            {program.states && (
+                                              <div className="bg-slate-50 rounded-lg p-4">
+                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">States</p>
+                                                <p className="text-sm font-medium text-slate-900">{program.states}</p>
+                                              </div>
                                             )}
                                           </div>
-
-                                          {/* Description / Looking For */}
-                                          {(program.looking_for || program.description) && (
-                                            <p className="text-sm text-muted-foreground mb-3">
-                                              {program.looking_for || program.description}
-                                            </p>
-                                          )}
-
-                                          {/* Contact Info */}
-                                          {(program.contact_name || program.phone || program.email) && (
-                                            <div className="border-t pt-3 mt-3 space-y-1.5">
-                                              {program.contact_name && (
-                                                <div className="flex items-center gap-2 text-xs">
-                                                  <User className="w-3 h-3 text-muted-foreground" />
-                                                  <span>{program.contact_name}</span>
-                                                </div>
-                                              )}
-                                              <div className="flex items-center gap-4 text-xs">
-                                                {program.phone && (
-                                                  <a href={`tel:${program.phone}`} className="flex items-center gap-1.5 text-admin-blue hover:underline">
-                                                    <Phone className="w-3 h-3" />
-                                                    {program.phone}
-                                                  </a>
-                                                )}
-                                                {program.email && (
-                                                  <a href={`mailto:${program.email}`} className="flex items-center gap-1.5 text-admin-blue hover:underline">
-                                                    <Mail className="w-3 h-3" />
-                                                    {program.email}
-                                                  </a>
-                                                )}
-                                              </div>
-                                            </div>
-                                          )}
-
-                                          {/* States & Location */}
-                                          {(program.states || program.location) && (
-                                            <div className="border-t pt-3 mt-3 text-xs text-muted-foreground">
-                                              {program.states && <p><span className="font-medium">States:</span> {program.states}</p>}
-                                              {program.location && <p><span className="font-medium">Location:</span> {program.location}</p>}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
+                                        )}
+                                      </div>
+                                    ))}
                                   </CardContent>
                                 </CollapsibleContent>
                               </Card>
