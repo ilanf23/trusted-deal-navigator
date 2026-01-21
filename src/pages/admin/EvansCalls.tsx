@@ -854,37 +854,34 @@ const EvansCalls = () => {
           </div>
 
           {/* Right Column - Lender Programs & AI Assistant */}
-          <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-[calc(100vh-280px)]">
-              {/* Lender Programs */}
-              <div className={showAssistant ? "xl:col-span-3" : "xl:col-span-5"}>
-                <Card className="h-full flex flex-col">
-                  <CardHeader className="flex-shrink-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <CardTitle>Lender Programs</CardTitle>
-                          <CardDescription>
-                            {lenders.length} lenders available
-                          </CardDescription>
-                        </div>
+          <div className="lg:col-span-2 relative">
+            <div className="h-[calc(100vh-280px)]">
+              {/* Lender Programs - Always full width now */}
+              <Card className="h-full flex flex-col">
+                <CardHeader className="flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <CardTitle>Lender Programs</CardTitle>
+                        <CardDescription>
+                          {lenders.length} lenders available
+                        </CardDescription>
                       </div>
-                      <Button
-                        variant={showAssistant ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setShowAssistant(!showAssistant)}
-                        className="gap-2"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        {showAssistant ? "Hide AI" : "Ask AI"}
-                      </Button>
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-0 flex-1 min-h-0">
-                    <ScrollArea className="h-full">
-                      <div className="p-6 pt-0 space-y-4">
-                        {lenders.map((lender) => (
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 flex-1 min-h-0">
+                  <ScrollArea className="h-full">
+                    <div className="p-6 pt-0 space-y-4">
+                      {lenders.length === 0 ? (
+                        <div className="text-center py-12">
+                          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                          <p className="text-muted-foreground">No lender programs available</p>
+                          <p className="text-sm text-muted-foreground mt-1">Add lenders from the Lender Programs page</p>
+                        </div>
+                      ) : (
+                        lenders.map((lender) => (
                           <Collapsible
                             key={lender.name}
                             open={expandedLenders[lender.name]}
@@ -958,35 +955,43 @@ const EvansCalls = () => {
                               </CollapsibleContent>
                             </Card>
                           </Collapsible>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* AI Assistant Panel */}
-              {showAssistant && (
-                <div className="xl:col-span-2 h-full">
-                  <LenderProgramAssistant
-                    leadContext={
-                      matchedLead
-                        ? {
-                            name: matchedLead.name,
-                            company: matchedLead.company_name || undefined,
-                            loanType: leadResponse?.loan_type || undefined,
-                            loanAmount: leadResponse?.loan_amount || undefined,
-                            purpose: leadResponse?.funding_purpose || undefined,
-                            annualRevenue: leadResponse?.annual_revenue || undefined,
-                            businessType: leadResponse?.business_type || undefined,
-                          }
-                        : undefined
-                    }
-                    onClose={() => setShowAssistant(false)}
-                  />
-                </div>
-              )}
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Floating AI Assistant - Collapsible popup */}
+            {showAssistant ? (
+              <div className="absolute bottom-4 right-4 w-80 h-96 z-50 shadow-xl rounded-lg overflow-hidden">
+                <LenderProgramAssistant
+                  leadContext={
+                    matchedLead
+                      ? {
+                          name: matchedLead.name,
+                          company: matchedLead.company_name || undefined,
+                          loanType: leadResponse?.loan_type || undefined,
+                          loanAmount: leadResponse?.loan_amount || undefined,
+                          purpose: leadResponse?.funding_purpose || undefined,
+                          annualRevenue: leadResponse?.annual_revenue || undefined,
+                          businessType: leadResponse?.business_type || undefined,
+                        }
+                      : undefined
+                  }
+                  onClose={() => setShowAssistant(false)}
+                />
+              </div>
+            ) : (
+              <Button
+                onClick={() => setShowAssistant(true)}
+                className="absolute bottom-4 right-4 z-50 h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark hover:from-admin-blue-dark hover:to-admin-blue"
+                size="icon"
+              >
+                <Sparkles className="h-6 w-6 text-white" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
