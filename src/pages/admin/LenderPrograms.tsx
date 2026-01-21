@@ -54,7 +54,6 @@ interface NewProgram {
   max_loan: string;
   interest_range: string;
   term: string;
-  // New fields from user's format
   call_status: string;
   last_contact: string;
   next_call: string;
@@ -66,6 +65,7 @@ interface NewProgram {
   lender_type: string;
   loan_types: string;
   states: string;
+  loan_size_text: string;
 }
 
 const emptyProgram: NewProgram = {
@@ -89,6 +89,7 @@ const emptyProgram: NewProgram = {
   lender_type: '',
   loan_types: '',
   states: '',
+  loan_size_text: '',
 };
 
 const formatCurrency = (amount: number | null) => {
@@ -269,7 +270,8 @@ const LenderPrograms = () => {
           else if (h === 'email' || h.includes('email')) program.email = value;
           else if (h === 'type of lender' || h === 'lender type' || h.includes('type of lender') || h.includes('lender type')) program.lender_type = value;
           else if (h === 'types of loans' || h === 'loan types' || h.includes('types of loan') || h.includes('loan type')) program.loan_types = value;
-          else if (h === 'loan size' || h.includes('loan size') || h.includes('loansize')) {
+          else if (h === 'loan size' || h.includes('loan size') || h.includes('loansize') || h === 'size') {
+            program.loan_size_text = value;
             program.min_loan = value;
             program.max_loan = value;
           }
@@ -340,6 +342,7 @@ const LenderPrograms = () => {
         lender_type: p.lender_type || null,
         loan_types: p.loan_types || null,
         states: p.states || null,
+        loan_size_text: p.loan_size_text || null,
       }));
 
       const { error } = await supabase.from('lender_programs').insert(insertData);
