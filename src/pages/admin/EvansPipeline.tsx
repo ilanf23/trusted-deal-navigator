@@ -63,6 +63,8 @@ const EvansPipeline = () => {
   const [editingNameValue, setEditingNameValue] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
   const [moveBoxesOpen, setMoveBoxesOpen] = useState(false);
+  const [addingToStage, setAddingToStage] = useState<LeadStatus | null>(null);
+  const [newLeadName, setNewLeadName] = useState('');
   
   // Pipeline columns management
   const {
@@ -239,6 +241,45 @@ const EvansPipeline = () => {
     },
     onError: () => toast.error('Failed to update lead status'),
   });
+
+  // Create new lead mutation
+  const createLeadMutation = useMutation({
+    mutationFn: async ({ name, status }: { name: string; status: LeadStatus }) => {
+      if (!evanId) throw new Error('Evan team member not found');
+      const { data, error } = await supabase
+        .from('leads')
+        .insert({
+          name: name.trim(),
+          status,
+          assigned_to: evanId,
+          source: 'Pipeline',
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+      toast.success('Lead created');
+      setAddingToStage(null);
+      setNewLeadName('');
+    },
+    onError: () => toast.error('Failed to create lead'),
+  });
+
+  const handleAddLead = (status: LeadStatus) => {
+    setAddingToStage(status);
+    setNewLeadName('');
+  };
+
+  const handleSaveNewLead = () => {
+    if (!newLeadName.trim()) {
+      setAddingToStage(null);
+      return;
+    }
+    createLeadMutation.mutate({ name: newLeadName, status: addingToStage! });
+  };
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = 
@@ -676,7 +717,10 @@ const EvansPipeline = () => {
                       {/* Add button */}
                       <button 
                         className="text-slate-400 hover:text-slate-600 transition-colors"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddLead(stage.status);
+                        }}
                       >
                         <Plus className="h-5 w-5" />
                       </button>
@@ -695,7 +739,48 @@ const EvansPipeline = () => {
 
                   {/* Section Content */}
                   <CollapsibleContent>
-                    {stageLeads.length === 0 ? (
+                    {/* Inline Add Lead Row */}
+                    {addingToStage === stage.status && (
+                      <div 
+                        className="border-b border-slate-200 min-w-max bg-blue-50"
+                        style={{ 
+                          display: 'grid',
+                          gridTemplateColumns: `${getGridTemplate()} 48px`
+                        }}
+                      >
+                        {getVisibleColumns().map((column) => (
+                          <div 
+                            key={column.id}
+                            className={cn(
+                              "flex items-center min-h-[48px]",
+                              "border-r border-slate-200",
+                              (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
+                            )}
+                          >
+                            {column.id === 'name' && (
+                              <input
+                                type="text"
+                                value={newLeadName}
+                                onChange={(e) => setNewLeadName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveNewLead();
+                                  if (e.key === 'Escape') {
+                                    setAddingToStage(null);
+                                    setNewLeadName('');
+                                  }
+                                }}
+                                onBlur={handleSaveNewLead}
+                                autoFocus
+                                placeholder="Enter lead name..."
+                                className="w-full bg-transparent border-none outline-none text-slate-900 placeholder:text-slate-400"
+                              />
+                            )}
+                          </div>
+                        ))}
+                        <div className="min-h-[48px]" />
+                      </div>
+                    )}
+                    {stageLeads.length === 0 && addingToStage !== stage.status ? (
                       <div 
                         className="border-b border-slate-200 min-w-max"
                         style={{ 
