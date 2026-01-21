@@ -229,10 +229,28 @@ const LenderPrograms = () => {
     }
   };
 
+  // Detect the best delimiter for CSV parsing
+  const detectDelimiter = (text: string): string => {
+    const firstLine = text.split('\n')[0] || '';
+    const delimiters = [',', '\t', ';', '|'];
+    let bestDelimiter = ',';
+    let maxCount = 0;
+    
+    for (const d of delimiters) {
+      const count = (firstLine.match(new RegExp(d === '|' ? '\\|' : d, 'g')) || []).length;
+      if (count > maxCount) {
+        maxCount = count;
+        bestDelimiter = d;
+      }
+    }
+    return bestDelimiter;
+  };
+
   const parseCSV = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
+      const delimiter = detectDelimiter(text);
       const lines = text.split('\n').filter(line => line.trim());
       
       if (lines.length < 2) {
@@ -240,35 +258,35 @@ const LenderPrograms = () => {
         return;
       }
 
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+      const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+      console.log('Detected delimiter:', delimiter, 'Headers found:', headers);
       const programs: NewProgram[] = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/['"]/g, ''));
+        const values = lines[i].split(delimiter).map(v => v.trim().replace(/['"]/g, ''));
         const program: NewProgram = { ...emptyProgram };
 
         headers.forEach((header, idx) => {
           const value = values[idx] || '';
           const h = header.toLowerCase();
           
-          // Map your CSV headers to our fields
+          // Map your CSV headers to our fields - with flexible matching
           if (h === 'institution' || (h.includes('lender') && h.includes('name'))) program.lender_name = value;
-          else if (h === 'call y/n' || h === 'call') program.call_status = value || 'N';
-          else if (h === 'last contact') program.last_contact = value;
-          else if (h === 'next call') program.next_call = value;
+          else if (h === 'call y/n' || h === 'call' || h.includes('call y')) program.call_status = value || 'N';
+          else if (h === 'last contact' || h.includes('last') && h.includes('contact')) program.last_contact = value;
+          else if (h === 'next call' || (h.includes('next') && h.includes('call'))) program.next_call = value;
           else if (h === 'location') program.location = value;
-          else if (h === 'looking for') program.looking_for = value;
-          else if (h === 'name' || h === 'contact name') program.contact_name = value;
-          else if (h === 'phone') program.phone = value;
-          else if (h === 'email') program.email = value;
-          else if (h === 'type of lender' || h === 'lender type') program.lender_type = value;
-          else if (h === 'types of loans' || h === 'loan types') program.loan_types = value;
-          else if (h === 'loan size') {
-            // Parse loan size into min/max if it contains a range
+          else if (h === 'looking for' || h.includes('looking')) program.looking_for = value;
+          else if (h === 'name' || h === 'contact name' || h === 'contact') program.contact_name = value;
+          else if (h === 'phone' || h.includes('phone')) program.phone = value;
+          else if (h === 'email' || h.includes('email')) program.email = value;
+          else if (h === 'type of lender' || h === 'lender type' || h.includes('type of lender') || h.includes('lender type')) program.lender_type = value;
+          else if (h === 'types of loans' || h === 'loan types' || h.includes('types of loan') || h.includes('loan type')) program.loan_types = value;
+          else if (h === 'loan size' || h.includes('loan size') || h.includes('loansize')) {
             program.min_loan = value;
             program.max_loan = value;
           }
-          else if (h === 'states') program.states = value;
+          else if (h === 'states' || h.includes('state')) program.states = value;
           // Legacy field mappings
           else if (h.includes('specialty')) program.lender_specialty = value;
           else if (h.includes('program') && h.includes('name')) program.program_name = value;
