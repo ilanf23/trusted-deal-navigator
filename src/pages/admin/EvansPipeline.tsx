@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns } from 'lucide-react';
+import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns as ColumnsIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -15,10 +15,12 @@ import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
 import StageManagerModal from '@/components/admin/StageManagerModal';
 import ColumnManagerModal from '@/components/admin/ColumnManagerModal';
+import PipelineColumnHeader from '@/components/admin/PipelineColumnHeader';
+import { usePipelineColumns } from '@/hooks/usePipelineColumns';
 import HelpTooltip from '@/components/ui/help-tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -56,6 +58,18 @@ const EvansPipeline = () => {
   const [pipelineName, setPipelineName] = useState('Main Pipeline');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingNameValue, setEditingNameValue] = useState('');
+  
+  // Pipeline columns management
+  const {
+    columns,
+    insertColumn,
+    deleteColumn,
+    hideColumn,
+    freezeColumn,
+    moveColumn,
+    getVisibleColumns,
+    getGridTemplate,
+  } = usePipelineColumns();
 
   const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
 
@@ -365,7 +379,7 @@ const EvansPipeline = () => {
                     Stages
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setColumnManagerOpen(true)} className="cursor-pointer">
-                    <Columns className="h-4 w-4 mr-2" />
+                    <ColumnsIcon className="h-4 w-4 mr-2" />
                     Columns
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -463,28 +477,86 @@ const EvansPipeline = () => {
 
         {/* Grouped Table View */}
         <div className="flex-1 overflow-auto border border-slate-200 rounded-md bg-white">
-          {/* Table Header */}
+          {/* Table Header with Column Dropdowns */}
           <div className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
-            <div className="grid grid-cols-[32px_32px_minmax(140px,1.2fr)_90px_minmax(100px,1fr)_minmax(140px,1fr)_90px_80px_100px_90px] gap-3 px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-              <div></div>
-              <div></div>
-              <div className="flex items-center gap-1">
-                Name
-                <HelpTooltip content="Lead's full name. Click any row to open the full lead detail dialog." side="bottom" iconClassName="h-3 w-3" />
-              </div>
-              <div>Stage</div>
-              <div>Company</div>
-              <div className="flex items-center gap-1">
-                Contact
-                <HelpTooltip content="Quick actions to call or email the lead. Click 'Call' to initiate a Twilio call, or 'Email' to compose in Gmail." side="bottom" iconClassName="h-3 w-3" />
-              </div>
-              <div>Owner</div>
-              <div>Source</div>
-              <div className="flex items-center gap-1">
-                Last Touch
-                <HelpTooltip content="Most recent communication with this lead (call, email, or SMS). Helps identify leads that need follow-up." side="bottom" iconClassName="h-3 w-3" />
-              </div>
-              <div>Updated</div>
+            <div 
+              className="gap-3 px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider"
+              style={{ 
+                display: 'grid',
+                gridTemplateColumns: getGridTemplate()
+              }}
+            >
+              {getVisibleColumns().map((column) => {
+                // Special handling for checkbox and avatar columns
+                if (column.id === 'checkbox' || column.id === 'avatar') {
+                  return <div key={column.id}></div>;
+                }
+
+                // Help text for specific columns
+                const helpTexts: Record<string, string> = {
+                  name: "Lead's full name. Click any row to open the full lead detail dialog.",
+                  contact: "Quick actions to call or email the lead. Click 'Call' to initiate a Twilio call, or 'Email' to compose in Gmail.",
+                  last_touch: "Most recent communication with this lead (call, email, or SMS). Helps identify leads that need follow-up.",
+                };
+
+                return (
+                  <PipelineColumnHeader
+                    key={column.id}
+                    column={column}
+                    helpText={helpTexts[column.id]}
+                    onInsertColumn={(position, type, isMagic) => insertColumn(column.id, position, type, isMagic)}
+                    onDeleteColumn={() => deleteColumn(column.id)}
+                    onHideColumn={() => hideColumn(column.id)}
+                    onFreezeColumn={() => freezeColumn(column.id)}
+                    onMoveColumn={(direction) => moveColumn(column.id, direction)}
+                  />
+                );
+              })}
+              {/* Add Column Button at the end */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase">Add Column</div>
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      const lastCol = getVisibleColumns().at(-1);
+                      if (lastCol) insertColumn(lastCol.id, 'right', 'free_form');
+                    }} 
+                    className="cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Free Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      const lastCol = getVisibleColumns().at(-1);
+                      if (lastCol) insertColumn(lastCol.id, 'right', 'date');
+                    }} 
+                    className="cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Date
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      const lastCol = getVisibleColumns().at(-1);
+                      if (lastCol) insertColumn(lastCol.id, 'right', 'days_in_stage', true);
+                    }} 
+                    className="cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4 mr-2 text-purple-500" />
+                    Days in Stage (Magic)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -547,104 +619,139 @@ const EvansPipeline = () => {
                             const touchpoint = touchpoints[lead.id];
                             const ownerName = lead.assigned_to ? teamMemberMap[lead.assigned_to] : null;
                             const isCallingThis = callingLeadId === lead.id;
+                            // Calculate magic column values
+                            const stageEntry = stages.find(s => s.status === lead.status);
+                            const daysSinceUpdate = differenceInDays(new Date(), new Date(lead.updated_at));
+                            
+                            // Render cell content based on column
+                            const renderCellContent = (column: typeof columns[0]) => {
+                              switch (column.id) {
+                                case 'checkbox':
+                                  return (
+                                    <div className="flex items-center justify-center">
+                                      <input 
+                                        type="checkbox" 
+                                        className="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]/20" 
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    </div>
+                                  );
+                                case 'avatar':
+                                  return (
+                                    <Avatar className="h-7 w-7 bg-[#0066FF]">
+                                      <AvatarFallback className="text-[10px] text-white font-semibold bg-[#0066FF]">
+                                        {getInitials(lead.name)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  );
+                                case 'name':
+                                  return <div className="font-medium text-slate-900 truncate">{lead.name}</div>;
+                                case 'stage':
+                                  return (
+                                    <Badge 
+                                      variant="outline" 
+                                      className={cn(
+                                        "text-[10px] font-medium px-1.5 py-0 rounded",
+                                        stageEntry?.bgColor,
+                                        stageEntry?.textColor,
+                                        "border-transparent"
+                                      )}
+                                    >
+                                      {stageEntry?.title}
+                                    </Badge>
+                                  );
+                                case 'company':
+                                  return <div className="text-slate-600 truncate text-[13px]">{lead.company_name || '—'}</div>;
+                                case 'contact':
+                                  return (
+                                    <div className="flex items-center gap-2">
+                                      {lead.phone && (
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              onClick={(e) => handleCall(e, lead)}
+                                              disabled={isCallingThis}
+                                              className="inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50 border border-green-300"
+                                            >
+                                              {isCallingThis ? (
+                                                <Loader2 className="h-4 w-4 text-green-700 animate-spin" />
+                                              ) : (
+                                                <Phone className="h-4 w-4 text-green-700" />
+                                              )}
+                                              <span className="text-xs font-medium text-green-700">Call</span>
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top">
+                                            <p>Call {lead.phone}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      )}
+                                      {lead.email && (
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              onClick={(e) => handleEmail(e, lead)}
+                                              className="inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors border border-[#0066FF]/30"
+                                            >
+                                              <Mail className="h-4 w-4 text-[#0066FF]" />
+                                              <span className="text-xs font-medium text-[#0066FF]">Email</span>
+                                            </button>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top">
+                                            <p>Email {lead.email}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      )}
+                                      {!lead.phone && !lead.email && <span className="text-slate-300 text-xs">—</span>}
+                                    </div>
+                                  );
+                                case 'owner':
+                                  return <div className="text-xs text-slate-600 truncate">{ownerName || <span className="text-slate-300">—</span>}</div>;
+                                case 'source':
+                                  return <div className="text-xs text-slate-500">{lead.source || <span className="text-slate-300">—</span>}</div>;
+                                case 'last_touch':
+                                  return (
+                                    <div className="text-xs text-slate-500">
+                                      {touchpoint ? <span className="capitalize">{touchpoint.type}</span> : <span className="text-slate-300">—</span>}
+                                    </div>
+                                  );
+                                case 'updated':
+                                  return <div className="text-xs text-slate-400">{formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}</div>;
+                                default:
+                                  // Handle magic columns
+                                  if (column.type === 'magic') {
+                                    switch (column.magicType) {
+                                      case 'days_in_stage':
+                                        return <div className="text-xs text-purple-600 font-medium">{daysSinceUpdate}d</div>;
+                                      case 'days_since_contact':
+                                        return <div className="text-xs text-purple-600">{touchpoint ? '—' : `${daysSinceUpdate}d`}</div>;
+                                      default:
+                                        return <div className="text-xs text-slate-400">—</div>;
+                                    }
+                                  }
+                                  // Handle custom columns - show placeholder for now
+                                  return <div className="text-xs text-slate-400">—</div>;
+                              }
+                            };
+                            
                             return (
                               <div
                                 key={lead.id}
                                 className={cn(
-                                  "grid grid-cols-[32px_32px_minmax(140px,1.2fr)_90px_minmax(100px,1fr)_minmax(140px,1fr)_90px_80px_100px_90px] gap-3 px-4 py-2.5 hover:bg-slate-50/80 cursor-pointer items-center text-sm transition-colors",
+                                  "gap-3 px-4 py-2.5 hover:bg-slate-50/80 cursor-pointer items-center text-sm transition-colors",
                                   idx < stageLeads.length - 1 && "border-b border-slate-50"
                                 )}
+                                style={{ 
+                                  display: 'grid',
+                                  gridTemplateColumns: getGridTemplate()
+                                }}
                                 onClick={() => setDetailDialogLead(lead)}
                               >
-                                <div className="flex items-center justify-center">
-                                  <input 
-                                    type="checkbox" 
-                                    className="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]/20" 
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                                <div>
-                                  <Avatar className="h-7 w-7 bg-[#0066FF]">
-                                    <AvatarFallback className="text-[10px] text-white font-semibold bg-[#0066FF]">
-                                      {getInitials(lead.name)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                </div>
-                                <div className="font-medium text-slate-900 truncate">{lead.name}</div>
-                                <div>
-                                  <Badge 
-                                    variant="outline" 
-                                    className={cn(
-                                      "text-[10px] font-medium px-1.5 py-0 rounded",
-                                      stage.bgColor,
-                                      stage.textColor,
-                                      "border-transparent"
-                                    )}
-                                  >
-                                    {stage.title}
-                                  </Badge>
-                                </div>
-                                <div className="text-slate-600 truncate text-[13px]">
-                                  {lead.company_name || '—'}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {lead.phone && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          onClick={(e) => handleCall(e, lead)}
-                                          disabled={isCallingThis}
-                                          className="inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50 border border-green-300"
-                                        >
-                                          {isCallingThis ? (
-                                            <Loader2 className="h-4 w-4 text-green-700 animate-spin" />
-                                          ) : (
-                                            <Phone className="h-4 w-4 text-green-700" />
-                                          )}
-                                          <span className="text-xs font-medium text-green-700">Call</span>
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <p>Call {lead.phone}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                  {lead.email && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          onClick={(e) => handleEmail(e, lead)}
-                                          className="inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors border border-[#0066FF]/30"
-                                        >
-                                          <Mail className="h-4 w-4 text-[#0066FF]" />
-                                          <span className="text-xs font-medium text-[#0066FF]">Email</span>
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <p>Email {lead.email}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
-                                  {!lead.phone && !lead.email && <span className="text-slate-300 text-xs">—</span>}
-                                </div>
-                                <div className="text-xs text-slate-600 truncate">
-                                  {ownerName || <span className="text-slate-300">—</span>}
-                                </div>
-                                <div className="text-xs text-slate-500">
-                                  {lead.source || <span className="text-slate-300">—</span>}
-                                </div>
-                                <div className="text-xs text-slate-500">
-                                  {touchpoint ? (
-                                    <span className="capitalize">
-                                      {touchpoint.type}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-300">—</span>
-                                  )}
-                                </div>
-                                <div className="text-xs text-slate-400">
-                                  {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}
-                                </div>
+                                {getVisibleColumns().map((column) => (
+                                  <div key={column.id}>
+                                    {renderCellContent(column)}
+                                  </div>
+                                ))}
                               </div>
                             );
                           })}
