@@ -561,7 +561,7 @@ const EvansPipeline = () => {
                             clearSelection();
                           }
                         }}
-                        className="border-slate-300 data-[state=checked]:bg-[#0066FF] data-[state=checked]:border-[#0066FF]"
+                        className="rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                       />
                     </div>
                   );
@@ -733,7 +733,7 @@ const EvansPipeline = () => {
                                         checked={selectedLeadIds.has(lead.id)}
                                         onCheckedChange={() => toggleLeadSelection(lead.id)}
                                         onClick={(e) => e.stopPropagation()}
-                                        className="border-slate-300 data-[state=checked]:bg-[#0066FF] data-[state=checked]:border-[#0066FF]"
+                                        className="rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                                       />
                                     </div>
                                   );
