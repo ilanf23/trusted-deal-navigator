@@ -5,13 +5,14 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2 } from 'lucide-react';
+import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -40,6 +41,7 @@ const EvansPipeline = () => {
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<LeadStatus, boolean>>({} as Record<LeadStatus, boolean>);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
+  const [sharingModalOpen, setSharingModalOpen] = useState(false);
 
   const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
 
@@ -265,6 +267,17 @@ const EvansPipeline = () => {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {canEdit && evanId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSharingModalOpen(true)}
+                className="border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+            )}
             <Link to="/user/evan/leads">
               <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50">
                 <List className="w-4 h-4 mr-2" />
@@ -543,6 +556,16 @@ const EvansPipeline = () => {
           queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
         }}
       />
+
+      {/* Pipeline Sharing Modal */}
+      {evanId && (
+        <PipelineSharingModal
+          open={sharingModalOpen}
+          onOpenChange={setSharingModalOpen}
+          ownerId={evanId}
+          ownerName="Evan"
+        />
+      )}
     </AdminLayout>
   );
 };
