@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -418,11 +418,11 @@ const EvansPipeline = () => {
   const undoTimeRemaining = lastAction ? Math.max(0, 30000 - (Date.now() - lastAction.timestamp)) : 0;
   
   // Auto-clear undo after timeout
-  useState(() => {
+  useEffect(() => {
     if (lastAction && undoTimeRemaining <= 0) {
       setLastAction(null);
     }
-  });
+  }, [lastAction, undoTimeRemaining]);
 
   // Create new lead mutation
   const createLeadMutation = useMutation({
