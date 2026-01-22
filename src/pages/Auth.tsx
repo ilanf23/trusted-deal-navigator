@@ -39,9 +39,9 @@ const Auth = () => {
 
       // Route team members (employees) to their specific dashboards
       const employeeRoutes: Record<string, string> = {
-        'evan@test.com': '/team/evan',
-        'maura@test.com': '/team/maura',
-        'wendy@test.com': '/team/wendy',
+        'evan@commerciallendingx.com': '/team/evan',
+        'maura@commerciallendingx.com': '/team/maura',
+        'wendy@commerciallendingx.com': '/team/wendy',
       };
 
       // Check if user is a team member with a specific route
