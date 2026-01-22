@@ -309,7 +309,7 @@ const EvansLeads = () => {
           <Button 
             variant="outline" 
             onClick={() => navigate('/team/evan/pipeline')}
-            className="h-10 px-4 rounded-xl"
+            className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
           >
             <Kanban className="w-4 h-4 mr-2" />
             Pipeline View
