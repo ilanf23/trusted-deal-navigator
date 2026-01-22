@@ -1084,14 +1084,14 @@ const EvansCalls = () => {
               <div className={showAssistant ? "xl:col-span-3" : "xl:col-span-5"}>
               <Card className="h-full flex flex-col border-slate-200">
                   <CardHeader className="flex-shrink-0 pb-3 border-b bg-slate-50/50">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-shrink-0">
-                        <CardTitle className="text-lg font-semibold">Lender Programs</CardTitle>
-                        <CardDescription className="text-xs">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <CardTitle className="text-lg font-semibold truncate">Lender Programs</CardTitle>
+                        <CardDescription className="text-xs truncate">
                           {filteredPrograms.length} programs{leadContext ? ' • Matching to lead' : ''}
                         </CardDescription>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                         <Button
                           variant={showFilterPanel ? "default" : "outline"}
                           size="sm"
