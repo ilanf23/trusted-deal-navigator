@@ -1145,36 +1145,101 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                   </TabsContent>
 
                   {/* Comments Tab */}
-                  <TabsContent value="comments" className="m-0">
-                    <div className="text-center py-12 text-slate-400">
-                      <MessagesSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No comments yet</p>
+                  <TabsContent value="comments" className="m-0 space-y-3">
+                    {/* Add Comment Form */}
+                    <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50">
+                      <Textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Write a comment..."
+                        className="min-h-[80px] text-sm border-slate-200 bg-white mb-2"
+                      />
+                      <div className="flex justify-end">
+                        <Button 
+                          size="sm" 
+                          onClick={() => addComment.mutate(newComment)} 
+                          disabled={!newComment.trim() || addComment.isPending}
+                        >
+                          {addComment.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                          Add Comment
+                        </Button>
+                      </div>
                     </div>
+                    
+                    {/* Comments List */}
+                    {activities.filter(a => a.activity_type === 'comment').length === 0 ? (
+                      <div className="text-center py-8 text-slate-400">
+                        <MessagesSquare className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No comments yet</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {activities.filter(a => a.activity_type === 'comment').map(comment => (
+                          <div key={comment.id} className="p-3 bg-white border border-slate-200 rounded-lg">
+                            <p className="text-sm text-slate-800">{comment.content}</p>
+                            <p className="text-xs text-slate-400 mt-2">
+                              {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </TabsContent>
 
                   {/* Tasks Tab */}
-                  <TabsContent value="tasks" className="m-0 space-y-2">
+                  <TabsContent value="tasks" className="m-0 space-y-3">
+                    {/* Add Task Form */}
+                    <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50">
+                      <div className="space-y-2">
+                        <Input
+                          value={newTaskTitle}
+                          onChange={(e) => setNewTaskTitle(e.target.value)}
+                          placeholder="Task title"
+                          className="text-sm border-slate-200 bg-white"
+                        />
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            type="date"
+                            value={newTaskDueDate}
+                            onChange={(e) => setNewTaskDueDate(e.target.value)}
+                            className="text-sm border-slate-200 bg-white flex-1"
+                          />
+                          <Button 
+                            size="sm" 
+                            onClick={() => addTask.mutate({ title: newTaskTitle, dueDate: newTaskDueDate })} 
+                            disabled={!newTaskTitle.trim() || addTask.isPending}
+                          >
+                            {addTask.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                            Add Task
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Tasks List */}
                     {tasks.length === 0 ? (
-                      <div className="text-center py-12 text-slate-400">
-                        <ListTodo className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>No tasks yet</p>
+                      <div className="text-center py-8 text-slate-400">
+                        <ListTodo className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No tasks yet</p>
                       </div>
                     ) : (
-                      tasks.map(task => (
-                        <div key={task.id} className="flex items-start gap-3 py-2 px-3 hover:bg-slate-50 rounded">
-                          {task.status === 'completed' ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 mt-0.5" />
-                          )}
-                          <div className="flex-1">
-                            <p className={cn("text-sm", task.status === 'completed' && "line-through text-slate-400")}>{task.title}</p>
-                            {task.due_date && (
-                              <p className="text-xs text-slate-400 mt-0.5">Due {format(new Date(task.due_date), 'MMM d')}</p>
+                      <div className="space-y-1">
+                        {tasks.map(task => (
+                          <div key={task.id} className="flex items-start gap-3 py-2 px-3 hover:bg-slate-50 rounded">
+                            {task.status === 'completed' ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                            ) : (
+                              <Circle className="w-5 h-5 text-slate-300 mt-0.5" />
                             )}
+                            <div className="flex-1">
+                              <p className={cn("text-sm", task.status === 'completed' && "line-through text-slate-400")}>{task.title}</p>
+                              {task.due_date && (
+                                <p className="text-xs text-slate-400 mt-0.5">Due {format(new Date(task.due_date), 'MMM d')}</p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </TabsContent>
 
