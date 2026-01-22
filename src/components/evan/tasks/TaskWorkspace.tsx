@@ -77,62 +77,63 @@ export const TaskWorkspace = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
 
-      {/* Apple-style Toolbar */}
-      <div className="flex items-center justify-between gap-4 sticky top-16 z-30 py-4 -mx-1 px-1 backdrop-blur-xl bg-background/80">
-        <div className="flex items-center gap-3">
+      {/* Apple-style Toolbar - responsive layout */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4 sticky top-14 md:top-16 z-30 py-3 md:py-4 -mx-1 px-1 backdrop-blur-xl bg-background/80">
+        <div className="flex items-center gap-2 md:gap-3">
           {/* New Task Button */}
           <Button 
             onClick={() => handleAddTask({})}
-            className="h-10 px-5 rounded-full bg-foreground text-background hover:bg-foreground/90 font-medium shadow-lg shadow-foreground/10 transition-all duration-300 hover:shadow-xl hover:shadow-foreground/20 hover:scale-[1.02]"
+            className="h-9 md:h-10 px-3 md:px-5 rounded-full bg-foreground text-background hover:bg-foreground/90 font-medium shadow-lg shadow-foreground/10 transition-all duration-300 hover:shadow-xl hover:shadow-foreground/20 hover:scale-[1.02] text-sm md:text-base"
           >
-            <Plus className="h-4 w-4 mr-2" />
-            New Task
+            <Plus className="h-4 w-4 mr-1 md:mr-2" />
+            <span className="hidden xs:inline">New Task</span>
+            <span className="xs:hidden">Add</span>
           </Button>
           
-          {/* Search */}
-          <div className="relative">
+          {/* Search - responsive width */}
+          <div className="relative flex-1 sm:flex-initial">
             <Input
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64 h-10 pl-4 rounded-full border-muted-foreground/20 bg-muted/50 focus:bg-background transition-colors"
+              className="w-full sm:w-48 md:w-64 h-9 md:h-10 pl-3 md:pl-4 rounded-full border-muted-foreground/20 bg-muted/50 focus:bg-background transition-colors text-sm"
             />
           </div>
         </div>
 
-        {/* View Switcher - Pill Style */}
-        <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-full backdrop-blur-sm">
+        {/* View Switcher - Pill Style, responsive */}
+        <div className="flex items-center gap-0.5 md:gap-1 p-0.5 md:p-1 bg-muted/60 rounded-full backdrop-blur-sm self-start sm:self-auto">
           {viewOptions.map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+              className={`flex items-center gap-1 md:gap-2 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-300 ${
                 viewMode === mode 
                   ? 'bg-background text-foreground shadow-sm' 
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{label}</span>
+              <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden md:inline">{label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Stats Bar */}
-      <div className="flex items-center gap-6 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+      {/* Stats Bar - responsive layout */}
+      <div className="flex flex-wrap items-center gap-3 md:gap-6 text-xs md:text-sm">
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
           <span className="text-muted-foreground">{tasks.filter(t => t.status === 'done').length} Complete</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="text-muted-foreground">{tasks.filter(t => t.status === 'working').length} In Progress</span>
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500" />
+          <span className="text-muted-foreground">{tasks.filter(t => t.status === 'working' || t.status === 'in_progress').length} In Progress</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-slate-400" />
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-slate-400" />
           <span className="text-muted-foreground">{tasks.filter(t => !t.status || t.status === 'todo').length} To Do</span>
         </div>
       </div>

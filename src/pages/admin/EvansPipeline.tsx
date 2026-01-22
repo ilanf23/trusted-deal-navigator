@@ -589,10 +589,10 @@ const EvansPipeline = () => {
   return (
     <AdminLayout>
       <div className="flex flex-col h-full font-['Inter',_'SF_Pro_Display',_system-ui,_sans-serif]">
-        {/* Header - 8px spacing system: mb-6 = 24px */}
-        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+        {/* Header - responsive layout */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 flex-wrap">
               {isEditingName ? (
                 <input
                   type="text"
@@ -615,12 +615,12 @@ const EvansPipeline = () => {
                     }
                   }}
                   autoFocus
-                  className="text-xl font-medium tracking-tight text-slate-800 bg-transparent border-b-2 border-[#0066FF] outline-none px-0 py-0"
+                  className="text-lg md:text-xl font-medium tracking-tight text-slate-800 bg-transparent border-b-2 border-[#0066FF] outline-none px-0 py-0"
                   style={{ width: `${Math.max(editingNameValue.length, 8)}ch` }}
                 />
               ) : (
                 <h1 
-                  className="text-xl font-medium tracking-tight text-slate-800 cursor-pointer hover:text-[#0066FF] transition-colors"
+                  className="text-lg md:text-xl font-medium tracking-tight text-slate-800 cursor-pointer hover:text-[#0066FF] transition-colors"
                   onClick={() => {
                     if (canEdit) {
                       setEditingNameValue(pipelineName);
@@ -632,24 +632,25 @@ const EvansPipeline = () => {
                   {pipelineName}
                 </h1>
               )}
-              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-semibold px-2 py-0.5 flex-shrink-0">
-                <Star className="h-2.5 w-2.5 mr-1 fill-amber-500" />
+              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[9px] md:text-[10px] font-semibold px-1.5 md:px-2 py-0.5 flex-shrink-0">
+                <Star className="h-2 w-2 md:h-2.5 md:w-2.5 mr-0.5 md:mr-1 fill-amber-500" />
                 MAIN
               </Badge>
               <HelpTooltip 
                 content="Click the pipeline name to rename it. Your main pipeline tracks all your primary leads through the sales process."
                 side="bottom"
+                className="hidden sm:block"
               />
             </div>
-            <span className="text-[13px] text-slate-500 font-normal whitespace-nowrap">{totalLeads} leads</span>
+            <span className="text-xs md:text-[13px] text-slate-500 font-normal whitespace-nowrap">{totalLeads} leads</span>
             {!canEdit && (
-              <Badge variant="outline" className="gap-1 text-slate-500 border-slate-300 flex-shrink-0">
+              <Badge variant="outline" className="gap-1 text-slate-500 border-slate-300 flex-shrink-0 text-xs">
                 <Lock className="h-3 w-3" />
                 View Only
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
             {/* Undo Button */}
             {lastAction && (
               <TooltipProvider>
@@ -660,12 +661,12 @@ const EvansPipeline = () => {
                       size="sm"
                       onClick={handleUndo}
                       disabled={isUndoing}
-                      className="border-amber-300 text-amber-700 hover:bg-amber-50 h-9 animate-in fade-in slide-in-from-right-2"
+                      className="border-amber-300 text-amber-700 hover:bg-amber-50 h-8 md:h-9 text-xs md:text-sm animate-in fade-in slide-in-from-right-2"
                     >
                       {isUndoing ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2 animate-spin" />
                       ) : (
-                        <Undo2 className="w-4 h-4 mr-2" />
+                        <Undo2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2" />
                       )}
                       Undo
                     </Button>
@@ -677,61 +678,72 @@ const EvansPipeline = () => {
               </TooltipProvider>
             )}
             {canEdit && evanId && (
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSharingModalOpen(true)}
-                  className="border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 h-9"
+                  className="border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 h-8 md:h-9 text-xs md:text-sm"
                 >
-                  <Users className="w-4 h-4 mr-2" />
-                  Share
+                  <Users className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2" />
+                  <span className="hidden md:inline">Share</span>
                 </Button>
                 <HelpTooltip 
                   content="Share this pipeline with team members. You can give them view-only or full edit access to collaborate on leads."
                   side="bottom"
+                  className="hidden md:block"
                 />
               </div>
             )}
             <Button 
               variant="outline" 
               onClick={() => navigate('/team/evan/leads')}
-              className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
+              className="h-8 md:h-9 px-2 md:px-4 border-slate-200 text-slate-600 hover:bg-slate-50 text-xs md:text-sm"
             >
-              <List className="w-4 h-4 mr-2" />
-              List View
+              <List className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">List View</span>
+              <span className="sm:hidden">List</span>
             </Button>
             {canEdit && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 border-slate-200 text-slate-600 hover:bg-slate-50">
-                    Settings
+                  <Button variant="outline" size="sm" className="h-8 md:h-9 border-slate-200 text-slate-600 hover:bg-slate-50 text-xs md:text-sm px-2 md:px-3">
+                    <span className="hidden sm:inline">Settings</span>
+                    <MoreVertical className="w-4 h-4 sm:hidden" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-white z-50 p-2">
-                  <DropdownMenuItem onClick={() => setStageManagerOpen(true)} className="cursor-pointer py-3 px-4 text-sm">
-                    <Layers className="h-5 w-5 mr-3" />
+                <DropdownMenuContent align="end" className="w-48 md:w-56 bg-white z-50 p-1.5 md:p-2">
+                  <DropdownMenuItem onClick={() => setStageManagerOpen(true)} className="cursor-pointer py-2 md:py-3 px-3 md:px-4 text-xs md:text-sm">
+                    <Layers className="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
                     Stages
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setColumnManagerOpen(true)} className="cursor-pointer py-3 px-4 text-sm">
-                    <ColumnsIcon className="h-5 w-5 mr-3" />
+                  <DropdownMenuItem onClick={() => setColumnManagerOpen(true)} className="cursor-pointer py-2 md:py-3 px-3 md:px-4 text-xs md:text-sm">
+                    <ColumnsIcon className="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
                     Columns
                   </DropdownMenuItem>
+                  {/* Mobile-only share option */}
+                  {canEdit && evanId && (
+                    <DropdownMenuItem onClick={() => setSharingModalOpen(true)} className="cursor-pointer py-2 md:py-3 px-3 md:px-4 text-xs md:text-sm sm:hidden">
+                      <Users className="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
+                      Share
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
         </div>
 
-        {/* Pipeline Progress Bar - 8px spacing: mb-8 = 32px */}
-        <div className="mb-2 flex items-center gap-2">
-          <span className="text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
+        {/* Pipeline Progress Bar - responsive */}
+        <div className="mb-1.5 md:mb-2 flex items-center gap-2">
+          <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
           <HelpTooltip 
             content="Click any stage to jump to that section. Each segment shows the count of leads in that stage. Drag leads between stages in the table below to update their status."
             side="right"
+            className="hidden sm:block"
           />
         </div>
-        <div className="flex h-16 mb-6">
+        <div className="flex h-12 md:h-16 mb-4 md:mb-6 overflow-x-auto">
           {stageCounts.map((stage, index) => {
             const isFirst = index === 0;
             const isLast = index === stageCounts.length - 1;
@@ -739,7 +751,7 @@ const EvansPipeline = () => {
             return (
               <div
                 key={stage.status}
-                className="relative flex-1 cursor-pointer group"
+                className="relative flex-1 min-w-[60px] md:min-w-0 cursor-pointer group"
                 onClick={() => {
                   const element = document.getElementById(`section-${stage.status}`);
                   element?.scrollIntoView({ behavior: 'smooth' });
@@ -761,9 +773,10 @@ const EvansPipeline = () => {
                         : 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)'
                   }}
                 >
-                  <div className="flex flex-col items-center text-white pl-2">
-                    <span className="text-2xl font-bold tracking-tight leading-none">{stage.count}</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-95 mt-0.5 whitespace-nowrap">{stage.title}</span>
+                  <div className="flex flex-col items-center text-white pl-1 md:pl-2">
+                    <span className="text-lg md:text-2xl font-bold tracking-tight leading-none">{stage.count}</span>
+                    <span className="text-[8px] md:text-[10px] font-semibold uppercase tracking-wider opacity-95 mt-0.5 whitespace-nowrap hidden sm:block">{stage.title}</span>
+                    <span className="text-[7px] font-semibold uppercase tracking-wider opacity-95 mt-0.5 whitespace-nowrap sm:hidden">{stage.title.slice(0, 4)}</span>
                   </div>
                 </div>
               </div>
@@ -771,25 +784,26 @@ const EvansPipeline = () => {
           })}
         </div>
 
-        {/* Filters - 8px spacing: gap-4 = 16px, mb-4 = 16px */}
-        <div className="flex items-center gap-4 mb-4 flex-wrap">
-          <div className="flex items-center gap-2 flex-1 max-w-md min-w-[200px]">
+        {/* Filters - responsive */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-4 mb-3 md:mb-4">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             <Input
               placeholder="Search leads..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-10 pl-4 text-sm border-slate-200 focus:border-[#0066FF] focus:ring-[#0066FF]/20"
+              className="h-9 md:h-10 pl-3 md:pl-4 text-sm border-slate-200 focus:border-[#0066FF] focus:ring-[#0066FF]/20"
             />
             <HelpTooltip 
               content="Search by lead name, email, or company. Results filter in real-time as you type."
               side="right"
+              className="hidden sm:block"
             />
           </div>
           <div className="flex items-center gap-2">
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-48 h-10 border-slate-200">
-                <Filter className="w-4 h-4 mr-2 text-slate-400" />
-                <SelectValue placeholder="Filter by source" />
+              <SelectTrigger className="w-full sm:w-40 md:w-48 h-9 md:h-10 border-slate-200 text-sm">
+                <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 text-slate-400" />
+                <SelectValue placeholder="Filter" />
               </SelectTrigger>
               <SelectContent className="bg-white z-50">
                 <SelectItem value="all">All Sources</SelectItem>
@@ -803,6 +817,7 @@ const EvansPipeline = () => {
             <HelpTooltip 
               content="Filter leads by their acquisition source (e.g., Website, Referral, Cold Call). Helps focus on specific lead channels."
               side="right"
+              className="hidden sm:block"
             />
           </div>
           <div className="text-sm text-slate-500 whitespace-nowrap">
