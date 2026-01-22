@@ -10,7 +10,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -35,58 +34,25 @@ const Auth = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (!user || authLoading) return;
-
-    let cancelled = false;
-
-    (async () => {
+    if (user && !authLoading) {
       const email = (user.email ?? '').toLowerCase();
 
-      // Force this user to admin/ilan
-      if (email === 'ilan@maverich.ai') {
-        navigate('/admin/ilan', { replace: true });
-        return;
-      }
-
-      // Prefer database-backed routing for employees/owners (avoids hardcoded email mappings)
-      try {
-        const { data: teamMember } = await supabase
-          .from('team_members')
-          .select('name,is_owner')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (cancelled) return;
-
-        if (teamMember?.name) {
-          const name = teamMember.name.toLowerCase();
-
-          // Regular employees go to their team dashboard
-          if (!teamMember.is_owner) {
-            navigate(`/team/${name}`, { replace: true });
-            return;
-          }
-
-          // Owners default to admin dashboard
-          navigate('/admin', { replace: true });
-          return;
-        }
-      } catch {
-        // Fall back to existing routing rules below
-      }
-
-      // Fallback: Route known team members (legacy)
+      // Route team members (employees) to their specific dashboards
       const employeeRoutes: Record<string, string> = {
-        'evan@commerciallendingx.com': '/team/evan',
-        'maura@commerciallendingx.com': '/team/maura',
-        'wendy@commerciallendingx.com': '/team/wendy',
         'evan@test.com': '/team/evan',
         'maura@test.com': '/team/maura',
         'wendy@test.com': '/team/wendy',
       };
 
+      // Check if user is a team member with a specific route
       if (employeeRoutes[email]) {
         navigate(employeeRoutes[email], { replace: true });
+        return;
+      }
+
+      // Force this user to admin/ilan
+      if (email === 'ilan@maverich.ai') {
+        navigate('/admin/ilan', { replace: true });
         return;
       }
 
@@ -98,11 +64,7 @@ const Auth = () => {
       } else {
         navigate('/user', { replace: true });
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    }
   }, [user, isAdmin, authLoading, navigate, location]);
 
   const handleLogin = async (e: React.FormEvent) => {
