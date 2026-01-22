@@ -28,20 +28,26 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           aiChatOpen={aiChatOpen}
         />
 
-        <main className="flex-1 flex flex-col min-h-screen">
-          {/* Top Bar - only spans the content area, not the sidebar */}
-          <header className="h-16 flex items-center justify-between border-b border-border bg-card sticky top-0 z-[5] pl-4 pr-8">
-            <div className="flex items-center gap-5 ml-12">
-              <SidebarTrigger className="w-11 h-11 rounded-xl hover:bg-muted transition-colors flex items-center justify-center group">
-                <Menu className="w-6 h-6 text-muted-foreground group-hover:text-foreground" />
+        <main className="flex-1 flex flex-col min-h-screen w-full overflow-x-hidden">
+          {/* Top Bar - responsive padding and layout */}
+          <header className="h-14 md:h-16 flex items-center justify-between border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8">
+            <div className="flex items-center gap-2 md:gap-5 ml-0 md:ml-12">
+              <SidebarTrigger className="w-10 h-10 md:w-11 md:h-11 rounded-xl hover:bg-muted transition-colors flex items-center justify-center group">
+                <Menu className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground group-hover:text-foreground" />
               </SidebarTrigger>
             </div>
             
-            {/* Time Display */}
-            <div className="flex items-center gap-8">
-              <time className="text-base text-muted-foreground font-medium tabular-nums">
+            {/* Time Display - hidden on small screens */}
+            <div className="flex items-center gap-4 md:gap-8">
+              <time className="text-sm md:text-base text-muted-foreground font-medium tabular-nums hidden sm:block">
                 {new Date().toLocaleDateString('en-US', { 
                   weekday: 'long', 
+                  month: 'short', 
+                  day: 'numeric' 
+                })}
+              </time>
+              <time className="text-sm text-muted-foreground font-medium tabular-nums sm:hidden">
+                {new Date().toLocaleDateString('en-US', { 
                   month: 'short', 
                   day: 'numeric' 
                 })}
@@ -49,8 +55,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
           </header>
           
-          {/* Main Content Area */}
-          <div className="flex-1 p-8 lg:p-10 animate-fade-in">
+          {/* Main Content Area - responsive padding */}
+          <div className="flex-1 p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-auto">
             <div className="max-w-[1800px] mx-auto">
               {children}
             </div>

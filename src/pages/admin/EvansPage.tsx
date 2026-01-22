@@ -403,51 +403,51 @@ const EvansPage = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10">
-              <BarChart3 className="h-6 w-6 text-primary" />
+      <div className="space-y-4 md:space-y-6">
+        {/* Header - responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-2 md:p-2.5 rounded-lg md:rounded-xl bg-primary/10">
+              <BarChart3 className="h-5 w-5 md:h-6 md:w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Performance metrics & insights</p>
+              <h1 className="text-xl md:text-2xl font-bold">Analytics Dashboard</h1>
+              <p className="text-xs md:text-sm text-muted-foreground">Performance metrics & insights</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
-              <TabsList className="bg-muted/50">
-                <TabsTrigger value="mtd">MTD</TabsTrigger>
-                <TabsTrigger value="ytd">YTD</TabsTrigger>
+              <TabsList className="bg-muted/50 h-8 md:h-9">
+                <TabsTrigger value="mtd" className="text-xs md:text-sm px-2 md:px-3">MTD</TabsTrigger>
+                <TabsTrigger value="ytd" className="text-xs md:text-sm px-2 md:px-3">YTD</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
         </div>
 
-        {/* Annual Goal Progress - Now at the top */}
+        {/* Annual Goal Progress - responsive */}
         <Card className="bg-gradient-to-r from-primary/5 via-background to-primary/5 border-primary/20">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+          <CardHeader className="pb-2 px-4 md:px-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <CardTitle className="text-lg">Annual Goal Progress</CardTitle>
-                <CardDescription>Road to $1.5M revenue target</CardDescription>
+                <CardTitle className="text-base md:text-lg">Annual Goal Progress</CardTitle>
+                <CardDescription className="text-xs md:text-sm">Road to $1.5M revenue target</CardDescription>
               </div>
-              <Badge variant={ytdRevenue >= annualTarget * 0.8 ? 'default' : 'secondary'}>
+              <Badge variant={ytdRevenue >= annualTarget * 0.8 ? 'default' : 'secondary'} className="w-fit text-xs">
                 {ytdRevenue >= annualTarget * 0.8 ? 'On Track' : 'Behind Pace'}
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="px-4 md:px-6">
+            <div className="space-y-3 md:space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-3xl font-bold">{formatCurrency(ytdRevenue)}</span>
-                <span className="text-lg text-muted-foreground">of $1.5M</span>
+                <span className="text-2xl md:text-3xl font-bold">{formatCurrency(ytdRevenue)}</span>
+                <span className="text-sm md:text-lg text-muted-foreground">of $1.5M</span>
               </div>
-              <Progress value={(ytdRevenue / annualTarget) * 100} className="h-4" />
-              <div className="grid grid-cols-4 gap-4 pt-2">
+              <Progress value={(ytdRevenue / annualTarget) * 100} className="h-3 md:h-4" />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 pt-2">
                 <div className="text-center p-3 rounded-lg bg-muted/50">
                   <p className="text-xs text-muted-foreground mb-1">Q1</p>
                   <p className="font-semibold">{formatCurrency(quarterlyRevenue[0])}</p>
@@ -469,83 +469,83 @@ const EvansPage = () => {
           </CardContent>
         </Card>
 
-        {/* KPI Cards Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* KPI Cards Row - responsive */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
           <Card className="border hover:border-primary/30 transition-colors">
-            <CardContent className="pt-5">
+            <CardContent className="pt-4 md:pt-5 px-3 md:px-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Revenue</p>
-                  <p className="text-2xl font-bold mt-1">{formatCurrency(metrics.totalRevenue)}</p>
-                  <div className="flex items-center gap-1 mt-1">
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Revenue</p>
+                  <p className="text-lg md:text-2xl font-bold mt-0.5 md:mt-1">{formatCurrency(metrics.totalRevenue)}</p>
+                  <div className="flex items-center gap-1 mt-0.5 md:mt-1">
                     {metrics.totalRevenue > 0 ? (
-                      <ArrowUpRight className="h-3 w-3 text-green-600" />
+                      <ArrowUpRight className="h-2.5 w-2.5 md:h-3 md:w-3 text-green-600" />
                     ) : (
-                      <ArrowDownRight className="h-3 w-3 text-red-500" />
+                      <ArrowDownRight className="h-2.5 w-2.5 md:h-3 md:w-3 text-red-500" />
                     )}
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[10px] md:text-xs text-muted-foreground">
                       {periodLabel}
                     </span>
                   </div>
                 </div>
-                <div className="p-3 rounded-full bg-primary/10">
-                  <DollarSign className="h-5 w-5 text-primary" />
+                <div className="p-2 md:p-3 rounded-full bg-primary/10">
+                  <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="border hover:border-primary/30 transition-colors">
-            <CardContent className="pt-5">
+            <CardContent className="pt-4 md:pt-5 px-3 md:px-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Deals Closed</p>
-                  <p className="text-2xl font-bold mt-1">{metrics.totalDeals}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Deals Closed</p>
+                  <p className="text-lg md:text-2xl font-bold mt-0.5 md:mt-1">{metrics.totalDeals}</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
                     Avg: {formatCurrency(metrics.avgDealSize)}
                   </p>
                 </div>
-                <div className="p-3 rounded-full bg-muted">
-                  <Briefcase className="h-5 w-5 text-muted-foreground" />
+                <div className="p-2 md:p-3 rounded-full bg-muted">
+                  <Briefcase className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="border hover:border-primary/30 transition-colors">
-            <CardContent className="pt-5">
+            <CardContent className="pt-4 md:pt-5 px-3 md:px-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pipeline Value</p>
-                  <p className="text-2xl font-bold mt-1">{formatCurrency(metrics.pipelineValue)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {metrics.pipelineDeals} active deals
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Pipeline</p>
+                  <p className="text-lg md:text-2xl font-bold mt-0.5 md:mt-1">{formatCurrency(metrics.pipelineValue)}</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">
+                    {metrics.pipelineDeals} deals
                   </p>
                 </div>
-                <div className="p-3 rounded-full bg-muted">
-                  <Target className="h-5 w-5 text-muted-foreground" />
+                <div className="p-2 md:p-3 rounded-full bg-muted">
+                  <Target className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="border hover:border-primary/30 transition-colors">
-            <CardContent className="pt-5">
+            <CardContent className="pt-4 md:pt-5 px-3 md:px-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Win Rate</p>
-                  <p className="text-2xl font-bold mt-1">{metrics.winRate}%</p>
-                  <div className="flex items-center gap-1 mt-1">
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Win Rate</p>
+                  <p className="text-lg md:text-2xl font-bold mt-0.5 md:mt-1">{metrics.winRate}%</p>
+                  <div className="flex items-center gap-1 mt-0.5 md:mt-1">
                     {metrics.winRate >= 30 ? (
-                      <TrendingUp className="h-3 w-3 text-green-600" />
+                      <TrendingUp className="h-2.5 w-2.5 md:h-3 md:w-3 text-green-600" />
                     ) : (
-                      <TrendingDown className="h-3 w-3 text-red-500" />
+                      <TrendingDown className="h-2.5 w-2.5 md:h-3 md:w-3 text-red-500" />
                     )}
-                    <span className="text-xs text-muted-foreground">Conversion rate</span>
+                    <span className="text-[10px] md:text-xs text-muted-foreground">Conversion</span>
                   </div>
                 </div>
-                <div className="p-3 rounded-full bg-muted">
-                  <Activity className="h-5 w-5 text-muted-foreground" />
+                <div className="p-2 md:p-3 rounded-full bg-muted">
+                  <Activity className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
                 </div>
               </div>
             </CardContent>

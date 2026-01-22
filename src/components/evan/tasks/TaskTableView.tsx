@@ -86,18 +86,18 @@ export const TaskTableView = ({
   };
 
   return (
-    <div className="rounded-2xl border border-muted-foreground/10 bg-card/50 backdrop-blur-sm overflow-hidden">
-      <Table>
+    <div className="rounded-xl md:rounded-2xl border border-muted-foreground/10 bg-card/50 backdrop-blur-sm overflow-x-auto">
+      <Table className="min-w-[700px]">
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-muted-foreground/10">
-            <TableHead className="w-10"></TableHead>
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Task Name</TableHead>
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Assigned To</TableHead>
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Related Customer</TableHead>
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Due Date</TableHead>
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Status</TableHead>
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Priority</TableHead>
-            <TableHead className="w-20"></TableHead>
+            <TableHead className="w-8 md:w-10"></TableHead>
+            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Task Name</TableHead>
+            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell">Assigned To</TableHead>
+            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Related Customer</TableHead>
+            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Due Date</TableHead>
+            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Status</TableHead>
+            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Priority</TableHead>
+            <TableHead className="w-12 md:w-20"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -134,43 +134,44 @@ export const TaskTableView = ({
                 )}
               </TableCell>
 
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6 ring-2 ring-background">
-                    <AvatarFallback className="text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
+                  <Avatar className="h-5 w-5 md:h-6 md:w-6 ring-2 ring-background">
+                    <AvatarFallback className="text-[9px] md:text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
                       {(task.assignee_name || 'E').substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm">{task.assignee_name || 'Unassigned'}</span>
+                  <span className="text-xs md:text-sm">{task.assignee_name || 'Unassigned'}</span>
                 </div>
               </TableCell>
 
-              <TableCell>
+              <TableCell className="hidden lg:table-cell">
                 {task.lead ? (
                   <div className="flex items-center gap-2">
                     <div className="p-1 rounded-md bg-muted">
                       <Building2 className="h-3 w-3 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{task.lead.name}</p>
+                      <p className="text-xs md:text-sm font-medium">{task.lead.name}</p>
                       {task.lead.company_name && (
-                        <p className="text-xs text-muted-foreground">{task.lead.company_name}</p>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">{task.lead.company_name}</p>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">—</span>
+                  <span className="text-xs md:text-sm text-muted-foreground">—</span>
                 )}
               </TableCell>
 
               <TableCell>
                 {task.due_date ? (
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    {format(parseISO(task.due_date), 'MMM d, yyyy')}
+                  <div className="flex items-center gap-1 md:gap-1.5 text-xs md:text-sm">
+                    <Calendar className="h-3 w-3 md:h-3.5 md:w-3.5 text-muted-foreground" />
+                    <span className="hidden sm:inline">{format(parseISO(task.due_date), 'MMM d, yyyy')}</span>
+                    <span className="sm:hidden">{format(parseISO(task.due_date), 'M/d')}</span>
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">—</span>
+                  <span className="text-xs md:text-sm text-muted-foreground">—</span>
                 )}
               </TableCell>
 
@@ -178,7 +179,7 @@ export const TaskTableView = ({
                 <StatusPill task={task} />
               </TableCell>
 
-              <TableCell>
+              <TableCell className="hidden sm:table-cell">
                 {renderPriorityIndicator(task.priority)}
               </TableCell>
 
