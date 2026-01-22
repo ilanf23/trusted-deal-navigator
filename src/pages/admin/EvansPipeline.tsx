@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns as ColumnsIcon, ExternalLink } from 'lucide-react';
+import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns as ColumnsIcon, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -32,6 +32,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  useSortable,
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -45,6 +62,61 @@ const stages: { status: LeadStatus; title: string; bgColor: string; borderColor:
   { status: 'approval', title: 'Approval', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#e67300]', hexColor: '#e67300' },
   { status: 'funded', title: 'Funded', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600', hexColor: '#059669' },
 ];
+
+// Sortable Lead Row Component
+interface SortableLeadRowProps {
+  lead: Lead;
+  children: React.ReactNode;
+  gridTemplate: string;
+  onClick: () => void;
+}
+
+const SortableLeadRow = ({ lead, children, gridTemplate, onClick }: SortableLeadRowProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: lead.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "hover:bg-slate-50 cursor-pointer text-base transition-colors border-b border-slate-200 min-w-max group",
+        isDragging && "bg-blue-50 shadow-lg"
+      )}
+      onClick={onClick}
+    >
+      <div
+        style={{ 
+          display: 'grid',
+          gridTemplateColumns: gridTemplate
+        }}
+      >
+        {/* Drag handle as first cell */}
+        <div 
+          className="flex items-center justify-center min-h-[48px] border-r border-slate-200 px-1 cursor-grab active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4 text-slate-300 group-hover:text-slate-400 transition-colors" />
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+};
 
 const EvansPipeline = () => {
   const queryClient = useQueryClient();
@@ -65,6 +137,17 @@ const EvansPipeline = () => {
   const [moveBoxesOpen, setMoveBoxesOpen] = useState(false);
   const [addingToStage, setAddingToStage] = useState<LeadStatus | null>(null);
   const [newLeadName, setNewLeadName] = useState('');
+  const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
   
   // Pipeline columns management
   const {
@@ -351,6 +434,42 @@ const EvansPipeline = () => {
     return filteredLeads.length > 0 && filteredLeads.every(l => selectedLeadIds.has(l.id));
   }, [filteredLeads, selectedLeadIds]);
 
+  // Drag and drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    
+    if (!over) return;
+    
+    const activeLeadId = active.id as string;
+    const overLeadId = over.id as string;
+    
+    // Find the target stage from the over element
+    const overLead = filteredLeads.find(l => l.id === overLeadId);
+    const activeLead = filteredLeads.find(l => l.id === activeLeadId);
+    
+    if (!activeLead || !overLead) return;
+    
+    // If dropping on a lead in a different stage, move the lead to that stage
+    if (activeLead.status !== overLead.status) {
+      updateStatusMutation.mutate({
+        id: activeLeadId,
+        status: overLead.status,
+        previousStatus: activeLead.status,
+      });
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+  };
+
+  const activeLead = activeId ? filteredLeads.find(l => l.id === activeId) : null;
+
   const stageCounts = stages.map(stage => ({
     ...stage,
     count: getLeadsByStatus(stage.status).length
@@ -579,7 +698,7 @@ const EvansPipeline = () => {
                 
                 // Consistent cell styling with 8px increments
                 const getCellPadding = () => {
-                  if (column.id === 'spacer_left') return 'px-0'; // No padding for spacer
+                  if (column.id === 'drag_handle') return 'px-1'; // Minimal padding for drag handle
                   if (column.id === 'checkbox' || column.id === 'avatar') return 'px-2'; // 8px
                   return 'px-4'; // 16px
                 };
@@ -590,8 +709,8 @@ const EvansPipeline = () => {
                   "border-r border-slate-200"
                 );
                 
-                // Special handling for spacer column
-                if (column.id === 'spacer_left') {
+                // Empty cell for drag handle column in header
+                if (column.id === 'drag_handle') {
                   return <div key={column.id} className={cn(cellClass, "justify-center")}></div>;
                 }
                 // Special handling for checkbox column - add select all
@@ -687,7 +806,14 @@ const EvansPipeline = () => {
             </div>
           </div>
 
-          {/* Grouped Sections */}
+          {/* Grouped Sections with Drag and Drop */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
           <div>
             {stages.map((stage) => {
               const stageLeads = getLeadsByStatus(stage.status);
@@ -772,7 +898,7 @@ const EvansPipeline = () => {
                             className={cn(
                               "flex items-center min-h-[48px]",
                               "border-r border-slate-200",
-                              column.id === 'spacer_left' ? "px-0" :
+                              column.id === 'drag_handle' ? "px-1 justify-center" :
                               (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
                             )}
                           >
@@ -815,7 +941,7 @@ const EvansPipeline = () => {
                               className={cn(
                                 "flex items-center min-h-[48px]",
                                 "border-r border-slate-200",
-                                column.id === 'spacer_left' ? "px-0" :
+                                column.id === 'drag_handle' ? "px-1 justify-center" :
                                 (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
                               )}
                             >
@@ -830,6 +956,7 @@ const EvansPipeline = () => {
                       </div>
                     ) : (
                       <TooltipProvider>
+                        <SortableContext items={stageLeads.map(l => l.id)} strategy={verticalListSortingStrategy}>
                         <div>
                           {stageLeads.map((lead, idx) => {
                             const touchpoint = touchpoints[lead.id];
@@ -842,19 +969,8 @@ const EvansPipeline = () => {
                             // Render cell content based on column
                             const renderCellContent = (column: typeof columns[0]) => {
                               switch (column.id) {
-                                case 'spacer_left':
-                                  return (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setDetailDialogLead(lead);
-                                      }}
-                                      className="p-1 text-[#0066FF] hover:text-[#0052cc] transition-colors"
-                                      title="Open lead details"
-                                    >
-                                      <ExternalLink className="w-7 h-7" />
-                                    </button>
-                                  );
+                                case 'drag_handle':
+                                  return null; // Handled separately with useSortable
                                 case 'checkbox':
                                   return (
                                     <div className="flex items-center justify-center">
@@ -1047,37 +1163,31 @@ const EvansPipeline = () => {
                             };
                             
                             return (
-                              <div
-                                key={lead.id}
-                                className="hover:bg-slate-50 cursor-pointer text-base transition-colors border-b border-slate-200 min-w-max"
-                                style={{ 
-                                  display: 'grid',
-                                  gridTemplateColumns: `${getGridTemplate()} 48px`
-                                }}
+                              <SortableLeadRow 
+                                key={lead.id} 
+                                lead={lead}
+                                gridTemplate={`${getGridTemplate()} 48px`}
                                 onClick={() => setDetailDialogLead(lead)}
                               >
-                                {getVisibleColumns().map((column, colIndex) => {
-                                  const isLastColumn = colIndex === getVisibleColumns().length - 1;
-                                  return (
-                                    <div 
-                                      key={column.id} 
-                                      className={cn(
-                                        "flex items-center min-h-[48px] overflow-hidden",
-                                        "border-r border-slate-200",
-                                        column.id === 'spacer_left' ? "px-0 justify-center" :
-                                        (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4 justify-start"
-                                      )}
-                                    >
-                                      {renderCellContent(column)}
-                                    </div>
-                                  );
-                                })}
+                                {getVisibleColumns().filter(c => c.id !== 'drag_handle').map((column) => (
+                                  <div 
+                                    key={column.id} 
+                                    className={cn(
+                                      "flex items-center min-h-[48px] overflow-hidden",
+                                      "border-r border-slate-200",
+                                      (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4 justify-start"
+                                    )}
+                                  >
+                                    {renderCellContent(column)}
+                                  </div>
+                                ))}
                                 {/* Empty cell for alignment with + column */}
                                 <div className="min-h-[48px]" />
-                              </div>
+                              </SortableLeadRow>
                             );
                           })}
                         </div>
+                        </SortableContext>
                       </TooltipProvider>
                     )}
                   </CollapsibleContent>
@@ -1085,6 +1195,7 @@ const EvansPipeline = () => {
               );
             })}
           </div>
+          </DndContext>
         </div>
 
         {/* Bulk Selection Toolbar */}
