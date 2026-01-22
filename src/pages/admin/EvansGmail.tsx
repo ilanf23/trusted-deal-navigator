@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format, isToday, isYesterday, differenceInDays, subDays } from 'date-fns';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   HoverCard,
   HoverCardContent,
@@ -192,6 +192,7 @@ const extractEmailAddress = (value: string) => {
 const EvansGmail = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'sent' | 'drafts' | 'templates'>('inbox');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -205,6 +206,7 @@ const EvansGmail = () => {
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [editingDraftMessageId, setEditingDraftMessageId] = useState<string | null>(null);
   const [editingDraftThreadId, setEditingDraftThreadId] = useState<string | null>(null);
+  const [composeHandled, setComposeHandled] = useState(false);
   // Check Gmail connection status
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
     queryKey: ['gmail-connection'],
@@ -562,6 +564,79 @@ const EvansGmail = () => {
   // Use real counts from API
   const inboxCount = activeFolder === 'inbox' ? currentFolderCount : (inboxCountData || 0);
   const draftsCount = activeFolder === 'drafts' ? currentFolderCount : (draftsCountData || 0);
+
+  // Handle compose query params from CRM navigation
+  useEffect(() => {
+    if (composeHandled || connectionLoading || !gmailConnection) return;
+    
+    const composeParam = searchParams.get('compose');
+    const toParam = searchParams.get('to');
+    const nameParam = searchParams.get('name');
+    
+    if (composeParam === 'true' && toParam) {
+      // Clear the query params to prevent re-triggering
+      setSearchParams({}, { replace: true });
+      setComposeHandled(true);
+      
+      // Create a draft with the lead's email and open compose
+      const createDraftAndOpen = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            toast.error('Not authenticated');
+            return;
+          }
+
+          const subject = nameParam ? `Following up - ${nameParam}` : 'Following up';
+          const body = nameParam 
+            ? `Hi ${nameParam.split(' ')[0]},\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan`
+            : 'Hi,\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan';
+
+          // Create draft via Gmail API
+          const response = await fetch(
+            `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ to: toParam, subject, body }),
+            }
+          );
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to create draft');
+          }
+
+          toast.success(`Draft created for ${nameParam || toParam}`);
+          
+          // Switch to drafts folder and open compose with the draft content
+          setActiveFolder('drafts');
+          setComposeTo(toParam);
+          setComposeSubject(subject);
+          setComposeBody(body);
+          setComposeOpen(true);
+          
+          // Refresh emails to show new draft
+          queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
+          queryClient.invalidateQueries({ queryKey: ['gmail-drafts-count'] });
+        } catch (error: any) {
+          toast.error('Failed to create draft: ' + error.message);
+          // Still open compose even if draft creation fails
+          setComposeTo(toParam);
+          setComposeSubject(nameParam ? `Following up - ${nameParam}` : 'Following up');
+          setComposeBody(nameParam 
+            ? `Hi ${nameParam.split(' ')[0]},\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan`
+            : 'Hi,\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan');
+          setComposeOpen(true);
+        }
+      };
+
+      createDraftAndOpen();
+    }
+  }, [searchParams, setSearchParams, gmailConnection, connectionLoading, composeHandled, queryClient]);
 
   // Send email mutation
   const sendEmailMutation = useMutation({
