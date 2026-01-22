@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, ChevronDown, X, Clock, Sparkles, FileText, PhoneCall, PhoneIncoming, PhoneOutgoing, Play, MessageSquare } from 'lucide-react';
+import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, ChevronDown, X, Clock, Sparkles, FileText, PhoneCall, PhoneIncoming, PhoneOutgoing, Play, MessageSquare, Kanban } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -37,6 +38,7 @@ const statusConfig: Record<LeadStatus, { label: string; color: string; bg: strin
 
 const EvansLeads = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { teamMember, isOwner } = useTeamMember();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -303,7 +305,17 @@ const EvansLeads = () => {
           )}
         </div>
         
-        <Dialog open={isAddDialogOpen || !!editingLead} onOpenChange={(open) => {
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/team/evan/pipeline')}
+            className="h-10 px-4 rounded-xl"
+          >
+            <Kanban className="w-4 h-4 mr-2" />
+            Pipeline View
+          </Button>
+          
+          <Dialog open={isAddDialogOpen || !!editingLead} onOpenChange={(open) => {
           if (!open) {
             setIsAddDialogOpen(false);
             setEditingLead(null);
@@ -428,6 +440,7 @@ const EvansLeads = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters Row */}
