@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { 
   Phone, 
   User, 
@@ -1247,20 +1248,12 @@ const EvansCalls = () => {
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Institution</Label>
-                          <Select
+                          <SearchableSelect
+                            options={filterOptions.institutions}
                             value={lenderFilters.institution}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, institution: value === '__all__' ? '' : value }))}
-                          >
-                            <SelectTrigger className="h-8 text-sm bg-white">
-                              <SelectValue placeholder="All institutions" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white z-50 max-h-[200px]">
-                              <SelectItem value="__all__">All institutions</SelectItem>
-                              {filterOptions.institutions.map((inst) => (
-                                <SelectItem key={inst} value={inst}>{inst}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, institution: value }))}
+                            placeholder="All institutions"
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Looking For</Label>
@@ -1273,88 +1266,48 @@ const EvansCalls = () => {
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Contact Name</Label>
-                          <Select
+                          <SearchableSelect
+                            options={filterOptions.contacts}
                             value={lenderFilters.contact}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, contact: value === '__all__' ? '' : value }))}
-                          >
-                            <SelectTrigger className="h-8 text-sm bg-white">
-                              <SelectValue placeholder="All contacts" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white z-50 max-h-[200px]">
-                              <SelectItem value="__all__">All contacts</SelectItem>
-                              {filterOptions.contacts.map((contact) => (
-                                <SelectItem key={contact} value={contact}>{contact}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, contact: value }))}
+                            placeholder="All contacts"
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Loan Size</Label>
-                          <Select
+                          <SearchableSelect
+                            options={filterOptions.loanSizes}
                             value={lenderFilters.loanSize}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, loanSize: value === '__all__' ? '' : value }))}
-                          >
-                            <SelectTrigger className="h-8 text-sm bg-white">
-                              <SelectValue placeholder="All loan sizes" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white z-50 max-h-[200px]">
-                              <SelectItem value="__all__">All loan sizes</SelectItem>
-                              {filterOptions.loanSizes.map((size) => (
-                                <SelectItem key={size} value={size}>{size}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, loanSize: value }))}
+                            placeholder="All loan sizes"
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">States</Label>
-                          <Select
+                          <SearchableSelect
+                            options={filterOptions.states}
                             value={lenderFilters.states}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, states: value === '__all__' ? '' : value }))}
-                          >
-                            <SelectTrigger className="h-8 text-sm bg-white">
-                              <SelectValue placeholder="All states" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white z-50 max-h-[200px]">
-                              <SelectItem value="__all__">All states</SelectItem>
-                              {filterOptions.states.map((state) => (
-                                <SelectItem key={state} value={state}>{state}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, states: value }))}
+                            placeholder="All states"
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Lender Type</Label>
-                          <Select
+                          <SearchableSelect
+                            options={filterOptions.lenderTypes}
                             value={lenderFilters.lenderType}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, lenderType: value === '__all__' ? '' : value }))}
-                          >
-                            <SelectTrigger className="h-8 text-sm bg-white">
-                              <SelectValue placeholder="All lender types" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white z-50 max-h-[200px]">
-                              <SelectItem value="__all__">All lender types</SelectItem>
-                              {filterOptions.lenderTypes.map((type) => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, lenderType: value }))}
+                            placeholder="All lender types"
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-medium text-muted-foreground">Loan Types</Label>
-                          <Select
+                          <SearchableSelect
+                            options={filterOptions.loanTypes}
                             value={lenderFilters.loanTypes}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, loanTypes: value === '__all__' ? '' : value }))}
-                          >
-                            <SelectTrigger className="h-8 text-sm bg-white">
-                              <SelectValue placeholder="All loan types" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white z-50 max-h-[200px]">
-                              <SelectItem value="__all__">All loan types</SelectItem>
-                              {filterOptions.loanTypes.map((type) => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, loanTypes: value }))}
+                            placeholder="All loan types"
+                          />
                         </div>
                       </div>
                     </CardContent>
