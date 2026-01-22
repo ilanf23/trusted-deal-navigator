@@ -1151,18 +1151,18 @@ const EvansCalls = () => {
                           <Table>
                             <TableHeader className="sticky top-0 z-10 bg-muted">
                               <TableRow>
-                                <TableHead className="text-xs font-semibold w-[180px]">Institution</TableHead>
-                                <TableHead className="text-xs font-semibold w-[300px]">Looking For</TableHead>
-                                <TableHead className="text-xs font-semibold w-[120px]">Contact</TableHead>
-                                <TableHead className="text-xs font-semibold w-[130px]">Phone</TableHead>
-                                <TableHead className="text-xs font-semibold w-[100px]">Loan Size</TableHead>
-                                <TableHead className="text-xs font-semibold w-[120px]">States</TableHead>
+                                <TableHead className="text-xs font-semibold w-[180px] pl-4">Institution</TableHead>
+                                <TableHead className="text-xs font-semibold w-[300px] px-2">Looking For</TableHead>
+                                <TableHead className="text-xs font-semibold w-[120px] px-2">Contact</TableHead>
+                                <TableHead className="text-xs font-semibold w-[130px] px-2">Phone</TableHead>
+                                <TableHead className="text-xs font-semibold w-[100px] px-2">Loan Size</TableHead>
+                                <TableHead className="text-xs font-semibold w-[120px] px-2">States</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {filteredPrograms.map((program) => (
                                 <TableRow key={program.id} className="min-h-[48px]">
-                                  <TableCell className="py-2 px-2">
+                                  <TableCell className="py-2 pl-4 pr-2">
                                     <div className="font-medium text-sm">{program.lender_name}</div>
                                     {program.lender_type && (
                                       <div className="text-xs text-muted-foreground">{program.lender_type}</div>
