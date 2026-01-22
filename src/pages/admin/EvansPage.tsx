@@ -354,22 +354,8 @@ const EvansPage = () => {
   const periodLabel = timePeriod === 'ytd' ? 'Year to Date' : 'Month to Date';
   const isLoading = leadsLoading || pipelineLoading || fundedLoading;
   const isFetching = leadsFetching || pipelineFetching || fundedFetching;
-  
-  // Show loading state on initial load to prevent flash of stale data
-  if (isLoading) {
-    return (
-      <AdminLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">Loading dashboard...</p>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
 
-  // Calculate quarterly revenue for annual goal
+  // Calculate quarterly revenue for annual goal - MUST be before early return
   const quarterlyRevenue = useMemo(() => {
     if (!fundedLeads) return [0, 0, 0, 0];
 
@@ -400,6 +386,20 @@ const EvansPage = () => {
     if (!dueDate) return false;
     return isBefore(new Date(dueDate), now);
   };
+  
+  // Show loading state on initial load to prevent flash of stale data
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">Loading dashboard...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
