@@ -1146,7 +1146,7 @@ const EvansCalls = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="h-full max-h-[480px] overflow-auto">
+                      <div className="h-full overflow-auto">
                         <div className="min-w-[900px]">
                           <Table>
                             <TableHeader className="sticky top-0 z-10 bg-muted">
