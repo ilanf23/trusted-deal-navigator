@@ -852,7 +852,7 @@ const EvansPipeline = () => {
                                       className="p-1 text-[#0066FF] hover:text-[#0052cc] transition-colors"
                                       title="Open lead details"
                                     >
-                                      <ExternalLink className="w-5 h-5" />
+                                      <ExternalLink className="w-7 h-7" />
                                     </button>
                                   );
                                 case 'checkbox':
