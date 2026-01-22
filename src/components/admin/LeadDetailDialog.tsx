@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { 
   Loader2, Mail, Phone, Building2, Calendar, FileText, User, Clock, 
   PhoneCall, ChevronDown, ChevronUp, Play, PhoneIncoming, PhoneOutgoing, 
-  MessageSquare, History, Plus, Trash2, Globe, Linkedin, Twitter, MapPin,
+  MessageSquare, History, Plus, Trash2, Globe, Linkedin, MapPin,
   Link2, Users, ListTodo, Tag, CheckCircle2, Circle, X, GripVertical,
   Briefcase, FileSpreadsheet, MessagesSquare, Video, Sparkles, HelpCircle, Columns
 } from 'lucide-react';
@@ -1680,9 +1680,9 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 mb-1">Twitter</p>
+                      <p className="text-xs text-slate-400 mb-1">X</p>
                       <div className="flex items-center gap-2">
-                        <Twitter className="w-4 h-4 text-sky-500" />
+                        <X className="w-4 h-4 text-foreground" />
                         <Input 
                           value={contactInfo.twitter} 
                           onChange={(e) => setContactInfo(p => ({ ...p, twitter: e.target.value }))}
