@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns as ColumnsIcon, GripVertical } from 'lucide-react';
+import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns as ColumnsIcon, GripVertical, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -150,6 +150,17 @@ const EvansPipeline = () => {
   const [addingToStage, setAddingToStage] = useState<LeadStatus | null>(null);
   const [newLeadName, setNewLeadName] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // Undo system - tracks last action for reversal
+  const [lastAction, setLastAction] = useState<{
+    type: 'status_change' | 'lead_created' | 'lead_deleted';
+    leadId: string;
+    leadName: string;
+    previousStatus?: LeadStatus;
+    newStatus?: LeadStatus;
+    timestamp: number;
+  } | null>(null);
+  const [isUndoing, setIsUndoing] = useState(false);
   
   // Drag and drop sensors
   const sensors = useSensors(
@@ -310,7 +321,7 @@ const EvansPipeline = () => {
   const sources = [...new Set(leads.map(lead => lead.source).filter(Boolean))];
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status, previousStatus }: { id: string; status: LeadStatus; previousStatus: LeadStatus }) => {
+    mutationFn: async ({ id, status, previousStatus, leadName, skipUndo }: { id: string; status: LeadStatus; previousStatus: LeadStatus; leadName?: string; skipUndo?: boolean }) => {
       if (!canEdit) throw new Error('Not authorized to update this lead');
       const updates: Partial<Lead> = { status };
       if (status === 'pre_qualification') {
@@ -320,6 +331,18 @@ const EvansPipeline = () => {
       }
       const { error } = await supabase.from('leads').update(updates).eq('id', id);
       if (error) throw error;
+
+      // Track action for undo (unless this is an undo operation itself)
+      if (!skipUndo) {
+        setLastAction({
+          type: 'status_change',
+          leadId: id,
+          leadName: leadName || 'Lead',
+          previousStatus,
+          newStatus: status,
+          timestamp: Date.now(),
+        });
+      }
 
       if (previousStatus === 'discovery' && status === 'pre_qualification') {
         try {
@@ -342,10 +365,47 @@ const EvansPipeline = () => {
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       if (!(variables.previousStatus === 'discovery' && variables.status === 'pre_qualification')) {
-        toast.success('Lead status updated');
+        if (variables.skipUndo) {
+          toast.success('Undo successful');
+        } else {
+          toast.success('Lead status updated');
+        }
       }
     },
     onError: () => toast.error('Failed to update lead status'),
+  });
+
+  // Undo handler
+  const handleUndo = async () => {
+    if (!lastAction || isUndoing) return;
+    
+    setIsUndoing(true);
+    try {
+      if (lastAction.type === 'status_change' && lastAction.previousStatus) {
+        // Revert status change
+        await updateStatusMutation.mutateAsync({
+          id: lastAction.leadId,
+          status: lastAction.previousStatus,
+          previousStatus: lastAction.newStatus!,
+          skipUndo: true,
+        });
+        setLastAction(null);
+      }
+    } catch (error) {
+      toast.error('Failed to undo action');
+    } finally {
+      setIsUndoing(false);
+    }
+  };
+
+  // Clear undo after 30 seconds
+  const undoTimeRemaining = lastAction ? Math.max(0, 30000 - (Date.now() - lastAction.timestamp)) : 0;
+  
+  // Auto-clear undo after timeout
+  useState(() => {
+    if (lastAction && undoTimeRemaining <= 0) {
+      setLastAction(null);
+    }
   });
 
   // Create new lead mutation
@@ -483,6 +543,7 @@ const EvansPipeline = () => {
         id: activeLeadId,
         status: overLead.status,
         previousStatus: activeLead.status,
+        leadName: activeLead.name,
       });
     }
   };
@@ -573,6 +634,32 @@ const EvansPipeline = () => {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Undo Button */}
+            {lastAction && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleUndo}
+                      disabled={isUndoing}
+                      className="border-amber-300 text-amber-700 hover:bg-amber-50 h-9 animate-in fade-in slide-in-from-right-2"
+                    >
+                      {isUndoing ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Undo2 className="w-4 h-4 mr-2" />
+                      )}
+                      Undo
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Undo: {lastAction.leadName} moved to {stages.find(s => s.status === lastAction.newStatus)?.title}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             {canEdit && evanId && (
               <div className="flex items-center gap-2">
                 <Button
