@@ -1073,12 +1073,11 @@ const EvansGmail = () => {
           {/* Search Bar */}
           <div className="px-4 py-3 border-b border-slate-100">
             <div className="relative max-w-xl">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
                 placeholder="Search mail..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 h-9 rounded-md bg-slate-50 border-slate-200 focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-white text-sm text-slate-900 placeholder:text-slate-400"
+                className="pl-3 pr-4 h-9 rounded-md bg-slate-50 border-slate-200 focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-white text-sm text-slate-900 placeholder:text-slate-400"
               />
             </div>
           </div>

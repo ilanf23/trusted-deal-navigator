@@ -93,12 +93,11 @@ export const TaskWorkspace = () => {
           
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
             <Input
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64 h-10 pl-10 rounded-full border-muted-foreground/20 bg-muted/50 focus:bg-background transition-colors"
+              className="w-64 h-10 pl-4 rounded-full border-muted-foreground/20 bg-muted/50 focus:bg-background transition-colors"
             />
           </div>
         </div>
