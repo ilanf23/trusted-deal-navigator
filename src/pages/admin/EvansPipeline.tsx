@@ -677,12 +677,14 @@ const EvansPipeline = () => {
                 />
               </div>
             )}
-            <Link to="/team/evan/leads">
-              <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-9">
-                <List className="w-4 h-4 mr-2" />
-                List View
-              </Button>
-            </Link>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/team/evan/leads')}
+              className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
+            >
+              <List className="w-4 h-4 mr-2" />
+              List View
+            </Button>
             {canEdit && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
