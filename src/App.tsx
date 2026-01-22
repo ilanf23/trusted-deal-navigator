@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import EmployeeRoute from "@/components/admin/EmployeeRoute";
+import PublicLayout from "@/components/layout/PublicLayout";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
 import Contact from "./pages/Contact";
@@ -68,16 +69,16 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/how-it-works" element={<HowItWorks />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/transactions" element={<Transactions />} />
-              <Route path="/bank-services" element={<BankServices />} />
-              <Route path="/solutions/business-acquisition" element={<BusinessAcquisition />} />
-              <Route path="/solutions/commercial-real-estate" element={<CommercialRealEstate />} />
-              <Route path="/solutions/working-capital" element={<WorkingCapital />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/questionnaire/:token" element={<Questionnaire />} />
+              <Route path="/" element={<PublicLayout><Index /></PublicLayout>} />
+              <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
+              <Route path="/contact" element={<PublicLayout><Contact /></PublicLayout>} />
+              <Route path="/transactions" element={<PublicLayout><Transactions /></PublicLayout>} />
+              <Route path="/bank-services" element={<PublicLayout><BankServices /></PublicLayout>} />
+              <Route path="/solutions/business-acquisition" element={<PublicLayout><BusinessAcquisition /></PublicLayout>} />
+              <Route path="/solutions/commercial-real-estate" element={<PublicLayout><CommercialRealEstate /></PublicLayout>} />
+              <Route path="/solutions/working-capital" element={<PublicLayout><WorkingCapital /></PublicLayout>} />
+              <Route path="/auth" element={<PublicLayout><Auth /></PublicLayout>} />
+              <Route path="/questionnaire/:token" element={<PublicLayout><Questionnaire /></PublicLayout>} />
               {/* Admin Routes */}
               <Route path="/admin" element={<ProtectedRoute requireAdmin><SuperAdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/leads" element={<ProtectedRoute requireAdmin><AdminLeads /></ProtectedRoute>} />
