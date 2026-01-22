@@ -153,6 +153,8 @@ const EvansPipeline = () => {
   const [addingToStage, setAddingToStage] = useState<LeadStatus | null>(null);
   const [newLeadName, setNewLeadName] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [createLeadDialogOpen, setCreateLeadDialogOpen] = useState(false);
+  const [newLeadForDialog, setNewLeadForDialog] = useState<Lead | null>(null);
   
   // Undo system - tracks last action for reversal
   const [lastAction, setLastAction] = useState<{
@@ -439,16 +441,33 @@ const EvansPipeline = () => {
         .select()
         .single();
       if (error) throw error;
-      return data;
+      return data as Lead;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       toast.success('Lead created');
       setAddingToStage(null);
       setNewLeadName('');
+      // If this was from the header + button, open the detail dialog
+      if (createLeadDialogOpen) {
+        setCreateLeadDialogOpen(false);
+        setNewLeadForDialog(data);
+        setDetailDialogLead(data);
+      }
     },
     onError: () => toast.error('Failed to create lead'),
   });
+
+  // Create new lead via header button
+  const handleCreateNewLead = () => {
+    if (!evanId) {
+      toast.error('Cannot create lead - team member not found');
+      return;
+    }
+    // Create a temporary lead with default values
+    setCreateLeadDialogOpen(true);
+    createLeadMutation.mutate({ name: 'New Lead', status: 'discovery' });
+  };
 
   const handleAddLead = (status: LeadStatus) => {
     setAddingToStage(status);
@@ -695,10 +714,33 @@ const EvansPipeline = () => {
                 />
               </div>
             )}
+            {canEdit && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={handleCreateNewLead}
+                      disabled={createLeadMutation.isPending && createLeadDialogOpen}
+                      className="h-8 md:h-9 px-2 md:px-3 bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs md:text-sm"
+                    >
+                      {createLeadMutation.isPending && createLeadDialogOpen ? (
+                        <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
+                      ) : (
+                        <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      )}
+                      <span className="hidden sm:inline ml-1 md:ml-2">Add Lead</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Add a new lead to the pipeline</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <Button 
               variant="outline" 
               onClick={() => navigate('/team/evan/leads')}
-              className="h-8 md:h-9 px-2 md:px-4 border-slate-200 text-slate-600 hover:bg-slate-50 text-xs md:text-sm"
+              className="h-8 md:h-9 px-2 md:px-4 border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 text-xs md:text-sm"
             >
               <List className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2" />
               <span className="hidden sm:inline">List View</span>
