@@ -67,9 +67,9 @@ type LeadStatus = Database['public']['Enums']['lead_status'];
 const stages: { status: LeadStatus; title: string; bgColor: string; borderColor: string; textColor: string; barColor: string; hexColor: string }[] = [
   { status: 'discovery', title: 'Discovery', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#3385FF]', textColor: 'text-[#3385FF]', barColor: 'bg-[#0066FF]', hexColor: '#3385FF' },
   { status: 'pre_qualification', title: 'Pre-Qualification', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#4D94FF]', textColor: 'text-[#4D94FF]', barColor: 'bg-[#1a75ff]', hexColor: '#4D94FF' },
-  { status: 'document_collection', title: 'Doc Collection', bgColor: 'bg-[#3385ff]/10', borderColor: 'border-[#3385ff]', textColor: 'text-[#3385ff]', barColor: 'bg-[#3385ff]', hexColor: '#3385ff' },
-  { status: 'underwriting', title: 'Underwriting', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#FF8000]', hexColor: '#FF8000' },
-  { status: 'approval', title: 'Approval', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#e67300]', hexColor: '#e67300' },
+  { status: 'document_collection', title: 'Doc Collection', bgColor: 'bg-[#3385ff]/10', borderColor: 'border-[#66A3FF]', textColor: 'text-[#66A3FF]', barColor: 'bg-[#3385ff]', hexColor: '#66A3FF' },
+  { status: 'underwriting', title: 'Underwriting', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF9933]', textColor: 'text-[#FF9933]', barColor: 'bg-[#FF8000]', hexColor: '#FF9933' },
+  { status: 'approval', title: 'Approval', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#EB8F33]', textColor: 'text-[#EB8F33]', barColor: 'bg-[#e67300]', hexColor: '#EB8F33' },
   { status: 'funded', title: 'Funded', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600', hexColor: '#059669' },
 ];
 
