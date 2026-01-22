@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { 
   Mail, 
   Send, 
@@ -1351,68 +1352,20 @@ const EvansGmail = () => {
         </div>
       </div>
 
-      {/* Compose Dialog */}
-      <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="w-5 h-5" />
-              {selectedLead ? `Email to ${selectedLead.name}` : 'New Message'}
-            </DialogTitle>
-            <DialogDescription>
-              Compose and send an email
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="to">To</Label>
-              <Input
-                id="to"
-                type="email"
-                placeholder="recipient@example.com"
-                value={composeTo}
-                onChange={(e) => setComposeTo(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="subject">Subject</Label>
-              <Input
-                id="subject"
-                placeholder="Email subject"
-                value={composeSubject}
-                onChange={(e) => setComposeSubject(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="body">Message</Label>
-              <Textarea
-                id="body"
-                placeholder="Write your message..."
-                className="min-h-[200px]"
-                value={composeBody}
-                onChange={(e) => setComposeBody(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setComposeOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSendEmail} disabled={sending}>
-              {sending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4 mr-2" />
-              )}
-              Send
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Gmail-style Compose Dialog */}
+      <GmailComposeDialog
+        isOpen={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        to={composeTo}
+        onToChange={setComposeTo}
+        subject={composeSubject}
+        onSubjectChange={setComposeSubject}
+        body={composeBody}
+        onBodyChange={setComposeBody}
+        onSend={handleSendEmail}
+        sending={sending}
+        recipientName={selectedLead?.name}
+      />
     </AdminLayout>
   );
 };
