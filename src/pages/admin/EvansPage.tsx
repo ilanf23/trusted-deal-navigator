@@ -93,7 +93,7 @@ const EvansPage = () => {
   const evanId = evanTeamMember?.id;
 
   // Fetch leads with their responses (for loan amounts)
-  const { data: leadsData, isLoading: leadsLoading } = useQuery({
+  const { data: leadsData, isLoading: leadsLoading, isFetching: leadsFetching } = useQuery({
     queryKey: ['evan-leads-analytics', evanId, timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -115,7 +115,8 @@ const EvansPage = () => {
       if (error) throw error;
       return data;
     },
-    enabled: true,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Fetch upcoming tasks
@@ -136,7 +137,7 @@ const EvansPage = () => {
   });
 
   // Fetch all leads for pipeline (not just period-filtered)
-  const { data: pipelineData, isLoading: pipelineLoading } = useQuery({
+  const { data: pipelineData, isLoading: pipelineLoading, isFetching: pipelineFetching } = useQuery({
     queryKey: ['evan-pipeline-analytics'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -154,10 +155,12 @@ const EvansPage = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Fetch funded leads for revenue calculation
-  const { data: fundedLeads, isLoading: fundedLoading } = useQuery({
+  const { data: fundedLeads, isLoading: fundedLoading, isFetching: fundedFetching } = useQuery({
     queryKey: ['evan-funded-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -175,6 +178,8 @@ const EvansPage = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Calculate metrics
@@ -348,6 +353,21 @@ const EvansPage = () => {
 
   const periodLabel = timePeriod === 'ytd' ? 'Year to Date' : 'Month to Date';
   const isLoading = leadsLoading || pipelineLoading || fundedLoading;
+  const isFetching = leadsFetching || pipelineFetching || fundedFetching;
+  
+  // Show loading state on initial load to prevent flash of stale data
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">Loading dashboard...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   // Calculate quarterly revenue for annual goal
   const quarterlyRevenue = useMemo(() => {
