@@ -46,9 +46,12 @@ export interface TaskFile {
 export type ViewMode = 'table' | 'kanban' | 'calendar' | 'timeline';
 
 // Apple-inspired muted, elegant status colors
+const inProgressConfig = { label: 'In Progress', bg: 'bg-blue-50 dark:bg-blue-950', text: 'text-blue-700 dark:text-blue-300', color: '#3b82f6' };
+
 export const statusConfig: Record<string, { label: string; bg: string; text: string; color: string }> = {
   todo: { label: "To Do", bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-300', color: '#64748b' },
-  working: { label: 'In Progress', bg: 'bg-blue-50 dark:bg-blue-950', text: 'text-blue-700 dark:text-blue-300', color: '#3b82f6' },
+  working: inProgressConfig,
+  in_progress: inProgressConfig, // Alias for database compatibility
   stuck: { label: 'Stuck', bg: 'bg-amber-50 dark:bg-amber-950', text: 'text-amber-700 dark:text-amber-300', color: '#f59e0b' },
   done: { label: 'Complete', bg: 'bg-emerald-50 dark:bg-emerald-950', text: 'text-emerald-700 dark:text-emerald-300', color: '#10b981' },
   review: { label: 'Review', bg: 'bg-violet-50 dark:bg-violet-950', text: 'text-violet-700 dark:text-violet-300', color: '#8b5cf6' },
