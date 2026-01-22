@@ -144,6 +144,8 @@ const EvansPipeline = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [callConfirmOpen, setCallConfirmOpen] = useState(false);
   const [pendingCallLead, setPendingCallLead] = useState<Lead | null>(null);
+  const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
+  const [pendingEmailLead, setPendingEmailLead] = useState<Lead | null>(null);
   const [editingNameValue, setEditingNameValue] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
   const [moveBoxesOpen, setMoveBoxesOpen] = useState(false);
@@ -314,8 +316,15 @@ const EvansPipeline = () => {
       toast.error('No email address available');
       return;
     }
-    // Navigate to Gmail with compose pre-filled
-    navigate(`/team/evan/gmail?compose=true&to=${encodeURIComponent(lead.email)}&name=${encodeURIComponent(lead.name)}`);
+    setPendingEmailLead(lead);
+    setEmailConfirmOpen(true);
+  };
+
+  const confirmEmail = () => {
+    if (!pendingEmailLead?.email) return;
+    setEmailConfirmOpen(false);
+    navigate(`/team/evan/gmail?compose=true&to=${encodeURIComponent(pendingEmailLead.email)}&name=${encodeURIComponent(pendingEmailLead.name)}`);
+    setPendingEmailLead(null);
   };
 
   const sources = [...new Set(leads.map(lead => lead.source).filter(Boolean))];
@@ -1393,6 +1402,26 @@ const EvansPipeline = () => {
             <AlertDialogAction onClick={confirmCall}>
               <Phone className="h-4 w-4 mr-2" />
               Call Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Email Confirmation Dialog */}
+      <AlertDialog open={emailConfirmOpen} onOpenChange={setEmailConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Compose Email</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to email <span className="font-semibold">{pendingEmailLead?.name}</span> at{' '}
+              <span className="font-semibold">{pendingEmailLead?.email}</span>. This will open Gmail with a new compose window.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingEmailLead(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmEmail}>
+              <Mail className="h-4 w-4 mr-2" />
+              Open Gmail
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
