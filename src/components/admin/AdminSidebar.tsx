@@ -173,8 +173,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: Kanban,
         items: [
           { title: `${employeeName}'s CRM`, url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
-          { title: 'CRM', url: '/admin/crm', icon: Kanban },
-          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
         ],
       });
 
