@@ -102,8 +102,8 @@ const SortableLeadRow = ({ lead, children, gridTemplate, onClick }: SortableLead
       ref={setNodeRef}
       style={style}
       className={cn(
-        "hover:bg-slate-50 cursor-pointer text-base transition-colors border-b border-slate-200 min-w-max group",
-        isDragging && "bg-blue-50 shadow-lg"
+        "hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-base transition-colors border-b border-slate-200 dark:border-slate-700 min-w-max group",
+        isDragging && "bg-blue-50 dark:bg-blue-900/30 shadow-lg"
       )}
       onClick={onClick}
     >
@@ -115,12 +115,12 @@ const SortableLeadRow = ({ lead, children, gridTemplate, onClick }: SortableLead
       >
         {/* Drag handle as first cell */}
         <div 
-          className="flex items-center justify-center min-h-[48px] border-r border-slate-200 px-1 cursor-grab active:cursor-grabbing"
+          className="flex items-center justify-center min-h-[48px] border-r border-slate-200 dark:border-slate-700 px-1 cursor-grab active:cursor-grabbing"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
         >
-          <GripVertical className="h-4 w-4 text-slate-300 group-hover:text-slate-400 transition-colors" />
+          <GripVertical className="h-4 w-4 text-slate-300 dark:text-slate-600 group-hover:text-slate-400 dark:group-hover:text-slate-500 transition-colors" />
         </div>
         {children}
       </div>
@@ -712,7 +712,7 @@ const EvansPipeline = () => {
                     <MoreVertical className="w-4 h-4 sm:hidden" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 md:w-56 bg-white z-50 p-1.5 md:p-2">
+                <DropdownMenuContent align="end" className="w-48 md:w-56 bg-white dark:bg-slate-800 dark:border-slate-700 z-50 p-1.5 md:p-2">
                   <DropdownMenuItem onClick={() => setStageManagerOpen(true)} className="cursor-pointer py-2 md:py-3 px-3 md:px-4 text-xs md:text-sm">
                     <Layers className="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
                     Stages
@@ -826,11 +826,11 @@ const EvansPipeline = () => {
         </div>
 
         {/* Grouped Table View - 8px spacing system */}
-        <div className="flex-1 overflow-x-auto overflow-y-auto border border-slate-300 rounded-md bg-white">
+        <div className="flex-1 overflow-x-auto overflow-y-auto border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900">
           {/* Table Header with Column Dropdowns */}
-          <div className="sticky top-0 z-10 bg-slate-50/60 border-b border-slate-200 min-w-max">
+          <div className="sticky top-0 z-10 bg-slate-50/60 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 min-w-max">
             <div 
-              className="text-[11px] font-medium text-slate-500 uppercase tracking-widest"
+              className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest"
               style={{ 
                 display: 'grid',
                 gridTemplateColumns: `${getGridTemplate()} 48px`
@@ -971,14 +971,14 @@ const EvansPipeline = () => {
                 >
                   {/* Section Header - Full-width colored bar with 8px spacing */}
                   <div
-                    className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-3 bg-slate-100 border-b border-slate-200"
+                    className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-3 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"
                   >
                     {/* Stage selection checkbox */}
                     <Checkbox
                       checked={stageLeads.length > 0 && stageLeads.every(l => selectedLeadIds.has(l.id))}
                       onCheckedChange={() => toggleAllInStage(stage.status)}
                       onClick={(e) => e.stopPropagation()}
-                      className="rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
+                      className="rounded-none border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
                       disabled={stageLeads.length === 0}
                     />
                     

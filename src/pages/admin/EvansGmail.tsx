@@ -904,14 +904,14 @@ const EvansGmail = () => {
   if (selectedEmail) {
     return (
       <AdminLayout>
-        <div className="h-[calc(100vh-120px)] flex flex-col bg-white border border-slate-200 rounded-md overflow-hidden">
+        <div className="h-[calc(100vh-120px)] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden">
           {/* Top bar */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-50">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
             <Button 
               variant="ghost" 
               size="sm"
               onClick={() => setSelectedEmail(null)}
-              className="gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md"
+              className="gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -923,22 +923,22 @@ const EvansGmail = () => {
           </div>
           
           {/* Email content */}
-          <ScrollArea className="flex-1 p-6 bg-white">
+          <ScrollArea className="flex-1 p-6 bg-white dark:bg-slate-900">
             <div className="max-w-3xl">
-              <h1 className="text-lg font-semibold text-slate-900 mb-6">{selectedEmail.subject}</h1>
+              <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">{selectedEmail.subject}</h1>
               
               <div className="flex items-start gap-3 mb-6">
-                <div className="w-9 h-9 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 font-semibold text-sm border border-slate-200">
+                <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-semibold text-sm border border-slate-200 dark:border-slate-700">
                   {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-900 text-sm">{extractSenderName(selectedEmail.from)}</span>
-                    <span className="text-xs text-slate-400">
+                    <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{extractSenderName(selectedEmail.from)}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">
                       {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
                     to me
                   </div>
                 </div>
@@ -970,9 +970,9 @@ const EvansGmail = () => {
 
   return (
     <AdminLayout>
-      <div className="h-[calc(100vh-120px)] flex border border-slate-200 bg-white rounded-md overflow-hidden">
+      <div className="h-[calc(100vh-120px)] flex border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-md overflow-hidden">
         {/* Left Sidebar */}
-        <div className="w-52 flex flex-col bg-slate-50 border-r border-slate-200">
+        <div className="w-52 flex flex-col bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
           {/* Compose Button */}
           <div className="p-3">
             <Button 
@@ -990,8 +990,8 @@ const EvansGmail = () => {
               onClick={() => setActiveFolder('inbox')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                 activeFolder === 'inbox' 
-                  ? 'bg-slate-200 text-slate-900 font-medium' 
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               <Inbox className="w-4 h-4" />
@@ -1003,8 +1003,8 @@ const EvansGmail = () => {
               onClick={() => setActiveFolder('starred')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                 activeFolder === 'starred' 
-                  ? 'bg-slate-200 text-slate-900 font-medium' 
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               <Star className="w-4 h-4" />
@@ -1015,8 +1015,8 @@ const EvansGmail = () => {
               onClick={() => setActiveFolder('sent')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                 activeFolder === 'sent' 
-                  ? 'bg-slate-200 text-slate-900 font-medium' 
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               <Send className="w-4 h-4" />
@@ -1027,8 +1027,8 @@ const EvansGmail = () => {
               onClick={() => setActiveFolder('drafts')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                 activeFolder === 'drafts' 
-                  ? 'bg-slate-200 text-slate-900 font-medium' 
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               <FileText className="w-4 h-4" />
@@ -1147,12 +1147,12 @@ const EvansGmail = () => {
           </nav>
           
           {/* Account actions */}
-          <div className="p-2 border-t border-slate-200 space-y-0.5">
+          <div className="p-2 border-t border-slate-200 dark:border-slate-700 space-y-0.5">
             <Button 
               variant="ghost" 
               size="sm"
               onClick={handleDisconnectGmail}
-              className="w-full justify-start gap-2 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md h-8"
+              className="w-full justify-start gap-2 text-xs text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md h-8"
             >
               <Mail className="w-3.5 h-3.5" />
               Disconnect
@@ -1161,7 +1161,7 @@ const EvansGmail = () => {
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="w-full justify-start gap-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md h-8"
+              className="w-full justify-start gap-2 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md h-8"
             >
               <LogOut className="w-3.5 h-3.5" />
               Log out
@@ -1170,46 +1170,46 @@ const EvansGmail = () => {
         </div>
         
         {/* Main Content */}
-        <div className="flex-1 flex flex-col bg-white">
+        <div className="flex-1 flex flex-col bg-white dark:bg-slate-900">
           {/* Search Bar */}
-          <div className="px-4 py-3 border-b border-slate-100">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
             <div className="relative max-w-xl">
               <Input
                 placeholder="Search mail..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-3 pr-4 h-9 rounded-md bg-slate-50 border-slate-200 focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-white text-sm text-slate-900 placeholder:text-slate-400"
+                className="pl-3 pr-4 h-9 rounded-md bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-white dark:focus-visible:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
           
           {/* Toolbar */}
-          <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
             <div className="flex items-center gap-1">
               <Checkbox 
                 checked={selectedEmails.size === emails.length && emails.length > 0}
                 onCheckedChange={toggleSelectAll}
                 className="rounded-sm"
               />
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md">
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
                 <ChevronDown className="w-3.5 h-3.5" />
               </Button>
             </div>
-            <div className="w-px h-4 bg-slate-200 mx-1" />
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md" onClick={() => refetchEmails()}>
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md" onClick={() => refetchEmails()}>
               <RefreshCw className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
               <MoreVertical className="w-3.5 h-3.5" />
             </Button>
             <div className="flex-1" />
-            <span className="text-xs text-slate-500 mr-2 font-medium">
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-2 font-medium">
               {emails.length > 0 ? `1–${Math.min(50, emails.length)} of ${emails.length}` : '0 emails'}
             </span>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
               <ChevronLeft className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
               <ChevronRight className="w-3.5 h-3.5" />
             </Button>
           </div>
@@ -1226,7 +1226,7 @@ const EvansGmail = () => {
                 <p className="text-sm font-medium">No emails in {activeFolder}</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {emails.map((email) => {
                   // Check if email is from/to a CRM lead
                   const emailAddress = activeFolder === 'sent' ? email.to : email.from;
@@ -1237,8 +1237,8 @@ const EvansGmail = () => {
                     <div
                       key={email.id}
                       className={`group flex items-center gap-0 px-3 py-2 cursor-pointer transition-colors ${
-                        !email.isRead ? 'bg-white' : 'bg-slate-50/50'
-                      } ${selectedEmails.has(email.id) ? 'bg-primary/5' : ''} hover:bg-slate-50`}
+                        !email.isRead ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/50'
+                      } ${selectedEmails.has(email.id) ? 'bg-primary/5 dark:bg-primary/10' : ''} hover:bg-slate-50 dark:hover:bg-slate-800`}
                     >
                       <div className="flex items-center gap-2 shrink-0">
                         <Checkbox 
@@ -1263,7 +1263,7 @@ const EvansGmail = () => {
                         onClick={() => setSelectedEmail(email)}
                       >
                         {/* Sender with CRM badge */}
-                        <div className={`w-44 shrink-0 flex items-center gap-1.5 pr-2 ${!email.isRead ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
+                        <div className={`w-44 shrink-0 flex items-center gap-1.5 pr-2 ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
                           <span className="truncate text-sm">
                             {activeFolder === 'sent' ? `To: ${email.to.split('<')[0].trim()}` : extractSenderName(email.from)}
                           </span>
@@ -1297,10 +1297,10 @@ const EvansGmail = () => {
                         
                         {/* Subject and snippet */}
                         <div className="flex-1 flex items-center min-w-0 pr-2">
-                          <span className={`shrink-0 text-sm ${!email.isRead ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
+                          <span className={`shrink-0 text-sm ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
                             {email.subject}
                           </span>
-                          <span className="text-sm text-slate-400 truncate ml-1.5">
+                          <span className="text-sm text-slate-400 dark:text-slate-500 truncate ml-1.5">
                             — {email.snippet}
                           </span>
                         </div>
@@ -1310,7 +1310,7 @@ const EvansGmail = () => {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button 
-                                className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 mr-2 text-[10px] font-medium text-slate-500 bg-slate-100 hover:bg-slate-200 rounded transition-colors"
+                                className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 mr-2 text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                 }}
