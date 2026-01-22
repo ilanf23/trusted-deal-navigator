@@ -760,15 +760,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] p-0 gap-0 overflow-hidden">
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-slate-50">
-          <div className="flex items-center gap-4">
-            <Mail className="w-5 h-5 text-slate-500" />
-            <span className="text-sm text-slate-600">
-              You are adding & sharing all threads with <span className="font-semibold">{allEmails[0]?.email || 'No email'}</span>.
-              <span className="text-slate-400 ml-2">Someone have threads listed below but haven't shared yet</span>
-              <HelpCircle className="w-4 h-4 inline ml-1 text-slate-400" />
-            </span>
-          </div>
+        <div className="flex items-center justify-end px-4 py-3 border-b bg-slate-50">
           <div className="flex items-center gap-3">
             <Button variant="link" className="text-blue-600 text-sm p-0">Request access</Button>
           </div>
