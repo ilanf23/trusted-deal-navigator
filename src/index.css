@@ -168,6 +168,76 @@
     --shadow-orange: 0 4px 14px -3px hsl(25 95% 53% / 0.25);
     --shadow-inset: inset 0 1px 2px 0 rgb(0 0 0 / 0.04);
   }
+
+  /* Admin Portal Dark Mode */
+  .dark .admin-portal {
+    /* Dark background */
+    --background: 222 20% 8%;
+    --foreground: 210 40% 98%;
+    --card: 222 20% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 20% 11%;
+    --popover-foreground: 210 40% 98%;
+    
+    /* Primary: Blue (slightly brighter in dark) */
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    
+    /* Secondary: Dark blue tint */
+    --secondary: 217 32% 17%;
+    --secondary-foreground: 210 40% 98%;
+    
+    /* Muted: Dark grays */
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20% 65%;
+    
+    /* Accent: Orange (slightly brighter in dark) */
+    --accent: 25 95% 58%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Highlight: Orange */
+    --highlight: 25 95% 58%;
+    --highlight-foreground: 0 0% 100%;
+    
+    /* Destructive */
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    
+    /* Borders: Dark */
+    --border: 217 32% 20%;
+    --input: 217 32% 20%;
+    --ring: 217 91% 60%;
+    
+    /* Admin Color Palette - adjusted for dark */
+    --admin-blue: 217 91% 60%;
+    --admin-blue-light: 217 40% 20%;
+    --admin-blue-dark: 217 91% 70%;
+    --admin-orange: 25 95% 58%;
+    --admin-orange-light: 25 40% 20%;
+    --admin-orange-dark: 25 95% 68%;
+    
+    /* Sidebar in dark mode */
+    --sidebar-background: 222 25% 6%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 25% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 25% 15%;
+    --sidebar-ring: 217 91% 60%;
+    
+    /* Dark mode shadows (more subtle) */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.15);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.15);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.25), 0 2px 4px -2px rgb(0 0 0 / 0.15);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.35), 0 8px 10px -6px rgb(0 0 0 / 0.25);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    --shadow-glow: 0 0 40px -10px rgb(0 0 0 / 0.4);
+    --shadow-blue: 0 4px 14px -3px hsl(217 91% 60% / 0.35);
+    --shadow-orange: 0 4px 14px -3px hsl(25 95% 58% / 0.35);
+    --shadow-inset: inset 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  }
 }
 
 @layer base {
