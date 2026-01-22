@@ -276,6 +276,12 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [showAddPhone, setShowAddPhone] = useState(false);
   const [showAddEmail, setShowAddEmail] = useState(false);
   const [showAddTag, setShowAddTag] = useState(false);
+  const [showAddAddress, setShowAddAddress] = useState(false);
+  const [newAddressLine1, setNewAddressLine1] = useState('');
+  const [newAddressCity, setNewAddressCity] = useState('');
+  const [newAddressState, setNewAddressState] = useState('');
+  const [newAddressZip, setNewAddressZip] = useState('');
+  const [newAddressType, setNewAddressType] = useState('business');
 
   // AI states
   const [aiLoading, setAiLoading] = useState<'summarize' | 'ask' | 'autofill' | null>(null);
@@ -491,6 +497,42 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] });
       toast({ title: 'Email removed' });
+    },
+  });
+
+  const addContactAddress = useMutation({
+    mutationFn: async () => {
+      if (!lead || !newAddressLine1.trim()) return;
+      const { error } = await supabase.from('lead_addresses').insert({ 
+        lead_id: lead.id, 
+        address_line_1: newAddressLine1.trim(),
+        city: newAddressCity.trim() || null,
+        state: newAddressState.trim() || null,
+        zip_code: newAddressZip.trim() || null,
+        address_type: newAddressType,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead?.id] });
+      setNewAddressLine1('');
+      setNewAddressCity('');
+      setNewAddressState('');
+      setNewAddressZip('');
+      setNewAddressType('business');
+      setShowAddAddress(false);
+      toast({ title: 'Address added' });
+    },
+  });
+
+  const deleteAddress = useMutation({
+    mutationFn: async (addressId: string) => {
+      const { error } = await supabase.from('lead_addresses').delete().eq('id', addressId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead?.id] });
+      toast({ title: 'Address removed' });
     },
   });
 
@@ -1456,22 +1498,88 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                     <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !addressesOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
-                    {addresses.length === 0 ? (
+                    {addresses.length === 0 && !showAddAddress ? (
                       <p className="text-sm text-slate-400 italic">No addresses on file</p>
                     ) : (
                       addresses.map(addr => (
-                        <div key={addr.id} className="py-1">
-                          <p className="text-xs text-slate-400 capitalize mb-1">{addr.address_type}</p>
-                          <p className="text-sm text-slate-900">
-                            {[addr.address_line_1, addr.address_line_2, addr.city, addr.state, addr.zip_code].filter(Boolean).join(', ')}
-                          </p>
+                        <div key={addr.id} className="py-1 group flex items-start justify-between">
+                          <div>
+                            <p className="text-xs text-slate-400 capitalize mb-1">{addr.address_type}</p>
+                            <p className="text-sm text-slate-900">
+                              {[addr.address_line_1, addr.address_line_2, addr.city, addr.state, addr.zip_code].filter(Boolean).join(', ')}
+                            </p>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => deleteAddress.mutate(addr.id)}
+                          >
+                            <X className="w-3 h-3 text-slate-400" />
+                          </Button>
                         </div>
                       ))
                     )}
-                    <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add address
-                    </Button>
+                    {showAddAddress ? (
+                      <div className="space-y-2 pt-2 border-t border-slate-100">
+                        <Select value={newAddressType} onValueChange={setNewAddressType}>
+                          <SelectTrigger className="h-8 text-sm w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="business">Business</SelectItem>
+                            <SelectItem value="property">Property</SelectItem>
+                            <SelectItem value="mailing">Mailing</SelectItem>
+                            <SelectItem value="home">Home</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={newAddressLine1}
+                          onChange={(e) => setNewAddressLine1(e.target.value)}
+                          placeholder="Street address"
+                          className="h-8 text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            value={newAddressCity}
+                            onChange={(e) => setNewAddressCity(e.target.value)}
+                            placeholder="City"
+                            className="h-8 text-sm flex-1"
+                          />
+                          <Input
+                            value={newAddressState}
+                            onChange={(e) => setNewAddressState(e.target.value)}
+                            placeholder="State"
+                            className="h-8 text-sm w-16"
+                          />
+                          <Input
+                            value={newAddressZip}
+                            onChange={(e) => setNewAddressZip(e.target.value)}
+                            placeholder="ZIP"
+                            className="h-8 text-sm w-20"
+                          />
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            setShowAddAddress(false);
+                            setNewAddressLine1('');
+                            setNewAddressCity('');
+                            setNewAddressState('');
+                            setNewAddressZip('');
+                          }}>
+                            Cancel
+                          </Button>
+                          <Button size="sm" onClick={() => addContactAddress.mutate()} disabled={!newAddressLine1.trim()}>
+                            Add
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button variant="link" className="text-blue-600 text-sm p-0 h-auto" onClick={() => setShowAddAddress(true)}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add address
+                      </Button>
+                    )}
                   </CollapsibleContent>
                 </Collapsible>
 
