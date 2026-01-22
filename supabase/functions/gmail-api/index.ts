@@ -159,57 +159,77 @@ async function listMessages(accessToken: string, query: string = '', maxResults:
   return response.json();
 }
 
-async function getMessage(accessToken: string, messageId: string) {
-  const response = await fetch(
-    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
+async function getMessage(accessToken: string, messageId: string): Promise<any | null> {
+  try {
+    const response = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch message');
-  }
-
-  const message = await response.json();
-  
-  // Parse headers
-  const headers: Record<string, string> = {};
-  message.payload.headers.forEach((h: { name: string; value: string }) => {
-    headers[h.name.toLowerCase()] = h.value;
-  });
-
-  // Get body content
-  let body = '';
-  let htmlBody = '';
-  
-  function extractBody(part: any) {
-    if (part.mimeType === 'text/plain' && part.body?.data) {
-      body = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-    } else if (part.mimeType === 'text/html' && part.body?.data) {
-      htmlBody = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    if (!response.ok) {
+      console.warn(`Failed to fetch message ${messageId}: ${response.status}`);
+      return null; // Return null for inaccessible messages instead of throwing
     }
-    if (part.parts) {
-      part.parts.forEach(extractBody);
-    }
-  }
-  
-  if (message.payload.body?.data) {
-    body = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-  } else {
-    extractBody(message.payload);
-  }
 
-  return {
-    id: message.id,
-    threadId: message.threadId,
-    labelIds: message.labelIds || [],
-    snippet: message.snippet,
-    from: headers.from || '',
-    to: headers.to || '',
-    subject: headers.subject || '(No Subject)',
-    date: headers.date || '',
-    body: body || htmlBody,
-    isUnread: message.labelIds?.includes('UNREAD'),
-  };
+    const message = await response.json();
+    
+    // Parse headers safely
+    const headers: Record<string, string> = {};
+    if (message.payload?.headers) {
+      message.payload.headers.forEach((h: { name: string; value: string }) => {
+        headers[h.name.toLowerCase()] = h.value;
+      });
+    }
+
+    // Get body content
+    let body = '';
+    let htmlBody = '';
+    
+    function extractBody(part: any) {
+      if (part.mimeType === 'text/plain' && part.body?.data) {
+        try {
+          body = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        } catch (e) {
+          console.warn('Failed to decode plain text body');
+        }
+      } else if (part.mimeType === 'text/html' && part.body?.data) {
+        try {
+          htmlBody = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        } catch (e) {
+          console.warn('Failed to decode HTML body');
+        }
+      }
+      if (part.parts) {
+        part.parts.forEach(extractBody);
+      }
+    }
+    
+    if (message.payload?.body?.data) {
+      try {
+        body = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+      } catch (e) {
+        console.warn('Failed to decode message body');
+      }
+    } else if (message.payload) {
+      extractBody(message.payload);
+    }
+
+    return {
+      id: message.id,
+      threadId: message.threadId,
+      labelIds: message.labelIds || [],
+      snippet: message.snippet || '',
+      from: headers.from || '',
+      to: headers.to || '',
+      subject: headers.subject || '(No Subject)',
+      date: headers.date || '',
+      body: body || htmlBody,
+      isUnread: message.labelIds?.includes('UNREAD'),
+    };
+  } catch (error) {
+    console.error(`Error fetching message ${messageId}:`, error);
+    return null; // Return null on any error instead of crashing
+  }
 }
 
 async function sendMessage(accessToken: string, to: string, subject: string, body: string, threadId?: string, inReplyTo?: string) {
@@ -424,10 +444,11 @@ Deno.serve(async (req) => {
       
       const messagesData = await listMessages(accessToken, query, maxResults, pageToken);
       
-      // Fetch full details for each message
-      const messages = await Promise.all(
+      // Fetch full details for each message (filter out any that failed to fetch)
+      const allMessages = await Promise.all(
         (messagesData.messages || []).map((m: any) => getMessage(accessToken, m.id))
       );
+      const messages = allMessages.filter((m): m is NonNullable<typeof m> => m !== null);
 
       return new Response(JSON.stringify({
         messages,
