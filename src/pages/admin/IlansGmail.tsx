@@ -557,12 +557,11 @@ const IlansGmail = () => {
               </Button>
             )}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search emails..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 max-w-md"
+                className="pl-3 max-w-md"
               />
             </div>
             <Button

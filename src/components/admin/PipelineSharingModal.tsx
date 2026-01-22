@@ -343,12 +343,11 @@ const PipelineSharingModal = ({ open, onOpenChange, ownerId, ownerName }: Pipeli
             {/* Search and default access level */}
             <div className="px-3 py-2 border-b border-slate-100 space-y-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   placeholder="Search by name or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-8 text-sm"
+                  className="pl-3 h-8 text-sm"
                 />
               </div>
               <div className="flex items-center gap-2">
