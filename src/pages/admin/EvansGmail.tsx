@@ -572,14 +572,26 @@ const EvansGmail = () => {
     const composeParam = searchParams.get('compose');
     const toParam = searchParams.get('to');
     const nameParam = searchParams.get('name');
+    const emailType = searchParams.get('emailType');
+    const leadId = searchParams.get('leadId');
     
     if (composeParam === 'true' && toParam) {
       // Clear the query params to prevent re-triggering
       setSearchParams({}, { replace: true });
       setComposeHandled(true);
       
-      // Create a draft with the lead's email and open compose
-      const createDraftAndOpen = async () => {
+      // Handle custom email - just open blank compose
+      if (emailType === 'custom') {
+        setComposeTo(toParam);
+        setComposeSubject('');
+        setComposeBody('');
+        setComposeOpen(true);
+        toast.success('Compose window opened');
+        return;
+      }
+
+      // For AI-generated emails, use the generate-lead-email edge function
+      const createAIDraftAndOpen = async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) {
@@ -587,10 +599,22 @@ const EvansGmail = () => {
             return;
           }
 
-          const subject = nameParam ? `Following up - ${nameParam}` : 'Following up';
-          const body = nameParam 
-            ? `Hi ${nameParam.split(' ')[0]},\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan`
-            : 'Hi,\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan';
+          // Show loading toast
+          const loadingToast = toast.loading('Generating email with AI...');
+
+          // Call the generate-lead-email edge function
+          const { data: generatedEmail, error: generateError } = await supabase.functions.invoke('generate-lead-email', {
+            body: { leadId, emailType: emailType || 'follow_up' },
+          });
+
+          toast.dismiss(loadingToast);
+
+          if (generateError || !generatedEmail) {
+            throw new Error(generateError?.message || 'Failed to generate email');
+          }
+
+          const subject = generatedEmail.subject || (nameParam ? `Following up - ${nameParam}` : 'Following up');
+          const body = generatedEmail.body || `Hi ${nameParam?.split(' ')[0] || ''},\n\nI wanted to follow up with you.\n\nBest regards,\nEvan`;
 
           // Create draft via Gmail API
           const response = await fetch(
@@ -610,7 +634,7 @@ const EvansGmail = () => {
             throw new Error(data.error || 'Failed to create draft');
           }
 
-          toast.success(`Draft created for ${nameParam || toParam}`);
+          toast.success(`AI draft created for ${nameParam || toParam}`);
           
           // Switch to drafts folder and open compose with the draft content
           setActiveFolder('drafts');
@@ -623,18 +647,20 @@ const EvansGmail = () => {
           queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
           queryClient.invalidateQueries({ queryKey: ['gmail-drafts-count'] });
         } catch (error: any) {
-          toast.error('Failed to create draft: ' + error.message);
-          // Still open compose even if draft creation fails
-          setComposeTo(toParam);
-          setComposeSubject(nameParam ? `Following up - ${nameParam}` : 'Following up');
-          setComposeBody(nameParam 
+          toast.error('Failed to generate email: ' + error.message);
+          // Fallback to basic template if AI fails
+          const fallbackSubject = nameParam ? `Following up - ${nameParam}` : 'Following up';
+          const fallbackBody = nameParam 
             ? `Hi ${nameParam.split(' ')[0]},\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan`
-            : 'Hi,\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan');
+            : 'Hi,\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan';
+          setComposeTo(toParam);
+          setComposeSubject(fallbackSubject);
+          setComposeBody(fallbackBody);
           setComposeOpen(true);
         }
       };
 
-      createDraftAndOpen();
+      createAIDraftAndOpen();
     }
   }, [searchParams, setSearchParams, gmailConnection, connectionLoading, composeHandled, queryClient]);
 

@@ -145,6 +145,7 @@ const EvansPipeline = () => {
   const [callConfirmOpen, setCallConfirmOpen] = useState(false);
   const [pendingCallLead, setPendingCallLead] = useState<Lead | null>(null);
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
+  const [emailTypeSelectionOpen, setEmailTypeSelectionOpen] = useState(false);
   const [pendingEmailLead, setPendingEmailLead] = useState<Lead | null>(null);
   const [editingNameValue, setEditingNameValue] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
@@ -323,7 +324,13 @@ const EvansPipeline = () => {
   const confirmEmail = () => {
     if (!pendingEmailLead?.email) return;
     setEmailConfirmOpen(false);
-    navigate(`/team/evan/gmail?compose=true&to=${encodeURIComponent(pendingEmailLead.email)}&name=${encodeURIComponent(pendingEmailLead.name)}`);
+    setEmailTypeSelectionOpen(true);
+  };
+
+  const handleEmailTypeSelect = (emailType: string) => {
+    if (!pendingEmailLead?.email) return;
+    setEmailTypeSelectionOpen(false);
+    navigate(`/team/evan/gmail?compose=true&to=${encodeURIComponent(pendingEmailLead.email)}&name=${encodeURIComponent(pendingEmailLead.name)}&emailType=${encodeURIComponent(emailType)}&leadId=${encodeURIComponent(pendingEmailLead.id)}`);
     setPendingEmailLead(null);
   };
 
@@ -1421,8 +1428,68 @@ const EvansPipeline = () => {
             <AlertDialogCancel onClick={() => setPendingEmailLead(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmEmail}>
               <Mail className="h-4 w-4 mr-2" />
-              Open Gmail
+              Continue
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Email Type Selection Dialog */}
+      <AlertDialog open={emailTypeSelectionOpen} onOpenChange={(open) => {
+        setEmailTypeSelectionOpen(open);
+        if (!open) setPendingEmailLead(null);
+      }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Choose Email Type</AlertDialogTitle>
+            <AlertDialogDescription>
+              Select how you'd like to compose your email to <span className="font-semibold">{pendingEmailLead?.name}</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-4">
+            <Button 
+              variant="outline" 
+              className="justify-start h-auto py-3 px-4 text-left"
+              onClick={() => handleEmailTypeSelect('custom')}
+            >
+              <div className="flex flex-col items-start">
+                <span className="font-medium">✏️ Custom Email</span>
+                <span className="text-xs text-muted-foreground">Write your own email from scratch</span>
+              </div>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="justify-start h-auto py-3 px-4 text-left"
+              onClick={() => handleEmailTypeSelect('introduction')}
+            >
+              <div className="flex flex-col items-start">
+                <span className="font-medium">👋 Introduction Email</span>
+                <span className="text-xs text-muted-foreground">AI-generated intro and company overview</span>
+              </div>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="justify-start h-auto py-3 px-4 text-left"
+              onClick={() => handleEmailTypeSelect('follow_up')}
+            >
+              <div className="flex flex-col items-start">
+                <span className="font-medium">🔄 Follow-up Email</span>
+                <span className="text-xs text-muted-foreground">AI-generated follow-up based on lead context</span>
+              </div>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="justify-start h-auto py-3 px-4 text-left"
+              onClick={() => handleEmailTypeSelect('rate_alert')}
+            >
+              <div className="flex flex-col items-start">
+                <span className="font-medium">📊 Rate Alert Email</span>
+                <span className="text-xs text-muted-foreground">AI-generated rate update notification</span>
+              </div>
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
