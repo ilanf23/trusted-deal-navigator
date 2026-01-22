@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import {
   Dialog,
   DialogContent,
@@ -13,9 +14,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { AlertTriangle, ArrowRight, Folder, Loader2, Layers } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Folder, Loader2, Layers, Plus, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -46,6 +48,18 @@ const stages: { status: LeadStatus; title: string; color: string }[] = [
   { status: 'funded', title: 'Funded', color: '#059669' },
 ];
 
+// Preset colors for new pipelines
+const pipelineColors = [
+  '#0066FF', // Blue
+  '#FF8000', // Orange
+  '#10b981', // Green
+  '#8b5cf6', // Purple
+  '#ec4899', // Pink
+  '#f59e0b', // Amber
+  '#06b6d4', // Cyan
+  '#ef4444', // Red
+];
+
 const MoveBoxesModal = ({
   open,
   onOpenChange,
@@ -54,9 +68,15 @@ const MoveBoxesModal = ({
   onMoveComplete,
 }: MoveBoxesModalProps) => {
   const queryClient = useQueryClient();
+  const { teamMember } = useTeamMember();
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
   const [selectedStage, setSelectedStage] = useState<LeadStatus | ''>('');
   const [activeTab, setActiveTab] = useState<'stage' | 'pipeline'>('stage');
+  
+  // New pipeline creation state
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newPipelineName, setNewPipelineName] = useState('');
+  const [newPipelineColor, setNewPipelineColor] = useState(pipelineColors[0]);
 
   // Reset selections when modal opens
   useEffect(() => {
@@ -64,6 +84,9 @@ const MoveBoxesModal = ({
       setSelectedPipelineId('');
       setSelectedStage('');
       setActiveTab('stage');
+      setIsCreatingNew(false);
+      setNewPipelineName('');
+      setNewPipelineColor(pipelineColors[0]);
     }
   }, [open]);
 
@@ -85,6 +108,65 @@ const MoveBoxesModal = ({
 
   // Filter out current pipeline for pipeline moves
   const availablePipelines = pipelines.filter(p => p.id !== currentPipelineId);
+
+  // Create new pipeline mutation
+  const createPipelineMutation = useMutation({
+    mutationFn: async ({ name, color }: { name: string; color: string }) => {
+      if (!teamMember?.id) {
+        throw new Error('You must be logged in to create a pipeline');
+      }
+
+      // Create the pipeline
+      const { data: newPipeline, error: pipelineError } = await supabase
+        .from('pipelines')
+        .insert({
+          name,
+          color,
+          is_main: false,
+          owner_id: teamMember.id,
+        })
+        .select()
+        .single();
+
+      if (pipelineError) throw pipelineError;
+
+      // Create default stages for the new pipeline
+      const defaultStages = [
+        { name: 'Discovery', position: 0, color: '#0066FF' },
+        { name: 'Pre-Qual', position: 1, color: '#1a75ff' },
+        { name: 'Doc Collection', position: 2, color: '#3385ff' },
+        { name: 'Underwriting', position: 3, color: '#FF8000' },
+        { name: 'Approval', position: 4, color: '#e67300' },
+        { name: 'Funded', position: 5, color: '#059669' },
+      ];
+
+      const { error: stagesError } = await supabase
+        .from('pipeline_stages')
+        .insert(
+          defaultStages.map(stage => ({
+            pipeline_id: newPipeline.id,
+            name: stage.name,
+            position: stage.position,
+            color: stage.color,
+          }))
+        );
+
+      if (stagesError) throw stagesError;
+
+      return newPipeline;
+    },
+    onSuccess: (newPipeline) => {
+      toast.success(`Pipeline "${newPipeline.name}" created!`);
+      queryClient.invalidateQueries({ queryKey: ['available-pipelines'] });
+      setIsCreatingNew(false);
+      setNewPipelineName('');
+      // Auto-select the newly created pipeline
+      setSelectedPipelineId(newPipeline.id);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create pipeline: ${error.message}`);
+    },
+  });
 
   // Move to stage mutation (updates lead status directly)
   const moveStageMutation = useMutation({
@@ -194,6 +276,17 @@ const MoveBoxesModal = ({
     },
   });
 
+  const handleCreatePipeline = () => {
+    if (!newPipelineName.trim()) {
+      toast.error('Please enter a pipeline name');
+      return;
+    }
+    createPipelineMutation.mutate({
+      name: newPipelineName.trim(),
+      color: newPipelineColor,
+    });
+  };
+
   const handleMove = () => {
     if (activeTab === 'stage') {
       if (!selectedStage) {
@@ -223,7 +316,7 @@ const MoveBoxesModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRight className="h-5 w-5 text-[#0066FF]" />
@@ -281,63 +374,146 @@ const MoveBoxesModal = ({
           </TabsContent>
 
           {/* Pipeline Selection Tab */}
-          <TabsContent value="pipeline" className="mt-4">
+          <TabsContent value="pipeline" className="mt-4 space-y-4">
             {loadingPipelines ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-[#0066FF]" />
               </div>
-            ) : availablePipelines.length === 0 ? (
-              <div className="py-8 text-center">
-                <Folder className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-sm text-slate-500">No other pipelines available.</p>
-                <p className="text-xs text-slate-400 mt-1">Create a new pipeline first to move boxes.</p>
-              </div>
             ) : (
               <>
-                <RadioGroup
-                  value={selectedPipelineId}
-                  onValueChange={setSelectedPipelineId}
-                  className="space-y-2"
-                >
-                  {availablePipelines.map((pipeline) => (
-                    <div
-                      key={pipeline.id}
-                      className={cn(
-                        "flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors",
-                        selectedPipelineId === pipeline.id
-                          ? "border-[#0066FF] bg-[#0066FF]/5"
-                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                      )}
-                      onClick={() => setSelectedPipelineId(pipeline.id)}
-                    >
-                      <RadioGroupItem value={pipeline.id} id={pipeline.id} />
+                {/* Existing Pipelines */}
+                {availablePipelines.length > 0 && (
+                  <RadioGroup
+                    value={selectedPipelineId}
+                    onValueChange={setSelectedPipelineId}
+                    className="space-y-2"
+                  >
+                    {availablePipelines.map((pipeline) => (
                       <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: pipeline.color || '#0066FF' }}
-                      />
-                      <Label
-                        htmlFor={pipeline.id}
-                        className="flex-1 cursor-pointer font-medium text-slate-700"
-                      >
-                        {pipeline.name}
-                        {pipeline.is_main && (
-                          <span className="ml-2 text-xs text-amber-600 font-normal">(Main)</span>
+                        key={pipeline.id}
+                        className={cn(
+                          "flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors",
+                          selectedPipelineId === pipeline.id
+                            ? "border-[#0066FF] bg-[#0066FF]/5"
+                            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                         )}
-                      </Label>
+                        onClick={() => setSelectedPipelineId(pipeline.id)}
+                      >
+                        <RadioGroupItem value={pipeline.id} id={pipeline.id} />
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: pipeline.color || '#0066FF' }}
+                        />
+                        <Label
+                          htmlFor={pipeline.id}
+                          className="flex-1 cursor-pointer font-medium text-slate-700"
+                        >
+                          {pipeline.name}
+                          {pipeline.is_main && (
+                            <span className="ml-2 text-xs text-amber-600 font-normal">(Main)</span>
+                          )}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+
+                {/* Create New Pipeline Section */}
+                {!isCreatingNew ? (
+                  <Button
+                    variant="outline"
+                    className="w-full border-dashed border-2 h-12"
+                    onClick={() => setIsCreatingNew(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Pipeline
+                  </Button>
+                ) : (
+                  <div className="border rounded-lg p-4 space-y-4 bg-slate-50">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">New Pipeline</Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => {
+                          setIsCreatingNew(false);
+                          setNewPipelineName('');
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                  ))}
-                </RadioGroup>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="pipeline-name" className="text-xs text-slate-500">
+                        Pipeline Name
+                      </Label>
+                      <Input
+                        id="pipeline-name"
+                        placeholder="e.g., Hot Deals, Referrals..."
+                        value={newPipelineName}
+                        onChange={(e) => setNewPipelineName(e.target.value)}
+                        className="bg-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Color</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {pipelineColors.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            className={cn(
+                              "h-8 w-8 rounded-full border-2 transition-all flex items-center justify-center",
+                              newPipelineColor === color
+                                ? "border-slate-900 scale-110"
+                                : "border-transparent hover:scale-105"
+                            )}
+                            style={{ backgroundColor: color }}
+                            onClick={() => setNewPipelineColor(color)}
+                          >
+                            {newPipelineColor === color && (
+                              <Check className="h-4 w-4 text-white" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={handleCreatePipeline}
+                      disabled={!newPipelineName.trim() || createPipelineMutation.isPending}
+                      className="w-full bg-[#0066FF] hover:bg-[#0066FF]/90"
+                    >
+                      {createPipelineMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Pipeline
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
 
                 {/* Warning about stage matching */}
-                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md mt-4">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-amber-700">
-                    <p className="font-medium">Stage matching reminder</p>
-                    <p className="mt-0.5">
-                      Boxes will be placed in the first stage of the target pipeline.
-                    </p>
+                {(availablePipelines.length > 0 || selectedPipelineId) && (
+                  <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-amber-700">
+                      <p className="font-medium">Stage matching reminder</p>
+                      <p className="mt-0.5">
+                        Boxes will be placed in the first stage of the target pipeline.
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             )}
           </TabsContent>
