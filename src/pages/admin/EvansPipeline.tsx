@@ -33,6 +33,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -132,6 +142,8 @@ const EvansPipeline = () => {
   const [columnManagerOpen, setColumnManagerOpen] = useState(false);
   const [pipelineName, setPipelineName] = useState('Main Pipeline');
   const [isEditingName, setIsEditingName] = useState(false);
+  const [callConfirmOpen, setCallConfirmOpen] = useState(false);
+  const [pendingCallLead, setPendingCallLead] = useState<Lead | null>(null);
   const [editingNameValue, setEditingNameValue] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
   const [moveBoxesOpen, setMoveBoxesOpen] = useState(false);
@@ -270,8 +282,19 @@ const EvansPipeline = () => {
       toast.error('No phone number available');
       return;
     }
-    setCallingLeadId(lead.id);
-    makeCallMutation.mutate({ phone: lead.phone, leadId: lead.id });
+    setPendingCallLead(lead);
+    setCallConfirmOpen(true);
+  };
+
+  const confirmCall = () => {
+    if (!pendingCallLead?.phone) return;
+    setCallingLeadId(pendingCallLead.id);
+    setCallConfirmOpen(false);
+    // Navigate to calls page first
+    navigate('/team/evan/calls');
+    // Then initiate the call
+    makeCallMutation.mutate({ phone: pendingCallLead.phone, leadId: pendingCallLead.id });
+    setPendingCallLead(null);
   };
 
   const handleEmail = (e: React.MouseEvent, lead: Lead) => {
@@ -1265,6 +1288,26 @@ const EvansPipeline = () => {
         selectedLeadIds={Array.from(selectedLeadIds)}
         onMoveComplete={clearSelection}
       />
+
+      {/* Call Confirmation Dialog */}
+      <AlertDialog open={callConfirmOpen} onOpenChange={setCallConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Call</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to call <span className="font-semibold">{pendingCallLead?.name}</span> at{' '}
+              <span className="font-semibold">{pendingCallLead?.phone}</span>. This will open the calls page and initiate the call.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingCallLead(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCall}>
+              <Phone className="h-4 w-4 mr-2" />
+              Call Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
