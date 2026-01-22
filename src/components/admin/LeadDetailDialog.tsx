@@ -801,12 +801,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] p-0 gap-0 overflow-hidden">
-        {/* Header Bar */}
-        <div className="flex items-center justify-end px-4 py-3 border-b bg-slate-50">
-          <div className="flex items-center gap-3">
-            <Button variant="link" className="text-blue-600 text-sm p-0">Request access</Button>
-          </div>
-        </div>
 
         {/* Main Content - Two Column Layout */}
         <div className="flex h-[calc(90vh-60px)]">
@@ -1825,7 +1819,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                       onChange={(e) => setNotesContent(e.target.value)}
                       onBlur={() => notesContent !== lead.notes && saveNotes.mutate()}
                       placeholder="Add notes..."
-                      className="min-h-[60px] text-sm border-slate-200 resize-none"
+                      className="min-h-[140px] text-sm border-slate-200 resize-none"
                     />
                     {lead.updated_at && (
                       <p className="text-xs text-slate-400 mt-2">
