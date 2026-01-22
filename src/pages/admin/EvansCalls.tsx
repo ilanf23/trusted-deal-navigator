@@ -1083,8 +1083,8 @@ const EvansCalls = () => {
             <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-[calc(100vh-280px)]">
               {/* Lender Programs */}
               <div className={showAssistant ? "xl:col-span-3" : "xl:col-span-5"}>
-              <Card className="h-full flex flex-col border-slate-200">
-                  <CardHeader className="flex-shrink-0 pb-3 border-b bg-slate-50/50">
+              <Card className="h-full flex flex-col border-slate-200 dark:border-slate-700 dark:bg-slate-900">
+                  <CardHeader className="flex-shrink-0 pb-3 border-b bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <CardTitle className="text-lg font-semibold truncate">Lender Programs</CardTitle>
@@ -1150,47 +1150,47 @@ const EvansCalls = () => {
                       <div className="h-full max-h-[800px] overflow-auto">
                         <div className="min-w-[900px]">
                           <Table>
-                            <TableHeader className="sticky top-0 z-10 bg-muted">
-                              <TableRow>
-                                <TableHead className="text-xs font-semibold w-[180px] pl-4">Institution</TableHead>
-                                <TableHead className="text-xs font-semibold w-[300px] px-2">Looking For</TableHead>
-                                <TableHead className="text-xs font-semibold w-[120px] px-2">Contact</TableHead>
-                                <TableHead className="text-xs font-semibold w-[130px] px-2">Phone</TableHead>
-                                <TableHead className="text-xs font-semibold w-[100px] px-2">Loan Size</TableHead>
-                                <TableHead className="text-xs font-semibold w-[120px] px-2">States</TableHead>
+                            <TableHeader className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
+                              <TableRow className="dark:border-slate-700">
+                                <TableHead className="text-xs font-semibold w-[180px] pl-4 dark:text-slate-300">Institution</TableHead>
+                                <TableHead className="text-xs font-semibold w-[300px] px-2 dark:text-slate-300">Looking For</TableHead>
+                                <TableHead className="text-xs font-semibold w-[120px] px-2 dark:text-slate-300">Contact</TableHead>
+                                <TableHead className="text-xs font-semibold w-[130px] px-2 dark:text-slate-300">Phone</TableHead>
+                                <TableHead className="text-xs font-semibold w-[100px] px-2 dark:text-slate-300">Loan Size</TableHead>
+                                <TableHead className="text-xs font-semibold w-[120px] px-2 dark:text-slate-300">States</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {filteredPrograms.map((program) => (
-                                <TableRow key={program.id} className="min-h-[48px]">
+                                <TableRow key={program.id} className="min-h-[48px] dark:border-slate-700 dark:hover:bg-slate-800/50">
                                   <TableCell className="py-2 pl-4 pr-2">
-                                    <div className="font-medium text-sm">{program.lender_name}</div>
+                                    <div className="font-medium text-sm dark:text-slate-100">{program.lender_name}</div>
                                     {program.lender_type && (
-                                      <div className="text-xs text-muted-foreground">{program.lender_type}</div>
+                                      <div className="text-xs text-muted-foreground dark:text-slate-400">{program.lender_type}</div>
                                     )}
                                   </TableCell>
                                   <TableCell className="py-2 px-2">
-                                    <div className="text-sm whitespace-pre-wrap break-words line-clamp-3">
+                                    <div className="text-sm whitespace-pre-wrap break-words line-clamp-3 dark:text-slate-200">
                                       {program.looking_for || program.description || '—'}
                                     </div>
                                   </TableCell>
                                   <TableCell className="py-2 px-2">
-                                    <div className="text-sm">{program.contact_name || '—'}</div>
+                                    <div className="text-sm dark:text-slate-200">{program.contact_name || '—'}</div>
                                   </TableCell>
                                   <TableCell className="py-2 px-2">
                                     {program.phone ? (
-                                      <a href={`tel:${program.phone}`} className="text-sm text-admin-blue hover:underline">
+                                      <a href={`tel:${program.phone}`} className="text-sm text-blue-500 dark:text-blue-400 hover:underline">
                                         {program.phone}
                                       </a>
                                     ) : (
-                                      <span className="text-sm text-muted-foreground">—</span>
+                                      <span className="text-sm text-muted-foreground dark:text-slate-500">—</span>
                                     )}
                                   </TableCell>
                                   <TableCell className="py-2 px-2">
-                                    <div className="text-sm">{program.loan_size_text || '—'}</div>
+                                    <div className="text-sm dark:text-slate-200">{program.loan_size_text || '—'}</div>
                                   </TableCell>
                                   <TableCell className="py-2 px-2">
-                                    <div className="text-sm truncate max-w-[100px]" title={program.states || ''}>
+                                    <div className="text-sm truncate max-w-[100px] dark:text-slate-200" title={program.states || ''}>
                                       {program.states || '—'}
                                     </div>
                                   </TableCell>

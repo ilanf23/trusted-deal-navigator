@@ -43,8 +43,8 @@ export function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between h-8 text-sm font-normal bg-white",
-            !value && "text-muted-foreground",
+            "w-full justify-between h-8 text-sm font-normal bg-background dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-700",
+            !value && "text-muted-foreground dark:text-slate-400",
             className
           )}
         >
@@ -54,11 +54,11 @@ export function SearchableSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-white z-50" align="start">
-        <Command>
-          <CommandInput placeholder={`Search...`} className="h-9" />
-          <CommandList className="max-h-[200px]">
-            <CommandEmpty>{emptyText}</CommandEmpty>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-background dark:bg-slate-800 border dark:border-slate-600 z-50" align="start">
+        <Command className="bg-transparent">
+          <CommandInput placeholder={`Search...`} className="h-9 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400" />
+          <CommandList className="max-h-[200px] dark:bg-slate-800">
+            <CommandEmpty className="dark:text-slate-400">{emptyText}</CommandEmpty>
             <CommandGroup>
               <CommandItem
                 value="__all__"
@@ -66,6 +66,7 @@ export function SearchableSelect({
                   onValueChange("");
                   setOpen(false);
                 }}
+                className="dark:text-slate-100 dark:hover:bg-slate-700 dark:aria-selected:bg-slate-700"
               >
                 <Check
                   className={cn(
@@ -83,6 +84,7 @@ export function SearchableSelect({
                     onValueChange(option);
                     setOpen(false);
                   }}
+                  className="dark:text-slate-100 dark:hover:bg-slate-700 dark:aria-selected:bg-slate-700"
                 >
                   <Check
                     className={cn(
