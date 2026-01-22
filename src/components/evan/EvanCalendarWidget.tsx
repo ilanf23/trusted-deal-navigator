@@ -107,6 +107,7 @@ export const EvanCalendarWidget = () => {
     title: '',
     start_time: '',
     appointment_type: 'call',
+    duration: '30', // Duration in minutes
   });
   const [calendarStatus, setCalendarStatus] = useState<{ connected: boolean; email?: string } | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -239,18 +240,23 @@ export const EvanCalendarWidget = () => {
 
   const addAppointment = useMutation({
     mutationFn: async () => {
+      const startTime = new Date(newAppointment.start_time);
+      const durationMinutes = parseInt(newAppointment.duration, 10) || 30;
+      const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
+      
       const { error } = await supabase
         .from('evan_appointments')
         .insert({
           title: newAppointment.title,
-          start_time: newAppointment.start_time,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
           appointment_type: newAppointment.appointment_type,
         });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evan-appointments'] });
-      setNewAppointment({ title: '', start_time: '', appointment_type: 'call' });
+      setNewAppointment({ title: '', start_time: '', appointment_type: 'call', duration: '30' });
       setIsOpen(false);
       toast.success('Appointment added');
     },
@@ -777,19 +783,45 @@ export const EvanCalendarWidget = () => {
                     value={newAppointment.start_time}
                     onChange={(e) => setNewAppointment(prev => ({ ...prev, start_time: e.target.value }))}
                   />
-                  <Select
-                    value={newAppointment.appointment_type}
-                    onValueChange={(value) => setNewAppointment(prev => ({ ...prev, appointment_type: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="call">Phone Call</SelectItem>
-                      <SelectItem value="video">Video Call</SelectItem>
-                      <SelectItem value="meeting">In-Person Meeting</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-muted-foreground">Duration</label>
+                      <Select
+                        value={newAppointment.duration}
+                        onValueChange={(value) => setNewAppointment(prev => ({ ...prev, duration: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="15">15 minutes</SelectItem>
+                          <SelectItem value="30">30 minutes</SelectItem>
+                          <SelectItem value="45">45 minutes</SelectItem>
+                          <SelectItem value="60">1 hour</SelectItem>
+                          <SelectItem value="90">1.5 hours</SelectItem>
+                          <SelectItem value="120">2 hours</SelectItem>
+                          <SelectItem value="180">3 hours</SelectItem>
+                          <SelectItem value="240">4 hours</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-muted-foreground">Type</label>
+                      <Select
+                        value={newAppointment.appointment_type}
+                        onValueChange={(value) => setNewAppointment(prev => ({ ...prev, appointment_type: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="call">Phone Call</SelectItem>
+                          <SelectItem value="video">Video Call</SelectItem>
+                          <SelectItem value="meeting">In-Person Meeting</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                   <Button
                     className="w-full"
                     onClick={() => addAppointment.mutate()}
