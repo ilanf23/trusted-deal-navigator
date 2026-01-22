@@ -232,6 +232,17 @@ async function getMessage(accessToken: string, messageId: string): Promise<any |
   }
 }
 
+// Helper function to encode UTF-8 string to base64url
+function encodeBase64Url(str: string): string {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 async function sendMessage(accessToken: string, to: string, subject: string, body: string, threadId?: string, inReplyTo?: string) {
   const email = [
     `To: ${to}`,
@@ -239,11 +250,12 @@ async function sendMessage(accessToken: string, to: string, subject: string, bod
     inReplyTo ? `In-Reply-To: ${inReplyTo}` : '',
     inReplyTo ? `References: ${inReplyTo}` : '',
     'Content-Type: text/plain; charset=utf-8',
+    'Content-Transfer-Encoding: 8bit',
     '',
     body,
   ].filter(Boolean).join('\r\n');
 
-  const encodedEmail = btoa(email).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const encodedEmail = encodeBase64Url(email);
 
   const requestBody: any = { raw: encodedEmail };
   if (threadId) requestBody.threadId = threadId;
@@ -554,11 +566,12 @@ Deno.serve(async (req) => {
         `To: ${to}`,
         `Subject: ${subject}`,
         'Content-Type: text/plain; charset=utf-8',
+        'Content-Transfer-Encoding: 8bit',
         '',
         emailBody,
       ].join('\r\n');
 
-      const encodedEmail = btoa(email).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const encodedEmail = encodeBase64Url(email);
 
       const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
         method: 'POST',
