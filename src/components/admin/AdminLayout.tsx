@@ -31,7 +31,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <main className="flex-1 flex flex-col min-h-screen">
           {/* Top Bar - only spans the content area, not the sidebar */}
           <header className="h-16 flex items-center justify-between border-b border-border bg-card sticky top-0 z-[5] pl-4 pr-8">
-            <div className="flex items-center gap-5 ml-24">
+            <div className="flex items-center gap-5 ml-12">
               <SidebarTrigger className="w-11 h-11 rounded-xl hover:bg-muted transition-colors flex items-center justify-center group">
                 <Menu className="w-6 h-6 text-muted-foreground group-hover:text-foreground" />
               </SidebarTrigger>
