@@ -179,14 +179,13 @@ const formatEmailDate = (dateString: string) => {
 const formatEmailBody = (body: string): string => {
   if (!body) return '';
   
-  // Check if content is already HTML (contains common HTML tags)
-  const isHtml = /<[a-z][\s\S]*>/i.test(body);
+  // Check if content is already HTML (contains common HTML tags like div, table, span, etc.)
+  const isHtml = /<(?:div|table|span|p|br|img|a|td|tr|th|body|html|head|style)[^>]*>/i.test(body);
   
   if (isHtml) {
-    // For HTML content, add styling to make links look better
-    return body
-      .replace(/<a\s/g, '<a style="color: #1a73e8; text-decoration: none; word-break: break-all;" ')
-      .replace(/<img\s/g, '<img style="max-width: 100%; height: auto;" ');
+    // For HTML content, preserve original formatting - don't modify inline styles
+    // Just ensure target="_blank" on external links for security
+    return body;
   }
   
   // For plain text, convert to styled HTML
@@ -996,17 +995,9 @@ const EvansGmail = () => {
                 </Button>
               </div>
               
-              <div className="pl-12 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+              <div className="pl-12">
                 <div 
                   className="gmail-email-body"
-                  style={{
-                    fontFamily: 'Arial, Helvetica, sans-serif',
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    color: '#1f2937',
-                    wordBreak: 'break-word',
-                    overflowWrap: 'break-word',
-                  }}
                   dangerouslySetInnerHTML={{ 
                     __html: formatEmailBody(selectedEmail.body || selectedEmail.snippet) 
                   }} 
