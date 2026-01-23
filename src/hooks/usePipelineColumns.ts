@@ -151,6 +151,14 @@ export const usePipelineColumns = () => {
     ));
   }, [columns]);
 
+  const resizeColumn = useCallback((columnId: string, newWidth: number) => {
+    // Minimum width of 60px, max of 500px
+    const clampedWidth = Math.max(60, Math.min(500, newWidth));
+    setColumns(columns.map(c => 
+      c.id === columnId ? { ...c, width: `${clampedWidth}px` } : c
+    ));
+  }, [columns]);
+
   const getVisibleColumns = useCallback(() => {
     return columns.filter(c => c.isVisible);
   }, [columns]);
@@ -168,6 +176,7 @@ export const usePipelineColumns = () => {
     freezeColumn,
     moveColumn,
     renameColumn,
+    resizeColumn,
     getVisibleColumns,
     getGridTemplate,
   };
