@@ -155,6 +155,7 @@ const EvansPipeline = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [createLeadDialogOpen, setCreateLeadDialogOpen] = useState(false);
   const [newLeadForDialog, setNewLeadForDialog] = useState<Lead | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   
   // Undo system - tracks last action for reversal
   const [lastAction, setLastAction] = useState<{
@@ -472,6 +473,47 @@ const EvansPipeline = () => {
     },
     onError: () => toast.error('Failed to update lead'),
   });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (leadIds: string[]) => {
+      if (!canEdit) throw new Error('Not authorized');
+      const { error } = await supabase.from('leads').delete().in('id', leadIds);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+      toast.success(`${selectedLeadIds.size} lead(s) deleted`);
+      clearSelection();
+      setDeleteConfirmOpen(false);
+    },
+    onError: () => toast.error('Failed to delete leads'),
+  });
+
+  // Bulk assign owner mutation
+  const bulkAssignOwnerMutation = useMutation({
+    mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
+      if (!canEdit) throw new Error('Not authorized');
+      const { error } = await supabase.from('leads').update({ assigned_to: ownerId }).in('id', leadIds);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+      toast.success(`${selectedLeadIds.size} lead(s) reassigned`);
+      clearSelection();
+    },
+    onError: () => toast.error('Failed to assign owner'),
+  });
+
+  const handleBulkDelete = () => {
+    bulkDeleteMutation.mutate(Array.from(selectedLeadIds));
+  };
+
+  const handleBulkAssignOwner = (ownerId: string) => {
+    bulkAssignOwnerMutation.mutate({ leadIds: Array.from(selectedLeadIds), ownerId });
+  };
 
   // Create new lead via header button
   const handleCreateNewLead = () => {
@@ -856,6 +898,20 @@ const EvansPipeline = () => {
             );
           })}
         </div>
+
+        {/* Bulk Selection Toolbar - positioned below stage progress */}
+        {selectedLeadIds.size > 0 && (
+          <div className="mb-4">
+            <PipelineBulkToolbar
+              selectedCount={selectedLeadIds.size}
+              onClearSelection={clearSelection}
+              onMoveBoxes={() => setMoveBoxesOpen(true)}
+              onDeleteBoxes={() => setDeleteConfirmOpen(true)}
+              onAssignOwner={handleBulkAssignOwner}
+              teamMembers={teamMembers}
+            />
+          </div>
+        )}
 
         {/* Filters - responsive */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-4 mb-3 md:mb-4">
@@ -1312,18 +1368,31 @@ const EvansPipeline = () => {
           </div>
           </DndContext>
         </div>
-
-        {/* Bulk Selection Toolbar */}
-        {selectedLeadIds.size > 0 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-            <PipelineBulkToolbar
-              selectedCount={selectedLeadIds.size}
-              onClearSelection={clearSelection}
-              onMoveBoxes={() => setMoveBoxesOpen(true)}
-            />
-          </div>
-        )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedLeadIds.size} {selectedLeadIds.size === 1 ? 'lead' : 'leads'}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. All data associated with {selectedLeadIds.size === 1 ? 'this lead' : 'these leads'} will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {bulkDeleteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Lead Detail Dialog */}
       <LeadDetailDialog
