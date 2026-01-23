@@ -115,7 +115,7 @@ const SortableLeadRow = ({ lead, children, gridTemplate, onClick }: SortableLead
       >
         {/* Drag handle as first cell */}
         <div 
-          className="flex items-center justify-center h-10 border-r border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing"
+          className="flex items-center justify-center h-12 border-r border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
@@ -837,7 +837,7 @@ const EvansPipeline = () => {
         </div>
 
         {/* Pipeline Progress Bar - responsive */}
-        <div className="mb-1 flex items-center gap-2">
+        <div className="mb-1.5 md:mb-2 flex items-center gap-2">
           <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
           <HelpTooltip 
             content="Click any stage to jump to that section. Right-click or hold to customize colors. Each segment shows the count of leads in that stage."
@@ -854,7 +854,7 @@ const EvansPipeline = () => {
             Customize
           </Button>
         </div>
-        <div className="flex h-10 md:h-12 mb-2 md:mb-3 overflow-x-auto">
+        <div className="flex h-12 md:h-16 mb-4 md:mb-6 overflow-x-auto">
           {stageCounts.map((stage, index) => {
             const isFirst = index === 0;
             const isLast = index === stageCounts.length - 1;
@@ -911,7 +911,7 @@ const EvansPipeline = () => {
         )}
 
         {/* Filters - responsive */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 mb-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-4 mb-3 md:mb-4">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Input
               placeholder="Search leads..."
@@ -981,7 +981,7 @@ const EvansPipeline = () => {
                   <div 
                     key={column.id} 
                     className={cn(
-                      "flex items-center h-9 border-r border-slate-200 dark:border-slate-700",
+                      "flex items-center h-11 border-r border-slate-200 dark:border-slate-700",
                       isUtilityCol ? "justify-center px-1" : "px-3"
                     )}
                   >
@@ -1013,7 +1013,7 @@ const EvansPipeline = () => {
                 );
               })}
               {/* Add Column Button */}
-              <div className="flex items-center justify-center h-9">
+              <div className="flex items-center justify-center h-11">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-[#0066FF]">
@@ -1057,55 +1057,36 @@ const EvansPipeline = () => {
                   open={!isCollapsed}
                   onOpenChange={() => toggleSection(stage.status)}
                 >
-                  {/* Stage Header Row - Uses same grid as table for alignment */}
-                  <div 
-                    className="grid bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"
-                    style={{ gridTemplateColumns: `${getGridTemplate()} 40px` }}
-                  >
-                    {/* First cell: drag_handle placeholder */}
-                    <div className="flex items-center justify-center h-9 border-r border-slate-200 dark:border-slate-700" />
-                    {/* Second cell: checkbox */}
-                    <div className="flex items-center justify-center h-9 border-r border-slate-200 dark:border-slate-700">
-                      <Checkbox
-                        checked={stageLeads.length > 0 && stageLeads.every(l => selectedLeadIds.has(l.id))}
-                        onCheckedChange={() => toggleAllInStage(stage.status)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-4 w-4 rounded-none border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
-                        disabled={stageLeads.length === 0}
-                      />
-                    </div>
-                    {/* Third cell: avatar placeholder */}
-                    <div className="flex items-center justify-center h-9 border-r border-slate-200 dark:border-slate-700" />
-                    {/* Fourth cell (name column): Stage pill + add button + count + chevron */}
-                    <div className="flex items-center h-9 px-3 gap-2 border-r border-slate-200 dark:border-slate-700 col-span-1">
-                      <CollapsibleTrigger asChild>
-                        <span 
-                          className="font-medium text-xs px-3 py-1 rounded-full cursor-pointer hover:opacity-90"
-                          style={{ backgroundColor: stage.hexColor, color: 'white' }}
-                        >
-                          {stage.title}
-                        </span>
-                      </CollapsibleTrigger>
-                      <button 
-                        className="text-slate-400 hover:text-slate-600"
-                        onClick={(e) => { e.stopPropagation(); handleAddLead(stage.status); }}
+                  {/* Stage Header Row */}
+                  <div className="flex items-center h-11 px-3 gap-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                    <Checkbox
+                      checked={stageLeads.length > 0 && stageLeads.every(l => selectedLeadIds.has(l.id))}
+                      onCheckedChange={() => toggleAllInStage(stage.status)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 rounded-none border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
+                      disabled={stageLeads.length === 0}
+                    />
+                    <CollapsibleTrigger asChild>
+                      <span 
+                        className="font-medium text-xs px-3 py-1 rounded-full cursor-pointer hover:opacity-90"
+                        style={{ backgroundColor: stage.hexColor, color: 'white' }}
                       >
-                        <Plus className="h-4 w-4" />
+                        {stage.title}
+                      </span>
+                    </CollapsibleTrigger>
+                    <button 
+                      className="text-slate-400 hover:text-slate-600"
+                      onClick={(e) => { e.stopPropagation(); handleAddLead(stage.status); }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                    <div className="flex-1" />
+                    <span className="text-xs text-slate-500">{stageLeads.length} leads</span>
+                    <CollapsibleTrigger asChild>
+                      <button className="p-1 hover:bg-slate-200 rounded">
+                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                       </button>
-                      <div className="flex-1" />
-                      <span className="text-xs text-slate-500">{stageLeads.length} leads</span>
-                      <CollapsibleTrigger asChild>
-                        <button className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded">
-                          {isCollapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-                        </button>
-                      </CollapsibleTrigger>
-                    </div>
-                    {/* Remaining cells: empty spacers to complete the grid */}
-                    {getVisibleColumns().slice(4).map((column) => (
-                      <div key={column.id} className="h-9 border-r border-slate-200 dark:border-slate-700" />
-                    ))}
-                    {/* Last cell: add column spacer */}
-                    <div className="h-9" />
+                    </CollapsibleTrigger>
                   </div>
 
                   <CollapsibleContent>
@@ -1121,7 +1102,7 @@ const EvansPipeline = () => {
                             <div 
                               key={column.id}
                               className={cn(
-                                "flex items-center h-10 border-r border-slate-200",
+                                "flex items-center h-12 border-r border-slate-200",
                                 isUtilityCol ? "justify-center px-1" : "px-3"
                               )}
                             >
@@ -1143,7 +1124,7 @@ const EvansPipeline = () => {
                             </div>
                           );
                         })}
-                        <div className="h-10" />
+                        <div className="h-12" />
                       </div>
                     )}
 
@@ -1159,7 +1140,7 @@ const EvansPipeline = () => {
                             <div 
                               key={column.id}
                               className={cn(
-                                "flex items-center h-10 border-r border-slate-200",
+                                "flex items-center h-12 border-r border-slate-200",
                                 isUtilityCol ? "justify-center px-1" : "px-3"
                               )}
                             >
@@ -1169,7 +1150,7 @@ const EvansPipeline = () => {
                             </div>
                           );
                         })}
-                        <div className="h-10" />
+                        <div className="h-12" />
                       </div>
                     ) : (
                       <TooltipProvider>
@@ -1361,7 +1342,7 @@ const EvansPipeline = () => {
                                     <div 
                                       key={column.id} 
                                       className={cn(
-                                        "flex items-center h-10 overflow-hidden border-r border-slate-200 dark:border-slate-700",
+                                        "flex items-center h-12 overflow-hidden border-r border-slate-200 dark:border-slate-700",
                                         isUtilityCol ? "justify-center px-1" : "px-3"
                                       )}
                                     >
@@ -1369,7 +1350,7 @@ const EvansPipeline = () => {
                                     </div>
                                   );
                                 })}
-                                <div className="h-10" />
+                                <div className="h-12" />
                               </SortableLeadRow>
                             );
                           })}
