@@ -38,20 +38,16 @@ const loadColumnsFromStorage = (): PipelineColumn[] => {
 };
 
 export const usePipelineColumns = () => {
-  const [columns, setColumnsState] = useState<PipelineColumn[]>(loadColumnsFromStorage);
+  const [columns, setColumns] = useState<PipelineColumn[]>(() => loadColumnsFromStorage());
 
   // Persist to localStorage whenever columns change
-  const setColumns = useCallback((newColumns: PipelineColumn[] | ((prev: PipelineColumn[]) => PipelineColumn[])) => {
-    setColumnsState(prev => {
-      const updated = typeof newColumns === 'function' ? newColumns(prev) : newColumns;
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save pipeline columns:', e);
-      }
-      return updated;
-    });
-  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(columns));
+    } catch (e) {
+      console.error('Failed to save pipeline columns:', e);
+    }
+  }, [columns]);
 
   const insertColumn = useCallback((
     afterColumnId: string,
