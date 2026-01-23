@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { PipelineColumn, ColumnType, MagicColumnType } from '@/components/admin/PipelineColumnHeader';
 import { customColumnTypes, allMagicColumns } from '@/components/admin/PipelineColumnHeader';
+
+const STORAGE_KEY = 'pipeline-columns-config';
 
 // Default foundational columns that cannot be deleted
 // Fixed widths for rigid grid alignment - no minmax to prevent layout shifts
@@ -18,8 +20,38 @@ const defaultFoundationalColumns: PipelineColumn[] = [
   { id: 'last_touch', name: 'Last Touch', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '100px' },
 ];
 
+// Load columns from localStorage or use defaults
+const loadColumnsFromStorage = (): PipelineColumn[] => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Merge with defaults to ensure new foundational columns are included
+      const storedIds = new Set(parsed.map((c: PipelineColumn) => c.id));
+      const missingDefaults = defaultFoundationalColumns.filter(d => !storedIds.has(d.id));
+      return [...parsed, ...missingDefaults];
+    }
+  } catch (e) {
+    console.error('Failed to load pipeline columns from storage:', e);
+  }
+  return defaultFoundationalColumns;
+};
+
 export const usePipelineColumns = () => {
-  const [columns, setColumns] = useState<PipelineColumn[]>(defaultFoundationalColumns);
+  const [columns, setColumnsState] = useState<PipelineColumn[]>(loadColumnsFromStorage);
+
+  // Persist to localStorage whenever columns change
+  const setColumns = useCallback((newColumns: PipelineColumn[] | ((prev: PipelineColumn[]) => PipelineColumn[])) => {
+    setColumnsState(prev => {
+      const updated = typeof newColumns === 'function' ? newColumns(prev) : newColumns;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save pipeline columns:', e);
+      }
+      return updated;
+    });
+  }, []);
 
   const insertColumn = useCallback((
     afterColumnId: string,
