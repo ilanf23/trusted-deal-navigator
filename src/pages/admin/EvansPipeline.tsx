@@ -102,20 +102,18 @@ const SortableLeadRow = ({ lead, children, gridTemplate, onClick }: SortableLead
       ref={setNodeRef}
       style={style}
       className={cn(
-        "hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-base transition-colors border-b border-slate-200 dark:border-slate-700 min-w-max group",
+        "hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border-b border-slate-200 dark:border-slate-700 group",
         isDragging && "bg-blue-50 dark:bg-blue-900/30 shadow-lg"
       )}
       onClick={onClick}
     >
       <div
-        style={{ 
-          display: 'grid',
-          gridTemplateColumns: gridTemplate
-        }}
+        className="grid"
+        style={{ gridTemplateColumns: gridTemplate }}
       >
         {/* Drag handle as first cell */}
         <div 
-          className="flex items-center justify-center min-h-[48px] border-r border-slate-200 dark:border-slate-700 px-1 cursor-grab active:cursor-grabbing"
+          className="flex items-center justify-center h-12 border-r border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
@@ -898,118 +896,74 @@ const EvansPipeline = () => {
           </div>
         </div>
 
-        {/* Grouped Table View - 8px spacing system */}
-        <div className="flex-1 overflow-x-auto overflow-y-auto border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900">
-          {/* Table Header with Column Dropdowns */}
-          <div className="sticky top-0 z-10 bg-slate-50/60 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 min-w-max">
+        {/* CRM Table - Fixed grid layout */}
+        <div className="flex-1 overflow-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
+          {/* Table Header */}
+          <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             <div 
-              className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest"
-              style={{ 
-                display: 'grid',
-                gridTemplateColumns: `${getGridTemplate()} 48px`
-              }}
+              className="grid text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+              style={{ gridTemplateColumns: `${getGridTemplate()} 40px` }}
             >
               {getVisibleColumns().map((column) => {
-                const cellClass = cn(
-                  "flex items-center min-h-[48px]",
-                  column.id === 'drag_handle' ? "px-1" :
-                  (column.id === 'checkbox' || column.id === 'avatar') ? "px-2" : "px-4",
-                  "border-r border-slate-200"
-                );
+                // Determine cell alignment and padding
+                const isUtilityCol = ['drag_handle', 'checkbox', 'avatar'].includes(column.id);
                 
-                // Empty cell for drag handle column in header
-                if (column.id === 'drag_handle') {
-                  return <div key={column.id} className={cn(cellClass, "justify-center")}></div>;
-                }
-                // Special handling for checkbox column - add select all
-                if (column.id === 'checkbox') {
-                  return (
-                    <div key={column.id} className={cn(cellClass, "justify-center")}>
+                return (
+                  <div 
+                    key={column.id} 
+                    className={cn(
+                      "flex items-center h-11 border-r border-slate-200 dark:border-slate-700",
+                      isUtilityCol ? "justify-center px-1" : "px-3"
+                    )}
+                  >
+                    {column.id === 'drag_handle' && null}
+                    {column.id === 'checkbox' && (
                       <Checkbox
                         checked={isAllSelected}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            selectAllLeads();
-                          } else {
-                            clearSelection();
-                          }
-                        }}
-                        className="rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                        onCheckedChange={(checked) => checked ? selectAllLeads() : clearSelection()}
+                        className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                       />
-                    </div>
-                  );
-                }
-                if (column.id === 'avatar') {
-                  return <div key={column.id} className={cn(cellClass, "justify-center")}></div>;
-                }
-
-                // Help text for specific columns
-                const helpTexts: Record<string, string> = {
-                  name: "Lead's full name. Click any row to open the full lead detail dialog.",
-                  contact: "Quick actions to call or email the lead. Click 'Call' to initiate a Twilio call, or 'Email' to compose in Gmail.",
-                  last_touch: "Most recent communication with this lead (call, email, or SMS). Helps identify leads that need follow-up.",
-                };
-
-                return (
-                  <div key={column.id} className={cn(cellClass, "justify-start")}>
-                    <PipelineColumnHeader
-                      column={column}
-                      helpText={helpTexts[column.id]}
-                      onInsertColumn={(position, type, isMagic) => insertColumn(column.id, position, type, isMagic)}
-                      onDeleteColumn={() => deleteColumn(column.id)}
-                      onHideColumn={() => hideColumn(column.id)}
-                      onFreezeColumn={() => freezeColumn(column.id)}
-                      onMoveColumn={(direction) => moveColumn(column.id, direction)}
-                    />
+                    )}
+                    {column.id === 'avatar' && null}
+                    {!isUtilityCol && (
+                      <PipelineColumnHeader
+                        column={column}
+                        helpText={
+                          column.id === 'name' ? "Lead's full name. Click any row to open details." :
+                          column.id === 'contact' ? "Quick call or email actions." :
+                          column.id === 'last_touch' ? "Most recent communication." : undefined
+                        }
+                        onInsertColumn={(position, type, isMagic) => insertColumn(column.id, position, type, isMagic)}
+                        onDeleteColumn={() => deleteColumn(column.id)}
+                        onHideColumn={() => hideColumn(column.id)}
+                        onFreezeColumn={() => freezeColumn(column.id)}
+                        onMoveColumn={(direction) => moveColumn(column.id, direction)}
+                      />
+                    )}
                   </div>
                 );
               })}
-              {/* Add Column Button at the end */}
-              <div className="flex items-center justify-center px-2 min-h-[48px]">
+              {/* Add Column Button */}
+              <div className="flex items-center justify-center h-11">
                 <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 w-8 p-0 text-slate-400 hover:text-[#0066FF] hover:bg-[#0066FF]/5"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-white z-50">
-                  <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase">Add Column</div>
-                  <DropdownMenuItem 
-                    onClick={() => {
-                      const lastCol = getVisibleColumns().at(-1);
-                      if (lastCol) insertColumn(lastCol.id, 'right', 'free_form');
-                    }} 
-                    className="cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Free Form
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => {
-                      const lastCol = getVisibleColumns().at(-1);
-                      if (lastCol) insertColumn(lastCol.id, 'right', 'date');
-                    }} 
-                    className="cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Date
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => {
-                      const lastCol = getVisibleColumns().at(-1);
-                      if (lastCol) insertColumn(lastCol.id, 'right', 'days_in_stage', true);
-                    }} 
-                    className="cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4 mr-2 text-purple-500" />
-                    Days in Stage (Magic)
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-[#0066FF]">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44 bg-white dark:bg-slate-800 z-50">
+                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase">Add Column</div>
+                    <DropdownMenuItem onClick={() => { const c = getVisibleColumns().at(-1); if (c) insertColumn(c.id, 'right', 'free_form'); }} className="cursor-pointer text-sm">
+                      <Plus className="h-3.5 w-3.5 mr-2" /> Free Form
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { const c = getVisibleColumns().at(-1); if (c) insertColumn(c.id, 'right', 'date'); }} className="cursor-pointer text-sm">
+                      <Plus className="h-3.5 w-3.5 mr-2" /> Date
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { const c = getVisibleColumns().at(-1); if (c) insertColumn(c.id, 'right', 'days_in_stage', true); }} className="cursor-pointer text-sm">
+                      <Plus className="h-3.5 w-3.5 mr-2 text-purple-500" /> Days in Stage
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -1034,130 +988,100 @@ const EvansPipeline = () => {
                   open={!isCollapsed}
                   onOpenChange={() => toggleSection(stage.status)}
                 >
-                  {/* Section Header - Full-width colored bar with 8px spacing */}
-                  <div
-                    className="cursor-pointer transition-colors flex items-center min-h-[48px] px-4 gap-3 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"
-                  >
-                    {/* Stage selection checkbox */}
+                  {/* Stage Header Row */}
+                  <div className="flex items-center h-11 px-3 gap-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                     <Checkbox
                       checked={stageLeads.length > 0 && stageLeads.every(l => selectedLeadIds.has(l.id))}
                       onCheckedChange={() => toggleAllInStage(stage.status)}
                       onClick={(e) => e.stopPropagation()}
-                      className="rounded-none border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
+                      className="h-4 w-4 rounded-none border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
                       disabled={stageLeads.length === 0}
                     />
-                    
-                    {/* Stage badge pill - clickable to collapse */}
                     <CollapsibleTrigger asChild>
                       <span 
-                        className="font-medium text-sm px-4 py-1.5 rounded-full whitespace-nowrap cursor-pointer hover:opacity-90 transition-opacity"
-                        style={{ 
-                          backgroundColor: stage.hexColor,
-                          color: 'white'
-                        }}
+                        className="font-medium text-xs px-3 py-1 rounded-full cursor-pointer hover:opacity-90"
+                        style={{ backgroundColor: stage.hexColor, color: 'white' }}
                       >
                         {stage.title}
                       </span>
                     </CollapsibleTrigger>
-                    
-                    {/* Add button */}
                     <button 
-                      className="text-slate-400 hover:text-slate-600 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddLead(stage.status);
-                      }}
+                      className="text-slate-400 hover:text-slate-600"
+                      onClick={(e) => { e.stopPropagation(); handleAddLead(stage.status); }}
                     >
-                      <Plus className="h-5 w-5" />
+                      <Plus className="h-4 w-4" />
                     </button>
-                    
-                    {/* Spacer */}
                     <div className="flex-1" />
-                    
-                    {/* Lead count badge */}
                     <span className="text-xs text-slate-500">{stageLeads.length} leads</span>
-                    
-                    {/* Collapse indicator */}
                     <CollapsibleTrigger asChild>
-                      <button className="p-1 hover:bg-slate-200 rounded transition-colors">
-                        {isCollapsed ? (
-                          <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                        )}
+                      <button className="p-1 hover:bg-slate-200 rounded">
+                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                       </button>
                     </CollapsibleTrigger>
                   </div>
 
-                  {/* Section Content */}
                   <CollapsibleContent>
                     {/* Inline Add Lead Row */}
                     {addingToStage === stage.status && (
                       <div 
-                        className="border-b border-slate-200 min-w-max bg-blue-50"
-                        style={{ 
-                          display: 'grid',
-                          gridTemplateColumns: `${getGridTemplate()} 48px`
-                        }}
+                        className="grid border-b border-slate-200 bg-blue-50"
+                        style={{ gridTemplateColumns: `${getGridTemplate()} 40px` }}
                       >
-                        {getVisibleColumns().map((column) => (
-                          <div 
-                            key={column.id}
-                            className={cn(
-                              "flex items-center min-h-[48px]",
-                              "border-r border-slate-200",
-                              column.id === 'drag_handle' ? "px-1 justify-center" :
-                              (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
-                            )}
-                          >
-                            {column.id === 'name' && (
-                              <input
-                                type="text"
-                                value={newLeadName}
-                                onChange={(e) => setNewLeadName(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleSaveNewLead();
-                                  if (e.key === 'Escape') {
-                                    setAddingToStage(null);
-                                    setNewLeadName('');
-                                  }
-                                }}
-                                onBlur={handleSaveNewLead}
-                                autoFocus
-                                placeholder="Enter lead name..."
-                                className="w-full bg-transparent border-none outline-none text-slate-900 placeholder:text-slate-400"
-                              />
-                            )}
-                          </div>
-                        ))}
-                        <div className="min-h-[48px]" />
+                        {getVisibleColumns().map((column) => {
+                          const isUtilityCol = ['drag_handle', 'checkbox', 'avatar'].includes(column.id);
+                          return (
+                            <div 
+                              key={column.id}
+                              className={cn(
+                                "flex items-center h-12 border-r border-slate-200",
+                                isUtilityCol ? "justify-center px-1" : "px-3"
+                              )}
+                            >
+                              {column.id === 'name' && (
+                                <input
+                                  type="text"
+                                  value={newLeadName}
+                                  onChange={(e) => setNewLeadName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveNewLead();
+                                    if (e.key === 'Escape') { setAddingToStage(null); setNewLeadName(''); }
+                                  }}
+                                  onBlur={handleSaveNewLead}
+                                  autoFocus
+                                  placeholder="Enter lead name..."
+                                  className="w-full bg-transparent border-none outline-none text-sm text-slate-900 placeholder:text-slate-400"
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                        <div className="h-12" />
                       </div>
                     )}
+
+                    {/* Empty State */}
                     {stageLeads.length === 0 && addingToStage !== stage.status ? (
                       <div 
-                        className="border-b border-slate-200 min-w-max"
-                        style={{ 
-                          display: 'grid',
-                          gridTemplateColumns: `${getGridTemplate()} 48px`
-                        }}
+                        className="grid border-b border-slate-200"
+                        style={{ gridTemplateColumns: `${getGridTemplate()} 40px` }}
                       >
-                        {getVisibleColumns().map((column) => (
-                          <div 
-                            key={column.id}
-                            className={cn(
-                              "flex items-center min-h-[48px]",
-                              "border-r border-slate-200",
-                              column.id === 'drag_handle' ? "px-1 justify-center" :
-                              (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
-                            )}
-                          >
-                            {column.id === 'name' && (
-                              <span className="text-sm text-slate-400 italic whitespace-nowrap">No leads in this stage</span>
-                            )}
-                          </div>
-                        ))}
-                        {/* Empty cell for alignment with + column */}
-                        <div className="min-h-[48px]" />
+                        {getVisibleColumns().map((column) => {
+                          const isUtilityCol = ['drag_handle', 'checkbox', 'avatar'].includes(column.id);
+                          return (
+                            <div 
+                              key={column.id}
+                              className={cn(
+                                "flex items-center h-12 border-r border-slate-200",
+                                isUtilityCol ? "justify-center px-1" : "px-3"
+                              )}
+                            >
+                              {column.id === 'name' && (
+                                <span className="text-sm text-slate-400 italic">No leads in this stage</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                        <div className="h-12" />
                       </div>
                     ) : (
                       <TooltipProvider>
@@ -1175,43 +1099,40 @@ const EvansPipeline = () => {
                             const renderCellContent = (column: typeof columns[0]) => {
                               switch (column.id) {
                                 case 'drag_handle':
-                                  return null; // Handled separately with useSortable
+                                  return null;
                                 case 'checkbox':
                                   return (
-                                    <div className="flex items-center justify-center">
-                                      <Checkbox
-                                        checked={selectedLeadIds.has(lead.id)}
-                                        onCheckedChange={() => toggleLeadSelection(lead.id)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                                      />
-                                    </div>
+                                    <Checkbox
+                                      checked={selectedLeadIds.has(lead.id)}
+                                      onCheckedChange={() => toggleLeadSelection(lead.id)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                    />
                                   );
                                 case 'avatar':
                                   return (
-                                    <Avatar className="h-7 w-7 bg-[#0066FF]">
+                                    <Avatar className="h-7 w-7 bg-[#0066FF] flex-shrink-0">
                                       <AvatarFallback className="text-[10px] text-white font-semibold bg-[#0066FF]">
                                         {getInitials(lead.name)}
                                       </AvatarFallback>
                                     </Avatar>
                                   );
                                 case 'name':
-                                  return <div className="font-normal text-[13px] text-slate-800 truncate">{lead.name}</div>;
+                                  return <span className="text-[13px] text-slate-800 dark:text-slate-200 truncate block">{lead.name}</span>;
                                 case 'stage':
                                   return (
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <button 
                                           onClick={(e) => e.stopPropagation()}
-                                          className="flex items-center gap-1 hover:opacity-80 transition-opacity max-w-full"
+                                          className="flex items-center gap-1 hover:opacity-80"
                                         >
                                           <Badge 
                                             variant="outline" 
                                             className={cn(
-                                              "text-[11px] font-medium px-2 py-0.5 rounded cursor-pointer whitespace-nowrap",
+                                              "text-[10px] font-medium px-2 py-0.5 rounded whitespace-nowrap border-transparent",
                                               stageEntry?.bgColor,
-                                              stageEntry?.textColor,
-                                              "border-transparent"
+                                              stageEntry?.textColor
                                             )}
                                           >
                                             {stageEntry?.title}
@@ -1219,67 +1140,45 @@ const EvansPipeline = () => {
                                           <ChevronDown className="h-3 w-3 text-slate-400 flex-shrink-0" />
                                         </button>
                                       </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="start" className="w-44 bg-white z-50">
-                                        <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase">Move to Stage</div>
+                                      <DropdownMenuContent align="start" className="w-40 bg-white dark:bg-slate-800 z-50">
+                                        <div className="px-2 py-1 text-[10px] font-semibold text-slate-500 uppercase">Move to</div>
                                         {stages.map((s) => (
                                           <DropdownMenuItem
                                             key={s.status}
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               if (s.status !== lead.status) {
-                                                updateStatusMutation.mutate({ 
-                                                  id: lead.id, 
-                                                  status: s.status, 
-                                                  previousStatus: lead.status 
-                                                });
+                                                updateStatusMutation.mutate({ id: lead.id, status: s.status, previousStatus: lead.status });
                                               }
                                             }}
-                                            className={cn(
-                                              "cursor-pointer gap-2",
-                                              s.status === lead.status && "bg-slate-100"
-                                            )}
+                                            className={cn("cursor-pointer gap-2 text-sm", s.status === lead.status && "bg-slate-100")}
                                           >
-                                            <div 
-                                              className="w-3 h-3 rounded-full flex-shrink-0" 
-                                              style={{ backgroundColor: s.hexColor }}
-                                            />
-                                            <span className={cn(
-                                              s.status === lead.status && "font-semibold"
-                                            )}>
-                                              {s.title}
-                                            </span>
-                                            {s.status === lead.status && (
-                                              <span className="ml-auto text-[#0066FF]">✓</span>
-                                            )}
+                                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.hexColor }} />
+                                            <span className={cn(s.status === lead.status && "font-semibold")}>{s.title}</span>
+                                            {s.status === lead.status && <span className="ml-auto text-[#0066FF]">✓</span>}
                                           </DropdownMenuItem>
                                         ))}
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                   );
                                 case 'company':
-                                  return <div className="text-slate-500 truncate text-[13px]">{lead.company_name || '—'}</div>;
+                                  return <span className="text-[13px] text-slate-500 truncate block">{lead.company_name || '—'}</span>;
                                 case 'contact':
                                   return (
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="flex items-center gap-1.5">
                                       {lead.phone && (
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <button
                                               onClick={(e) => handleCall(e, lead)}
                                               disabled={isCallingThis}
-                                              className="inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md bg-green-100 hover:bg-green-200 transition-colors disabled:opacity-50 border border-green-300 flex-shrink-0"
+                                              className="inline-flex items-center gap-1 h-6 px-2 rounded bg-green-100 hover:bg-green-200 border border-green-300 disabled:opacity-50"
                                             >
-                                              {isCallingThis ? (
-                                                <Loader2 className="h-3.5 w-3.5 text-green-700 animate-spin" />
-                                              ) : (
-                                                <Phone className="h-3.5 w-3.5 text-green-700" />
-                                              )}
-                                              <span className="text-xs font-medium text-green-700">Call</span>
+                                              {isCallingThis ? <Loader2 className="h-3 w-3 text-green-700 animate-spin" /> : <Phone className="h-3 w-3 text-green-700" />}
+                                              <span className="text-[11px] font-medium text-green-700">Call</span>
                                             </button>
                                           </TooltipTrigger>
-                                          <TooltipContent side="top" className="bg-white z-50">
-                                            <p>Call {lead.phone}</p>
-                                          </TooltipContent>
+                                          <TooltipContent><p>Call {lead.phone}</p></TooltipContent>
                                         </Tooltip>
                                       )}
                                       {lead.email && (
@@ -1287,83 +1186,48 @@ const EvansPipeline = () => {
                                           <TooltipTrigger asChild>
                                             <button
                                               onClick={(e) => handleEmail(e, lead)}
-                                              className="inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors border border-[#0066FF]/30 flex-shrink-0"
+                                              className="inline-flex items-center gap-1 h-6 px-2 rounded bg-[#0066FF]/10 hover:bg-[#0066FF]/20 border border-[#0066FF]/30"
                                             >
-                                              <Mail className="h-3.5 w-3.5 text-[#0066FF]" />
-                                              <span className="text-xs font-medium text-[#0066FF]">Email</span>
+                                              <Mail className="h-3 w-3 text-[#0066FF]" />
+                                              <span className="text-[11px] font-medium text-[#0066FF]">Email</span>
                                             </button>
                                           </TooltipTrigger>
-                                          <TooltipContent side="top" className="bg-white z-50">
-                                            <p>Email {lead.email}</p>
-                                          </TooltipContent>
+                                          <TooltipContent><p>Email {lead.email}</p></TooltipContent>
                                         </Tooltip>
                                       )}
                                       {!lead.phone && !lead.email && <span className="text-slate-300 text-xs">—</span>}
                                     </div>
                                   );
                                 case 'owner':
-                                  return <div className="text-[12px] text-slate-500 truncate">{ownerName || <span className="text-slate-300">—</span>}</div>;
+                                  return <span className="text-[12px] text-slate-500 truncate block">{ownerName || '—'}</span>;
                                 case 'source':
-                                  return <div className="text-[12px] text-slate-400">{lead.source || <span className="text-slate-300">—</span>}</div>;
+                                  return <span className="text-[12px] text-slate-400 truncate block">{lead.source || '—'}</span>;
                                 case 'last_touch':
-                                  return (
-                                    <div className="text-[12px] text-slate-400">
-                                      {touchpoint ? <span className="capitalize">{touchpoint.type}</span> : <span className="text-slate-300">—</span>}
-                                    </div>
-                                  );
+                                  return <span className="text-[12px] text-slate-400 capitalize">{touchpoint?.type || '—'}</span>;
                                 case 'updated':
-                                  return <div className="text-xs text-slate-400">{formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}</div>;
+                                  return <span className="text-xs text-slate-400">{formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}</span>;
                                 default:
-                                  // Handle magic columns
                                   if (column.type === 'magic') {
                                     const daysInPipeline = differenceInDays(new Date(), new Date(lead.created_at));
-                                    
                                     switch (column.magicType) {
-                                      // Creation Data
-                                      case 'created_date':
-                                        return <div className="text-xs text-purple-600">{new Date(lead.created_at).toLocaleDateString()}</div>;
-                                      case 'days_in_pipeline':
-                                        return <div className="text-xs text-purple-600 font-medium">{daysInPipeline}d</div>;
-                                      case 'last_updated':
-                                        return <div className="text-xs text-purple-600">{formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })}</div>;
-                                      
-                                      // Freshness (relative indicator)
+                                      case 'created_date': return <span className="text-xs text-purple-600">{new Date(lead.created_at).toLocaleDateString()}</span>;
+                                      case 'days_in_pipeline': return <span className="text-xs text-purple-600 font-medium">{daysInPipeline}d</span>;
+                                      case 'last_updated': return <span className="text-xs text-purple-600">{formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })}</span>;
                                       case 'freshness':
-                                        const freshnessColor = daysSinceUpdate <= 1 ? 'text-green-600' : daysSinceUpdate <= 7 ? 'text-yellow-600' : 'text-red-600';
-                                        const freshnessLabel = daysSinceUpdate <= 1 ? '🟢 Fresh' : daysSinceUpdate <= 7 ? '🟡 Warm' : '🔴 Stale';
-                                        return <div className={cn("text-xs font-medium", freshnessColor)}>{freshnessLabel}</div>;
-                                      
-                                      // Stage Data
-                                      case 'days_in_stage':
-                                        return <div className="text-xs text-purple-600 font-medium">{daysSinceUpdate}d</div>;
-                                      case 'stage_entered_date':
-                                        return <div className="text-xs text-purple-600">{lead.qualified_at ? new Date(lead.qualified_at).toLocaleDateString() : '—'}</div>;
-                                      
-                                      // Contact Data
-                                      case 'days_since_contact':
-                                        return <div className="text-xs text-purple-600">{touchpoint ? `${daysSinceUpdate}d` : '—'}</div>;
-                                      case 'last_contact_type':
-                                        return <div className="text-xs text-purple-600 capitalize">{touchpoint?.type || '—'}</div>;
-                                      
-                                      // Summary counts (placeholder - would need actual data)
-                                      case 'email_count':
-                                      case 'call_count':
-                                      case 'task_count':
-                                      case 'file_count':
-                                      case 'comment_count':
-                                      case 'meeting_count':
-                                        return <div className="text-xs text-purple-600">0</div>;
-                                      
-                                      // ID
-                                      case 'lead_id':
-                                        return <div className="text-xs text-purple-600 font-mono truncate" title={lead.id}>{lead.id.slice(0, 8)}...</div>;
-                                      
-                                      default:
-                                        return <div className="text-xs text-purple-400 italic">—</div>;
+                                        const color = daysSinceUpdate <= 1 ? 'text-green-600' : daysSinceUpdate <= 7 ? 'text-yellow-600' : 'text-red-600';
+                                        const label = daysSinceUpdate <= 1 ? '🟢' : daysSinceUpdate <= 7 ? '🟡' : '🔴';
+                                        return <span className={cn("text-xs font-medium", color)}>{label}</span>;
+                                      case 'days_in_stage': return <span className="text-xs text-purple-600 font-medium">{daysSinceUpdate}d</span>;
+                                      case 'stage_entered_date': return <span className="text-xs text-purple-600">{lead.qualified_at ? new Date(lead.qualified_at).toLocaleDateString() : '—'}</span>;
+                                      case 'days_since_contact': return <span className="text-xs text-purple-600">{touchpoint ? `${daysSinceUpdate}d` : '—'}</span>;
+                                      case 'last_contact_type': return <span className="text-xs text-purple-600 capitalize">{touchpoint?.type || '—'}</span>;
+                                      case 'email_count': case 'call_count': case 'task_count': case 'file_count': case 'comment_count': case 'meeting_count':
+                                        return <span className="text-xs text-purple-600">0</span>;
+                                      case 'lead_id': return <span className="text-xs text-purple-600 font-mono truncate" title={lead.id}>{lead.id.slice(0, 8)}</span>;
+                                      default: return <span className="text-xs text-purple-400">—</span>;
                                     }
                                   }
-                                  // Handle custom columns - show placeholder for now
-                                  return <div className="text-xs text-slate-400">—</div>;
+                                  return <span className="text-xs text-slate-400">—</span>;
                               }
                             };
                             
@@ -1371,23 +1235,24 @@ const EvansPipeline = () => {
                               <SortableLeadRow 
                                 key={lead.id} 
                                 lead={lead}
-                                gridTemplate={`${getGridTemplate()} 48px`}
+                                gridTemplate={`${getGridTemplate()} 40px`}
                                 onClick={() => setDetailDialogLead(lead)}
                               >
-                                {getVisibleColumns().filter(c => c.id !== 'drag_handle').map((column) => (
-                                  <div 
-                                    key={column.id} 
-                                    className={cn(
-                                      "flex items-center min-h-[48px] overflow-hidden",
-                                      "border-r border-slate-200",
-                                      (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4 justify-start"
-                                    )}
-                                  >
-                                    {renderCellContent(column)}
-                                  </div>
-                                ))}
-                                {/* Empty cell for alignment with + column */}
-                                <div className="min-h-[48px]" />
+                                {getVisibleColumns().filter(c => c.id !== 'drag_handle').map((column) => {
+                                  const isUtilityCol = ['checkbox', 'avatar'].includes(column.id);
+                                  return (
+                                    <div 
+                                      key={column.id} 
+                                      className={cn(
+                                        "flex items-center h-12 overflow-hidden border-r border-slate-200 dark:border-slate-700",
+                                        isUtilityCol ? "justify-center px-1" : "px-3"
+                                      )}
+                                    >
+                                      {renderCellContent(column)}
+                                    </div>
+                                  );
+                                })}
+                                <div className="h-12" />
                               </SortableLeadRow>
                             );
                           })}
