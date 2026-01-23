@@ -736,7 +736,6 @@ const EvansPipeline = () => {
                 </h1>
               )}
               <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[9px] md:text-[10px] font-semibold px-1.5 md:px-2 py-0.5 flex-shrink-0">
-                <Star className="h-2 w-2 md:h-2.5 md:w-2.5 mr-0.5 md:mr-1 fill-amber-500" />
                 MAIN
               </Badge>
               <HelpTooltip 
