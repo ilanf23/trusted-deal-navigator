@@ -6,20 +6,21 @@ import FloatingBugReport from './FloatingBugReport';
 import FloatingAIChat from './FloatingAIChat';
 import AIEmailAssistant from './AIEmailAssistant';
 import { IncomingCallPopup } from '@/components/evan/IncomingCallPopup';
-import { Menu, Moon, Sun } from 'lucide-react';
+import { Menu, Moon, Sun, Undo2, Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
+import { UndoProvider, useUndo } from '@/contexts/UndoContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-// Removed the seam mask as it's no longer needed with sidebar above header
-
-const AdminLayout = ({ children }: AdminLayoutProps) => {
+const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const [inboxOpen, setInboxOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { lastAction, isUndoing, executeUndo } = useUndo();
 
   return (
     <SidebarProvider>
@@ -40,8 +41,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               </SidebarTrigger>
             </div>
             
-            {/* Time Display - hidden on small screens */}
-            <div className="flex items-center gap-4 md:gap-8">
+            {/* Time Display and Actions */}
+            <div className="flex items-center gap-2 md:gap-4">
               <time className="text-sm md:text-base text-muted-foreground font-medium tabular-nums hidden sm:block">
                 {new Date().toLocaleDateString('en-US', { 
                   weekday: 'long', 
@@ -55,14 +56,49 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   day: 'numeric' 
                 })}
               </time>
+              
+              {/* Undo Button - Always Visible */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={executeUndo}
+                      disabled={!lastAction || isUndoing}
+                      className={`h-10 w-10 md:h-11 md:w-11 rounded-xl transition-all ${
+                        lastAction 
+                          ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20' 
+                          : 'text-muted-foreground/40'
+                      }`}
+                    >
+                      {isUndoing ? (
+                        <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" />
+                      ) : (
+                        <Undo2 className="h-5 w-5 md:h-6 md:w-6" />
+                      )}
+                      <span className="sr-only">Undo last action</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {lastAction ? (
+                      <p>Undo: {lastAction.label}</p>
+                    ) : (
+                      <p>No actions to undo</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              {/* Theme Toggle */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="h-11 w-11 rounded-xl"
+                className="h-10 w-10 md:h-11 md:w-11 rounded-xl"
               >
-                <Sun className="h-6 w-6 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-6 w-6 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <Sun className="h-5 w-5 md:h-6 md:w-6 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-5 w-5 md:h-6 md:w-6 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                 <span className="sr-only">Toggle theme</span>
               </Button>
             </div>
@@ -88,6 +124,14 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <FloatingBugReport />
       </div>
     </SidebarProvider>
+  );
+};
+
+const AdminLayout = ({ children }: AdminLayoutProps) => {
+  return (
+    <UndoProvider>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </UndoProvider>
   );
 };
 
