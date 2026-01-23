@@ -175,6 +175,42 @@ const formatEmailDate = (dateString: string) => {
   return format(date, 'MMM d, yyyy');
 };
 
+// Format email body to look professional like Gmail
+const formatEmailBody = (body: string): string => {
+  if (!body) return '';
+  
+  // Check if content is already HTML (contains common HTML tags)
+  const isHtml = /<[a-z][\s\S]*>/i.test(body);
+  
+  if (isHtml) {
+    // For HTML content, add styling to make links look better
+    return body
+      .replace(/<a\s/g, '<a style="color: #1a73e8; text-decoration: none; word-break: break-all;" ')
+      .replace(/<img\s/g, '<img style="max-width: 100%; height: auto;" ');
+  }
+  
+  // For plain text, convert to styled HTML
+  let formatted = body
+    // Escape HTML entities
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // Convert URLs to clickable links with Gmail-style blue color
+    .replace(
+      /(https?:\/\/[^\s<]+)/g, 
+      '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; text-decoration: none; word-break: break-all;">$1</a>'
+    )
+    // Convert email addresses to mailto links
+    .replace(
+      /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
+      '<a href="mailto:$1" style="color: #1a73e8; text-decoration: none;">$1</a>'
+    )
+    // Convert newlines to <br> tags
+    .replace(/\n/g, '<br />');
+  
+  return formatted;
+};
+
 const extractSenderName = (from: string) => {
   // Extract name from "Name <email@example.com>" format
   const match = from.match(/^([^<]+)/);
@@ -960,8 +996,21 @@ const EvansGmail = () => {
                 </Button>
               </div>
               
-              <div className="prose prose-sm prose-slate max-w-none pl-12 text-sm leading-relaxed">
-                <div dangerouslySetInnerHTML={{ __html: selectedEmail.body || selectedEmail.snippet }} />
+              <div className="pl-12 text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+                <div 
+                  className="gmail-email-body"
+                  style={{
+                    fontFamily: 'Arial, Helvetica, sans-serif',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    color: '#1f2937',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                  }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: formatEmailBody(selectedEmail.body || selectedEmail.snippet) 
+                  }} 
+                />
               </div>
               
               <div className="flex gap-2 mt-8 pl-12">
