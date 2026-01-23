@@ -1057,36 +1057,55 @@ const EvansPipeline = () => {
                   open={!isCollapsed}
                   onOpenChange={() => toggleSection(stage.status)}
                 >
-                  {/* Stage Header Row */}
-                  <div className="flex items-center h-9 px-3 gap-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                    <Checkbox
-                      checked={stageLeads.length > 0 && stageLeads.every(l => selectedLeadIds.has(l.id))}
-                      onCheckedChange={() => toggleAllInStage(stage.status)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-4 w-4 rounded-none border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
-                      disabled={stageLeads.length === 0}
-                    />
-                    <CollapsibleTrigger asChild>
-                      <span 
-                        className="font-medium text-xs px-3 py-1 rounded-full cursor-pointer hover:opacity-90"
-                        style={{ backgroundColor: stage.hexColor, color: 'white' }}
+                  {/* Stage Header Row - Uses same grid as table for alignment */}
+                  <div 
+                    className="grid bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"
+                    style={{ gridTemplateColumns: `${getGridTemplate()} 40px` }}
+                  >
+                    {/* First cell: drag_handle placeholder */}
+                    <div className="flex items-center justify-center h-9 border-r border-slate-200 dark:border-slate-700" />
+                    {/* Second cell: checkbox */}
+                    <div className="flex items-center justify-center h-9 border-r border-slate-200 dark:border-slate-700">
+                      <Checkbox
+                        checked={stageLeads.length > 0 && stageLeads.every(l => selectedLeadIds.has(l.id))}
+                        onCheckedChange={() => toggleAllInStage(stage.status)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-4 w-4 rounded-none border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 flex-shrink-0"
+                        disabled={stageLeads.length === 0}
+                      />
+                    </div>
+                    {/* Third cell: avatar placeholder */}
+                    <div className="flex items-center justify-center h-9 border-r border-slate-200 dark:border-slate-700" />
+                    {/* Fourth cell (name column): Stage pill + add button + count + chevron */}
+                    <div className="flex items-center h-9 px-3 gap-2 border-r border-slate-200 dark:border-slate-700 col-span-1">
+                      <CollapsibleTrigger asChild>
+                        <span 
+                          className="font-medium text-xs px-3 py-1 rounded-full cursor-pointer hover:opacity-90"
+                          style={{ backgroundColor: stage.hexColor, color: 'white' }}
+                        >
+                          {stage.title}
+                        </span>
+                      </CollapsibleTrigger>
+                      <button 
+                        className="text-slate-400 hover:text-slate-600"
+                        onClick={(e) => { e.stopPropagation(); handleAddLead(stage.status); }}
                       >
-                        {stage.title}
-                      </span>
-                    </CollapsibleTrigger>
-                    <button 
-                      className="text-slate-400 hover:text-slate-600"
-                      onClick={(e) => { e.stopPropagation(); handleAddLead(stage.status); }}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                    <div className="flex-1" />
-                    <span className="text-xs text-slate-500">{stageLeads.length} leads</span>
-                    <CollapsibleTrigger asChild>
-                      <button className="p-1 hover:bg-slate-200 rounded">
-                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                        <Plus className="h-4 w-4" />
                       </button>
-                    </CollapsibleTrigger>
+                      <div className="flex-1" />
+                      <span className="text-xs text-slate-500">{stageLeads.length} leads</span>
+                      <CollapsibleTrigger asChild>
+                        <button className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded">
+                          {isCollapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                        </button>
+                      </CollapsibleTrigger>
+                    </div>
+                    {/* Remaining cells: empty spacers to complete the grid */}
+                    {getVisibleColumns().slice(4).map((column) => (
+                      <div key={column.id} className="h-9 border-r border-slate-200 dark:border-slate-700" />
+                    ))}
+                    {/* Last cell: add column spacer */}
+                    <div className="h-9" />
                   </div>
 
                   <CollapsibleContent>
