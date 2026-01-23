@@ -247,7 +247,7 @@ const PipelineColumnHeader = ({
   };
 
   return (
-    <div className="flex items-center gap-1.5 group relative">
+    <div className="flex items-center gap-1.5 group relative w-full">
       {getColumnIcon()}
       <span className={cn(
         "text-sm whitespace-nowrap",
@@ -257,11 +257,11 @@ const PipelineColumnHeader = ({
         {column.name}
       </span>
       {column.isFrozen && <Lock className="h-3 w-3 text-slate-400" />}
-      
+      <div className="flex-1" />
       {showDropdown && (
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
           <DropdownMenuTrigger asChild>
-            <button className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-slate-200 rounded">
+            <button className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-slate-200 rounded">
               <ChevronDown className="h-3 w-3 text-slate-500" />
             </button>
           </DropdownMenuTrigger>
