@@ -1307,6 +1307,15 @@ const EvansPipeline = () => {
                                   );
                                 case 'last_touch':
                                   return <span className="text-[12px] text-slate-400 capitalize">{touchpoint?.type || '—'}</span>;
+                                case 'notes':
+                                  return (
+                                    <InlineEditableCell
+                                      value={lead.notes || ''}
+                                      onChange={(newValue) => updateLeadFieldMutation.mutate({ id: lead.id, field: 'notes', value: newValue || null })}
+                                      placeholder="Add notes..."
+                                      displayClassName="text-[12px] text-slate-500 truncate"
+                                    />
+                                  );
                                 case 'updated':
                                   return <span className="text-xs text-slate-400">{formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}</span>;
                                 default:
