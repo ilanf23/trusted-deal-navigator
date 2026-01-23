@@ -129,6 +129,7 @@ interface Email {
   isStarred: boolean;
   labels: string[];
   attachments?: { name: string; type: string }[];
+  senderPhoto?: string | null;
 }
 
 interface Lead {
@@ -266,7 +267,7 @@ const EvansGmail = () => {
       else if (activeFolder === 'templates') query = 'in:inbox'; // placeholder for templates
       
       const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent(query)}&maxResults=50`,
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent(query)}&maxResults=50&fetchPhotos=true`,
         {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
@@ -293,6 +294,7 @@ const EvansGmail = () => {
         isStarred: msg.labelIds?.includes('STARRED') || false,
         labels: msg.labelIds || [],
         attachments: msg.attachments || [],
+        senderPhoto: msg.senderPhoto || null,
       })) as Email[];
 
       return { 
@@ -1328,7 +1330,21 @@ const EvansGmail = () => {
                       >
                         {/* Avatar */}
                         <div className="shrink-0 mr-3">
+                          {email.senderPhoto ? (
+                            <img 
+                              src={email.senderPhoto} 
+                              alt="" 
+                              className="w-8 h-8 rounded-full object-cover"
+                              onError={(e) => {
+                                // Fallback to initials if image fails to load
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            email.senderPhoto ? 'hidden' : ''
+                          } ${
                             !email.isRead 
                               ? 'bg-primary text-primary-foreground' 
                               : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
