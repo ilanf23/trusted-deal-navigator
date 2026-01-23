@@ -444,15 +444,55 @@ const EvansPipeline = () => {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (leadIds: string[]) => {
       if (!canEdit) throw new Error('Not authorized');
+      
+      // First, fetch the leads data before deleting (for undo)
+      const { data: leadsToDelete, error: fetchError } = await supabase
+        .from('leads')
+        .select('*')
+        .in('id', leadIds);
+      
+      if (fetchError) throw fetchError;
+      
+      // Delete the leads
       const { error } = await supabase.from('leads').delete().in('id', leadIds);
       if (error) throw error;
+      
+      return leadsToDelete as Lead[];
     },
-    onSuccess: () => {
+    onSuccess: (deletedLeads) => {
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-      toast.success(`${selectedLeadIds.size} lead(s) deleted`);
+      toast.success(`${deletedLeads.length} lead(s) deleted`);
       clearSelection();
       setDeleteConfirmOpen(false);
+      
+      // Register undo action
+      if (deletedLeads && deletedLeads.length > 0) {
+        const leadNames = deletedLeads.map(l => l.name).slice(0, 2).join(', ');
+        const label = deletedLeads.length === 1 
+          ? `Deleted ${leadNames}` 
+          : `Deleted ${deletedLeads.length} leads (${leadNames}${deletedLeads.length > 2 ? '...' : ''})`;
+        
+        registerUndo({
+          label,
+          execute: async () => {
+            // Restore the deleted leads
+            const { error: restoreError } = await supabase
+              .from('leads')
+              .insert(deletedLeads.map(lead => ({
+                ...lead,
+                updated_at: new Date().toISOString(),
+              })));
+            
+            if (restoreError) throw restoreError;
+            
+            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+            queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+            queryClient.invalidateQueries({ queryKey: ['leads'] });
+            toast.success(`${deletedLeads.length} lead(s) restored`);
+          },
+        });
+      }
     },
     onError: () => toast.error('Failed to delete leads'),
   });
