@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -11,11 +9,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { 
   GripVertical, 
-  Plus, 
   Trash2, 
   Type,
   Calendar,
@@ -27,7 +23,10 @@ import {
   Contact,
   Eye,
   EyeOff,
-  X,
+  Sparkles,
+  Clock,
+  Hash,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -37,158 +36,115 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import HelpTooltip from '@/components/ui/help-tooltip';
-
-type ColumnType = 'free_form' | 'date' | 'checkbox' | 'dropdown' | 'tag' | 'formula' | 'assigned_to' | 'contact';
-
-interface PipelineColumn {
-  id: string;
-  pipeline_id: string;
-  name: string;
-  column_type: ColumnType;
-  position: number;
-  is_visible: boolean;
-  is_frozen: boolean;
-  options: string[];
-  formula?: string;
-  settings: Record<string, unknown>;
-}
+import type { PipelineColumn, ColumnType, MagicColumnType } from '@/components/admin/PipelineColumnHeader';
+import { customColumnTypes, allMagicColumns } from '@/components/admin/PipelineColumnHeader';
 
 interface ColumnManagerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  pipelineId?: string;
-  onColumnsChange?: () => void;
+  columns: PipelineColumn[];
+  onColumnsChange: (columns: PipelineColumn[]) => void;
 }
 
-const columnTypeConfig: Record<ColumnType, { icon: React.ElementType; label: string; description: string; color: string }> = {
-  free_form: { icon: Type, label: 'Free Form', description: 'Text or numbers', color: '#64748b' },
-  date: { icon: Calendar, label: 'Date', description: 'Date picker', color: '#0066FF' },
-  checkbox: { icon: CheckSquare, label: 'Checkbox', description: 'Yes/No toggle', color: '#10b981' },
-  dropdown: { icon: ChevronDown, label: 'Dropdown', description: 'Single selection', color: '#8b5cf6' },
-  tag: { icon: Tag, label: 'Tag', description: 'Multiple selections', color: '#f59e0b' },
-  formula: { icon: Code, label: 'Formula', description: 'Calculated field', color: '#ec4899' },
-  assigned_to: { icon: UserCircle, label: 'Assigned To', description: 'Team member', color: '#06b6d4' },
-  contact: { icon: Contact, label: 'Contact', description: 'Contact info', color: '#FF8000' },
+const columnTypeIcons: Record<string, React.ElementType> = {
+  free_form: Type,
+  date: Calendar,
+  checkbox: CheckSquare,
+  dropdown: ChevronDown,
+  tag: Tag,
+  formula: Code,
+  assigned_to: UserCircle,
+  contact: Contact,
+};
+
+const columnTypeColors: Record<string, string> = {
+  free_form: '#64748b',
+  date: '#0066FF',
+  checkbox: '#10b981',
+  dropdown: '#8b5cf6',
+  tag: '#f59e0b',
+  formula: '#ec4899',
+  assigned_to: '#06b6d4',
+  contact: '#FF8000',
 };
 
 const ColumnManagerModal = ({ 
   open, 
   onOpenChange, 
-  pipelineId,
-  onColumnsChange 
+  columns,
+  onColumnsChange,
 }: ColumnManagerModalProps) => {
-  const queryClient = useQueryClient();
   const [localColumns, setLocalColumns] = useState<PipelineColumn[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [editingOptions, setEditingOptions] = useState<string | null>(null);
-  const [newOptionText, setNewOptionText] = useState('');
 
-  // Fetch existing columns
-  const { data: columns = [], isLoading } = useQuery({
-    queryKey: ['pipeline-columns', pipelineId],
-    queryFn: async () => {
-      if (!pipelineId) return [];
-      const { data, error } = await supabase
-        .from('pipeline_columns')
-        .select('*')
-        .eq('pipeline_id', pipelineId)
-        .order('position');
-      if (error) throw error;
-      return data as PipelineColumn[];
-    },
-    enabled: !!pipelineId && open,
-  });
-
+  // Sync local state when modal opens
   useEffect(() => {
-    if (open && columns) {
-      setLocalColumns(columns.map(c => ({
-        ...c,
-        options: Array.isArray(c.options) ? c.options : []
-      })));
+    if (open) {
+      setLocalColumns([...columns]);
     }
   }, [open, columns]);
 
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      if (!pipelineId) throw new Error('No pipeline ID');
-      
-      // Get current columns from DB
-      const { data: existing } = await supabase
-        .from('pipeline_columns')
-        .select('id')
-        .eq('pipeline_id', pipelineId);
-      
-      const existingIds = new Set(existing?.map(c => c.id) || []);
-      const localIds = new Set(localColumns.map(c => c.id));
-      
-      // Delete removed columns
-      const toDelete = [...existingIds].filter(id => !localIds.has(id));
-      if (toDelete.length > 0) {
-        await supabase.from('pipeline_columns').delete().in('id', toDelete);
-      }
-      
-      // Upsert all local columns
-      for (let i = 0; i < localColumns.length; i++) {
-        const col = localColumns[i];
-        const isNew = col.id.startsWith('new-');
-        
-        if (isNew) {
-          await supabase.from('pipeline_columns').insert({
-            pipeline_id: pipelineId,
-            name: col.name,
-            column_type: col.column_type,
-            position: i,
-            is_visible: col.is_visible,
-            is_frozen: col.is_frozen,
-            options: col.options as unknown as Record<string, never>,
-            formula: col.formula,
-            settings: col.settings as unknown as Record<string, never>,
-          });
-        } else {
-          await supabase.from('pipeline_columns').update({
-            name: col.name,
-            column_type: col.column_type,
-            position: i,
-            is_visible: col.is_visible,
-            is_frozen: col.is_frozen,
-            options: col.options as unknown as Record<string, never>,
-            formula: col.formula,
-            settings: col.settings as unknown as Record<string, never>,
-          }).eq('id', col.id);
-        }
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-columns'] });
-      onColumnsChange?.();
-      toast.success('Columns saved successfully');
-      onOpenChange(false);
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to save columns: ${error.message}`);
-    },
-  });
+  // Get editable columns (exclude drag_handle, checkbox, avatar)
+  const editableColumns = localColumns.filter(c => 
+    !['drag_handle', 'checkbox', 'avatar'].includes(c.id)
+  );
+  
+  // Get custom/magic columns only (user-added)
+  const customColumns = editableColumns.filter(c => 
+    c.type === 'custom' || c.type === 'magic'
+  );
 
-  const handleAddColumn = (type: ColumnType = 'free_form') => {
+  const handleAddColumn = (type: ColumnType) => {
+    const typeConfig = customColumnTypes.find(c => c.type === type);
     const newColumn: PipelineColumn = {
-      id: `new-${Date.now()}`,
-      pipeline_id: pipelineId || '',
-      name: `New ${columnTypeConfig[type].label}`,
-      column_type: type,
-      position: localColumns.length,
-      is_visible: true,
-      is_frozen: false,
-      options: [],
-      settings: {},
+      id: `custom-${type}-${Date.now()}`,
+      name: `New ${typeConfig?.label || 'Column'}`,
+      type: 'custom',
+      columnType: type,
+      isVisible: true,
+      isFrozen: false,
+      canDelete: true,
+      canRename: true,
+      width: '120px',
     };
     setLocalColumns([...localColumns, newColumn]);
+    toast.success(`Added column: ${newColumn.name}`);
+  };
+
+  const handleAddMagicColumn = (magicType: MagicColumnType) => {
+    const config = allMagicColumns.find(m => m.type === magicType);
+    if (!config) return;
+    
+    // Check if already exists
+    if (localColumns.some(c => c.magicType === magicType)) {
+      toast.error('This magic column already exists');
+      return;
+    }
+    
+    const newColumn: PipelineColumn = {
+      id: `magic-${magicType}-${Date.now()}`,
+      name: config.label,
+      type: 'magic',
+      magicType: magicType,
+      isVisible: true,
+      isFrozen: false,
+      canDelete: true,
+      canRename: false,
+      width: '100px',
+    };
+    setLocalColumns([...localColumns, newColumn]);
+    toast.success(`Added magic column: ${newColumn.name}`);
   };
 
   const handleRemoveColumn = (id: string) => {
+    const column = localColumns.find(c => c.id === id);
+    if (!column?.canDelete) {
+      toast.error('This column cannot be deleted');
+      return;
+    }
     setLocalColumns(localColumns.filter(c => c.id !== id));
+    toast.success(`Removed column: ${column.name}`);
   };
 
   const handleUpdateColumn = (id: string, updates: Partial<PipelineColumn>) => {
@@ -197,38 +153,33 @@ const ColumnManagerModal = ({
     ));
   };
 
-  const handleAddOption = (columnId: string) => {
-    if (!newOptionText.trim()) return;
-    const column = localColumns.find(c => c.id === columnId);
+  const handleToggleVisibility = (id: string) => {
+    const column = localColumns.find(c => c.id === id);
     if (column) {
-      handleUpdateColumn(columnId, {
-        options: [...column.options, newOptionText.trim()]
-      });
-      setNewOptionText('');
+      handleUpdateColumn(id, { isVisible: !column.isVisible });
     }
   };
 
-  const handleRemoveOption = (columnId: string, optionIndex: number) => {
-    const column = localColumns.find(c => c.id === columnId);
-    if (column) {
-      handleUpdateColumn(columnId, {
-        options: column.options.filter((_, i) => i !== optionIndex)
-      });
-    }
-  };
-
-  const handleDragStart = (index: number) => {
+  const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
     
+    // Find actual indices in full column array
+    const draggedCol = editableColumns[draggedIndex];
+    const targetCol = editableColumns[index];
+    
+    const actualDraggedIdx = localColumns.findIndex(c => c.id === draggedCol.id);
+    const actualTargetIdx = localColumns.findIndex(c => c.id === targetCol.id);
+    
     const newColumns = [...localColumns];
-    const dragged = newColumns[draggedIndex];
-    newColumns.splice(draggedIndex, 1);
-    newColumns.splice(index, 0, dragged);
+    const [removed] = newColumns.splice(actualDraggedIdx, 1);
+    newColumns.splice(actualTargetIdx, 0, removed);
+    
     setLocalColumns(newColumns);
     setDraggedIndex(index);
   };
@@ -237,218 +188,216 @@ const ColumnManagerModal = ({
     setDraggedIndex(null);
   };
 
+  const handleSave = () => {
+    onColumnsChange(localColumns);
+    onOpenChange(false);
+    toast.success('Column settings saved');
+  };
+
+  const getColumnIcon = (column: PipelineColumn) => {
+    if (column.type === 'magic') {
+      return Sparkles;
+    }
+    if (column.columnType && columnTypeIcons[column.columnType]) {
+      return columnTypeIcons[column.columnType];
+    }
+    return Type;
+  };
+
+  const getColumnColor = (column: PipelineColumn) => {
+    if (column.type === 'magic') return '#a855f7';
+    if (column.columnType && columnTypeColors[column.columnType]) {
+      return columnTypeColors[column.columnType];
+    }
+    return '#64748b';
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold flex items-center gap-2">
-            Custom Columns
-            <HelpTooltip content="Add custom fields to track any information about your leads. These columns appear in the pipeline table." />
+      <DialogContent className="sm:max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col gap-0 p-0">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b">
+          <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+            Manage Columns
+            <HelpTooltip content="Add, remove, reorder, and toggle visibility of columns in your pipeline table." />
           </DialogTitle>
-          <DialogDescription>
-            Add, remove, and reorder columns. Drag to change order.
+          <DialogDescription className="text-sm">
+            Drag to reorder. Click the eye to show/hide columns.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto py-4 space-y-2">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#0066FF]" />
-            </div>
-          ) : localColumns.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <Type className="w-10 h-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No custom columns yet</p>
-              <p className="text-xs">Click "Add Column" to create one</p>
-            </div>
-          ) : (
-            localColumns.map((column, index) => {
-              const config = columnTypeConfig[column.column_type];
-              const Icon = config.icon;
-              const needsOptions = column.column_type === 'dropdown' || column.column_type === 'tag';
-              
-              return (
-                <div
-                  key={column.id}
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDragEnd={handleDragEnd}
-                  className={cn(
-                    "p-3 bg-slate-50 rounded-lg border border-slate-200 transition-all",
-                    draggedIndex === index && "opacity-50 scale-[0.98]"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="cursor-grab text-slate-400 hover:text-slate-600">
-                      <GripVertical className="h-5 w-5" />
+        {/* Column List */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {/* Foundational Columns Section */}
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Core Columns</h3>
+            <div className="space-y-1.5">
+              {editableColumns.filter(c => c.type === 'foundational').map((column, idx) => {
+                const Icon = getColumnIcon(column);
+                const color = getColumnColor(column);
+                
+                return (
+                  <div
+                    key={column.id}
+                    className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
+                  >
+                    <div className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+                      <Icon className="w-3.5 h-3.5" style={{ color }} />
                     </div>
-                    
-                    <div 
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: `${config.color}20` }}
+                    <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300">{column.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => handleToggleVisibility(column.id)}
                     >
-                      <Icon className="w-4 h-4" style={{ color: config.color }} />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <Input
-                        value={column.name}
-                        onChange={(e) => handleUpdateColumn(column.id, { name: e.target.value })}
-                        className="h-8 text-sm font-medium border-slate-200"
-                        placeholder="Column name"
-                      />
-                    </div>
-                    
-                    <Select
-                      value={column.column_type}
-                      onValueChange={(value: ColumnType) => handleUpdateColumn(column.id, { column_type: value, options: [] })}
+                      {column.isVisible ? (
+                        <Eye className="h-4 w-4 text-slate-500" />
+                      ) : (
+                        <EyeOff className="h-4 w-4 text-slate-400" />
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Custom Columns Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Custom Columns</h3>
+            {customColumns.length === 0 ? (
+              <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+                <Type className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                <p className="text-sm text-slate-500">No custom columns</p>
+                <p className="text-xs text-slate-400">Add columns below to track custom data</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {customColumns.map((column, idx) => {
+                  const editableIdx = editableColumns.findIndex(c => c.id === column.id);
+                  const Icon = getColumnIcon(column);
+                  const color = getColumnColor(column);
+                  
+                  return (
+                    <div
+                      key={column.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, editableIdx)}
+                      onDragOver={(e) => handleDragOver(e, editableIdx)}
+                      onDragEnd={handleDragEnd}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-move",
+                        draggedIndex === editableIdx && "opacity-50 scale-[0.98] shadow-lg"
+                      )}
                     >
-                      <SelectTrigger className="w-32 h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(columnTypeConfig).map(([type, cfg]) => (
-                          <SelectItem key={type} value={type} className="text-xs">
-                            <div className="flex items-center gap-2">
-                              <cfg.icon className="w-3 h-3" style={{ color: cfg.color }} />
-                              {cfg.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    <div className="flex items-center gap-1">
+                      <GripVertical className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${color}15` }}>
+                        <Icon className="w-3.5 h-3.5" style={{ color }} />
+                      </div>
+                      
+                      {column.canRename ? (
+                        <Input
+                          value={column.name}
+                          onChange={(e) => handleUpdateColumn(column.id, { name: e.target.value })}
+                          className="h-7 flex-1 text-sm border-slate-200"
+                        />
+                      ) : (
+                        <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {column.name}
+                          {column.type === 'magic' && (
+                            <span className="ml-1.5 text-[10px] text-purple-500 font-normal">(auto)</span>
+                          )}
+                        </span>
+                      )}
+                      
                       <Button
-                        type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => handleUpdateColumn(column.id, { is_visible: !column.is_visible })}
-                        title={column.is_visible ? 'Hide column' : 'Show column'}
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleToggleVisibility(column.id)}
                       >
-                        {column.is_visible ? (
+                        {column.isVisible ? (
                           <Eye className="h-4 w-4 text-slate-500" />
                         ) : (
                           <EyeOff className="h-4 w-4 text-slate-400" />
                         )}
                       </Button>
                       
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-slate-400 hover:text-red-500"
-                        onClick={() => handleRemoveColumn(column.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Options editor for dropdown/tag types */}
-                  {needsOptions && (
-                    <div className="mt-3 ml-11 pl-3 border-l-2 border-slate-200">
-                      <div className="text-xs font-medium text-slate-500 mb-2">Options</div>
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {column.options.map((opt, i) => (
-                          <Badge
-                            key={i}
-                            variant="secondary"
-                            className="text-xs py-0.5 pr-1 gap-1"
-                          >
-                            {opt}
-                            <button
-                              onClick={() => handleRemoveOption(column.id, i)}
-                              className="ml-1 hover:text-red-500"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                        {column.options.length === 0 && (
-                          <span className="text-xs text-slate-400">No options added</span>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          value={editingOptions === column.id ? newOptionText : ''}
-                          onChange={(e) => {
-                            setEditingOptions(column.id);
-                            setNewOptionText(e.target.value);
-                          }}
-                          onFocus={() => setEditingOptions(column.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddOption(column.id);
-                            }
-                          }}
-                          placeholder="Add option..."
-                          className="h-7 text-xs flex-1"
-                        />
+                      {column.canDelete && (
                         <Button
-                          type="button"
+                          variant="ghost"
                           size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleAddOption(column.id)}
+                          className="h-7 w-7 p-0 text-slate-400 hover:text-red-500"
+                          onClick={() => handleRemoveColumn(column.id)}
                         >
-                          Add
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      </div>
+                      )}
                     </div>
-                  )}
-                  
-                  {/* Formula editor */}
-                  {column.column_type === 'formula' && (
-                    <div className="mt-3 ml-11 pl-3 border-l-2 border-slate-200">
-                      <div className="text-xs font-medium text-slate-500 mb-2">Formula (JavaScript)</div>
-                      <Input
-                        value={column.formula || ''}
-                        onChange={(e) => handleUpdateColumn(column.id, { formula: e.target.value })}
-                        placeholder="e.g., row.deal_size * 0.1"
-                        className="h-7 text-xs font-mono"
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* Add Column Buttons */}
-        <div className="border-t pt-3">
-          <div className="text-xs font-medium text-slate-500 mb-2">Add Column</div>
-          <div className="flex flex-wrap gap-1">
-            {Object.entries(columnTypeConfig).map(([type, config]) => (
-              <Button
-                key={type}
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs gap-1.5"
-                onClick={() => handleAddColumn(type as ColumnType)}
-              >
-                <config.icon className="w-3 h-3" style={{ color: config.color }} />
-                {config.label}
-              </Button>
-            ))}
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        <DialogFooter className="gap-2 mt-4">
+        {/* Add Column Section */}
+        <div className="border-t bg-slate-50 dark:bg-slate-800/50 px-5 py-4">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Add Column</h3>
+          
+          {/* Custom Column Types */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {customColumnTypes.map((type) => {
+              const Icon = columnTypeIcons[type.type] || Type;
+              const color = columnTypeColors[type.type] || '#64748b';
+              return (
+                <Button
+                  key={type.type}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-white dark:bg-slate-900"
+                  onClick={() => handleAddColumn(type.type as ColumnType)}
+                >
+                  <Icon className="w-3.5 h-3.5" style={{ color }} />
+                  {type.label}
+                </Button>
+              );
+            })}
+          </div>
+          
+          {/* Magic Columns */}
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-xs text-slate-400 mr-1 flex items-center">
+              <Sparkles className="w-3 h-3 mr-1 text-purple-400" /> Magic:
+            </span>
+            {allMagicColumns.slice(0, 6).map((magic) => {
+              const exists = localColumns.some(c => c.magicType === magic.type);
+              return (
+                <Button
+                  key={magic.type}
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-7 text-[11px] gap-1 bg-white dark:bg-slate-900 border-purple-200 text-purple-700",
+                    exists && "opacity-50 cursor-not-allowed"
+                  )}
+                  onClick={() => handleAddMagicColumn(magic.type)}
+                  disabled={exists}
+                >
+                  {magic.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <DialogFooter className="px-5 py-3 border-t gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button 
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
-            className="bg-[#0066FF] hover:bg-[#0055dd]"
-          >
-            {saveMutation.isPending ? 'Saving...' : 'Save Columns'}
+          <Button onClick={handleSave} className="bg-[#0066FF] hover:bg-[#0055dd]">
+            Save Changes
           </Button>
         </DialogFooter>
       </DialogContent>

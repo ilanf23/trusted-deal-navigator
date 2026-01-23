@@ -179,6 +179,7 @@ const EvansPipeline = () => {
   // Pipeline columns management
   const {
     columns,
+    setColumns,
     insertColumn,
     deleteColumn,
     hideColumn,
@@ -1322,9 +1323,9 @@ const EvansPipeline = () => {
       <ColumnManagerModal
         open={columnManagerOpen}
         onOpenChange={setColumnManagerOpen}
-        pipelineId={undefined} // Will be connected when pipelines are persisted
-        onColumnsChange={() => {
-          queryClient.invalidateQueries({ queryKey: ['pipeline-columns'] });
+        columns={columns}
+        onColumnsChange={(newColumns) => {
+          setColumns(newColumns);
         }}
       />
 
