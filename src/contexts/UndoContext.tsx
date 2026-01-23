@@ -64,10 +64,17 @@ export const UndoProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useUndo = () => {
+export const useUndo = (): UndoContextType => {
   const context = useContext(UndoContext);
+  // Return a no-op fallback if used outside provider (shouldn't happen but prevents crashes)
   if (!context) {
-    throw new Error('useUndo must be used within an UndoProvider');
+    return {
+      lastAction: null,
+      isUndoing: false,
+      registerUndo: () => {},
+      executeUndo: async () => {},
+      clearUndo: () => {},
+    };
   }
   return context;
 };
