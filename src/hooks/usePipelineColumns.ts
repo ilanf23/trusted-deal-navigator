@@ -26,10 +26,16 @@ const loadColumnsFromStorage = (): PipelineColumn[] => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
+      // Get valid foundational column IDs
+      const validFoundationalIds = new Set(defaultFoundationalColumns.map(d => d.id));
+      // Filter out any stored foundational columns that no longer exist in defaults
+      const filteredStored = parsed.filter((c: PipelineColumn) => 
+        c.type !== 'foundational' || validFoundationalIds.has(c.id)
+      );
       // Merge with defaults to ensure new foundational columns are included
-      const storedIds = new Set(parsed.map((c: PipelineColumn) => c.id));
+      const storedIds = new Set(filteredStored.map((c: PipelineColumn) => c.id));
       const missingDefaults = defaultFoundationalColumns.filter(d => !storedIds.has(d.id));
-      return [...parsed, ...missingDefaults];
+      return [...filteredStored, ...missingDefaults];
     }
   } catch (e) {
     console.error('Failed to load pipeline columns from storage:', e);
