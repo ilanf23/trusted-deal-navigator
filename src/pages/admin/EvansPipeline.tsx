@@ -115,7 +115,7 @@ const SortableLeadRow = ({ lead, children, gridTemplate, onClick }: SortableLead
       >
         {/* Drag handle as first cell */}
         <div 
-          className="flex items-center justify-center h-12 border-r border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing"
+          className="flex items-center justify-center h-10 border-r border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
@@ -837,7 +837,7 @@ const EvansPipeline = () => {
         </div>
 
         {/* Pipeline Progress Bar - responsive */}
-        <div className="mb-1.5 md:mb-2 flex items-center gap-2">
+        <div className="mb-1 flex items-center gap-2">
           <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
           <HelpTooltip 
             content="Click any stage to jump to that section. Right-click or hold to customize colors. Each segment shows the count of leads in that stage."
@@ -854,7 +854,7 @@ const EvansPipeline = () => {
             Customize
           </Button>
         </div>
-        <div className="flex h-12 md:h-16 mb-4 md:mb-6 overflow-x-auto">
+        <div className="flex h-10 md:h-12 mb-2 md:mb-3 overflow-x-auto">
           {stageCounts.map((stage, index) => {
             const isFirst = index === 0;
             const isLast = index === stageCounts.length - 1;
@@ -911,7 +911,7 @@ const EvansPipeline = () => {
         )}
 
         {/* Filters - responsive */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-4 mb-3 md:mb-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Input
               placeholder="Search leads..."
@@ -981,7 +981,7 @@ const EvansPipeline = () => {
                   <div 
                     key={column.id} 
                     className={cn(
-                      "flex items-center h-11 border-r border-slate-200 dark:border-slate-700",
+                      "flex items-center h-9 border-r border-slate-200 dark:border-slate-700",
                       isUtilityCol ? "justify-center px-1" : "px-3"
                     )}
                   >
@@ -1013,7 +1013,7 @@ const EvansPipeline = () => {
                 );
               })}
               {/* Add Column Button */}
-              <div className="flex items-center justify-center h-11">
+              <div className="flex items-center justify-center h-9">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-[#0066FF]">
@@ -1058,7 +1058,7 @@ const EvansPipeline = () => {
                   onOpenChange={() => toggleSection(stage.status)}
                 >
                   {/* Stage Header Row */}
-                  <div className="flex items-center h-11 px-3 gap-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center h-9 px-3 gap-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                     <Checkbox
                       checked={stageLeads.length > 0 && stageLeads.every(l => selectedLeadIds.has(l.id))}
                       onCheckedChange={() => toggleAllInStage(stage.status)}
@@ -1102,7 +1102,7 @@ const EvansPipeline = () => {
                             <div 
                               key={column.id}
                               className={cn(
-                                "flex items-center h-12 border-r border-slate-200",
+                                "flex items-center h-10 border-r border-slate-200",
                                 isUtilityCol ? "justify-center px-1" : "px-3"
                               )}
                             >
@@ -1124,7 +1124,7 @@ const EvansPipeline = () => {
                             </div>
                           );
                         })}
-                        <div className="h-12" />
+                        <div className="h-10" />
                       </div>
                     )}
 
@@ -1140,7 +1140,7 @@ const EvansPipeline = () => {
                             <div 
                               key={column.id}
                               className={cn(
-                                "flex items-center h-12 border-r border-slate-200",
+                                "flex items-center h-10 border-r border-slate-200",
                                 isUtilityCol ? "justify-center px-1" : "px-3"
                               )}
                             >
@@ -1150,7 +1150,7 @@ const EvansPipeline = () => {
                             </div>
                           );
                         })}
-                        <div className="h-12" />
+                        <div className="h-10" />
                       </div>
                     ) : (
                       <TooltipProvider>
@@ -1342,7 +1342,7 @@ const EvansPipeline = () => {
                                     <div 
                                       key={column.id} 
                                       className={cn(
-                                        "flex items-center h-12 overflow-hidden border-r border-slate-200 dark:border-slate-700",
+                                        "flex items-center h-10 overflow-hidden border-r border-slate-200 dark:border-slate-700",
                                         isUtilityCol ? "justify-center px-1" : "px-3"
                                       )}
                                     >
@@ -1350,7 +1350,7 @@ const EvansPipeline = () => {
                                     </div>
                                   );
                                 })}
-                                <div className="h-12" />
+                                <div className="h-10" />
                               </SortableLeadRow>
                             );
                           })}
