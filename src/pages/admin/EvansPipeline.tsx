@@ -909,19 +909,11 @@ const EvansPipeline = () => {
                 gridTemplateColumns: `${getGridTemplate()} 48px`
               }}
             >
-              {getVisibleColumns().map((column, colIndex) => {
-                const isLastColumn = colIndex === getVisibleColumns().length - 1;
-                
-                // Consistent cell styling with 8px increments
-                const getCellPadding = () => {
-                  if (column.id === 'drag_handle') return 'px-1'; // Minimal padding for drag handle
-                  if (column.id === 'checkbox' || column.id === 'avatar') return 'px-2'; // 8px
-                  return 'px-4'; // 16px
-                };
-                
+              {getVisibleColumns().map((column) => {
                 const cellClass = cn(
-                  "flex items-center min-h-[48px]", // 48px = 6 * 8px
-                  getCellPadding(),
+                  "flex items-center min-h-[48px]",
+                  column.id === 'drag_handle' ? "px-1" :
+                  (column.id === 'checkbox' || column.id === 'avatar') ? "px-2" : "px-4",
                   "border-r border-slate-200"
                 );
                 
@@ -959,7 +951,7 @@ const EvansPipeline = () => {
                 };
 
                 return (
-                  <div key={column.id} className={cellClass}>
+                  <div key={column.id} className={cn(cellClass, "justify-start")}>
                     <PipelineColumnHeader
                       column={column}
                       helpText={helpTexts[column.id]}
@@ -1149,24 +1141,21 @@ const EvansPipeline = () => {
                           gridTemplateColumns: `${getGridTemplate()} 48px`
                         }}
                       >
-                        {getVisibleColumns().map((column, colIndex) => {
-                          const isLastColumn = colIndex === getVisibleColumns().length - 1;
-                          return (
-                            <div 
-                              key={column.id}
-                              className={cn(
-                                "flex items-center min-h-[48px]",
-                                "border-r border-slate-200",
-                                column.id === 'drag_handle' ? "px-1 justify-center" :
-                                (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
-                              )}
-                            >
-                              {column.id === 'name' && (
-                                <span className="text-sm text-slate-400 italic whitespace-nowrap">No leads in this stage</span>
-                              )}
-                            </div>
-                          );
-                        })}
+                        {getVisibleColumns().map((column) => (
+                          <div 
+                            key={column.id}
+                            className={cn(
+                              "flex items-center min-h-[48px]",
+                              "border-r border-slate-200",
+                              column.id === 'drag_handle' ? "px-1 justify-center" :
+                              (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4"
+                            )}
+                          >
+                            {column.id === 'name' && (
+                              <span className="text-sm text-slate-400 italic whitespace-nowrap">No leads in this stage</span>
+                            )}
+                          </div>
+                        ))}
                         {/* Empty cell for alignment with + column */}
                         <div className="min-h-[48px]" />
                       </div>
@@ -1391,8 +1380,7 @@ const EvansPipeline = () => {
                                     className={cn(
                                       "flex items-center min-h-[48px] overflow-hidden",
                                       "border-r border-slate-200",
-                                      (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : 
-                                      column.id === 'stage' ? "pl-2 pr-4 justify-start" : "px-4 justify-start"
+                                      (column.id === 'checkbox' || column.id === 'avatar') ? "px-2 justify-center" : "px-4 justify-start"
                                     )}
                                   >
                                     {renderCellContent(column)}
