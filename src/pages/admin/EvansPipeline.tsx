@@ -26,6 +26,7 @@ import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
+import { InlineEditableCell } from '@/components/admin/InlineEditableCell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -456,6 +457,20 @@ const EvansPipeline = () => {
       }
     },
     onError: () => toast.error('Failed to create lead'),
+  });
+
+  // Update lead field mutation (for inline editing)
+  const updateLeadFieldMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: string; value: string | null }) => {
+      if (!canEdit) throw new Error('Not authorized to update this lead');
+      const { error } = await supabase.from('leads').update({ [field]: value }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+    },
+    onError: () => toast.error('Failed to update lead'),
   });
 
   // Create new lead via header button
@@ -1119,7 +1134,14 @@ const EvansPipeline = () => {
                                     </Avatar>
                                   );
                                 case 'name':
-                                  return <span className="text-[13px] text-slate-800 dark:text-slate-200 truncate block">{lead.name}</span>;
+                                  return (
+                                    <InlineEditableCell
+                                      value={lead.name}
+                                      onChange={(newValue) => updateLeadFieldMutation.mutate({ id: lead.id, field: 'name', value: newValue })}
+                                      placeholder="Enter name"
+                                      displayClassName="text-[13px] text-slate-800 dark:text-slate-200"
+                                    />
+                                  );
                                 case 'stage':
                                   return (
                                     <DropdownMenu>
@@ -1163,7 +1185,14 @@ const EvansPipeline = () => {
                                     </DropdownMenu>
                                   );
                                 case 'company':
-                                  return <span className="text-[13px] text-slate-500 truncate block">{lead.company_name || '—'}</span>;
+                                  return (
+                                    <InlineEditableCell
+                                      value={lead.company_name || ''}
+                                      onChange={(newValue) => updateLeadFieldMutation.mutate({ id: lead.id, field: 'company_name', value: newValue || null })}
+                                      placeholder="Add company"
+                                      displayClassName="text-[13px] text-slate-500"
+                                    />
+                                  );
                                 case 'contact':
                                   return (
                                     <div className="flex items-center gap-1.5">
@@ -1200,9 +1229,24 @@ const EvansPipeline = () => {
                                     </div>
                                   );
                                 case 'owner':
-                                  return <span className="text-[12px] text-slate-500 truncate block">{ownerName || '—'}</span>;
+                                  return (
+                                    <InlineEditableCell
+                                      value={lead.assigned_to || ''}
+                                      onChange={(newValue) => updateLeadFieldMutation.mutate({ id: lead.id, field: 'assigned_to', value: newValue || null })}
+                                      type="select"
+                                      options={teamMembers.map(tm => ({ id: tm.id, label: tm.name }))}
+                                      placeholder="Assign"
+                                    />
+                                  );
                                 case 'source':
-                                  return <span className="text-[12px] text-slate-400 truncate block">{lead.source || '—'}</span>;
+                                  return (
+                                    <InlineEditableCell
+                                      value={lead.source || ''}
+                                      onChange={(newValue) => updateLeadFieldMutation.mutate({ id: lead.id, field: 'source', value: newValue || null })}
+                                      placeholder="Add source"
+                                      displayClassName="text-[12px] text-slate-400"
+                                    />
+                                  );
                                 case 'last_touch':
                                   return <span className="text-[12px] text-slate-400 capitalize">{touchpoint?.type || '—'}</span>;
                                 case 'updated':
