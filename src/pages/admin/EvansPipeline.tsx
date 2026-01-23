@@ -503,6 +503,24 @@ const EvansPipeline = () => {
     }));
   };
 
+  // Jump to a specific stage: expand it, collapse all others, and scroll into view
+  const jumpToStage = (targetStatus: LeadStatus) => {
+    // Create a new collapsed state where all stages are collapsed except the target
+    const newCollapsedState = {} as Record<LeadStatus, boolean>;
+    stages.forEach(stage => {
+      newCollapsedState[stage.status] = stage.status !== targetStatus;
+    });
+    setCollapsedSections(newCollapsedState);
+    
+    // Scroll to the section after a brief delay to allow state to update
+    setTimeout(() => {
+      const element = document.getElementById(`section-${targetStatus}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -796,10 +814,7 @@ const EvansPipeline = () => {
               <div
                 key={stage.status}
                 className="relative flex-1 min-w-[60px] md:min-w-0 cursor-pointer group"
-                onClick={() => {
-                  const element = document.getElementById(`section-${stage.status}`);
-                  element?.scrollIntoView({ behavior: 'smooth' });
-                }}
+                onClick={() => jumpToStage(stage.status)}
               >
                 {/* Main segment */}
                 <div 
