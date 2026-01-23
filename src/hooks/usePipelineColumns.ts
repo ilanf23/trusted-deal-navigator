@@ -18,6 +18,7 @@ const defaultFoundationalColumns: PipelineColumn[] = [
   { id: 'owner', name: 'Owner', type: 'foundational', columnType: 'assigned_to', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '100px' },
   { id: 'source', name: 'Source', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '100px' },
   { id: 'last_touch', name: 'Last Touch', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '100px' },
+  { id: 'notes', name: 'Notes', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '200px' },
 ];
 
 // Load columns from localStorage or use defaults
