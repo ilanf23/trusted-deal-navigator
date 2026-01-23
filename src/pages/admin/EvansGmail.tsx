@@ -175,39 +175,30 @@ const formatEmailDate = (dateString: string) => {
   return format(date, 'MMM d, yyyy');
 };
 
+const isHtmlEmailContent = (content: string): boolean =>
+  /<(?:div|table|span|p|br|img|a|td|tr|th|body|html|head|style)[^>]*>/i.test(content);
+
 // Format email body to look professional like Gmail
 const formatEmailBody = (body: string): string => {
   if (!body) return '';
-  
-  // Check if content is already HTML (contains common HTML tags like div, table, span, etc.)
-  const isHtml = /<(?:div|table|span|p|br|img|a|td|tr|th|body|html|head|style)[^>]*>/i.test(body);
-  
-  if (isHtml) {
-    // For HTML content, preserve original formatting - don't modify inline styles
-    // Just ensure target="_blank" on external links for security
-    return body;
-  }
-  
-  // For plain text, convert to styled HTML
-  let formatted = body
-    // Escape HTML entities
+
+  // If it already contains HTML, keep it intact (do NOT inject styles).
+  if (isHtmlEmailContent(body)) return body;
+
+  // Plain text → minimal HTML: preserve line breaks + linkify
+  return body
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    // Convert URLs to clickable links with Gmail-style blue color
     .replace(
-      /(https?:\/\/[^\s<]+)/g, 
-      '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; text-decoration: none; word-break: break-all;">$1</a>'
+      /(https?:\/\/[^\s<]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
     )
-    // Convert email addresses to mailto links
     .replace(
       /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-      '<a href="mailto:$1" style="color: #1a73e8; text-decoration: none;">$1</a>'
+      '<a href="mailto:$1">$1</a>'
     )
-    // Convert newlines to <br> tags
     .replace(/\n/g, '<br />');
-  
-  return formatted;
 };
 
 const extractSenderName = (from: string) => {
@@ -996,12 +987,16 @@ const EvansGmail = () => {
               </div>
               
               <div className="pl-12">
-                <div 
-                  className="gmail-email-body"
-                  dangerouslySetInnerHTML={{ 
-                    __html: formatEmailBody(selectedEmail.body || selectedEmail.snippet) 
-                  }} 
-                />
+                {(() => {
+                  const raw = selectedEmail.body || selectedEmail.snippet || '';
+                  const isHtml = isHtmlEmailContent(raw);
+                  return (
+                    <div
+                      className={`gmail-email-body ${isHtml ? '' : 'gmail-email-body--plain'}`}
+                      dangerouslySetInnerHTML={{ __html: formatEmailBody(raw) }}
+                    />
+                  );
+                })()}
               </div>
               
               <div className="flex gap-2 mt-8 pl-12">

@@ -159,6 +159,17 @@ async function listMessages(accessToken: string, query: string = '', maxResults:
   return response.json();
 }
 
+function decodeBase64UrlToUtf8(data: string): string {
+  // Gmail returns base64url without padding
+  const base64 = data.replace(/-/g, '+').replace(/_/g, '/');
+  const padLen = base64.length % 4;
+  const padded = padLen ? base64 + '='.repeat(4 - padLen) : base64;
+
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+}
+
 async function getMessage(accessToken: string, messageId: string): Promise<any | null> {
   try {
     const response = await fetch(
@@ -181,36 +192,46 @@ async function getMessage(accessToken: string, messageId: string): Promise<any |
       });
     }
 
-    // Get body content
-    let body = '';
+    // Get body content (prefer HTML if available)
+    let plainBody = '';
     let htmlBody = '';
     
     function extractBody(part: any) {
-      if (part.mimeType === 'text/plain' && part.body?.data) {
+      const mimeType = part?.mimeType;
+      const data = part?.body?.data;
+
+      // Only set the first found of each type; keep HTML if present.
+      if (mimeType === 'text/html' && data && !htmlBody) {
         try {
-          body = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-        } catch (e) {
-          console.warn('Failed to decode plain text body');
-        }
-      } else if (part.mimeType === 'text/html' && part.body?.data) {
-        try {
-          htmlBody = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-        } catch (e) {
+          htmlBody = decodeBase64UrlToUtf8(data);
+        } catch {
           console.warn('Failed to decode HTML body');
         }
+      } else if (mimeType === 'text/plain' && data && !plainBody) {
+        try {
+          plainBody = decodeBase64UrlToUtf8(data);
+        } catch {
+          console.warn('Failed to decode plain text body');
+        }
       }
-      if (part.parts) {
+
+      if (part?.parts) {
         part.parts.forEach(extractBody);
       }
     }
     
     if (message.payload?.body?.data) {
       try {
-        body = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-      } catch (e) {
+        // Top-level body could be text/plain or text/html depending on the message
+        const decoded = decodeBase64UrlToUtf8(message.payload.body.data);
+        if (message.payload?.mimeType === 'text/html') htmlBody = htmlBody || decoded;
+        else plainBody = plainBody || decoded;
+      } catch {
         console.warn('Failed to decode message body');
       }
-    } else if (message.payload) {
+    }
+
+    if (message.payload) {
       extractBody(message.payload);
     }
 
@@ -223,7 +244,7 @@ async function getMessage(accessToken: string, messageId: string): Promise<any |
       to: headers.to || '',
       subject: headers.subject || '(No Subject)',
       date: headers.date || '',
-      body: body || htmlBody,
+      body: htmlBody || plainBody,
       isUnread: message.labelIds?.includes('UNREAD'),
     };
   } catch (error) {
