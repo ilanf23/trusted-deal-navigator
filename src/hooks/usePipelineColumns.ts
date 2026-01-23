@@ -14,7 +14,7 @@ const defaultFoundationalColumns: PipelineColumn[] = [
   { id: 'name', name: 'Name', type: 'foundational', isVisible: true, isFrozen: true, canDelete: false, canRename: false, width: '180px' },
   { id: 'stage', name: 'Stage', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '140px' },
   { id: 'company', name: 'Company', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '160px' },
-  { id: 'contact', name: 'Contact', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '220px' },
+  { id: 'contact', name: 'Contact', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '260px' },
   { id: 'owner', name: 'Owner', type: 'foundational', columnType: 'assigned_to', isVisible: true, isFrozen: false, canDelete: false, canRename: false, width: '100px' },
   { id: 'source', name: 'Source', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '100px' },
   { id: 'last_touch', name: 'Last Touch', type: 'foundational', isVisible: true, isFrozen: false, canDelete: false, canRename: true, width: '100px' },
