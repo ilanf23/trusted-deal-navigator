@@ -257,7 +257,6 @@ const PipelineColumnHeader = ({
         {column.name}
       </span>
       {column.isFrozen && <Lock className="h-3 w-3 text-slate-400" />}
-      {helpText && <HelpTooltip content={helpText} side="bottom" iconClassName="h-4 w-4" />}
       
       {showDropdown && (
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
