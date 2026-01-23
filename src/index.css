@@ -838,29 +838,37 @@
 
 /* Gmail-style email body formatting */
 .gmail-email-body {
+  /* Base styles that won't override inline HTML email styles */
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+/* Only apply default text styling to elements without inline styles */
+.gmail-email-body:not(:has(table)):not(:has(div[style])) {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
   line-height: 1.6;
   color: #1f2937;
-  word-break: break-word;
-  overflow-wrap: break-word;
 }
 
-.gmail-email-body a {
+/* Ensure images don't overflow */
+.gmail-email-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Style links that don't have inline styles */
+.gmail-email-body a:not([style]) {
   color: #1a73e8;
   text-decoration: none;
-  word-break: break-all;
 }
 
 .gmail-email-body a:hover {
   text-decoration: underline;
 }
 
-.gmail-email-body img {
-  max-width: 100%;
-  height: auto;
-}
-
+/* Blockquotes for email replies */
 .gmail-email-body blockquote {
   margin: 0 0 0 0.8em;
   padding-left: 1em;
@@ -868,6 +876,12 @@
   color: #666;
 }
 
+/* Preserve table layouts from HTML emails */
+.gmail-email-body table {
+  max-width: 100%;
+}
+
+/* Pre-formatted text */
 .gmail-email-body pre {
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -878,16 +892,8 @@
   font-size: 13px;
 }
 
-.gmail-email-body table {
-  border-collapse: collapse;
-  max-width: 100%;
-}
-
-.gmail-email-body td, .gmail-email-body th {
-  padding: 8px;
-}
-
-.dark .gmail-email-body {
+/* Dark mode - only for plain text emails */
+.dark .gmail-email-body:not(:has(table)):not(:has(div[style])) {
   color: #e2e8f0;
 }
 
