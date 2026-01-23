@@ -856,10 +856,19 @@ const EvansPipeline = () => {
         <div className="mb-1.5 md:mb-2 flex items-center gap-2">
           <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
           <HelpTooltip 
-            content="Click any stage to jump to that section. Each segment shows the count of leads in that stage. Drag leads between stages in the table below to update their status."
+            content="Click any stage to jump to that section. Right-click or hold to customize colors. Each segment shows the count of leads in that stage."
             side="right"
             className="hidden sm:block"
           />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setStageManagerOpen(true)}
+            className="h-6 px-2 text-xs text-slate-500 hover:text-[#0066FF] hover:bg-[#0066FF]/5"
+          >
+            <Layers className="h-3 w-3 mr-1" />
+            Customize
+          </Button>
         </div>
         <div className="flex h-12 md:h-16 mb-4 md:mb-6 overflow-x-auto">
           {stageCounts.map((stage, index) => {
@@ -871,6 +880,10 @@ const EvansPipeline = () => {
                 key={stage.status}
                 className="relative flex-1 min-w-[60px] md:min-w-0 cursor-pointer group"
                 onClick={() => jumpToStage(stage.status)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setStageManagerOpen(true);
+                }}
               >
                 {/* Main segment */}
                 <div 
