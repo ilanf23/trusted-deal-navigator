@@ -250,7 +250,7 @@ const PipelineColumnHeader = ({
     <div className="flex items-center gap-1.5 group relative">
       {getColumnIcon()}
       <span className={cn(
-        "text-sm",
+        "text-sm whitespace-nowrap",
         column.type === 'magic' && 'text-purple-600',
         column.isFrozen && 'font-bold'
       )}>
