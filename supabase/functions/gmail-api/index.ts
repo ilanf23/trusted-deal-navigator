@@ -170,7 +170,43 @@ function decodeBase64UrlToUtf8(data: string): string {
   return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
 }
 
-async function getMessage(accessToken: string, messageId: string): Promise<any | null> {
+// Cache for sender profile photos to avoid repeated API calls
+const senderPhotoCache = new Map<string, string | null>();
+
+async function getSenderPhoto(accessToken: string, email: string): Promise<string | null> {
+  // Check cache first
+  if (senderPhotoCache.has(email)) {
+    return senderPhotoCache.get(email) || null;
+  }
+
+  try {
+    // Use Gmail API to get profile - check if sender has a Google profile photo
+    // First try People API with email as resourceName
+    const response = await fetch(
+      `https://people.googleapis.com/v1/people:searchContacts?query=${encodeURIComponent(email)}&readMask=photos&pageSize=1`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.results?.[0]?.person?.photos?.[0]?.url) {
+        const photoUrl = data.results[0].person.photos[0].url;
+        senderPhotoCache.set(email, photoUrl);
+        return photoUrl;
+      }
+    }
+
+    // Cache null to avoid re-fetching
+    senderPhotoCache.set(email, null);
+    return null;
+  } catch (error) {
+    console.warn(`Failed to fetch photo for ${email}:`, error);
+    senderPhotoCache.set(email, null);
+    return null;
+  }
+}
+
+async function getMessage(accessToken: string, messageId: string, fetchPhoto: boolean = false): Promise<any | null> {
   try {
     const response = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
@@ -235,6 +271,17 @@ async function getMessage(accessToken: string, messageId: string): Promise<any |
       extractBody(message.payload);
     }
 
+    // Extract sender email for photo lookup
+    const fromHeader = headers.from || '';
+    const emailMatch = fromHeader.match(/<([^>]+)>/) || fromHeader.match(/([^\s<]+@[^\s>]+)/);
+    const senderEmail = emailMatch ? emailMatch[1] : fromHeader;
+    
+    // Fetch sender photo if requested
+    let senderPhoto: string | null = null;
+    if (fetchPhoto && senderEmail) {
+      senderPhoto = await getSenderPhoto(accessToken, senderEmail);
+    }
+
     return {
       id: message.id,
       threadId: message.threadId,
@@ -246,6 +293,7 @@ async function getMessage(accessToken: string, messageId: string): Promise<any |
       date: headers.date || '',
       body: htmlBody || plainBody,
       isUnread: message.labelIds?.includes('UNREAD'),
+      senderPhoto,
     };
   } catch (error) {
     console.error(`Error fetching message ${messageId}:`, error);
@@ -533,12 +581,13 @@ Deno.serve(async (req) => {
       const query = url.searchParams.get('q') || '';
       const maxResults = parseInt(url.searchParams.get('maxResults') || '20');
       const pageToken = url.searchParams.get('pageToken') || undefined;
+      const fetchPhotos = url.searchParams.get('fetchPhotos') === 'true';
       
       const messagesData = await listMessages(accessToken, query, maxResults, pageToken);
       
       // Fetch full details for each message (filter out any that failed to fetch)
       const allMessages = await Promise.all(
-        (messagesData.messages || []).map((m: any) => getMessage(accessToken, m.id))
+        (messagesData.messages || []).map((m: any) => getMessage(accessToken, m.id, fetchPhotos))
       );
       const messages = allMessages.filter((m): m is NonNullable<typeof m> => m !== null);
 
