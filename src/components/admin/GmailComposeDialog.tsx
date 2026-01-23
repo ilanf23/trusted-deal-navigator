@@ -3,7 +3,7 @@ import {
   X, Minus, Maximize2, ChevronDown,
   Undo2, Redo2, Bold, Italic, Underline, 
   AlignLeft, AlignCenter, AlignRight, List, ListOrdered, IndentDecrease, IndentIncrease,
-  Type, Paperclip, Link2, Smile, Image, Lock, PenTool,
+  Type, Paperclip, Link2, Smile, Lock, PenTool,
   MoreVertical, Trash2, Loader2, Calendar, Clock, FileText, XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -91,7 +91,7 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  
 
   if (!isOpen) return null;
 
@@ -165,27 +165,6 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
     e.target.value = '';
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
-        continue;
-      }
-      
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result && editorRef.current) {
-          execCommand('insertImage', event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-    e.target.value = '';
-  };
 
   const removeAttachment = (id: string) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
@@ -695,25 +674,6 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
                   </PopoverContent>
                 </Popover>
                 
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleImageSelect}
-                />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => imageInputRef.current?.click()}
-                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400"
-                    >
-                      <Image className="w-5 h-5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">Insert photo</TooltipContent>
-                </Tooltip>
                 
                 <Tooltip>
                   <TooltipTrigger asChild>
