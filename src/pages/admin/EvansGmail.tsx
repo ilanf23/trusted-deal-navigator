@@ -1326,8 +1326,19 @@ const EvansGmail = () => {
                         className="flex-1 flex items-center min-w-0 py-0.5 ml-2"
                         onClick={() => setSelectedEmail(email)}
                       >
+                        {/* Avatar */}
+                        <div className="shrink-0 mr-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            !email.isRead 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                          }`}>
+                            {extractSenderName(activeFolder === 'sent' ? email.to : email.from).charAt(0).toUpperCase()}
+                          </div>
+                        </div>
+                        
                         {/* Sender with CRM badge */}
-                        <div className={`w-44 shrink-0 flex items-center gap-1.5 pr-2 ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
+                        <div className={`w-40 shrink-0 flex items-center gap-1.5 pr-2 ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
                           <span className="truncate text-sm">
                             {activeFolder === 'sent' ? `To: ${email.to.split('<')[0].trim()}` : extractSenderName(email.from)}
                           </span>
