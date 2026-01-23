@@ -738,6 +738,26 @@ const EvansPipeline = () => {
               />
             </div>
             <span className="text-xs md:text-[13px] text-slate-500 font-normal whitespace-nowrap">{totalLeads} leads</span>
+            <span className="text-xs text-slate-400 font-normal">•</span>
+            <span className="text-xs md:text-[13px] text-slate-500 font-normal whitespace-nowrap">
+              {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </span>
+            {lastAction && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleUndo}
+                disabled={isUndoing}
+                className="h-6 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+              >
+                {isUndoing ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <Undo2 className="w-3 h-3 mr-1" />
+                )}
+                Undo
+              </Button>
+            )}
             {!canEdit && (
               <Badge variant="outline" className="gap-1 text-slate-500 border-slate-300 flex-shrink-0 text-xs">
                 <Lock className="h-3 w-3" />
@@ -746,32 +766,6 @@ const EvansPipeline = () => {
             )}
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-            {/* Undo Button */}
-            {lastAction && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleUndo}
-                      disabled={isUndoing}
-                      className="border-amber-300 text-amber-700 hover:bg-amber-50 h-8 md:h-9 text-xs md:text-sm animate-in fade-in slide-in-from-right-2"
-                    >
-                      {isUndoing ? (
-                        <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2 animate-spin" />
-                      ) : (
-                        <Undo2 className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2" />
-                      )}
-                      Undo
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Undo: {lastAction.leadName} moved to {stages.find(s => s.status === lastAction.newStatus)?.title}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
             {canEdit && evanId && (
               <div className="hidden sm:flex items-center gap-2">
                 <Button
