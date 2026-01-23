@@ -1244,9 +1244,25 @@ const EvansGmail = () => {
               </Button>
             </div>
             <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md" onClick={() => refetchEmails()}>
-              <RefreshCw className="w-3.5 h-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md" 
+                  onClick={() => {
+                    refetchEmails();
+                    queryClient.invalidateQueries({ queryKey: ['gmail-inbox-count'] });
+                    queryClient.invalidateQueries({ queryKey: ['gmail-drafts-count'] });
+                    toast.success('Checking for new emails...');
+                  }}
+                  disabled={emailsLoading}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${emailsLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Refresh</TooltipContent>
+            </Tooltip>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
               <MoreVertical className="w-3.5 h-3.5" />
             </Button>
