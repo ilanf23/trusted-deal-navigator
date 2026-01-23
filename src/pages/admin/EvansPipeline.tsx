@@ -16,6 +16,7 @@ import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
 import StageManagerModal from '@/components/admin/StageManagerModal';
 import ColumnManagerModal from '@/components/admin/ColumnManagerModal';
 import PipelineColumnHeader from '@/components/admin/PipelineColumnHeader';
+import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import MoveBoxesModal from '@/components/admin/MoveBoxesModal';
 import { usePipelineColumns } from '@/hooks/usePipelineColumns';
@@ -180,6 +181,7 @@ const EvansPipeline = () => {
     hideColumn,
     freezeColumn,
     moveColumn,
+    resizeColumn,
     getVisibleColumns,
     getGridTemplate,
   } = usePipelineColumns();
@@ -978,8 +980,11 @@ const EvansPipeline = () => {
                 const isUtilityCol = ['drag_handle', 'checkbox', 'avatar'].includes(column.id);
                 
                 return (
-                  <div 
-                    key={column.id} 
+                  <ResizableColumnHeader
+                    key={column.id}
+                    columnId={column.id}
+                    currentWidth={column.width || '100px'}
+                    onResize={resizeColumn}
                     className={cn(
                       "flex items-center h-11 border-r border-slate-200 dark:border-slate-700",
                       isUtilityCol ? "justify-center px-1" : "px-3"
@@ -1009,7 +1014,7 @@ const EvansPipeline = () => {
                         onMoveColumn={(direction) => moveColumn(column.id, direction)}
                       />
                     )}
-                  </div>
+                  </ResizableColumnHeader>
                 );
               })}
               {/* Add Column Button */}
