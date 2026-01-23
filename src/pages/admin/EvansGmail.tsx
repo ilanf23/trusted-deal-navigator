@@ -305,7 +305,7 @@ const EvansGmail = () => {
     staleTime: 60000, // Cache for 1 minute
   });
 
-  // Fetch drafts count separately (for sidebar display when not on drafts)
+  // Fetch drafts count separately using the dedicated drafts API
   const { data: draftsCountData } = useQuery({
     queryKey: ['gmail-drafts-count'],
     queryFn: async () => {
@@ -315,7 +315,7 @@ const EvansGmail = () => {
       if (!session) return 0;
       
       const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent('in:drafts')}&maxResults=1`,
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list-drafts-count`,
         {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
@@ -324,7 +324,7 @@ const EvansGmail = () => {
       );
       
       const data = await response.json();
-      return data?.resultSizeEstimate || 0;
+      return data?.count || 0;
     },
     enabled: !!gmailConnection,
     staleTime: 60000, // Cache for 1 minute

@@ -530,6 +530,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    // List drafts count (uses the dedicated drafts API for accurate counts)
+    if (action === 'list-drafts-count') {
+      const response = await fetch(
+        'https://gmail.googleapis.com/gmail/v1/users/me/drafts?maxResults=500',
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('Gmail API error (list-drafts):', error);
+        throw new Error('Failed to fetch drafts');
+      }
+
+      const data = await response.json();
+      const draftsCount = data.drafts?.length || 0;
+
+      return new Response(JSON.stringify({
+        count: draftsCount,
+        resultSizeEstimate: data.resultSizeEstimate || draftsCount,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Get single message
     if (action === 'get') {
       const messageId = url.searchParams.get('id');
