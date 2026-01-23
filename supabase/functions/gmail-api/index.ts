@@ -243,18 +243,77 @@ function encodeBase64Url(str: string): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function sendMessage(accessToken: string, to: string, subject: string, body: string, threadId?: string, inReplyTo?: string) {
-  const email = [
+// Helper to create a multipart MIME message with attachments
+function createMimeMessage(
+  to: string, 
+  subject: string, 
+  body: string, 
+  attachments?: { filename: string; mimeType: string; data: string }[],
+  threadId?: string,
+  inReplyTo?: string
+): string {
+  const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+  
+  // If no attachments, use simple format
+  if (!attachments || attachments.length === 0) {
+    const email = [
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      inReplyTo ? `In-Reply-To: ${inReplyTo}` : '',
+      inReplyTo ? `References: ${inReplyTo}` : '',
+      'Content-Type: text/html; charset=utf-8',
+      'Content-Transfer-Encoding: 8bit',
+      '',
+      body,
+    ].filter(Boolean).join('\r\n');
+    
+    return email;
+  }
+  
+  // Build multipart message with attachments
+  let email = [
     `To: ${to}`,
     `Subject: ${subject}`,
     inReplyTo ? `In-Reply-To: ${inReplyTo}` : '',
     inReplyTo ? `References: ${inReplyTo}` : '',
-    'Content-Type: text/plain; charset=utf-8',
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=utf-8',
     'Content-Transfer-Encoding: 8bit',
     '',
     body,
   ].filter(Boolean).join('\r\n');
+  
+  // Add each attachment
+  for (const attachment of attachments) {
+    email += '\r\n' + [
+      `--${boundary}`,
+      `Content-Type: ${attachment.mimeType}; name="${attachment.filename}"`,
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${attachment.filename}"`,
+      '',
+      attachment.data.replace(/(.{76})/g, '$1\r\n'), // Line wrap base64 at 76 chars
+    ].join('\r\n');
+  }
+  
+  // Close the boundary
+  email += `\r\n--${boundary}--`;
+  
+  return email;
+}
 
+async function sendMessage(
+  accessToken: string, 
+  to: string, 
+  subject: string, 
+  body: string, 
+  threadId?: string, 
+  inReplyTo?: string,
+  attachments?: { filename: string; mimeType: string; data: string }[]
+) {
+  const email = createMimeMessage(to, subject, body, attachments, threadId, inReplyTo);
   const encodedEmail = encodeBase64Url(email);
 
   const requestBody: any = { raw: encodedEmail };
@@ -502,7 +561,8 @@ Deno.serve(async (req) => {
         body.subject,
         body.body,
         body.threadId,
-        body.inReplyTo
+        body.inReplyTo,
+        body.attachments // Pass attachments to sendMessage
       );
 
       return new Response(JSON.stringify(result), {

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
-import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
+import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 import { 
   Mail, 
   Send, 
@@ -673,12 +673,14 @@ const EvansGmail = () => {
       body,
       threadId,
       inReplyTo,
+      attachments,
     }: {
       to: string;
       subject: string;
       body: string;
       threadId?: string;
       inReplyTo?: string;
+      attachments?: { filename: string; mimeType: string; data: string }[];
     }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
@@ -691,7 +693,7 @@ const EvansGmail = () => {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ to, subject, body, threadId, inReplyTo }),
+          body: JSON.stringify({ to, subject, body, threadId, inReplyTo, attachments }),
         }
       );
 
@@ -717,7 +719,7 @@ const EvansGmail = () => {
     },
   });
 
-  const handleSendEmail = async () => {
+  const handleSendEmail = async (attachmentsFromDialog: Attachment[] = []) => {
     if (!composeTo.trim() || !composeSubject.trim() || !composeBody.trim()) {
       toast.error('Please fill in all fields');
       return;
@@ -726,6 +728,15 @@ const EvansGmail = () => {
     const draftMessageId = editingDraftMessageId;
     const draftThreadId = editingDraftThreadId || undefined;
 
+    // Convert attachments to the format expected by the API
+    const formattedAttachments = attachmentsFromDialog
+      .filter(att => att.base64)
+      .map(att => ({
+        filename: att.name,
+        mimeType: att.type,
+        data: att.base64!,
+      }));
+
     setSending(true);
     try {
       await sendEmailMutation.mutateAsync({
@@ -733,6 +744,7 @@ const EvansGmail = () => {
         subject: composeSubject.trim(),
         body: composeBody.trim(),
         threadId: draftThreadId,
+        attachments: formattedAttachments.length > 0 ? formattedAttachments : undefined,
       });
 
       // If we were editing a draft, remove it from Drafts after sending

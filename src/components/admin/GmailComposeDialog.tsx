@@ -35,12 +35,13 @@ import { toast } from 'sonner';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
-interface Attachment {
+export interface Attachment {
   id: string;
   name: string;
   size: number;
   type: string;
   file: File;
+  base64?: string; // Base64 encoded data for sending
 }
 
 interface GmailComposeDialogProps {
@@ -52,7 +53,7 @@ interface GmailComposeDialogProps {
   onSubjectChange: (value: string) => void;
   body: string;
   onBodyChange: (value: string) => void;
-  onSend: () => void;
+  onSend: (attachments: Attachment[]) => void;
   sending?: boolean;
   recipientName?: string;
 }
@@ -120,28 +121,47 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
     }
   };
 
-  // File attachment handlers
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // File attachment handlers - convert to base64 for sending
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     
     const newAttachments: Attachment[] = [];
+    
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.size > 25 * 1024 * 1024) {
         toast.error(`File ${file.name} is too large. Max size is 25MB.`);
         continue;
       }
+      
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      
       newAttachments.push({
         id: `${Date.now()}-${i}`,
         name: file.name,
         size: file.size,
-        type: file.type,
+        type: file.type || 'application/octet-stream',
         file: file,
+        base64: base64,
       });
     }
-    setAttachments(prev => [...prev, ...newAttachments]);
-    toast.success(`${newAttachments.length} file(s) attached`);
+    
+    if (newAttachments.length > 0) {
+      setAttachments(prev => [...prev, ...newAttachments]);
+      toast.success(`${newAttachments.length} file(s) attached`);
+    }
     e.target.value = '';
   };
 
@@ -217,7 +237,7 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
     toast.success(`Email scheduled for ${scheduledDateTime.toLocaleString()}`);
     setShowScheduleDialog(false);
     // In a real implementation, you would pass this to the backend
-    onSend();
+    onSend(attachments);
   };
 
   // Insert signature
@@ -585,7 +605,7 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
               {/* Send Button with Dropdown */}
               <div className="flex items-center">
                 <Button
-                  onClick={onSend}
+                  onClick={() => onSend(attachments)}
                   disabled={sending || !to.trim()}
                   className="rounded-l-full rounded-r-none bg-blue-600 hover:bg-blue-700 text-white px-5 h-9"
                 >
