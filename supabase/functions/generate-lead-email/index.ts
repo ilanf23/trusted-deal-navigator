@@ -13,15 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const { leadId, emailType } = await req.json();
+    const { leadId, emailType, leadContext: providedContext, currentStage } = await req.json();
     
-    if (!leadId) {
-      return new Response(JSON.stringify({ error: "Lead ID is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not configured");
@@ -32,38 +25,69 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch lead data
-    const { data: lead, error: leadError } = await supabase
-      .from("leads")
-      .select("*")
-      .eq("id", leadId)
-      .single();
+    let lead: any = null;
+    let questionnaire: any = null;
+    let rateWatch: any = null;
 
-    if (leadError || !lead) {
-      console.error("Lead fetch error:", leadError);
-      return new Response(JSON.stringify({ error: "Lead not found" }), {
-        status: 404,
+    // If leadContext is provided directly (from move_forward), use it
+    if (providedContext) {
+      lead = {
+        name: providedContext.name,
+        email: providedContext.email,
+        phone: providedContext.phone,
+        company_name: providedContext.company,
+        notes: providedContext.notes,
+      };
+      questionnaire = {
+        loan_amount: providedContext.loanAmount,
+        loan_type: providedContext.loanType,
+        funding_purpose: providedContext.fundingPurpose,
+        funding_timeline: providedContext.fundingTimeline,
+      };
+    } else if (leadId) {
+      // Fetch lead data from database
+      const { data: fetchedLead, error: leadError } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("id", leadId)
+        .single();
+
+      if (leadError || !fetchedLead) {
+        console.error("Lead fetch error:", leadError);
+        return new Response(JSON.stringify({ error: "Lead not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      lead = fetchedLead;
+
+      // Fetch questionnaire responses
+      const { data: responses } = await supabase
+        .from("lead_responses")
+        .select("*")
+        .eq("lead_id", leadId)
+        .order("submitted_at", { ascending: false })
+        .limit(1);
+
+      questionnaire = responses?.[0] || null;
+
+      // Fetch rate watch data
+      const { data: rateWatchData } = await supabase
+        .from("rate_watch")
+        .select("*")
+        .eq("lead_id", leadId)
+        .eq("is_active", true)
+        .single();
+      
+      rateWatch = rateWatchData;
+    } else {
+      return new Response(JSON.stringify({ error: "Lead ID or context is required" }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch questionnaire responses
-    const { data: responses } = await supabase
-      .from("lead_responses")
-      .select("*")
-      .eq("lead_id", leadId)
-      .order("submitted_at", { ascending: false })
-      .limit(1);
-
-    const questionnaire = responses?.[0] || null;
-
-    // Fetch rate watch data
-    const { data: rateWatch } = await supabase
-      .from("rate_watch")
-      .select("*")
-      .eq("lead_id", leadId)
-      .eq("is_active", true)
-      .single();
 
     // Build context for AI
     let leadContext = `
@@ -112,11 +136,28 @@ Questionnaire Responses:
     }
 
     // Determine email type and prompt
-    let systemPrompt = `You are a professional commercial lending consultant at Commercial Lending X. Write compelling, personalized emails that build relationships and drive action. Be warm but professional. Keep emails concise (under 200 words). Always include a clear call-to-action.`;
+    let systemPrompt = `You are a professional commercial lending consultant at Commercial Lending X. Write compelling, personalized emails that build relationships and drive action. Be warm but professional. Keep emails concise (under 200 words). Always include a clear call-to-action. Start with "Subject: " followed by the subject line, then a blank line, then the email body.`;
 
     let userPrompt = "";
 
-    if (emailType === "rate_alert" && rateWatch) {
+    if (emailType === "move_forward") {
+      const stageNextSteps: Record<string, string> = {
+        "Discovery": "schedule a discovery call to understand their needs better",
+        "Pre-Qualification": "request initial documents needed for pre-qualification (tax returns, financial statements)",
+        "Doc Collection": "follow up on outstanding documents and keep the process moving",
+        "Underwriting": "provide an update on underwriting status and ask if they have any questions",
+        "Approval": "congratulate them on approval and outline next steps for closing",
+        "Funded": "thank them for their business and ask for referrals",
+      };
+      
+      const nextStep = stageNextSteps[currentStage || "Discovery"] || "move the deal forward to the next phase";
+      
+      userPrompt = `Write a professional email to move this deal forward. The lead is currently in the "${currentStage || 'Discovery'}" stage. The goal is to ${nextStep}.
+
+Reference their last email context: "${providedContext?.lastEmailSubject}" - "${providedContext?.lastEmailSnippet}"
+
+${leadContext}`;
+    } else if (emailType === "rate_alert" && rateWatch) {
       if (rateWatch.current_rate <= rateWatch.target_rate) {
         userPrompt = `Write an exciting email to inform this lead that interest rates have dropped to their target level. Emphasize the refinancing opportunity and potential savings. Suggest scheduling a call to discuss next steps.
 
@@ -140,7 +181,7 @@ ${leadContext}`;
 ${leadContext}`;
     }
 
-    console.log("Generating email for lead:", leadId, "type:", emailType);
+    console.log("Generating email for lead:", lead?.name || leadId, "type:", emailType);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
