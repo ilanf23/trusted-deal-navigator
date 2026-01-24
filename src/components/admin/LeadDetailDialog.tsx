@@ -81,6 +81,18 @@ interface LeadAddress {
   is_primary: boolean;
 }
 
+interface LeadContact {
+  id: string;
+  lead_id: string;
+  name: string;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
 interface LeadActivity {
   id: string;
   lead_id: string;
@@ -266,6 +278,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [historyOpen, setHistoryOpen] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(true);
+  const [contactsOpen, setContactsOpen] = useState(true);
   
   // New phone/email/address input states
   const [newPhone, setNewPhone] = useState('');
@@ -282,6 +295,14 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [newAddressState, setNewAddressState] = useState('');
   const [newAddressZip, setNewAddressZip] = useState('');
   const [newAddressType, setNewAddressType] = useState('business');
+  
+  // Contact person states
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactTitle, setNewContactTitle] = useState('');
+  const [newContactEmail, setNewContactEmail] = useState('');
+  const [newContactPhone, setNewContactPhone] = useState('');
+  const [newContactIsPrimary, setNewContactIsPrimary] = useState(false);
 
   // AI states
   const [aiLoading, setAiLoading] = useState<'summarize' | 'ask' | 'autofill' | null>(null);
@@ -367,6 +388,16 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!lead) return [];
       const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', lead.id);
       return (data || []) as LeadAddress[];
+    },
+    enabled: !!lead && open,
+  });
+
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['lead-contacts', lead?.id],
+    queryFn: async () => {
+      if (!lead) return [];
+      const { data } = await supabase.from('lead_contacts').select('*').eq('lead_id', lead.id).order('is_primary', { ascending: false });
+      return (data || []) as LeadContact[];
     },
     enabled: !!lead && open,
   });
@@ -533,6 +564,42 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead?.id] });
       toast({ title: 'Address removed' });
+    },
+  });
+
+  const addLeadContact = useMutation({
+    mutationFn: async (contact: { name: string; title?: string; email?: string; phone?: string; is_primary?: boolean }) => {
+      if (!lead) return;
+      const { error } = await supabase.from('lead_contacts').insert({ 
+        lead_id: lead.id, 
+        name: contact.name,
+        title: contact.title || null,
+        email: contact.email || null,
+        phone: contact.phone || null,
+        is_primary: contact.is_primary || false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-contacts', lead?.id] });
+      setNewContactName('');
+      setNewContactTitle('');
+      setNewContactEmail('');
+      setNewContactPhone('');
+      setNewContactIsPrimary(false);
+      setShowAddContact(false);
+      toast({ title: 'Contact added' });
+    },
+  });
+
+  const deleteLeadContact = useMutation({
+    mutationFn: async (contactId: string) => {
+      const { error } = await supabase.from('lead_contacts').delete().eq('id', contactId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-contacts', lead?.id] });
+      toast({ title: 'Contact removed' });
     },
   });
 
@@ -1401,6 +1468,132 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                         </Select>
                       </div>
                     </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Contacts Section - Multiple people per lead */}
+                <Collapsible open={contactsOpen} onOpenChange={setContactsOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <Users className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Contacts</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">{contacts.length}</Badge>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !contactsOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-3 pl-6">
+                    {contacts.length === 0 && !showAddContact ? (
+                      <p className="text-sm text-slate-400 italic">No contacts added yet</p>
+                    ) : (
+                      contacts.map(c => (
+                        <div key={c.id} className="py-2 group border-b border-slate-100 last:border-0">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium text-slate-900">{c.name}</p>
+                                {c.is_primary && (
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Primary</Badge>
+                                )}
+                              </div>
+                              {c.title && (
+                                <p className="text-xs text-slate-500">{c.title}</p>
+                              )}
+                              <div className="flex flex-wrap gap-3 mt-1">
+                                {c.email && (
+                                  <div className="flex items-center gap-1 text-xs text-slate-500">
+                                    <Mail className="w-3 h-3" />
+                                    <span>{c.email}</span>
+                                  </div>
+                                )}
+                                {c.phone && (
+                                  <div className="flex items-center gap-1 text-xs text-slate-500">
+                                    <Phone className="w-3 h-3" />
+                                    <span>{c.phone}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="w-6 h-6 opacity-0 group-hover:opacity-100"
+                              onClick={() => deleteLeadContact.mutate(c.id)}
+                            >
+                              <Trash2 className="w-3 h-3 text-slate-400" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    {showAddContact ? (
+                      <div className="space-y-2 pt-2 border-t border-slate-100">
+                        <Input
+                          value={newContactName}
+                          onChange={(e) => setNewContactName(e.target.value)}
+                          placeholder="Contact name *"
+                          className="h-8 text-sm"
+                        />
+                        <Input
+                          value={newContactTitle}
+                          onChange={(e) => setNewContactTitle(e.target.value)}
+                          placeholder="Title / Role"
+                          className="h-8 text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            value={newContactEmail}
+                            onChange={(e) => setNewContactEmail(e.target.value)}
+                            placeholder="Email"
+                            className="h-8 text-sm flex-1"
+                          />
+                          <Input
+                            value={newContactPhone}
+                            onChange={(e) => setNewContactPhone(e.target.value)}
+                            placeholder="Phone"
+                            className="h-8 text-sm flex-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox 
+                            id="primary-contact"
+                            checked={newContactIsPrimary}
+                            onCheckedChange={(checked) => setNewContactIsPrimary(checked === true)}
+                          />
+                          <label htmlFor="primary-contact" className="text-xs text-slate-600">Primary contact</label>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            setShowAddContact(false);
+                            setNewContactName('');
+                            setNewContactTitle('');
+                            setNewContactEmail('');
+                            setNewContactPhone('');
+                            setNewContactIsPrimary(false);
+                          }}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            onClick={() => addLeadContact.mutate({
+                              name: newContactName,
+                              title: newContactTitle,
+                              email: newContactEmail,
+                              phone: newContactPhone,
+                              is_primary: newContactIsPrimary,
+                            })} 
+                            disabled={!newContactName.trim()}
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button variant="link" className="text-blue-600 text-sm p-0 h-auto" onClick={() => setShowAddContact(true)}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add contact
+                      </Button>
+                    )}
                   </CollapsibleContent>
                 </Collapsible>
 
