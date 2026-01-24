@@ -4,7 +4,8 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2 } from 'lucide-react';
+import { Mail, Inbox, Loader2, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -174,7 +175,19 @@ const EvansGmail = () => {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{selectedEmail ? extractSenderName(selectedEmail.from) : ''}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium">{selectedEmail ? extractSenderName(selectedEmail.from) : ''}</p>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="w-3.5 h-3.5 text-muted-foreground cursor-pointer hover:text-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">{selectedEmail?.from}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {selectedEmail ? format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a') : ''}
                       </p>
