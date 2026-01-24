@@ -153,80 +153,90 @@ const EvansGmail = () => {
           </div>
         </div>
 
-        {/* Email List */}
-        <div className="w-80 border-r">
-          <div className="p-3 border-b">
-            <h2 className="font-semibold text-sm">Inbox</h2>
-          </div>
-          <ScrollArea className="h-[calc(100%-49px)]">
-            {emailsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        {/* Email List / Email View */}
+        <div className="flex-1 overflow-hidden">
+          {selectedEmailId ? (
+            // Full Email View
+            <div className="h-full flex flex-col">
+              <div className="p-3 border-b flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedEmailId(null)}>
+                  ← Back
+                </Button>
               </div>
-            ) : emails.length === 0 ? (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                No emails
-              </div>
-            ) : (
-              <div>
-                {emails.map((email) => (
-                  <div
-                    key={email.id}
-                    onClick={() => setSelectedEmailId(email.id)}
-                    className={`p-3 border-b cursor-pointer hover:bg-muted/50 ${
-                      selectedEmailId === email.id ? 'bg-muted' : ''
-                    } ${!email.isRead ? 'bg-primary/5' : ''}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Avatar className="w-6 h-6">
-                        {email.senderPhoto && <AvatarImage src={email.senderPhoto} />}
-                        <AvatarFallback className="text-xs">
-                          {extractSenderName(email.from).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className={`text-sm truncate flex-1 ${!email.isRead ? 'font-semibold' : ''}`}>
-                        {extractSenderName(email.from)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(email.date), 'MMM d')}
-                      </span>
+              <ScrollArea className="flex-1">
+                <div className="p-6">
+                  <h1 className="text-xl font-semibold mb-4">{selectedEmail?.subject}</h1>
+                  <div className="flex items-center gap-3 mb-6">
+                    <Avatar className="w-10 h-10">
+                      {selectedEmail?.senderPhoto && <AvatarImage src={selectedEmail.senderPhoto} />}
+                      <AvatarFallback>
+                        {selectedEmail ? extractSenderName(selectedEmail.from).charAt(0).toUpperCase() : '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{selectedEmail ? extractSenderName(selectedEmail.from) : ''}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedEmail ? format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a') : ''}
+                      </p>
                     </div>
-                    <p className={`text-sm truncate ${!email.isRead ? 'font-medium' : ''}`}>
-                      {email.subject}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {email.snippet}
-                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-        </div>
-
-        {/* Email Content */}
-        {selectedEmail && (
-          <div className="flex-1 overflow-auto">
-            <div className="p-6">
-              <h1 className="text-lg font-semibold mb-4">{selectedEmail.subject}</h1>
-              <div className="flex items-center gap-3 mb-6">
-                <Avatar className="w-10 h-10">
-                  {selectedEmail.senderPhoto && <AvatarImage src={selectedEmail.senderPhoto} />}
-                  <AvatarFallback>
-                    {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium text-sm">{extractSenderName(selectedEmail.from)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
-                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{selectedEmail?.snippet}</p>
                 </div>
-              </div>
-              <p className="text-sm text-muted-foreground">{selectedEmail.snippet}</p>
+              </ScrollArea>
             </div>
-          </div>
-        )}
+          ) : (
+            // Email List View
+            <div className="h-full flex flex-col">
+              <div className="p-3 border-b">
+                <h2 className="font-semibold text-sm">Inbox</h2>
+              </div>
+              <ScrollArea className="flex-1">
+                {emailsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : emails.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    No emails
+                  </div>
+                ) : (
+                  <div>
+                    {emails.map((email) => (
+                      <div
+                        key={email.id}
+                        onClick={() => setSelectedEmailId(email.id)}
+                        className={`p-3 border-b cursor-pointer hover:bg-muted/50 ${
+                          !email.isRead ? 'bg-primary/5' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Avatar className="w-6 h-6">
+                            {email.senderPhoto && <AvatarImage src={email.senderPhoto} />}
+                            <AvatarFallback className="text-xs">
+                              {extractSenderName(email.from).charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className={`text-sm truncate flex-1 ${!email.isRead ? 'font-semibold' : ''}`}>
+                            {extractSenderName(email.from)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(email.date), 'MMM d')}
+                          </span>
+                        </div>
+                        <p className={`text-sm truncate ${!email.isRead ? 'font-medium' : ''}`}>
+                          {email.subject}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {email.snippet}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          )}
+        </div>
       </div>
     </AdminLayout>
   );
