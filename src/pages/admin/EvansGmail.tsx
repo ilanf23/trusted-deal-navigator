@@ -154,7 +154,7 @@ const EvansGmail = () => {
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [composeSending, setComposeSending] = useState(false);
-  const [generatingDraft, setGeneratingDraft] = useState(false);
+  const [generatingDraftForId, setGeneratingDraftForId] = useState<string | null>(null);
 
   // Check Gmail connection
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
@@ -299,7 +299,7 @@ const EvansGmail = () => {
       return;
     }
 
-    setGeneratingDraft(true);
+    setGeneratingDraftForId(email.id);
     
     try {
       // Get pipeline stage info
@@ -368,7 +368,7 @@ const EvansGmail = () => {
       setComposeBody(`Hi ${firstName},\n\nThank you for your message. I wanted to follow up and discuss the next steps for moving your loan application forward.\n\nPlease let me know a good time to connect this week.\n\nBest regards,\nEvan`);
       setComposeOpen(true);
     } finally {
-      setGeneratingDraft(false);
+      setGeneratingDraftForId(null);
     }
   };
 
@@ -625,9 +625,9 @@ const EvansGmail = () => {
                                   e.stopPropagation();
                                   handleMoveForward(email);
                                 }}
-                                disabled={generatingDraft}
+                                disabled={generatingDraftForId === email.id}
                               >
-                                {generatingDraft ? (
+                                {generatingDraftForId === email.id ? (
                                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                 ) : (
                                   <ArrowRight className="w-4 h-4 mr-2" />
