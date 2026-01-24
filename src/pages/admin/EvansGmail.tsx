@@ -1603,38 +1603,6 @@ const EvansGmail = () => {
             </Button>
           </div>
           
-          {/* Internal/External Filters */}
-          <div className="px-3 pb-2 flex gap-1.5">
-            <button
-              onClick={() => setActiveFolder('internal')}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-                activeFolder === 'internal' 
-                  ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' 
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
-            >
-              <User className="w-3 h-3" />
-              Internal
-              {internalCount > 0 && (
-                <span className="text-[10px] opacity-70">({internalCount})</span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveFolder('external')}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-                activeFolder === 'external' 
-                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' 
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
-            >
-              <ExternalLink className="w-3 h-3" />
-              External
-              {externalCount > 0 && (
-                <span className="text-[10px] opacity-70">({externalCount})</span>
-              )}
-            </button>
-          </div>
-          
           {/* Navigation */}
           <nav className="flex-1 px-2 space-y-0.5">
             <button
@@ -1648,6 +1616,36 @@ const EvansGmail = () => {
               <Inbox className="w-4 h-4" />
               <span className="flex-1 text-left">Inbox</span>
               <span className="text-xs font-medium text-slate-500">{inboxCount.toLocaleString()}</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveFolder('internal')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                activeFolder === 'internal' 
+                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
+              }`}
+            >
+              <User className="w-4 h-4" />
+              <span className="flex-1 text-left">Internal</span>
+              {internalCount > 0 && (
+                <span className="text-xs font-medium text-slate-500">{internalCount}</span>
+              )}
+            </button>
+            
+            <button
+              onClick={() => setActiveFolder('external')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                activeFolder === 'external' 
+                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
+              }`}
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span className="flex-1 text-left">External</span>
+              {externalCount > 0 && (
+                <span className="text-xs font-medium text-slate-500">{externalCount}</span>
+              )}
             </button>
             
             <button
