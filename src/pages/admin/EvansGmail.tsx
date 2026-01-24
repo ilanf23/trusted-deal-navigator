@@ -498,7 +498,7 @@ const EvansGmail = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'sent' | 'drafts' | 'templates' | 'untriaged'>('inbox');
+  const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'sent' | 'drafts' | 'templates' | 'untriaged' | 'internal' | 'external'>('inbox');
   const [editingNextAction, setEditingNextAction] = useState<string | null>(null);
   const [nextActionInput, setNextActionInput] = useState('');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -623,6 +623,23 @@ const EvansGmail = () => {
     enabled: !!user?.id,
   });
 
+  // Helper to check if email is internal (commerciallendingx.com domain)
+  const isInternalEmail = (email: Email): boolean => {
+    const clxDomain = 'commerciallendingx.com';
+    const fromEmail = extractEmailAddress(email.from).toLowerCase();
+    const toEmail = extractEmailAddress(email.to).toLowerCase();
+    return fromEmail.includes(clxDomain) || toEmail.includes(clxDomain);
+  };
+
+  // Calculate filtered email lists
+  const internalEmails = useMemo(() => {
+    return emails.filter(email => isInternalEmail(email));
+  }, [emails]);
+
+  const externalEmails = useMemo(() => {
+    return emails.filter(email => !isInternalEmail(email));
+  }, [emails]);
+
   // Calculate untriaged count
   const untriagedEmails = useMemo(() => {
     return emails.filter(email => {
@@ -632,6 +649,8 @@ const EvansGmail = () => {
   }, [emails, emailMetadataMap]);
 
   const untriagedCount = untriagedEmails.length;
+  const internalCount = internalEmails.length;
+  const externalCount = externalEmails.length;
 
   // Fetch inbox count separately (for sidebar display when not on inbox)
   const { data: inboxCountData } = useQuery({
@@ -1584,6 +1603,38 @@ const EvansGmail = () => {
             </Button>
           </div>
           
+          {/* Internal/External Filters */}
+          <div className="px-3 pb-2 flex gap-1.5">
+            <button
+              onClick={() => setActiveFolder('internal')}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                activeFolder === 'internal' 
+                  ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' 
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+              }`}
+            >
+              <User className="w-3 h-3" />
+              Internal
+              {internalCount > 0 && (
+                <span className="text-[10px] opacity-70">({internalCount})</span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveFolder('external')}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                activeFolder === 'external' 
+                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' 
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+              }`}
+            >
+              <ExternalLink className="w-3 h-3" />
+              External
+              {externalCount > 0 && (
+                <span className="text-[10px] opacity-70">({externalCount})</span>
+              )}
+            </button>
+          </div>
+          
           {/* Navigation */}
           <nav className="flex-1 px-2 space-y-0.5">
             <button
@@ -1861,7 +1912,13 @@ const EvansGmail = () => {
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {(activeFolder === 'untriaged' ? untriagedEmails : emails).map((email) => {
+                {(() => {
+                  let emailsToDisplay = emails;
+                  if (activeFolder === 'untriaged') emailsToDisplay = untriagedEmails;
+                  else if (activeFolder === 'internal') emailsToDisplay = internalEmails;
+                  else if (activeFolder === 'external') emailsToDisplay = externalEmails;
+                  return emailsToDisplay;
+                })().map((email) => {
                   // Check if email is from/to a CRM lead
                   const emailAddress = activeFolder === 'sent' ? email.to : email.from;
                   const leadInfo = findLeadFromEmail(emailAddress);
