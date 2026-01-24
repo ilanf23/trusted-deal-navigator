@@ -205,8 +205,8 @@ const EvansGmail = () => {
         </div>
 
         {/* Email Content */}
-        <div className="flex-1">
-          {selectedEmail ? (
+        {selectedEmail && (
+          <div className="flex-1 overflow-auto">
             <div className="p-6">
               <h1 className="text-lg font-semibold mb-4">{selectedEmail.subject}</h1>
               <div className="flex items-center gap-3 mb-6">
@@ -225,12 +225,8 @@ const EvansGmail = () => {
               </div>
               <p className="text-sm text-muted-foreground">{selectedEmail.snippet}</p>
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              Select an email to read
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );
