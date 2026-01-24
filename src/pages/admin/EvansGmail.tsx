@@ -43,7 +43,14 @@ import {
   Check,
   X,
   HelpCircle,
-  Info
+  Info,
+  Link2,
+  Eye,
+  MessageSquare,
+  ArrowUpRight,
+  CheckCircle2,
+  UserPlus,
+  ClipboardList
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
@@ -335,6 +342,157 @@ const generateExplanation = (
   };
 };
 
+// Type for context-aware actions
+type EmailAction = {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  variant: 'default' | 'warning' | 'success' | 'primary';
+  action: () => void;
+};
+
+// Helper to determine which actions to show based on email state
+const getContextualActions = (
+  email: Email,
+  metadata: EmailMetadata | undefined,
+  linkedDeal: { id: string; name: string; company_name: string | null } | null,
+  handlers: {
+    onLinkDeal: () => void;
+    onCreateDeal: () => void;
+    onMarkFyi: () => void;
+    onNudgeBorrower: () => void;
+    onNudgeLender: () => void;
+    onSetReminder: () => void;
+    onMarkReceived: () => void;
+    onMarkResponded: () => void;
+    onEscalate: () => void;
+    onAssignTask: () => void;
+    onMarkComplete: () => void;
+  }
+): EmailAction[] => {
+  const actions: EmailAction[] = [];
+  
+  // If untriaged (no deal or no next action)
+  const isUntriaged = !metadata?.lead_id || !metadata?.next_action;
+  const isFyi = metadata?.is_fyi;
+  
+  if (isFyi) {
+    // FYI emails just need a way to un-mark
+    return [];
+  }
+  
+  if (isUntriaged) {
+    if (!linkedDeal) {
+      actions.push({
+        id: 'link-deal',
+        label: 'Link deal',
+        icon: Link2,
+        variant: 'warning',
+        action: handlers.onLinkDeal,
+      });
+      actions.push({
+        id: 'create-deal',
+        label: 'New deal',
+        icon: Plus,
+        variant: 'default',
+        action: handlers.onCreateDeal,
+      });
+    }
+    actions.push({
+      id: 'mark-fyi',
+      label: 'Mark FYI',
+      icon: Eye,
+      variant: 'default',
+      action: handlers.onMarkFyi,
+    });
+    return actions.slice(0, 4);
+  }
+  
+  // Waiting on borrower
+  if (metadata?.waiting_on === 'borrower') {
+    actions.push({
+      id: 'nudge-borrower',
+      label: 'Nudge',
+      icon: MessageSquare,
+      variant: 'primary',
+      action: handlers.onNudgeBorrower,
+    });
+    actions.push({
+      id: 'set-reminder',
+      label: 'Remind me',
+      icon: Bell,
+      variant: 'default',
+      action: handlers.onSetReminder,
+    });
+    actions.push({
+      id: 'mark-received',
+      label: 'Received',
+      icon: CheckCircle2,
+      variant: 'success',
+      action: handlers.onMarkReceived,
+    });
+    return actions.slice(0, 4);
+  }
+  
+  // Waiting on lender
+  if (metadata?.waiting_on === 'lender') {
+    actions.push({
+      id: 'nudge-lender',
+      label: 'Nudge',
+      icon: MessageSquare,
+      variant: 'primary',
+      action: handlers.onNudgeLender,
+    });
+    actions.push({
+      id: 'escalate',
+      label: 'Escalate',
+      icon: ArrowUpRight,
+      variant: 'warning',
+      action: handlers.onEscalate,
+    });
+    actions.push({
+      id: 'mark-responded',
+      label: 'Responded',
+      icon: CheckCircle2,
+      variant: 'success',
+      action: handlers.onMarkResponded,
+    });
+    return actions.slice(0, 4);
+  }
+  
+  // Internal task
+  if (metadata?.waiting_on === 'internal') {
+    actions.push({
+      id: 'assign-task',
+      label: 'Assign',
+      icon: UserPlus,
+      variant: 'primary',
+      action: handlers.onAssignTask,
+    });
+    actions.push({
+      id: 'mark-complete',
+      label: 'Complete',
+      icon: CheckCircle2,
+      variant: 'success',
+      action: handlers.onMarkComplete,
+    });
+    return actions.slice(0, 4);
+  }
+  
+  // Default actions for triaged emails without specific waiting_on
+  if (linkedDeal && metadata?.next_action) {
+    actions.push({
+      id: 'mark-complete',
+      label: 'Done',
+      icon: CheckCircle2,
+      variant: 'success',
+      action: handlers.onMarkComplete,
+    });
+  }
+  
+  return actions.slice(0, 4);
+};
+
 const EvansGmail = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -355,6 +513,7 @@ const EvansGmail = () => {
   const [editingDraftMessageId, setEditingDraftMessageId] = useState<string | null>(null);
   const [editingDraftThreadId, setEditingDraftThreadId] = useState<string | null>(null);
   const [composeHandled, setComposeHandled] = useState(false);
+  const [actionLinkDealOpen, setActionLinkDealOpen] = useState<string | null>(null);
   // Check Gmail connection status
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
     queryKey: ['gmail-connection'],
@@ -833,6 +992,151 @@ const EvansGmail = () => {
     },
     onError: (error: any) => {
       toast.error('Failed to update next step: ' + error.message);
+    },
+  });
+
+  // Update email metadata (FYI status)
+  const updateEmailFyi = useMutation({
+    mutationFn: async ({ emailId, threadId, isFyi }: { emailId: string; threadId: string; isFyi: boolean }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      
+      const { data: existing } = await supabase
+        .from('email_metadata')
+        .select('id')
+        .eq('gmail_message_id', emailId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (existing) {
+        const { error } = await supabase
+          .from('email_metadata')
+          .update({ is_fyi: isFyi, last_activity_date: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('email_metadata')
+          .insert({
+            gmail_message_id: emailId,
+            gmail_thread_id: threadId,
+            user_id: user.id,
+            is_fyi: isFyi,
+            last_activity_date: new Date().toISOString(),
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-metadata'] });
+      toast.success('Marked as FYI');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update: ' + error.message);
+    },
+  });
+
+  // Update email metadata (waiting_on status)
+  const updateEmailWaitingOn = useMutation({
+    mutationFn: async ({ emailId, threadId, waitingOn }: { emailId: string; threadId: string; waitingOn: 'borrower' | 'lender' | 'internal' | null }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      
+      const { data: existing } = await supabase
+        .from('email_metadata')
+        .select('id')
+        .eq('gmail_message_id', emailId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (existing) {
+        const { error } = await supabase
+          .from('email_metadata')
+          .update({ waiting_on: waitingOn, last_activity_date: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('email_metadata')
+          .insert({
+            gmail_message_id: emailId,
+            gmail_thread_id: threadId,
+            user_id: user.id,
+            waiting_on: waitingOn,
+            last_activity_date: new Date().toISOString(),
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { waitingOn }) => {
+      queryClient.invalidateQueries({ queryKey: ['email-metadata'] });
+      if (waitingOn) {
+        toast.success(`Marked as waiting on ${waitingOn}`);
+      } else {
+        toast.success('Status cleared');
+      }
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update: ' + error.message);
+    },
+  });
+
+  // Create nudge email for borrower/lender
+  const createNudgeEmailMutation = useMutation({
+    mutationFn: async ({ email, metadata, nudgeType }: { email: Email; metadata: EmailMetadata | undefined; nudgeType: 'borrower' | 'lender' }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const recipientEmail = extractEmailAddress(email.from);
+      const recipientName = extractSenderName(email.from);
+      const dealName = metadata?.lead?.company_name || metadata?.lead?.name || 'your deal';
+      
+      const subject = nudgeType === 'borrower' 
+        ? `Following up - ${dealName}`
+        : `Checking in - ${dealName}`;
+      
+      const body = nudgeType === 'borrower'
+        ? `Hi ${recipientName.split(' ')[0]},\n\nI wanted to follow up on the items we discussed. Please let me know if you have any questions or need any assistance.\n\nLooking forward to hearing from you.\n\nBest regards,\nEvan`
+        : `Hi ${recipientName.split(' ')[0]},\n\nI wanted to check in on the status of ${dealName}. Could you please provide an update on where things stand?\n\nThank you for your time.\n\nBest regards,\nEvan`;
+
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ to: recipientEmail, subject, body }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create draft');
+      }
+
+      // Log activity if there's a linked lead
+      if (metadata?.lead_id) {
+        await supabase.from('lead_activities').insert({
+          lead_id: metadata.lead_id,
+          activity_type: 'email',
+          title: `Nudge ${nudgeType} draft created`,
+          content: subject,
+        });
+        
+        // Update lead's updated_at
+        await supabase.from('leads').update({ updated_at: new Date().toISOString() }).eq('id', metadata.lead_id);
+      }
+
+      return { draftId: data.id, nudgeType };
+    },
+    onSuccess: ({ nudgeType }) => {
+      toast.success(`${nudgeType === 'borrower' ? 'Borrower' : 'Lender'} nudge draft created`);
+      setActiveFolder('drafts');
+      queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
+      queryClient.invalidateQueries({ queryKey: ['gmail-drafts-count'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to create draft: ' + error.message);
     },
   });
 
@@ -1845,6 +2149,114 @@ const EvansGmail = () => {
                               </button>
                             )}
                           </div>
+                          
+                          {/* Context-Aware Action Bar */}
+                          {(() => {
+                            const actions = getContextualActions(
+                              email,
+                              metadata,
+                              linkedDeal,
+                              {
+                                onLinkDeal: () => setActionLinkDealOpen(email.id),
+                                onCreateDeal: () => {
+                                  navigate(`/team/evan/pipeline?createDeal=true&emailFrom=${encodeURIComponent(email.from)}&emailSubject=${encodeURIComponent(email.subject)}`);
+                                },
+                                onMarkFyi: () => {
+                                  updateEmailFyi.mutate({ emailId: email.id, threadId: email.threadId, isFyi: true });
+                                },
+                                onNudgeBorrower: () => {
+                                  createNudgeEmailMutation.mutate({ email, metadata, nudgeType: 'borrower' });
+                                },
+                                onNudgeLender: () => {
+                                  createNudgeEmailMutation.mutate({ email, metadata, nudgeType: 'lender' });
+                                },
+                                onSetReminder: () => {
+                                  toast.info('Reminder feature coming soon');
+                                },
+                                onMarkReceived: () => {
+                                  updateEmailWaitingOn.mutate({ emailId: email.id, threadId: email.threadId, waitingOn: null });
+                                  updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: 'Review received documents' });
+                                },
+                                onMarkResponded: () => {
+                                  updateEmailWaitingOn.mutate({ emailId: email.id, threadId: email.threadId, waitingOn: null });
+                                  updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: 'Review lender response' });
+                                },
+                                onEscalate: () => {
+                                  toast.info('Escalation feature coming soon');
+                                },
+                                onAssignTask: () => {
+                                  navigate(`/team/evan/tasks?createTask=true&emailSubject=${encodeURIComponent(email.subject)}&leadId=${metadata?.lead_id || ''}`);
+                                },
+                                onMarkComplete: () => {
+                                  updateEmailWaitingOn.mutate({ emailId: email.id, threadId: email.threadId, waitingOn: null });
+                                  updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: null });
+                                  updateEmailFyi.mutate({ emailId: email.id, threadId: email.threadId, isFyi: true });
+                                },
+                              }
+                            );
+                            
+                            if (actions.length === 0) return null;
+                            
+                            return (
+                              <div className="flex items-center gap-1.5 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                {actions.map((action) => {
+                                  const Icon = action.icon;
+                                  const variantClasses = {
+                                    default: 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300',
+                                    warning: 'bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-400',
+                                    success: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400',
+                                    primary: 'bg-primary/10 hover:bg-primary/20 text-primary',
+                                  };
+                                  
+                                  if (action.id === 'link-deal') {
+                                    return (
+                                      <Popover key={action.id} open={actionLinkDealOpen === email.id} onOpenChange={(open) => setActionLinkDealOpen(open ? email.id : null)}>
+                                        <PopoverTrigger asChild>
+                                          <button
+                                            className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded transition-colors ${variantClasses[action.variant]}`}
+                                          >
+                                            <Icon className="w-3 h-3" />
+                                            <span>{action.label}</span>
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-64 p-2" align="start">
+                                          <div className="space-y-2">
+                                            <p className="text-xs font-medium text-slate-500">Link to a deal</p>
+                                            <ScrollArea className="max-h-48">
+                                              {allCrmLeads.slice(0, 15).map((lead) => (
+                                                <button
+                                                  key={lead.id}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: lead.id });
+                                                    setActionLinkDealOpen(null);
+                                                  }}
+                                                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 rounded flex items-center gap-2"
+                                                >
+                                                  <span className="truncate">{lead.company_name || lead.name}</span>
+                                                </button>
+                                              ))}
+                                            </ScrollArea>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <button
+                                      key={action.id}
+                                      onClick={action.action}
+                                      className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded transition-colors ${variantClasses[action.variant]}`}
+                                    >
+                                      <Icon className="w-3 h-3" />
+                                      <span>{action.label}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
