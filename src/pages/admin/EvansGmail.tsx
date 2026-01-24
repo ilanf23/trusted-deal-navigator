@@ -4,8 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, Info } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Mail, Inbox, Loader2, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -31,6 +30,7 @@ const extractSenderName = (from: string) => {
 const EvansGmail = () => {
   const { user } = useAuth();
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
+  const [showEmailAddress, setShowEmailAddress] = useState(false);
 
   // Check Gmail connection
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
@@ -177,15 +177,14 @@ const EvansGmail = () => {
                     <div>
                       <div className="flex items-center gap-1.5">
                         <p className="font-medium">{selectedEmail ? extractSenderName(selectedEmail.from) : ''}</p>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Info className="w-3.5 h-3.5 text-muted-foreground cursor-pointer hover:text-foreground" />
-                          </PopoverTrigger>
-                          <PopoverContent side="top" className="w-auto p-2">
-                            <p className="text-xs">{selectedEmail?.from}</p>
-                          </PopoverContent>
-                        </Popover>
+                        <ChevronDown 
+                          className={`w-3.5 h-3.5 text-muted-foreground cursor-pointer hover:text-foreground transition-transform ${showEmailAddress ? 'rotate-180' : ''}`}
+                          onClick={() => setShowEmailAddress(!showEmailAddress)}
+                        />
                       </div>
+                      {showEmailAddress && (
+                        <p className="text-xs text-muted-foreground">{selectedEmail?.from}</p>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         {selectedEmail ? format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a') : ''}
                       </p>
