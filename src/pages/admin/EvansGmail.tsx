@@ -4,7 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -560,55 +560,193 @@ const EvansGmail = () => {
         {/* Email List / Email View */}
         <div className="flex-1 overflow-hidden">
           {selectedEmailId && selectedEmail ? (
-            // Full Email View
-            <div className="h-full flex flex-col">
-              <div className="p-3 border-b">
-                <Button variant="ghost" size="sm" onClick={() => setSelectedEmailId(null)}>
-                  ← Back
-                </Button>
-              </div>
-              <ScrollArea className="flex-1">
-                <div className="p-6">
-                  <h1 className="text-xl font-semibold mb-4 leading-tight">{selectedEmail.subject}</h1>
-                  <div className="flex items-center gap-3 mb-6">
-                    <Avatar className="w-10 h-10 border">
-                      {selectedEmail.senderPhoto ? (
-                        <AvatarImage src={selectedEmail.senderPhoto} />
-                      ) : null}
-                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-medium">{extractSenderName(selectedEmail.from)}</p>
-                        <ChevronDown 
-                          className={`w-3.5 h-3.5 text-muted-foreground cursor-pointer hover:text-foreground transition-transform ${showEmailAddress ? 'rotate-180' : ''}`}
-                          onClick={() => setShowEmailAddress(!showEmailAddress)}
-                        />
-                      </div>
-                      {showEmailAddress && (
-                        <p className="text-xs text-muted-foreground">{selectedEmail.from}</p>
-                      )}
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
-                      </p>
-                    </div>
-                    {selectedLead && (
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Lead</p>
-                        <p className="text-sm font-medium">{selectedLead.name}</p>
-                        {selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name && (
-                          <p className="text-xs text-muted-foreground">
-                            {selectedLead.pipeline_leads[0].pipeline_stages.name}
-                          </p>
+            // Full Email View with Deal Summary Sidebar for External
+            <div className="h-full flex">
+              {/* Email Content */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-3 border-b">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedEmailId(null)}>
+                    ← Back
+                  </Button>
+                </div>
+                <ScrollArea className="flex-1">
+                  <div className="p-6">
+                    <h1 className="text-xl font-semibold mb-4 leading-tight">{selectedEmail.subject}</h1>
+                    <div className="flex items-center gap-3 mb-6">
+                      <Avatar className="w-10 h-10 border">
+                        {selectedEmail.senderPhoto ? (
+                          <AvatarImage src={selectedEmail.senderPhoto} />
+                        ) : null}
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                          {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium">{extractSenderName(selectedEmail.from)}</p>
+                          <ChevronDown 
+                            className={`w-3.5 h-3.5 text-muted-foreground cursor-pointer hover:text-foreground transition-transform ${showEmailAddress ? 'rotate-180' : ''}`}
+                            onClick={() => setShowEmailAddress(!showEmailAddress)}
+                          />
+                        </div>
+                        {showEmailAddress && (
+                          <p className="text-xs text-muted-foreground">{selectedEmail.from}</p>
                         )}
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{selectedEmail.snippet}</p>
+                  </div>
+                </ScrollArea>
+              </div>
+              
+              {/* Deal Summary Sidebar for External Leads */}
+              {selectedLead && isExternalEmail(selectedEmail) && (
+                <div className="w-80 border-l bg-muted/20 overflow-y-auto">
+                  <div className="p-4 space-y-4">
+                    {/* Deal Summary Header */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">DEAL SUMMARY</p>
+                      <h3 className="text-lg font-bold">{selectedLead.company_name || selectedLead.name}</h3>
+                      <div className="flex items-center gap-2 mt-2">
+                        {selectedLead.lead_responses?.[0]?.loan_type && (
+                          <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">
+                            {selectedLead.lead_responses[0].loan_type}
+                          </span>
+                        )}
+                        {selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name && (
+                          <span 
+                            className="text-xs px-2 py-0.5 rounded font-medium"
+                            style={{ 
+                              backgroundColor: selectedLead.pipeline_leads[0].pipeline_stages.color ? `${selectedLead.pipeline_leads[0].pipeline_stages.color}20` : 'hsl(var(--muted))',
+                              color: selectedLead.pipeline_leads[0].pipeline_stages.color || 'hsl(var(--muted-foreground))'
+                            }}
+                          >
+                            {selectedLead.pipeline_leads[0].pipeline_stages.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Deal Details */}
+                    <div className="space-y-2 text-sm">
+                      {selectedLead.lead_responses?.[0]?.loan_amount && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Loan Amount</span>
+                          <span className="font-medium">${(selectedLead.lead_responses[0].loan_amount).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {selectedLead.lead_responses?.[0]?.purpose_of_loan && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Purpose</span>
+                          <span className="font-medium text-right max-w-[150px] truncate">{selectedLead.lead_responses[0].purpose_of_loan}</span>
+                        </div>
+                      )}
+                      {selectedLead.source && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Source</span>
+                          <span className="font-medium">{selectedLead.source}</span>
+                        </div>
+                      )}
+                      {selectedLead.last_activity_at && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Last Touch</span>
+                          <span className="font-medium">{format(new Date(selectedLead.last_activity_at), 'MMM d, yyyy')}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Action Button */}
+                    <Button 
+                      className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMoveForward(selectedEmail);
+                      }}
+                      disabled={generatingDraftForId === selectedEmail.id}
+                    >
+                      {generatingDraftForId === selectedEmail.id ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4 mr-2" />
+                      )}
+                      {getNextStepSuggestion(selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name, selectedEmail.snippet, selectedLead).split(' ').slice(0, 4).join(' ')}
+                    </Button>
+                    
+                    <div className="border-t pt-4">
+                      {/* Primary Contact */}
+                      <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-3">PRIMARY CONTACT</p>
+                      <div className="flex items-center gap-3 mb-3">
+                        <Avatar className="w-10 h-10 bg-[#0066FF]">
+                          <AvatarFallback className="text-white font-semibold">
+                            {selectedLead.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{selectedLead.name}</p>
+                          {(selectedLead.title || selectedLead.company_name) && (
+                            <p className="text-xs text-muted-foreground">
+                              {selectedLead.title}{selectedLead.title && selectedLead.company_name ? ', ' : ''}{selectedLead.company_name}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        {selectedLead.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            <a href={`mailto:${selectedLead.email}`} className="text-[#0066FF] hover:underline">
+                              {selectedLead.email}
+                            </a>
+                          </div>
+                        )}
+                        {(selectedLead.phone || selectedLead.lead_phones?.[0]?.phone_number) && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-muted-foreground" />
+                            <a href={`tel:${selectedLead.phone || selectedLead.lead_phones?.[0]?.phone_number}`} className="text-[#0066FF] hover:underline">
+                              {selectedLead.phone || selectedLead.lead_phones?.[0]?.phone_number}
+                            </a>
+                          </div>
+                        )}
+                        {selectedLead.last_activity_at && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Clock className="w-4 h-4" />
+                            <span>Last touch: {format(new Date(selectedLead.last_activity_at), 'MMM d')}</span>
+                          </div>
+                        )}
+                        {selectedLead.source && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Tag className="w-4 h-4" />
+                            <span>Source: {selectedLead.source}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Tags */}
+                      {selectedLead.tags && selectedLead.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-3">
+                          {selectedLead.tags.map((tag: string, idx: number) => (
+                            <span key={idx} className="text-xs px-2 py-0.5 rounded-full border border-[#0066FF] text-[#0066FF]">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Quick Notes */}
+                    {selectedLead.notes && (
+                      <div className="border-t pt-4">
+                        <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">QUICK NOTES</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{selectedLead.notes}</p>
                       </div>
                     )}
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{selectedEmail.snippet}</p>
                 </div>
-              </ScrollArea>
+              )}
             </div>
           ) : (
             // Email List View
