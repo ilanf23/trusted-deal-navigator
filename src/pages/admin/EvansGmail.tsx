@@ -690,7 +690,10 @@ const EvansGmail = () => {
                       <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-3">PRIMARY CONTACT</p>
                       <div className="flex items-center gap-3 mb-3">
                         <Avatar className="w-10 h-10 bg-[#0066FF]">
-                          <AvatarFallback className="text-white font-semibold">
+                          {selectedEmail.senderPhoto && (
+                            <AvatarImage src={selectedEmail.senderPhoto} alt={selectedLead.name} />
+                          )}
+                          <AvatarFallback className="text-white font-semibold bg-[#0066FF]">
                             {selectedLead.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
