@@ -36,8 +36,14 @@ import {
   ExternalLink,
   LogOut,
   User,
-  Clock
+  Clock,
+  AlertTriangle,
+  Briefcase,
+  ArrowRight,
+  Check,
+  X
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -132,6 +138,20 @@ interface Email {
   senderPhoto?: string | null;
 }
 
+interface EmailMetadata {
+  id: string;
+  gmail_message_id: string;
+  gmail_thread_id: string | null;
+  user_id: string;
+  lead_id: string | null;
+  next_action: string | null;
+  lead?: {
+    id: string;
+    name: string;
+    company_name: string | null;
+  } | null;
+}
+
 interface Lead {
   id: string;
   name: string;
@@ -222,7 +242,9 @@ const EvansGmail = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'sent' | 'drafts' | 'templates'>('inbox');
+  const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'sent' | 'drafts' | 'templates' | 'untriaged'>('inbox');
+  const [editingNextAction, setEditingNextAction] = useState<string | null>(null);
+  const [nextActionInput, setNextActionInput] = useState('');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTo, setComposeTo] = useState('');
@@ -307,6 +329,47 @@ const EvansGmail = () => {
 
   const emails = emailsData?.emails || [];
   const currentFolderCount = emailsData?.totalCount || 0;
+
+  // Fetch email metadata (deal links, next actions)
+  const { data: emailMetadataMap = {} } = useQuery({
+    queryKey: ['email-metadata', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return {};
+      
+      const { data, error } = await supabase
+        .from('email_metadata')
+        .select(`
+          id,
+          gmail_message_id,
+          gmail_thread_id,
+          user_id,
+          lead_id,
+          next_action,
+          lead:leads(id, name, company_name)
+        `)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      // Build a map of gmail_message_id -> metadata
+      const map: Record<string, EmailMetadata> = {};
+      (data || []).forEach((item: any) => {
+        map[item.gmail_message_id] = item;
+      });
+      return map;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Calculate untriaged count
+  const untriagedEmails = useMemo(() => {
+    return emails.filter(email => {
+      const metadata = emailMetadataMap[email.id];
+      return !metadata || !metadata.lead_id || !metadata.next_action;
+    });
+  }, [emails, emailMetadataMap]);
+
+  const untriagedCount = untriagedEmails.length;
 
   // Fetch inbox count separately (for sidebar display when not on inbox)
   const { data: inboxCountData } = useQuery({
@@ -587,6 +650,86 @@ const EvansGmail = () => {
     },
     onError: (error: any) => {
       toast.error('Failed to create draft: ' + error.message);
+    },
+  });
+
+  // Update or create email metadata (deal link)
+  const updateEmailDeal = useMutation({
+    mutationFn: async ({ emailId, threadId, leadId }: { emailId: string; threadId: string; leadId: string | null }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      
+      const { data: existing } = await supabase
+        .from('email_metadata')
+        .select('id')
+        .eq('gmail_message_id', emailId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (existing) {
+        const { error } = await supabase
+          .from('email_metadata')
+          .update({ lead_id: leadId })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('email_metadata')
+          .insert({
+            gmail_message_id: emailId,
+            gmail_thread_id: threadId,
+            user_id: user.id,
+            lead_id: leadId,
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-metadata'] });
+      toast.success('Deal linked');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to link deal: ' + error.message);
+    },
+  });
+
+  // Update or create email metadata (next action)
+  const updateEmailNextAction = useMutation({
+    mutationFn: async ({ emailId, threadId, nextAction }: { emailId: string; threadId: string; nextAction: string | null }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      
+      const { data: existing } = await supabase
+        .from('email_metadata')
+        .select('id')
+        .eq('gmail_message_id', emailId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (existing) {
+        const { error } = await supabase
+          .from('email_metadata')
+          .update({ next_action: nextAction })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('email_metadata')
+          .insert({
+            gmail_message_id: emailId,
+            gmail_thread_id: threadId,
+            user_id: user.id,
+            next_action: nextAction,
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-metadata'] });
+      setEditingNextAction(null);
+      setNextActionInput('');
+      toast.success('Next step updated');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update next step: ' + error.message);
     },
   });
 
@@ -1124,6 +1267,24 @@ const EvansGmail = () => {
               </HoverCardContent>
             </HoverCard>
             
+            {/* Untriaged filter */}
+            <button
+              onClick={() => setActiveFolder('untriaged')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                activeFolder === 'untriaged' 
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 font-medium' 
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 dark:hover:text-amber-300'
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <span className="flex-1 text-left">Untriaged</span>
+              {untriagedCount > 0 && (
+                <span className="flex items-center justify-center min-w-5 h-5 px-1.5 text-[10px] font-semibold text-white bg-amber-500 rounded">
+                  {untriagedCount}
+                </span>
+              )}
+            </button>
+            
             {/* Nudges section */}
             <div className="mt-4 pt-3 border-t border-slate-200">
               <div className="flex items-center justify-between px-3 py-1.5 text-sm text-slate-600">
@@ -1293,56 +1454,60 @@ const EvansGmail = () => {
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {emails.map((email) => {
+                {(activeFolder === 'untriaged' ? untriagedEmails : emails).map((email) => {
                   // Check if email is from/to a CRM lead
                   const emailAddress = activeFolder === 'sent' ? email.to : email.from;
                   const leadInfo = findLeadFromEmail(emailAddress);
                   const status = leadInfo ? statusConfig[leadInfo.status] : null;
                   
+                  // Get metadata for this email
+                  const metadata = emailMetadataMap[email.id];
+                  const linkedDeal = metadata?.lead;
+                  const nextAction = metadata?.next_action;
+                  const isUntriaged = !linkedDeal || !nextAction;
+                  
                   return (
                     <div
                       key={email.id}
-                      className={`group flex items-center gap-0 px-3 py-2 cursor-pointer transition-colors ${
+                      className={`group px-3 py-3 cursor-pointer transition-colors ${
                         !email.isRead ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/50'
-                      } ${selectedEmails.has(email.id) ? 'bg-primary/5 dark:bg-primary/10' : ''} hover:bg-slate-50 dark:hover:bg-slate-800`}
+                      } ${selectedEmails.has(email.id) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${
+                        isUntriaged ? 'border-l-2 border-l-amber-400' : ''
+                      } hover:bg-slate-50 dark:hover:bg-slate-800`}
                     >
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Checkbox 
-                          checked={selectedEmails.has(email.id)}
-                          onCheckedChange={() => toggleEmailSelection(email.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="rounded-sm"
-                        />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Toggle star logic here
-                          }}
-                          className="p-1 hover:bg-slate-100 rounded-md transition-colors"
-                        >
-                          <Star className={`w-4 h-4 ${email.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-300 hover:text-slate-400'}`} />
-                        </button>
-                      </div>
-                      
-                      <div 
-                        className="flex-1 flex items-center min-w-0 py-0.5 ml-2"
-                        onClick={() => setSelectedEmail(email)}
-                      >
+                      <div className="flex items-start gap-2">
+                        {/* Checkbox and Star */}
+                        <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                          <Checkbox 
+                            checked={selectedEmails.has(email.id)}
+                            onCheckedChange={() => toggleEmailSelection(email.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded-sm"
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            className="p-1 hover:bg-slate-100 rounded-md transition-colors"
+                          >
+                            <Star className={`w-4 h-4 ${email.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-300 hover:text-slate-400'}`} />
+                          </button>
+                        </div>
+                        
                         {/* Avatar */}
-                        <div className="shrink-0 mr-3">
+                        <div className="shrink-0 pt-0.5">
                           {email.senderPhoto ? (
                             <img 
                               src={email.senderPhoto} 
                               alt="" 
-                              className="w-8 h-8 rounded-full object-cover"
+                              className="w-10 h-10 rounded-full object-cover"
                               onError={(e) => {
-                                // Fallback to initials if image fails to load
                                 e.currentTarget.style.display = 'none';
                                 e.currentTarget.nextElementSibling?.classList.remove('hidden');
                               }}
                             />
                           ) : null}
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
                             email.senderPhoto ? 'hidden' : ''
                           } ${
                             !email.isRead 
@@ -1353,84 +1518,169 @@ const EvansGmail = () => {
                           </div>
                         </div>
                         
-                        {/* Sender with CRM badge */}
-                        <div className={`w-40 shrink-0 flex items-center gap-1.5 pr-2 ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
-                          <span className="truncate text-sm">
-                            {activeFolder === 'sent' ? `To: ${email.to.split('<')[0].trim()}` : extractSenderName(email.from)}
-                          </span>
-                          {leadInfo && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="shrink-0 w-4 h-4 rounded bg-primary/10 flex items-center justify-center">
-                                  <User className="w-2.5 h-2.5 text-primary" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="text-xs rounded-md">
-                                <p className="font-medium">{leadInfo.name}</p>
-                                {leadInfo.company_name && <p className="text-slate-400">{leadInfo.company_name}</p>}
-                                <p className="text-primary mt-1">CRM Lead</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                        
-                        {/* CRM Status Badge */}
-                        {leadInfo && status && (
-                          <div className="shrink-0 mr-2">
-                            <Badge 
-                              variant="secondary" 
-                              className={`text-[10px] px-1.5 py-0 h-4 font-medium rounded ${status.bg} ${status.color} border-0`}
-                            >
-                              {status.label}
-                            </Badge>
+                        {/* 3-Line Content */}
+                        <div className="flex-1 min-w-0 space-y-1" onClick={() => setSelectedEmail(email)}>
+                          {/* Line 1: Sender + Subject + Date */}
+                          <div className="flex items-center gap-2">
+                            <span className={`shrink-0 text-sm ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
+                              {activeFolder === 'sent' ? `To: ${email.to.split('<')[0].trim()}` : extractSenderName(email.from)}
+                            </span>
+                            {leadInfo && (
+                              <span className="shrink-0 w-4 h-4 rounded bg-primary/10 flex items-center justify-center">
+                                <User className="w-2.5 h-2.5 text-primary" />
+                              </span>
+                            )}
+                            {leadInfo && status && (
+                              <Badge 
+                                variant="secondary" 
+                                className={`text-[10px] px-1.5 py-0 h-4 font-medium rounded ${status.bg} ${status.color} border-0`}
+                              >
+                                {status.label}
+                              </Badge>
+                            )}
+                            <span className="text-slate-400 dark:text-slate-500">·</span>
+                            <span className={`flex-1 truncate text-sm ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
+                              {email.subject}
+                            </span>
+                            <span className={`shrink-0 text-xs whitespace-nowrap ${!email.isRead ? 'font-semibold text-slate-900' : 'text-slate-400'}`}>
+                              {formatEmailDate(email.date)}
+                            </span>
                           </div>
-                        )}
-                        
-                        {/* Subject and snippet */}
-                        <div className="flex-1 flex items-center min-w-0 pr-2">
-                          <span className={`shrink-0 text-sm ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
-                            {email.subject}
-                          </span>
-                          <span className="text-sm text-slate-400 dark:text-slate-500 truncate ml-1.5">
-                            — {email.snippet}
-                          </span>
-                        </div>
-                        
-                        {/* Last emailed button for CRM leads */}
-                        {leadInfo && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button 
-                                className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 mr-2 text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors"
+                          
+                          {/* Line 2: Deal */}
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <Briefcase className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span className="text-slate-500">Deal:</span>
+                            {linkedDeal ? (
+                              <Link
+                                to={`/team/evan/pipeline?leadId=${linkedDeal.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-primary hover:underline font-medium truncate"
+                              >
+                                {linkedDeal.company_name || linkedDeal.name}
+                              </Link>
+                            ) : (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 font-medium"
+                                  >
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Untriaged
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-2" align="start">
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium text-slate-500">Link to a deal</p>
+                                    <ScrollArea className="max-h-48">
+                                      {allCrmLeads.slice(0, 15).map((lead) => (
+                                        <button
+                                          key={lead.id}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: lead.id });
+                                          }}
+                                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 rounded flex items-center gap-2"
+                                        >
+                                          <span className="truncate">{lead.company_name || lead.name}</span>
+                                        </button>
+                                      ))}
+                                    </ScrollArea>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                            {linkedDeal && (
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: null });
                                 }}
+                                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-200 rounded transition-opacity"
                               >
-                                <Clock className="w-2.5 h-2.5" />
-                                {formatLastEmailed(leadInfo.lastEmailedAt)}
+                                <X className="w-3 h-3 text-slate-400" />
                               </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs rounded-md">
-                              Last email: {leadInfo.lastEmailedAt ? format(new Date(leadInfo.lastEmailedAt), 'MMM d, yyyy h:mm a') : 'Never'}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        
-                        {/* Attachments */}
-                        {email.attachments && email.attachments.length > 0 && (
-                          <div className="flex items-center gap-1 shrink-0 mr-2">
-                            {email.attachments.slice(0, 2).map((att, idx) => (
-                              <span key={idx} className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-slate-100 text-slate-500 rounded font-medium">
-                                {att.type === 'pdf' && <span className="text-red-500">📄</span>}
-                                {att.name.length > 12 ? att.name.substring(0, 10) + '...' : att.name}
-                              </span>
-                            ))}
+                            )}
                           </div>
-                        )}
-                        
-                        {/* Date */}
-                        <div className={`shrink-0 text-xs whitespace-nowrap ${!email.isRead ? 'font-semibold text-slate-900' : 'text-slate-400'}`}>
-                          {formatEmailDate(email.date)}
+                          
+                          {/* Line 3: Next Step */}
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span className="text-slate-500">Next step:</span>
+                            {editingNextAction === email.id ? (
+                              <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+                                <Input
+                                  value={nextActionInput}
+                                  onChange={(e) => setNextActionInput(e.target.value)}
+                                  placeholder="e.g., Request PFS and tax returns"
+                                  className="h-6 text-xs flex-1"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: nextActionInput || null });
+                                    } else if (e.key === 'Escape') {
+                                      setEditingNextAction(null);
+                                      setNextActionInput('');
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6"
+                                  onClick={() => updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: nextActionInput || null })}
+                                >
+                                  <Check className="w-3 h-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6"
+                                  onClick={() => {
+                                    setEditingNextAction(null);
+                                    setNextActionInput('');
+                                  }}
+                                >
+                                  <X className="w-3 h-3 text-slate-400" />
+                                </Button>
+                              </div>
+                            ) : nextAction ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingNextAction(email.id);
+                                  setNextActionInput(nextAction);
+                                }}
+                                className="text-primary font-semibold hover:underline truncate"
+                              >
+                                {nextAction}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingNextAction(email.id);
+                                  setNextActionInput('');
+                                }}
+                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 font-medium"
+                              >
+                                <AlertTriangle className="w-3 h-3" />
+                                Not defined
+                              </button>
+                            )}
+                            {nextAction && editingNextAction !== email.id && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: null });
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-200 rounded transition-opacity"
+                              >
+                                <X className="w-3 h-3 text-slate-400" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

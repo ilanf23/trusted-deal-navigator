@@ -292,6 +292,47 @@ export type Database = {
         }
         Relationships: []
       }
+      email_metadata: {
+        Row: {
+          created_at: string
+          gmail_message_id: string
+          gmail_thread_id: string | null
+          id: string
+          lead_id: string | null
+          next_action: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          gmail_message_id: string
+          gmail_thread_id?: string | null
+          id?: string
+          lead_id?: string | null
+          next_action?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          gmail_message_id?: string
+          gmail_thread_id?: string | null
+          id?: string
+          lead_id?: string | null
+          next_action?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_metadata_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evan_appointments: {
         Row: {
           appointment_type: string | null
