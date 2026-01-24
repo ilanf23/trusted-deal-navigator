@@ -11,6 +11,12 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 
+// Import avatar images
+import robertMartinezAvatar from '@/assets/avatars/robert-martinez.jpg';
+import sarahRichardsonAvatar from '@/assets/avatars/sarah-richardson.jpg';
+import michaelChenAvatar from '@/assets/avatars/michael-chen.jpg';
+import davidKimAvatar from '@/assets/avatars/david-kim.jpg';
+
 interface Email {
   id: string;
   threadId: string;
@@ -36,6 +42,7 @@ const mockExternalEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     snippet: 'Hi Evan, Just following up on our conversation about the $2.5M acquisition loan. We have completed the due diligence...',
     isRead: false,
+    senderPhoto: robertMartinezAvatar,
   },
   {
     id: 'mock-2',
@@ -46,6 +53,7 @@ const mockExternalEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
     snippet: 'Please find attached the property appraisal documents for the Meridian Plaza project. Let me know if you need anything else.',
     isRead: true,
+    senderPhoto: sarahRichardsonAvatar,
   },
   {
     id: 'mock-3',
@@ -56,6 +64,7 @@ const mockExternalEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
     snippet: 'Evan, I need your input on the term sheet before our meeting tomorrow. The interest rate seems higher than discussed...',
     isRead: false,
+    senderPhoto: michaelChenAvatar,
   },
   {
     id: 'mock-4',
@@ -66,6 +75,7 @@ const mockExternalEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     snippet: 'Looking to expand Seoul Food Group with 3 new locations in the downtown area. Would love to discuss financing options...',
     isRead: true,
+    senderPhoto: davidKimAvatar,
   },
   {
     id: 'mock-5',
