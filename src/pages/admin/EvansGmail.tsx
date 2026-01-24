@@ -4,11 +4,12 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 
 interface Email {
   id: string;
@@ -22,6 +23,8 @@ interface Email {
   senderPhoto?: string | null;
 }
 
+type FilterType = 'inbox' | 'external' | 'internal';
+
 // Mock external emails using CRM lead email addresses
 const mockExternalEmails: Email[] = [
   {
@@ -30,7 +33,7 @@ const mockExternalEmails: Email[] = [
     subject: 'RE: Loan Application Status Update',
     from: 'Robert Martinez <robert.martinez@capitalventures.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
+    date: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     snippet: 'Hi Evan, Just following up on our conversation about the $2.5M acquisition loan. We have completed the due diligence...',
     isRead: false,
   },
@@ -40,7 +43,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Documents for Property Appraisal',
     from: 'Sarah Richardson <sarah.r@meridiangroup.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+    date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
     snippet: 'Please find attached the property appraisal documents for the Meridian Plaza project. Let me know if you need anything else.',
     isRead: true,
   },
@@ -50,7 +53,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Urgent: Term Sheet Review Required',
     from: 'Michael Chen <mchen@techvest.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4 hours ago
+    date: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
     snippet: 'Evan, I need your input on the term sheet before our meeting tomorrow. The interest rate seems higher than discussed...',
     isRead: false,
   },
@@ -60,7 +63,7 @@ const mockExternalEmails: Email[] = [
     subject: 'New Restaurant Location Financing',
     from: 'David Kim <dkim@seoulfoodgroup.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
+    date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     snippet: 'Looking to expand Seoul Food Group with 3 new locations in the downtown area. Would love to discuss financing options...',
     isRead: true,
   },
@@ -70,7 +73,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Healthcare Facility Refinance Question',
     from: 'Lisa Wong <lisa@pacificmedgroup.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(), // 26 hours ago
+    date: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
     snippet: 'Our current loan matures in 6 months and we are exploring refinance options. The facility is valued at $8.2M...',
     isRead: true,
   },
@@ -80,7 +83,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Manufacturing Equipment Loan Application',
     from: 'Thomas Wright <twright@wrightmanufacturing.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
+    date: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
     snippet: 'Following up on our call about equipment financing. We need approximately $1.8M for new CNC machines and automation...',
     isRead: false,
   },
@@ -90,7 +93,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Senior Living Facility Acquisition',
     from: 'Rachel Adams <rachel@sunriseseniorliving.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(), // 52 hours ago
+    date: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(),
     snippet: 'Great news - the seller accepted our offer! Now we need to move quickly on the financing. The purchase price is $12.5M...',
     isRead: true,
   },
@@ -100,7 +103,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Boutique Hotel Expansion Plans',
     from: 'Sophia Laurent <sophia@luxestays.co>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), // 3 days ago
+    date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
     snippet: 'We are looking to add 40 more rooms to our property in Napa. I have attached our revenue projections and construction estimates...',
     isRead: true,
   },
@@ -110,7 +113,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Commercial Property Portfolio Review',
     from: 'Andrew Foster <afoster@greenleafprops.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(), // 4 days ago
+    date: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
     snippet: 'Can we schedule a call to review our portfolio? We have 5 properties that may need refinancing before year end...',
     isRead: true,
   },
@@ -120,13 +123,11 @@ const mockExternalEmails: Email[] = [
     subject: 'Healthcare Expansion Financing Inquiry',
     from: 'Emily Wang <ewang@sunrisehealthcare.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 120).toISOString(), // 5 days ago
+    date: new Date(Date.now() - 1000 * 60 * 60 * 120).toISOString(),
     snippet: 'Sunrise Healthcare is planning to open a new urgent care center. We are looking at properties in the $3-4M range...',
     isRead: true,
   },
 ];
-
-type FilterType = 'inbox' | 'external' | 'internal';
 
 const extractSenderName = (from: string) => {
   const match = from.match(/^([^<]+)/);
@@ -146,6 +147,14 @@ const EvansGmail = () => {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [showEmailAddress, setShowEmailAddress] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('inbox');
+  
+  // Compose dialog state
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [composeSending, setComposeSending] = useState(false);
+  const [generatingDraft, setGeneratingDraft] = useState(false);
 
   // Check Gmail connection
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
@@ -162,22 +171,41 @@ const EvansGmail = () => {
     enabled: !!user?.id,
   });
 
+  // Fetch all leads for matching
+  const { data: allLeads = [] } = useQuery({
+    queryKey: ['gmail-all-leads'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('leads')
+        .select(`
+          *,
+          lead_emails(email),
+          lead_phones(phone_number, phone_type),
+          lead_responses(*),
+          pipeline_leads(
+            stage_id,
+            pipeline_id,
+            pipeline_stages(name, color),
+            pipelines(name)
+          )
+        `);
+      return data || [];
+    },
+  });
+
   // Fetch CRM lead emails for classification
   const { data: crmEmails = [] } = useQuery({
     queryKey: ['crm-lead-emails'],
     queryFn: async () => {
-      // Get emails from leads table
       const { data: leads } = await supabase
         .from('leads')
         .select('email')
         .not('email', 'is', null);
       
-      // Get emails from lead_emails table
       const { data: leadEmails } = await supabase
         .from('lead_emails')
         .select('email');
       
-      // Get emails from lead_contacts table
       const { data: leadContacts } = await supabase
         .from('lead_contacts')
         .select('email')
@@ -236,24 +264,150 @@ const EvansGmail = () => {
       const senderEmail = extractEmailAddress(email.from);
       const toEmail = extractEmailAddress(email.to || '');
       
-      // Check if sender or recipient is in CRM (case-insensitive exact match)
       const isExternal = crmEmails.some(crmEmail => {
         const crmLower = crmEmail.toLowerCase().trim();
         return senderEmail === crmLower || toEmail === crmLower;
       });
       
-      // External = only emails from/to CRM leads
       if (activeFilter === 'external') return isExternal;
-      // Internal = only emails NOT from CRM leads  
       if (activeFilter === 'internal') return !isExternal;
       return true;
     });
   }, [allEmails, crmEmails, activeFilter]);
 
-  // Debug: log CRM emails and filter results
-  console.log('CRM Emails:', crmEmails);
-  console.log('All emails count:', allEmails.length);
-  console.log('Filtered emails count:', filteredEmails.length, 'for filter:', activeFilter);
+  // Find matching lead for an email
+  const findLeadForEmail = (email: Email) => {
+    const senderEmail = extractEmailAddress(email.from);
+    return allLeads.find(lead => {
+      if (lead.email?.toLowerCase() === senderEmail) return true;
+      if (lead.lead_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
+      return false;
+    });
+  };
+
+  // Check if email is external (from CRM lead)
+  const isExternalEmail = (email: Email) => {
+    const senderEmail = extractEmailAddress(email.from);
+    return crmEmails.some(crmEmail => senderEmail === crmEmail.toLowerCase());
+  };
+
+  // Generate AI draft for moving deal forward
+  const handleMoveForward = async (email: Email) => {
+    const lead = findLeadForEmail(email);
+    if (!lead) {
+      toast.error('Could not find matching lead');
+      return;
+    }
+
+    setGeneratingDraft(true);
+    
+    try {
+      // Get pipeline stage info
+      const pipelineLead = lead.pipeline_leads?.[0];
+      const stageName = pipelineLead?.pipeline_stages?.name || 'Unknown';
+      const pipelineName = pipelineLead?.pipelines?.name || 'Unknown';
+      
+      // Get lead response data (loan details)
+      const response = lead.lead_responses?.[0];
+      
+      // Build context for AI
+      const leadContext = {
+        name: lead.name,
+        company: lead.company_name,
+        email: lead.email,
+        phone: lead.phone,
+        stage: stageName,
+        pipeline: pipelineName,
+        loanAmount: response?.loan_amount,
+        loanType: response?.loan_type,
+        fundingPurpose: response?.funding_purpose,
+        fundingTimeline: response?.funding_timeline,
+        notes: lead.notes,
+        lastEmailSubject: email.subject,
+        lastEmailSnippet: email.snippet,
+      };
+
+      // Call AI to generate email
+      const { data: { session } } = await supabase.auth.getSession();
+      const aiResponse = await fetch(
+        'https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/generate-lead-email',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            leadContext,
+            emailType: 'move_forward',
+            currentStage: stageName,
+          }),
+        }
+      );
+
+      if (!aiResponse.ok) {
+        throw new Error('Failed to generate email');
+      }
+
+      const { subject, body } = await aiResponse.json();
+      
+      // Open compose dialog with generated content
+      setComposeTo(extractEmailAddress(email.from));
+      setComposeSubject(subject || `Re: ${email.subject}`);
+      setComposeBody(body || '');
+      setComposeOpen(true);
+      
+    } catch (error: any) {
+      console.error('Error generating email:', error);
+      // Fallback to basic template
+      const lead = findLeadForEmail(email);
+      const firstName = lead?.name?.split(' ')[0] || extractSenderName(email.from).split(' ')[0];
+      
+      setComposeTo(extractEmailAddress(email.from));
+      setComposeSubject(`Re: ${email.subject}`);
+      setComposeBody(`Hi ${firstName},\n\nThank you for your message. I wanted to follow up and discuss the next steps for moving your loan application forward.\n\nPlease let me know a good time to connect this week.\n\nBest regards,\nEvan`);
+      setComposeOpen(true);
+    } finally {
+      setGeneratingDraft(false);
+    }
+  };
+
+  // Send email
+  const handleSendEmail = async (attachments: Attachment[]) => {
+    setComposeSending(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        'https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: composeTo,
+            subject: composeSubject,
+            body: composeBody,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to send email');
+      
+      toast.success('Email sent successfully');
+      setComposeOpen(false);
+      setComposeTo('');
+      setComposeSubject('');
+      setComposeBody('');
+    } catch (error: any) {
+      toast.error('Failed to send: ' + error.message);
+    } finally {
+      setComposeSending(false);
+    }
+  };
 
   // Connect Gmail
   const handleConnectGmail = async () => {
@@ -321,6 +475,7 @@ const EvansGmail = () => {
   }
 
   const selectedEmail = filteredEmails.find(e => e.id === selectedEmailId);
+  const selectedLead = selectedEmail ? findLeadForEmail(selectedEmail) : null;
 
   const filterLabels: Record<FilterType, string> = {
     inbox: 'Inbox',
@@ -367,10 +522,24 @@ const EvansGmail = () => {
           {selectedEmailId && selectedEmail ? (
             // Full Email View
             <div className="h-full flex flex-col">
-              <div className="p-3 border-b flex items-center gap-2">
+              <div className="p-3 border-b flex items-center justify-between">
                 <Button variant="ghost" size="sm" onClick={() => setSelectedEmailId(null)}>
                   ← Back
                 </Button>
+                {isExternalEmail(selectedEmail) && (
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleMoveForward(selectedEmail)}
+                    disabled={generatingDraft}
+                  >
+                    {generatingDraft ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <ArrowRight className="w-4 h-4 mr-2" />
+                    )}
+                    Move Forward
+                  </Button>
+                )}
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-6">
@@ -384,7 +553,7 @@ const EvansGmail = () => {
                         {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center gap-1.5">
                         <p className="font-medium">{extractSenderName(selectedEmail.from)}</p>
                         <ChevronDown 
@@ -399,6 +568,17 @@ const EvansGmail = () => {
                         {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
                       </p>
                     </div>
+                    {selectedLead && (
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Lead</p>
+                        <p className="text-sm font-medium">{selectedLead.name}</p>
+                        {selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name && (
+                          <p className="text-xs text-muted-foreground">
+                            {selectedLead.pipeline_leads[0].pipeline_stages.name}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <p className="text-sm whitespace-pre-wrap">{selectedEmail.snippet}</p>
                 </div>
@@ -458,6 +638,20 @@ const EvansGmail = () => {
           )}
         </div>
       </div>
+
+      {/* Compose Dialog */}
+      <GmailComposeDialog
+        isOpen={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        to={composeTo}
+        onToChange={setComposeTo}
+        subject={composeSubject}
+        onSubjectChange={setComposeSubject}
+        body={composeBody}
+        onBodyChange={setComposeBody}
+        onSend={handleSendEmail}
+        sending={composeSending}
+      />
     </AdminLayout>
   );
 };
