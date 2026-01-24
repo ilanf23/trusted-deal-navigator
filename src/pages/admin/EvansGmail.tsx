@@ -611,17 +611,6 @@ const EvansGmail = () => {
                             <span className={`truncate flex-1 ${!email.isRead ? 'font-semibold' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
                               {extractSenderName(email.from)}
                             </span>
-                            {stageName && (
-                              <span 
-                                className="text-xs px-2 py-0.5 rounded-full font-medium"
-                                style={{ 
-                                  backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
-                                  color: stageColor || 'hsl(var(--muted-foreground))'
-                                }}
-                              >
-                                {stageName}
-                              </span>
-                            )}
                             <span className="text-xs text-muted-foreground">
                               {format(new Date(email.date), 'MMM d')}
                             </span>
@@ -633,7 +622,7 @@ const EvansGmail = () => {
                             {email.snippet}
                           </p>
                           {isExternal && (
-                            <div className="mt-2">
+                            <div className="mt-2 flex items-center gap-3">
                               <Button 
                                 size="sm"
                                 className="bg-[#0066FF] hover:bg-[#0052CC] text-white"
@@ -650,6 +639,17 @@ const EvansGmail = () => {
                                 )}
                                 Move Forward
                               </Button>
+                              {stageName && (
+                                <span 
+                                  className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                  style={{ 
+                                    backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
+                                    color: stageColor || 'hsl(var(--muted-foreground))'
+                                  }}
+                                >
+                                  {stageName}
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
