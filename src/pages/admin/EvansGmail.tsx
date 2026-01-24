@@ -589,6 +589,10 @@ const EvansGmail = () => {
                   <div>
                     {filteredEmails.map((email) => {
                       const isExternal = isExternalEmail(email);
+                      const lead = isExternal ? findLeadForEmail(email) : null;
+                      const stageName = lead?.pipeline_leads?.[0]?.pipeline_stages?.name;
+                      const stageColor = lead?.pipeline_leads?.[0]?.pipeline_stages?.color;
+                      
                       return (
                         <div
                           key={email.id}
@@ -607,6 +611,17 @@ const EvansGmail = () => {
                             <span className={`truncate flex-1 ${!email.isRead ? 'font-semibold' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
                               {extractSenderName(email.from)}
                             </span>
+                            {isExternal && stageName && (
+                              <span 
+                                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                style={{ 
+                                  backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
+                                  color: stageColor || 'hsl(var(--muted-foreground))'
+                                }}
+                              >
+                                {stageName}
+                              </span>
+                            )}
                             <span className="text-xs text-muted-foreground">
                               {format(new Date(email.date), 'MMM d')}
                             </span>
