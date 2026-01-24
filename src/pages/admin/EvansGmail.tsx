@@ -620,9 +620,8 @@ const EvansGmail = () => {
                           {isExternal && (
                             <div className="mt-2">
                               <Button 
-                                variant="ghost"
                                 size="sm"
-                                className="text-muted-foreground hover:text-foreground h-7 px-2"
+                                className="bg-[#0066FF] hover:bg-[#0052CC] text-white"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleMoveForward(email);
