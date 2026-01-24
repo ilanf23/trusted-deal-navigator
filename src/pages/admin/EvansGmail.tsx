@@ -584,8 +584,306 @@ const EvansGmail = () => {
     enabled: !!gmailConnection,
   });
 
-  const emails = emailsData?.emails || [];
-  const currentFolderCount = emailsData?.totalCount || 0;
+  const rawEmails = emailsData?.emails || [];
+
+  // Mock external emails from CRM leads for testing
+  const mockExternalEmails: Email[] = useMemo(() => [
+    {
+      id: 'mock-1',
+      threadId: 'mock-thread-1',
+      subject: 'RE: Term Sheet Discussion - $2.5M Acquisition Financing',
+      from: 'Robert Martinez <robert.martinez@capitalventures.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+      snippet: 'Evan, I reviewed the term sheet from First National. The rate spread seems high given our credit profile...',
+      body: `<div style="font-family: Arial, sans-serif;">
+        <p>Evan,</p>
+        <p>I reviewed the term sheet from First National. The rate spread seems high given our credit profile and the collateral we're putting up. A few specific concerns:</p>
+        <ol>
+          <li><strong>Interest Rate:</strong> They're quoting Prime + 2.75%, but we were expecting something closer to Prime + 2.0% based on our initial conversations. Is there room to negotiate?</li>
+          <li><strong>Prepayment Penalty:</strong> 3% in year 1, 2% in year 2, 1% in year 3. This is steeper than what Pacific Commerce offered. Can we get this reduced?</li>
+          <li><strong>Personal Guarantee:</strong> They want a full PG from both myself and my wife. We were hoping for a limited guarantee capped at 25% of the loan amount.</li>
+        </ol>
+        <p>Also, I noticed they're requiring quarterly financial reporting. Is that standard? Our current lender only requires annual statements.</p>
+        <p>Can we schedule a call tomorrow to discuss strategy before we respond? I'm available between 2-5pm EST.</p>
+        <p>Best regards,<br/>Robert Martinez<br/>Managing Partner, Capital Ventures LLC<br/>(305) 555-8923</p>
+      </div>`,
+      isRead: false,
+      isStarred: true,
+      labels: ['INBOX', 'STARRED'],
+      attachments: [{ name: 'First_National_Term_Sheet_v2.pdf', type: 'application/pdf' }],
+      senderPhoto: null,
+    },
+    {
+      id: 'mock-2',
+      threadId: 'mock-thread-2',
+      subject: 'Urgent: Appraisal came in $400K below purchase price',
+      from: 'Sarah Rodriguez <sarah.r@meridiangroup.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
+      snippet: 'We have a major issue. The appraisal just came back at $3.1M when we were under contract for $3.5M...',
+      body: `<div style="font-family: Arial, sans-serif;">
+        <p>Evan,</p>
+        <p>We have a major issue that I need your help navigating.</p>
+        <p>The appraisal just came back at <strong>$3.1M</strong> when we were under contract for <strong>$3.5M</strong>. That's a $400K gap that's going to blow up our financing structure.</p>
+        <p>Here's what I'm thinking:</p>
+        <ul>
+          <li>Can we challenge the appraisal? The comp they used at 455 Industrial Parkway sold 8 months ago and doesn't account for recent market appreciation</li>
+          <li>If the appraisal stands, we'd need to bring an additional $320K to closing (assuming 80% LTV). We don't have that kind of liquidity right now</li>
+          <li>Is there any chance the lender would go to 85% LTV given our track record with them?</li>
+        </ul>
+        <p>The seller is already getting antsy - we've extended due diligence twice. If we can't close by Feb 15th, they're threatening to go with the backup offer.</p>
+        <p>I've attached the appraisal report. Pages 12-15 have the comps analysis that I think is flawed.</p>
+        <p>Please call me ASAP. This is my top priority right now.</p>
+        <p>Sarah Rodriguez<br/>CEO, Meridian Development Group<br/>Direct: (212) 555-7734</p>
+      </div>`,
+      isRead: false,
+      isStarred: false,
+      labels: ['INBOX', 'IMPORTANT'],
+      attachments: [
+        { name: 'Appraisal_Report_3500_Commerce_Dr.pdf', type: 'application/pdf' },
+        { name: 'Comparable_Sales_Analysis.xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+      ],
+      senderPhoto: null,
+    },
+    {
+      id: 'mock-3',
+      threadId: 'mock-thread-3',
+      subject: 'RE: Bridge Loan Docs - Legal Review Complete',
+      from: 'Lisa Chen-Walters <lisa@pacificmedgroup.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+      snippet: 'Our attorney completed review of the bridge loan documents. A few redlines attached, but overall we are ready to proceed...',
+      body: `<div style="font-family: Arial, sans-serif;">
+        <p>Hi Evan,</p>
+        <p>Our attorney (Jennifer Walsh at Morrison & Reed) completed her review of the bridge loan documents. I'm pleased to say we're in good shape overall.</p>
+        <p><strong>Items we're accepting as-is:</strong></p>
+        <ul>
+          <li>Interest rate and payment terms</li>
+          <li>Collateral requirements</li>
+          <li>Financial covenants (debt service coverage ratio of 1.25x)</li>
+          <li>Insurance requirements</li>
+        </ul>
+        <p><strong>Items we need to negotiate (see redlines in attachment):</strong></p>
+        <ol>
+          <li><strong>Section 4.3 - Default provisions:</strong> The 10-day cure period is too short. We need 30 days for monetary defaults and 60 days for non-monetary defaults</li>
+          <li><strong>Section 7.1 - Change of control:</strong> The current language would trigger a default if we bring in a minority investor. We need an exception for equity investments under 25%</li>
+          <li><strong>Exhibit B - Personal guarantee:</strong> Needs to exclude my residence as we discussed</li>
+        </ol>
+        <p>If the lender accepts these three changes, we can sign immediately. Our board meets next Thursday and I'd love to have this closed by then so we can announce the new facility.</p>
+        <p>Let me know when you hear back from them!</p>
+        <p>Best,<br/>Lisa Chen-Walters<br/>CFO, Pacific Medical Group<br/>lisa@pacificmedgroup.com</p>
+      </div>`,
+      isRead: true,
+      isStarred: true,
+      labels: ['INBOX', 'STARRED'],
+      attachments: [
+        { name: 'Bridge_Loan_Agreement_REDLINED.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+        { name: 'Attorney_Comments_Memo.pdf', type: 'application/pdf' }
+      ],
+      senderPhoto: null,
+    },
+    {
+      id: 'mock-4',
+      threadId: 'mock-thread-4',
+      subject: 'Updated financials + 2024 projections for underwriting',
+      from: 'Emily Wang <ewang@sunrisehealthcare.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000 - 3 * 60 * 60 * 1000).toISOString(), // 1 day 3 hours ago
+      snippet: 'As requested, I am sending over our year-end financials and 2024 projections. Revenue grew 34% YoY...',
+      body: `<div style="font-family: Arial, sans-serif;">
+        <p>Hi Evan,</p>
+        <p>As requested, I'm sending over our year-end financials and 2024 projections for the underwriting team.</p>
+        <p><strong>2023 Highlights:</strong></p>
+        <table border="1" cellpadding="8" style="border-collapse: collapse; margin: 15px 0;">
+          <tr><td>Revenue</td><td>$12.4M</td><td style="color: green;">↑ 34% YoY</td></tr>
+          <tr><td>EBITDA</td><td>$2.1M</td><td style="color: green;">↑ 28% YoY</td></tr>
+          <tr><td>Net Income</td><td>$1.4M</td><td style="color: green;">↑ 45% YoY</td></tr>
+          <tr><td>Current Debt Service Coverage</td><td colspan="2">2.8x</td></tr>
+        </table>
+        <p>The 2024 projections assume we complete the facility expansion by Q2, which is contingent on this financing. We're projecting:</p>
+        <ul>
+          <li>Revenue of $18.5M (49% growth)</li>
+          <li>EBITDA of $3.2M (52% growth)</li>
+          <li>Pro forma DSCR of 2.1x (accounting for new debt service)</li>
+        </ul>
+        <p>I've also included our AR aging report since I know that was a question last time. Our average collection period improved from 45 days to 32 days after we switched billing systems in July.</p>
+        <p>Let me know if the underwriters need any additional documentation. Happy to get on a call if questions come up.</p>
+        <p>Thanks,<br/>Emily Wang<br/>Director of Finance, Sunrise Healthcare Partners<br/>(617) 555-2890</p>
+      </div>`,
+      isRead: true,
+      isStarred: false,
+      labels: ['INBOX'],
+      attachments: [
+        { name: '2023_Audited_Financials.pdf', type: 'application/pdf' },
+        { name: '2024_Projections_Model.xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+        { name: 'AR_Aging_Report_Dec2023.pdf', type: 'application/pdf' }
+      ],
+      senderPhoto: null,
+    },
+    {
+      id: 'mock-5',
+      threadId: 'mock-thread-5',
+      subject: 'Question about SBA 504 vs conventional for equipment purchase',
+      from: 'Thomas Wright <twright@wrightmanufacturing.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+      snippet: 'I have been researching financing options for our new CNC machining center. Comparing SBA 504 to conventional...',
+      body: `<div style="font-family: Arial, sans-serif;">
+        <p>Evan,</p>
+        <p>I've been doing some research on financing options for our new CNC machining center ($1.8M total cost) and I'm trying to understand the tradeoffs.</p>
+        <p><strong>SBA 504 (as I understand it):</strong></p>
+        <ul>
+          <li>10% down payment ($180K)</li>
+          <li>Fixed rate on the CDC portion</li>
+          <li>20-year term</li>
+          <li>BUT: Takes 60-90 days to close, lots of paperwork</li>
+        </ul>
+        <p><strong>Conventional equipment loan:</strong></p>
+        <ul>
+          <li>20-25% down payment ($360-450K)</li>
+          <li>Variable rate</li>
+          <li>7-year term typical</li>
+          <li>Can close in 30 days</li>
+        </ul>
+        <p>Here's my dilemma: Our current equipment is failing and we're losing production capacity every week. The machine we want has a 16-week lead time from order, so even if we could close quickly, we wouldn't get the equipment until May.</p>
+        <p>Questions:</p>
+        <ol>
+          <li>Is SBA 504 actually available for equipment-only purchases, or does it need real estate too?</li>
+          <li>Can we use the equipment itself as collateral to reduce the down payment on conventional?</li>
+          <li>Is there a hybrid approach - maybe bridge financing until the 504 closes?</li>
+        </ol>
+        <p>I'd love to talk through the options when you have time. This is a significant investment for us and I want to make sure we structure it right.</p>
+        <p>Thanks,<br/>Thomas Wright<br/>President, Wright Manufacturing Co.<br/>twright@wrightmanufacturing.com</p>
+      </div>`,
+      isRead: false,
+      isStarred: false,
+      labels: ['INBOX'],
+      attachments: [
+        { name: 'CNC_Machine_Quote_Mazak.pdf', type: 'application/pdf' }
+      ],
+      senderPhoto: null,
+    },
+    {
+      id: 'mock-6',
+      threadId: 'mock-thread-6',
+      subject: 'RE: Construction draw schedule - lender wants changes',
+      from: 'David Kim <dkim@seoulfoodgroup.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 6 * 60 * 60 * 1000).toISOString(), // 2 days 6 hours ago
+      snippet: 'The lender\'s proposed draw schedule doesn\'t align with our contractor\'s billing cycles. This could create cash flow issues...',
+      body: `<div style="font-family: Arial, sans-serif;">
+        <p>Evan,</p>
+        <p>We received the lender's proposed draw schedule and there's a significant issue we need to address.</p>
+        <p><strong>The Problem:</strong><br/>The lender wants to do monthly draws with a 15-day inspection period before each disbursement. Our GC (Pacific Builders) bills every two weeks and expects payment within 10 days. This mismatch means we'd be floating 3-4 weeks of construction costs out of pocket - potentially $200-400K at a time.</p>
+        <p><strong>What we need:</strong></p>
+        <ul>
+          <li>Bi-weekly draw submissions (to match our GC billing)</li>
+          <li>5-day inspection period (industry standard for projects under $5M)</li>
+          <li>Or: An operating line we can draw from while waiting for construction draws</li>
+        </ul>
+        <p>I've been through two ground-up construction projects before and neither lender required 15-day inspection periods. Where is this coming from?</p>
+        <p>Also, minor issue but the draw schedule references "Site Work" as Draw #2 but we already completed grading in December. Can we revise to reflect work completed to date?</p>
+        <p>Please push back on this. We're already under pressure from our franchise agreement to open by September 1st.</p>
+        <p>David Kim<br/>Owner, Seoul Food Group Inc.<br/>(714) 555-8847</p>
+      </div>`,
+      isRead: true,
+      isStarred: false,
+      labels: ['INBOX'],
+      attachments: [
+        { name: 'Proposed_Draw_Schedule.pdf', type: 'application/pdf' },
+        { name: 'GC_Payment_Terms.pdf', type: 'application/pdf' }
+      ],
+      senderPhoto: null,
+    },
+    {
+      id: 'mock-7',
+      threadId: 'mock-thread-7',
+      subject: 'Partnership dissolution affecting our loan application',
+      from: 'Amanda Foster <afoster@greenleafprops.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
+      snippet: 'I need to inform you of a development that may impact our refinance application. My business partner Marcus...',
+      body: `<div style="font-family: Arial, sans-serif;">
+        <p>Evan,</p>
+        <p>I need to inform you of a development that may impact our refinance application.</p>
+        <p>My business partner, Marcus Thompson (45% owner), has decided to exit the business. We're working through the buyout now, which means:</p>
+        <ol>
+          <li><strong>Ownership structure will change:</strong> I'll go from 55% to 100% owner once we close the buyout (targeting March 15)</li>
+          <li><strong>Buyout financing:</strong> Part of why we need this refi - using cash-out to fund $600K of the buyout price</li>
+          <li><strong>Guarantor change:</strong> Marcus will be removed as guarantor; I'll be the sole guarantor going forward</li>
+        </ol>
+        <p>The good news is this simplifies things long-term. The complication is the timing - we're in the middle of the buyout negotiation while also trying to close this refinance.</p>
+        <p><strong>Documents I can provide:</strong></p>
+        <ul>
+          <li>Draft Partnership Dissolution Agreement (still being negotiated)</li>
+          <li>Proposed Operating Agreement for single-member LLC</li>
+          <li>My personal financial statement (updated as of last week)</li>
+          <li>Buyout funding sources breakdown</li>
+        </ul>
+        <p>Will this derail our timeline? I know we were hoping to close by end of February. Should we pause the application until the buyout is finalized, or can we proceed with some conditions?</p>
+        <p>Please advise.</p>
+        <p>Amanda Foster<br/>Managing Partner, Greenleaf Properties<br/>(503) 555-2234</p>
+      </div>`,
+      isRead: false,
+      isStarred: true,
+      labels: ['INBOX', 'STARRED', 'IMPORTANT'],
+      attachments: [],
+      senderPhoto: null,
+    },
+    {
+      id: 'mock-8',
+      threadId: 'mock-thread-8',
+      subject: 'Closing scheduled for Friday - final checklist',
+      from: 'James Patterson <jpatterson@pattersonllc.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+      snippet: 'Great news - title just confirmed we are cleared to close on Friday at 2pm EST. Here is my understanding of what still needs to happen...',
+      body: `<div style="font-family: Arial, sans-serif;">
+        <p>Evan,</p>
+        <p>Great news - title just confirmed we're cleared to close on Friday at 2pm EST at their office in Midtown.</p>
+        <p>Here's my understanding of what still needs to happen before then:</p>
+        <p><strong>✅ Completed:</strong></p>
+        <ul>
+          <li>Final loan docs signed and returned to lender</li>
+          <li>Insurance binder with lender as loss payee</li>
+          <li>Wire instructions received from title</li>
+          <li>Payoff letter from existing lender</li>
+        </ul>
+        <p><strong>⏳ Pending (on lender's side):</strong></p>
+        <ul>
+          <li>Final funding approval from credit committee (expected tomorrow)</li>
+          <li>Wire of loan proceeds to title (typically same-day as closing)</li>
+        </ul>
+        <p><strong>⏳ Pending (on my side):</strong></p>
+        <ul>
+          <li>Down payment wire ($425,000) - sending tomorrow morning</li>
+          <li>Closing cost wire (~$23,000 estimated) - title sending final figure today</li>
+        </ul>
+        <p>Is there anything I'm missing? I want to make sure we have zero surprises on Friday.</p>
+        <p>Also - should I plan to bring anything to closing besides ID? I assume all the legal docs are handled electronically?</p>
+        <p>Thanks for shepherding this deal through. It's been a long road but we're finally at the finish line!</p>
+        <p>James Patterson<br/>Patterson Holdings LLC<br/>(404) 555-9012</p>
+      </div>`,
+      isRead: false,
+      isStarred: true,
+      labels: ['INBOX', 'STARRED'],
+      attachments: [
+        { name: 'Wire_Instructions_Title_Co.pdf', type: 'application/pdf' },
+        { name: 'Closing_Disclosure_FINAL.pdf', type: 'application/pdf' }
+      ],
+      senderPhoto: null,
+    },
+  ], []);
+
+  // Merge mock emails with real emails (mock emails appear mixed by date)
+  const allEmails = useMemo(() => {
+    const combined = [...rawEmails, ...mockExternalEmails];
+    // Sort by date descending
+    return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [rawEmails, mockExternalEmails]);
+
+  const currentFolderCount = (emailsData?.totalCount || 0) + mockExternalEmails.length;
 
   // Fetch email metadata (deal links, next actions)
   const { data: emailMetadataMap = {} } = useQuery({
@@ -625,11 +923,11 @@ const EvansGmail = () => {
 
   // Calculate untriaged count (not dependent on CRM leads)
   const untriagedEmails = useMemo(() => {
-    return emails.filter(email => {
+    return allEmails.filter(email => {
       const metadata = emailMetadataMap[email.id];
       return !metadata || !metadata.lead_id || !metadata.next_action;
     });
-  }, [emails, emailMetadataMap]);
+  }, [allEmails, emailMetadataMap]);
 
   const untriagedCount = untriagedEmails.length;
 
@@ -822,12 +1120,12 @@ const EvansGmail = () => {
 
   // Calculate filtered email lists based on CRM match
   const externalEmails = useMemo(() => {
-    return emails.filter(email => isExternalEmail(email));
-  }, [emails, isExternalEmail]);
+    return allEmails.filter(email => isExternalEmail(email));
+  }, [allEmails, isExternalEmail]);
 
   const internalEmails = useMemo(() => {
-    return emails.filter(email => !isExternalEmail(email));
-  }, [emails, isExternalEmail]);
+    return allEmails.filter(email => !isExternalEmail(email));
+  }, [allEmails, isExternalEmail]);
 
   const internalCount = internalEmails.length;
   const externalCount = externalEmails.length;
@@ -1485,10 +1783,10 @@ const EvansGmail = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedEmails.size === emails.length) {
+    if (selectedEmails.size === allEmails.length) {
       setSelectedEmails(new Set());
     } else {
-      setSelectedEmails(new Set(emails.map(e => e.id)));
+      setSelectedEmails(new Set(allEmails.map(e => e.id)));
     }
   };
 
@@ -1872,7 +2170,7 @@ const EvansGmail = () => {
           <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
             <div className="flex items-center gap-1">
               <Checkbox 
-                checked={selectedEmails.size === emails.length && emails.length > 0}
+                checked={selectedEmails.size === allEmails.length && allEmails.length > 0}
                 onCheckedChange={toggleSelectAll}
                 className="rounded-sm"
               />
@@ -1905,7 +2203,7 @@ const EvansGmail = () => {
             </Button>
             <div className="flex-1" />
             <span className="text-xs text-slate-500 dark:text-slate-400 mr-2 font-medium">
-              {emails.length > 0 ? `1–${Math.min(50, emails.length)} of ${emails.length}` : '0 emails'}
+              {allEmails.length > 0 ? `1–${Math.min(50, allEmails.length)} of ${allEmails.length}` : '0 emails'}
             </span>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -1921,7 +2219,7 @@ const EvansGmail = () => {
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
               </div>
-            ) : emails.length === 0 ? (
+            ) : allEmails.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                 <Inbox className="w-12 h-12 mb-3 opacity-40" />
                 <p className="text-sm font-medium">No emails in {activeFolder}</p>
@@ -1929,7 +2227,7 @@ const EvansGmail = () => {
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {(() => {
-                  let emailsToDisplay = emails;
+                  let emailsToDisplay = allEmails;
                   if (activeFolder === 'untriaged') emailsToDisplay = untriagedEmails;
                   else if (activeFolder === 'internal') emailsToDisplay = internalEmails;
                   else if (activeFolder === 'external') emailsToDisplay = externalEmails;
