@@ -236,16 +236,24 @@ const EvansGmail = () => {
       const senderEmail = extractEmailAddress(email.from);
       const toEmail = extractEmailAddress(email.to || '');
       
-      // Check if sender or recipient is in CRM
-      const isExternal = crmEmails.some(crmEmail => 
-        senderEmail === crmEmail || toEmail === crmEmail
-      );
+      // Check if sender or recipient is in CRM (case-insensitive exact match)
+      const isExternal = crmEmails.some(crmEmail => {
+        const crmLower = crmEmail.toLowerCase().trim();
+        return senderEmail === crmLower || toEmail === crmLower;
+      });
       
+      // External = only emails from/to CRM leads
       if (activeFilter === 'external') return isExternal;
+      // Internal = only emails NOT from CRM leads  
       if (activeFilter === 'internal') return !isExternal;
       return true;
     });
   }, [allEmails, crmEmails, activeFilter]);
+
+  // Debug: log CRM emails and filter results
+  console.log('CRM Emails:', crmEmails);
+  console.log('All emails count:', allEmails.length);
+  console.log('Filtered emails count:', filteredEmails.length, 'for filter:', activeFilter);
 
   // Connect Gmail
   const handleConnectGmail = async () => {
