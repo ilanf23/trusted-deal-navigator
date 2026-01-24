@@ -236,8 +236,9 @@ const EvansGmail = () => {
       const senderEmail = extractEmailAddress(email.from);
       const toEmail = extractEmailAddress(email.to || '');
       
+      // Check if sender or recipient is in CRM
       const isExternal = crmEmails.some(crmEmail => 
-        senderEmail.includes(crmEmail) || toEmail.includes(crmEmail)
+        senderEmail === crmEmail || toEmail === crmEmail
       );
       
       if (activeFilter === 'external') return isExternal;
