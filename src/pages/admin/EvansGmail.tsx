@@ -1922,11 +1922,14 @@ const EvansGmail = () => {
                   const leadInfo = findLeadFromEmail(emailAddress);
                   const status = leadInfo ? statusConfig[leadInfo.status] : null;
                   
+                  // Check if this is an internal email
+                  const emailIsInternal = isInternalEmail(email);
+                  
                   // Get metadata for this email
                   const metadata = emailMetadataMap[email.id];
                   const linkedDeal = metadata?.lead;
                   const nextAction = metadata?.next_action;
-                  const isUntriaged = !linkedDeal || !nextAction;
+                  const isUntriaged = !emailIsInternal && (!linkedDeal || !nextAction);
                   
                   return (
                     <div
@@ -1980,66 +1983,68 @@ const EvansGmail = () => {
                           </div>
                         </div>
                         
-                        {/* Why? Explanation Button - Left positioned for visibility */}
-                        <div className="shrink-0 self-center">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
+                        {/* Why? Explanation Button - Left positioned for visibility - Hidden for internal emails */}
+                        {!emailIsInternal && (
+                          <div className="shrink-0 self-center">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                                  title="Why is this here?"
+                                >
+                                  <HelpCircle className="w-3 h-3" />
+                                  <span>Why?</span>
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent 
+                                className="w-72 p-0" 
+                                align="start"
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
-                                title="Why is this here?"
                               >
-                                <HelpCircle className="w-3 h-3" />
-                                <span>Why?</span>
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent 
-                              className="w-72 p-0" 
-                              align="start"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {(() => {
-                                const explanation = generateExplanation(email, metadata, statusConfig);
-                                return (
-                                  <div className="p-3">
-                                    <div className="flex items-start gap-2 mb-3">
-                                      {explanation.isFyi ? (
-                                        <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                                      ) : explanation.bullets.some(b => b.isWarning) ? (
-                                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                                      ) : (
-                                        <Briefcase className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                {(() => {
+                                  const explanation = generateExplanation(email, metadata, statusConfig);
+                                  return (
+                                    <div className="p-3">
+                                      <div className="flex items-start gap-2 mb-3">
+                                        {explanation.isFyi ? (
+                                          <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                                        ) : explanation.bullets.some(b => b.isWarning) ? (
+                                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                                        ) : (
+                                          <Briefcase className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                        )}
+                                        <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                          {explanation.title}
+                                        </h4>
+                                      </div>
+                                      <ul className="space-y-1.5 pl-6">
+                                        {explanation.bullets.map((bullet, idx) => (
+                                          <li 
+                                            key={idx} 
+                                            className={`text-xs flex items-start gap-1.5 ${
+                                              bullet.isWarning 
+                                                ? 'text-amber-600 dark:text-amber-400 font-medium' 
+                                                : 'text-slate-600 dark:text-slate-400'
+                                            }`}
+                                          >
+                                            <span className="shrink-0 mt-1">•</span>
+                                            <span>{bullet.text}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                      {explanation.isFyi && (
+                                        <p className="mt-3 text-[10px] text-slate-400 italic">
+                                          No action required
+                                        </p>
                                       )}
-                                      <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                        {explanation.title}
-                                      </h4>
                                     </div>
-                                    <ul className="space-y-1.5 pl-6">
-                                      {explanation.bullets.map((bullet, idx) => (
-                                        <li 
-                                          key={idx} 
-                                          className={`text-xs flex items-start gap-1.5 ${
-                                            bullet.isWarning 
-                                              ? 'text-amber-600 dark:text-amber-400 font-medium' 
-                                              : 'text-slate-600 dark:text-slate-400'
-                                          }`}
-                                        >
-                                          <span className="shrink-0 mt-1">•</span>
-                                          <span>{bullet.text}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                    {explanation.isFyi && (
-                                      <p className="mt-3 text-[10px] text-slate-400 italic">
-                                        No action required
-                                      </p>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                            </PopoverContent>
-                          </Popover>
-                        </div>
+                                  );
+                                })()}
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        )}
                         
                         {/* 3-Line Content */}
                         <div className="flex-1 min-w-0 space-y-1" onClick={() => setSelectedEmail(email)}>
@@ -2070,143 +2075,147 @@ const EvansGmail = () => {
                             </span>
                           </div>
                           
-                          {/* Line 2: Deal */}
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <Briefcase className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span className="text-slate-500">Deal:</span>
-                            {linkedDeal ? (
-                              <Link
-                                to={`/team/evan/pipeline?leadId=${linkedDeal.id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-primary hover:underline font-medium truncate"
-                              >
-                                {linkedDeal.company_name || linkedDeal.name}
-                              </Link>
-                            ) : (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 font-medium"
-                                  >
-                                    <AlertTriangle className="w-3 h-3" />
-                                    Untriaged
-                                  </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-64 p-2" align="start">
-                                  <div className="space-y-2">
-                                    <p className="text-xs font-medium text-slate-500">Link to a deal</p>
-                                    <ScrollArea className="max-h-48">
-                                      {allCrmLeads.slice(0, 15).map((lead) => (
-                                        <button
-                                          key={lead.id}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: lead.id });
-                                          }}
-                                          className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 rounded flex items-center gap-2"
-                                        >
-                                          <span className="truncate">{lead.company_name || lead.name}</span>
-                                        </button>
-                                      ))}
-                                    </ScrollArea>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-                            )}
-                            {linkedDeal && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: null });
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-200 rounded transition-opacity"
-                              >
-                                <X className="w-3 h-3 text-slate-400" />
-                              </button>
-                            )}
-                          </div>
-                          
-                          {/* Line 3: Next Step */}
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span className="text-slate-500">Next step:</span>
-                            {editingNextAction === email.id ? (
-                              <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
-                                <Input
-                                  value={nextActionInput}
-                                  onChange={(e) => setNextActionInput(e.target.value)}
-                                  placeholder="e.g., Request PFS and tax returns"
-                                  className="h-6 text-xs flex-1"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: nextActionInput || null });
-                                    } else if (e.key === 'Escape') {
-                                      setEditingNextAction(null);
-                                      setNextActionInput('');
-                                    }
-                                  }}
-                                />
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6"
-                                  onClick={() => updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: nextActionInput || null })}
+                          {/* Line 2: Deal - Hidden for internal emails */}
+                          {!emailIsInternal && (
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <Briefcase className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="text-slate-500">Deal:</span>
+                              {linkedDeal ? (
+                                <Link
+                                  to={`/team/evan/pipeline?leadId=${linkedDeal.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-primary hover:underline font-medium truncate"
                                 >
-                                  <Check className="w-3 h-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6"
-                                  onClick={() => {
-                                    setEditingNextAction(null);
-                                    setNextActionInput('');
+                                  {linkedDeal.company_name || linkedDeal.name}
+                                </Link>
+                              ) : (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 font-medium"
+                                    >
+                                      <AlertTriangle className="w-3 h-3" />
+                                      Untriaged
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-64 p-2" align="start">
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-medium text-slate-500">Link to a deal</p>
+                                      <ScrollArea className="max-h-48">
+                                        {allCrmLeads.slice(0, 15).map((lead) => (
+                                          <button
+                                            key={lead.id}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: lead.id });
+                                            }}
+                                            className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 rounded flex items-center gap-2"
+                                          >
+                                            <span className="truncate">{lead.company_name || lead.name}</span>
+                                          </button>
+                                        ))}
+                                      </ScrollArea>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                              {linkedDeal && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: null });
                                   }}
+                                  className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-200 rounded transition-opacity"
                                 >
                                   <X className="w-3 h-3 text-slate-400" />
-                                </Button>
-                              </div>
-                            ) : nextAction ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingNextAction(email.id);
-                                  setNextActionInput(nextAction);
-                                }}
-                                className="text-primary font-semibold hover:underline truncate"
-                              >
-                                {nextAction}
-                              </button>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingNextAction(email.id);
-                                  setNextActionInput('');
-                                }}
-                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 font-medium"
-                              >
-                                <AlertTriangle className="w-3 h-3" />
-                                Not defined
-                              </button>
-                            )}
-                            {nextAction && editingNextAction !== email.id && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: null });
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-200 rounded transition-opacity"
-                              >
-                                <X className="w-3 h-3 text-slate-400" />
-                              </button>
-                            )}
-                          </div>
+                                </button>
+                              )}
+                            </div>
+                          )}
                           
-                          {/* Context-Aware Action Bar */}
-                          {(() => {
+                          {/* Line 3: Next Step - Hidden for internal emails */}
+                          {!emailIsInternal && (
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="text-slate-500">Next step:</span>
+                              {editingNextAction === email.id ? (
+                                <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+                                  <Input
+                                    value={nextActionInput}
+                                    onChange={(e) => setNextActionInput(e.target.value)}
+                                    placeholder="e.g., Request PFS and tax returns"
+                                    className="h-6 text-xs flex-1"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: nextActionInput || null });
+                                      } else if (e.key === 'Escape') {
+                                        setEditingNextAction(null);
+                                        setNextActionInput('');
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: nextActionInput || null })}
+                                  >
+                                    <Check className="w-3 h-3 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => {
+                                      setEditingNextAction(null);
+                                      setNextActionInput('');
+                                    }}
+                                  >
+                                    <X className="w-3 h-3 text-slate-400" />
+                                  </Button>
+                                </div>
+                              ) : nextAction ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingNextAction(email.id);
+                                    setNextActionInput(nextAction);
+                                  }}
+                                  className="text-primary font-semibold hover:underline truncate"
+                                >
+                                  {nextAction}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingNextAction(email.id);
+                                    setNextActionInput('');
+                                  }}
+                                  className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 font-medium"
+                                >
+                                  <AlertTriangle className="w-3 h-3" />
+                                  Not defined
+                                </button>
+                              )}
+                              {nextAction && editingNextAction !== email.id && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: null });
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-200 rounded transition-opacity"
+                                >
+                                  <X className="w-3 h-3 text-slate-400" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Context-Aware Action Bar - Hidden for internal emails */}
+                          {!emailIsInternal && (() => {
                             const actions = getContextualActions(
                               email,
                               metadata,
