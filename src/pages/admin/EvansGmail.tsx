@@ -4,7 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -283,6 +283,46 @@ const EvansGmail = () => {
       if (lead.lead_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
       return false;
     });
+  };
+
+  // Generate next step suggestion based on stage and email context
+  const getNextStepSuggestion = (stageName: string | undefined, emailSnippet: string, lead: any): string => {
+    const snippet = emailSnippet.toLowerCase();
+    
+    // Check for specific keywords in the email
+    if (snippet.includes('document') || snippet.includes('appraisal') || snippet.includes('attached')) {
+      return 'Review attached documents and update deal status';
+    }
+    if (snippet.includes('question') || snippet.includes('clarif')) {
+      return 'Address borrower questions and provide clarification';
+    }
+    if (snippet.includes('urgent') || snippet.includes('asap')) {
+      return 'Prioritize response - time-sensitive request';
+    }
+    if (snippet.includes('term sheet') || snippet.includes('terms')) {
+      return 'Review and discuss term sheet with borrower';
+    }
+    if (snippet.includes('follow') || snippet.includes('status') || snippet.includes('update')) {
+      return 'Send status update and outline next milestones';
+    }
+    
+    // Stage-based default suggestions
+    switch (stageName) {
+      case 'Discovery':
+        return 'Schedule discovery call to understand borrower needs';
+      case 'Pre-Qualification':
+        return 'Gather preliminary financials for pre-qual assessment';
+      case 'Doc Collection':
+        return 'Request outstanding documents for underwriting package';
+      case 'Underwriting':
+        return 'Follow up with lender on underwriting status';
+      case 'Approval':
+        return 'Coordinate closing timeline and final conditions';
+      case 'Funded':
+        return 'Confirm funding details and send thank you note';
+      default:
+        return 'Review email and determine appropriate next action';
+    }
   };
 
   // Check if email is external (from CRM lead)
@@ -622,34 +662,42 @@ const EvansGmail = () => {
                             {email.snippet}
                           </p>
                           {isExternal && (
-                            <div className="mt-2 flex items-center gap-3">
-                              <Button 
-                                size="sm"
-                                className="bg-[#0066FF] hover:bg-[#0052CC] text-white"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleMoveForward(email);
-                                }}
-                                disabled={generatingDraftForId === email.id}
-                              >
-                                {generatingDraftForId === email.id ? (
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                  <ArrowRight className="w-4 h-4 mr-2" />
-                                )}
-                                Move Forward
-                              </Button>
-                              {stageName && (
-                                <span 
-                                  className="text-xs px-2 py-0.5 rounded-full font-medium"
-                                  style={{ 
-                                    backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
-                                    color: stageColor || 'hsl(var(--muted-foreground))'
+                            <div className="mt-2">
+                              <div className="flex items-center gap-3">
+                                <Button 
+                                  size="sm"
+                                  className="bg-[#0066FF] hover:bg-[#0052CC] text-white"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMoveForward(email);
                                   }}
+                                  disabled={generatingDraftForId === email.id}
                                 >
-                                  {stageName}
+                                  {generatingDraftForId === email.id ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <ArrowRight className="w-4 h-4 mr-2" />
+                                  )}
+                                  Move Forward
+                                </Button>
+                                {stageName && (
+                                  <span 
+                                    className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                    style={{ 
+                                      backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
+                                      color: stageColor || 'hsl(var(--muted-foreground))'
+                                    }}
+                                  >
+                                    {stageName}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                <ArrowDown className="w-3 h-3 flex-shrink-0" />
+                                <span className="italic">
+                                  {getNextStepSuggestion(stageName, email.snippet, lead)}
                                 </span>
-                              )}
+                              </div>
                             </div>
                           )}
                         </div>
