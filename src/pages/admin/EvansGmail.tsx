@@ -41,7 +41,9 @@ import {
   Briefcase,
   ArrowRight,
   Check,
-  X
+  X,
+  HelpCircle,
+  Info
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
@@ -145,10 +147,16 @@ interface EmailMetadata {
   user_id: string;
   lead_id: string | null;
   next_action: string | null;
+  waiting_on: 'borrower' | 'lender' | 'internal' | null;
+  sla_breach: boolean;
+  sla_due_date: string | null;
+  is_fyi: boolean;
+  last_activity_date: string | null;
   lead?: {
     id: string;
     name: string;
     company_name: string | null;
+    status: string;
   } | null;
 }
 
@@ -235,6 +243,96 @@ const extractEmailAddress = (value: string) => {
   // Extract email from "Name <email@example.com>" format (or return as-is)
   const match = value.match(/<([^>]+)>/);
   return (match?.[1] || value || '').trim();
+};
+
+// Generate explanation for why an email is in the inbox
+const generateExplanation = (
+  email: Email,
+  metadata: EmailMetadata | undefined,
+  statusConfig: Record<string, { label: string; color: string; bg: string }>
+): { title: string; bullets: { text: string; isWarning: boolean }[]; isFyi: boolean } => {
+  const bullets: { text: string; isWarning: boolean }[] = [];
+  
+  // Check if FYI
+  if (metadata?.is_fyi) {
+    return {
+      title: "This email requires no action",
+      bullets: [{ text: "Shown for visibility only", isWarning: false }],
+      isFyi: true,
+    };
+  }
+  
+  // Check untriaged conditions
+  const hasNoDeal = !metadata?.lead_id;
+  const hasNoNextStep = !metadata?.next_action;
+  
+  if (hasNoDeal || hasNoNextStep) {
+    const untriagedBullets: { text: string; isWarning: boolean }[] = [];
+    
+    if (hasNoDeal) {
+      untriagedBullets.push({ text: "No deal is linked", isWarning: true });
+    }
+    if (hasNoNextStep) {
+      untriagedBullets.push({ text: "No next step is defined", isWarning: true });
+    }
+    
+    // Add last activity
+    const emailDate = new Date(email.date);
+    const daysSince = differenceInDays(new Date(), emailDate);
+    if (daysSince === 0) {
+      untriagedBullets.push({ text: "Last activity: Today", isWarning: false });
+    } else if (daysSince === 1) {
+      untriagedBullets.push({ text: "Last activity: Yesterday", isWarning: false });
+    } else {
+      untriagedBullets.push({ text: `Last activity: ${daysSince} days ago`, isWarning: daysSince > 7 });
+    }
+    
+    return {
+      title: "This email is untriaged because:",
+      bullets: untriagedBullets,
+      isFyi: false,
+    };
+  }
+  
+  // Email is linked to a deal
+  const dealName = metadata.lead?.company_name || metadata.lead?.name || "Unknown Deal";
+  const dealStage = metadata.lead?.status ? statusConfig[metadata.lead.status]?.label || metadata.lead.status : "Unknown";
+  
+  // Waiting on
+  if (metadata.waiting_on) {
+    const waitingOnLabel = metadata.waiting_on === 'borrower' ? 'Waiting on borrower' :
+                          metadata.waiting_on === 'lender' ? 'Waiting on lender' :
+                          'Waiting on internal team';
+    bullets.push({ text: waitingOnLabel, isWarning: false });
+  }
+  
+  // Last outbound email
+  if (metadata.last_activity_date) {
+    const activityDate = new Date(metadata.last_activity_date);
+    bullets.push({ text: `Last outbound email: ${format(activityDate, 'MMM d, yyyy')}`, isWarning: false });
+  } else {
+    const emailDate = new Date(email.date);
+    bullets.push({ text: `Email received: ${format(emailDate, 'MMM d, yyyy')}`, isWarning: false });
+  }
+  
+  // SLA breach
+  if (metadata.sla_breach) {
+    bullets.push({ text: "SLA threshold exceeded", isWarning: true });
+  }
+  
+  // Deal stage
+  bullets.push({ text: `Current deal stage: ${dealStage}`, isWarning: false });
+  
+  // Next action reminder
+  if (metadata.next_action) {
+    bullets.push({ text: `Next step: ${metadata.next_action}`, isWarning: false });
+  }
+  
+  return {
+    title: `This deal is in your inbox because:`,
+    bullets,
+    isFyi: false,
+  };
 };
 
 const EvansGmail = () => {
@@ -345,7 +443,12 @@ const EvansGmail = () => {
           user_id,
           lead_id,
           next_action,
-          lead:leads(id, name, company_name)
+          waiting_on,
+          sla_breach,
+          sla_due_date,
+          is_fyi,
+          last_activity_date,
+          lead:leads(id, name, company_name, status)
         `)
         .eq('user_id', user.id);
       
@@ -1681,6 +1784,66 @@ const EvansGmail = () => {
                               </button>
                             )}
                           </div>
+                        </div>
+                        
+                        {/* Why? Explanation Button */}
+                        <div className="shrink-0 self-start pt-1">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                              >
+                                <HelpCircle className="w-3 h-3" />
+                                Why?
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent 
+                              className="w-72 p-0" 
+                              align="end"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {(() => {
+                                const explanation = generateExplanation(email, metadata, statusConfig);
+                                return (
+                                  <div className="p-3">
+                                    <div className="flex items-start gap-2 mb-3">
+                                      {explanation.isFyi ? (
+                                        <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                                      ) : explanation.bullets.some(b => b.isWarning) ? (
+                                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                                      ) : (
+                                        <Briefcase className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                      )}
+                                      <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                        {explanation.title}
+                                      </h4>
+                                    </div>
+                                    <ul className="space-y-1.5 pl-6">
+                                      {explanation.bullets.map((bullet, idx) => (
+                                        <li 
+                                          key={idx} 
+                                          className={`text-xs flex items-start gap-1.5 ${
+                                            bullet.isWarning 
+                                              ? 'text-amber-600 dark:text-amber-400 font-medium' 
+                                              : 'text-slate-600 dark:text-slate-400'
+                                          }`}
+                                        >
+                                          <span className="shrink-0 mt-1">•</span>
+                                          <span>{bullet.text}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    {explanation.isFyi && (
+                                      <p className="mt-3 text-[10px] text-slate-400 italic">
+                                        No action required
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
                     </div>

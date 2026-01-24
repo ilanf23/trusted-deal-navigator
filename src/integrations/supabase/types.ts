@@ -298,30 +298,45 @@ export type Database = {
           gmail_message_id: string
           gmail_thread_id: string | null
           id: string
+          is_fyi: boolean | null
+          last_activity_date: string | null
           lead_id: string | null
           next_action: string | null
+          sla_breach: boolean | null
+          sla_due_date: string | null
           updated_at: string
           user_id: string
+          waiting_on: string | null
         }
         Insert: {
           created_at?: string
           gmail_message_id: string
           gmail_thread_id?: string | null
           id?: string
+          is_fyi?: boolean | null
+          last_activity_date?: string | null
           lead_id?: string | null
           next_action?: string | null
+          sla_breach?: boolean | null
+          sla_due_date?: string | null
           updated_at?: string
           user_id: string
+          waiting_on?: string | null
         }
         Update: {
           created_at?: string
           gmail_message_id?: string
           gmail_thread_id?: string | null
           id?: string
+          is_fyi?: boolean | null
+          last_activity_date?: string | null
           lead_id?: string | null
           next_action?: string | null
+          sla_breach?: boolean | null
+          sla_due_date?: string | null
           updated_at?: string
           user_id?: string
+          waiting_on?: string | null
         }
         Relationships: [
           {
