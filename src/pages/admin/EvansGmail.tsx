@@ -601,36 +601,39 @@ const EvansGmail = () => {
                   </div>
                 ) : (
                   <div>
-                    {filteredEmails.map((email) => (
-                      <div
-                        key={email.id}
-                        onClick={() => setSelectedEmailId(email.id)}
-                        className={`p-3 border-b cursor-pointer hover:bg-muted/50 ${
-                          !email.isRead ? 'bg-primary/5' : ''
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <Avatar className="w-6 h-6">
-                            {email.senderPhoto && <AvatarImage src={email.senderPhoto} />}
-                            <AvatarFallback className="text-xs">
-                              {extractSenderName(email.from).charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className={`text-sm truncate flex-1 ${!email.isRead ? 'font-semibold' : ''}`}>
-                            {extractSenderName(email.from)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(email.date), 'MMM d')}
-                          </span>
+                    {filteredEmails.map((email) => {
+                      const isExternal = isExternalEmail(email);
+                      return (
+                        <div
+                          key={email.id}
+                          onClick={() => setSelectedEmailId(email.id)}
+                          className={`border-b cursor-pointer hover:bg-muted/50 ${
+                            !email.isRead ? 'bg-primary/5' : ''
+                          } ${isExternal ? 'p-4' : 'p-3'}`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <Avatar className={isExternal ? 'w-8 h-8' : 'w-6 h-6'}>
+                              {email.senderPhoto && <AvatarImage src={email.senderPhoto} />}
+                              <AvatarFallback className={isExternal ? 'text-sm' : 'text-xs'}>
+                                {extractSenderName(email.from).charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className={`truncate flex-1 ${!email.isRead ? 'font-semibold' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
+                              {extractSenderName(email.from)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(email.date), 'MMM d')}
+                            </span>
+                          </div>
+                          <p className={`truncate ${!email.isRead ? 'font-medium' : ''} ${isExternal ? 'text-base mb-1' : 'text-sm'}`}>
+                            {email.subject}
+                          </p>
+                          <p className={`text-muted-foreground mt-0.5 ${isExternal ? 'text-sm line-clamp-2' : 'text-xs truncate'}`}>
+                            {email.snippet}
+                          </p>
                         </div>
-                        <p className={`text-sm truncate ${!email.isRead ? 'font-medium' : ''}`}>
-                          {email.subject}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {email.snippet}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
