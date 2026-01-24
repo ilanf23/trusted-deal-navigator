@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 import { InboxSidebar, FolderType } from '@/components/admin/inbox/InboxSidebar';
 import { WaitingOnBadge } from '@/components/admin/inbox/WaitingOnBadge';
+import { EmailActionBar } from '@/components/admin/inbox/EmailActionBar';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { 
   Mail, 
@@ -2631,112 +2632,21 @@ const EvansGmail = () => {
                           )}
                           
                           {/* Context-Aware Action Bar - Hidden for internal emails */}
-                          {!emailIsInternal && (() => {
-                            const actions = getContextualActions(
-                              email,
-                              metadata,
-                              linkedDeal,
-                              {
-                                onLinkDeal: () => setActionLinkDealOpen(email.id),
-                                onCreateDeal: () => {
-                                  navigate(`/team/evan/pipeline?createDeal=true&emailFrom=${encodeURIComponent(email.from)}&emailSubject=${encodeURIComponent(email.subject)}`);
-                                },
-                                onMarkFyi: () => {
-                                  updateEmailFyi.mutate({ emailId: email.id, threadId: email.threadId, isFyi: true });
-                                },
-                                onNudgeBorrower: () => {
-                                  createNudgeEmailMutation.mutate({ email, metadata, nudgeType: 'borrower' });
-                                },
-                                onNudgeLender: () => {
-                                  createNudgeEmailMutation.mutate({ email, metadata, nudgeType: 'lender' });
-                                },
-                                onSetReminder: () => {
-                                  toast.info('Reminder feature coming soon');
-                                },
-                                onMarkReceived: () => {
-                                  updateEmailWaitingOn.mutate({ emailId: email.id, threadId: email.threadId, waitingOn: null });
-                                  updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: 'Review received documents' });
-                                },
-                                onMarkResponded: () => {
-                                  updateEmailWaitingOn.mutate({ emailId: email.id, threadId: email.threadId, waitingOn: null });
-                                  updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: 'Review lender response' });
-                                },
-                                onEscalate: () => {
-                                  toast.info('Escalation feature coming soon');
-                                },
-                                onAssignTask: () => {
-                                  navigate(`/team/evan/tasks?createTask=true&emailSubject=${encodeURIComponent(email.subject)}&leadId=${metadata?.lead_id || ''}`);
-                                },
-                                onMarkComplete: () => {
-                                  updateEmailWaitingOn.mutate({ emailId: email.id, threadId: email.threadId, waitingOn: null });
-                                  updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: null });
-                                  updateEmailFyi.mutate({ emailId: email.id, threadId: email.threadId, isFyi: true });
-                                },
-                              }
-                            );
-                            
-                            if (actions.length === 0) return null;
-                            
-                            return (
-                              <div className="flex items-center gap-1.5 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                                {actions.map((action) => {
-                                  const Icon = action.icon;
-                                  const variantClasses = {
-                                    default: 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-300',
-                                    warning: 'bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-400',
-                                    success: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-400',
-                                    primary: 'bg-primary/10 hover:bg-primary/20 text-primary',
-                                  };
-                                  
-                                  if (action.id === 'link-deal') {
-                                    return (
-                                      <Popover key={action.id} open={actionLinkDealOpen === email.id} onOpenChange={(open) => setActionLinkDealOpen(open ? email.id : null)}>
-                                        <PopoverTrigger asChild>
-                                          <button
-                                            className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded transition-colors ${variantClasses[action.variant]}`}
-                                          >
-                                            <Icon className="w-3 h-3" />
-                                            <span>{action.label}</span>
-                                          </button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-64 p-2" align="start">
-                                          <div className="space-y-2">
-                                            <p className="text-xs font-medium text-slate-500">Link to a deal</p>
-                                            <ScrollArea className="max-h-48">
-                                              {allCrmLeads.slice(0, 15).map((lead) => (
-                                                <button
-                                                  key={lead.id}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: lead.id });
-                                                    setActionLinkDealOpen(null);
-                                                  }}
-                                                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 rounded flex items-center gap-2"
-                                                >
-                                                  <span className="truncate">{lead.company_name || lead.name}</span>
-                                                </button>
-                                              ))}
-                                            </ScrollArea>
-                                          </div>
-                                        </PopoverContent>
-                                      </Popover>
-                                    );
-                                  }
-                                  
-                                  return (
-                                    <button
-                                      key={action.id}
-                                      onClick={action.action}
-                                      className={`flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded transition-colors ${variantClasses[action.variant]}`}
-                                    >
-                                      <Icon className="w-3 h-3" />
-                                      <span>{action.label}</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
+                          {!emailIsInternal && (
+                            <EmailActionBar
+                              emailId={email.id}
+                              threadId={email.threadId}
+                              emailFrom={email.from}
+                              emailSubject={email.subject}
+                              emailSnippet={email.snippet}
+                              linkedDeal={linkedDeal}
+                              nextAction={nextAction}
+                              waitingOn={waitingOn as 'borrower' | 'lender' | 'internal' | 'none' | null}
+                              isFyi={metadata?.is_fyi || false}
+                              allLeads={allCrmLeads}
+                              onNavigate={navigate}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
