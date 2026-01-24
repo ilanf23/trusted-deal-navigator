@@ -522,24 +522,10 @@ const EvansGmail = () => {
           {selectedEmailId && selectedEmail ? (
             // Full Email View
             <div className="h-full flex flex-col">
-              <div className="p-3 border-b flex items-center justify-between">
+              <div className="p-3 border-b">
                 <Button variant="ghost" size="sm" onClick={() => setSelectedEmailId(null)}>
                   ← Back
                 </Button>
-                {isExternalEmail(selectedEmail) && (
-                  <Button 
-                    size="sm" 
-                    onClick={() => handleMoveForward(selectedEmail)}
-                    disabled={generatingDraft}
-                  >
-                    {generatingDraft ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <ArrowRight className="w-4 h-4 mr-2" />
-                    )}
-                    Move Forward
-                  </Button>
-                )}
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-6">
@@ -631,6 +617,25 @@ const EvansGmail = () => {
                           <p className={`text-muted-foreground mt-0.5 ${isExternal ? 'text-sm line-clamp-2' : 'text-xs truncate'}`}>
                             {email.snippet}
                           </p>
+                          {isExternal && (
+                            <div className="mt-2">
+                              <Button 
+                                size="sm" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveForward(email);
+                                }}
+                                disabled={generatingDraft}
+                              >
+                                {generatingDraft ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <ArrowRight className="w-4 h-4 mr-2" />
+                                )}
+                                Move Forward
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
