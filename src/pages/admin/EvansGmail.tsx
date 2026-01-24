@@ -1627,10 +1627,10 @@ const EvansGmail = () => {
                             <PopoverTrigger asChild>
                               <button
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 rounded-full transition-colors border border-amber-200 dark:border-amber-700"
+                                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
                                 title="Why is this here?"
                               >
-                                <HelpCircle className="w-3.5 h-3.5" />
+                                <HelpCircle className="w-3 h-3" />
                                 <span>Why?</span>
                               </button>
                             </PopoverTrigger>
