@@ -623,24 +623,7 @@ const EvansGmail = () => {
     enabled: !!user?.id,
   });
 
-  // Helper to check if email is internal (commerciallendingx.com domain)
-  const isInternalEmail = (email: Email): boolean => {
-    const clxDomain = 'commerciallendingx.com';
-    const fromEmail = extractEmailAddress(email.from).toLowerCase();
-    const toEmail = extractEmailAddress(email.to).toLowerCase();
-    return fromEmail.includes(clxDomain) || toEmail.includes(clxDomain);
-  };
-
-  // Calculate filtered email lists
-  const internalEmails = useMemo(() => {
-    return emails.filter(email => isInternalEmail(email));
-  }, [emails]);
-
-  const externalEmails = useMemo(() => {
-    return emails.filter(email => !isInternalEmail(email));
-  }, [emails]);
-
-  // Calculate untriaged count
+  // Calculate untriaged count (not dependent on CRM leads)
   const untriagedEmails = useMemo(() => {
     return emails.filter(email => {
       const metadata = emailMetadataMap[email.id];
@@ -649,8 +632,6 @@ const EvansGmail = () => {
   }, [emails, emailMetadataMap]);
 
   const untriagedCount = untriagedEmails.length;
-  const internalCount = internalEmails.length;
-  const externalCount = externalEmails.length;
 
   // Fetch inbox count separately (for sidebar display when not on inbox)
   const { data: inboxCountData } = useQuery({
@@ -813,6 +794,43 @@ const EvansGmail = () => {
     const extracted = extractEmailAddress(emailStr).toLowerCase().trim();
     return emailToLeadMap.get(extracted) || null;
   };
+
+  // Helper to check if email is external (matches a CRM lead)
+  // External = emails where sender or recipient matches a lead in CRM
+  // Internal = everything else (no CRM match)
+  const isExternalEmail = useMemo(() => {
+    // Build a set of all CRM lead emails for fast lookup
+    const crmEmailSet = new Set<string>();
+    allCrmLeads.forEach(lead => {
+      if (lead.email) {
+        crmEmailSet.add(lead.email.toLowerCase().trim());
+      }
+    });
+    
+    return (email: Email): boolean => {
+      const fromEmail = extractEmailAddress(email.from).toLowerCase().trim();
+      const toEmail = extractEmailAddress(email.to).toLowerCase().trim();
+      // External if either from or to matches a CRM lead
+      return crmEmailSet.has(fromEmail) || crmEmailSet.has(toEmail);
+    };
+  }, [allCrmLeads]);
+  
+  // Helper for internal - inverse of external
+  const isInternalEmail = (email: Email): boolean => {
+    return !isExternalEmail(email);
+  };
+
+  // Calculate filtered email lists based on CRM match
+  const externalEmails = useMemo(() => {
+    return emails.filter(email => isExternalEmail(email));
+  }, [emails, isExternalEmail]);
+
+  const internalEmails = useMemo(() => {
+    return emails.filter(email => !isExternalEmail(email));
+  }, [emails, isExternalEmail]);
+
+  const internalCount = internalEmails.length;
+  const externalCount = externalEmails.length;
 
   // Format last emailed time
   const formatLastEmailed = (dateStr: string | null): string => {
