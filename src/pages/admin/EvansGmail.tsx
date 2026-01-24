@@ -924,13 +924,13 @@ const EvansGmail = () => {
             <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-6 border border-slate-200">
               <Mail className="w-8 h-8 text-slate-600" />
             </div>
-            <h2 className="text-xl font-semibold text-slate-900 mb-2">Connect Your Gmail</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Connect Your Mmail</h2>
             <p className="text-sm text-slate-500 mb-6">
-              Connect your Gmail account to send and receive emails directly from this portal.
+              Connect your email account to send and receive emails directly from this portal.
             </p>
             <Button onClick={handleConnectGmail} size="lg" className="gap-2 rounded-md">
               <Mail className="w-4 h-4" />
-              Connect Gmail Account
+              Connect Mmail Account
             </Button>
             <p className="text-xs text-slate-400 mt-4">
               We'll only access your email with your permission.
