@@ -11,6 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
+import { InboxSidebar, FolderType } from '@/components/admin/inbox/InboxSidebar';
+import { WaitingOnBadge } from '@/components/admin/inbox/WaitingOnBadge';
+import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { 
   Mail, 
   Send, 
@@ -50,7 +53,10 @@ import {
   ArrowUpRight,
   CheckCircle2,
   UserPlus,
-  ClipboardList
+  ClipboardList,
+  UserCheck,
+  Building2,
+  Users,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
@@ -498,7 +504,19 @@ const EvansGmail = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const [activeFolder, setActiveFolder] = useState<'inbox' | 'starred' | 'sent' | 'drafts' | 'templates' | 'untriaged' | 'internal' | 'external'>('inbox');
+  const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
+  
+  // Use the new email threads hook for thread-level tracking
+  const { 
+    threads: emailThreads, 
+    threadMap, 
+    counts: threadCounts,
+    linkDeal: linkThreadDeal,
+    setNextAction: setThreadNextAction,
+    setWaitingOn: setThreadWaitingOn,
+    markComplete: markThreadComplete,
+    getThread,
+  } = useEmailThreads();
   const [editingNextAction, setEditingNextAction] = useState<string | null>(null);
   const [nextActionInput, setNextActionInput] = useState('');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -1126,6 +1144,39 @@ const EvansGmail = () => {
   const internalEmails = useMemo(() => {
     return allEmails.filter(email => !isExternalEmail(email));
   }, [allEmails, isExternalEmail]);
+
+  // Filter emails by waiting_on status using thread data
+  const waitingOnBorrowerEmails = useMemo(() => {
+    return allEmails.filter(email => {
+      const thread = threadMap.get(email.threadId);
+      return thread?.waiting_on === 'borrower';
+    });
+  }, [allEmails, threadMap]);
+
+  const waitingOnLenderEmails = useMemo(() => {
+    return allEmails.filter(email => {
+      const thread = threadMap.get(email.threadId);
+      return thread?.waiting_on === 'lender';
+    });
+  }, [allEmails, threadMap]);
+
+  const waitingInternalEmails = useMemo(() => {
+    return allEmails.filter(email => {
+      const thread = threadMap.get(email.threadId);
+      return thread?.waiting_on === 'internal';
+    });
+  }, [allEmails, threadMap]);
+
+  // At-risk emails: waiting > 5 days with no response
+  const atRiskEmails = useMemo(() => {
+    return allEmails.filter(email => {
+      const thread = threadMap.get(email.threadId);
+      if (!thread?.waiting_on || thread.waiting_on === 'none') return false;
+      const lastActivity = thread.last_message_date || email.date;
+      const daysSince = differenceInDays(new Date(), new Date(lastActivity));
+      return daysSince > 5;
+    });
+  }, [allEmails, threadMap]);
 
   const internalCount = internalEmails.length;
   const externalCount = externalEmails.length;
@@ -2231,6 +2282,31 @@ const EvansGmail = () => {
                   if (activeFolder === 'untriaged') emailsToDisplay = untriagedEmails;
                   else if (activeFolder === 'internal') emailsToDisplay = internalEmails;
                   else if (activeFolder === 'external') emailsToDisplay = externalEmails;
+                  else if (activeFolder === 'waiting-borrower') emailsToDisplay = waitingOnBorrowerEmails;
+                  else if (activeFolder === 'waiting-lender') emailsToDisplay = waitingOnLenderEmails;
+                  else if (activeFolder === 'waiting-internal') emailsToDisplay = waitingInternalEmails;
+                  else if (activeFolder === 'at-risk') emailsToDisplay = atRiskEmails;
+                  
+                  // Sort by urgency: SLA breached first, then by days waiting (descending)
+                  emailsToDisplay = [...emailsToDisplay].sort((a, b) => {
+                    const threadA = threadMap.get(a.threadId);
+                    const threadB = threadMap.get(b.threadId);
+                    
+                    // SLA breached emails first
+                    if (threadA?.sla_breached && !threadB?.sla_breached) return -1;
+                    if (!threadA?.sla_breached && threadB?.sla_breached) return 1;
+                    
+                    // Then by days waiting (longer waiting = higher priority)
+                    const daysA = differenceInDays(new Date(), new Date(a.date));
+                    const daysB = differenceInDays(new Date(), new Date(b.date));
+                    if (activeFolder === 'waiting-borrower' || activeFolder === 'waiting-lender' || activeFolder === 'at-risk') {
+                      return daysB - daysA; // Longer waiting first for operational views
+                    }
+                    
+                    // Default: chronological (most recent first)
+                    return new Date(b.date).getTime() - new Date(a.date).getTime();
+                  });
+                  
                   return emailsToDisplay;
                 })().map((email) => {
                   // Check if email is from/to a CRM lead
@@ -2241,10 +2317,18 @@ const EvansGmail = () => {
                   // Check if this is an internal email
                   const emailIsInternal = isInternalEmail(email);
                   
-                  // Get metadata for this email
+                  // Get metadata for this email (from old email_metadata table)
                   const metadata = emailMetadataMap[email.id];
                   const linkedDeal = metadata?.lead;
                   const nextAction = metadata?.next_action;
+                  
+                  // Get thread-level data for waiting_on and SLA tracking
+                  const threadData = threadMap.get(email.threadId);
+                  const waitingOn = threadData?.waiting_on || metadata?.waiting_on;
+                  const lastActivityDate = threadData?.last_message_date || email.date;
+                  const daysSinceActivity = differenceInDays(new Date(), new Date(lastActivityDate));
+                  const slaBreached = daysSinceActivity > 3;
+                  
                   const isUntriaged = !emailIsInternal && (!linkedDeal || !nextAction);
                   
                   return (
@@ -2253,7 +2337,7 @@ const EvansGmail = () => {
                       className={`group px-3 py-3 cursor-pointer transition-colors ${
                         !email.isRead ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/50'
                       } ${selectedEmails.has(email.id) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${
-                        isUntriaged ? 'border-l-2 border-l-amber-400' : ''
+                        isUntriaged ? 'border-l-2 border-l-amber-400' : slaBreached && waitingOn ? 'border-l-2 border-l-red-400' : ''
                       } hover:bg-slate-50 dark:hover:bg-slate-800`}
                     >
                       <div className="flex items-start gap-2">
@@ -2389,6 +2473,22 @@ const EvansGmail = () => {
                             <span className={`shrink-0 text-xs whitespace-nowrap ${!email.isRead ? 'font-semibold text-slate-900' : 'text-slate-400'}`}>
                               {formatEmailDate(email.date)}
                             </span>
+                            {/* Waiting On Badge - Shows SLA aging */}
+                            {!emailIsInternal && (waitingOn && waitingOn !== 'none') && (
+                              <WaitingOnBadge
+                                waitingOn={waitingOn as 'borrower' | 'lender' | 'internal' | 'none'}
+                                lastActivityDate={lastActivityDate}
+                                slaThresholdDays={3}
+                                onWaitingOnChange={(value) => {
+                                  setThreadWaitingOn.mutate({ 
+                                    threadId: email.threadId, 
+                                    waitingOn: value,
+                                    subject: email.subject 
+                                  });
+                                }}
+                                compact
+                              />
+                            )}
                           </div>
                           
                           {/* Line 2: Deal - Hidden for internal emails */}

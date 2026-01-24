@@ -348,6 +348,69 @@ export type Database = {
           },
         ]
       }
+      email_threads: {
+        Row: {
+          assigned_to: string | null
+          created_at: string | null
+          id: string
+          is_triaged: boolean | null
+          last_message_date: string | null
+          last_outbound_date: string | null
+          lead_id: string | null
+          next_action: string | null
+          sla_breached: boolean | null
+          subject: string | null
+          thread_id: string
+          updated_at: string | null
+          waiting_on: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string | null
+          id?: string
+          is_triaged?: boolean | null
+          last_message_date?: string | null
+          last_outbound_date?: string | null
+          lead_id?: string | null
+          next_action?: string | null
+          sla_breached?: boolean | null
+          subject?: string | null
+          thread_id: string
+          updated_at?: string | null
+          waiting_on?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string | null
+          id?: string
+          is_triaged?: boolean | null
+          last_message_date?: string | null
+          last_outbound_date?: string | null
+          lead_id?: string | null
+          next_action?: string | null
+          sla_breached?: boolean | null
+          subject?: string | null
+          thread_id?: string
+          updated_at?: string | null
+          waiting_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evan_appointments: {
         Row: {
           appointment_type: string | null
@@ -1361,20 +1424,24 @@ export type Database = {
           email: string | null
           id: string
           known_as: string | null
+          last_activity_at: string | null
           linkedin: string | null
           name: string
+          next_action: string | null
           notes: string | null
           phone: string | null
           qualified_at: string | null
           questionnaire_completed_at: string | null
           questionnaire_sent_at: string | null
           questionnaire_token: string | null
+          sla_threshold_days: number | null
           source: string | null
           status: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
           title: string | null
           twitter: string | null
           updated_at: string
+          waiting_on: string | null
           website: string | null
         }
         Insert: {
@@ -1388,20 +1455,24 @@ export type Database = {
           email?: string | null
           id?: string
           known_as?: string | null
+          last_activity_at?: string | null
           linkedin?: string | null
           name: string
+          next_action?: string | null
           notes?: string | null
           phone?: string | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
           questionnaire_token?: string | null
+          sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
           title?: string | null
           twitter?: string | null
           updated_at?: string
+          waiting_on?: string | null
           website?: string | null
         }
         Update: {
@@ -1415,20 +1486,24 @@ export type Database = {
           email?: string | null
           id?: string
           known_as?: string | null
+          last_activity_at?: string | null
           linkedin?: string | null
           name?: string
+          next_action?: string | null
           notes?: string | null
           phone?: string | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
           questionnaire_token?: string | null
+          sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
           title?: string | null
           twitter?: string | null
           updated_at?: string
+          waiting_on?: string | null
           website?: string | null
         }
         Relationships: [
