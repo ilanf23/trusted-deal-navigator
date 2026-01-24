@@ -165,7 +165,7 @@ const EvansGmail = () => {
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-6">
-                  <h1 className="text-xl font-semibold mb-4">{selectedEmail?.subject}</h1>
+                  <h1 className="text-xl font-semibold mb-4 leading-tight">{selectedEmail?.subject}</h1>
                   <div className="flex items-center gap-3 mb-6">
                     <Avatar className="w-10 h-10">
                       {selectedEmail?.senderPhoto && <AvatarImage src={selectedEmail.senderPhoto} />}
