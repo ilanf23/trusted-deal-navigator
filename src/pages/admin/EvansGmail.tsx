@@ -1621,6 +1621,66 @@ const EvansGmail = () => {
                           </div>
                         </div>
                         
+                        {/* Why? Explanation Button - Left positioned for visibility */}
+                        <div className="shrink-0 self-start pt-0.5">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center justify-center w-6 h-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                                title="Why is this here?"
+                              >
+                                <HelpCircle className="w-4 h-4" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent 
+                              className="w-72 p-0" 
+                              align="start"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {(() => {
+                                const explanation = generateExplanation(email, metadata, statusConfig);
+                                return (
+                                  <div className="p-3">
+                                    <div className="flex items-start gap-2 mb-3">
+                                      {explanation.isFyi ? (
+                                        <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                                      ) : explanation.bullets.some(b => b.isWarning) ? (
+                                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                                      ) : (
+                                        <Briefcase className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                      )}
+                                      <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                        {explanation.title}
+                                      </h4>
+                                    </div>
+                                    <ul className="space-y-1.5 pl-6">
+                                      {explanation.bullets.map((bullet, idx) => (
+                                        <li 
+                                          key={idx} 
+                                          className={`text-xs flex items-start gap-1.5 ${
+                                            bullet.isWarning 
+                                              ? 'text-amber-600 dark:text-amber-400 font-medium' 
+                                              : 'text-slate-600 dark:text-slate-400'
+                                          }`}
+                                        >
+                                          <span className="shrink-0 mt-1">•</span>
+                                          <span>{bullet.text}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    {explanation.isFyi && (
+                                      <p className="mt-3 text-[10px] text-slate-400 italic">
+                                        No action required
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        
                         {/* 3-Line Content */}
                         <div className="flex-1 min-w-0 space-y-1" onClick={() => setSelectedEmail(email)}>
                           {/* Line 1: Sender + Subject + Date */}
@@ -1784,66 +1844,6 @@ const EvansGmail = () => {
                               </button>
                             )}
                           </div>
-                        </div>
-                        
-                        {/* Why? Explanation Button */}
-                        <div className="shrink-0 self-start pt-1">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
-                              >
-                                <HelpCircle className="w-3 h-3" />
-                                Why?
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent 
-                              className="w-72 p-0" 
-                              align="end"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {(() => {
-                                const explanation = generateExplanation(email, metadata, statusConfig);
-                                return (
-                                  <div className="p-3">
-                                    <div className="flex items-start gap-2 mb-3">
-                                      {explanation.isFyi ? (
-                                        <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                                      ) : explanation.bullets.some(b => b.isWarning) ? (
-                                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                                      ) : (
-                                        <Briefcase className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                                      )}
-                                      <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                        {explanation.title}
-                                      </h4>
-                                    </div>
-                                    <ul className="space-y-1.5 pl-6">
-                                      {explanation.bullets.map((bullet, idx) => (
-                                        <li 
-                                          key={idx} 
-                                          className={`text-xs flex items-start gap-1.5 ${
-                                            bullet.isWarning 
-                                              ? 'text-amber-600 dark:text-amber-400 font-medium' 
-                                              : 'text-slate-600 dark:text-slate-400'
-                                          }`}
-                                        >
-                                          <span className="shrink-0 mt-1">•</span>
-                                          <span>{bullet.text}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                    {explanation.isFyi && (
-                                      <p className="mt-3 text-[10px] text-slate-400 italic">
-                                        No action required
-                                      </p>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                            </PopoverContent>
-                          </Popover>
                         </div>
                       </div>
                     </div>
