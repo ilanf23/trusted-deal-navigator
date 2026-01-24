@@ -1622,15 +1622,16 @@ const EvansGmail = () => {
                         </div>
                         
                         {/* Why? Explanation Button - Left positioned for visibility */}
-                        <div className="shrink-0 self-start pt-0.5">
+                        <div className="shrink-0 self-center">
                           <Popover>
                             <PopoverTrigger asChild>
                               <button
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex items-center justify-center w-6 h-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 rounded-full transition-colors border border-amber-200 dark:border-amber-700"
                                 title="Why is this here?"
                               >
-                                <HelpCircle className="w-4 h-4" />
+                                <HelpCircle className="w-3.5 h-3.5" />
+                                <span>Why?</span>
                               </button>
                             </PopoverTrigger>
                             <PopoverContent 
