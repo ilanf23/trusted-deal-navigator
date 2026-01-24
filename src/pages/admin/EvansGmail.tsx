@@ -589,7 +589,7 @@ const EvansGmail = () => {
                   <div>
                     {filteredEmails.map((email) => {
                       const isExternal = isExternalEmail(email);
-                      const lead = isExternal ? findLeadForEmail(email) : null;
+                      const lead = findLeadForEmail(email);
                       const stageName = lead?.pipeline_leads?.[0]?.pipeline_stages?.name;
                       const stageColor = lead?.pipeline_leads?.[0]?.pipeline_stages?.color;
                       
@@ -611,7 +611,7 @@ const EvansGmail = () => {
                             <span className={`truncate flex-1 ${!email.isRead ? 'font-semibold' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
                               {extractSenderName(email.from)}
                             </span>
-                            {isExternal && stageName && (
+                            {stageName && (
                               <span 
                                 className="text-xs px-2 py-0.5 rounded-full font-medium"
                                 style={{ 
