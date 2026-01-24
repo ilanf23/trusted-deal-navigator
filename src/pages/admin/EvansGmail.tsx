@@ -22,6 +22,110 @@ interface Email {
   senderPhoto?: string | null;
 }
 
+// Mock external emails using CRM lead email addresses
+const mockExternalEmails: Email[] = [
+  {
+    id: 'mock-1',
+    threadId: 'thread-mock-1',
+    subject: 'RE: Loan Application Status Update',
+    from: 'Robert Martinez <robert.martinez@capitalventures.com>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
+    snippet: 'Hi Evan, Just following up on our conversation about the $2.5M acquisition loan. We have completed the due diligence...',
+    isRead: false,
+  },
+  {
+    id: 'mock-2',
+    threadId: 'thread-mock-2',
+    subject: 'Documents for Property Appraisal',
+    from: 'Sarah Richardson <sarah.r@meridiangroup.com>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+    snippet: 'Please find attached the property appraisal documents for the Meridian Plaza project. Let me know if you need anything else.',
+    isRead: true,
+  },
+  {
+    id: 'mock-3',
+    threadId: 'thread-mock-3',
+    subject: 'Urgent: Term Sheet Review Required',
+    from: 'Michael Chen <mchen@techvest.com>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4 hours ago
+    snippet: 'Evan, I need your input on the term sheet before our meeting tomorrow. The interest rate seems higher than discussed...',
+    isRead: false,
+  },
+  {
+    id: 'mock-4',
+    threadId: 'thread-mock-4',
+    subject: 'New Restaurant Location Financing',
+    from: 'David Kim <dkim@seoulfoodgroup.com>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
+    snippet: 'Looking to expand Seoul Food Group with 3 new locations in the downtown area. Would love to discuss financing options...',
+    isRead: true,
+  },
+  {
+    id: 'mock-5',
+    threadId: 'thread-mock-5',
+    subject: 'Healthcare Facility Refinance Question',
+    from: 'Lisa Wong <lisa@pacificmedgroup.com>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(), // 26 hours ago
+    snippet: 'Our current loan matures in 6 months and we are exploring refinance options. The facility is valued at $8.2M...',
+    isRead: true,
+  },
+  {
+    id: 'mock-6',
+    threadId: 'thread-mock-6',
+    subject: 'Manufacturing Equipment Loan Application',
+    from: 'Thomas Wright <twright@wrightmanufacturing.com>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
+    snippet: 'Following up on our call about equipment financing. We need approximately $1.8M for new CNC machines and automation...',
+    isRead: false,
+  },
+  {
+    id: 'mock-7',
+    threadId: 'thread-mock-7',
+    subject: 'Senior Living Facility Acquisition',
+    from: 'Rachel Adams <rachel@sunriseseniorliving.com>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(), // 52 hours ago
+    snippet: 'Great news - the seller accepted our offer! Now we need to move quickly on the financing. The purchase price is $12.5M...',
+    isRead: true,
+  },
+  {
+    id: 'mock-8',
+    threadId: 'thread-mock-8',
+    subject: 'Boutique Hotel Expansion Plans',
+    from: 'Sophia Laurent <sophia@luxestays.co>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), // 3 days ago
+    snippet: 'We are looking to add 40 more rooms to our property in Napa. I have attached our revenue projections and construction estimates...',
+    isRead: true,
+  },
+  {
+    id: 'mock-9',
+    threadId: 'thread-mock-9',
+    subject: 'Commercial Property Portfolio Review',
+    from: 'Andrew Foster <afoster@greenleafprops.com>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(), // 4 days ago
+    snippet: 'Can we schedule a call to review our portfolio? We have 5 properties that may need refinancing before year end...',
+    isRead: true,
+  },
+  {
+    id: 'mock-10',
+    threadId: 'thread-mock-10',
+    subject: 'Healthcare Expansion Financing Inquiry',
+    from: 'Emily Wang <ewang@sunrisehealthcare.com>',
+    to: 'evan@commerciallendingx.com',
+    date: new Date(Date.now() - 1000 * 60 * 60 * 120).toISOString(), // 5 days ago
+    snippet: 'Sunrise Healthcare is planning to open a new urgent care center. We are looking at properties in the $3-4M range...',
+    isRead: true,
+  },
+];
+
 type FilterType = 'inbox' | 'external' | 'internal';
 
 const extractSenderName = (from: string) => {
@@ -119,11 +223,16 @@ const EvansGmail = () => {
     enabled: !!gmailConnection,
   });
 
+  // Combine real emails with mock external emails
+  const allEmails = useMemo(() => {
+    return [...mockExternalEmails, ...emails];
+  }, [emails]);
+
   // Filter emails based on CRM classification
   const filteredEmails = useMemo(() => {
-    if (activeFilter === 'inbox') return emails;
+    if (activeFilter === 'inbox') return allEmails;
     
-    return emails.filter(email => {
+    return allEmails.filter(email => {
       const senderEmail = extractEmailAddress(email.from);
       const toEmail = extractEmailAddress(email.to || '');
       
@@ -135,7 +244,7 @@ const EvansGmail = () => {
       if (activeFilter === 'internal') return !isExternal;
       return true;
     });
-  }, [emails, crmEmails, activeFilter]);
+  }, [allEmails, crmEmails, activeFilter]);
 
   // Connect Gmail
   const handleConnectGmail = async () => {
