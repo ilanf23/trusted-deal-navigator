@@ -3,140 +3,53 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
-import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
-import { InboxSidebar, FolderType } from '@/components/admin/inbox/InboxSidebar';
-import { WaitingOnBadge } from '@/components/admin/inbox/WaitingOnBadge';
-import { EmailActionBar } from '@/components/admin/inbox/EmailActionBar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { useEmailThreads } from '@/hooks/useEmailThreads';
 import { 
   Mail, 
   Send, 
-  Inbox, 
   Loader2, 
   RefreshCw,
-  Star,
   ArrowLeft,
   Trash2,
   Reply,
   Forward,
   Search,
-  MoreVertical,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  File,
   Pencil,
-  Bell,
-  Plus,
-  FileText,
-  Zap,
-  ExternalLink,
-  LogOut,
-  User,
-  Clock,
+  Filter,
+  ArrowUpDown,
+  Paperclip,
   AlertTriangle,
-  Briefcase,
-  ArrowRight,
-  Check,
-  X,
-  HelpCircle,
-  Info,
-  Link2,
-  Eye,
-  MessageSquare,
-  ArrowUpRight,
-  CheckCircle2,
-  UserPlus,
-  ClipboardList,
-  UserCheck,
+  Clock,
+  Phone,
+  Tag,
   Building2,
-  Users,
+  ChevronRight,
+  Star,
+  MoreHorizontal,
+  ExternalLink,
+  Plus,
+  X,
 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { format, isToday, isYesterday, differenceInDays, subDays } from 'date-fns';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@/components/ui/hover-card';
+import { format, isToday, isTomorrow, isYesterday, differenceInDays, subDays, formatDistanceToNow } from 'date-fns';
+import { Link, useNavigate } from 'react-router-dom';
 
-// Email templates for quick draft creation
-const EMAIL_TEMPLATES = [
-  {
-    id: 'deal-status',
-    name: 'Deal Status Update',
-    subject: 'Deal status update and next steps',
-    body: `Hi {{Borrower Name}},
-
-Quick update on where things stand with the lenders.
-
-Wendy has completed outreach and we are currently in active review with {{Lender Name}}. They are working through the file now, with initial feedback expected shortly. On our side, the package is in good shape and nothing additional is needed from you at the moment.
-
-While the lender reviews, we're:
-• Monitoring timing closely
-• Preparing for likely follow-up questions
-• Keeping a backup option warm in parallel
-
-Next step will be lender feedback, and I'll update you as soon as that comes in. If anything changes on your timeline or priorities, let me know so we can factor it in.
-
-Best,
-Evan`,
-  },
-  {
-    id: 'lender-quiet',
-    name: 'Lender Review Timing',
-    subject: 'Update on lender review timing',
-    body: `Hi {{Borrower Name}},
-
-I wanted to proactively check in and share where we are.
-
-Lender review is still in progress. This part of the process can take a bit longer than expected while credit and committee align internally, and that's what's happening here. Wendy is actively following up and keeping pressure on timing.
-
-Importantly:
-• Your deal is still moving forward
-• There are no red flags at this point
-• No new requests are outstanding from you
-
-If review extends beyond our comfort window, we're prepared to escalate or pivot as needed. I'll continue to manage that on our end and keep you posted.
-
-Thanks,
-Evan`,
-  },
-  {
-    id: 'closing-progress',
-    name: 'Closing Progress Update',
-    subject: 'Closing progress and remaining items',
-    body: `Hi {{Borrower Name}},
-
-We're making good progress toward closing, and I want to outline where things stand and what's left.
-
-On the lender side:
-• Wendy is finalizing outstanding conditions with {{Lender Name}}
-• Closing checklist items are actively being cleared
-
-On your side, the remaining items are:
-• {{Condition / Document 1}}
-• {{Condition / Document 2}}
-
-Once those are in, we'll be in position to push toward clear-to-close. Timing still looks aligned with our target, assuming no surprises from third parties.
-
-As always, I'll let you know immediately if anything shifts. Appreciate the momentum here.
-
-Best,
-Evan`,
-  },
-];
+// ========== TYPES ==========
 
 interface Email {
   id: string;
@@ -154,26 +67,6 @@ interface Email {
   senderPhoto?: string | null;
 }
 
-interface EmailMetadata {
-  id: string;
-  gmail_message_id: string;
-  gmail_thread_id: string | null;
-  user_id: string;
-  lead_id: string | null;
-  next_action: string | null;
-  waiting_on: 'borrower' | 'lender' | 'internal' | null;
-  sla_breach: boolean;
-  sla_due_date: string | null;
-  is_fyi: boolean;
-  last_activity_date: string | null;
-  lead?: {
-    id: string;
-    name: string;
-    company_name: string | null;
-    status: string;
-  } | null;
-}
-
 interface Lead {
   id: string;
   name: string;
@@ -182,358 +75,94 @@ interface Lead {
   company_name: string | null;
   status: string;
   updated_at: string;
+  source?: string | null;
+  notes?: string | null;
+  tags?: string[] | null;
+  title?: string | null;
 }
 
-interface LeadEmailInfo {
-  id: string;
-  name: string;
-  company_name: string | null;
-  status: string;
-  lastEmailedAt: string | null;
-}
+// ========== CONSTANTS ==========
 
-const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  discovery: { label: 'Discovery', color: 'text-blue-700', bg: 'bg-blue-100' },
-  questionnaire: { label: 'Questionnaire', color: 'text-purple-700', bg: 'bg-purple-100' },
-  pre_qualification: { label: 'Pre-Qual', color: 'text-indigo-700', bg: 'bg-indigo-100' },
-  document_collection: { label: 'Docs', color: 'text-orange-700', bg: 'bg-orange-100' },
-  underwriting: { label: 'Underwriting', color: 'text-amber-700', bg: 'bg-amber-100' },
-  approval: { label: 'Approval', color: 'text-emerald-700', bg: 'bg-emerald-100' },
-  funded: { label: 'Funded', color: 'text-green-700', bg: 'bg-green-100' },
+const STAGE_CONFIG: Record<string, { label: string; color: string; shortLabel: string }> = {
+  discovery: { label: 'Step 1: Discovery', color: '#3B82F6', shortLabel: 'Step 1' },
+  questionnaire: { label: 'Step 2: Questionnaire', color: '#8B5CF6', shortLabel: 'Step 2' },
+  pre_qualification: { label: 'Step 3: Pre-Qual', color: '#6366F1', shortLabel: 'Step 3' },
+  document_collection: { label: 'Step 4: Docs', color: '#F59E0B', shortLabel: 'Step 4' },
+  underwriting: { label: 'Step 5: Underwriting', color: '#EF4444', shortLabel: 'Step 5' },
+  approval: { label: 'Step 6: Approval', color: '#10B981', shortLabel: 'Step 6' },
+  funded: { label: 'Funded', color: '#059669', shortLabel: 'Funded' },
 };
 
-const formatEmailDate = (dateString: string) => {
+const LOAN_TYPES = ['SBA', 'CRE', 'Equipment', 'Working Capital', 'Bridge', 'Construction'];
+
+// ========== HELPERS ==========
+
+const extractSenderName = (from: string) => {
+  const match = from.match(/^([^<]+)/);
+  if (match) return match[1].trim().replace(/"/g, '');
+  return from.split('@')[0];
+};
+
+const extractEmailAddress = (value: string) => {
+  const match = value.match(/<([^>]+)>/);
+  return (match?.[1] || value || '').trim();
+};
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+const formatNextTouch = (dateString: string | null | undefined) => {
+  if (!dateString) return null;
   const date = new Date(dateString);
-  if (isToday(date)) {
-    return format(date, 'h:mm a');
-  }
-  if (isYesterday(date)) {
-    return 'Yesterday';
-  }
-  // Check if within this year
-  const now = new Date();
-  if (date.getFullYear() === now.getFullYear()) {
-    return format(date, 'MMM d');
-  }
-  return format(date, 'MMM d, yyyy');
+  if (isToday(date)) return `Today, ${format(date, 'h:mm a')}`;
+  if (isTomorrow(date)) return `Tomorrow, ${format(date, 'h:mm a')}`;
+  return format(date, 'EEE, h:mm a');
 };
 
 const isHtmlEmailContent = (content: string): boolean =>
   /<(?:div|table|span|p|br|img|a|td|tr|th|body|html|head|style)[^>]*>/i.test(content);
 
-// Format email body to look professional like Gmail
 const formatEmailBody = (body: string): string => {
   if (!body) return '';
-
-  // If it already contains HTML, keep it intact (do NOT inject styles).
   if (isHtmlEmailContent(body)) return body;
-
-  // Plain text → minimal HTML: preserve line breaks + linkify
   return body
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(
-      /(https?:\/\/[^\s<]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
-    )
-    .replace(
-      /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-      '<a href="mailto:$1">$1</a>'
-    )
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">$1</a>')
+    .replace(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, '<a href="mailto:$1" class="text-blue-600 hover:underline">$1</a>')
     .replace(/\n/g, '<br />');
 };
 
-const extractSenderName = (from: string) => {
-  // Extract name from "Name <email@example.com>" format
-  const match = from.match(/^([^<]+)/);
-  if (match) {
-    return match[1].trim().replace(/"/g, '');
-  }
-  return from.split('@')[0];
-};
-
-const extractEmailAddress = (value: string) => {
-  // Extract email from "Name <email@example.com>" format (or return as-is)
-  const match = value.match(/<([^>]+)>/);
-  return (match?.[1] || value || '').trim();
-};
-
-// Generate explanation for why an email is in the inbox
-const generateExplanation = (
-  email: Email,
-  metadata: EmailMetadata | undefined,
-  statusConfig: Record<string, { label: string; color: string; bg: string }>
-): { title: string; bullets: { text: string; isWarning: boolean }[]; isFyi: boolean } => {
-  const bullets: { text: string; isWarning: boolean }[] = [];
-  
-  // Check if FYI
-  if (metadata?.is_fyi) {
-    return {
-      title: "This email requires no action",
-      bullets: [{ text: "Shown for visibility only", isWarning: false }],
-      isFyi: true,
-    };
-  }
-  
-  // Check untriaged conditions
-  const hasNoDeal = !metadata?.lead_id;
-  const hasNoNextStep = !metadata?.next_action;
-  
-  if (hasNoDeal || hasNoNextStep) {
-    const untriagedBullets: { text: string; isWarning: boolean }[] = [];
-    
-    if (hasNoDeal) {
-      untriagedBullets.push({ text: "No deal is linked", isWarning: true });
-    }
-    if (hasNoNextStep) {
-      untriagedBullets.push({ text: "No next step is defined", isWarning: true });
-    }
-    
-    // Add last activity
-    const emailDate = new Date(email.date);
-    const daysSince = differenceInDays(new Date(), emailDate);
-    if (daysSince === 0) {
-      untriagedBullets.push({ text: "Last activity: Today", isWarning: false });
-    } else if (daysSince === 1) {
-      untriagedBullets.push({ text: "Last activity: Yesterday", isWarning: false });
-    } else {
-      untriagedBullets.push({ text: `Last activity: ${daysSince} days ago`, isWarning: daysSince > 7 });
-    }
-    
-    return {
-      title: "This email is untriaged because:",
-      bullets: untriagedBullets,
-      isFyi: false,
-    };
-  }
-  
-  // Email is linked to a deal
-  const dealName = metadata.lead?.company_name || metadata.lead?.name || "Unknown Deal";
-  const dealStage = metadata.lead?.status ? statusConfig[metadata.lead.status]?.label || metadata.lead.status : "Unknown";
-  
-  // Waiting on
-  if (metadata.waiting_on) {
-    const waitingOnLabel = metadata.waiting_on === 'borrower' ? 'Waiting on borrower' :
-                          metadata.waiting_on === 'lender' ? 'Waiting on lender' :
-                          'Waiting on internal team';
-    bullets.push({ text: waitingOnLabel, isWarning: false });
-  }
-  
-  // Last outbound email
-  if (metadata.last_activity_date) {
-    const activityDate = new Date(metadata.last_activity_date);
-    bullets.push({ text: `Last outbound email: ${format(activityDate, 'MMM d, yyyy')}`, isWarning: false });
-  } else {
-    const emailDate = new Date(email.date);
-    bullets.push({ text: `Email received: ${format(emailDate, 'MMM d, yyyy')}`, isWarning: false });
-  }
-  
-  // SLA breach
-  if (metadata.sla_breach) {
-    bullets.push({ text: "SLA threshold exceeded", isWarning: true });
-  }
-  
-  // Deal stage
-  bullets.push({ text: `Current deal stage: ${dealStage}`, isWarning: false });
-  
-  // Next action reminder
-  if (metadata.next_action) {
-    bullets.push({ text: `Next step: ${metadata.next_action}`, isWarning: false });
-  }
-  
-  return {
-    title: `This deal is in your inbox because:`,
-    bullets,
-    isFyi: false,
-  };
-};
-
-// Type for context-aware actions
-type EmailAction = {
-  id: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  variant: 'default' | 'warning' | 'success' | 'primary';
-  action: () => void;
-};
-
-// Helper to determine which actions to show based on email state
-const getContextualActions = (
-  email: Email,
-  metadata: EmailMetadata | undefined,
-  linkedDeal: { id: string; name: string; company_name: string | null } | null,
-  handlers: {
-    onLinkDeal: () => void;
-    onCreateDeal: () => void;
-    onMarkFyi: () => void;
-    onNudgeBorrower: () => void;
-    onNudgeLender: () => void;
-    onSetReminder: () => void;
-    onMarkReceived: () => void;
-    onMarkResponded: () => void;
-    onEscalate: () => void;
-    onAssignTask: () => void;
-    onMarkComplete: () => void;
-  }
-): EmailAction[] => {
-  const actions: EmailAction[] = [];
-  
-  // If untriaged (no deal or no next action)
-  const isUntriaged = !metadata?.lead_id || !metadata?.next_action;
-  const isFyi = metadata?.is_fyi;
-  
-  if (isFyi) {
-    // FYI emails just need a way to un-mark
-    return [];
-  }
-  
-  if (isUntriaged) {
-    if (!linkedDeal) {
-      actions.push({
-        id: 'link-deal',
-        label: 'Link deal',
-        icon: Link2,
-        variant: 'warning',
-        action: handlers.onLinkDeal,
-      });
-      actions.push({
-        id: 'create-deal',
-        label: 'New deal',
-        icon: Plus,
-        variant: 'default',
-        action: handlers.onCreateDeal,
-      });
-    }
-    actions.push({
-      id: 'mark-fyi',
-      label: 'Mark FYI',
-      icon: Eye,
-      variant: 'default',
-      action: handlers.onMarkFyi,
-    });
-    return actions.slice(0, 4);
-  }
-  
-  // Waiting on borrower
-  if (metadata?.waiting_on === 'borrower') {
-    actions.push({
-      id: 'nudge-borrower',
-      label: 'Nudge',
-      icon: MessageSquare,
-      variant: 'primary',
-      action: handlers.onNudgeBorrower,
-    });
-    actions.push({
-      id: 'set-reminder',
-      label: 'Remind me',
-      icon: Bell,
-      variant: 'default',
-      action: handlers.onSetReminder,
-    });
-    actions.push({
-      id: 'mark-received',
-      label: 'Received',
-      icon: CheckCircle2,
-      variant: 'success',
-      action: handlers.onMarkReceived,
-    });
-    return actions.slice(0, 4);
-  }
-  
-  // Waiting on lender
-  if (metadata?.waiting_on === 'lender') {
-    actions.push({
-      id: 'nudge-lender',
-      label: 'Nudge',
-      icon: MessageSquare,
-      variant: 'primary',
-      action: handlers.onNudgeLender,
-    });
-    actions.push({
-      id: 'escalate',
-      label: 'Escalate',
-      icon: ArrowUpRight,
-      variant: 'warning',
-      action: handlers.onEscalate,
-    });
-    actions.push({
-      id: 'mark-responded',
-      label: 'Responded',
-      icon: CheckCircle2,
-      variant: 'success',
-      action: handlers.onMarkResponded,
-    });
-    return actions.slice(0, 4);
-  }
-  
-  // Internal task
-  if (metadata?.waiting_on === 'internal') {
-    actions.push({
-      id: 'assign-task',
-      label: 'Assign',
-      icon: UserPlus,
-      variant: 'primary',
-      action: handlers.onAssignTask,
-    });
-    actions.push({
-      id: 'mark-complete',
-      label: 'Complete',
-      icon: CheckCircle2,
-      variant: 'success',
-      action: handlers.onMarkComplete,
-    });
-    return actions.slice(0, 4);
-  }
-  
-  // Default actions for triaged emails without specific waiting_on
-  if (linkedDeal && metadata?.next_action) {
-    actions.push({
-      id: 'mark-complete',
-      label: 'Done',
-      icon: CheckCircle2,
-      variant: 'success',
-      action: handlers.onMarkComplete,
-    });
-  }
-  
-  return actions.slice(0, 4);
-};
+// ========== COMPONENT ==========
 
 const EvansGmail = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
   
-  // Use the new email threads hook for thread-level tracking
-  const { 
-    threads: emailThreads, 
-    threadMap, 
-    counts: threadCounts,
-    linkDeal: linkThreadDeal,
-    setNextAction: setThreadNextAction,
-    setWaitingOn: setThreadWaitingOn,
-    markComplete: markThreadComplete,
-    getThread,
-  } = useEmailThreads();
-  const [editingNextAction, setEditingNextAction] = useState<string | null>(null);
-  const [nextActionInput, setNextActionInput] = useState('');
+  // State
+  const [activeStage, setActiveStage] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'urgency' | 'date' | 'amount'>('urgency');
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTo, setComposeTo] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [sending, setSending] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
-  const [editingDraftMessageId, setEditingDraftMessageId] = useState<string | null>(null);
-  const [editingDraftThreadId, setEditingDraftThreadId] = useState<string | null>(null);
-  const [composeHandled, setComposeHandled] = useState(false);
-  const [actionLinkDealOpen, setActionLinkDealOpen] = useState<string | null>(null);
-  // Check Gmail connection status
+  
+  // Email threads hook
+  const { threadMap, setWaitingOn: setThreadWaitingOn } = useEmailThreads();
+  
+  // Gmail connection
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
     queryKey: ['gmail-connection'],
     queryFn: async () => {
@@ -542,465 +171,50 @@ const EvansGmail = () => {
         .select('*')
         .eq('user_id', user?.id)
         .maybeSingle();
-      
       if (error) throw error;
       return data;
     },
     enabled: !!user?.id,
   });
-
-  // Fetch emails from Gmail API
+  
+  // Fetch emails
   const { data: emailsData, isLoading: emailsLoading, refetch: refetchEmails } = useQuery({
-    queryKey: ['gmail-emails', activeFolder],
+    queryKey: ['gmail-emails-deal-view'],
     queryFn: async () => {
-      if (!gmailConnection) return { emails: [], totalCount: 0 };
-      
+      if (!gmailConnection) return { emails: [] };
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return { emails: [], totalCount: 0 };
-      
-      let query = 'in:inbox';
-      if (activeFolder === 'sent') query = 'in:sent';
-      else if (activeFolder === 'starred') query = 'is:starred';
-      else if (activeFolder === 'drafts') query = 'in:drafts';
-      else if (activeFolder === 'templates') query = 'in:inbox'; // placeholder for templates
+      if (!session) return { emails: [] };
       
       const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent(query)}&maxResults=50&fetchPhotos=true`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=in:inbox&maxResults=50&fetchPhotos=true`,
+        { headers: { 'Authorization': `Bearer ${session.access_token}` } }
       );
       
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch emails');
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch emails');
-      }
-      
-      const emails = (data?.messages || []).map((msg: any) => ({
-        id: msg.id,
-        threadId: msg.threadId,
-        subject: msg.subject || '(No Subject)',
-        from: msg.from || '',
-        to: msg.to || '',
-        date: msg.date || new Date().toISOString(),
-        snippet: msg.snippet || '',
-        body: msg.body || '',
-        isRead: !msg.isUnread,
-        isStarred: msg.labelIds?.includes('STARRED') || false,
-        labels: msg.labelIds || [],
-        attachments: msg.attachments || [],
-        senderPhoto: msg.senderPhoto || null,
-      })) as Email[];
-
-      return { 
-        emails, 
-        totalCount: data?.resultSizeEstimate || emails.length 
+      return {
+        emails: (data?.messages || []).map((msg: any) => ({
+          id: msg.id,
+          threadId: msg.threadId,
+          subject: msg.subject || '(No Subject)',
+          from: msg.from || '',
+          to: msg.to || '',
+          date: msg.date || new Date().toISOString(),
+          snippet: msg.snippet || '',
+          body: msg.body || '',
+          isRead: !msg.isUnread,
+          isStarred: msg.labelIds?.includes('STARRED') || false,
+          labels: msg.labelIds || [],
+          attachments: msg.attachments || [],
+          senderPhoto: msg.senderPhoto || null,
+        })) as Email[]
       };
     },
     enabled: !!gmailConnection,
   });
-
-  const rawEmails = emailsData?.emails || [];
-
-  // Mock external emails from CRM leads for testing
-  const mockExternalEmails: Email[] = useMemo(() => [
-    {
-      id: 'mock-1',
-      threadId: 'mock-thread-1',
-      subject: 'RE: Term Sheet Discussion - $2.5M Acquisition Financing',
-      from: 'Robert Martinez <robert.martinez@capitalventures.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-      snippet: 'Evan, I reviewed the term sheet from First National. The rate spread seems high given our credit profile...',
-      body: `<div style="font-family: Arial, sans-serif;">
-        <p>Evan,</p>
-        <p>I reviewed the term sheet from First National. The rate spread seems high given our credit profile and the collateral we're putting up. A few specific concerns:</p>
-        <ol>
-          <li><strong>Interest Rate:</strong> They're quoting Prime + 2.75%, but we were expecting something closer to Prime + 2.0% based on our initial conversations. Is there room to negotiate?</li>
-          <li><strong>Prepayment Penalty:</strong> 3% in year 1, 2% in year 2, 1% in year 3. This is steeper than what Pacific Commerce offered. Can we get this reduced?</li>
-          <li><strong>Personal Guarantee:</strong> They want a full PG from both myself and my wife. We were hoping for a limited guarantee capped at 25% of the loan amount.</li>
-        </ol>
-        <p>Also, I noticed they're requiring quarterly financial reporting. Is that standard? Our current lender only requires annual statements.</p>
-        <p>Can we schedule a call tomorrow to discuss strategy before we respond? I'm available between 2-5pm EST.</p>
-        <p>Best regards,<br/>Robert Martinez<br/>Managing Partner, Capital Ventures LLC<br/>(305) 555-8923</p>
-      </div>`,
-      isRead: false,
-      isStarred: true,
-      labels: ['INBOX', 'STARRED'],
-      attachments: [{ name: 'First_National_Term_Sheet_v2.pdf', type: 'application/pdf' }],
-      senderPhoto: null,
-    },
-    {
-      id: 'mock-2',
-      threadId: 'mock-thread-2',
-      subject: 'Urgent: Appraisal came in $400K below purchase price',
-      from: 'Sarah Rodriguez <sarah.r@meridiangroup.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
-      snippet: 'We have a major issue. The appraisal just came back at $3.1M when we were under contract for $3.5M...',
-      body: `<div style="font-family: Arial, sans-serif;">
-        <p>Evan,</p>
-        <p>We have a major issue that I need your help navigating.</p>
-        <p>The appraisal just came back at <strong>$3.1M</strong> when we were under contract for <strong>$3.5M</strong>. That's a $400K gap that's going to blow up our financing structure.</p>
-        <p>Here's what I'm thinking:</p>
-        <ul>
-          <li>Can we challenge the appraisal? The comp they used at 455 Industrial Parkway sold 8 months ago and doesn't account for recent market appreciation</li>
-          <li>If the appraisal stands, we'd need to bring an additional $320K to closing (assuming 80% LTV). We don't have that kind of liquidity right now</li>
-          <li>Is there any chance the lender would go to 85% LTV given our track record with them?</li>
-        </ul>
-        <p>The seller is already getting antsy - we've extended due diligence twice. If we can't close by Feb 15th, they're threatening to go with the backup offer.</p>
-        <p>I've attached the appraisal report. Pages 12-15 have the comps analysis that I think is flawed.</p>
-        <p>Please call me ASAP. This is my top priority right now.</p>
-        <p>Sarah Rodriguez<br/>CEO, Meridian Development Group<br/>Direct: (212) 555-7734</p>
-      </div>`,
-      isRead: false,
-      isStarred: false,
-      labels: ['INBOX', 'IMPORTANT'],
-      attachments: [
-        { name: 'Appraisal_Report_3500_Commerce_Dr.pdf', type: 'application/pdf' },
-        { name: 'Comparable_Sales_Analysis.xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
-      ],
-      senderPhoto: null,
-    },
-    {
-      id: 'mock-3',
-      threadId: 'mock-thread-3',
-      subject: 'RE: Bridge Loan Docs - Legal Review Complete',
-      from: 'Lisa Chen-Walters <lisa@pacificmedgroup.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      snippet: 'Our attorney completed review of the bridge loan documents. A few redlines attached, but overall we are ready to proceed...',
-      body: `<div style="font-family: Arial, sans-serif;">
-        <p>Hi Evan,</p>
-        <p>Our attorney (Jennifer Walsh at Morrison & Reed) completed her review of the bridge loan documents. I'm pleased to say we're in good shape overall.</p>
-        <p><strong>Items we're accepting as-is:</strong></p>
-        <ul>
-          <li>Interest rate and payment terms</li>
-          <li>Collateral requirements</li>
-          <li>Financial covenants (debt service coverage ratio of 1.25x)</li>
-          <li>Insurance requirements</li>
-        </ul>
-        <p><strong>Items we need to negotiate (see redlines in attachment):</strong></p>
-        <ol>
-          <li><strong>Section 4.3 - Default provisions:</strong> The 10-day cure period is too short. We need 30 days for monetary defaults and 60 days for non-monetary defaults</li>
-          <li><strong>Section 7.1 - Change of control:</strong> The current language would trigger a default if we bring in a minority investor. We need an exception for equity investments under 25%</li>
-          <li><strong>Exhibit B - Personal guarantee:</strong> Needs to exclude my residence as we discussed</li>
-        </ol>
-        <p>If the lender accepts these three changes, we can sign immediately. Our board meets next Thursday and I'd love to have this closed by then so we can announce the new facility.</p>
-        <p>Let me know when you hear back from them!</p>
-        <p>Best,<br/>Lisa Chen-Walters<br/>CFO, Pacific Medical Group<br/>lisa@pacificmedgroup.com</p>
-      </div>`,
-      isRead: true,
-      isStarred: true,
-      labels: ['INBOX', 'STARRED'],
-      attachments: [
-        { name: 'Bridge_Loan_Agreement_REDLINED.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
-        { name: 'Attorney_Comments_Memo.pdf', type: 'application/pdf' }
-      ],
-      senderPhoto: null,
-    },
-    {
-      id: 'mock-4',
-      threadId: 'mock-thread-4',
-      subject: 'Updated financials + 2024 projections for underwriting',
-      from: 'Emily Wang <ewang@sunrisehealthcare.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000 - 3 * 60 * 60 * 1000).toISOString(), // 1 day 3 hours ago
-      snippet: 'As requested, I am sending over our year-end financials and 2024 projections. Revenue grew 34% YoY...',
-      body: `<div style="font-family: Arial, sans-serif;">
-        <p>Hi Evan,</p>
-        <p>As requested, I'm sending over our year-end financials and 2024 projections for the underwriting team.</p>
-        <p><strong>2023 Highlights:</strong></p>
-        <table border="1" cellpadding="8" style="border-collapse: collapse; margin: 15px 0;">
-          <tr><td>Revenue</td><td>$12.4M</td><td style="color: green;">↑ 34% YoY</td></tr>
-          <tr><td>EBITDA</td><td>$2.1M</td><td style="color: green;">↑ 28% YoY</td></tr>
-          <tr><td>Net Income</td><td>$1.4M</td><td style="color: green;">↑ 45% YoY</td></tr>
-          <tr><td>Current Debt Service Coverage</td><td colspan="2">2.8x</td></tr>
-        </table>
-        <p>The 2024 projections assume we complete the facility expansion by Q2, which is contingent on this financing. We're projecting:</p>
-        <ul>
-          <li>Revenue of $18.5M (49% growth)</li>
-          <li>EBITDA of $3.2M (52% growth)</li>
-          <li>Pro forma DSCR of 2.1x (accounting for new debt service)</li>
-        </ul>
-        <p>I've also included our AR aging report since I know that was a question last time. Our average collection period improved from 45 days to 32 days after we switched billing systems in July.</p>
-        <p>Let me know if the underwriters need any additional documentation. Happy to get on a call if questions come up.</p>
-        <p>Thanks,<br/>Emily Wang<br/>Director of Finance, Sunrise Healthcare Partners<br/>(617) 555-2890</p>
-      </div>`,
-      isRead: true,
-      isStarred: false,
-      labels: ['INBOX'],
-      attachments: [
-        { name: '2023_Audited_Financials.pdf', type: 'application/pdf' },
-        { name: '2024_Projections_Model.xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-        { name: 'AR_Aging_Report_Dec2023.pdf', type: 'application/pdf' }
-      ],
-      senderPhoto: null,
-    },
-    {
-      id: 'mock-5',
-      threadId: 'mock-thread-5',
-      subject: 'Question about SBA 504 vs conventional for equipment purchase',
-      from: 'Thomas Wright <twright@wrightmanufacturing.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-      snippet: 'I have been researching financing options for our new CNC machining center. Comparing SBA 504 to conventional...',
-      body: `<div style="font-family: Arial, sans-serif;">
-        <p>Evan,</p>
-        <p>I've been doing some research on financing options for our new CNC machining center ($1.8M total cost) and I'm trying to understand the tradeoffs.</p>
-        <p><strong>SBA 504 (as I understand it):</strong></p>
-        <ul>
-          <li>10% down payment ($180K)</li>
-          <li>Fixed rate on the CDC portion</li>
-          <li>20-year term</li>
-          <li>BUT: Takes 60-90 days to close, lots of paperwork</li>
-        </ul>
-        <p><strong>Conventional equipment loan:</strong></p>
-        <ul>
-          <li>20-25% down payment ($360-450K)</li>
-          <li>Variable rate</li>
-          <li>7-year term typical</li>
-          <li>Can close in 30 days</li>
-        </ul>
-        <p>Here's my dilemma: Our current equipment is failing and we're losing production capacity every week. The machine we want has a 16-week lead time from order, so even if we could close quickly, we wouldn't get the equipment until May.</p>
-        <p>Questions:</p>
-        <ol>
-          <li>Is SBA 504 actually available for equipment-only purchases, or does it need real estate too?</li>
-          <li>Can we use the equipment itself as collateral to reduce the down payment on conventional?</li>
-          <li>Is there a hybrid approach - maybe bridge financing until the 504 closes?</li>
-        </ol>
-        <p>I'd love to talk through the options when you have time. This is a significant investment for us and I want to make sure we structure it right.</p>
-        <p>Thanks,<br/>Thomas Wright<br/>President, Wright Manufacturing Co.<br/>twright@wrightmanufacturing.com</p>
-      </div>`,
-      isRead: false,
-      isStarred: false,
-      labels: ['INBOX'],
-      attachments: [
-        { name: 'CNC_Machine_Quote_Mazak.pdf', type: 'application/pdf' }
-      ],
-      senderPhoto: null,
-    },
-    {
-      id: 'mock-6',
-      threadId: 'mock-thread-6',
-      subject: 'RE: Construction draw schedule - lender wants changes',
-      from: 'David Kim <dkim@seoulfoodgroup.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 6 * 60 * 60 * 1000).toISOString(), // 2 days 6 hours ago
-      snippet: 'The lender\'s proposed draw schedule doesn\'t align with our contractor\'s billing cycles. This could create cash flow issues...',
-      body: `<div style="font-family: Arial, sans-serif;">
-        <p>Evan,</p>
-        <p>We received the lender's proposed draw schedule and there's a significant issue we need to address.</p>
-        <p><strong>The Problem:</strong><br/>The lender wants to do monthly draws with a 15-day inspection period before each disbursement. Our GC (Pacific Builders) bills every two weeks and expects payment within 10 days. This mismatch means we'd be floating 3-4 weeks of construction costs out of pocket - potentially $200-400K at a time.</p>
-        <p><strong>What we need:</strong></p>
-        <ul>
-          <li>Bi-weekly draw submissions (to match our GC billing)</li>
-          <li>5-day inspection period (industry standard for projects under $5M)</li>
-          <li>Or: An operating line we can draw from while waiting for construction draws</li>
-        </ul>
-        <p>I've been through two ground-up construction projects before and neither lender required 15-day inspection periods. Where is this coming from?</p>
-        <p>Also, minor issue but the draw schedule references "Site Work" as Draw #2 but we already completed grading in December. Can we revise to reflect work completed to date?</p>
-        <p>Please push back on this. We're already under pressure from our franchise agreement to open by September 1st.</p>
-        <p>David Kim<br/>Owner, Seoul Food Group Inc.<br/>(714) 555-8847</p>
-      </div>`,
-      isRead: true,
-      isStarred: false,
-      labels: ['INBOX'],
-      attachments: [
-        { name: 'Proposed_Draw_Schedule.pdf', type: 'application/pdf' },
-        { name: 'GC_Payment_Terms.pdf', type: 'application/pdf' }
-      ],
-      senderPhoto: null,
-    },
-    {
-      id: 'mock-7',
-      threadId: 'mock-thread-7',
-      subject: 'Partnership dissolution affecting our loan application',
-      from: 'Amanda Foster <afoster@greenleafprops.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-      snippet: 'I need to inform you of a development that may impact our refinance application. My business partner Marcus...',
-      body: `<div style="font-family: Arial, sans-serif;">
-        <p>Evan,</p>
-        <p>I need to inform you of a development that may impact our refinance application.</p>
-        <p>My business partner, Marcus Thompson (45% owner), has decided to exit the business. We're working through the buyout now, which means:</p>
-        <ol>
-          <li><strong>Ownership structure will change:</strong> I'll go from 55% to 100% owner once we close the buyout (targeting March 15)</li>
-          <li><strong>Buyout financing:</strong> Part of why we need this refi - using cash-out to fund $600K of the buyout price</li>
-          <li><strong>Guarantor change:</strong> Marcus will be removed as guarantor; I'll be the sole guarantor going forward</li>
-        </ol>
-        <p>The good news is this simplifies things long-term. The complication is the timing - we're in the middle of the buyout negotiation while also trying to close this refinance.</p>
-        <p><strong>Documents I can provide:</strong></p>
-        <ul>
-          <li>Draft Partnership Dissolution Agreement (still being negotiated)</li>
-          <li>Proposed Operating Agreement for single-member LLC</li>
-          <li>My personal financial statement (updated as of last week)</li>
-          <li>Buyout funding sources breakdown</li>
-        </ul>
-        <p>Will this derail our timeline? I know we were hoping to close by end of February. Should we pause the application until the buyout is finalized, or can we proceed with some conditions?</p>
-        <p>Please advise.</p>
-        <p>Amanda Foster<br/>Managing Partner, Greenleaf Properties<br/>(503) 555-2234</p>
-      </div>`,
-      isRead: false,
-      isStarred: true,
-      labels: ['INBOX', 'STARRED', 'IMPORTANT'],
-      attachments: [],
-      senderPhoto: null,
-    },
-    {
-      id: 'mock-8',
-      threadId: 'mock-thread-8',
-      subject: 'Closing scheduled for Friday - final checklist',
-      from: 'James Patterson <jpatterson@pattersonllc.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-      snippet: 'Great news - title just confirmed we are cleared to close on Friday at 2pm EST. Here is my understanding of what still needs to happen...',
-      body: `<div style="font-family: Arial, sans-serif;">
-        <p>Evan,</p>
-        <p>Great news - title just confirmed we're cleared to close on Friday at 2pm EST at their office in Midtown.</p>
-        <p>Here's my understanding of what still needs to happen before then:</p>
-        <p><strong>✅ Completed:</strong></p>
-        <ul>
-          <li>Final loan docs signed and returned to lender</li>
-          <li>Insurance binder with lender as loss payee</li>
-          <li>Wire instructions received from title</li>
-          <li>Payoff letter from existing lender</li>
-        </ul>
-        <p><strong>⏳ Pending (on lender's side):</strong></p>
-        <ul>
-          <li>Final funding approval from credit committee (expected tomorrow)</li>
-          <li>Wire of loan proceeds to title (typically same-day as closing)</li>
-        </ul>
-        <p><strong>⏳ Pending (on my side):</strong></p>
-        <ul>
-          <li>Down payment wire ($425,000) - sending tomorrow morning</li>
-          <li>Closing cost wire (~$23,000 estimated) - title sending final figure today</li>
-        </ul>
-        <p>Is there anything I'm missing? I want to make sure we have zero surprises on Friday.</p>
-        <p>Also - should I plan to bring anything to closing besides ID? I assume all the legal docs are handled electronically?</p>
-        <p>Thanks for shepherding this deal through. It's been a long road but we're finally at the finish line!</p>
-        <p>James Patterson<br/>Patterson Holdings LLC<br/>(404) 555-9012</p>
-      </div>`,
-      isRead: false,
-      isStarred: true,
-      labels: ['INBOX', 'STARRED'],
-      attachments: [
-        { name: 'Wire_Instructions_Title_Co.pdf', type: 'application/pdf' },
-        { name: 'Closing_Disclosure_FINAL.pdf', type: 'application/pdf' }
-      ],
-      senderPhoto: null,
-    },
-  ], []);
-
-  // Merge mock emails with real emails (mock emails appear mixed by date)
-  const allEmails = useMemo(() => {
-    const combined = [...rawEmails, ...mockExternalEmails];
-    // Sort by date descending
-    return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [rawEmails, mockExternalEmails]);
-
-  const currentFolderCount = (emailsData?.totalCount || 0) + mockExternalEmails.length;
-
-  // Fetch email metadata (deal links, next actions)
-  const { data: emailMetadataMap = {} } = useQuery({
-    queryKey: ['email-metadata', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return {};
-      
-      const { data, error } = await supabase
-        .from('email_metadata')
-        .select(`
-          id,
-          gmail_message_id,
-          gmail_thread_id,
-          user_id,
-          lead_id,
-          next_action,
-          waiting_on,
-          sla_breach,
-          sla_due_date,
-          is_fyi,
-          last_activity_date,
-          lead:leads(id, name, company_name, status)
-        `)
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      
-      // Build a map of gmail_message_id -> metadata
-      const map: Record<string, EmailMetadata> = {};
-      (data || []).forEach((item: any) => {
-        map[item.gmail_message_id] = item;
-      });
-      return map;
-    },
-    enabled: !!user?.id,
-  });
-
-  // Calculate untriaged count (not dependent on CRM leads)
-  const untriagedEmails = useMemo(() => {
-    return allEmails.filter(email => {
-      const metadata = emailMetadataMap[email.id];
-      return !metadata || !metadata.lead_id || !metadata.next_action;
-    });
-  }, [allEmails, emailMetadataMap]);
-
-  const untriagedCount = untriagedEmails.length;
-
-  // Fetch inbox count separately (for sidebar display when not on inbox)
-  const { data: inboxCountData } = useQuery({
-    queryKey: ['gmail-inbox-count'],
-    queryFn: async () => {
-      if (!gmailConnection) return 0;
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return 0;
-      
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent('in:inbox')}&maxResults=1`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
-      
-      const data = await response.json();
-      return data?.resultSizeEstimate || 0;
-    },
-    enabled: !!gmailConnection,
-    staleTime: 60000, // Cache for 1 minute
-  });
-
-  // Fetch drafts count separately using the dedicated drafts API
-  const { data: draftsCountData } = useQuery({
-    queryKey: ['gmail-drafts-count'],
-    queryFn: async () => {
-      if (!gmailConnection) return 0;
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return 0;
-      
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list-drafts-count`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
-      
-      const data = await response.json();
-      return data?.count || 0;
-    },
-    enabled: !!gmailConnection,
-    staleTime: 60000, // Cache for 1 minute
-  });
-
-  // Fetch Evan's team member ID
+  
+  // Fetch Evan's team member
   const { data: evanTeamMember } = useQuery({
     queryKey: ['evan-team-member'],
     queryFn: async () => {
@@ -1013,771 +227,181 @@ const EvansGmail = () => {
       return data;
     },
   });
-
+  
   const evanId = evanTeamMember?.id;
-
-  // Fetch leads needing nudges (no contact in 7+ days)
-  const { data: nudgeLeads = [], isLoading: nudgesLoading } = useQuery({
-    queryKey: ['gmail-nudge-leads', evanId],
+  
+  // Fetch leads with full data
+  const { data: allLeads = [] } = useQuery({
+    queryKey: ['crm-leads-full', evanId],
     queryFn: async () => {
       if (!evanId) return [];
-      
-      const oneWeekAgo = subDays(new Date(), 7).toISOString();
-      
-      // Get leads assigned to Evan that haven't been updated in a week
-      const { data: leads, error } = await supabase
+      const { data, error } = await supabase
         .from('leads')
-        .select('id, name, email, phone, company_name, status, updated_at')
+        .select('id, name, email, phone, company_name, status, updated_at, source, notes, tags, title')
         .eq('assigned_to', evanId)
-        .neq('status', 'funded')
-        .lt('updated_at', oneWeekAgo)
-        .order('updated_at', { ascending: true })
-        .limit(20);
-      
+        .order('updated_at', { ascending: false });
       if (error) throw error;
-
-      // Filter to only leads with emails
-      return (leads || []).filter(l => l.email) as Lead[];
+      return data || [];
     },
     enabled: !!evanId,
   });
-
-  // Fetch all CRM leads for email matching
-  const { data: allCrmLeads = [] } = useQuery({
-    queryKey: ['crm-leads-for-gmail', evanId],
+  
+  // Fetch lead responses for loan amounts
+  const { data: leadResponses = [] } = useQuery({
+    queryKey: ['lead-responses-for-inbox'],
     queryFn: async () => {
-      if (!evanId) return [];
-      
-      const { data: leads, error } = await supabase
-        .from('leads')
-        .select('id, name, email, company_name, status')
-        .eq('assigned_to', evanId)
-        .not('email', 'is', null);
-      
+      const { data, error } = await supabase
+        .from('lead_responses')
+        .select('lead_id, loan_amount, loan_type, funding_purpose');
       if (error) throw error;
-      return leads || [];
+      return data || [];
     },
-    enabled: !!evanId,
   });
-
-  // Fetch last email dates for leads (from evan_communications)
-  const { data: lastEmailDates = {} } = useQuery({
-    queryKey: ['lead-last-email-dates', evanId],
-    queryFn: async () => {
-      if (!evanId) return {};
-      
-      // Get the most recent email communication for each lead
-      const { data: comms, error } = await supabase
-        .from('evan_communications')
-        .select('lead_id, created_at')
-        .eq('communication_type', 'email')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      // Build a map of lead_id -> last email date
-      const dateMap: Record<string, string> = {};
-      (comms || []).forEach(comm => {
-        if (comm.lead_id && !dateMap[comm.lead_id]) {
-          dateMap[comm.lead_id] = comm.created_at;
-        }
-      });
-      
-      return dateMap;
-    },
-    enabled: !!evanId,
-  });
-
-  // Build a map of email -> lead info for quick lookup
-  const emailToLeadMap = useMemo(() => {
-    const map = new Map<string, LeadEmailInfo>();
-    allCrmLeads.forEach(lead => {
-      if (lead.email) {
-        const normalizedEmail = lead.email.toLowerCase().trim();
-        map.set(normalizedEmail, {
-          id: lead.id,
-          name: lead.name,
-          company_name: lead.company_name,
-          status: lead.status,
-          lastEmailedAt: lastEmailDates[lead.id] || null,
+  
+  // Build lead response map
+  const leadResponseMap = useMemo(() => {
+    const map = new Map<string, { loanAmount?: number; loanType?: string; purpose?: string }>();
+    leadResponses.forEach(r => {
+      if (r.lead_id) {
+        map.set(r.lead_id, {
+          loanAmount: r.loan_amount || undefined,
+          loanType: r.loan_type || undefined,
+          purpose: r.funding_purpose || undefined,
         });
       }
     });
     return map;
-  }, [allCrmLeads, lastEmailDates]);
-
-  // Helper to find lead info from email address
-  const findLeadFromEmail = (emailStr: string): LeadEmailInfo | null => {
+  }, [leadResponses]);
+  
+  // Build email-to-lead map
+  const emailToLeadMap = useMemo(() => {
+    const map = new Map<string, Lead>();
+    allLeads.forEach(lead => {
+      if (lead.email) {
+        map.set(lead.email.toLowerCase().trim(), lead);
+      }
+    });
+    return map;
+  }, [allLeads]);
+  
+  // Find lead from email
+  const findLeadFromEmail = (emailStr: string): Lead | null => {
     const extracted = extractEmailAddress(emailStr).toLowerCase().trim();
     return emailToLeadMap.get(extracted) || null;
   };
-
-  // Helper to check if email is external (matches a CRM lead)
-  // External = emails where sender or recipient matches a lead in CRM
-  // Internal = everything else (no CRM match)
-  const isExternalEmail = useMemo(() => {
-    // Build a set of all CRM lead emails for fast lookup
-    const crmEmailSet = new Set<string>();
-    allCrmLeads.forEach(lead => {
-      if (lead.email) {
-        crmEmailSet.add(lead.email.toLowerCase().trim());
-      }
-    });
-    
-    return (email: Email): boolean => {
-      const fromEmail = extractEmailAddress(email.from).toLowerCase().trim();
-      const toEmail = extractEmailAddress(email.to).toLowerCase().trim();
-      // External if either from or to matches a CRM lead
-      return crmEmailSet.has(fromEmail) || crmEmailSet.has(toEmail);
-    };
-  }, [allCrmLeads]);
   
-  // Helper for internal - inverse of external
-  const isInternalEmail = (email: Email): boolean => {
-    return !isExternalEmail(email);
-  };
-
-  // Calculate filtered email lists based on CRM match
-  const externalEmails = useMemo(() => {
-    return allEmails.filter(email => isExternalEmail(email));
-  }, [allEmails, isExternalEmail]);
-
-  const internalEmails = useMemo(() => {
-    return allEmails.filter(email => !isExternalEmail(email));
-  }, [allEmails, isExternalEmail]);
-
-  // Filter emails by waiting_on status using thread data
-  const waitingOnBorrowerEmails = useMemo(() => {
-    return allEmails.filter(email => {
-      const thread = threadMap.get(email.threadId);
-      return thread?.waiting_on === 'borrower';
-    });
-  }, [allEmails, threadMap]);
-
-  const waitingOnLenderEmails = useMemo(() => {
-    return allEmails.filter(email => {
-      const thread = threadMap.get(email.threadId);
-      return thread?.waiting_on === 'lender';
-    });
-  }, [allEmails, threadMap]);
-
-  const waitingInternalEmails = useMemo(() => {
-    return allEmails.filter(email => {
-      const thread = threadMap.get(email.threadId);
-      return thread?.waiting_on === 'internal';
-    });
-  }, [allEmails, threadMap]);
-
-  // At-risk emails: waiting > 5 days with no response
-  const atRiskEmails = useMemo(() => {
-    return allEmails.filter(email => {
-      const thread = threadMap.get(email.threadId);
-      if (!thread?.waiting_on || thread.waiting_on === 'none') return false;
-      const lastActivity = thread.last_message_date || email.date;
-      const daysSince = differenceInDays(new Date(), new Date(lastActivity));
-      return daysSince > 5;
-    });
-  }, [allEmails, threadMap]);
-
-  const internalCount = internalEmails.length;
-  const externalCount = externalEmails.length;
-
-  // Format last emailed time
-  const formatLastEmailed = (dateStr: string | null): string => {
-    if (!dateStr) return 'Never';
-    const date = new Date(dateStr);
-    const days = differenceInDays(new Date(), date);
-    if (days === 0) return 'Today';
-    if (days === 1) return '1 day ago';
-    if (days < 7) return `${days} days ago`;
-    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-    return format(date, 'MMM d');
-  };
-
-  // Create nudge email draft and follow-up task
-  const createNudgeDraft = useMutation({
-    mutationFn: async (lead: Lead) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const daysSince = differenceInDays(new Date(), new Date(lead.updated_at));
-      const subject = `Following up - ${lead.company_name || lead.name}`;
-      const body = `Hi ${lead.name.split(' ')[0]},\n\nI wanted to follow up and see if you had any questions about the financing options we discussed.\n\nPlease let me know if there's anything I can help with.\n\nBest regards,\nEvan`;
-
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            to: lead.email, 
-            subject, 
-            body 
-          }),
+  // Build deal cards from emails + leads
+  const dealCards = useMemo(() => {
+    const emails = emailsData?.emails || [];
+    const dealMap = new Map<string, {
+      leadId: string;
+      lead: Lead;
+      emails: Email[];
+      latestEmail: Email;
+      loanAmount?: number;
+      loanType?: string;
+      purpose?: string;
+      daysSinceActivity: number;
+      isUrgent: boolean;
+      nextAction?: string;
+    }>();
+    
+    // Group emails by lead
+    emails.forEach(email => {
+      const lead = findLeadFromEmail(email.from) || findLeadFromEmail(email.to);
+      if (!lead) return;
+      
+      const existing = dealMap.get(lead.id);
+      const threadData = threadMap.get(email.threadId);
+      const response = leadResponseMap.get(lead.id);
+      const daysSince = differenceInDays(new Date(), new Date(email.date));
+      
+      if (existing) {
+        existing.emails.push(email);
+        if (new Date(email.date) > new Date(existing.latestEmail.date)) {
+          existing.latestEmail = email;
+          existing.daysSinceActivity = daysSince;
         }
-      );
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create draft');
-      }
-
-      // Update lead's updated_at to prevent repeated nudges
-      await supabase
-        .from('leads')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', lead.id);
-
-      // Create a follow-up task linked to the lead
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(9, 0, 0, 0); // Set to 9 AM tomorrow
-
-      await supabase
-        .from('evan_tasks')
-        .insert({
-          title: `Follow up with ${lead.name}`,
-          description: `Nudge triggered: No contact in ${daysSince} days. Draft email created - review and send follow-up to ${lead.email}.${lead.company_name ? ` Company: ${lead.company_name}` : ''}`,
-          lead_id: lead.id,
-          priority: daysSince > 14 ? 'high' : 'medium',
-          status: 'todo',
-          group_name: 'To Do',
-          due_date: tomorrow.toISOString(),
-          assignee_name: 'Evan',
-          tags: ['follow-up', 'nudge'],
+      } else {
+        dealMap.set(lead.id, {
+          leadId: lead.id,
+          lead,
+          emails: [email],
+          latestEmail: email,
+          loanAmount: response?.loanAmount,
+          loanType: response?.loanType,
+          purpose: response?.purpose,
+          daysSinceActivity: daysSince,
+          isUrgent: daysSince > 3 || (threadData?.waiting_on && threadData.waiting_on !== 'none'),
+          nextAction: threadData?.next_action || undefined,
         });
-
-      return { lead, draftId: data.id, daysSince };
-    },
-    onSuccess: ({ lead }) => {
-      toast.success(`Draft & follow-up task created for ${lead.name}`);
-      queryClient.invalidateQueries({ queryKey: ['gmail-nudge-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
-    },
-    onError: (error: any) => {
-      toast.error('Failed to create draft: ' + error.message);
-    },
-  });
-
-  // Create template draft
-  const createTemplateDraft = useMutation({
-    mutationFn: async (template: typeof EMAIL_TEMPLATES[0]) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            to: '', 
-            subject: template.subject, 
-            body: template.body 
-          }),
-        }
+      }
+    });
+    
+    return Array.from(dealMap.values());
+  }, [emailsData?.emails, findLeadFromEmail, threadMap, leadResponseMap]);
+  
+  // Filter and sort deals
+  const filteredDeals = useMemo(() => {
+    let deals = [...dealCards];
+    
+    // Filter by stage
+    if (activeStage !== 'all') {
+      deals = deals.filter(d => d.lead.status === activeStage);
+    }
+    
+    // Filter by search
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      deals = deals.filter(d =>
+        d.lead.name.toLowerCase().includes(q) ||
+        d.lead.company_name?.toLowerCase().includes(q) ||
+        d.latestEmail.subject.toLowerCase().includes(q)
       );
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create draft');
+    }
+    
+    // Sort
+    deals.sort((a, b) => {
+      if (sortBy === 'urgency') {
+        // Urgent first, then by days since activity
+        if (a.isUrgent !== b.isUrgent) return a.isUrgent ? -1 : 1;
+        return b.daysSinceActivity - a.daysSinceActivity;
       }
-
-      return { template, draftId: data.id };
-    },
-    onSuccess: ({ template }) => {
-      toast.success(`Draft created from "${template.name}" template`);
-      setActiveFolder('drafts');
-      queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
-    },
-    onError: (error: any) => {
-      toast.error('Failed to create draft: ' + error.message);
-    },
-  });
-
-  // Update or create email metadata (deal link)
-  const updateEmailDeal = useMutation({
-    mutationFn: async ({ emailId, threadId, leadId }: { emailId: string; threadId: string; leadId: string | null }) => {
-      if (!user?.id) throw new Error('Not authenticated');
-      
-      const { data: existing } = await supabase
-        .from('email_metadata')
-        .select('id')
-        .eq('gmail_message_id', emailId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (existing) {
-        const { error } = await supabase
-          .from('email_metadata')
-          .update({ lead_id: leadId })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('email_metadata')
-          .insert({
-            gmail_message_id: emailId,
-            gmail_thread_id: threadId,
-            user_id: user.id,
-            lead_id: leadId,
-          });
-        if (error) throw error;
+      if (sortBy === 'date') {
+        return new Date(b.latestEmail.date).getTime() - new Date(a.latestEmail.date).getTime();
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['email-metadata'] });
-      toast.success('Deal linked');
-    },
-    onError: (error: any) => {
-      toast.error('Failed to link deal: ' + error.message);
-    },
-  });
-
-  // Update or create email metadata (next action)
-  const updateEmailNextAction = useMutation({
-    mutationFn: async ({ emailId, threadId, nextAction }: { emailId: string; threadId: string; nextAction: string | null }) => {
-      if (!user?.id) throw new Error('Not authenticated');
-      
-      const { data: existing } = await supabase
-        .from('email_metadata')
-        .select('id')
-        .eq('gmail_message_id', emailId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (existing) {
-        const { error } = await supabase
-          .from('email_metadata')
-          .update({ next_action: nextAction })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('email_metadata')
-          .insert({
-            gmail_message_id: emailId,
-            gmail_thread_id: threadId,
-            user_id: user.id,
-            next_action: nextAction,
-          });
-        if (error) throw error;
+      if (sortBy === 'amount') {
+        return (b.loanAmount || 0) - (a.loanAmount || 0);
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['email-metadata'] });
-      setEditingNextAction(null);
-      setNextActionInput('');
-      toast.success('Next step updated');
-    },
-    onError: (error: any) => {
-      toast.error('Failed to update next step: ' + error.message);
-    },
-  });
-
-  // Update email metadata (FYI status)
-  const updateEmailFyi = useMutation({
-    mutationFn: async ({ emailId, threadId, isFyi }: { emailId: string; threadId: string; isFyi: boolean }) => {
-      if (!user?.id) throw new Error('Not authenticated');
-      
-      const { data: existing } = await supabase
-        .from('email_metadata')
-        .select('id')
-        .eq('gmail_message_id', emailId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (existing) {
-        const { error } = await supabase
-          .from('email_metadata')
-          .update({ is_fyi: isFyi, last_activity_date: new Date().toISOString() })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('email_metadata')
-          .insert({
-            gmail_message_id: emailId,
-            gmail_thread_id: threadId,
-            user_id: user.id,
-            is_fyi: isFyi,
-            last_activity_date: new Date().toISOString(),
-          });
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['email-metadata'] });
-      toast.success('Marked as FYI');
-    },
-    onError: (error: any) => {
-      toast.error('Failed to update: ' + error.message);
-    },
-  });
-
-  // Update email metadata (waiting_on status)
-  const updateEmailWaitingOn = useMutation({
-    mutationFn: async ({ emailId, threadId, waitingOn }: { emailId: string; threadId: string; waitingOn: 'borrower' | 'lender' | 'internal' | null }) => {
-      if (!user?.id) throw new Error('Not authenticated');
-      
-      const { data: existing } = await supabase
-        .from('email_metadata')
-        .select('id')
-        .eq('gmail_message_id', emailId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (existing) {
-        const { error } = await supabase
-          .from('email_metadata')
-          .update({ waiting_on: waitingOn, last_activity_date: new Date().toISOString() })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('email_metadata')
-          .insert({
-            gmail_message_id: emailId,
-            gmail_thread_id: threadId,
-            user_id: user.id,
-            waiting_on: waitingOn,
-            last_activity_date: new Date().toISOString(),
-          });
-        if (error) throw error;
-      }
-    },
-    onSuccess: (_, { waitingOn }) => {
-      queryClient.invalidateQueries({ queryKey: ['email-metadata'] });
-      if (waitingOn) {
-        toast.success(`Marked as waiting on ${waitingOn}`);
-      } else {
-        toast.success('Status cleared');
-      }
-    },
-    onError: (error: any) => {
-      toast.error('Failed to update: ' + error.message);
-    },
-  });
-
-  // Create nudge email for borrower/lender
-  const createNudgeEmailMutation = useMutation({
-    mutationFn: async ({ email, metadata, nudgeType }: { email: Email; metadata: EmailMetadata | undefined; nudgeType: 'borrower' | 'lender' }) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const recipientEmail = extractEmailAddress(email.from);
-      const recipientName = extractSenderName(email.from);
-      const dealName = metadata?.lead?.company_name || metadata?.lead?.name || 'your deal';
-      
-      const subject = nudgeType === 'borrower' 
-        ? `Following up - ${dealName}`
-        : `Checking in - ${dealName}`;
-      
-      const body = nudgeType === 'borrower'
-        ? `Hi ${recipientName.split(' ')[0]},\n\nI wanted to follow up on the items we discussed. Please let me know if you have any questions or need any assistance.\n\nLooking forward to hearing from you.\n\nBest regards,\nEvan`
-        : `Hi ${recipientName.split(' ')[0]},\n\nI wanted to check in on the status of ${dealName}. Could you please provide an update on where things stand?\n\nThank you for your time.\n\nBest regards,\nEvan`;
-
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ to: recipientEmail, subject, body }),
-        }
-      );
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create draft');
-      }
-
-      // Log activity if there's a linked lead
-      if (metadata?.lead_id) {
-        await supabase.from('lead_activities').insert({
-          lead_id: metadata.lead_id,
-          activity_type: 'email',
-          title: `Nudge ${nudgeType} draft created`,
-          content: subject,
-        });
-        
-        // Update lead's updated_at
-        await supabase.from('leads').update({ updated_at: new Date().toISOString() }).eq('id', metadata.lead_id);
-      }
-
-      return { draftId: data.id, nudgeType };
-    },
-    onSuccess: ({ nudgeType }) => {
-      toast.success(`${nudgeType === 'borrower' ? 'Borrower' : 'Lender'} nudge draft created`);
-      setActiveFolder('drafts');
-      queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
-      queryClient.invalidateQueries({ queryKey: ['gmail-drafts-count'] });
-    },
-    onError: (error: any) => {
-      toast.error('Failed to create draft: ' + error.message);
-    },
-  });
-
-  // Use real counts from API
-  const inboxCount = activeFolder === 'inbox' ? currentFolderCount : (inboxCountData || 0);
-  const draftsCount = activeFolder === 'drafts' ? currentFolderCount : (draftsCountData || 0);
-
-  // Handle compose query params from CRM navigation
+      return 0;
+    });
+    
+    return deals;
+  }, [dealCards, activeStage, searchQuery, sortBy]);
+  
+  // Stage counts
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    dealCards.forEach(d => {
+      counts[d.lead.status] = (counts[d.lead.status] || 0) + 1;
+    });
+    return counts;
+  }, [dealCards]);
+  
+  // Selected deal
+  const selectedDeal = useMemo(() => {
+    if (!selectedDealId) return null;
+    return dealCards.find(d => d.leadId === selectedDealId) || null;
+  }, [selectedDealId, dealCards]);
+  
+  // Auto-select first deal
   useEffect(() => {
-    if (composeHandled || connectionLoading || !gmailConnection) return;
-    
-    const composeParam = searchParams.get('compose');
-    const toParam = searchParams.get('to');
-    const nameParam = searchParams.get('name');
-    const emailType = searchParams.get('emailType');
-    const leadId = searchParams.get('leadId');
-    
-    if (composeParam === 'true' && toParam) {
-      // Clear the query params to prevent re-triggering
-      setSearchParams({}, { replace: true });
-      setComposeHandled(true);
-      
-      // Handle custom email - just open blank compose
-      if (emailType === 'custom') {
-        setComposeTo(toParam);
-        setComposeSubject('');
-        setComposeBody('');
-        setComposeOpen(true);
-        toast.success('Compose window opened');
-        return;
-      }
-
-      // For AI-generated emails, use the generate-lead-email edge function
-      const createAIDraftAndOpen = async () => {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            toast.error('Not authenticated');
-            return;
-          }
-
-          // Show loading toast
-          const loadingToast = toast.loading('Generating email with AI...');
-
-          // Call the generate-lead-email edge function
-          const { data: generatedEmail, error: generateError } = await supabase.functions.invoke('generate-lead-email', {
-            body: { leadId, emailType: emailType || 'follow_up' },
-          });
-
-          toast.dismiss(loadingToast);
-
-          if (generateError || !generatedEmail) {
-            throw new Error(generateError?.message || 'Failed to generate email');
-          }
-
-          const subject = generatedEmail.subject || (nameParam ? `Following up - ${nameParam}` : 'Following up');
-          const body = generatedEmail.body || `Hi ${nameParam?.split(' ')[0] || ''},\n\nI wanted to follow up with you.\n\nBest regards,\nEvan`;
-
-          // Create draft via Gmail API
-          const response = await fetch(
-            `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ to: toParam, subject, body }),
-            }
-          );
-
-          const data = await response.json();
-          if (!response.ok) {
-            throw new Error(data.error || 'Failed to create draft');
-          }
-
-          toast.success(`AI draft created for ${nameParam || toParam}`);
-          
-          // Switch to drafts folder and open compose with the draft content
-          setActiveFolder('drafts');
-          setComposeTo(toParam);
-          setComposeSubject(subject);
-          setComposeBody(body);
-          setComposeOpen(true);
-          
-          // Refresh emails to show new draft
-          queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
-          queryClient.invalidateQueries({ queryKey: ['gmail-drafts-count'] });
-        } catch (error: any) {
-          toast.error('Failed to generate email: ' + error.message);
-          // Fallback to basic template if AI fails
-          const fallbackSubject = nameParam ? `Following up - ${nameParam}` : 'Following up';
-          const fallbackBody = nameParam 
-            ? `Hi ${nameParam.split(' ')[0]},\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan`
-            : 'Hi,\n\nI wanted to follow up with you regarding our recent conversation.\n\nPlease let me know if you have any questions or if there is anything I can help with.\n\nBest regards,\nEvan';
-          setComposeTo(toParam);
-          setComposeSubject(fallbackSubject);
-          setComposeBody(fallbackBody);
-          setComposeOpen(true);
-        }
-      };
-
-      createAIDraftAndOpen();
+    if (!selectedDealId && filteredDeals.length > 0) {
+      setSelectedDealId(filteredDeals[0].leadId);
     }
-  }, [searchParams, setSearchParams, gmailConnection, connectionLoading, composeHandled, queryClient]);
-
-  // Send email mutation
-  const sendEmailMutation = useMutation({
-    mutationFn: async ({
-      to,
-      subject,
-      body,
-      threadId,
-      inReplyTo,
-      attachments,
-    }: {
-      to: string;
-      subject: string;
-      body: string;
-      threadId?: string;
-      inReplyTo?: string;
-      attachments?: { filename: string; mimeType: string; data: string }[];
-    }) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ to, subject, body, threadId, inReplyTo, attachments }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send email');
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      toast.success('Email sent successfully!');
-      setComposeOpen(false);
-      setComposeTo('');
-      setComposeSubject('');
-      setComposeBody('');
-      setSelectedLead(null);
-      queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
-    },
-    onError: (error: any) => {
-      toast.error('Failed to send email: ' + error.message);
-    },
-  });
-
-  const handleSendEmail = async (attachmentsFromDialog: Attachment[] = []) => {
-    if (!composeTo.trim() || !composeSubject.trim() || !composeBody.trim()) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-
-    const draftMessageId = editingDraftMessageId;
-    const draftThreadId = editingDraftThreadId || undefined;
-
-    // Convert attachments to the format expected by the API
-    const formattedAttachments = attachmentsFromDialog
-      .filter(att => att.base64)
-      .map(att => ({
-        filename: att.name,
-        mimeType: att.type,
-        data: att.base64!,
-      }));
-
-    setSending(true);
-    try {
-      await sendEmailMutation.mutateAsync({
-        to: composeTo.trim(),
-        subject: composeSubject.trim(),
-        body: composeBody.trim(),
-        threadId: draftThreadId,
-        attachments: formattedAttachments.length > 0 ? formattedAttachments : undefined,
-      });
-
-      // If we were editing a draft, remove it from Drafts after sending
-      if (draftMessageId) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            const res = await fetch(
-              `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=trash`,
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${session.access_token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ messageId: draftMessageId }),
-              }
-            );
-
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err?.error || 'Failed to remove draft');
-            }
-          }
-        } catch (e: any) {
-          toast.error(`Sent, but couldn't remove draft: ${e.message}`);
-        } finally {
-          setEditingDraftMessageId(null);
-          setEditingDraftThreadId(null);
-          setSelectedEmail(null);
-          queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
-        }
-      }
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleDisconnectGmail = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Please log in first');
-        return;
-      }
-
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=disconnect`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        toast.success('Gmail disconnected successfully');
-        queryClient.invalidateQueries({ queryKey: ['gmail-connection'] });
-      } else {
-        const data = await response.json();
-        toast.error(data.error || 'Failed to disconnect Gmail');
-      }
-    } catch (error: any) {
-      toast.error('Failed to disconnect Gmail: ' + error.message);
-    }
-  };
-
+  }, [filteredDeals, selectedDealId]);
+  
+  // Connect Gmail handler
   const handleConnectGmail = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -1785,10 +409,7 @@ const EvansGmail = () => {
         toast.error('Please log in first');
         return;
       }
-
-      // Must match the route in src/App.tsx and the redirect URI registered in Google Console
       const redirectUri = `${window.location.origin}/admin/inbox/callback`;
-      
       const response = await fetch(
         `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=get-oauth-url`,
         {
@@ -1800,9 +421,7 @@ const EvansGmail = () => {
           body: JSON.stringify({ redirect_uri: redirectUri }),
         }
       );
-      
       const data = await response.json();
-      
       if (data?.url) {
         localStorage.setItem('gmail_return_path', '/team/evan/gmail');
         window.location.href = data.url;
@@ -1813,35 +432,8 @@ const EvansGmail = () => {
       toast.error('Failed to start Gmail connection: ' + error.message);
     }
   };
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      toast.success('Logged out');
-      navigate('/auth');
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to log out');
-    }
-  };
-
-  const toggleEmailSelection = (emailId: string) => {
-    const newSelection = new Set(selectedEmails);
-    if (newSelection.has(emailId)) {
-      newSelection.delete(emailId);
-    } else {
-      newSelection.add(emailId);
-    }
-    setSelectedEmails(newSelection);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedEmails.size === allEmails.length) {
-      setSelectedEmails(new Set());
-    } else {
-      setSelectedEmails(new Set(allEmails.map(e => e.id)));
-    }
-  };
-
+  
+  // Loading state
   if (connectionLoading) {
     return (
       <AdminLayout>
@@ -1851,102 +443,65 @@ const EvansGmail = () => {
       </AdminLayout>
     );
   }
-
-  // Show connection prompt if not connected
+  
+  // Connect prompt
   if (!gmailConnection) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center max-w-md">
-            <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-6 border border-slate-200">
-              <Mail className="w-8 h-8 text-slate-600" />
+            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-6">
+              <Mail className="w-8 h-8 text-slate-600 dark:text-slate-400" />
             </div>
-            <h2 className="text-xl font-semibold text-slate-900 mb-2">Connect Your Mmail</h2>
-            <p className="text-sm text-slate-500 mb-6">
-              Connect your email account to send and receive emails directly from this portal.
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Connect Your Email</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Connect your email to see your deals inbox
             </p>
-            <Button onClick={handleConnectGmail} size="lg" className="gap-2 rounded-md">
+            <Button onClick={handleConnectGmail} size="lg" className="gap-2">
               <Mail className="w-4 h-4" />
-              Connect Mmail Account
+              Connect Email
             </Button>
-            <p className="text-xs text-slate-400 mt-4">
-              We'll only access your email with your permission.
-            </p>
           </div>
         </div>
       </AdminLayout>
     );
   }
-
+  
   // Email detail view
   if (selectedEmail) {
     return (
       <AdminLayout>
-        <div className="h-[calc(100vh-120px)] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden">
-          {/* Top bar */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setSelectedEmail(null)}
-              className="gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md"
-            >
+        <div className="h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+            <Button variant="ghost" size="sm" onClick={() => setSelectedEmail(null)} className="gap-2">
               <ArrowLeft className="w-4 h-4" />
               Back
             </Button>
             <div className="flex-1" />
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-600">
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
-          
-          {/* Email content */}
-          <ScrollArea className="flex-1 p-6 bg-white dark:bg-slate-900">
+          <ScrollArea className="flex-1 p-6">
             <div className="max-w-3xl">
-              <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">{selectedEmail.subject}</h1>
-              
+              <h1 className="text-lg font-semibold mb-4">{selectedEmail.subject}</h1>
               <div className="flex items-start gap-3 mb-6">
-                <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-semibold text-sm border border-slate-200 dark:border-slate-700">
-                  {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
+                <Avatar className="w-10 h-10">
+                  {selectedEmail.senderPhoto && <AvatarImage src={selectedEmail.senderPhoto} />}
+                  <AvatarFallback>{extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-sm">{extractSenderName(selectedEmail.from)}</p>
+                  <p className="text-xs text-slate-500">{format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}</p>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-900 dark:text-slate-100 text-sm">{extractSenderName(selectedEmail.from)}</span>
-                    <span className="text-xs text-slate-400 dark:text-slate-500">
-                      {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
-                    to me
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md">
-                  <Star className={`w-4 h-4 ${selectedEmail.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-400'}`} />
-                </Button>
               </div>
-              
-              <div className="pl-12">
-                {(() => {
-                  const raw = selectedEmail.body || selectedEmail.snippet || '';
-                  const isHtml = isHtmlEmailContent(raw);
-                  return (
-                    <div
-                      className={`gmail-email-body ${isHtml ? '' : 'gmail-email-body--plain'}`}
-                      dangerouslySetInnerHTML={{ __html: formatEmailBody(raw) }}
-                    />
-                  );
-                })()}
-              </div>
-              
-              <div className="flex gap-2 mt-8 pl-12">
-                <Button variant="outline" size="sm" className="rounded-md text-xs h-8">
-                  <Reply className="w-3.5 h-3.5 mr-1.5" />
-                  Reply
-                </Button>
-                <Button variant="outline" size="sm" className="rounded-md text-xs h-8">
-                  <Forward className="w-3.5 h-3.5 mr-1.5" />
-                  Forward
-                </Button>
+              <div
+                className="prose prose-sm max-w-none dark:prose-invert"
+                dangerouslySetInnerHTML={{ __html: formatEmailBody(selectedEmail.body || selectedEmail.snippet) }}
+              />
+              <div className="flex gap-2 mt-6">
+                <Button variant="outline" size="sm"><Reply className="w-4 h-4 mr-1" />Reply</Button>
+                <Button variant="outline" size="sm"><Forward className="w-4 h-4 mr-1" />Forward</Button>
               </div>
             </div>
           </ScrollArea>
@@ -1954,723 +509,418 @@ const EvansGmail = () => {
       </AdminLayout>
     );
   }
-
+  
+  const sortLabels = { urgency: 'needs action soonest', date: 'most recent', amount: 'highest amount' };
+  
   return (
     <AdminLayout>
-      <div className="h-[calc(100vh-120px)] flex border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-md overflow-hidden">
-        {/* Left Sidebar */}
-        <div className="w-52 flex flex-col bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
-          {/* Compose Button */}
-          <div className="p-3">
-            <Button 
-              onClick={() => setComposeOpen(true)}
-              className="w-full justify-center gap-2 h-9 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium shadow-sm"
-            >
-              <Pencil className="w-4 h-4" />
-              Compose
-            </Button>
-          </div>
-          
-          {/* Navigation */}
-          <nav className="flex-1 px-2 space-y-0.5">
-            <button
-              onClick={() => setActiveFolder('inbox')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                activeFolder === 'inbox' 
-                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              <Inbox className="w-4 h-4" />
-              <span className="flex-1 text-left">Inbox</span>
-              <span className="text-xs font-medium text-slate-500">{inboxCount.toLocaleString()}</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveFolder('internal')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                activeFolder === 'internal' 
-                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span className="flex-1 text-left">Internal</span>
-              {internalCount > 0 && (
-                <span className="text-xs font-medium text-slate-500">{internalCount}</span>
-              )}
-            </button>
-            
-            <button
-              onClick={() => setActiveFolder('external')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                activeFolder === 'external' 
-                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span className="flex-1 text-left">External</span>
-              {externalCount > 0 && (
-                <span className="text-xs font-medium text-slate-500">{externalCount}</span>
-              )}
-            </button>
-            
-            <button
-              onClick={() => setActiveFolder('starred')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                activeFolder === 'starred' 
-                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              <Star className="w-4 h-4" />
-              <span className="flex-1 text-left">Starred</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveFolder('sent')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                activeFolder === 'sent' 
-                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              <Send className="w-4 h-4" />
-              <span className="flex-1 text-left">Sent</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveFolder('drafts')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                activeFolder === 'drafts' 
-                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-medium' 
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span className="flex-1 text-left">Drafts</span>
-              <span className="text-xs font-medium text-slate-500">{draftsCount}</span>
-            </button>
-            
-            <HoverCard openDelay={100} closeDelay={200}>
-              <HoverCardTrigger asChild>
-                <button
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                    activeFolder === 'templates' 
-                      ? 'bg-slate-200 text-slate-900 font-medium' 
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <File className="w-4 h-4" />
-                  <span className="flex-1 text-left">Templates</span>
-                  <span className="text-xs text-slate-400">{EMAIL_TEMPLATES.length}</span>
-                </button>
-              </HoverCardTrigger>
-              <HoverCardContent side="right" align="start" className="w-64 p-2 rounded-md">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-slate-500 px-2 py-1">
-                    Click a template to create a draft
-                  </p>
-                  {EMAIL_TEMPLATES.map((template) => (
-                    <button
-                      key={template.id}
-                      onClick={() => createTemplateDraft.mutate(template)}
-                      disabled={createTemplateDraft.isPending}
-                      className="w-full flex flex-col items-start gap-0.5 px-3 py-2 rounded-md text-left transition-colors hover:bg-slate-100 disabled:opacity-50"
-                    >
-                      <span className="text-sm font-medium text-slate-900">
-                        {template.name}
-                      </span>
-                      <span className="text-xs text-slate-500 line-clamp-1">
-                        {template.subject}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </HoverCardContent>
-            </HoverCard>
-            
-            {/* Untriaged filter */}
-            <button
-              onClick={() => setActiveFolder('untriaged')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                activeFolder === 'untriaged' 
-                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 font-medium' 
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 dark:hover:text-amber-300'
-              }`}
-            >
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-              <span className="flex-1 text-left">Untriaged</span>
-              {untriagedCount > 0 && (
-                <span className="flex items-center justify-center min-w-5 h-5 px-1.5 text-[10px] font-semibold text-white bg-amber-500 rounded">
-                  {untriagedCount}
-                </span>
-              )}
-            </button>
-            
-            {/* Nudges section */}
-            <div className="mt-4 pt-3 border-t border-slate-200">
-              <div className="flex items-center justify-between px-3 py-1.5 text-sm text-slate-600">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-xs uppercase tracking-wide text-slate-500">Nudges</span>
-                  {nudgeLeads.length > 0 && (
-                    <span className="flex items-center justify-center min-w-4 h-4 px-1 text-[10px] font-semibold text-white bg-red-500 rounded">
-                      {nudgeLeads.length}
-                    </span>
-                  )}
-                </div>
-                <Link to="/user/evan/pipeline">
-                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-slate-100 rounded-md" title="View Pipeline">
-                    <ExternalLink className="w-3 h-3 text-slate-400" />
-                  </Button>
-                </Link>
-              </div>
-              
-              {/* Nudge subtitle */}
-              <div className="px-3 pb-2 text-[10px] text-slate-400 uppercase tracking-wide">
-                Waiting 7+ days
-              </div>
-              
-              {/* Nudge items */}
-              {nudgesLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                </div>
-              ) : nudgeLeads.length === 0 ? (
-                <div className="px-3 py-3 text-xs text-slate-500">
-                  ✓ All caught up
-                </div>
-              ) : (
-                <ScrollArea className="max-h-40">
-                  {nudgeLeads.slice(0, 8).map((lead) => {
-                    const daysSince = differenceInDays(new Date(), new Date(lead.updated_at));
-                    return (
-                      <Tooltip key={lead.id}>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => createNudgeDraft.mutate(lead)}
-                            disabled={createNudgeDraft.isPending}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-slate-600 hover:bg-amber-50 transition-colors group disabled:opacity-50"
-                          >
-                            <Zap className="w-3.5 h-3.5 text-amber-500" />
-                            <span className="flex-1 text-left truncate text-xs">
-                              {lead.name.split(' ')[0]}
-                            </span>
-                            <span className="text-[10px] text-red-500 font-medium">{daysSince}d</span>
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="text-xs rounded-md">
-                          <p className="font-medium">{lead.name}</p>
-                          <p className="text-slate-400">{lead.email}</p>
-                          <p className="text-amber-600 mt-1">Click to create follow-up</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                  {nudgeLeads.length > 8 && (
-                    <Link 
-                      to="/user/evan/pipeline"
-                      className="block px-3 py-2 text-xs text-primary hover:underline"
-                    >
-                      +{nudgeLeads.length - 8} more
-                    </Link>
-                  )}
-                </ScrollArea>
-              )}
-            </div>
-          </nav>
-          
-          {/* Account actions */}
-          <div className="p-2 border-t border-slate-200 dark:border-slate-700 space-y-0.5">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleDisconnectGmail}
-              className="w-full justify-start gap-2 text-xs text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md h-8"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              Disconnect
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="w-full justify-start gap-2 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md h-8"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Log out
-            </Button>
-          </div>
-        </div>
-        
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col bg-white dark:bg-slate-900">
-          {/* Search Bar */}
+      <div className="h-[calc(100vh-80px)] flex bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+        {/* Left Panel - Deal List */}
+        <div className="w-[420px] flex flex-col border-r border-slate-200 dark:border-slate-800">
+          {/* Header */}
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="relative max-w-xl">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  {activeStage === 'all' ? 'All Deals' : STAGE_CONFIG[activeStage]?.label || 'Deals'}
+                </h1>
+                <p className="text-[11px] text-slate-500">
+                  {filteredDeals.length} deals · Sorted by {sortLabels[sortBy]}
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-[11px] text-slate-600 dark:text-slate-400">
+                      <Filter className="w-3 h-3" />Filter
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-36">
+                    <DropdownMenuItem onClick={() => setActiveStage('all')}>All Deals</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {Object.entries(STAGE_CONFIG).map(([key, cfg]) => (
+                      <DropdownMenuItem key={key} onClick={() => setActiveStage(key)}>
+                        <span className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: cfg.color }} />
+                        {cfg.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-[11px] text-slate-600 dark:text-slate-400">
+                      <ArrowUpDown className="w-3 h-3" />Sort
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem onClick={() => setSortBy('urgency')}>
+                      Needs action soonest {sortBy === 'urgency' && '✓'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy('date')}>
+                      Most recent {sortBy === 'date' && '✓'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy('amount')}>
+                      Highest amount {sortBy === 'amount' && '✓'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetchEmails()}>
+                  {emailsLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                </Button>
+              </div>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <Input
-                placeholder="Search mail..."
+                placeholder="Search deals..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-3 pr-4 h-9 rounded-md bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-white dark:focus-visible:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="pl-8 h-8 text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
               />
             </div>
           </div>
           
-          {/* Toolbar */}
-          <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-            <div className="flex items-center gap-1">
-              <Checkbox 
-                checked={selectedEmails.size === allEmails.length && allEmails.length > 0}
-                onCheckedChange={toggleSelectAll}
-                className="rounded-sm"
-              />
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
-                <ChevronDown className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md" 
-                  onClick={() => {
-                    refetchEmails();
-                    queryClient.invalidateQueries({ queryKey: ['gmail-inbox-count'] });
-                    queryClient.invalidateQueries({ queryKey: ['gmail-drafts-count'] });
-                    toast.success('Checking for new emails...');
-                  }}
-                  disabled={emailsLoading}
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${emailsLoading ? 'animate-spin' : ''}`} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Refresh</TooltipContent>
-            </Tooltip>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
-              <MoreVertical className="w-3.5 h-3.5" />
-            </Button>
-            <div className="flex-1" />
-            <span className="text-xs text-slate-500 dark:text-slate-400 mr-2 font-medium">
-              {allEmails.length > 0 ? `1–${Math.min(50, allEmails.length)} of ${allEmails.length}` : '0 emails'}
-            </span>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md">
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-          
-          {/* Email List */}
+          {/* Deal List */}
           <ScrollArea className="flex-1">
             {emailsLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
               </div>
-            ) : allEmails.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                <Inbox className="w-12 h-12 mb-3 opacity-40" />
-                <p className="text-sm font-medium">No emails in {activeFolder}</p>
+            ) : filteredDeals.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Mail className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
+                <p className="text-sm text-slate-500 dark:text-slate-400">No deals found</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {(() => {
-                  let emailsToDisplay = allEmails;
-                  if (activeFolder === 'untriaged') emailsToDisplay = untriagedEmails;
-                  else if (activeFolder === 'internal') emailsToDisplay = internalEmails;
-                  else if (activeFolder === 'external') emailsToDisplay = externalEmails;
-                  else if (activeFolder === 'waiting-borrower') emailsToDisplay = waitingOnBorrowerEmails;
-                  else if (activeFolder === 'waiting-lender') emailsToDisplay = waitingOnLenderEmails;
-                  else if (activeFolder === 'waiting-internal') emailsToDisplay = waitingInternalEmails;
-                  else if (activeFolder === 'at-risk') emailsToDisplay = atRiskEmails;
-                  
-                  // Sort by urgency: SLA breached first, then by days waiting (descending)
-                  emailsToDisplay = [...emailsToDisplay].sort((a, b) => {
-                    const threadA = threadMap.get(a.threadId);
-                    const threadB = threadMap.get(b.threadId);
+              filteredDeals.map((deal) => {
+                const stage = STAGE_CONFIG[deal.lead.status];
+                const response = leadResponseMap.get(deal.leadId);
+                const isSelected = selectedDealId === deal.leadId;
+                
+                return (
+                  <div
+                    key={deal.leadId}
+                    onClick={() => setSelectedDealId(deal.leadId)}
+                    className={`
+                      relative px-4 py-3 cursor-pointer transition-all border-b border-slate-100 dark:border-slate-800
+                      ${isSelected ? 'bg-slate-50 dark:bg-slate-800/80' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'}
+                      ${deal.isUrgent ? 'border-l-2 border-l-red-500' : ''}
+                    `}
+                  >
+                    {/* Unread dot */}
+                    {!deal.latestEmail.isRead && (
+                      <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    )}
                     
-                    // SLA breached emails first
-                    if (threadA?.sla_breached && !threadB?.sla_breached) return -1;
-                    if (!threadA?.sla_breached && threadB?.sla_breached) return 1;
-                    
-                    // Then by days waiting (longer waiting = higher priority)
-                    const daysA = differenceInDays(new Date(), new Date(a.date));
-                    const daysB = differenceInDays(new Date(), new Date(b.date));
-                    if (activeFolder === 'waiting-borrower' || activeFolder === 'waiting-lender' || activeFolder === 'at-risk') {
-                      return daysB - daysA; // Longer waiting first for operational views
-                    }
-                    
-                    // Default: chronological (most recent first)
-                    return new Date(b.date).getTime() - new Date(a.date).getTime();
-                  });
-                  
-                  return emailsToDisplay;
-                })().map((email) => {
-                  // Check if email is from/to a CRM lead
-                  const emailAddress = activeFolder === 'sent' ? email.to : email.from;
-                  const leadInfo = findLeadFromEmail(emailAddress);
-                  const status = leadInfo ? statusConfig[leadInfo.status] : null;
-                  
-                  // Check if this is an internal email
-                  const emailIsInternal = isInternalEmail(email);
-                  
-                  // Get metadata for this email (from old email_metadata table)
-                  const metadata = emailMetadataMap[email.id];
-                  const linkedDeal = metadata?.lead;
-                  const nextAction = metadata?.next_action;
-                  
-                  // Get thread-level data for waiting_on and SLA tracking
-                  const threadData = threadMap.get(email.threadId);
-                  const waitingOn = threadData?.waiting_on || metadata?.waiting_on;
-                  const lastActivityDate = threadData?.last_message_date || email.date;
-                  const daysSinceActivity = differenceInDays(new Date(), new Date(lastActivityDate));
-                  const slaBreached = daysSinceActivity > 3;
-                  
-                  const isUntriaged = !emailIsInternal && (!linkedDeal || !nextAction);
-                  
-                  return (
-                    <div
-                      key={email.id}
-                      className={`group px-3 py-3 cursor-pointer transition-colors ${
-                        !email.isRead ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/50'
-                      } ${selectedEmails.has(email.id) ? 'bg-primary/5 dark:bg-primary/10' : ''} ${
-                        isUntriaged ? 'border-l-2 border-l-amber-400' : slaBreached && waitingOn ? 'border-l-2 border-l-red-400' : ''
-                      } hover:bg-slate-50 dark:hover:bg-slate-800`}
-                    >
-                      <div className="flex items-start gap-2">
-                        {/* Checkbox and Star */}
-                        <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                          <Checkbox 
-                            checked={selectedEmails.has(email.id)}
-                            onCheckedChange={() => toggleEmailSelection(email.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="rounded-sm"
-                          />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                            className="p-1 hover:bg-slate-100 rounded-md transition-colors"
-                          >
-                            <Star className={`w-4 h-4 ${email.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-300 hover:text-slate-400'}`} />
-                          </button>
+                    <div className="flex items-start justify-between gap-3">
+                      {/* Left: Content */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        {/* Company */}
+                        <h3 className="font-semibold text-[14px] text-slate-900 dark:text-slate-100 truncate leading-tight">
+                          {deal.lead.company_name || deal.lead.name}
+                        </h3>
+                        
+                        {/* Contact */}
+                        <p className="text-[12px] text-slate-500 dark:text-slate-400 truncate">
+                          {deal.lead.name}
+                          {deal.lead.company_name && deal.lead.company_name !== deal.lead.name && (
+                            <span className="text-slate-400"> · {deal.lead.company_name}</span>
+                          )}
+                        </p>
+                        
+                        {/* Tags */}
+                        <div className="flex flex-wrap items-center gap-1">
+                          {response?.loanType && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-[18px] font-medium bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-0 rounded-sm">
+                              {response.loanType}
+                            </Badge>
+                          )}
+                          {stage && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-[18px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400 border-0 rounded-sm">
+                              {stage.shortLabel}
+                            </Badge>
+                          )}
+                          {deal.isUrgent && deal.daysSinceActivity > 3 && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-[18px] font-medium bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0 rounded-sm gap-0.5">
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              {deal.daysSinceActivity > 7 ? 'Needs follow-up' : 'Overdue'}
+                            </Badge>
+                          )}
                         </div>
                         
-                        {/* Avatar */}
-                        <div className="shrink-0 pt-0.5">
-                          {email.senderPhoto ? (
-                            <img 
-                              src={email.senderPhoto} 
-                              alt="" 
-                              className="w-10 h-10 rounded-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                              }}
-                            />
-                          ) : null}
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                            email.senderPhoto ? 'hidden' : ''
-                          } ${
-                            !email.isRead 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                          }`}>
-                            {extractSenderName(activeFolder === 'sent' ? email.to : email.from).charAt(0).toUpperCase()}
-                          </div>
+                        {/* Next Action */}
+                        {deal.nextAction && (
+                          <p className="flex items-center gap-1 text-[12px] text-slate-700 dark:text-slate-300">
+                            <span className="text-slate-400">→</span>
+                            <span className="truncate">{deal.nextAction}</span>
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Right: Avatar + Meta */}
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <Avatar className="w-9 h-9 border border-slate-200 dark:border-slate-700">
+                          {deal.latestEmail.senderPhoto && <AvatarImage src={deal.latestEmail.senderPhoto} />}
+                          <AvatarFallback className="text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                            {deal.lead.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="text-right">
+                          <p className="text-[9px] text-slate-400 uppercase tracking-wide">Next touch</p>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                            {isToday(new Date(deal.latestEmail.date)) 
+                              ? `Today, ${format(new Date(deal.latestEmail.date), 'h:mm a')}`
+                              : format(new Date(deal.latestEmail.date), 'MMM d, h:mm a')
+                            }
+                          </p>
                         </div>
                         
-                        {/* Why? Explanation Button - Left positioned for visibility - Hidden for internal emails */}
-                        {!emailIsInternal && (
-                          <div className="shrink-0 self-center">
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <button
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
-                                  title="Why is this here?"
-                                >
-                                  <HelpCircle className="w-3 h-3" />
-                                  <span>Why?</span>
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent 
-                                className="w-72 p-0" 
-                                align="start"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {(() => {
-                                  const explanation = generateExplanation(email, metadata, statusConfig);
-                                  return (
-                                    <div className="p-3">
-                                      <div className="flex items-start gap-2 mb-3">
-                                        {explanation.isFyi ? (
-                                          <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                                        ) : explanation.bullets.some(b => b.isWarning) ? (
-                                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                                        ) : (
-                                          <Briefcase className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                                        )}
-                                        <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                          {explanation.title}
-                                        </h4>
-                                      </div>
-                                      <ul className="space-y-1.5 pl-6">
-                                        {explanation.bullets.map((bullet, idx) => (
-                                          <li 
-                                            key={idx} 
-                                            className={`text-xs flex items-start gap-1.5 ${
-                                              bullet.isWarning 
-                                                ? 'text-amber-600 dark:text-amber-400 font-medium' 
-                                                : 'text-slate-600 dark:text-slate-400'
-                                            }`}
-                                          >
-                                            <span className="shrink-0 mt-1">•</span>
-                                            <span>{bullet.text}</span>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                      {explanation.isFyi && (
-                                        <p className="mt-3 text-[10px] text-slate-400 italic">
-                                          No action required
-                                        </p>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </PopoverContent>
-                            </Popover>
+                        {deal.latestEmail.attachments && deal.latestEmail.attachments.length > 0 && (
+                          <div className="flex items-center gap-0.5 text-slate-400">
+                            <Paperclip className="w-3 h-3" />
+                            <span className="text-[10px]">{deal.latestEmail.attachments.length}</span>
                           </div>
                         )}
-                        
-                        {/* 3-Line Content */}
-                        <div className="flex-1 min-w-0 space-y-1" onClick={() => setSelectedEmail(email)}>
-                          {/* Line 1: Sender + Subject + Date */}
-                          <div className="flex items-center gap-2">
-                            <span className={`shrink-0 text-sm ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
-                              {activeFolder === 'sent' ? `To: ${email.to.split('<')[0].trim()}` : extractSenderName(email.from)}
-                            </span>
-                            {leadInfo && (
-                              <span className="shrink-0 w-4 h-4 rounded bg-primary/10 flex items-center justify-center">
-                                <User className="w-2.5 h-2.5 text-primary" />
-                              </span>
-                            )}
-                            {leadInfo && status && (
-                              <Badge 
-                                variant="secondary" 
-                                className={`text-[10px] px-1.5 py-0 h-4 font-medium rounded ${status.bg} ${status.color} border-0`}
-                              >
-                                {status.label}
-                              </Badge>
-                            )}
-                            <span className="text-slate-400 dark:text-slate-500">·</span>
-                            <span className={`flex-1 truncate text-sm ${!email.isRead ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
-                              {email.subject}
-                            </span>
-                            <span className={`shrink-0 text-xs whitespace-nowrap ${!email.isRead ? 'font-semibold text-slate-900' : 'text-slate-400'}`}>
-                              {formatEmailDate(email.date)}
-                            </span>
-                            {/* Waiting On Badge - Shows SLA aging */}
-                            {!emailIsInternal && (waitingOn && waitingOn !== 'none') && (
-                              <WaitingOnBadge
-                                waitingOn={waitingOn as 'borrower' | 'lender' | 'internal' | 'none'}
-                                lastActivityDate={lastActivityDate}
-                                slaThresholdDays={3}
-                                onWaitingOnChange={(value) => {
-                                  setThreadWaitingOn.mutate({ 
-                                    threadId: email.threadId, 
-                                    waitingOn: value,
-                                    subject: email.subject 
-                                  });
-                                }}
-                                compact
-                              />
-                            )}
-                          </div>
-                          
-                          {/* Line 2: Deal - Hidden for internal emails */}
-                          {!emailIsInternal && (
-                            <div className="flex items-center gap-1.5 text-xs">
-                              <Briefcase className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="text-slate-500">Deal:</span>
-                              {linkedDeal ? (
-                                <Link
-                                  to={`/team/evan/pipeline?leadId=${linkedDeal.id}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="text-primary hover:underline font-medium truncate"
-                                >
-                                  {linkedDeal.company_name || linkedDeal.name}
-                                </Link>
-                              ) : (
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <button
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 font-medium"
-                                    >
-                                      <AlertTriangle className="w-3 h-3" />
-                                      Untriaged
-                                    </button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-64 p-2" align="start">
-                                    <div className="space-y-2">
-                                      <p className="text-xs font-medium text-slate-500">Link to a deal</p>
-                                      <ScrollArea className="max-h-48">
-                                        {allCrmLeads.slice(0, 15).map((lead) => (
-                                          <button
-                                            key={lead.id}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: lead.id });
-                                            }}
-                                            className="w-full text-left px-2 py-1.5 text-sm hover:bg-slate-100 rounded flex items-center gap-2"
-                                          >
-                                            <span className="truncate">{lead.company_name || lead.name}</span>
-                                          </button>
-                                        ))}
-                                      </ScrollArea>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              )}
-                              {linkedDeal && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateEmailDeal.mutate({ emailId: email.id, threadId: email.threadId, leadId: null });
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-200 rounded transition-opacity"
-                                >
-                                  <X className="w-3 h-3 text-slate-400" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Line 3: Next Step - Hidden for internal emails */}
-                          {!emailIsInternal && (
-                            <div className="flex items-center gap-1.5 text-xs">
-                              <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="text-slate-500">Next step:</span>
-                              {editingNextAction === email.id ? (
-                                <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
-                                  <Input
-                                    value={nextActionInput}
-                                    onChange={(e) => setNextActionInput(e.target.value)}
-                                    placeholder="e.g., Request PFS and tax returns"
-                                    className="h-6 text-xs flex-1"
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: nextActionInput || null });
-                                      } else if (e.key === 'Escape') {
-                                        setEditingNextAction(null);
-                                        setNextActionInput('');
-                                      }
-                                    }}
-                                  />
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6"
-                                    onClick={() => updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: nextActionInput || null })}
-                                  >
-                                    <Check className="w-3 h-3 text-green-600" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6"
-                                    onClick={() => {
-                                      setEditingNextAction(null);
-                                      setNextActionInput('');
-                                    }}
-                                  >
-                                    <X className="w-3 h-3 text-slate-400" />
-                                  </Button>
-                                </div>
-                              ) : nextAction ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingNextAction(email.id);
-                                    setNextActionInput(nextAction);
-                                  }}
-                                  className="text-primary font-semibold hover:underline truncate"
-                                >
-                                  {nextAction}
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingNextAction(email.id);
-                                    setNextActionInput('');
-                                  }}
-                                  className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 font-medium"
-                                >
-                                  <AlertTriangle className="w-3 h-3" />
-                                  Not defined
-                                </button>
-                              )}
-                              {nextAction && editingNextAction !== email.id && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateEmailNextAction.mutate({ emailId: email.id, threadId: email.threadId, nextAction: null });
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-200 rounded transition-opacity"
-                                >
-                                  <X className="w-3 h-3 text-slate-400" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Context-Aware Action Bar - Hidden for internal emails */}
-                          {!emailIsInternal && (
-                            <EmailActionBar
-                              emailId={email.id}
-                              threadId={email.threadId}
-                              emailFrom={email.from}
-                              emailSubject={email.subject}
-                              emailSnippet={email.snippet}
-                              linkedDeal={linkedDeal}
-                              nextAction={nextAction}
-                              waitingOn={waitingOn as 'borrower' | 'lender' | 'internal' | 'none' | null}
-                              isFyi={metadata?.is_fyi || false}
-                              allLeads={allCrmLeads}
-                              onNavigate={navigate}
-                            />
-                          )}
-                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })
             )}
           </ScrollArea>
         </div>
+        
+        {/* Right Panel - Deal Summary */}
+        <div className="flex-1 flex flex-col bg-slate-50/50 dark:bg-slate-800/20">
+          {selectedDeal ? (
+            <ScrollArea className="flex-1">
+              <div className="p-5 space-y-5">
+                {/* Header */}
+                <div>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-2">Deal Summary</p>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight mb-3">
+                    {selectedDeal.lead.company_name || selectedDeal.lead.name}
+                  </h2>
+                  
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2">
+                    {selectedDeal.loanType && (
+                      <Badge variant="secondary" className="text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 rounded px-2 py-0.5">
+                        {selectedDeal.loanType}
+                      </Badge>
+                    )}
+                    {STAGE_CONFIG[selectedDeal.lead.status] && (
+                      <Badge variant="secondary" className="text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400 border-0 rounded px-2 py-0.5">
+                        {STAGE_CONFIG[selectedDeal.lead.status].label}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Metrics */}
+                <div className="space-y-3 bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                  {selectedDeal.loanAmount && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500">Loan Amount</span>
+                      <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        {formatCurrency(selectedDeal.loanAmount)}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {selectedDeal.purpose && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500">Purpose</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-right max-w-[180px] truncate">
+                        {selectedDeal.purpose}
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-500">Urgency</span>
+                    <span className={`text-sm font-semibold ${selectedDeal.isUrgent ? 'text-red-600' : 'text-green-600'}`}>
+                      {selectedDeal.isUrgent ? 'High' : 'Normal'} - {selectedDeal.daysSinceActivity} days
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500">Confidence</span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">65%</span>
+                    </div>
+                    <Progress value={65} className="h-2" />
+                  </div>
+                </div>
+                
+                {/* CTA Button */}
+                {selectedDeal.nextAction && (
+                  <Button
+                    className="w-full h-11 text-sm font-semibold bg-primary hover:bg-primary/90 rounded-lg shadow-sm"
+                    onClick={() => toast.success('Action triggered')}
+                  >
+                    {selectedDeal.nextAction}
+                  </Button>
+                )}
+                
+                {/* Primary Contact */}
+                <div>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3">Primary Contact</p>
+                  
+                  <div className="flex items-start gap-3 mb-4">
+                    <Avatar className="w-11 h-11 border border-slate-200 dark:border-slate-700">
+                      {selectedDeal.latestEmail.senderPhoto && <AvatarImage src={selectedDeal.latestEmail.senderPhoto} />}
+                      <AvatarFallback className="text-sm font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400">
+                        {selectedDeal.lead.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{selectedDeal.lead.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {selectedDeal.lead.title || 'Contact'}, {selectedDeal.lead.company_name}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {selectedDeal.lead.email && (
+                      <a href={`mailto:${selectedDeal.lead.email}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                        <Mail className="w-4 h-4 text-slate-400" />
+                        {selectedDeal.lead.email}
+                      </a>
+                    )}
+                    
+                    {selectedDeal.lead.phone && (
+                      <a href={`tel:${selectedDeal.lead.phone}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                        <Phone className="w-4 h-4 text-slate-400" />
+                        {selectedDeal.lead.phone}
+                      </a>
+                    )}
+                    
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                      <Clock className="w-4 h-4 text-slate-400" />
+                      Last touch: {formatDistanceToNow(new Date(selectedDeal.latestEmail.date), { addSuffix: true })}
+                    </div>
+                    
+                    {selectedDeal.lead.source && (
+                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                        <Tag className="w-4 h-4 text-slate-400" />
+                        Source: {selectedDeal.lead.source}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Tags */}
+                {selectedDeal.lead.tags && selectedDeal.lead.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedDeal.lead.tags.map((tag, idx) => (
+                      <Badge key={idx} variant="outline" className="text-xs font-medium text-blue-600 border-blue-200 rounded">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Notes */}
+                {selectedDeal.lead.notes && (
+                  <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs font-medium text-slate-500 mb-1.5">Quick Notes</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {selectedDeal.lead.notes}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Recent Emails */}
+                <div>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-3">Recent Emails</p>
+                  <div className="space-y-2">
+                    {selectedDeal.emails.slice(0, 3).map((email) => (
+                      <button
+                        key={email.id}
+                        onClick={() => setSelectedEmail(email)}
+                        className="w-full text-left p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate max-w-[200px]">
+                            {email.subject}
+                          </span>
+                          <span className="text-[10px] text-slate-400 shrink-0 ml-2">
+                            {format(new Date(email.date), 'MMM d')}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">{email.snippet}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setComposeOpen(true)}>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Email
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link to={`/team/evan/pipeline?leadId=${selectedDeal.leadId}`}>
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      View Deal
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-sm text-slate-400">Select a deal to view details</p>
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Gmail-style Compose Dialog */}
+      
+      {/* Compose Dialog */}
       <GmailComposeDialog
         isOpen={composeOpen}
         onClose={() => setComposeOpen(false)}
-        to={composeTo}
+        to={composeTo || selectedDeal?.lead.email || ''}
         onToChange={setComposeTo}
         subject={composeSubject}
         onSubjectChange={setComposeSubject}
         body={composeBody}
         onBodyChange={setComposeBody}
-        onSend={handleSendEmail}
+        onSend={async () => {
+          setSending(true);
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('Not authenticated');
+            
+            const response = await fetch(
+              `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ to: composeTo, subject: composeSubject, body: composeBody }),
+              }
+            );
+            if (!response.ok) throw new Error('Failed to send');
+            toast.success('Email sent');
+            setComposeOpen(false);
+            setComposeTo('');
+            setComposeSubject('');
+            setComposeBody('');
+          } catch (e: any) {
+            toast.error(e.message);
+          } finally {
+            setSending(false);
+          }
+        }}
         sending={sending}
-        recipientName={selectedLead?.name}
+        recipientName={selectedDeal?.lead.name}
       />
     </AdminLayout>
   );
