@@ -595,7 +595,7 @@ const EvansGmail = () => {
                           onClick={() => setSelectedEmailId(email.id)}
                           className={`border-b cursor-pointer hover:bg-muted/50 ${
                             !email.isRead ? 'bg-primary/5' : ''
-                          } ${isExternal ? 'p-4' : 'p-3'}`}
+                          } ${isExternal ? 'py-5 px-4' : 'p-3'}`}
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <Avatar className={isExternal ? 'w-8 h-8' : 'w-6 h-6'}>
