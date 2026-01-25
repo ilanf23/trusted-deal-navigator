@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -208,6 +209,7 @@ const extractEmailAddress = (from: string): string => {
 };
 
 const EvansGmail = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [showEmailAddress, setShowEmailAddress] = useState(false);
@@ -671,26 +673,16 @@ const EvansGmail = () => {
                   <Building className="w-4 h-4 mr-2" />
                   External
                 </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-[200px]">
+                <DropdownMenuSubContent className="w-[160px]">
                   <DropdownMenuItem onClick={() => { setActiveFilter('external'); setSelectedEmailId(null); }}>
                     <Building className="w-4 h-4 mr-2" />
                     All External
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {emailTemplates.map((template) => (
-                    <DropdownMenuItem 
-                      key={template.id}
-                      onClick={() => {
-                        setComposeTo('');
-                        setComposeSubject(template.subject);
-                        setComposeBody(template.body);
-                        setComposeOpen(true);
-                      }}
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      {template.name}
-                    </DropdownMenuItem>
-                  ))}
+                  <DropdownMenuItem onClick={() => navigate('/team/evan/email-templates')}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Templates
+                  </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuItem onClick={() => { setActiveFilter('internal'); setSelectedEmailId(null); }}>
