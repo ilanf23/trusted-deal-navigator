@@ -716,11 +716,6 @@ const EvansGmail = () => {
                 <CalendarClock className="w-4 h-4 mr-2" />
                 7 Day Follow Up
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => { setActiveFilter('templates'); setSelectedEmailId(null); }}>
-                <FileText className="w-4 h-4 mr-2" />
-                Templates
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           
