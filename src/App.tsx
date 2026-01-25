@@ -94,6 +94,18 @@ const App = () => (
               <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
               <Route path="/admin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
               {/* Team Member Routes (employees like Evan, Maura, Wendy) */}
+              {/* /user/evan routes - primary paths used in the app */}
+              <Route path="/user/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
+              <Route path="/user/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
+              <Route path="/user/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
+              <Route path="/user/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
+              <Route path="/user/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
+              <Route path="/user/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
+              <Route path="/user/evan/email-templates" element={<EmployeeRoute employeeName="Evan"><EvansEmailTemplates /></EmployeeRoute>} />
+              <Route path="/user/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
+              <Route path="/user/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
+              <Route path="/user/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
+              {/* Legacy /team/evan routes - kept for backward compatibility */}
               <Route path="/team/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
               <Route path="/team/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
               <Route path="/team/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
