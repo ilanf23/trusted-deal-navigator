@@ -1145,7 +1145,7 @@ const EvansGmail = () => {
                                 Move Forward
                               </Button>
                               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                <ArrowDown className="w-3 h-3 flex-shrink-0" />
+                                <ArrowDown className="w-3 h-3 flex-shrink-0 rotate-[-90deg]" />
                                 <span className="italic">
                                   {getNextStepSuggestion(stageName, email.snippet, lead)}
                                 </span>
