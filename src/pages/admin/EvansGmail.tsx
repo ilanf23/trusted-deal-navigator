@@ -4,9 +4,10 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2 } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -171,7 +172,8 @@ const EvansGmail = () => {
   const [leadDetailOpen, setLeadDetailOpen] = useState(false);
   const [selectedLeadIdForDetail, setSelectedLeadIdForDetail] = useState<string | null>(null);
   const [showDealSidebar, setShowDealSidebar] = useState(false);
-  // Check Gmail connection
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
     queryKey: ['evan-gmail-connection'],
     queryFn: async () => {
@@ -276,24 +278,40 @@ const EvansGmail = () => {
     return [...mockExternalEmails, ...emails];
   }, [emails]);
 
-  // Filter emails based on CRM classification
+  // Filter emails based on CRM classification and search query
   const filteredEmails = useMemo(() => {
-    if (activeFilter === 'inbox') return allEmails;
+    let result = allEmails;
     
-    return allEmails.filter(email => {
-      const senderEmail = extractEmailAddress(email.from);
-      const toEmail = extractEmailAddress(email.to || '');
-      
-      const isExternal = crmEmails.some(crmEmail => {
-        const crmLower = crmEmail.toLowerCase().trim();
-        return senderEmail === crmLower || toEmail === crmLower;
+    // Apply category filter
+    if (activeFilter !== 'inbox') {
+      result = result.filter(email => {
+        const senderEmail = extractEmailAddress(email.from);
+        const toEmail = extractEmailAddress(email.to || '');
+        
+        const isExternal = crmEmails.some(crmEmail => {
+          const crmLower = crmEmail.toLowerCase().trim();
+          return senderEmail === crmLower || toEmail === crmLower;
+        });
+        
+        if (activeFilter === 'external') return isExternal;
+        if (activeFilter === 'internal') return !isExternal;
+        return true;
       });
-      
-      if (activeFilter === 'external') return isExternal;
-      if (activeFilter === 'internal') return !isExternal;
-      return true;
-    });
-  }, [allEmails, crmEmails, activeFilter]);
+    }
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(email => 
+        email.subject.toLowerCase().includes(query) ||
+        email.from.toLowerCase().includes(query) ||
+        email.snippet.toLowerCase().includes(query) ||
+        (email.to && email.to.toLowerCase().includes(query))
+      );
+    }
+    
+    return result;
+  }, [allEmails, crmEmails, activeFilter, searchQuery]);
 
   // Find matching lead for an email
   const findLeadForEmail = (email: Email) => {
@@ -864,8 +882,28 @@ const EvansGmail = () => {
           ) : (
             // Email List View
             <div className="h-full flex flex-col">
-              <div className="p-3 border-b">
+              <div className="p-3 border-b space-y-3">
                 <h2 className="font-semibold text-sm">{filterLabels[activeFilter]}</h2>
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search emails..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-8 h-9"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                      onClick={() => setSearchQuery('')}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
               <ScrollArea className="flex-1">
                 {emailsLoading ? (
@@ -874,7 +912,7 @@ const EvansGmail = () => {
                   </div>
                 ) : filteredEmails.length === 0 ? (
                   <div className="text-center py-8 text-sm text-muted-foreground">
-                    No emails
+                    {searchQuery ? 'No emails match your search' : 'No emails'}
                   </div>
                 ) : (
                   <div>
