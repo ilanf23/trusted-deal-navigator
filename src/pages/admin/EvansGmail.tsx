@@ -746,7 +746,7 @@ const EvansGmail = () => {
           {isRefreshing && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
-                <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+                <RefreshCw className="w-8 h-8 animate-spin text-primary/80" />
                 <p className="text-sm text-muted-foreground">Refreshing emails...</p>
               </div>
             </div>
