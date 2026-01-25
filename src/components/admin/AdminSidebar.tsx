@@ -253,12 +253,13 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
   return (
     <Sidebar 
-      className="border-r-0 bg-[#0a1628] font-sans !text-white" 
+      className="border-r-0 bg-[#0a1628] font-sans !text-white [&_[data-sidebar=sidebar]]:bg-[#0a1628]" 
       collapsible="icon"
       style={{ 
         '--sidebar-width': '16rem', 
         '--sidebar-width-icon': '3.5rem',
-        '--sidebar-foreground': '0 0% 100%', 
+        '--sidebar-foreground': '0 0% 100%',
+        '--sidebar-background': '215 55% 10%',
         fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" 
       } as React.CSSProperties}
     >
