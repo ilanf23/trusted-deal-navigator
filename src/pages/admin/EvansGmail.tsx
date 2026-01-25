@@ -723,7 +723,7 @@ const EvansGmail = () => {
 
   const filterLabels: Record<FilterType, string> = {
     inbox: 'Inbox',
-    external: 'External',
+    external: 'Borrowers',
     internal: 'Internal',
     followup: '7 Day Follow Up',
     templates: 'Templates',
@@ -790,12 +790,12 @@ const EvansGmail = () => {
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Building className="w-4 h-4 mr-2" />
-                  External
+                  Borrowers
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="w-[160px]">
                   <DropdownMenuItem onClick={() => { setActiveFilter('external'); setSelectedEmailId(null); }}>
                     <Building className="w-4 h-4 mr-2" />
-                    All External
+                    All Borrowers
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/team/evan/email-templates')}>
