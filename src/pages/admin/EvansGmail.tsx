@@ -235,8 +235,12 @@ const EvansGmail = () => {
   const { data: emails = [], isLoading: emailsLoading } = useQuery({
     queryKey: ['evan-gmail-emails'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return [];
+      // Refresh the session to get a valid token
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
+      if (sessionError || !session) {
+        console.error('Session refresh failed:', sessionError);
+        return [];
+      }
 
       const response = await fetch(
         `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=in:inbox&maxResults=50&fetchPhotos=true`,
