@@ -2220,46 +2220,94 @@ export type Database = {
       }
       rate_watch: {
         Row: {
+          amortization: string | null
+          collateral_type: string | null
+          collateral_value: number | null
+          confirm_email: boolean | null
           created_at: string
           current_rate: number
           enrolled_at: string
+          estimated_cf: number | null
           id: string
+          initial_review: string | null
           is_active: boolean
           last_contacted_at: string | null
           lead_id: string
+          lender_type: string | null
           loan_amount: number | null
+          loan_maturity: string | null
           loan_type: string | null
           notes: string | null
+          occupancy_use: string | null
+          original_term_years: number | null
+          owner_occupied_pct: number | null
+          penalty: string | null
+          rate_type: string | null
+          re_location: string | null
+          seeking_to_improve: string | null
           target_rate: number
           updated_at: string
+          variable_index_spread: string | null
         }
         Insert: {
+          amortization?: string | null
+          collateral_type?: string | null
+          collateral_value?: number | null
+          confirm_email?: boolean | null
           created_at?: string
           current_rate: number
           enrolled_at?: string
+          estimated_cf?: number | null
           id?: string
+          initial_review?: string | null
           is_active?: boolean
           last_contacted_at?: string | null
           lead_id: string
+          lender_type?: string | null
           loan_amount?: number | null
+          loan_maturity?: string | null
           loan_type?: string | null
           notes?: string | null
+          occupancy_use?: string | null
+          original_term_years?: number | null
+          owner_occupied_pct?: number | null
+          penalty?: string | null
+          rate_type?: string | null
+          re_location?: string | null
+          seeking_to_improve?: string | null
           target_rate: number
           updated_at?: string
+          variable_index_spread?: string | null
         }
         Update: {
+          amortization?: string | null
+          collateral_type?: string | null
+          collateral_value?: number | null
+          confirm_email?: boolean | null
           created_at?: string
           current_rate?: number
           enrolled_at?: string
+          estimated_cf?: number | null
           id?: string
+          initial_review?: string | null
           is_active?: boolean
           last_contacted_at?: string | null
           lead_id?: string
+          lender_type?: string | null
           loan_amount?: number | null
+          loan_maturity?: string | null
           loan_type?: string | null
           notes?: string | null
+          occupancy_use?: string | null
+          original_term_years?: number | null
+          owner_occupied_pct?: number | null
+          penalty?: string | null
+          rate_type?: string | null
+          re_location?: string | null
+          seeking_to_improve?: string | null
           target_rate?: number
           updated_at?: string
+          variable_index_spread?: string | null
         }
         Relationships: [
           {
