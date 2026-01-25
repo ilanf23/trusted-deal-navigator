@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTasksData } from '@/hooks/useTasksData';
 import { Task, ViewMode } from './types';
 import { TaskTableView } from './TaskTableView';
@@ -16,11 +17,33 @@ import {
 } from 'lucide-react';
 
 export const TaskWorkspace = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { tasks, isLoading, addTask, updateTask, deleteTask, addComment } = useTasksData();
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+
+  // Handle URL params for creating new task from Gmail
+  useEffect(() => {
+    const newTask = searchParams.get('newTask');
+    if (newTask === 'true') {
+      const title = searchParams.get('title') || '';
+      const description = searchParams.get('description') || '';
+      const leadId = searchParams.get('leadId') || undefined;
+      
+      // Create the task with pre-filled data
+      addTask.mutate({
+        title,
+        description,
+        status: 'todo',
+        lead_id: leadId || undefined,
+      });
+      
+      // Clear URL params
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams, addTask]);
 
   const filteredTasks = useMemo(() => {
     if (!searchTerm) return tasks;
