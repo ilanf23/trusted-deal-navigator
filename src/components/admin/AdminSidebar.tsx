@@ -32,7 +32,13 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  useSidebar,
 } from '@/components/ui/sidebar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AvatarUpload from '@/components/admin/AvatarUpload';
@@ -68,6 +74,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { teamMember, isOwner, loading: teamLoading } = useTeamMember();
+  const { state } = useSidebar();
+  const isCollapsed = state === 'collapsed';
 
   // Build navigation sections based on user's role
   const navSections: NavSection[] = useMemo(() => {
@@ -244,25 +252,40 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   }, [isOwner, teamMember]);
 
   return (
-    <Sidebar className="border-r-0 bg-[#0a1628] font-sans !text-white" style={{ '--sidebar-width': '16rem', '--sidebar-foreground': '0 0% 100%', fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" } as React.CSSProperties}>
-      <SidebarHeader className="pt-0 pb-0 px-3 border-b-0">
+    <Sidebar 
+      className="border-r-0 bg-[#0a1628] font-sans !text-white" 
+      collapsible="icon"
+      style={{ 
+        '--sidebar-width': '16rem', 
+        '--sidebar-width-icon': '3.5rem',
+        '--sidebar-foreground': '0 0% 100%', 
+        fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" 
+      } as React.CSSProperties}
+    >
+      <SidebarHeader className={`pt-0 pb-0 border-b-0 ${isCollapsed ? 'px-1' : 'px-3'}`}>
         <Link to={homeUrl} className="flex items-center justify-center group">
-          <img 
-            src="/logo.png" 
-            alt="CommercialLendingX" 
-            className="max-h-[140px] max-w-full object-contain brightness-0 invert opacity-95"
-          />
+          {isCollapsed ? (
+            <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center my-2">
+              <span className="text-white font-bold text-sm">CX</span>
+            </div>
+          ) : (
+            <img 
+              src="/logo.png" 
+              alt="CommercialLendingX" 
+              className="max-h-[140px] max-w-full object-contain brightness-0 invert opacity-95"
+            />
+          )}
         </Link>
-        <div className="h-px bg-white/15 mx-2 -mt-2" />
+        {!isCollapsed && <div className="h-px bg-white/15 mx-2 -mt-2" />}
       </SidebarHeader>
       
-      <SidebarContent className="px-3 pt-3 space-y-0.5">
+      <SidebarContent className={`pt-3 space-y-0.5 ${isCollapsed ? 'px-1' : 'px-3'}`}>
         {navSections.map((section) => (
           section.noCollapse ? (
             // Render direct links without collapsible wrapper - use Fragment to avoid extra div
             section.items.map((item) => (
-              item.subItems ? (
-                // Render collapsible for items with subItems
+              item.subItems && !isCollapsed ? (
+                // Render collapsible for items with subItems (only when expanded)
                 <Collapsible
                   key={item.title}
                   open={openSections[item.title]}
@@ -306,6 +329,27 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+              ) : isCollapsed ? (
+                // Collapsed state: show icon only with tooltip
+                <Tooltip key={item.title}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={item.url}
+                      className={`
+                        flex items-center justify-center py-2 px-2 rounded-md transition-all duration-150
+                        ${isActive(item.url) 
+                          ? 'bg-white/15 text-white' 
+                          : 'text-white/70 hover:bg-white/5 hover:text-white'
+                        }
+                      `}
+                    >
+                      <item.icon className="w-5 h-5 flex-shrink-0" strokeWidth={1.75} />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
+                    {item.title}
+                  </TooltipContent>
+                </Tooltip>
               ) : (
                 <Link
                   key={item.title}
@@ -323,6 +367,27 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                 </Link>
               )
             ))
+          ) : isCollapsed ? (
+            // Collapsed state for collapsible sections: show first item's icon with tooltip
+            <Tooltip key={section.title}>
+              <TooltipTrigger asChild>
+                <Link
+                  to={section.items[0]?.url || '#'}
+                  className={`
+                    flex items-center justify-center py-2 px-2 rounded-md transition-all duration-150
+                    ${section.items.some(item => isActive(item.url)) 
+                      ? 'bg-white/15 text-white' 
+                      : 'text-white/70 hover:bg-white/5 hover:text-white'
+                    }
+                  `}
+                >
+                  <section.icon className="w-5 h-5 flex-shrink-0" strokeWidth={1.75} />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
+                {section.title}
+              </TooltipContent>
+            </Tooltip>
           ) : (
             <Collapsible
               key={section.title}
@@ -430,47 +495,106 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-white/10">
+      <SidebarFooter className={`border-t border-white/10 ${isCollapsed ? 'p-1' : 'p-3'}`}>
         {/* AI Assistant Button */}
         {onAIToggle && (
-          <Button 
-            variant="ghost" 
-            className={`w-full justify-start gap-2.5 h-9 rounded-md text-[13px] px-3 mb-2 ${
-              aiChatOpen 
-                ? 'bg-primary/20 text-primary hover:bg-primary/30' 
-                : 'text-white/70 hover:text-white hover:bg-white/5'
-            }`}
-            onClick={onAIToggle}
-          >
-            <Sparkles className="w-4 h-4" strokeWidth={1.75} />
-            <span className="font-semibold">AI Assistant</span>
-          </Button>
+          isCollapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className={`w-full h-9 ${
+                    aiChatOpen 
+                      ? 'bg-primary/20 text-primary hover:bg-primary/30' 
+                      : 'text-white/70 hover:text-white hover:bg-white/5'
+                  }`}
+                  onClick={onAIToggle}
+                >
+                  <Sparkles className="w-5 h-5" strokeWidth={1.75} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
+                AI Assistant
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-start gap-2.5 h-9 rounded-md text-[13px] px-3 mb-2 ${
+                aiChatOpen 
+                  ? 'bg-primary/20 text-primary hover:bg-primary/30' 
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              }`}
+              onClick={onAIToggle}
+            >
+              <Sparkles className="w-4 h-4" strokeWidth={1.75} />
+              <span className="font-semibold">AI Assistant</span>
+            </Button>
+          )
         )}
 
-        <div className="flex items-center gap-3 mb-3 px-1">
-          <AvatarUpload
-            userId={user?.id || ''}
-            currentAvatarUrl={teamMember?.avatar_url}
-            fallbackInitials={getUserInitials(user?.email)}
-            size="md"
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-white truncate tracking-tight">
+        {isCollapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center py-2">
+                <AvatarUpload
+                  userId={user?.id || ''}
+                  currentAvatarUrl={teamMember?.avatar_url}
+                  fallbackInitials={getUserInitials(user?.email)}
+                  size="sm"
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
               {teamMember?.name || user?.email?.split('@')[0] || 'User'}
-            </p>
-            <p className="text-[11px] text-white/50 truncate tracking-tight">
-              {user?.email}
-            </p>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <div className="flex items-center gap-3 mb-3 px-1">
+            <AvatarUpload
+              userId={user?.id || ''}
+              currentAvatarUrl={teamMember?.avatar_url}
+              fallbackInitials={getUserInitials(user?.email)}
+              size="md"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-white truncate tracking-tight">
+                {teamMember?.name || user?.email?.split('@')[0] || 'User'}
+              </p>
+              <p className="text-[11px] text-white/50 truncate tracking-tight">
+                {user?.email}
+              </p>
+            </div>
           </div>
-        </div>
-        <Button 
-          variant="ghost" 
-          className="w-full justify-start gap-2.5 text-white/60 hover:text-white hover:bg-white/5 h-9 rounded-md text-[13px] px-3" 
-          onClick={signOut}
-        >
-          <LogOut className="w-4 h-4" strokeWidth={1.5} />
-          <span className="font-medium">Sign Out</span>
-        </Button>
+        )}
+        
+        {isCollapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="w-full h-9 text-white/60 hover:text-white hover:bg-white/5" 
+                onClick={signOut}
+              >
+                <LogOut className="w-5 h-5" strokeWidth={1.5} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
+              Sign Out
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-2.5 text-white/60 hover:text-white hover:bg-white/5 h-9 rounded-md text-[13px] px-3" 
+            onClick={signOut}
+          >
+            <LogOut className="w-4 h-4" strokeWidth={1.5} />
+            <span className="font-medium">Sign Out</span>
+          </Button>
+        )}
       </SidebarFooter>
       
       {/* Create Pipeline Modal */}
