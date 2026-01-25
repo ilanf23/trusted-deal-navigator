@@ -170,6 +170,7 @@ const EvansGmail = () => {
   const [generatingDraftForId, setGeneratingDraftForId] = useState<string | null>(null);
   const [leadDetailOpen, setLeadDetailOpen] = useState(false);
   const [selectedLeadIdForDetail, setSelectedLeadIdForDetail] = useState<string | null>(null);
+  const [showDealSidebar, setShowDealSidebar] = useState(false);
   // Check Gmail connection
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
     queryKey: ['evan-gmail-connection'],
@@ -583,10 +584,22 @@ const EvansGmail = () => {
             <div className="h-full flex">
               {/* Email Content */}
               <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="p-3 border-b">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedEmailId(null)}>
+                <div className="p-3 border-b flex items-center justify-between">
+                  <Button variant="ghost" size="sm" onClick={() => { setSelectedEmailId(null); setShowDealSidebar(false); }}>
                     ← Back
                   </Button>
+                  {/* Toggle Deal Sidebar button - only for external leads */}
+                  {selectedLead && isExternalEmail(selectedEmail) && (
+                    <Button
+                      variant={showDealSidebar ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => setShowDealSidebar(!showDealSidebar)}
+                      className="gap-2"
+                    >
+                      <User className="w-4 h-4" />
+                      {showDealSidebar ? 'Hide Lead Info' : 'Show Lead Info'}
+                    </Button>
+                  )}
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="p-6">
@@ -621,8 +634,8 @@ const EvansGmail = () => {
                 </ScrollArea>
               </div>
               
-              {/* Deal Summary Sidebar for External Leads - Matches CRM Popup */}
-              {selectedLead && isExternalEmail(selectedEmail) && (
+              {/* Deal Summary Sidebar for External Leads - Only shown when toggled */}
+              {showDealSidebar && selectedLead && isExternalEmail(selectedEmail) && (
                 <div className="w-80 border-l bg-white overflow-y-auto">
                   {/* Header with expand button */}
                   <div className="p-3 border-b flex items-center justify-between">
