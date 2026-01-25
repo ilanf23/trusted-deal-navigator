@@ -225,10 +225,12 @@ const RateWatch = () => {
 
       // Map headers to our fields (fuzzy matching)
       const headerMap: Record<string, string> = {
+        // Lead fields
         'name': 'name',
         'lead name': 'name',
         'borrower': 'name',
         'client': 'name',
+        'client name': 'name',
         'email': 'email',
         'email address': 'email',
         'phone': 'phone',
@@ -236,26 +238,95 @@ const RateWatch = () => {
         'company': 'company_name',
         'company name': 'company_name',
         'business': 'company_name',
+        // Rate watch core fields
         'current rate': 'current_rate',
         'rate': 'current_rate',
-        'current': 'current_rate',
         'target rate': 'target_rate',
         'target': 'target_rate',
-        'goal rate': 'target_rate',
         'loan type': 'loan_type',
         'type': 'loan_type',
-        'product': 'loan_type',
         'loan amount': 'loan_amount',
+        'loan balance': 'loan_amount',
         'amount': 'loan_amount',
-        'principal': 'loan_amount',
         'notes': 'notes',
         'note': 'notes',
         'comments': 'notes',
+        // New columns from user's spreadsheet
+        'confirm email': 'confirm_email',
+        'initial review': 'initial_review',
+        'date of last contact': 'last_contacted_at',
+        'last contact': 'last_contacted_at',
+        'collateral type': 'collateral_type',
+        'collateral value': 'collateral_value',
+        'loan maturity': 'loan_maturity',
+        're city/state': 're_location',
+        're city state': 're_location',
+        'city/state': 're_location',
+        'location': 're_location',
+        'rate type': 'rate_type',
+        'if variable: index and spread': 'variable_index_spread',
+        'index and spread': 'variable_index_spread',
+        'variable index': 'variable_index_spread',
+        'original term (yrs)': 'original_term_years',
+        'original term': 'original_term_years',
+        'term (yrs)': 'original_term_years',
+        'term': 'original_term_years',
+        'amortization': 'amortization',
+        'penalty': 'penalty',
+        'lender type': 'lender_type',
+        'estimated cf': 'estimated_cf',
+        'cash flow': 'estimated_cf',
+        'occupancy/use': 'occupancy_use',
+        'occupancy': 'occupancy_use',
+        'use': 'occupancy_use',
+        '% oo': 'owner_occupied_pct',
+        'owner occupied': 'owner_occupied_pct',
+        'oo %': 'owner_occupied_pct',
+        'seeking to improve': 'seeking_to_improve',
+        'seeking': 'seeking_to_improve',
+        'improve': 'seeking_to_improve',
       };
 
       const mapHeader = (header: string): string | null => {
         const normalized = header.toLowerCase().trim();
         return headerMap[normalized] || null;
+      };
+
+      // Helper to parse date strings
+      const parseDate = (value: unknown): string | null => {
+        if (!value) return null;
+        const str = String(value).trim();
+        if (!str) return null;
+        
+        // Try to parse as date
+        const date = new Date(str);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+        return null;
+      };
+
+      // Helper to parse numeric values (handles currency formats)
+      const parseNumeric = (value: unknown): number | null => {
+        if (!value) return null;
+        const str = String(value).replace(/[$,]/g, '').trim();
+        const num = parseFloat(str);
+        return isNaN(num) ? null : num;
+      };
+
+      // Helper to parse percentage
+      const parsePercent = (value: unknown): number | null => {
+        if (!value) return null;
+        const str = String(value).replace(/%/g, '').trim();
+        const num = parseFloat(str);
+        return isNaN(num) ? null : num;
+      };
+
+      // Helper to parse boolean (Y/N, Yes/No, true/false)
+      const parseBoolean = (value: unknown): boolean => {
+        if (!value) return false;
+        const str = String(value).toLowerCase().trim();
+        return ['y', 'yes', 'true', '1', 'x'].includes(str);
       };
 
       let successCount = 0;
@@ -331,6 +402,33 @@ const RateWatch = () => {
             leadId = newLead.id;
           }
 
+          // Build the rate watch data object with all fields
+          const rateWatchData = {
+            current_rate: currentRate,
+            target_rate: targetRate,
+            loan_type: mappedRow.loan_type ? String(mappedRow.loan_type).trim() : null,
+            loan_amount: parseNumeric(mappedRow.loan_amount),
+            notes: mappedRow.notes ? String(mappedRow.notes).trim() : null,
+            confirm_email: parseBoolean(mappedRow.confirm_email),
+            initial_review: mappedRow.initial_review ? String(mappedRow.initial_review).trim() : null,
+            last_contacted_at: parseDate(mappedRow.last_contacted_at),
+            collateral_type: mappedRow.collateral_type ? String(mappedRow.collateral_type).trim() : null,
+            collateral_value: parseNumeric(mappedRow.collateral_value),
+            loan_maturity: parseDate(mappedRow.loan_maturity)?.split('T')[0] || null,
+            re_location: mappedRow.re_location ? String(mappedRow.re_location).trim() : null,
+            rate_type: mappedRow.rate_type ? String(mappedRow.rate_type).trim() : null,
+            variable_index_spread: mappedRow.variable_index_spread ? String(mappedRow.variable_index_spread).trim() : null,
+            original_term_years: parseNumeric(mappedRow.original_term_years),
+            amortization: mappedRow.amortization ? String(mappedRow.amortization).trim() : null,
+            penalty: mappedRow.penalty ? String(mappedRow.penalty).trim() : null,
+            lender_type: mappedRow.lender_type ? String(mappedRow.lender_type).trim() : null,
+            estimated_cf: parseNumeric(mappedRow.estimated_cf),
+            occupancy_use: mappedRow.occupancy_use ? String(mappedRow.occupancy_use).trim() : null,
+            owner_occupied_pct: parsePercent(mappedRow.owner_occupied_pct),
+            seeking_to_improve: mappedRow.seeking_to_improve ? String(mappedRow.seeking_to_improve).trim() : null,
+            is_active: true,
+          };
+
           // Check if already in rate watch
           const { data: existingWatch } = await supabase
             .from('rate_watch')
@@ -342,14 +440,7 @@ const RateWatch = () => {
             // Update existing
             await supabase
               .from('rate_watch')
-              .update({
-                current_rate: currentRate,
-                target_rate: targetRate,
-                loan_type: mappedRow.loan_type ? String(mappedRow.loan_type).trim() : null,
-                loan_amount: mappedRow.loan_amount ? parseFloat(String(mappedRow.loan_amount)) : null,
-                notes: mappedRow.notes ? String(mappedRow.notes).trim() : null,
-                is_active: true,
-              })
+              .update(rateWatchData)
               .eq('id', existingWatch.id);
           } else {
             // Insert new
@@ -357,11 +448,7 @@ const RateWatch = () => {
               .from('rate_watch')
               .insert({
                 lead_id: leadId,
-                current_rate: currentRate,
-                target_rate: targetRate,
-                loan_type: mappedRow.loan_type ? String(mappedRow.loan_type).trim() : null,
-                loan_amount: mappedRow.loan_amount ? parseFloat(String(mappedRow.loan_amount)) : null,
-                notes: mappedRow.notes ? String(mappedRow.notes).trim() : null,
+                ...rateWatchData,
               });
           }
 
