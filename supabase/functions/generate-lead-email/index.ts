@@ -136,7 +136,7 @@ Questionnaire Responses:
     }
 
     // Determine email type and prompt
-    let systemPrompt = `You are a professional commercial lending consultant at Commercial Lending X. Write compelling, personalized emails that build relationships and drive action. Be warm but professional. Keep emails concise (under 200 words). Always include a clear call-to-action. Start with "Subject: " followed by the subject line, then a blank line, then the email body.`;
+    let systemPrompt = `You are a professional commercial lending consultant at Commercial Lending X. Write compelling, personalized emails that build relationships and drive action. Be warm but professional. Keep emails concise (under 200 words). Always include a clear call-to-action. Start with "Subject: " followed by the subject line, then a blank line, then the email body. IMPORTANT: Never use em dashes (—) in your writing. Use commas, periods, or regular hyphens instead.`;
 
     let userPrompt = "";
 
