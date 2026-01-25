@@ -886,12 +886,11 @@ const EvansGmail = () => {
                 <h2 className="font-semibold text-sm">{filterLabels[activeFilter]}</h2>
                 {/* Search Input */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search emails..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-8 h-9"
+                    className="pr-8 h-9"
                   />
                   {searchQuery && (
                     <Button
