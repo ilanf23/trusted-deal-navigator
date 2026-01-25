@@ -19,6 +19,7 @@ import WorkingCapital from "./pages/solutions/WorkingCapital";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Questionnaire from "./pages/Questionnaire";
+import RateWatchQuestionnaire from "./pages/RateWatchQuestionnaire";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import AdminLeads from "./pages/admin/Leads";
 import AdminClients from "./pages/admin/Clients";
@@ -80,6 +81,7 @@ const App = () => (
               <Route path="/solutions/working-capital" element={<PublicLayout><WorkingCapital /></PublicLayout>} />
               <Route path="/auth" element={<PublicLayout><Auth /></PublicLayout>} />
               <Route path="/questionnaire/:token" element={<PublicLayout><Questionnaire /></PublicLayout>} />
+              <Route path="/ratewatch/:token" element={<PublicLayout><RateWatchQuestionnaire /></PublicLayout>} />
               {/* Admin Routes */}
               <Route path="/admin" element={<ProtectedRoute requireAdmin><SuperAdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/leads" element={<ProtectedRoute requireAdmin><AdminLeads /></ProtectedRoute>} />
