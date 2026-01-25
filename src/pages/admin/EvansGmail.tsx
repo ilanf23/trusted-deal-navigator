@@ -5,7 +5,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -242,6 +242,15 @@ const EvansGmail = () => {
   const handleSelectEmail = (emailId: string) => {
     setSelectedEmailId(emailId);
     setReadEmailIds(prev => ({ ...prev, [emailId]: true }));
+  };
+
+  // Mark email as unread
+  const handleMarkUnread = (emailId: string) => {
+    setReadEmailIds(prev => {
+      const newState = { ...prev };
+      delete newState[emailId];
+      return newState;
+    });
   };
   
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
@@ -1300,6 +1309,19 @@ const EvansGmail = () => {
                               </span>
                             )}
                             <span className="flex-1" />
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem onClick={() => handleMarkUnread(email.id)}>
+                                  <MailOpen className="w-4 h-4 mr-2" />
+                                  Mark as unread
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                             <span className="text-xs text-muted-foreground">
                               {format(new Date(email.date), 'MMM d')}
                             </span>
