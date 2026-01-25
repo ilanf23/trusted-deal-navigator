@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import FloatingInbox, { PrefilledEmail } from '@/components/admin/FloatingInbox';
 import AIEmailAssistant from '@/components/admin/AIEmailAssistant';
+import * as XLSX from 'xlsx';
 import { 
   Sparkles,
   TrendingDown, 
@@ -20,7 +21,9 @@ import {
   GripVertical,
   AlertCircle,
   CheckCircle2,
-  Clock
+  Clock,
+  Upload,
+  FileSpreadsheet
 } from 'lucide-react';
 import {
   Dialog,
@@ -87,6 +90,8 @@ const RateWatch = () => {
   } | null>(null);
   const [prefilledEmail, setPrefilledEmail] = useState<PrefilledEmail | null>(null);
   const [draggedEntry, setDraggedEntry] = useState<RateWatchEntry | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form state for adding new entry
   const [newEntry, setNewEntry] = useState({
@@ -199,6 +204,199 @@ const RateWatch = () => {
       entry.loan_type?.toLowerCase().includes(searchLower)
     );
   });
+
+  // Handle Excel file upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
+
+      if (jsonData.length === 0) {
+        toast({ title: 'Empty file', description: 'The uploaded file contains no data', variant: 'destructive' });
+        return;
+      }
+
+      // Map headers to our fields (fuzzy matching)
+      const headerMap: Record<string, string> = {
+        'name': 'name',
+        'lead name': 'name',
+        'borrower': 'name',
+        'client': 'name',
+        'email': 'email',
+        'email address': 'email',
+        'phone': 'phone',
+        'phone number': 'phone',
+        'company': 'company_name',
+        'company name': 'company_name',
+        'business': 'company_name',
+        'current rate': 'current_rate',
+        'rate': 'current_rate',
+        'current': 'current_rate',
+        'target rate': 'target_rate',
+        'target': 'target_rate',
+        'goal rate': 'target_rate',
+        'loan type': 'loan_type',
+        'type': 'loan_type',
+        'product': 'loan_type',
+        'loan amount': 'loan_amount',
+        'amount': 'loan_amount',
+        'principal': 'loan_amount',
+        'notes': 'notes',
+        'note': 'notes',
+        'comments': 'notes',
+      };
+
+      const mapHeader = (header: string): string | null => {
+        const normalized = header.toLowerCase().trim();
+        return headerMap[normalized] || null;
+      };
+
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (const row of jsonData) {
+        try {
+          const mappedRow: Record<string, unknown> = {};
+          
+          for (const [key, value] of Object.entries(row)) {
+            const mappedKey = mapHeader(key);
+            if (mappedKey) {
+              mappedRow[mappedKey] = value;
+            }
+          }
+
+          const name = String(mappedRow.name || '').trim();
+          const currentRate = parseFloat(String(mappedRow.current_rate || '0'));
+          const targetRate = parseFloat(String(mappedRow.target_rate || '0'));
+
+          if (!name || isNaN(currentRate) || isNaN(targetRate)) {
+            errorCount++;
+            errors.push(`Row skipped: Missing name or invalid rates`);
+            continue;
+          }
+
+          // First, create or find the lead
+          let leadId: string;
+          const email = mappedRow.email ? String(mappedRow.email).trim() : null;
+          
+          // Check if lead exists by name or email
+          let existingLead = null;
+          if (email) {
+            const { data } = await supabase
+              .from('leads')
+              .select('id')
+              .eq('email', email)
+              .single();
+            existingLead = data;
+          }
+          
+          if (!existingLead) {
+            const { data } = await supabase
+              .from('leads')
+              .select('id')
+              .ilike('name', name)
+              .single();
+            existingLead = data;
+          }
+
+          if (existingLead) {
+            leadId = existingLead.id;
+          } else {
+            // Create new lead
+            const { data: newLead, error: leadError } = await supabase
+              .from('leads')
+              .insert({
+                name,
+                email,
+                phone: mappedRow.phone ? String(mappedRow.phone).trim() : null,
+                company_name: mappedRow.company_name ? String(mappedRow.company_name).trim() : null,
+                source: 'Rate Watch Import',
+              })
+              .select('id')
+              .single();
+
+            if (leadError || !newLead) {
+              errorCount++;
+              errors.push(`Failed to create lead: ${name}`);
+              continue;
+            }
+            leadId = newLead.id;
+          }
+
+          // Check if already in rate watch
+          const { data: existingWatch } = await supabase
+            .from('rate_watch')
+            .select('id')
+            .eq('lead_id', leadId)
+            .single();
+
+          if (existingWatch) {
+            // Update existing
+            await supabase
+              .from('rate_watch')
+              .update({
+                current_rate: currentRate,
+                target_rate: targetRate,
+                loan_type: mappedRow.loan_type ? String(mappedRow.loan_type).trim() : null,
+                loan_amount: mappedRow.loan_amount ? parseFloat(String(mappedRow.loan_amount)) : null,
+                notes: mappedRow.notes ? String(mappedRow.notes).trim() : null,
+                is_active: true,
+              })
+              .eq('id', existingWatch.id);
+          } else {
+            // Insert new
+            await supabase
+              .from('rate_watch')
+              .insert({
+                lead_id: leadId,
+                current_rate: currentRate,
+                target_rate: targetRate,
+                loan_type: mappedRow.loan_type ? String(mappedRow.loan_type).trim() : null,
+                loan_amount: mappedRow.loan_amount ? parseFloat(String(mappedRow.loan_amount)) : null,
+                notes: mappedRow.notes ? String(mappedRow.notes).trim() : null,
+              });
+          }
+
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          errors.push(`Error processing row: ${err}`);
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['rate-watch'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-not-in-rate-watch'] });
+
+      if (successCount > 0) {
+        toast({ 
+          title: 'Import complete', 
+          description: `${successCount} entries imported${errorCount > 0 ? `, ${errorCount} failed` : ''}` 
+        });
+      } else {
+        toast({ 
+          title: 'Import failed', 
+          description: errors[0] || 'No valid entries found', 
+          variant: 'destructive' 
+        });
+      }
+    } catch (error) {
+      console.error('Error parsing file:', error);
+      toast({ title: 'Error reading file', description: 'Failed to parse the Excel file', variant: 'destructive' });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // Separate entries by status
   const alertEntries = filteredEntries.filter(e => e.current_rate > e.target_rate);
@@ -316,13 +514,39 @@ Commercial Lending X`,
             </p>
           </div>
           
-          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Add to Rate Watch
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Import Excel
+                </>
+              )}
+            </Button>
+            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add to Rate Watch
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Add Lead to Rate Watch</DialogTitle>
@@ -413,6 +637,7 @@ Commercial Lending X`,
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Search */}
