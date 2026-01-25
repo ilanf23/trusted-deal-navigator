@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,13 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -382,6 +389,79 @@ const EvansGmail = () => {
     
     return result;
   }, [allEmails, crmEmails, activeFilter, searchQuery, allLeads]);
+
+  // Fetch pipeline stages for dropdown
+  const { data: pipelineStages = [] } = useQuery({
+    queryKey: ['pipeline-stages-for-gmail'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('pipeline_stages')
+        .select('id, name, color, position')
+        .order('position');
+      return data || [];
+    },
+  });
+
+  // Mutation to update lead
+  const updateLeadMutation = useMutation({
+    mutationFn: async ({ leadId, updates }: { leadId: string; updates: Record<string, any> }) => {
+      const { error } = await supabase
+        .from('leads')
+        .update(updates)
+        .eq('id', leadId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
+      toast.success('Lead updated');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update: ' + error.message);
+    },
+  });
+
+  // Mutation to update pipeline lead stage
+  const updateStageMutation = useMutation({
+    mutationFn: async ({ leadId, stageId }: { leadId: string; stageId: string }) => {
+      // First check if lead has a pipeline_leads entry
+      const { data: existing } = await supabase
+        .from('pipeline_leads')
+        .select('id')
+        .eq('lead_id', leadId)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('pipeline_leads')
+          .update({ stage_id: stageId })
+          .eq('lead_id', leadId);
+        if (error) throw error;
+      } else {
+        // Create new pipeline_leads entry with default pipeline
+        const { data: defaultPipeline } = await supabase
+          .from('pipelines')
+          .select('id')
+          .eq('is_main', true)
+          .maybeSingle();
+        
+        const { error } = await supabase
+          .from('pipeline_leads')
+          .insert({
+            lead_id: leadId,
+            stage_id: stageId,
+            pipeline_id: defaultPipeline?.id,
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
+      toast.success('Stage updated');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update stage: ' + error.message);
+    },
+  });
 
   // Find matching lead for an email
   const findLeadForEmail = (email: Email) => {
@@ -818,15 +898,40 @@ const EvansGmail = () => {
                     <div className="flex items-center gap-4">
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Stage</p>
-                        <div className="flex items-center gap-2">
-                          <span 
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: selectedLead.pipeline_leads?.[0]?.pipeline_stages?.color || '#0066FF' }}
-                          />
-                          <span className="text-sm font-medium">
-                            {selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name || 'Discovery'}
-                          </span>
-                        </div>
+                        <Select
+                          value={selectedLead.pipeline_leads?.[0]?.stage_id || ''}
+                          onValueChange={(value) => {
+                            updateStageMutation.mutate({
+                              leadId: selectedLead.id,
+                              stageId: value,
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="h-8 w-[130px] text-sm">
+                            <div className="flex items-center gap-2">
+                              <span 
+                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: selectedLead.pipeline_leads?.[0]?.pipeline_stages?.color || '#0066FF' }}
+                              />
+                              <SelectValue placeholder="Select stage">
+                                {selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name || 'Discovery'}
+                              </SelectValue>
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {pipelineStages.map((stage: any) => (
+                              <SelectItem key={stage.id} value={stage.id}>
+                                <div className="flex items-center gap-2">
+                                  <span 
+                                    className="w-2.5 h-2.5 rounded-full"
+                                    style={{ backgroundColor: stage.color || '#0066FF' }}
+                                  />
+                                  {stage.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Assigned To</p>
@@ -863,25 +968,90 @@ const EvansGmail = () => {
                         <div className="space-y-3 pl-6">
                           <div>
                             <p className="text-xs text-slate-400 mb-1">Contact Name</p>
-                            <p className="text-sm text-slate-900 font-medium">{selectedLead.name}</p>
+                            <Input
+                              className="h-8 text-sm"
+                              defaultValue={selectedLead.name}
+                              onBlur={(e) => {
+                                if (e.target.value !== selectedLead.name) {
+                                  updateLeadMutation.mutate({
+                                    leadId: selectedLead.id,
+                                    updates: { name: e.target.value },
+                                  });
+                                }
+                              }}
+                            />
                           </div>
                           <div>
                             <p className="text-xs text-slate-400 mb-1">Known As</p>
-                            <p className="text-sm text-slate-500">{selectedLead.known_as || 'Nickname or alias'}</p>
+                            <Input
+                              className="h-8 text-sm"
+                              placeholder="Nickname or alias"
+                              defaultValue={selectedLead.known_as || ''}
+                              onBlur={(e) => {
+                                if (e.target.value !== (selectedLead.known_as || '')) {
+                                  updateLeadMutation.mutate({
+                                    leadId: selectedLead.id,
+                                    updates: { known_as: e.target.value || null },
+                                  });
+                                }
+                              }}
+                            />
                           </div>
                           <div>
                             <p className="text-xs text-slate-400 mb-1">Company</p>
-                            <p className="text-sm text-slate-900">{selectedLead.company_name || '—'}</p>
+                            <Input
+                              className="h-8 text-sm"
+                              placeholder="Company name"
+                              defaultValue={selectedLead.company_name || ''}
+                              onBlur={(e) => {
+                                if (e.target.value !== (selectedLead.company_name || '')) {
+                                  updateLeadMutation.mutate({
+                                    leadId: selectedLead.id,
+                                    updates: { company_name: e.target.value || null },
+                                  });
+                                }
+                              }}
+                            />
                           </div>
                           <div>
                             <p className="text-xs text-slate-400 mb-1">Title</p>
-                            <p className="text-sm text-slate-500">{selectedLead.title || 'Job title'}</p>
+                            <Input
+                              className="h-8 text-sm"
+                              placeholder="Job title"
+                              defaultValue={selectedLead.title || ''}
+                              onBlur={(e) => {
+                                if (e.target.value !== (selectedLead.title || '')) {
+                                  updateLeadMutation.mutate({
+                                    leadId: selectedLead.id,
+                                    updates: { title: e.target.value || null },
+                                  });
+                                }
+                              }}
+                            />
                           </div>
                           <div>
                             <p className="text-xs text-slate-400 mb-1">Contact Type</p>
-                            <p className="text-sm text-slate-900 capitalize">
-                              {(selectedLead.contact_type || 'potential_customer').replace(/_/g, ' ')}
-                            </p>
+                            <Select
+                              value={selectedLead.contact_type || 'potential_customer'}
+                              onValueChange={(value) => {
+                                updateLeadMutation.mutate({
+                                  leadId: selectedLead.id,
+                                  updates: { contact_type: value },
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="potential_customer">Potential Customer</SelectItem>
+                                <SelectItem value="existing_customer">Existing Customer</SelectItem>
+                                <SelectItem value="referral_partner">Referral Partner</SelectItem>
+                                <SelectItem value="vendor">Vendor</SelectItem>
+                                <SelectItem value="lender">Lender</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                       </div>
