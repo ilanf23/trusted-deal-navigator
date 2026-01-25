@@ -180,7 +180,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Commercial Property Portfolio Review',
     from: 'Andrew Foster <afoster@greenleafprops.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
+    date: new Date(Date.now() - 1000 * 60 * 60 * 192).toISOString(), // 8 days ago
     snippet: 'Can we schedule a call to review our portfolio? We have 5 properties that may need refinancing before year end...',
     isRead: true,
   },
@@ -190,7 +190,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Healthcare Expansion Financing Inquiry',
     from: 'Emily Wang <ewang@sunrisehealthcare.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 120).toISOString(),
+    date: new Date(Date.now() - 1000 * 60 * 60 * 192).toISOString(), // 8 days ago
     snippet: 'Sunrise Healthcare is planning to open a new urgent care center. We are looking at properties in the $3-4M range...',
     isRead: true,
   },
