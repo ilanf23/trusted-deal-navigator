@@ -643,7 +643,13 @@ const EvansGmail = () => {
             size="icon"
             onClick={async () => {
               setIsRefreshing(true);
+              setSelectedEmailId(null);
+              // Small delay to show the loading state
+              await new Promise(resolve => setTimeout(resolve, 300));
               await queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
+              await queryClient.invalidateQueries({ queryKey: ['gmail-connection'] });
+              await queryClient.invalidateQueries({ queryKey: ['crm-emails'] });
+              await queryClient.invalidateQueries({ queryKey: ['all-leads'] });
               await queryClient.refetchQueries({ queryKey: ['gmail-emails'] });
               setIsRefreshing(false);
               toast.success('Emails refreshed');
@@ -740,7 +746,16 @@ const EvansGmail = () => {
         </div>
 
         {/* Email List / Email View */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden relative">
+          {/* Refresh overlay */}
+          {isRefreshing && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Refreshing emails...</p>
+              </div>
+            </div>
+          )}
           {selectedEmailId && selectedEmail ? (
             // Full Email View with Deal Summary Sidebar for External
             <div className="h-full flex">
