@@ -8,6 +8,13 @@ import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDo
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -620,11 +627,11 @@ const EvansGmail = () => {
 
   return (
     <AdminLayout>
-      <div className="flex h-[calc(100vh-100px)] border rounded-lg overflow-hidden bg-background">
-        {/* Sidebar */}
-        <div className="w-48 border-r bg-muted/30 p-3 space-y-1">
+      <div className="flex flex-col h-[calc(100vh-100px)] border rounded-lg overflow-hidden bg-background">
+        {/* Top Header with Compose, Filter, and Search */}
+        <div className="flex items-center gap-3 p-3 border-b bg-muted/30">
           <Button 
-            className="w-full mb-3 gap-2"
+            className="gap-2"
             onClick={() => {
               setComposeTo('');
               setComposeSubject('');
@@ -635,50 +642,65 @@ const EvansGmail = () => {
             <Plus className="w-4 h-4" />
             Compose
           </Button>
-          <div 
-            onClick={() => { setActiveFilter('inbox'); setSelectedEmailId(null); }}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
-              activeFilter === 'inbox' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'
-            }`}
-          >
-            <Inbox className="w-4 h-4" />
-            Inbox
-          </div>
-          <div 
-            onClick={() => { setActiveFilter('external'); setSelectedEmailId(null); }}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
-              activeFilter === 'external' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'
-            }`}
-          >
-            <Building className="w-4 h-4" />
-            External
-          </div>
-          <div 
-            onClick={() => { setActiveFilter('internal'); setSelectedEmailId(null); }}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
-              activeFilter === 'internal' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            Internal
-          </div>
-          <div 
-            onClick={() => { setActiveFilter('followup'); setSelectedEmailId(null); }}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
-              activeFilter === 'followup' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'
-            }`}
-          >
-            <CalendarClock className="w-4 h-4" />
-            7 Day Follow Up
-          </div>
-          <div 
-            onClick={() => { setActiveFilter('templates'); setSelectedEmailId(null); }}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
-              activeFilter === 'templates' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            Templates
+          
+          {/* Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2 min-w-[140px] justify-between">
+                <span className="flex items-center gap-2">
+                  {activeFilter === 'inbox' && <Inbox className="w-4 h-4" />}
+                  {activeFilter === 'external' && <Building className="w-4 h-4" />}
+                  {activeFilter === 'internal' && <Users className="w-4 h-4" />}
+                  {activeFilter === 'followup' && <CalendarClock className="w-4 h-4" />}
+                  {activeFilter === 'templates' && <FileText className="w-4 h-4" />}
+                  {filterLabels[activeFilter]}
+                </span>
+                <ChevronDown className="w-4 h-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[180px]">
+              <DropdownMenuItem onClick={() => { setActiveFilter('inbox'); setSelectedEmailId(null); }}>
+                <Inbox className="w-4 h-4 mr-2" />
+                Inbox
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setActiveFilter('external'); setSelectedEmailId(null); }}>
+                <Building className="w-4 h-4 mr-2" />
+                External
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setActiveFilter('internal'); setSelectedEmailId(null); }}>
+                <Users className="w-4 h-4 mr-2" />
+                Internal
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setActiveFilter('followup'); setSelectedEmailId(null); }}>
+                <CalendarClock className="w-4 h-4 mr-2" />
+                7 Day Follow Up
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => { setActiveFilter('templates'); setSelectedEmailId(null); }}>
+                <FileText className="w-4 h-4 mr-2" />
+                Templates
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Input
+              placeholder="Search emails..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-8 h-9"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setSearchQuery('')}
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1002,28 +1024,6 @@ const EvansGmail = () => {
           ) : (
             // Email List View
             <div className="h-full flex flex-col">
-              <div className="p-3 border-b space-y-3">
-                <h2 className="font-semibold text-sm">{filterLabels[activeFilter]}</h2>
-                {/* Search Input */}
-                <div className="relative">
-                  <Input
-                    placeholder="Search emails..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pr-8 h-9"
-                  />
-                  {searchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                      onClick={() => setSearchQuery('')}
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </div>
               <ScrollArea className="flex-1">
                 {emailsLoading ? (
                   <div className="flex items-center justify-center py-8">
