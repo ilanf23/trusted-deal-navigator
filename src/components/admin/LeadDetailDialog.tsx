@@ -1313,11 +1313,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                     <div className="text-center py-12 text-slate-400">
                       <Mail className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No emails yet</p>
-                      <p className="text-sm mt-2">Want to see emails sent to/from your team?</p>
-                      <Button variant="default" size="sm" className="mt-4 bg-blue-600 hover:bg-blue-700">
-                        <Users className="w-4 h-4 mr-2" />
-                        Invite teammates
-                      </Button>
                     </div>
                   </TabsContent>
 
