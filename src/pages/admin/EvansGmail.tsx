@@ -1005,7 +1005,7 @@ const EvansGmail = () => {
                       {/* Action Button */}
                       <div className="pt-4">
                         <Button 
-                          className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white"
+                          className="w-full bg-[#0066FF]/80 hover:bg-[#0052CC]/80 text-white"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleMoveForward(selectedEmail);
@@ -1119,7 +1119,7 @@ const EvansGmail = () => {
                               <div className="flex items-center gap-3">
                                 <Button 
                                   size="sm"
-                                  className="bg-[#0066FF] hover:bg-[#0052CC] text-white"
+                                  className="bg-[#0066FF]/80 hover:bg-[#0052CC]/80 text-white"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleMoveForward(email);
