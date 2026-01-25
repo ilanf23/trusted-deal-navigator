@@ -1310,10 +1310,52 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
                   {/* Emails Tab */}
                   <TabsContent value="emails" className="m-0">
-                    <div className="text-center py-12 text-slate-400">
-                      <Mail className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No emails yet</p>
-                    </div>
+                    {gmailEmailsLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                        <span className="ml-2 text-slate-400">Loading emails...</span>
+                      </div>
+                    ) : allEmailThreads.length === 0 ? (
+                      <div className="text-center py-12 text-slate-400">
+                        <Mail className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>No emails yet</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {allEmailThreads.map((thread: any) => (
+                          <a
+                            key={thread.id}
+                            href={`/team/evan/gmail?thread=${thread.thread_id}`}
+                            className="flex items-start gap-3 p-3 hover:bg-slate-50 cursor-pointer group transition-colors"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                              <Mail className="w-4 h-4 text-slate-500 group-hover:text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <p className="text-sm font-medium text-slate-800 truncate group-hover:text-primary">
+                                  {thread.subject || '(No Subject)'}
+                                </p>
+                                {thread.messageCount > 1 && (
+                                  <span className="text-xs text-slate-400 shrink-0">({thread.messageCount})</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 line-clamp-2">{thread.snippet}</p>
+                              <p className="text-xs text-slate-400 mt-1">
+                                {thread.last_message_date 
+                                  ? format(new Date(thread.last_message_date), 'MMM d, yyyy • h:mm a')
+                                  : ''}
+                              </p>
+                            </div>
+                            {thread.waiting_on && (
+                              <Badge variant="outline" className="text-xs shrink-0 mt-1">
+                                {thread.waiting_on}
+                              </Badge>
+                            )}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </TabsContent>
 
                   {/* Files Tab */}
