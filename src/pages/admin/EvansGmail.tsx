@@ -4,7 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, BookTemplate } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,48 @@ interface Email {
   senderPhoto?: string | null;
 }
 
-type FilterType = 'inbox' | 'external' | 'internal';
+type FilterType = 'inbox' | 'external' | 'internal' | 'templates';
+
+// Email templates
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+}
+
+const emailTemplates: EmailTemplate[] = [
+  {
+    id: 'template-1',
+    name: 'Initial Outreach',
+    subject: 'Commercial Lending Opportunity',
+    body: 'Hi, I wanted to reach out about financing options that could help grow your business.',
+  },
+  {
+    id: 'template-2',
+    name: 'Follow-Up',
+    subject: 'Following Up on Our Conversation',
+    body: 'Just checking in to see if you had any questions about the loan options we discussed.',
+  },
+  {
+    id: 'template-3',
+    name: 'Document Request',
+    subject: 'Documents Needed for Your Application',
+    body: 'To move forward with your application, please provide the following documents at your earliest convenience.',
+  },
+  {
+    id: 'template-4',
+    name: 'Rate Update',
+    subject: 'Great News - Rates Have Changed',
+    body: 'I wanted to let you know that rates have moved favorably and now might be a good time to revisit your financing.',
+  },
+  {
+    id: 'template-5',
+    name: 'Thank You',
+    subject: 'Thank You for Your Business',
+    body: 'Thank you for choosing us for your financing needs - please don\'t hesitate to reach out if you need anything.',
+  },
+];
 
 // Mock external emails using CRM lead email addresses
 const mockExternalEmails: Email[] = [
@@ -559,6 +600,7 @@ const EvansGmail = () => {
     inbox: 'Inbox',
     external: 'External',
     internal: 'Internal',
+    templates: 'Templates',
   };
 
   return (
@@ -592,6 +634,15 @@ const EvansGmail = () => {
           >
             <Users className="w-4 h-4" />
             Internal
+          </div>
+          <div 
+            onClick={() => { setActiveFilter('templates'); setSelectedEmailId(null); }}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
+              activeFilter === 'templates' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Templates
           </div>
         </div>
 
@@ -878,6 +929,39 @@ const EvansGmail = () => {
                   </ScrollArea>
                 </div>
               )}
+            </div>
+          ) : activeFilter === 'templates' ? (
+            // Templates View
+            <div className="h-full flex flex-col">
+              <div className="p-3 border-b">
+                <h2 className="font-semibold text-sm">Email Templates</h2>
+                <p className="text-xs text-muted-foreground mt-1">Click a template to use it in a new email</p>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-3 space-y-2">
+                  {emailTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      onClick={() => {
+                        setComposeTo('');
+                        setComposeSubject(template.subject);
+                        setComposeBody(template.body);
+                        setComposeOpen(true);
+                      }}
+                      className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-primary" />
+                        <span className="font-medium text-sm">{template.name}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        <span className="font-medium text-foreground">Subject:</span> {template.subject}
+                      </p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{template.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
           ) : (
             // Email List View
