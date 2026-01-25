@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,57 +7,110 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { FileText, Plus, Pencil, Trash2, ArrowLeft, Save } from 'lucide-react';
+import { FileText, Plus, Pencil, Trash2, ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EmailTemplate {
   id: string;
   name: string;
   subject: string;
   body: string;
+  category: string | null;
 }
-
-// Initial templates - in a real app these would come from the database
-const initialTemplates: EmailTemplate[] = [
-  {
-    id: 'template-1',
-    name: 'Initial Outreach',
-    subject: 'Commercial Lending Opportunity',
-    body: 'Hi, I wanted to reach out about financing options that could help grow your business.',
-  },
-  {
-    id: 'template-2',
-    name: 'Follow-Up',
-    subject: 'Following Up on Our Conversation',
-    body: 'Just checking in to see if you had any questions about the loan options we discussed.',
-  },
-  {
-    id: 'template-3',
-    name: 'Document Request',
-    subject: 'Documents Needed for Your Application',
-    body: 'To move forward with your application, please provide the following documents at your earliest convenience.',
-  },
-  {
-    id: 'template-4',
-    name: 'Rate Update',
-    subject: 'Great News - Rates Have Changed',
-    body: 'I wanted to let you know that rates have moved favorably and now might be a good time to revisit your financing.',
-  },
-  {
-    id: 'template-5',
-    name: 'Thank You',
-    subject: 'Thank You for Your Business',
-    body: "Thank you for choosing us for your financing needs - please don't hesitate to reach out if you need anything.",
-  },
-];
 
 const EvansEmailTemplates = () => {
   const navigate = useNavigate();
-  const [templates, setTemplates] = useState<EmailTemplate[]>(initialTemplates);
+  const queryClient = useQueryClient();
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Fetch templates from database
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['email-templates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('email_templates')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      return data as EmailTemplate[];
+    },
+  });
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (template: Omit<EmailTemplate, 'id'>) => {
+      const { data, error } = await supabase
+        .from('email_templates')
+        .insert(template)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] });
+      toast.success('Template created successfully');
+      setIsDialogOpen(false);
+      setEditingTemplate(null);
+    },
+    onError: (error: any) => {
+      toast.error('Failed to create template: ' + error.message);
+    },
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async (template: EmailTemplate) => {
+      const { data, error } = await supabase
+        .from('email_templates')
+        .update({
+          name: template.name,
+          subject: template.subject,
+          body: template.body,
+          category: template.category,
+        })
+        .eq('id', template.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] });
+      toast.success('Template updated successfully');
+      setIsDialogOpen(false);
+      setEditingTemplate(null);
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update template: ' + error.message);
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('email_templates')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] });
+      toast.success('Template deleted');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to delete template: ' + error.message);
+    },
+  });
 
   const handleEdit = (template: EmailTemplate) => {
     setEditingTemplate({ ...template });
@@ -66,10 +120,11 @@ const EvansEmailTemplates = () => {
 
   const handleCreate = () => {
     setEditingTemplate({
-      id: `template-${Date.now()}`,
+      id: '',
       name: '',
       subject: '',
       body: '',
+      category: 'general',
     });
     setIsCreating(true);
     setIsDialogOpen(true);
@@ -84,21 +139,22 @@ const EvansEmailTemplates = () => {
     }
 
     if (isCreating) {
-      setTemplates([...templates, editingTemplate]);
-      toast.success('Template created successfully');
+      createMutation.mutate({
+        name: editingTemplate.name,
+        subject: editingTemplate.subject,
+        body: editingTemplate.body,
+        category: editingTemplate.category,
+      });
     } else {
-      setTemplates(templates.map(t => t.id === editingTemplate.id ? editingTemplate : t));
-      toast.success('Template updated successfully');
+      updateMutation.mutate(editingTemplate);
     }
-    
-    setIsDialogOpen(false);
-    setEditingTemplate(null);
   };
 
   const handleDelete = (id: string) => {
-    setTemplates(templates.filter(t => t.id !== id));
-    toast.success('Template deleted');
+    deleteMutation.mutate(id);
   };
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <AdminLayout>
@@ -120,39 +176,53 @@ const EvansEmailTemplates = () => {
           </Button>
         </div>
 
-        {/* Templates Grid */}
-        <div className="grid gap-4">
-          {templates.map((template) => (
-            <Card key={template.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <FileText className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">{template.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-0.5">{template.subject}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(template)}>
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(template.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground line-clamp-2">{template.body}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        )}
 
-        {templates.length === 0 && (
+        {/* Templates Grid */}
+        {!isLoading && (
+          <div className="grid gap-4">
+            {templates.map((template) => (
+              <Card key={template.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">{template.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-0.5">{template.subject}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(template)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDelete(template.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{template.body}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && templates.length === 0 && (
           <div className="text-center py-12">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">No templates yet</h3>
@@ -204,8 +274,8 @@ const EvansEmailTemplates = () => {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} className="gap-2">
-                <Save className="w-4 h-4" />
+              <Button onClick={handleSave} className="gap-2" disabled={isSaving}>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {isCreating ? 'Create' : 'Save Changes'}
               </Button>
             </DialogFooter>

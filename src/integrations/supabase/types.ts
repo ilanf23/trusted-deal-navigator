@@ -348,6 +348,39 @@ export type Database = {
           },
         ]
       }
+      email_templates: {
+        Row: {
+          body: string
+          category: string | null
+          created_at: string
+          id: string
+          name: string
+          subject: string
+          team_member_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          subject: string
+          team_member_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          subject?: string
+          team_member_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_threads: {
         Row: {
           assigned_to: string | null
