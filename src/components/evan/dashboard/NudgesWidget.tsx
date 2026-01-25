@@ -8,6 +8,7 @@ import { Bell, Mail, Loader2, Clock, ExternalLink, Zap } from 'lucide-react';
 import { differenceInDays, subDays, format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useEffect, useRef } from 'react';
 
 interface Lead {
   id: string;
@@ -33,6 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
   const queryClient = useQueryClient();
+  const tasksCreatedRef = useRef<Set<string>>(new Set());
 
   // Fetch leads needing nudges (no activity in 7+ days)
   const { data: nudgeLeads = [], isLoading } = useQuery({
@@ -58,6 +60,58 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
     },
     enabled: !!evanId,
   });
+
+  // Fetch existing follow-up tasks to avoid duplicates
+  const { data: existingTasks = [] } = useQuery({
+    queryKey: ['evan-followup-tasks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evan_tasks')
+        .select('id, lead_id, title')
+        .ilike('title', '%7-day follow up%');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Auto-create high priority tasks for leads needing follow-up
+  useEffect(() => {
+    const createFollowUpTasks = async () => {
+      if (nudgeLeads.length === 0) return;
+
+      const existingLeadIds = new Set(existingTasks.map(t => t.lead_id));
+      
+      for (const lead of nudgeLeads) {
+        // Skip if task already exists or we already created one this session
+        if (existingLeadIds.has(lead.id) || tasksCreatedRef.current.has(lead.id)) {
+          continue;
+        }
+
+        const daysSince = differenceInDays(new Date(), new Date(lead.updated_at));
+        
+        const { error } = await supabase.from('evan_tasks').insert({
+          title: `7-Day Follow Up: ${lead.name}`,
+          description: `No activity in ${daysSince} days. Follow up with ${lead.name}${lead.company_name ? ` at ${lead.company_name}` : ''}.`,
+          status: 'todo',
+          priority: 'high',
+          lead_id: lead.id,
+          assignee_name: 'Evan',
+          group_name: 'To Do',
+        });
+
+        if (!error) {
+          tasksCreatedRef.current.add(lead.id);
+        }
+      }
+
+      // Invalidate tasks query to show new tasks
+      if (tasksCreatedRef.current.size > 0) {
+        queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+      }
+    };
+
+    createFollowUpTasks();
+  }, [nudgeLeads, existingTasks, queryClient]);
 
   // Create nudge email draft
   const createNudgeDraft = useMutation({
