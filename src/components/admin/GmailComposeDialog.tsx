@@ -252,25 +252,28 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   if (isMinimized) {
     return (
       <div 
-        className="fixed bottom-0 right-24 w-72 bg-white dark:bg-slate-900 rounded-t-lg shadow-2xl border border-slate-200 dark:border-slate-700 z-50 cursor-pointer"
+        className="fixed bottom-4 right-24 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 cursor-pointer overflow-hidden"
+        style={{
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        }}
         onClick={() => setIsMinimized(false)}
       >
-        <div className="flex items-center justify-between px-4 py-2 bg-slate-800 dark:bg-slate-950 text-white rounded-t-lg">
+        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#4F46E5] to-[#6366F1] text-white">
           <span className="text-sm font-medium truncate">
             {subject || 'New Message'}
           </span>
           <div className="flex items-center gap-1">
             <button 
               onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
-              className="p-1 hover:bg-slate-700 rounded"
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
             >
-              <Maximize2 className="w-3.5 h-3.5" />
+              <Maximize2 className="w-4 h-4" />
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); onClose(); }}
-              className="p-1 hover:bg-slate-700 rounded"
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -281,95 +284,100 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   return (
     <>
       <div 
-        className={`fixed bg-white dark:bg-slate-900 rounded-t-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 flex flex-col ${
+        className={`fixed bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-700 z-50 flex flex-col ${
           isMaximized 
-            ? 'inset-4 rounded-xl' 
-            : 'bottom-0 right-20 w-[560px] h-[580px]'
+            ? 'inset-4' 
+            : 'bottom-4 right-20 w-[580px] h-[620px]'
         }`}
+        style={{
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+        }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-t-xl border-b border-slate-200 dark:border-slate-700">
-          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-            New Message {isConfidential && <Lock className="w-3.5 h-3.5 inline ml-1 text-blue-600" />}
+        {/* Header - Light blue gradient like Gmail */}
+        <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-b from-slate-50 to-slate-100/80 dark:from-slate-800 dark:to-slate-850 rounded-t-2xl border-b border-slate-200/60 dark:border-slate-700">
+          <span className="text-base font-semibold text-slate-800 dark:text-slate-100 tracking-tight">
+            New Message {isConfidential && <Lock className="w-4 h-4 inline ml-1.5 text-blue-600" />}
           </span>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             <button 
               onClick={() => setIsMinimized(true)}
-              className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
+              className="p-2 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
-              <Minus className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              <Minus className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             </button>
             <button 
               onClick={() => setIsMaximized(!isMaximized)}
-              className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
+              className="p-2 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
-              <Maximize2 className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              <Maximize2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             </button>
             <button 
               onClick={onClose}
-              className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
+              className="p-2 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
-              <X className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              <X className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             </button>
           </div>
         </div>
 
-        {/* Recipients Field */}
-        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
-          <input
-            type="text"
-            placeholder="Recipients"
-            value={to}
-            onChange={(e) => onToChange(e.target.value)}
-            className="w-full text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-          />
+        {/* Recipients Field - Rounded pill style */}
+        <div className="px-5 pt-4 pb-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Recipients"
+              value={to}
+              onChange={(e) => onToChange(e.target.value)}
+              className="w-full text-sm bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-all"
+            />
+          </div>
         </div>
 
-        {/* Subject Field */}
-        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+        {/* Subject Field - Rounded pill style */}
+        <div className="px-5 pb-3">
           <input
             type="text"
             placeholder="Subject"
             value={subject}
             onChange={(e) => onSubjectChange(e.target.value)}
-            className="w-full text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            className="w-full text-sm bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-all"
           />
         </div>
 
         {/* Body Area */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 px-4 py-3 overflow-auto">
+          <div className="flex-1 px-5 py-2 overflow-auto">
             <div 
               ref={editorRef}
               contentEditable
               onInput={handleEditorInput}
-              className="w-full min-h-[180px] text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-slate-100 focus:ring-0"
+              className="w-full min-h-[200px] text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-slate-100 focus:ring-0 leading-relaxed"
               style={{ 
                 caretColor: '#3b82f6',
-                fontFamily: selectedFont === 'Serif' ? 'Georgia, serif' : selectedFont === 'Monospace' ? 'monospace' : 'sans-serif',
+                fontFamily: selectedFont === 'Serif' ? 'Georgia, serif' : selectedFont === 'Monospace' ? 'monospace' : 'Inter, sans-serif',
               }}
               dangerouslySetInnerHTML={{ __html: body }}
-              data-placeholder="Press / for Help me write"
+              data-placeholder="Compose your message..."
             />
           </div>
 
           {/* Attachments Preview */}
           {attachments.length > 0 && (
-            <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800">
               <div className="flex flex-wrap gap-2">
                 {attachments.map((att) => (
                   <div 
                     key={att.id}
-                    className="flex items-center gap-2 px-2 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs"
+                    className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs group hover:border-blue-300 transition-colors"
                   >
                     <FileText className="w-4 h-4 text-slate-400" />
-                    <span className="max-w-[120px] truncate text-slate-700 dark:text-slate-300">{att.name}</span>
+                    <span className="max-w-[140px] truncate text-slate-700 dark:text-slate-300 font-medium">{att.name}</span>
                     <span className="text-slate-400">({formatFileSize(att.size)})</span>
                     <button
                       onClick={() => removeAttachment(att.id)}
-                      className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-600 rounded"
+                      className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                     >
-                      <XCircle className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+                      <XCircle className="w-4 h-4 text-slate-400 hover:text-red-500" />
                     </button>
                   </div>
                 ))}
@@ -379,8 +387,8 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
 
           {/* Formatting Toolbar */}
           {showFormattingBar && (
-            <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-0.5 overflow-x-auto">
+            <div className="px-5 py-2.5 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-1 overflow-x-auto">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button 
@@ -579,14 +587,14 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
           )}
 
           {/* Bottom Action Bar */}
-          <div className="flex items-center justify-between px-3 py-2.5 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-1">
-              {/* Send Button with Dropdown */}
+          <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200/60 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 rounded-b-2xl">
+            <div className="flex items-center gap-2">
+              {/* Send Button with Dropdown - Gmail style rounded */}
               <div className="flex items-center">
                 <Button
                   onClick={() => onSend(attachments)}
                   disabled={sending || !to.trim()}
-                  className="rounded-l-full rounded-r-none bg-blue-600 hover:bg-blue-700 text-white px-5 h-9"
+                  className="rounded-l-full rounded-r-none bg-[#4F46E5] hover:bg-[#4338CA] text-white px-6 h-10 font-medium text-sm shadow-sm"
                 >
                   {sending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -598,7 +606,7 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
                   <DropdownMenuTrigger asChild>
                     <Button
                       disabled={sending}
-                      className="rounded-l-none rounded-r-full bg-blue-600 hover:bg-blue-700 text-white px-2 h-9 border-l border-blue-500"
+                      className="rounded-l-none rounded-r-full bg-[#4F46E5] hover:bg-[#4338CA] text-white px-3 h-10 border-l border-indigo-400/30 shadow-sm"
                     >
                       <ChevronDown className="w-4 h-4" />
                     </Button>
@@ -613,17 +621,17 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
               </div>
 
               {/* Additional Actions */}
-              <div className="flex items-center gap-0.5 ml-2">
+              <div className="flex items-center gap-1 ml-3">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button 
                       onClick={() => setShowFormattingBar(!showFormattingBar)}
-                      className={`p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full ${showFormattingBar ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}
+                      className={`p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors ${showFormattingBar ? 'text-[#4F46E5] bg-indigo-50' : 'text-slate-500 dark:text-slate-400'}`}
                     >
-                      <span className="text-lg font-serif">Aa</span>
+                      <span className="text-base font-serif font-medium">Aa</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">Toggle formatting options</TooltipContent>
+                  <TooltipContent side="top" className="text-xs">Toggle formatting</TooltipContent>
                 </Tooltip>
                 
                 <input
@@ -637,7 +645,7 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
                   <TooltipTrigger asChild>
                     <button 
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400"
+                      className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors"
                     >
                       <Paperclip className="w-5 h-5" />
                     </button>
@@ -649,7 +657,7 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
                   <TooltipTrigger asChild>
                     <button 
                       onClick={() => setShowLinkDialog(true)}
-                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400"
+                      className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors"
                     >
                       <Link2 className="w-5 h-5" />
                     </button>
@@ -659,7 +667,7 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
                 
                 <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                   <PopoverTrigger asChild>
-                    <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400">
+                    <button className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors">
                       <Smile className="w-5 h-5" />
                     </button>
                   </PopoverTrigger>
@@ -674,12 +682,11 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
                   </PopoverContent>
                 </Popover>
                 
-                
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button 
                       onClick={() => setShowConfidentialDialog(true)}
-                      className={`p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full ${isConfidential ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}
+                      className={`p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors ${isConfidential ? 'text-[#4F46E5] bg-indigo-50' : 'text-slate-500 dark:text-slate-400'}`}
                     >
                       <Lock className="w-5 h-5" />
                     </button>
@@ -691,48 +698,41 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
                   <TooltipTrigger asChild>
                     <button 
                       onClick={handleInsertSignature}
-                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400"
+                      className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors"
                     >
                       <PenTool className="w-5 h-5" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs">Insert signature</TooltipContent>
                 </Tooltip>
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={() => execCommand('removeFormat')}>
-                      Remove formatting
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => execCommand('selectAll')}>
-                      Select all
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => toast.info('Print preview coming soon')}>
-                      Print
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </div>
-
-            {/* Discard Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button 
-                  onClick={handleDiscard}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 dark:text-slate-400"
-                >
-                  <Trash2 className="w-5 h-5" />
+            
+            {/* Trash button on right */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors">
+                  <MoreVertical className="w-5 h-5" />
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">Discard draft</TooltipContent>
-            </Tooltip>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => execCommand('removeFormat')}>
+                  Remove formatting
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => execCommand('selectAll')}>
+                  Select all
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => toast.info('Print preview coming soon')}>
+                  Print
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleDiscard} className="text-red-600">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Discard draft
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
