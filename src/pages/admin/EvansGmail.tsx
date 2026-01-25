@@ -608,6 +608,18 @@ const EvansGmail = () => {
       <div className="flex h-[calc(100vh-100px)] border rounded-lg overflow-hidden bg-background">
         {/* Sidebar */}
         <div className="w-48 border-r bg-muted/30 p-3 space-y-1">
+          <Button 
+            className="w-full mb-3 gap-2"
+            onClick={() => {
+              setComposeTo('');
+              setComposeSubject('');
+              setComposeBody('');
+              setComposeOpen(true);
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            Compose
+          </Button>
           <div 
             onClick={() => { setActiveFilter('inbox'); setSelectedEmailId(null); }}
             className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
