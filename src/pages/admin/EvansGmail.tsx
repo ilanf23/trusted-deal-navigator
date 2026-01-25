@@ -1101,20 +1101,12 @@ const EvansGmail = () => {
                                 {extractSenderName(email.from).charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className={`truncate flex-1 ${!email.isRead ? 'font-semibold' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
+                            <span className={`truncate ${!email.isRead ? 'font-semibold' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
                               {extractSenderName(email.from)}
                             </span>
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(email.date), 'MMM d')}
-                            </span>
-                          </div>
-                          <div className={`flex items-center gap-2 ${isExternal ? 'mb-1' : ''}`}>
-                            <p className={`truncate flex-1 ${!email.isRead ? 'font-medium' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
-                              {email.subject}
-                            </p>
                             {isExternal && stageName && (
                               <span 
-                                className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                                className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ml-1"
                                 style={{ 
                                   backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
                                   color: stageColor || 'hsl(var(--muted-foreground))'
@@ -1123,7 +1115,14 @@ const EvansGmail = () => {
                                 {stageName}
                               </span>
                             )}
+                            <span className="flex-1" />
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(email.date), 'MMM d')}
+                            </span>
                           </div>
+                          <p className={`truncate ${!email.isRead ? 'font-medium' : ''} ${isExternal ? 'text-base mb-1' : 'text-sm'}`}>
+                            {email.subject}
+                          </p>
                           <p className={`text-muted-foreground mt-0.5 ${isExternal ? 'text-sm line-clamp-2' : 'text-xs truncate'}`}>
                             {email.snippet}
                           </p>
