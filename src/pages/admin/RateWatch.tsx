@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import FloatingInbox, { PrefilledEmail } from '@/components/admin/FloatingInbox';
-import AIEmailAssistant from '@/components/admin/AIEmailAssistant';
+import AIEmailAssistantSheet from '@/components/admin/AIEmailAssistantSheet';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import * as XLSX from 'xlsx';
 import { 
@@ -929,8 +929,8 @@ Commercial Lending X`,
           onPrefilledEmailHandled={() => setPrefilledEmail(null)}
         />
 
-        {/* AI Email Assistant */}
-        <AIEmailAssistant
+        {/* AI Email Assistant - Right Side Sheet */}
+        <AIEmailAssistantSheet
           isOpen={aiAssistantOpen}
           onClose={() => setAiAssistantOpen(false)}
           lead={selectedLeadForAI}
