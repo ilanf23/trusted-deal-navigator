@@ -4,7 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
+import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 
 // Import avatar images
 import robertMartinezAvatar from '@/assets/avatars/robert-martinez.jpg';
@@ -167,7 +168,8 @@ const EvansGmail = () => {
   const [composeBody, setComposeBody] = useState('');
   const [composeSending, setComposeSending] = useState(false);
   const [generatingDraftForId, setGeneratingDraftForId] = useState<string | null>(null);
-
+  const [leadDetailOpen, setLeadDetailOpen] = useState(false);
+  const [selectedLeadIdForDetail, setSelectedLeadIdForDetail] = useState<string | null>(null);
   // Check Gmail connection
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
     queryKey: ['evan-gmail-connection'],
@@ -622,29 +624,43 @@ const EvansGmail = () => {
               {/* Deal Summary Sidebar for External Leads - Matches CRM Popup */}
               {selectedLead && isExternalEmail(selectedEmail) && (
                 <div className="w-80 border-l bg-white overflow-y-auto">
-                  {/* Stage & Assigned To Header */}
-                  <div className="p-4 border-b flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-slate-400 mb-1">Stage</p>
-                      <div className="flex items-center gap-2">
-                        <span 
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: selectedLead.pipeline_leads?.[0]?.pipeline_stages?.color || '#0066FF' }}
-                        />
-                        <span className="text-sm font-medium">
-                          {selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name || 'Discovery'}
-                        </span>
+                  {/* Header with expand button */}
+                  <div className="p-3 border-b flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Stage</p>
+                        <div className="flex items-center gap-2">
+                          <span 
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: selectedLead.pipeline_leads?.[0]?.pipeline_stages?.color || '#0066FF' }}
+                          />
+                          <span className="text-sm font-medium">
+                            {selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name || 'Discovery'}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Assigned To</p>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-6 h-6 bg-emerald-600">
+                            <AvatarFallback className="text-xs text-white bg-emerald-600">E</AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-medium">Evan</span>
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-400 mb-1">Assigned To</p>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="w-6 h-6 bg-emerald-600">
-                          <AvatarFallback className="text-xs text-white bg-emerald-600">E</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium">Evan</span>
-                      </div>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        setSelectedLeadIdForDetail(selectedLead.id);
+                        setLeadDetailOpen(true);
+                      }}
+                      title="View full details"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </Button>
                   </div>
 
                   <ScrollArea className="h-[calc(100%-70px)]">
@@ -946,6 +962,18 @@ const EvansGmail = () => {
         onSend={handleSendEmail}
         sending={composeSending}
       />
+
+      {/* Lead Detail Dialog */}
+      {selectedLeadIdForDetail && (
+        <LeadDetailDialog
+          lead={allLeads.find(l => l.id === selectedLeadIdForDetail) || null}
+          open={leadDetailOpen}
+          onOpenChange={(open) => {
+            setLeadDetailOpen(open);
+            if (!open) setSelectedLeadIdForDetail(null);
+          }}
+        />
+      )}
     </AdminLayout>
   );
 };
