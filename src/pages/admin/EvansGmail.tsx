@@ -1108,43 +1108,43 @@ const EvansGmail = () => {
                               {format(new Date(email.date), 'MMM d')}
                             </span>
                           </div>
-                          <p className={`truncate ${!email.isRead ? 'font-medium' : ''} ${isExternal ? 'text-base mb-1' : 'text-sm'}`}>
-                            {email.subject}
-                          </p>
+                          <div className={`flex items-center gap-2 ${isExternal ? 'mb-1' : ''}`}>
+                            <p className={`truncate flex-1 ${!email.isRead ? 'font-medium' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
+                              {email.subject}
+                            </p>
+                            {isExternal && stageName && (
+                              <span 
+                                className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                                style={{ 
+                                  backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
+                                  color: stageColor || 'hsl(var(--muted-foreground))'
+                                }}
+                              >
+                                {stageName}
+                              </span>
+                            )}
+                          </div>
                           <p className={`text-muted-foreground mt-0.5 ${isExternal ? 'text-sm line-clamp-2' : 'text-xs truncate'}`}>
                             {email.snippet}
                           </p>
                           {isExternal && (
                             <div className="mt-2">
-                              <div className="flex items-center gap-3">
-                                <Button 
-                                  size="sm"
-                                  className="bg-[#0066FF]/80 hover:bg-[#0052CC]/80 text-white"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleMoveForward(email);
-                                  }}
-                                  disabled={generatingDraftForId === email.id}
-                                >
-                                  {generatingDraftForId === email.id ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  ) : (
-                                    <ArrowRight className="w-4 h-4 mr-2" />
-                                  )}
-                                  Move Forward
-                                </Button>
-                                {stageName && (
-                                  <span 
-                                    className="text-xs px-2 py-0.5 rounded-full font-medium"
-                                    style={{ 
-                                      backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
-                                      color: stageColor || 'hsl(var(--muted-foreground))'
-                                    }}
-                                  >
-                                    {stageName}
-                                  </span>
+                              <Button 
+                                size="sm"
+                                className="bg-[#0066FF]/80 hover:bg-[#0052CC]/80 text-white"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveForward(email);
+                                }}
+                                disabled={generatingDraftForId === email.id}
+                              >
+                                {generatingDraftForId === email.id ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <ArrowRight className="w-4 h-4 mr-2" />
                                 )}
-                              </div>
+                                Move Forward
+                              </Button>
                               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                                 <ArrowDown className="w-3 h-3 flex-shrink-0" />
                                 <span className="italic">
