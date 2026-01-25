@@ -4,7 +4,9 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3 } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -189,8 +191,9 @@ const EvansGmail = () => {
         .from('leads')
         .select(`
           *,
-          lead_emails(email),
-          lead_phones(phone_number, phone_type),
+          lead_emails(email, email_type),
+          lead_phones(id, phone_number, phone_type),
+          lead_contacts(id, name, title, email, phone, is_primary),
           lead_responses(*),
           pipeline_leads(
             stage_id,
@@ -616,152 +619,216 @@ const EvansGmail = () => {
                 </ScrollArea>
               </div>
               
-              {/* Deal Summary Sidebar for External Leads */}
+              {/* Deal Summary Sidebar for External Leads - Matches CRM Popup */}
               {selectedLead && isExternalEmail(selectedEmail) && (
-                <div className="w-80 border-l bg-muted/20 overflow-y-auto">
-                  <div className="p-4 space-y-4">
-                    {/* Deal Summary Header */}
+                <div className="w-80 border-l bg-white overflow-y-auto">
+                  {/* Stage & Assigned To Header */}
+                  <div className="p-4 border-b flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">DEAL SUMMARY</p>
-                      <h3 className="text-lg font-bold">{selectedLead.company_name || selectedLead.name}</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                        {selectedLead.lead_responses?.[0]?.loan_type && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">
-                            {selectedLead.lead_responses[0].loan_type}
-                          </span>
-                        )}
-                        {selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name && (
-                          <span 
-                            className="text-xs px-2 py-0.5 rounded font-medium"
-                            style={{ 
-                              backgroundColor: selectedLead.pipeline_leads[0].pipeline_stages.color ? `${selectedLead.pipeline_leads[0].pipeline_stages.color}20` : 'hsl(var(--muted))',
-                              color: selectedLead.pipeline_leads[0].pipeline_stages.color || 'hsl(var(--muted-foreground))'
-                            }}
-                          >
-                            {selectedLead.pipeline_leads[0].pipeline_stages.name}
-                          </span>
-                        )}
+                      <p className="text-xs text-slate-400 mb-1">Stage</p>
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: selectedLead.pipeline_leads?.[0]?.pipeline_stages?.color || '#0066FF' }}
+                        />
+                        <span className="text-sm font-medium">
+                          {selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name || 'Discovery'}
+                        </span>
                       </div>
                     </div>
-                    
-                    {/* Deal Details */}
-                    <div className="space-y-2 text-sm">
-                      {selectedLead.lead_responses?.[0]?.loan_amount && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Loan Amount</span>
-                          <span className="font-medium">${(selectedLead.lead_responses[0].loan_amount).toLocaleString()}</span>
-                        </div>
-                      )}
-                      {selectedLead.lead_responses?.[0]?.purpose_of_loan && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Purpose</span>
-                          <span className="font-medium text-right max-w-[150px] truncate">{selectedLead.lead_responses[0].purpose_of_loan}</span>
-                        </div>
-                      )}
-                      {selectedLead.source && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Source</span>
-                          <span className="font-medium">{selectedLead.source}</span>
-                        </div>
-                      )}
-                      {selectedLead.last_activity_at && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Last Touch</span>
-                          <span className="font-medium">{format(new Date(selectedLead.last_activity_at), 'MMM d, yyyy')}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Action Button */}
-                    <Button 
-                      className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMoveForward(selectedEmail);
-                      }}
-                      disabled={generatingDraftForId === selectedEmail.id}
-                    >
-                      {generatingDraftForId === selectedEmail.id ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <FileText className="w-4 h-4 mr-2" />
-                      )}
-                      {getNextStepSuggestion(selectedLead.pipeline_leads?.[0]?.pipeline_stages?.name, selectedEmail.snippet, selectedLead).split(' ').slice(0, 4).join(' ')}
-                    </Button>
-                    
-                    <div className="border-t pt-4">
-                      {/* Primary Contact */}
-                      <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-3">PRIMARY CONTACT</p>
-                      <div className="flex items-center gap-3 mb-3">
-                        <Avatar className="w-10 h-10 bg-[#0066FF]">
-                          {selectedEmail.senderPhoto && (
-                            <AvatarImage src={selectedEmail.senderPhoto} alt={selectedLead.name} />
-                          )}
-                          <AvatarFallback className="text-white font-semibold bg-[#0066FF]">
-                            {selectedLead.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
-                          </AvatarFallback>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Assigned To</p>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="w-6 h-6 bg-emerald-600">
+                          <AvatarFallback className="text-xs text-white bg-emerald-600">E</AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="font-medium">{selectedLead.name}</p>
-                          {(selectedLead.title || selectedLead.company_name) && (
-                            <p className="text-xs text-muted-foreground">
-                              {selectedLead.title}{selectedLead.title && selectedLead.company_name ? ', ' : ''}{selectedLead.company_name}
+                        <span className="text-sm font-medium">Evan</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <ScrollArea className="h-[calc(100%-70px)]">
+                    <div className="p-4 space-y-2">
+                      {/* Contact Info Section */}
+                      <div className="py-2">
+                        <div className="flex items-center gap-2 mb-3">
+                          <User className="w-4 h-4 text-slate-500" />
+                          <span className="font-medium text-sm text-slate-700">Contact Info</span>
+                        </div>
+                        <div className="space-y-3 pl-6">
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Contact Name</p>
+                            <p className="text-sm text-slate-900 font-medium">{selectedLead.name}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Known As</p>
+                            <p className="text-sm text-slate-500">{selectedLead.known_as || 'Nickname or alias'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Company</p>
+                            <p className="text-sm text-slate-900">{selectedLead.company_name || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Title</p>
+                            <p className="text-sm text-slate-500">{selectedLead.title || 'Job title'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Contact Type</p>
+                            <p className="text-sm text-slate-900 capitalize">
+                              {(selectedLead.contact_type || 'potential_customer').replace(/_/g, ' ')}
                             </p>
-                          )}
+                          </div>
                         </div>
                       </div>
-                      
-                      <div className="space-y-2 text-sm">
-                        {selectedLead.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-muted-foreground" />
-                            <a href={`mailto:${selectedLead.email}`} className="text-[#0066FF] hover:underline">
-                              {selectedLead.email}
-                            </a>
-                          </div>
-                        )}
-                        {(selectedLead.phone || selectedLead.lead_phones?.[0]?.phone_number) && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-muted-foreground" />
-                            <a href={`tel:${selectedLead.phone || selectedLead.lead_phones?.[0]?.phone_number}`} className="text-[#0066FF] hover:underline">
-                              {selectedLead.phone || selectedLead.lead_phones?.[0]?.phone_number}
-                            </a>
-                          </div>
-                        )}
-                        {selectedLead.last_activity_at && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Clock className="w-4 h-4" />
-                            <span>Last touch: {format(new Date(selectedLead.last_activity_at), 'MMM d')}</span>
-                          </div>
-                        )}
-                        {selectedLead.source && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Tag className="w-4 h-4" />
-                            <span>Source: {selectedLead.source}</span>
-                          </div>
-                        )}
+
+                      <Separator />
+
+                      {/* Contacts Section */}
+                      <div className="py-2">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Users className="w-4 h-4 text-slate-500" />
+                          <span className="font-medium text-sm text-slate-700">Contacts</span>
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            {selectedLead.lead_contacts?.length || 0}
+                          </Badge>
+                        </div>
+                        <div className="space-y-2 pl-6">
+                          {(!selectedLead.lead_contacts || selectedLead.lead_contacts.length === 0) ? (
+                            <p className="text-sm text-slate-400 italic">No contacts added yet</p>
+                          ) : (
+                            selectedLead.lead_contacts.map((contact: any) => (
+                              <div key={contact.id} className="py-2 border-b border-slate-100 last:border-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium text-slate-900">{contact.name}</p>
+                                  {contact.is_primary && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Primary</Badge>
+                                  )}
+                                </div>
+                                {contact.title && (
+                                  <p className="text-xs text-slate-500">{contact.title}</p>
+                                )}
+                                <div className="flex flex-wrap gap-3 mt-1">
+                                  {contact.email && (
+                                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                                      <Mail className="w-3 h-3" />
+                                      <span>{contact.email}</span>
+                                    </div>
+                                  )}
+                                  {contact.phone && (
+                                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                                      <Phone className="w-3 h-3" />
+                                      <span>{contact.phone}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                          <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add contact
+                          </Button>
+                        </div>
                       </div>
-                      
-                      {/* Tags */}
-                      {selectedLead.tags && selectedLead.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-3">
-                          {selectedLead.tags.map((tag: string, idx: number) => (
-                            <span key={idx} className="text-xs px-2 py-0.5 rounded-full border border-[#0066FF] text-[#0066FF]">
-                              {tag}
-                            </span>
+
+                      <Separator />
+
+                      {/* Phone Numbers Section */}
+                      <div className="py-2">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Phone className="w-4 h-4 text-slate-500" />
+                          <span className="font-medium text-sm text-slate-700">Phone Numbers</span>
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            {(selectedLead.lead_phones?.length || 0) + (selectedLead.phone && !selectedLead.lead_phones?.length ? 1 : 0)}
+                          </Badge>
+                        </div>
+                        <div className="space-y-2 pl-6">
+                          {selectedLead.phone && (!selectedLead.lead_phones || selectedLead.lead_phones.length === 0) && (
+                            <div className="py-1">
+                              <p className="text-sm text-slate-900">{selectedLead.phone}</p>
+                              <p className="text-xs text-slate-400">Primary</p>
+                            </div>
+                          )}
+                          {selectedLead.lead_phones?.map((phone: any) => (
+                            <div key={phone.id} className="py-1">
+                              <p className="text-sm text-slate-900">{phone.phone_number}</p>
+                              <p className="text-xs text-slate-400 capitalize">{phone.phone_type || 'Primary'}</p>
+                            </div>
                           ))}
+                          {!selectedLead.phone && (!selectedLead.lead_phones || selectedLead.lead_phones.length === 0) && (
+                            <p className="text-sm text-slate-400 italic">No phone numbers</p>
+                          )}
+                          <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add phone
+                          </Button>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Email Addresses Section */}
+                      <div className="py-2">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Mail className="w-4 h-4 text-slate-500" />
+                          <span className="font-medium text-sm text-slate-700">Email Addresses</span>
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            {(selectedLead.lead_emails?.length || 0) + (selectedLead.email && !selectedLead.lead_emails?.length ? 1 : 0)}
+                          </Badge>
+                        </div>
+                        <div className="space-y-2 pl-6">
+                          {selectedLead.email && (!selectedLead.lead_emails || selectedLead.lead_emails.length === 0) && (
+                            <div className="py-1">
+                              <p className="text-sm text-slate-900">{selectedLead.email}</p>
+                              <p className="text-xs text-slate-400">Primary</p>
+                            </div>
+                          )}
+                          {selectedLead.lead_emails?.map((email: any) => (
+                            <div key={email.id} className="py-1">
+                              <p className="text-sm text-slate-900">{email.email}</p>
+                              <p className="text-xs text-slate-400 capitalize">{email.email_type || 'Primary'}</p>
+                            </div>
+                          ))}
+                          {!selectedLead.email && (!selectedLead.lead_emails || selectedLead.lead_emails.length === 0) && (
+                            <p className="text-sm text-slate-400 italic">No email addresses</p>
+                          )}
+                          <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add email
+                          </Button>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Action Button */}
+                      <div className="pt-4">
+                        <Button 
+                          className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveForward(selectedEmail);
+                          }}
+                          disabled={generatingDraftForId === selectedEmail.id}
+                        >
+                          {generatingDraftForId === selectedEmail.id ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <FileText className="w-4 h-4 mr-2" />
+                          )}
+                          Move Forward
+                        </Button>
+                      </div>
+
+                      {/* Quick Notes */}
+                      {selectedLead.notes && (
+                        <div className="pt-4">
+                          <p className="text-xs font-semibold text-slate-400 tracking-wider mb-2">NOTES</p>
+                          <p className="text-sm text-slate-600 leading-relaxed">{selectedLead.notes}</p>
                         </div>
                       )}
                     </div>
-                    
-                    {/* Quick Notes */}
-                    {selectedLead.notes && (
-                      <div className="border-t pt-4">
-                        <p className="text-xs font-semibold text-muted-foreground tracking-wider mb-2">QUICK NOTES</p>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{selectedLead.notes}</p>
-                      </div>
-                    )}
-                  </div>
+                  </ScrollArea>
                 </div>
               )}
             </div>
