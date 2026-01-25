@@ -5,7 +5,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen, ListTodo } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -1318,6 +1318,16 @@ const EvansGmail = () => {
                                 <DropdownMenuItem onClick={() => handleMarkUnread(email.id)}>
                                   <MailOpen className="w-4 h-4 mr-2" />
                                   Mark as unread
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  const senderName = extractSenderName(email.from);
+                                  const taskTitle = `Follow up: ${email.subject}`;
+                                  const taskDescription = `From: ${senderName}\n\nEmail snippet: ${email.snippet}`;
+                                  const leadId = lead?.id || '';
+                                  navigate(`/team/evan/tasks?newTask=true&title=${encodeURIComponent(taskTitle)}&description=${encodeURIComponent(taskDescription)}&leadId=${leadId}`);
+                                }}>
+                                  <ListTodo className="w-4 h-4 mr-2" />
+                                  Add to do task
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
