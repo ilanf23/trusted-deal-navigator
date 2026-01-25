@@ -224,7 +224,7 @@ const EvansGmail = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showEmailAddress, setShowEmailAddress] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('inbox');
-  const [readEmailIds, setReadEmailIds] = useState<Set<string>>(new Set());
+  const [readEmailIds, setReadEmailIds] = useState<Record<string, boolean>>({});
   
   // Compose dialog state
   const [composeOpen, setComposeOpen] = useState(false);
@@ -241,7 +241,7 @@ const EvansGmail = () => {
   // Mark email as read when selected
   const handleSelectEmail = (emailId: string) => {
     setSelectedEmailId(emailId);
-    setReadEmailIds(prev => new Set(prev).add(emailId));
+    setReadEmailIds(prev => ({ ...prev, [emailId]: true }));
   };
   
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
@@ -1266,7 +1266,7 @@ const EvansGmail = () => {
                       const lead = findLeadForEmail(email);
                       const stageName = lead?.pipeline_leads?.[0]?.pipeline_stages?.name;
                       const stageColor = lead?.pipeline_leads?.[0]?.pipeline_stages?.color;
-                      const isRead = email.isRead || readEmailIds.has(email.id);
+                      const isRead = email.isRead || readEmailIds[email.id];
                       
                       return (
                         <div
