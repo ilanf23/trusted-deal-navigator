@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import FloatingInbox, { PrefilledEmail } from '@/components/admin/FloatingInbox';
 import AIEmailAssistant from '@/components/admin/AIEmailAssistant';
+import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import * as XLSX from 'xlsx';
 import { 
   Sparkles,
@@ -23,7 +24,11 @@ import {
   CheckCircle2,
   Clock,
   Upload,
-  FileSpreadsheet
+  FileSpreadsheet,
+  MapPin,
+  Building2,
+  Calendar,
+  DollarSign
 } from 'lucide-react';
 import {
   Dialog,
@@ -53,12 +58,45 @@ interface RateWatchEntry {
   last_contacted_at: string | null;
   notes: string | null;
   is_active: boolean;
+  // New fields
+  confirm_email: boolean | null;
+  initial_review: string | null;
+  collateral_type: string | null;
+  collateral_value: number | null;
+  loan_maturity: string | null;
+  re_location: string | null;
+  rate_type: string | null;
+  variable_index_spread: string | null;
+  original_term_years: number | null;
+  amortization: string | null;
+  penalty: string | null;
+  lender_type: string | null;
+  estimated_cf: number | null;
+  occupancy_use: string | null;
+  owner_occupied_pct: number | null;
+  seeking_to_improve: string | null;
   leads: {
     id: string;
     name: string;
     email: string | null;
     phone: string | null;
     company_name: string | null;
+    status: string;
+    source: string | null;
+    notes: string | null;
+    assigned_to: string | null;
+    created_at: string;
+    updated_at: string;
+    questionnaire_sent_at: string | null;
+    questionnaire_completed_at: string | null;
+    known_as: string | null;
+    title: string | null;
+    contact_type: string | null;
+    tags: string[] | null;
+    about: string | null;
+    website: string | null;
+    linkedin: string | null;
+    twitter: string | null;
   };
 }
 
@@ -93,6 +131,10 @@ const RateWatch = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Lead detail dialog state
+  const [selectedLeadForDetail, setSelectedLeadForDetail] = useState<RateWatchEntry['leads'] | null>(null);
+  const [leadDetailOpen, setLeadDetailOpen] = useState(false);
+  
   // Form state for adding new entry
   const [newEntry, setNewEntry] = useState({
     lead_id: '',
@@ -116,7 +158,23 @@ const RateWatch = () => {
             name,
             email,
             phone,
-            company_name
+            company_name,
+            status,
+            source,
+            notes,
+            assigned_to,
+            created_at,
+            updated_at,
+            questionnaire_sent_at,
+            questionnaire_completed_at,
+            known_as,
+            title,
+            contact_type,
+            tags,
+            about,
+            website,
+            linkedin,
+            twitter
           )
         `)
         .eq('is_active', true)
@@ -806,6 +864,10 @@ Commercial Lending X`,
                     entry={entry} 
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
+                    onClick={() => {
+                      setSelectedLeadForDetail(entry.leads);
+                      setLeadDetailOpen(true);
+                    }}
                     onEmail={() => openEmailForEntry(entry, false)}
                     onAIEmail={() => openEmailForEntry(entry, true)}
                     onPhone={() => {
@@ -840,6 +902,10 @@ Commercial Lending X`,
                     entry={entry} 
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
+                    onClick={() => {
+                      setSelectedLeadForDetail(entry.leads);
+                      setLeadDetailOpen(true);
+                    }}
                     onEmail={() => openEmailForEntry(entry, false)}
                     onAIEmail={() => openEmailForEntry(entry, true)}
                     onPhone={() => {
@@ -870,6 +936,16 @@ Commercial Lending X`,
           lead={selectedLeadForAI}
           onUseEmail={handleAIEmailUse}
         />
+
+        {/* Lead Detail Dialog */}
+        <LeadDetailDialog
+          lead={selectedLeadForDetail}
+          open={leadDetailOpen}
+          onOpenChange={setLeadDetailOpen}
+          onLeadUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['rate-watch'] });
+          }}
+        />
       </div>
     </AdminLayout>
   );
@@ -880,30 +956,52 @@ interface RateWatchCardProps {
   entry: RateWatchEntry;
   onDragStart: (entry: RateWatchEntry) => void;
   onDragEnd: () => void;
+  onClick: () => void;
   onEmail: () => void;
   onAIEmail: () => void;
   onPhone: () => void;
 }
 
-const RateWatchCard = ({ entry, onDragStart, onDragEnd, onEmail, onAIEmail, onPhone }: RateWatchCardProps) => {
+const RateWatchCard = ({ entry, onDragStart, onDragEnd, onClick, onEmail, onAIEmail, onPhone }: RateWatchCardProps) => {
   const rateStatus = entry.current_rate <= entry.target_rate;
   const rateDiff = (entry.current_rate - entry.target_rate).toFixed(3);
   
+  const handleClick = (e: React.MouseEvent) => {
+    // Only trigger onClick if not clicking on buttons or drag handle
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[data-drag-handle]')) {
+      return;
+    }
+    onClick();
+  };
+  
   return (
     <div 
-      className={`p-4 rounded-lg border-2 cursor-grab active:cursor-grabbing transition-all hover:shadow-md ${
+      className={`p-4 rounded-lg border-2 transition-all hover:shadow-md cursor-pointer ${
         rateStatus ? 'bg-green-50 border-green-200' : 'bg-card border-border'
       }`}
-      draggable
-      onDragStart={() => onDragStart(entry)}
-      onDragEnd={onDragEnd}
+      onClick={handleClick}
     >
       <div className="flex items-start gap-3">
-        <GripVertical className="w-5 h-5 text-muted-foreground mt-1 shrink-0" />
+        <div 
+          data-drag-handle
+          className="cursor-grab active:cursor-grabbing"
+          draggable
+          onDragStart={() => onDragStart(entry)}
+          onDragEnd={onDragEnd}
+        >
+          <GripVertical className="w-5 h-5 text-muted-foreground mt-1 shrink-0" />
+        </div>
         
         <div className="flex-1 min-w-0">
+          {/* Header row */}
           <div className="flex items-center gap-2 mb-1">
             <span className="font-semibold truncate">{entry.leads.name}</span>
+            {entry.confirm_email && (
+              <Badge variant="default" className="text-xs shrink-0 bg-green-600">
+                Email ✓
+              </Badge>
+            )}
             {entry.last_contacted_at && (
               <Badge variant="outline" className="text-xs shrink-0">
                 Contacted
@@ -911,22 +1009,57 @@ const RateWatchCard = ({ entry, onDragStart, onDragEnd, onEmail, onAIEmail, onPh
             )}
           </div>
           
-          {entry.leads.company_name && (
-            <p className="text-sm text-muted-foreground truncate">{entry.leads.company_name}</p>
-          )}
-          
-          <div className="flex flex-wrap gap-2 mt-2">
-            {entry.loan_type && (
-              <Badge variant="secondary" className="text-xs">{entry.loan_type}</Badge>
+          {/* Company and location */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {entry.leads.company_name && (
+              <span className="flex items-center gap-1 truncate">
+                <Building2 className="w-3 h-3" />
+                {entry.leads.company_name}
+              </span>
             )}
-            {entry.loan_amount && (
-              <Badge variant="outline" className="text-xs">
-                ${entry.loan_amount.toLocaleString()}
-              </Badge>
+            {entry.re_location && (
+              <span className="flex items-center gap-1 truncate">
+                <MapPin className="w-3 h-3" />
+                {entry.re_location}
+              </span>
             )}
           </div>
           
-          <div className="flex items-center gap-4 mt-3 text-sm">
+          {/* Badges row */}
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {entry.loan_type && (
+              <Badge variant="secondary" className="text-xs">{entry.loan_type}</Badge>
+            )}
+            {entry.collateral_type && (
+              <Badge variant="outline" className="text-xs">{entry.collateral_type}</Badge>
+            )}
+            {entry.lender_type && (
+              <Badge variant="outline" className="text-xs">{entry.lender_type}</Badge>
+            )}
+            {entry.rate_type && (
+              <Badge variant="outline" className="text-xs">{entry.rate_type}</Badge>
+            )}
+          </div>
+          
+          {/* Financial info */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 text-sm">
+            <div className="flex items-center gap-1">
+              <DollarSign className="w-3 h-3 text-muted-foreground" />
+              <span className="text-muted-foreground">Loan:</span>
+              <span className="font-medium">
+                {entry.loan_amount ? `$${entry.loan_amount.toLocaleString()}` : '-'}
+              </span>
+            </div>
+            {entry.collateral_value && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Collateral:</span>
+                <span className="font-medium">${entry.collateral_value.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Rates */}
+          <div className="flex items-center gap-4 mt-2 text-sm">
             <div className="flex items-center gap-1">
               <span className="text-muted-foreground">Current:</span>
               <span className="font-medium">{entry.current_rate}%</span>
@@ -948,6 +1081,31 @@ const RateWatchCard = ({ entry, onDragStart, onDragEnd, onEmail, onAIEmail, onPh
               </div>
             )}
           </div>
+          
+          {/* Maturity and term */}
+          {(entry.loan_maturity || entry.original_term_years) && (
+            <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+              {entry.loan_maturity && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  Maturity: {format(new Date(entry.loan_maturity), 'MMM yyyy')}
+                </span>
+              )}
+              {entry.original_term_years && (
+                <span>Term: {entry.original_term_years} yrs</span>
+              )}
+              {entry.amortization && (
+                <span>Amort: {entry.amortization}</span>
+              )}
+            </div>
+          )}
+          
+          {/* Seeking to improve */}
+          {entry.seeking_to_improve && (
+            <p className="text-xs text-muted-foreground mt-2 italic line-clamp-1">
+              Seeking: {entry.seeking_to_improve}
+            </p>
+          )}
           
           {entry.last_contacted_at && (
             <p className="text-xs text-muted-foreground mt-2">
