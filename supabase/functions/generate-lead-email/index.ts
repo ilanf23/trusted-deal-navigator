@@ -15,9 +15,9 @@ serve(async (req) => {
   try {
     const { leadId, emailType, leadContext: providedContext, currentStage } = await req.json();
     
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     // Create Supabase client
@@ -88,6 +88,24 @@ serve(async (req) => {
       });
     }
 
+    // Fetch email templates from database
+    const { data: emailTemplates } = await supabase
+      .from("email_templates")
+      .select("name, subject, body, category")
+      .order("name", { ascending: true });
+
+    // Build templates context for AI
+    let templatesContext = "";
+    if (emailTemplates && emailTemplates.length > 0) {
+      templatesContext = `\n\nAVAILABLE EMAIL TEMPLATES (use as reference/inspiration when applicable):
+${emailTemplates.map((t, i) => `
+Template ${i + 1}: "${t.name}" (Category: ${t.category || 'general'})
+Subject: ${t.subject}
+Body: ${t.body}
+`).join('\n')}
+
+IMPORTANT: If any of these templates are relevant to the email type being generated, use them as a base or draw inspiration from their tone, structure, and content. You may adapt and personalize them with the lead's specific information.`;
+    }
 
     // Build context for AI
     let leadContext = `
@@ -136,7 +154,7 @@ Questionnaire Responses:
     }
 
     // Determine email type and prompt
-    let systemPrompt = `You are a professional commercial lending consultant at Commercial Lending X. Write compelling, personalized emails that build relationships and drive action. Be warm but professional. Keep emails concise (under 200 words). Always include a clear call-to-action. Start with "Subject: " followed by the subject line, then a blank line, then the email body. IMPORTANT: Never use em dashes (—) in your writing. Use commas, periods, or regular hyphens instead.`;
+    let systemPrompt = `You are a professional commercial lending consultant at Commercial Lending X. Write compelling, personalized emails that build relationships and drive action. Be warm but professional. Keep emails concise (under 200 words). Always include a clear call-to-action. Start with "Subject: " followed by the subject line, then a blank line, then the email body. IMPORTANT: Never use em dashes (—) in your writing. Use commas, periods, or regular hyphens instead.${templatesContext}`;
 
     let userPrompt = "";
 
@@ -168,29 +186,37 @@ ${leadContext}`;
 ${leadContext}`;
       }
     } else if (emailType === "follow_up") {
-      userPrompt = `Write a professional follow-up email to re-engage this lead. Reference their specific loan needs and offer assistance in moving forward with their financing goals.
+      userPrompt = `Write a professional follow-up email to re-engage this lead. Reference their specific loan needs and offer assistance in moving forward with their financing goals. Check if there's a "Follow-Up" template available and use it as inspiration.
 
 ${leadContext}`;
     } else if (emailType === "introduction") {
-      userPrompt = `Write a warm introduction email for this new lead. Thank them for their interest, briefly explain how Commercial Lending X can help with their specific needs, and invite them to schedule a consultation.
+      userPrompt = `Write a warm introduction email for this new lead. Thank them for their interest, briefly explain how Commercial Lending X can help with their specific needs, and invite them to schedule a consultation. Check if there's an "Initial Outreach" template available and use it as inspiration.
+
+${leadContext}`;
+    } else if (emailType === "document_request") {
+      userPrompt = `Write a professional email requesting documents from this lead. Be specific about what documents are needed and why. Check if there's a "Document Request" template available and use it as inspiration.
+
+${leadContext}`;
+    } else if (emailType === "thank_you") {
+      userPrompt = `Write a sincere thank you email for this lead/client. Express gratitude for their business and leave the door open for future engagement. Check if there's a "Thank You" template available and use it as inspiration.
 
 ${leadContext}`;
     } else {
-      userPrompt = `Write a professional email appropriate for this lead's current situation. Consider their loan needs, status, and any rate watch or questionnaire data available.
+      userPrompt = `Write a professional email appropriate for this lead's current situation. Consider their loan needs, status, and any rate watch or questionnaire data available. Review the available templates and use any that are relevant as inspiration.
 
 ${leadContext}`;
     }
 
     console.log("Generating email for lead:", lead?.name || leadId, "type:", emailType);
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -201,20 +227,20 @@ ${leadContext}`;
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "OpenAI rate limit exceeded. Please try again later." }), {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402 || response.status === 401) {
-        return new Response(JSON.stringify({ error: "OpenAI API key issue. Please check your API key and billing." }), {
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Payment required. Please add funds to your workspace." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const errorText = await response.text();
-      console.error("OpenAI API error:", response.status, errorText);
-      throw new Error("OpenAI API error");
+      console.error("AI API error:", response.status, errorText);
+      throw new Error("AI API error");
     }
 
     const aiData = await response.json();
