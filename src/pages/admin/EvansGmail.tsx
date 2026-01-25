@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import { cn } from '@/lib/utils';
 
 // Import avatar images
 import robertMartinezAvatar from '@/assets/avatars/robert-martinez.jpg';
@@ -210,8 +211,10 @@ const extractEmailAddress = (from: string): string => {
 
 const EvansGmail = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [showEmailAddress, setShowEmailAddress] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('inbox');
   
@@ -635,6 +638,20 @@ const EvansGmail = () => {
       <div className="flex flex-col h-[calc(100vh-100px)] border rounded-lg overflow-hidden bg-background">
         {/* Top Header with Compose, Filter, and Search */}
         <div className="flex items-center gap-3 p-3 border-b bg-muted/30">
+          <Button 
+            variant="outline"
+            size="icon"
+            onClick={async () => {
+              setIsRefreshing(true);
+              await queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
+              await queryClient.refetchQueries({ queryKey: ['gmail-emails'] });
+              setIsRefreshing(false);
+              toast.success('Emails refreshed');
+            }}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+          </Button>
           <Button 
             className="gap-2"
             onClick={() => {
