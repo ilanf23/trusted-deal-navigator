@@ -103,6 +103,13 @@ const Header = () => {
                   </div> : <Link key={item.href} to={item.href} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${isActive(item.href) ? "text-primary bg-primary/5" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`} onClick={() => setIsMobileMenuOpen(false)}>
                     {item.label}
                   </Link>)}
+              <Link 
+                to="/auth" 
+                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Client Login
+              </Link>
               <div className="pt-4 px-4">
                 <Button 
                   variant="hero" 
