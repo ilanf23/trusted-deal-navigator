@@ -1467,6 +1467,9 @@ export type Database = {
           questionnaire_completed_at: string | null
           questionnaire_sent_at: string | null
           questionnaire_token: string | null
+          ratewatch_questionnaire_completed_at: string | null
+          ratewatch_questionnaire_sent_at: string | null
+          ratewatch_questionnaire_token: string | null
           sla_threshold_days: number | null
           source: string | null
           status: Database["public"]["Enums"]["lead_status"]
@@ -1498,6 +1501,9 @@ export type Database = {
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
           questionnaire_token?: string | null
+          ratewatch_questionnaire_completed_at?: string | null
+          ratewatch_questionnaire_sent_at?: string | null
+          ratewatch_questionnaire_token?: string | null
           sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
@@ -1529,6 +1535,9 @@ export type Database = {
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
           questionnaire_token?: string | null
+          ratewatch_questionnaire_completed_at?: string | null
+          ratewatch_questionnaire_sent_at?: string | null
+          ratewatch_questionnaire_token?: string | null
           sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
@@ -2314,6 +2323,113 @@ export type Database = {
             foreignKeyName: "rate_watch_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ratewatch_questionnaire_responses: {
+        Row: {
+          additional_notes: string | null
+          amortization: string | null
+          business_description: string | null
+          collateral_type: string | null
+          collateral_value: number | null
+          contact_method: string | null
+          created_at: string
+          current_lender: string | null
+          current_rate: number | null
+          email: string | null
+          estimated_cash_flow: number | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          lead_id: string | null
+          lender_type: string | null
+          loan_balance: number | null
+          loan_maturity: string | null
+          loan_type: string | null
+          original_term_years: number | null
+          owner_occupied_pct: number | null
+          phone: string | null
+          prepayment_penalty: string | null
+          property_occupancy: string | null
+          rate_type: string | null
+          re_city_state: string | null
+          seeking_to_improve: string | null
+          submitted_at: string
+          target_rate: number | null
+          variable_index_spread: string | null
+        }
+        Insert: {
+          additional_notes?: string | null
+          amortization?: string | null
+          business_description?: string | null
+          collateral_type?: string | null
+          collateral_value?: number | null
+          contact_method?: string | null
+          created_at?: string
+          current_lender?: string | null
+          current_rate?: number | null
+          email?: string | null
+          estimated_cash_flow?: number | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          lead_id?: string | null
+          lender_type?: string | null
+          loan_balance?: number | null
+          loan_maturity?: string | null
+          loan_type?: string | null
+          original_term_years?: number | null
+          owner_occupied_pct?: number | null
+          phone?: string | null
+          prepayment_penalty?: string | null
+          property_occupancy?: string | null
+          rate_type?: string | null
+          re_city_state?: string | null
+          seeking_to_improve?: string | null
+          submitted_at?: string
+          target_rate?: number | null
+          variable_index_spread?: string | null
+        }
+        Update: {
+          additional_notes?: string | null
+          amortization?: string | null
+          business_description?: string | null
+          collateral_type?: string | null
+          collateral_value?: number | null
+          contact_method?: string | null
+          created_at?: string
+          current_lender?: string | null
+          current_rate?: number | null
+          email?: string | null
+          estimated_cash_flow?: number | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          lead_id?: string | null
+          lender_type?: string | null
+          loan_balance?: number | null
+          loan_maturity?: string | null
+          loan_type?: string | null
+          original_term_years?: number | null
+          owner_occupied_pct?: number | null
+          phone?: string | null
+          prepayment_penalty?: string | null
+          property_occupancy?: string | null
+          rate_type?: string | null
+          re_city_state?: string | null
+          seeking_to_improve?: string | null
+          submitted_at?: string
+          target_rate?: number | null
+          variable_index_spread?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratewatch_questionnaire_responses_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
