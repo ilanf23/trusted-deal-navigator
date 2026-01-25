@@ -809,8 +809,12 @@ const EvansGmail = () => {
               {/* Deal Summary Sidebar for External Leads - Only shown when toggled */}
               {showDealSidebar && selectedLead && isExternalEmail(selectedEmail) && (
                 <div className="w-80 border-l bg-white overflow-y-auto">
-                  {/* Header with expand button */}
-                  <div className="p-3 border-b flex items-center justify-between">
+                  {/* Header Title */}
+                  <div className="px-3 pt-3 pb-2">
+                    <h3 className="text-sm font-semibold text-slate-700">CRM Lead Info</h3>
+                  </div>
+                  {/* Stage and Assignment Row */}
+                  <div className="px-3 pb-3 border-b flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Stage</p>
