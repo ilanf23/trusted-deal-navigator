@@ -346,15 +346,18 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
 
         {/* Body Area */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 px-5 py-2 overflow-auto">
+          <div className="flex-1 px-5 py-3 overflow-auto">
             <div 
               ref={editorRef}
               contentEditable
               onInput={handleEditorInput}
-              className="w-full min-h-[200px] text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-slate-100 focus:ring-0 leading-relaxed"
+              className="w-full min-h-[200px] text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-slate-100 focus:ring-0 prose prose-sm max-w-none dark:prose-invert"
               style={{ 
                 caretColor: '#3b82f6',
                 fontFamily: selectedFont === 'Serif' ? 'Georgia, serif' : selectedFont === 'Monospace' ? 'monospace' : 'Inter, sans-serif',
+                lineHeight: '1.8',
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
               }}
               dangerouslySetInnerHTML={{ __html: body }}
               data-placeholder="Compose your message..."
