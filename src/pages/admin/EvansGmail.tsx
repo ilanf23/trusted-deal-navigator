@@ -14,6 +14,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -663,10 +666,33 @@ const EvansGmail = () => {
                 <Inbox className="w-4 h-4 mr-2" />
                 Inbox
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setActiveFilter('external'); setSelectedEmailId(null); }}>
-                <Building className="w-4 h-4 mr-2" />
-                External
-              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Building className="w-4 h-4 mr-2" />
+                  External
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-[200px]">
+                  <DropdownMenuItem onClick={() => { setActiveFilter('external'); setSelectedEmailId(null); }}>
+                    <Building className="w-4 h-4 mr-2" />
+                    All External
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {emailTemplates.map((template) => (
+                    <DropdownMenuItem 
+                      key={template.id}
+                      onClick={() => {
+                        setComposeTo('');
+                        setComposeSubject(template.subject);
+                        setComposeBody(template.body);
+                        setComposeOpen(true);
+                      }}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      {template.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuItem onClick={() => { setActiveFilter('internal'); setSelectedEmailId(null); }}>
                 <Users className="w-4 h-4 mr-2" />
                 Internal
