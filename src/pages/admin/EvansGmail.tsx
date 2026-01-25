@@ -147,7 +147,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Healthcare Facility Refinance Question',
     from: 'Lisa Wong <lisa@pacificmedgroup.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
+    date: '2026-01-10T11:45:00.000Z', // Jan 10
     snippet: 'Our current loan matures in 6 months and we are exploring refinance options. The facility is valued at $8.2M...',
     isRead: true,
   },
@@ -157,7 +157,7 @@ const mockExternalEmails: Email[] = [
     subject: 'Manufacturing Equipment Loan Application',
     from: 'Thomas Wright <twright@wrightmanufacturing.com>',
     to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+    date: '2026-01-10T16:20:00.000Z', // Jan 10
     snippet: 'Following up on our call about equipment financing. We need approximately $1.8M for new CNC machines and automation...',
     isRead: false,
   },
