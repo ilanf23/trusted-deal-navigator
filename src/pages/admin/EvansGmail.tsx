@@ -116,7 +116,7 @@ const mockExternalEmails: Email[] = [
     to: 'evan@commerciallendingx.com',
     date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
     snippet: 'Please find attached the property appraisal documents for the Meridian Plaza project. Let me know if you need anything else.',
-    isRead: true,
+    isRead: false,
     senderPhoto: sarahRichardsonAvatar,
   },
   {
@@ -138,7 +138,7 @@ const mockExternalEmails: Email[] = [
     to: 'evan@commerciallendingx.com',
     date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     snippet: 'Looking to expand Seoul Food Group with 3 new locations in the downtown area. Would love to discuss financing options...',
-    isRead: true,
+    isRead: false,
     senderPhoto: davidKimAvatar,
   },
   {
@@ -149,7 +149,7 @@ const mockExternalEmails: Email[] = [
     to: 'evan@commerciallendingx.com',
     date: '2026-01-10T11:45:00.000Z', // Jan 10
     snippet: 'Our current loan matures in 6 months and we are exploring refinance options. The facility is valued at $8.2M...',
-    isRead: true,
+    isRead: false,
   },
   {
     id: 'mock-6',
@@ -169,7 +169,7 @@ const mockExternalEmails: Email[] = [
     to: 'evan@commerciallendingx.com',
     date: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(),
     snippet: 'Great news - the seller accepted our offer! Now we need to move quickly on the financing. The purchase price is $12.5M...',
-    isRead: true,
+    isRead: false,
   },
   {
     id: 'mock-8',
@@ -179,7 +179,7 @@ const mockExternalEmails: Email[] = [
     to: 'evan@commerciallendingx.com',
     date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
     snippet: 'We are looking to add 40 more rooms to our property in Napa. I have attached our revenue projections and construction estimates...',
-    isRead: true,
+    isRead: false,
   },
   {
     id: 'mock-9',
@@ -189,7 +189,7 @@ const mockExternalEmails: Email[] = [
     to: 'evan@commerciallendingx.com',
     date: '2026-01-10T14:30:00.000Z', // Jan 10
     snippet: 'Can we schedule a call to review our portfolio? We have 5 properties that may need refinancing before year end...',
-    isRead: true,
+    isRead: false,
   },
   {
     id: 'mock-10',
@@ -199,7 +199,7 @@ const mockExternalEmails: Email[] = [
     to: 'evan@commerciallendingx.com',
     date: '2026-01-10T09:15:00.000Z', // Jan 10
     snippet: 'Sunrise Healthcare is planning to open a new urgent care center. We are looking at properties in the $3-4M range...',
-    isRead: true,
+    isRead: false,
   },
 ];
 
@@ -1264,8 +1264,10 @@ const EvansGmail = () => {
                         <div
                           key={email.id}
                           onClick={() => setSelectedEmailId(email.id)}
-                          className={`border-b cursor-pointer hover:bg-muted/50 ${
-                            !email.isRead ? 'bg-primary/5' : ''
+                          className={`border-b cursor-pointer transition-colors ${
+                            !email.isRead 
+                              ? 'bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50' 
+                              : 'bg-white dark:bg-background hover:bg-muted/50'
                           } ${isExternal ? 'py-5 px-4' : 'p-3'}`}
                         >
                           <div className="flex items-center gap-2 mb-1">
