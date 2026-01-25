@@ -276,6 +276,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [tagsOpen, setTagsOpen] = useState(true);
   const [aboutOpen, setAboutOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [emailThreadsOpen, setEmailThreadsOpen] = useState(true);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(true);
   const [contactsOpen, setContactsOpen] = useState(true);
@@ -437,6 +438,21 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!lead) return [];
       const { data } = await supabase.from('evan_communications').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false });
       return (data || []) as Communication[];
+    },
+    enabled: !!lead && open,
+  });
+
+  // Query email threads linked to this lead
+  const { data: emailThreads = [] } = useQuery({
+    queryKey: ['lead-email-threads', lead?.id],
+    queryFn: async () => {
+      if (!lead) return [];
+      const { data } = await supabase
+        .from('email_threads')
+        .select('*')
+        .eq('lead_id', lead.id)
+        .order('last_message_date', { ascending: false });
+      return data || [];
     },
     enabled: !!lead && open,
   });
@@ -2001,6 +2017,59 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                         </div>
                       ))}
                     </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Email Threads Section */}
+                <Collapsible open={emailThreadsOpen} onOpenChange={setEmailThreadsOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-slate-300" />
+                    <Mail className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium text-sm text-slate-700">Email Threads</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">{emailThreads.length}</Badge>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !emailThreadsOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-3 pl-6">
+                    {emailThreads.length === 0 ? (
+                      <p className="text-sm text-slate-400 italic">No email threads linked</p>
+                    ) : (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {emailThreads.map((thread: any) => (
+                          <a
+                            key={thread.id}
+                            href={`/team/evan/gmail?thread=${thread.thread_id}`}
+                            className="flex items-start gap-2 py-2 px-2 -mx-2 rounded hover:bg-slate-50 cursor-pointer group"
+                          >
+                            <Mail className="w-4 h-4 text-slate-400 mt-0.5 group-hover:text-primary" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-slate-700 truncate group-hover:text-primary">
+                                {thread.subject || '(No Subject)'}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {thread.last_message_date 
+                                  ? formatDistanceToNow(new Date(thread.last_message_date), { addSuffix: true })
+                                  : 'No messages'}
+                              </p>
+                            </div>
+                            {thread.waiting_on && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                Waiting: {thread.waiting_on}
+                              </Badge>
+                            )}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    <Button 
+                      variant="link" 
+                      className="text-blue-600 text-sm p-0 h-auto"
+                      onClick={() => window.location.href = '/team/evan/gmail'}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      View all emails
+                    </Button>
                   </CollapsibleContent>
                 </Collapsible>
 
