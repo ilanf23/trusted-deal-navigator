@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -442,8 +442,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!lead && open,
   });
 
-  // Query email threads linked to this lead
-  const { data: emailThreads = [] } = useQuery({
+  // Query email threads linked to this lead from database
+  const { data: dbEmailThreads = [] } = useQuery({
     queryKey: ['lead-email-threads', lead?.id],
     queryFn: async () => {
       if (!lead) return [];
@@ -456,6 +456,108 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
     enabled: !!lead && open,
   });
+
+  // Fetch Gmail connection to get emails
+  const { data: gmailConnection } = useQuery({
+    queryKey: ['gmail-connection-for-lead'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+      const { data } = await supabase
+        .from('gmail_connections')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: open,
+  });
+
+  // Get all email addresses for this lead
+  const leadEmailAddresses = useMemo(() => {
+    if (!lead) return [];
+    const allEmails: string[] = [];
+    if (lead.email) allEmails.push(lead.email.toLowerCase());
+    emails.forEach(e => allEmails.push(e.email.toLowerCase()));
+    return [...new Set(allEmails)];
+  }, [lead, emails]);
+
+  // Fetch emails from Gmail that match lead's email addresses
+  const { data: gmailEmails = [], isLoading: gmailEmailsLoading } = useQuery({
+    queryKey: ['lead-gmail-emails', lead?.id, leadEmailAddresses],
+    queryFn: async () => {
+      if (!gmailConnection || leadEmailAddresses.length === 0) return [];
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
+
+      // Build search query for all lead email addresses
+      const searchQuery = leadEmailAddresses.map(email => `from:${email} OR to:${email}`).join(' OR ');
+      
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent(searchQuery)}&maxResults=50`,
+        { headers: { 'Authorization': `Bearer ${session.access_token}` } }
+      );
+
+      if (!response.ok) return [];
+      const data = await response.json();
+      return (data?.messages || []).map((msg: any) => ({
+        id: msg.id,
+        threadId: msg.threadId,
+        subject: msg.subject || '(No Subject)',
+        from: msg.from || '',
+        to: msg.to || '',
+        date: msg.date || new Date().toISOString(),
+        snippet: msg.snippet || '',
+        isRead: !msg.isUnread,
+      }));
+    },
+    enabled: !!gmailConnection && leadEmailAddresses.length > 0 && open,
+  });
+
+  // Combine database threads with Gmail emails
+  const allEmailThreads = useMemo(() => {
+    // Group Gmail emails by thread
+    const threadMap = new Map<string, any>();
+    
+    gmailEmails.forEach((email: any) => {
+      if (!threadMap.has(email.threadId)) {
+        threadMap.set(email.threadId, {
+          id: email.threadId,
+          thread_id: email.threadId,
+          subject: email.subject,
+          last_message_date: email.date,
+          snippet: email.snippet,
+          from: email.from,
+          messageCount: 1,
+        });
+      } else {
+        const existing = threadMap.get(email.threadId);
+        existing.messageCount++;
+        if (new Date(email.date) > new Date(existing.last_message_date)) {
+          existing.last_message_date = email.date;
+          existing.snippet = email.snippet;
+        }
+      }
+    });
+
+    // Merge with database threads (database threads have priority for metadata)
+    dbEmailThreads.forEach((dbThread: any) => {
+      if (threadMap.has(dbThread.thread_id)) {
+        const gmailThread = threadMap.get(dbThread.thread_id);
+        threadMap.set(dbThread.thread_id, {
+          ...gmailThread,
+          ...dbThread,
+          messageCount: gmailThread.messageCount,
+        });
+      } else {
+        threadMap.set(dbThread.thread_id, dbThread);
+      }
+    });
+
+    return Array.from(threadMap.values()).sort((a, b) => 
+      new Date(b.last_message_date || 0).getTime() - new Date(a.last_message_date || 0).getTime()
+    );
+  }, [gmailEmails, dbEmailThreads]);
 
   // Mutations
   const updateLeadStatus = useMutation({
@@ -2028,34 +2130,49 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                     <GripVertical className="w-4 h-4 text-slate-300" />
                     <Mail className="w-4 h-4 text-slate-500" />
                     <span className="font-medium text-sm text-slate-700">Email Threads</span>
-                    <Badge variant="secondary" className="ml-auto text-xs">{emailThreads.length}</Badge>
+                    {gmailEmailsLoading ? (
+                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-slate-400" />
+                    ) : (
+                      <Badge variant="secondary" className="ml-auto text-xs">{allEmailThreads.length}</Badge>
+                    )}
                     <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !emailThreadsOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
-                    {emailThreads.length === 0 ? (
-                      <p className="text-sm text-slate-400 italic">No email threads linked</p>
+                    {gmailEmailsLoading ? (
+                      <div className="flex items-center gap-2 py-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                        <span className="text-sm text-slate-400">Loading emails...</span>
+                      </div>
+                    ) : allEmailThreads.length === 0 ? (
+                      <p className="text-sm text-slate-400 italic">No email threads found</p>
                     ) : (
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {emailThreads.map((thread: any) => (
+                      <div className="space-y-1 max-h-64 overflow-y-auto">
+                        {allEmailThreads.map((thread: any) => (
                           <a
                             key={thread.id}
                             href={`/team/evan/gmail?thread=${thread.thread_id}`}
                             className="flex items-start gap-2 py-2 px-2 -mx-2 rounded hover:bg-slate-50 cursor-pointer group"
                           >
-                            <Mail className="w-4 h-4 text-slate-400 mt-0.5 group-hover:text-primary" />
+                            <Mail className="w-4 h-4 text-slate-400 mt-0.5 group-hover:text-primary shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm text-slate-700 truncate group-hover:text-primary">
-                                {thread.subject || '(No Subject)'}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm text-slate-700 truncate group-hover:text-primary flex-1">
+                                  {thread.subject || '(No Subject)'}
+                                </p>
+                                {thread.messageCount > 1 && (
+                                  <span className="text-xs text-slate-400 shrink-0">({thread.messageCount})</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 truncate">{thread.snippet}</p>
                               <p className="text-xs text-slate-400">
                                 {thread.last_message_date 
                                   ? formatDistanceToNow(new Date(thread.last_message_date), { addSuffix: true })
-                                  : 'No messages'}
+                                  : 'No date'}
                               </p>
                             </div>
                             {thread.waiting_on && (
                               <Badge variant="outline" className="text-xs shrink-0">
-                                Waiting: {thread.waiting_on}
+                                {thread.waiting_on}
                               </Badge>
                             )}
                           </a>
