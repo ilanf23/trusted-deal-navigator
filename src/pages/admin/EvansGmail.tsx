@@ -4,7 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, BookTemplate } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,7 @@ interface Email {
   senderPhoto?: string | null;
 }
 
-type FilterType = 'inbox' | 'external' | 'internal' | 'templates';
+type FilterType = 'inbox' | 'external' | 'internal' | 'followup' | 'templates';
 
 // Email templates
 interface EmailTemplate {
@@ -322,6 +322,8 @@ const EvansGmail = () => {
   // Filter emails based on CRM classification and search query
   const filteredEmails = useMemo(() => {
     let result = allEmails;
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
     // Apply category filter
     if (activeFilter !== 'inbox') {
@@ -336,6 +338,18 @@ const EvansGmail = () => {
         
         if (activeFilter === 'external') return isExternal;
         if (activeFilter === 'internal') return !isExternal;
+        if (activeFilter === 'followup') {
+          // Show external leads where last activity is older than 7 days
+          if (!isExternal) return false;
+          const lead = allLeads.find(l => {
+            if (l.email?.toLowerCase() === senderEmail) return true;
+            if (l.lead_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
+            return false;
+          });
+          if (!lead) return false;
+          const lastActivity = lead.last_activity_at ? new Date(lead.last_activity_at) : new Date(lead.created_at);
+          return lastActivity < sevenDaysAgo;
+        }
         return true;
       });
     }
@@ -352,7 +366,7 @@ const EvansGmail = () => {
     }
     
     return result;
-  }, [allEmails, crmEmails, activeFilter, searchQuery]);
+  }, [allEmails, crmEmails, activeFilter, searchQuery, allLeads]);
 
   // Find matching lead for an email
   const findLeadForEmail = (email: Email) => {
@@ -600,6 +614,7 @@ const EvansGmail = () => {
     inbox: 'Inbox',
     external: 'External',
     internal: 'Internal',
+    followup: '7 Day Follow Up',
     templates: 'Templates',
   };
 
@@ -646,6 +661,15 @@ const EvansGmail = () => {
           >
             <Users className="w-4 h-4" />
             Internal
+          </div>
+          <div 
+            onClick={() => { setActiveFilter('followup'); setSelectedEmailId(null); }}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
+              activeFilter === 'followup' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'
+            }`}
+          >
+            <CalendarClock className="w-4 h-4" />
+            7 Day Follow Up
           </div>
           <div 
             onClick={() => { setActiveFilter('templates'); setSelectedEmailId(null); }}
