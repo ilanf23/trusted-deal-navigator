@@ -1299,7 +1299,7 @@ const EvansGmail = () => {
                             </span>
                             {isExternal && stageName && (
                               <span 
-                                className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ml-1"
+                                className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
                                 style={{ 
                                   backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
                                   color: stageColor || 'hsl(var(--muted-foreground))'
@@ -1308,20 +1308,20 @@ const EvansGmail = () => {
                                 {stageName}
                               </span>
                             )}
-                            <span className="flex-1" />
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                 <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
                                   <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenuItem onClick={() => handleMarkUnread(email.id)}>
                                   <MailOpen className="w-4 h-4 mr-2" />
                                   Mark as unread
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
+                            <span className="flex-1" />
                             <span className="text-xs text-muted-foreground">
                               {format(new Date(email.date), 'MMM d')}
                             </span>
