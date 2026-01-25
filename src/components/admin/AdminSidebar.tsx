@@ -244,7 +244,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   }, [isOwner, teamMember]);
 
   return (
-    <Sidebar className="border-r-0 bg-[#0a1628] font-sans" style={{ '--sidebar-width': '16rem', fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" } as React.CSSProperties}>
+    <Sidebar className="border-r-0 bg-[#0a1628] font-sans !text-white" style={{ '--sidebar-width': '16rem', '--sidebar-foreground': '0 0% 100%', fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" } as React.CSSProperties}>
       <SidebarHeader className="pt-0 pb-0 px-3 border-b-0">
         <Link to={homeUrl} className="flex items-center justify-center group">
           <img 
