@@ -224,6 +224,7 @@ const EvansGmail = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showEmailAddress, setShowEmailAddress] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('inbox');
+  const [readEmailIds, setReadEmailIds] = useState<Set<string>>(new Set());
   
   // Compose dialog state
   const [composeOpen, setComposeOpen] = useState(false);
@@ -236,6 +237,12 @@ const EvansGmail = () => {
   const [selectedLeadIdForDetail, setSelectedLeadIdForDetail] = useState<string | null>(null);
   const [showDealSidebar, setShowDealSidebar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Mark email as read when selected
+  const handleSelectEmail = (emailId: string) => {
+    setSelectedEmailId(emailId);
+    setReadEmailIds(prev => new Set(prev).add(emailId));
+  };
   
   const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
     queryKey: ['evan-gmail-connection'],
@@ -1259,13 +1266,14 @@ const EvansGmail = () => {
                       const lead = findLeadForEmail(email);
                       const stageName = lead?.pipeline_leads?.[0]?.pipeline_stages?.name;
                       const stageColor = lead?.pipeline_leads?.[0]?.pipeline_stages?.color;
+                      const isRead = email.isRead || readEmailIds.has(email.id);
                       
                       return (
                         <div
                           key={email.id}
-                          onClick={() => setSelectedEmailId(email.id)}
+                          onClick={() => handleSelectEmail(email.id)}
                           className={`border-b cursor-pointer transition-colors ${
-                            !email.isRead 
+                            !isRead 
                               ? 'bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50' 
                               : 'bg-white dark:bg-background hover:bg-muted/50'
                           } ${isExternal ? 'py-5 px-4' : 'p-3'}`}
@@ -1277,7 +1285,7 @@ const EvansGmail = () => {
                                 {extractSenderName(email.from).charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className={`truncate ${!email.isRead ? 'font-semibold' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
+                            <span className={`truncate ${!isRead ? 'font-semibold' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
                               {extractSenderName(email.from)}
                             </span>
                             {isExternal && stageName && (
@@ -1296,7 +1304,7 @@ const EvansGmail = () => {
                               {format(new Date(email.date), 'MMM d')}
                             </span>
                           </div>
-                          <p className={`truncate ${!email.isRead ? 'font-medium' : ''} ${isExternal ? 'text-base mb-1' : 'text-sm'}`}>
+                          <p className={`truncate ${!isRead ? 'font-medium' : ''} ${isExternal ? 'text-base mb-1' : 'text-sm'}`}>
                             {email.subject}
                           </p>
                           <p className={`text-muted-foreground mt-0.5 ${isExternal ? 'text-sm line-clamp-2' : 'text-xs truncate'}`}>
