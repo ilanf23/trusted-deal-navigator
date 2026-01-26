@@ -1378,9 +1378,9 @@ const EvansGmail = () => {
                                   {getNextStepSuggestion(stageName, email.snippet, lead)}
                                 </span>
                               </div>
-                              {/* Last Touch & Loan Size indicators */}
+                              {/* Last Touch, Stage Age & Loan Size indicators */}
                               {lead && (
-                                <div className="flex items-center gap-3 mt-2">
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
                                   <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300">
                                     <MessageSquare className="w-3 h-3 flex-shrink-0" />
                                     <span>
@@ -1390,6 +1390,21 @@ const EvansGmail = () => {
                                       }
                                     </span>
                                   </div>
+                                  {/* Stage Age badge */}
+                                  {(() => {
+                                    // Use qualified_at for qualified+ stages, converted_at for converted, otherwise created_at
+                                    const stageDate = lead.qualified_at 
+                                      ? new Date(lead.qualified_at)
+                                      : lead.converted_at 
+                                        ? new Date(lead.converted_at)
+                                        : new Date(lead.created_at);
+                                    return (
+                                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                        <Clock className="w-3 h-3 flex-shrink-0" />
+                                        <span>In stage {formatDistanceToNow(stageDate)}</span>
+                                      </div>
+                                    );
+                                  })()}
                                   {(() => {
                                     const response = lead.lead_responses?.[0];
                                     const loanAmount = Number(response?.loan_amount) || Number(response?.funding_amount) || 0;
