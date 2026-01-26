@@ -53,10 +53,15 @@ export const TaskWorkspace = () => {
   const filteredTasks = useMemo(() => {
     let result = tasks;
     
-    // Filter by source (gmail includes nudge/follow-up tasks)
+    // Filter by source (gmail includes nudge/follow-up tasks and tasks with follow-up keywords)
     if (sourceFilter !== 'all') {
       if (sourceFilter === 'gmail') {
-        result = result.filter(task => task.source === 'gmail' || task.source === 'nudge');
+        const followUpKeywords = ['follow up', 'follow-up', 'followup', 'nudge', 'reminder'];
+        result = result.filter(task => {
+          const titleLower = task.title.toLowerCase();
+          const isFollowUp = followUpKeywords.some(kw => titleLower.includes(kw));
+          return task.source === 'gmail' || task.source === 'nudge' || isFollowUp;
+        });
       } else {
         result = result.filter(task => task.source === sourceFilter);
       }
