@@ -39,6 +39,12 @@ import robertMartinezAvatar from '@/assets/avatars/robert-martinez.jpg';
 import sarahRichardsonAvatar from '@/assets/avatars/sarah-richardson.jpg';
 import michaelChenAvatar from '@/assets/avatars/michael-chen.jpg';
 import davidKimAvatar from '@/assets/avatars/david-kim.jpg';
+import lisaWongAvatar from '@/assets/avatars/lisa-wong.jpg';
+import thomasWrightAvatar from '@/assets/avatars/thomas-wright.jpg';
+import rachelAdamsAvatar from '@/assets/avatars/rachel-adams.jpg';
+import sophiaLaurentAvatar from '@/assets/avatars/sophia-laurent.jpg';
+import andrewFosterAvatar from '@/assets/avatars/andrew-foster.jpg';
+import emilyWangAvatar from '@/assets/avatars/emily-wang.jpg';
 
 interface Email {
   id: string;
@@ -150,6 +156,7 @@ const mockExternalEmails: Email[] = [
     date: '2026-01-10T11:45:00.000Z', // Jan 10
     snippet: 'Our current loan matures in 6 months and we are exploring refinance options. The facility is valued at $8.2M...',
     isRead: false,
+    senderPhoto: lisaWongAvatar,
   },
   {
     id: 'mock-6',
@@ -160,6 +167,7 @@ const mockExternalEmails: Email[] = [
     date: '2026-01-10T16:20:00.000Z', // Jan 10
     snippet: 'Following up on our call about equipment financing. We need approximately $1.8M for new CNC machines and automation...',
     isRead: false,
+    senderPhoto: thomasWrightAvatar,
   },
   {
     id: 'mock-7',
@@ -170,6 +178,7 @@ const mockExternalEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(),
     snippet: 'Great news - the seller accepted our offer! Now we need to move quickly on the financing. The purchase price is $12.5M...',
     isRead: false,
+    senderPhoto: rachelAdamsAvatar,
   },
   {
     id: 'mock-8',
@@ -180,6 +189,7 @@ const mockExternalEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
     snippet: 'We are looking to add 40 more rooms to our property in Napa. I have attached our revenue projections and construction estimates...',
     isRead: false,
+    senderPhoto: sophiaLaurentAvatar,
   },
   {
     id: 'mock-9',
@@ -190,6 +200,7 @@ const mockExternalEmails: Email[] = [
     date: '2026-01-10T14:30:00.000Z', // Jan 10
     snippet: 'Can we schedule a call to review our portfolio? We have 5 properties that may need refinancing before year end...',
     isRead: false,
+    senderPhoto: andrewFosterAvatar,
   },
   {
     id: 'mock-10',
@@ -200,6 +211,7 @@ const mockExternalEmails: Email[] = [
     date: '2026-01-10T09:15:00.000Z', // Jan 10
     snippet: 'Sunrise Healthcare is planning to open a new urgent care center. We are looking at properties in the $3-4M range...',
     isRead: false,
+    senderPhoto: emilyWangAvatar,
   },
 ];
 
