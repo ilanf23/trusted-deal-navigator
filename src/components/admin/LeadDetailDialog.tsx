@@ -972,6 +972,21 @@ Commercial Lending X`,
     },
   });
 
+  // Update lead core fields (name, company, etc.)
+  const updateLead = useMutation({
+    mutationFn: async (updates: { name?: string; company_name?: string | null }) => {
+      if (!lead) return;
+      const { error } = await supabase.from('leads').update(updates).eq('id', lead.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
+      onLeadUpdated?.();
+      toast({ title: 'Lead updated' });
+    },
+  });
+
   const handleAddTag = () => {
     if (!newTag.trim()) return;
     const updatedTags = [...contactInfo.tags, newTag.trim()];
@@ -1879,7 +1894,16 @@ Commercial Lending X`,
                     <div className="space-y-3">
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Contact Name</p>
-                        <p className="text-sm text-slate-900 font-medium">{lead.name}</p>
+                        <Input 
+                          defaultValue={lead.name}
+                          onBlur={(e) => {
+                            if (e.target.value !== lead.name && e.target.value.trim()) {
+                              updateLead.mutate({ name: e.target.value.trim() });
+                            }
+                          }}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 font-medium"
+                          placeholder="Contact name"
+                        />
                       </div>
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Known As</p>
@@ -1893,7 +1917,16 @@ Commercial Lending X`,
                       </div>
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Company</p>
-                        <p className="text-sm text-slate-900">{lead.company_name || '—'}</p>
+                        <Input 
+                          defaultValue={lead.company_name || ''}
+                          onBlur={(e) => {
+                            if (e.target.value !== (lead.company_name || '')) {
+                              updateLead.mutate({ company_name: e.target.value.trim() || null });
+                            }
+                          }}
+                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                          placeholder="Company name"
+                        />
                       </div>
                       <div>
                         <p className="text-xs text-slate-400 mb-1">Title</p>
