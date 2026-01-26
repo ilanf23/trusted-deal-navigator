@@ -5,7 +5,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen, ListTodo } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen, ListTodo, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { cn } from '@/lib/utils';
@@ -1378,6 +1378,18 @@ const EvansGmail = () => {
                                   {getNextStepSuggestion(stageName, email.snippet, lead)}
                                 </span>
                               </div>
+                              {/* Last Touch indicator */}
+                              {lead && (
+                                <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+                                  <MessageSquare className="w-3 h-3 flex-shrink-0" />
+                                  <span>
+                                    Last touch: {lead.last_activity_at 
+                                      ? formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true })
+                                      : formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })
+                                    }
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
