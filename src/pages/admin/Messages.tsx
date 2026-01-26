@@ -391,11 +391,11 @@ const AdminMessages = () => {
           <TabsContent value="client-messages" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[600px]">
               {/* Conversations List */}
-              <Card className="lg:col-span-1 border-0 bg-[#0a1628] text-white">
-                <CardHeader className="py-3 px-4 border-b border-white/10">
-                  <CardTitle className="text-sm font-medium flex items-center justify-between text-white">
+              <Card className="lg:col-span-1 border">
+                <CardHeader className="py-3 px-4 border-b bg-muted/30">
+                  <CardTitle className="text-sm font-medium flex items-center justify-between">
                     Conversations
-                    <Badge variant="secondary" className="font-normal bg-white/10 text-white/80 border-0">{conversations.length}</Badge>
+                    <Badge variant="secondary" className="font-normal">{conversations.length}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -406,32 +406,32 @@ const AdminMessages = () => {
                       </div>
                     ) : conversations.length === 0 ? (
                       <div className="text-center py-12 px-4">
-                        <MessageSquare className="h-8 w-8 mx-auto mb-2 text-white/30" />
-                        <p className="text-sm text-white/60">No conversations</p>
+                        <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                        <p className="text-sm text-muted-foreground">No conversations</p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-white/10">
+                      <div className="divide-y">
                         {conversations.map((convo) => (
                           <button
                             key={convo.id}
                             onClick={() => setSelectedConversation(convo.id)}
                             className={`w-full p-3 text-left transition-colors ${
                               selectedConversation === convo.id 
-                                ? 'bg-white/10 border-l-2 border-l-white' 
-                                : 'hover:bg-white/5'
+                                ? 'bg-muted border-l-2 border-l-primary' 
+                                : 'hover:bg-muted/50'
                             }`}
                           >
                             <div className="flex items-center gap-3">
                               <Avatar className="w-8 h-8">
-                                <AvatarFallback className="bg-white/10 text-white/80 text-xs">
+                                <AvatarFallback className="bg-muted text-muted-foreground text-xs">
                                   {convo.client_email?.charAt(0).toUpperCase() || 'U'}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate text-white">
+                                <p className="font-medium text-sm truncate">
                                   {convo.client_email || 'Unknown'}
                                 </p>
-                                <p className="text-xs text-white/60 truncate">
+                                <p className="text-xs text-muted-foreground truncate">
                                   {convo.subject || 'No subject'}
                                 </p>
                               </div>
