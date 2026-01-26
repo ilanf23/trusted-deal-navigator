@@ -109,12 +109,12 @@ export const TaskCalendarView = ({
           return (
             <div
               key={idx}
-              className={`min-h-[120px] p-2 border-b border-r border-muted-foreground/5 transition-colors hover:bg-muted/30 cursor-pointer ${
+              className={`min-h-[160px] p-3 border-b border-r border-muted-foreground/5 transition-colors hover:bg-muted/30 cursor-pointer ${
                 !isCurrentMonth ? 'bg-muted/20' : ''
               }`}
               onClick={() => onAddTask({ due_date: day.toISOString() })}
             >
-              <div className={`flex items-center justify-center w-7 h-7 rounded-full mb-1 text-sm font-medium ${
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full mb-2 text-sm font-semibold ${
                 isTodayDate 
                   ? 'bg-foreground text-background' 
                   : !isCurrentMonth 
@@ -124,31 +124,31 @@ export const TaskCalendarView = ({
                 {format(day, 'd')}
               </div>
               
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {/* Google Calendar Appointments (blue with calendar icon) */}
-                {dayAppointments.slice(0, 2).map(apt => (
+                {dayAppointments.slice(0, 3).map(apt => (
                   <div
                     key={`apt-${apt.id}`}
-                    className="text-xs py-1 px-2 rounded-md truncate flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500"
+                    className="text-sm py-2 px-3 rounded-lg truncate flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-l-3 border-blue-500 shadow-sm"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <CalendarIcon className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate">{apt.title}</span>
-                    <span className="text-[10px] opacity-70 flex-shrink-0">
+                    <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate font-medium">{apt.title}</span>
+                    <span className="text-xs opacity-70 flex-shrink-0">
                       {format(parseISO(apt.start_time), 'h:mm a')}
                     </span>
                   </div>
                 ))}
                 
                 {/* Tasks */}
-                {dayTasks.slice(0, dayAppointments.length >= 2 ? 1 : 2).map(task => (
+                {dayTasks.slice(0, dayAppointments.length >= 3 ? 1 : 3).map(task => (
                   <div
                     key={task.id}
-                    className="text-xs py-1 px-2 rounded-md truncate cursor-pointer transition-all hover:scale-[1.02]"
+                    className="text-sm py-2 px-3 rounded-lg truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm font-medium"
                     style={{ 
                       backgroundColor: `${statusConfig[task.status || 'todo']?.color}20`,
                       color: statusConfig[task.status || 'todo']?.color,
-                      borderLeft: `2px solid ${statusConfig[task.status || 'todo']?.color}`
+                      borderLeft: `3px solid ${statusConfig[task.status || 'todo']?.color}`
                     }}
                     onClick={(e) => { e.stopPropagation(); onOpenDetail(task); }}
                   >
@@ -156,9 +156,9 @@ export const TaskCalendarView = ({
                   </div>
                 ))}
                 
-                {totalItems > 3 && (
-                  <div className="text-xs text-muted-foreground px-2 font-medium">
-                    +{totalItems - 3} more
+                {totalItems > 4 && (
+                  <div className="text-sm text-muted-foreground px-3 font-medium">
+                    +{totalItems - 4} more
                   </div>
                 )}
               </div>
