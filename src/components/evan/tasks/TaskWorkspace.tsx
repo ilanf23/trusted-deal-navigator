@@ -134,62 +134,61 @@ export const TaskWorkspace = () => {
   return (
     <div className="space-y-4 md:space-y-6">
 
-      {/* Apple-style Toolbar - responsive layout */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4 sticky top-14 md:top-16 z-30 py-3 md:py-4 -mx-1 px-1 backdrop-blur-xl bg-background/80">
-        <div className="flex items-center gap-2 md:gap-3">
-          {/* New Task Button */}
-          <Button 
-            onClick={() => handleAddTask({})}
-            className="h-9 md:h-10 px-3 md:px-5 rounded-full bg-foreground text-background hover:bg-foreground/90 font-medium shadow-lg shadow-foreground/10 transition-all duration-300 hover:shadow-xl hover:shadow-foreground/20 hover:scale-[1.02] text-sm md:text-base"
-          >
-            <Plus className="h-4 w-4 mr-1 md:mr-2" />
-            <span className="hidden xs:inline">New Task</span>
-            <span className="xs:hidden">Add</span>
-          </Button>
-          
-          {/* Search - responsive width */}
-          <div className="relative flex-1 sm:flex-initial">
-            <Input
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full sm:w-48 md:w-64 h-9 md:h-10 pl-3 md:pl-4 rounded-full border-muted-foreground/20 bg-muted/50 focus:bg-background transition-colors text-sm"
-            />
-          </div>
+      {/* Top Row - New Task + Search */}
+      <div className="flex items-center gap-3 sticky top-14 md:top-16 z-30 py-3 md:py-4 -mx-1 px-1 backdrop-blur-xl bg-background/80">
+        <Button 
+          onClick={() => handleAddTask({})}
+          className="h-9 md:h-10 px-3 md:px-5 rounded-full bg-foreground text-background hover:bg-foreground/90 font-medium shadow-lg shadow-foreground/10 transition-all duration-300 hover:shadow-xl hover:shadow-foreground/20 hover:scale-[1.02] text-sm md:text-base"
+        >
+          <Plus className="h-4 w-4 mr-1 md:mr-2" />
+          <span className="hidden sm:inline">New Task</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
+        
+        <div className="relative flex-1 max-w-xs">
+          <Input
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-9 md:h-10 pl-3 md:pl-4 rounded-full border-muted-foreground/20 bg-muted/50 focus:bg-background transition-colors text-sm"
+          />
         </div>
+      </div>
 
+      {/* Unified Filter Bar - Source Filters (left) + View Switcher (right) */}
+      <div className="flex items-center justify-between gap-4 p-1.5 bg-muted/40 rounded-2xl border border-muted-foreground/10">
         {/* Source Filter - Pill Style */}
-        <div className="flex items-center gap-0.5 md:gap-1 p-0.5 md:p-1 bg-muted/60 rounded-full backdrop-blur-sm">
+        <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 rounded-full backdrop-blur-sm">
           {sourceFilters.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
               onClick={() => setSourceFilter(value)}
-              className={`flex items-center gap-1 md:gap-2 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-300 ${
+              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                 sourceFilter === value 
                   ? 'bg-background text-foreground shadow-sm' 
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              <span className="hidden md:inline">{label}</span>
+              <Icon className="h-4 w-4" />
+              <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
         </div>
 
-        {/* View Switcher - Pill Style, responsive */}
-        <div className="flex items-center gap-0.5 md:gap-1 p-0.5 md:p-1 bg-muted/60 rounded-full backdrop-blur-sm self-start sm:self-auto">
+        {/* View Switcher - Pill Style */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 rounded-full backdrop-blur-sm">
           {viewOptions.map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`flex items-center gap-1 md:gap-2 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-300 ${
+              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                 viewMode === mode 
                   ? 'bg-background text-foreground shadow-sm' 
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              <span className="hidden md:inline">{label}</span>
+              <Icon className="h-4 w-4" />
+              <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
         </div>
