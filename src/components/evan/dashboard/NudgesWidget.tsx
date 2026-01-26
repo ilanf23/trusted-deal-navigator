@@ -17,7 +17,8 @@ interface Lead {
   phone: string | null;
   company_name: string | null;
   status: string;
-  updated_at: string;
+  last_activity_at: string | null;
+  created_at: string;
 }
 
 interface NudgesWidgetProps {
@@ -38,27 +39,29 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
 
   // Fetch leads needing nudges (no activity in 7+ days)
   const { data: nudgeLeads = [], isLoading } = useQuery({
-    queryKey: ['evan-dashboard-nudges', evanId],
+    queryKey: ['evan-dashboard-nudges'],
     queryFn: async () => {
-      if (!evanId) return [];
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
       
-      const oneWeekAgo = subDays(new Date(), 7).toISOString();
-      
+      // Fetch all active leads with emails that have stale activity
       const { data: leads, error } = await supabase
         .from('leads')
-        .select('id, name, email, phone, company_name, status, updated_at')
-        .eq('assigned_to', evanId)
+        .select('id, name, email, phone, company_name, status, last_activity_at, created_at')
         .neq('status', 'funded')
-        .lt('updated_at', oneWeekAgo)
-        .order('updated_at', { ascending: true })
-        .limit(10);
+        .not('email', 'is', null)
+        .order('last_activity_at', { ascending: true, nullsFirst: true })
+        .limit(20);
       
       if (error) throw error;
 
-      // Filter to only leads with emails
-      return (leads || []).filter(l => l.email) as Lead[];
+      // Filter to leads where last activity is older than 7 days
+      return (leads || []).filter(lead => {
+        const lastActivity = lead.last_activity_at 
+          ? new Date(lead.last_activity_at) 
+          : new Date(lead.created_at);
+        return lastActivity < new Date(sevenDaysAgo);
+      }) as Lead[];
     },
-    enabled: !!evanId,
   });
 
   // Fetch existing follow-up tasks to avoid duplicates
@@ -87,7 +90,8 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           continue;
         }
 
-        const daysSince = differenceInDays(new Date(), new Date(lead.updated_at));
+        const lastActivity = lead.last_activity_at || lead.created_at;
+        const daysSince = differenceInDays(new Date(), new Date(lastActivity));
         
         const { error } = await supabase.from('evan_tasks').insert({
           title: `7-Day Follow Up: ${lead.name}`,
@@ -200,7 +204,8 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           <ScrollArea className="h-[260px] pr-4">
             <div className="space-y-2">
               {nudgeLeads.map((lead) => {
-                const daysSince = differenceInDays(new Date(), new Date(lead.updated_at));
+                const lastActivity = lead.last_activity_at || lead.created_at;
+                const daysSince = differenceInDays(new Date(), new Date(lastActivity));
                 
                 return (
                   <div
