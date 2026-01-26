@@ -11,6 +11,7 @@ export interface Task {
   group_name: string | null;
   tags: string[] | null;
   lead_id: string | null;
+  source: string | null;
   lead?: {
     id: string;
     name: string;
@@ -19,6 +20,15 @@ export interface Task {
   created_at: string;
   updated_at: string;
 }
+
+export type TaskSource = 'all' | 'manual' | 'gmail' | 'nudge' | 'lead';
+
+export const sourceConfig: Record<string, { label: string; icon: string }> = {
+  manual: { label: 'Self-Made', icon: 'User' },
+  gmail: { label: 'Gmail', icon: 'Mail' },
+  nudge: { label: '7-Day Follow Up', icon: 'Bell' },
+  lead: { label: 'From Lead', icon: 'Users' },
+};
 
 export interface TaskActivity {
   id: string;

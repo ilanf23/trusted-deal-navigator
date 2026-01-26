@@ -97,6 +97,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           lead_id: lead.id,
           assignee_name: 'Evan',
           group_name: 'To Do',
+          source: 'nudge',
         });
 
         if (!error) {

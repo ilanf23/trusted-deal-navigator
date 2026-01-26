@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTasksData } from '@/hooks/useTasksData';
-import { Task, ViewMode } from './types';
+import { Task, ViewMode, TaskSource, sourceConfig } from './types';
 import { TaskTableView } from './TaskTableView';
 import { TaskKanbanView } from './TaskKanbanView';
 import { TaskTimelineView } from './TaskTimelineView';
@@ -13,7 +13,11 @@ import {
   Table, 
   GanttChart, 
   Plus, 
-  Search,
+  User,
+  Mail,
+  Bell,
+  Users,
+  Filter,
 } from 'lucide-react';
 
 export const TaskWorkspace = () => {
@@ -21,6 +25,7 @@ export const TaskWorkspace = () => {
   const { tasks, isLoading, addTask, updateTask, deleteTask, addComment } = useTasksData();
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<TaskSource>('all');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
 
@@ -32,12 +37,13 @@ export const TaskWorkspace = () => {
       const description = searchParams.get('description') || '';
       const leadId = searchParams.get('leadId') || undefined;
       
-      // Create the task with pre-filled data
+      // Create the task with pre-filled data from Gmail
       addTask.mutate({
         title,
         description,
         status: 'todo',
         lead_id: leadId || undefined,
+        source: 'gmail',
       });
       
       // Clear URL params
@@ -46,14 +52,25 @@ export const TaskWorkspace = () => {
   }, [searchParams, setSearchParams, addTask]);
 
   const filteredTasks = useMemo(() => {
-    if (!searchTerm) return tasks;
-    const term = searchTerm.toLowerCase();
-    return tasks.filter(task =>
-      task.title.toLowerCase().includes(term) ||
-      task.description?.toLowerCase().includes(term) ||
-      task.assignee_name?.toLowerCase().includes(term)
-    );
-  }, [tasks, searchTerm]);
+    let result = tasks;
+    
+    // Filter by source
+    if (sourceFilter !== 'all') {
+      result = result.filter(task => task.source === sourceFilter);
+    }
+    
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(task =>
+        task.title.toLowerCase().includes(term) ||
+        task.description?.toLowerCase().includes(term) ||
+        task.assignee_name?.toLowerCase().includes(term)
+      );
+    }
+    
+    return result;
+  }, [tasks, searchTerm, sourceFilter]);
 
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {
     updateTask.mutate({ id, updates });
@@ -87,6 +104,14 @@ export const TaskWorkspace = () => {
     { mode: 'table' as ViewMode, icon: Table, label: 'List' },
     { mode: 'kanban' as ViewMode, icon: LayoutGrid, label: 'Board' },
     { mode: 'timeline' as ViewMode, icon: GanttChart, label: 'Timeline' },
+  ];
+
+  const sourceFilters: { value: TaskSource; label: string; icon: React.ElementType }[] = [
+    { value: 'all', label: 'All', icon: Filter },
+    { value: 'manual', label: 'Self-Made', icon: User },
+    { value: 'gmail', label: 'Gmail', icon: Mail },
+    { value: 'nudge', label: 'Follow Up', icon: Bell },
+    { value: 'lead', label: 'From Lead', icon: Users },
   ];
 
   if (isLoading) {
@@ -124,6 +149,24 @@ export const TaskWorkspace = () => {
               className="w-full sm:w-48 md:w-64 h-9 md:h-10 pl-3 md:pl-4 rounded-full border-muted-foreground/20 bg-muted/50 focus:bg-background transition-colors text-sm"
             />
           </div>
+        </div>
+
+        {/* Source Filter - Pill Style */}
+        <div className="flex items-center gap-0.5 md:gap-1 p-0.5 md:p-1 bg-muted/60 rounded-full backdrop-blur-sm">
+          {sourceFilters.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              onClick={() => setSourceFilter(value)}
+              className={`flex items-center gap-1 md:gap-2 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-300 ${
+                sourceFilter === value 
+                  ? 'bg-background text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden md:inline">{label}</span>
+            </button>
+          ))}
         </div>
 
         {/* View Switcher - Pill Style, responsive */}

@@ -31,6 +31,7 @@ export const useTasksData = () => {
         description: task.description,
         tags: task.tags,
         lead_id: task.lead_id,
+        source: task.source || 'manual',
       }).select('*, lead:leads(id, name, company_name)').single();
       if (error) throw error;
       return data;
