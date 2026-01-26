@@ -1,9 +1,11 @@
 import { Task, statusConfig } from './types';
-import { format, parseISO, differenceInDays, startOfDay, addDays, isToday, isWeekend } from 'date-fns';
+import { format, parseISO, differenceInDays, startOfDay, addDays, addWeeks, addMonths, isToday, isWeekend, startOfWeek, startOfMonth, isSameMonth } from 'date-fns';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+type TimelineViewMode = 'day' | 'week' | 'month';
 
 interface TaskTimelineViewProps {
   tasks: Task[];
@@ -14,18 +16,34 @@ export const TaskTimelineView = ({
   tasks,
   onOpenDetail,
 }: TaskTimelineViewProps) => {
+  const [viewMode, setViewMode] = useState<TimelineViewMode>('week');
   const [startDate, setStartDate] = useState(() => {
     const today = startOfDay(new Date());
-    return addDays(today, -7);
+    return startOfWeek(today, { weekStartsOn: 1 }); // Start on Monday
   });
 
-  const daysToShow = 28;
+  // Configure based on view mode
+  const getViewConfig = () => {
+    switch (viewMode) {
+      case 'day':
+        return { daysToShow: 7, shiftAmount: 7, label: 'Day' };
+      case 'week':
+        return { daysToShow: 28, shiftAmount: 7, label: 'Week' };
+      case 'month':
+        return { daysToShow: 90, shiftAmount: 30, label: 'Month' };
+      default:
+        return { daysToShow: 28, shiftAmount: 7, label: 'Week' };
+    }
+  };
+
+  const { daysToShow, shiftAmount } = getViewConfig();
   const days = Array.from({ length: daysToShow }, (_, i) => addDays(startDate, i));
 
   const tasksWithDates = tasks.filter(t => t.due_date);
 
-  const shiftLeft = () => setStartDate(prev => addDays(prev, -7));
-  const shiftRight = () => setStartDate(prev => addDays(prev, 7));
+  const shiftLeft = () => setStartDate(prev => addDays(prev, -shiftAmount));
+  const shiftRight = () => setStartDate(prev => addDays(prev, shiftAmount));
+  const goToToday = () => setStartDate(startOfWeek(startOfDay(new Date()), { weekStartsOn: 1 }));
 
   const getTaskPosition = (task: Task) => {
     if (!task.due_date) return null;
@@ -47,29 +65,112 @@ export const TaskTimelineView = ({
     return acc;
   }, {} as Record<string, Task[]>);
 
+  const viewModes: { value: TimelineViewMode; label: string }[] = [
+    { value: 'day', label: 'Day' },
+    { value: 'week', label: 'Week' },
+    { value: 'month', label: 'Month' },
+  ];
+
+  // Render day headers based on view mode
+  const renderDayHeader = (day: Date, idx: number) => {
+    const isTodayDate = isToday(day);
+    const isWeekendDay = isWeekend(day);
+
+    if (viewMode === 'month') {
+      // For month view, only show week start markers
+      const isMonday = day.getDay() === 1;
+      const isFirstOfMonth = day.getDate() === 1;
+      
+      if (!isMonday && !isFirstOfMonth) {
+        return (
+          <div
+            key={idx}
+            className={`flex-1 border-l border-muted-foreground/5 ${
+              isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/30' : ''
+            }`}
+          />
+        );
+      }
+      
+      return (
+        <div
+          key={idx}
+          className={`flex-1 py-1 text-center text-[9px] border-l border-muted-foreground/10 ${
+            isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/30' : ''
+          }`}
+        >
+          <div className={`font-semibold ${isTodayDate ? 'text-foreground' : 'text-muted-foreground'}`}>
+            {isFirstOfMonth ? format(day, 'MMM d') : format(day, 'd')}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        key={idx}
+        className={`flex-1 py-2 text-center text-[10px] border-l border-muted-foreground/5 ${
+          isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/30' : ''
+        }`}
+      >
+        <div className="text-muted-foreground font-medium">{format(day, 'EEE')}</div>
+        <div className={`font-semibold ${isTodayDate ? 'text-foreground' : 'text-muted-foreground'}`}>
+          {format(day, 'd')}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="rounded-2xl border border-muted-foreground/10 bg-card/50 backdrop-blur-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-muted-foreground/10">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={shiftLeft}
-          className="rounded-full"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-        </Button>
-        <span className="font-medium text-sm">
-          {format(startDate, 'MMM d')} – {format(addDays(startDate, daysToShow - 1), 'MMM d, yyyy')}
-        </span>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={shiftRight}
-          className="rounded-full"
-        >
-          Next <ChevronRight className="h-4 w-4 ml-1" />
-        </Button>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 border-b border-muted-foreground/10">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={shiftLeft}
+            className="rounded-full"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={goToToday}
+            className="rounded-full text-xs"
+          >
+            Today
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={shiftRight}
+            className="rounded-full"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <span className="font-medium text-sm ml-2">
+            {format(startDate, 'MMM d')} – {format(addDays(startDate, daysToShow - 1), 'MMM d, yyyy')}
+          </span>
+        </div>
+
+        {/* View Mode Switcher */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 rounded-full backdrop-blur-sm self-start sm:self-auto">
+          {viewModes.map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setViewMode(value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${
+                viewMode === value 
+                  ? 'bg-background text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Timeline header */}
@@ -77,25 +178,9 @@ export const TaskTimelineView = ({
         <div className="w-40 flex-shrink-0 px-4 py-3 font-medium text-xs text-muted-foreground uppercase tracking-wider">
           Assignee
         </div>
-        <div className="flex-1 relative">
+        <div className="flex-1 relative overflow-hidden">
           <div className="flex">
-            {days.map((day, idx) => {
-              const isTodayDate = isToday(day);
-              const isWeekendDay = isWeekend(day);
-              return (
-                <div
-                  key={idx}
-                  className={`flex-1 py-2 text-center text-[10px] border-l border-muted-foreground/5 ${
-                    isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/30' : ''
-                  }`}
-                >
-                  <div className="text-muted-foreground font-medium">{format(day, 'EEE')}</div>
-                  <div className={`font-semibold ${isTodayDate ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {format(day, 'd')}
-                  </div>
-                </div>
-              );
-            })}
+            {days.map((day, idx) => renderDayHeader(day, idx))}
           </div>
         </div>
       </div>
@@ -112,7 +197,7 @@ export const TaskTimelineView = ({
               </Avatar>
               <span className="font-medium text-sm truncate">{assignee}</span>
             </div>
-            <div className="flex-1 relative">
+            <div className="flex-1 relative overflow-hidden">
               {/* Grid lines */}
               <div className="absolute inset-0 flex">
                 {days.map((day, idx) => {
@@ -144,12 +229,12 @@ export const TaskTimelineView = ({
                         width: `calc(${pos.width} - 4px)`,
                         top: `${taskIdx * 32 + 8}px`,
                         backgroundColor: statusConfig[task.status || 'todo']?.color,
-                        minWidth: '60px',
+                        minWidth: viewMode === 'month' ? '20px' : '60px',
                       }}
                       onClick={() => onOpenDetail(task)}
                       title={task.title}
                     >
-                      {task.title}
+                      {viewMode !== 'month' && task.title}
                     </div>
                   );
                 })}
