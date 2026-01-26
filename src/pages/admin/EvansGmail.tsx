@@ -101,6 +101,191 @@ const emailTemplates: EmailTemplate[] = [
   },
 ];
 
+// Mock thread messages for Robert Martinez conversation
+interface ThreadMessage {
+  id: string;
+  from: string;
+  to: string;
+  date: string;
+  body: string;
+  senderPhoto?: string | null;
+}
+
+const mockThreadMessages: Record<string, ThreadMessage[]> = {
+  'thread-mock-1': [
+    {
+      id: 'msg-1-1',
+      from: 'Evan <evan@commerciallendingx.com>',
+      to: 'robert.martinez@capitalventures.com',
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 days ago
+      body: `Hi Robert,
+
+Thank you for reaching out about financing for your acquisition. I'm excited to discuss the $2.5M loan opportunity for Capital Ventures.
+
+Based on our initial conversation, it sounds like you're looking to acquire a commercial property in the downtown district. Before we proceed, I wanted to gather some additional information to ensure we can structure the best possible deal for your needs.
+
+Could you please provide the following:
+
+1. Property address and current appraisal (if available)
+2. Your most recent 2 years of business tax returns
+3. Personal financial statement
+4. Executive summary of the acquisition opportunity
+
+Once I have these documents, I can start working with our lending partners to get you pre-qualified. Given current market conditions, we're seeing rates in the 7.25-7.75% range for deals of this size with strong borrower profiles.
+
+I'm available for a call this week if you'd like to discuss the process in more detail. My calendar is open Tuesday and Thursday afternoons.
+
+Looking forward to working together on this.
+
+Best regards,
+Evan
+Commercial Lending X
+(555) 123-4567`,
+      senderPhoto: null,
+    },
+    {
+      id: 'msg-1-2',
+      from: 'Robert Martinez <robert.martinez@capitalventures.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), // 5 days ago
+      body: `Evan,
+
+Thanks for the quick response. Capital Ventures has been working on this acquisition for the past 6 months and we're finally in a position to move forward.
+
+I've attached the documents you requested:
+- Property appraisal (completed last month) showing a value of $3.2M
+- 2024 and 2023 business tax returns
+- My personal financial statement
+- A detailed executive summary of our expansion plans
+
+A few additional details about the deal:
+
+The property is located at 4500 Commerce Boulevard, which is in a prime commercial corridor. The building is currently 85% occupied with stable tenants, including a regional bank branch and a medical office that have both been there for 10+ years.
+
+We're planning to acquire the property and then invest an additional $500K in renovations to modernize the facade and upgrade the HVAC systems. This should allow us to increase rents by approximately 15% when current leases expire.
+
+Our target closing date is March 15th, so we're on a somewhat tight timeline. Is that feasible from your perspective?
+
+I'm free for a call Thursday at 2 PM if that works for you. Please let me know.
+
+Thanks,
+Robert Martinez
+CEO, Capital Ventures LLC
+(555) 987-6543`,
+      senderPhoto: robertMartinezAvatar,
+    },
+    {
+      id: 'msg-1-3',
+      from: 'Evan <evan@commerciallendingx.com>',
+      to: 'robert.martinez@capitalventures.com',
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(), // 4 days ago
+      body: `Robert,
+
+Excellent - I've reviewed all the documents you sent and I'm impressed with the quality of this acquisition opportunity. The property fundamentals look strong and your business financials are well-organized.
+
+A few initial observations:
+
+1. The 80% LTV you're targeting ($2.5M on a $3.2M property) is within our comfort zone for this asset class
+2. Your debt service coverage ratio looks healthy based on the current NOI
+3. The tenant mix with long-term occupants is exactly what lenders like to see
+
+I spoke with three of our lending partners this morning and have some promising initial feedback:
+
+LENDER A (Regional Bank):
+- Rate: 7.35% fixed for 5 years
+- Amortization: 25 years
+- Prepayment: 3-2-1 step-down
+- Timeline: 45 days to close
+
+LENDER B (Credit Union):
+- Rate: 7.15% fixed for 7 years
+- Amortization: 25 years
+- Prepayment: Yield maintenance for 3 years, then 1%
+- Timeline: 60 days to close
+
+LENDER C (Private Lender):
+- Rate: 8.25% fixed
+- Amortization: 30 years
+- Prepayment: None after 12 months
+- Timeline: 21 days to close
+
+Given your March 15th target, Lender A seems like the best fit - competitive rate with a realistic timeline. Lender B has a slightly better rate but the 60-day timeline cuts it close.
+
+Thursday at 2 PM works perfectly. I'll send a calendar invite. We can review these options in detail and discuss which structure works best for Capital Ventures.
+
+Talk soon,
+Evan`,
+      senderPhoto: null,
+    },
+    {
+      id: 'msg-1-4',
+      from: 'Robert Martinez <robert.martinez@capitalventures.com>',
+      to: 'evan@commerciallendingx.com',
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
+      body: `Evan,
+
+Great call yesterday! I really appreciated you walking me through all the options in detail. After discussing with my partners, we've decided to move forward with Lender A.
+
+The 7.35% rate with the 5-year fixed term aligns well with our business plan. We're planning to hold this property for at least 7-10 years, so we'll likely refinance when the fixed period ends anyway. The 45-day timeline also gives us a comfortable buffer before our target closing date.
+
+A couple of follow-up items from our discussion:
+
+1. You mentioned that Lender A might be able to include the renovation costs in the loan. Can you confirm if that's possible? We'd love to finance the full $3M ($2.5M acquisition + $500K renovation) if the numbers work.
+
+2. For the renovation draws, what documentation would we need to provide? We have a general contractor lined up but haven't finalized the scope of work yet.
+
+3. Is there any flexibility on the prepayment penalty? The 3-2-1 structure works, but if we could get it waived entirely after year 3, that would be ideal.
+
+Also, I wanted to mention that we have another acquisition opportunity in the pipeline - a retail strip center about 2 miles from this property. It's a smaller deal ($1.8M) but similar quality tenants. Once we close this first deal, I'd love to discuss financing options for that one as well.
+
+Let me know what you need from me to get the formal application submitted.
+
+Thanks,
+Robert`,
+      senderPhoto: robertMartinezAvatar,
+    },
+    {
+      id: 'msg-1-5',
+      from: 'Evan <evan@commerciallendingx.com>',
+      to: 'robert.martinez@capitalventures.com',
+      date: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
+      body: `Robert,
+
+Great news on all fronts! I'm excited to get this deal across the finish line for you.
+
+Regarding your questions:
+
+1. RENOVATION FINANCING: Yes, Lender A can absolutely include the renovation costs. They offer a "purchase plus improvement" loan structure. The total loan would be $3M with the renovation portion held in escrow and released in draws as work is completed. This will require a detailed scope of work and contractor bids before closing, but it's very doable.
+
+2. RENOVATION DRAWS: You'll need to provide:
+   - Signed contractor agreement with detailed line-item budget
+   - Contractor's license and insurance certificates  
+   - Draw schedule (typically 3-4 draws for a project this size)
+   - Lender will do inspections before each draw release
+
+3. PREPAYMENT: I pushed back on this with my contact at Lender A. Best they can do is 3-2-1-0, meaning no penalty in year 4 or later. Given that you're planning to hold long-term, this should work well.
+
+For the formal application, please send me:
+- Signed LOI or purchase agreement for the property
+- Updated rent roll (dated within 30 days)
+- 3 months of property operating statements
+- Phase I environmental (if you have one; if not, lender can order)
+- Your operating agreement for Capital Ventures LLC
+
+Once I have these, I'll submit to Lender A and we should have an approval within 5-7 business days.
+
+And definitely let's talk about the retail strip center! Send me the details when you're ready - address, asking price, current occupancy, and rent roll. If the quality is similar to this deal, I'm confident we can get it done.
+
+Let me know if you have any questions. We're on track for a smooth closing!
+
+Best,
+Evan
+Commercial Lending X`,
+      senderPhoto: null,
+    },
+  ],
+};
+
 // Mock external emails using CRM lead email addresses
 const mockExternalEmails: Email[] = [
   {
@@ -883,33 +1068,86 @@ const EvansGmail = () => {
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="p-6">
-                    <h1 className="text-xl font-semibold mb-4 leading-tight">{selectedEmail.subject}</h1>
-                    <div className="flex items-center gap-3 mb-6">
-                      <Avatar className="w-10 h-10 border">
-                        {selectedEmail.senderPhoto ? (
-                          <AvatarImage src={selectedEmail.senderPhoto} />
-                        ) : null}
-                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                          {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-medium">{extractSenderName(selectedEmail.from)}</p>
-                          <ChevronDown 
-                            className={`w-3.5 h-3.5 text-muted-foreground cursor-pointer hover:text-foreground transition-transform ${showEmailAddress ? 'rotate-180' : ''}`}
-                            onClick={() => setShowEmailAddress(!showEmailAddress)}
-                          />
-                        </div>
-                        {showEmailAddress && (
-                          <p className="text-xs text-muted-foreground">{selectedEmail.from}</p>
-                        )}
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
-                        </p>
+                    <h1 className="text-xl font-semibold mb-6 leading-tight">{selectedEmail.subject}</h1>
+                    
+                    {/* Thread Messages */}
+                    {mockThreadMessages[selectedEmail.threadId] ? (
+                      <div className="space-y-6">
+                        {mockThreadMessages[selectedEmail.threadId].map((msg, index) => {
+                          const isFromEvan = msg.from.toLowerCase().includes('evan');
+                          return (
+                            <div key={msg.id} className="relative">
+                              {/* Connector line between messages */}
+                              {index < mockThreadMessages[selectedEmail.threadId].length - 1 && (
+                                <div className="absolute left-5 top-12 bottom-0 w-px bg-border" style={{ height: 'calc(100% + 1.5rem)' }} />
+                              )}
+                              <div className={cn(
+                                "rounded-lg border p-4",
+                                isFromEvan ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" : "bg-background"
+                              )}>
+                                <div className="flex items-start gap-3 mb-4">
+                                  <Avatar className="w-10 h-10 border flex-shrink-0">
+                                    {msg.senderPhoto ? (
+                                      <AvatarImage src={msg.senderPhoto} />
+                                    ) : null}
+                                    <AvatarFallback className={cn(
+                                      "font-semibold",
+                                      isFromEvan ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"
+                                    )}>
+                                      {extractSenderName(msg.from).charAt(0).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="font-medium text-sm">{extractSenderName(msg.from)}</p>
+                                      <p className="text-xs text-muted-foreground flex-shrink-0">
+                                        {format(new Date(msg.date), 'MMM d, yyyy, h:mm a')}
+                                      </p>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      To: {msg.to}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-sm whitespace-pre-wrap leading-relaxed pl-[52px]">
+                                  {msg.body}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap">{selectedEmail.snippet}</p>
+                    ) : (
+                      // Fallback for emails without thread messages
+                      <>
+                        <div className="flex items-center gap-3 mb-6">
+                          <Avatar className="w-10 h-10 border">
+                            {selectedEmail.senderPhoto ? (
+                              <AvatarImage src={selectedEmail.senderPhoto} />
+                            ) : null}
+                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                              {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium">{extractSenderName(selectedEmail.from)}</p>
+                              <ChevronDown 
+                                className={`w-3.5 h-3.5 text-muted-foreground cursor-pointer hover:text-foreground transition-transform ${showEmailAddress ? 'rotate-180' : ''}`}
+                                onClick={() => setShowEmailAddress(!showEmailAddress)}
+                              />
+                            </div>
+                            {showEmailAddress && (
+                              <p className="text-xs text-muted-foreground">{selectedEmail.from}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{selectedEmail.snippet}</p>
+                      </>
+                    )}
                   </div>
                 </ScrollArea>
               </div>
