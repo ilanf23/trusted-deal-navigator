@@ -514,10 +514,116 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!gmailConnection && leadEmailAddresses.length > 0 && open,
   });
 
-  // Combine database threads with Gmail emails
+  // Mock email threads for demo leads
+  const mockEmailThreadsData: Record<string, any[]> = useMemo(() => ({
+    'robert.martinez@capitalventures.com': [{
+      id: 'thread-mock-1',
+      thread_id: 'thread-mock-1',
+      subject: 'RE: Loan Application Status Update',
+      last_message_date: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+      snippet: 'Great news on all fronts! I\'m excited to get this deal across the finish line for you...',
+      from: 'Evan <evan@commerciallendingx.com>',
+      messageCount: 5,
+    }],
+    'sarah.r@meridiangroup.com': [{
+      id: 'thread-mock-2',
+      thread_id: 'thread-mock-2',
+      subject: 'Documents for Property Appraisal',
+      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+      snippet: 'Please find attached the property appraisal documents for the Meridian Plaza project.',
+      from: 'Sarah Richardson <sarah.r@meridiangroup.com>',
+      messageCount: 1,
+    }],
+    'mchen@techvest.com': [{
+      id: 'thread-mock-3',
+      thread_id: 'thread-mock-3',
+      subject: 'Urgent: Term Sheet Review Required',
+      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
+      snippet: 'Evan, I need your input on the term sheet before our meeting tomorrow.',
+      from: 'Michael Chen <mchen@techvest.com>',
+      messageCount: 1,
+    }],
+    'dkim@seoulfoodgroup.com': [{
+      id: 'thread-mock-4',
+      thread_id: 'thread-mock-4',
+      subject: 'New Restaurant Location Financing',
+      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+      snippet: 'Looking to expand Seoul Food Group with 3 new locations in the downtown area.',
+      from: 'David Kim <dkim@seoulfoodgroup.com>',
+      messageCount: 1,
+    }],
+    'lisa@pacificmedgroup.com': [{
+      id: 'thread-mock-5',
+      thread_id: 'thread-mock-5',
+      subject: 'Healthcare Facility Refinance Question',
+      last_message_date: '2026-01-10T11:45:00.000Z',
+      snippet: 'Our current loan matures in 6 months and we are exploring refinance options.',
+      from: 'Lisa Wong <lisa@pacificmedgroup.com>',
+      messageCount: 1,
+    }],
+    'twright@wrightmanufacturing.com': [{
+      id: 'thread-mock-6',
+      thread_id: 'thread-mock-6',
+      subject: 'Manufacturing Equipment Loan Application',
+      last_message_date: '2026-01-10T16:20:00.000Z',
+      snippet: 'Following up on our call about equipment financing. We need approximately $1.8M for new CNC machines.',
+      from: 'Thomas Wright <twright@wrightmanufacturing.com>',
+      messageCount: 1,
+    }],
+    'rachel@sunriseseniorliving.com': [{
+      id: 'thread-mock-7',
+      thread_id: 'thread-mock-7',
+      subject: 'Senior Living Facility Acquisition',
+      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(),
+      snippet: 'Great news - the seller accepted our offer! Now we need to move quickly on the financing.',
+      from: 'Rachel Adams <rachel@sunriseseniorliving.com>',
+      messageCount: 1,
+    }],
+    'sophia@luxestays.co': [{
+      id: 'thread-mock-8',
+      thread_id: 'thread-mock-8',
+      subject: 'Boutique Hotel Expansion Plans',
+      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
+      snippet: 'We are looking to add 40 more rooms to our property in Napa.',
+      from: 'Sophia Laurent <sophia@luxestays.co>',
+      messageCount: 1,
+    }],
+    'afoster@greenleafprops.com': [{
+      id: 'thread-mock-9',
+      thread_id: 'thread-mock-9',
+      subject: 'Commercial Property Portfolio Review',
+      last_message_date: '2026-01-10T14:30:00.000Z',
+      snippet: 'Can we schedule a call to review our portfolio? We have 5 properties that may need refinancing.',
+      from: 'Andrew Foster <afoster@greenleafprops.com>',
+      messageCount: 1,
+    }],
+    'ewang@sunrisehealthcare.com': [{
+      id: 'thread-mock-10',
+      thread_id: 'thread-mock-10',
+      subject: 'Healthcare Expansion Financing Inquiry',
+      last_message_date: '2026-01-10T09:15:00.000Z',
+      snippet: 'Sunrise Healthcare is planning to open a new urgent care center.',
+      from: 'Emily Wang <ewang@sunrisehealthcare.com>',
+      messageCount: 1,
+    }],
+  }), []);
+
+  // Combine database threads with Gmail emails (or mock data)
   const allEmailThreads = useMemo(() => {
     // Group Gmail emails by thread
     const threadMap = new Map<string, any>();
+    
+    // First, add mock threads for matching lead emails
+    leadEmailAddresses.forEach(email => {
+      const mockThreads = mockEmailThreadsData[email];
+      if (mockThreads) {
+        mockThreads.forEach(thread => {
+          if (!threadMap.has(thread.thread_id)) {
+            threadMap.set(thread.thread_id, thread);
+          }
+        });
+      }
+    });
     
     gmailEmails.forEach((email: any) => {
       if (!threadMap.has(email.threadId)) {
@@ -557,7 +663,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     return Array.from(threadMap.values()).sort((a, b) => 
       new Date(b.last_message_date || 0).getTime() - new Date(a.last_message_date || 0).getTime()
     );
-  }, [gmailEmails, dbEmailThreads]);
+  }, [gmailEmails, dbEmailThreads, leadEmailAddresses, mockEmailThreadsData]);
 
   // Mutations
   const updateLeadStatus = useMutation({
