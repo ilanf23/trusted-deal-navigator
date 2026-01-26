@@ -237,10 +237,12 @@ export const TaskTimelineView = ({
       {viewMode !== 'day' && (
         <div className="divide-y divide-muted-foreground/5">
           {Object.entries(groupedByAssignee).map(([assignee, assigneeTasks]) => {
-            // Dynamic sizing based on view mode
-            const taskHeight = viewMode === 'month' ? 84 : 56; // 3x and 2x of base 28px
-            const taskSpacing = viewMode === 'month' ? 92 : 64;
-            const rowMinHeight = viewMode === 'month' ? 120 : 90;
+            // Task sizing stays constant
+            const taskHeight = 28;
+            const taskSpacing = 36;
+            // Dynamic row sizing based on view mode (2x for week, 3x for month)
+            const baseRowHeight = 90;
+            const rowMinHeight = viewMode === 'month' ? baseRowHeight * 3 : baseRowHeight * 2;
             
             return (
               <div key={assignee} className="flex" style={{ minHeight: `${rowMinHeight}px` }}>
