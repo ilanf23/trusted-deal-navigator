@@ -680,6 +680,7 @@ export type Database = {
           is_completed: boolean
           lead_id: string | null
           priority: string | null
+          source: string | null
           status: string | null
           tags: string[] | null
           title: string
@@ -696,6 +697,7 @@ export type Database = {
           is_completed?: boolean
           lead_id?: string | null
           priority?: string | null
+          source?: string | null
           status?: string | null
           tags?: string[] | null
           title: string
@@ -712,6 +714,7 @@ export type Database = {
           is_completed?: boolean
           lead_id?: string | null
           priority?: string | null
+          source?: string | null
           status?: string | null
           tags?: string[] | null
           title?: string
