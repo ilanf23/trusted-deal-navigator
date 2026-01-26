@@ -46,6 +46,7 @@ import WendysPage from "./pages/admin/WendysPage";
 import BradsPage from "./pages/admin/BradsPage";
 import AdamsPage from "./pages/admin/AdamsPage";
 import IlansPage from "./pages/admin/IlansPage";
+import TeamPerformance from "./pages/admin/TeamPerformance";
 import IlansGmail from "./pages/admin/IlansGmail";
 import BugTesting from "./pages/admin/BugTesting";
 import BugReporting from "./pages/admin/BugReporting";
@@ -84,6 +85,7 @@ const App = () => (
               <Route path="/ratewatch/:token" element={<PublicLayout><RateWatchQuestionnaire /></PublicLayout>} />
               {/* Admin Routes */}
               <Route path="/admin" element={<ProtectedRoute requireAdmin><SuperAdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin/team-performance" element={<ProtectedRoute requireAdmin><TeamPerformance /></ProtectedRoute>} />
               <Route path="/admin/leads" element={<ProtectedRoute requireAdmin><AdminLeads /></ProtectedRoute>} />
               <Route path="/admin/crm" element={<ProtectedRoute requireAdmin><CRMBoard /></ProtectedRoute>} />
               <Route path="/admin/clients" element={<ProtectedRoute requireAdmin><AdminClients /></ProtectedRoute>} />
@@ -123,7 +125,8 @@ const App = () => (
               {/* Founder/Admin Routes (Brad, Adam, Ilan) */}
               <Route path="/admin/brad" element={<EmployeeRoute employeeName="Brad"><BradsPage /></EmployeeRoute>} />
               <Route path="/admin/adam" element={<EmployeeRoute employeeName="Adam"><AdamsPage /></EmployeeRoute>} />
-              <Route path="/admin/ilan" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
+              <Route path="/admin/ilan" element={<EmployeeRoute employeeName="Ilan"><TeamPerformance /></EmployeeRoute>} />
+              <Route path="/admin/ilan/dev" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
               <Route path="/admin/ilan/bugs" element={<EmployeeRoute employeeName="Ilan"><BugTesting /></EmployeeRoute>} />
               <Route path="/admin/ilan/gmail" element={<EmployeeRoute employeeName="Ilan"><IlansGmail /></EmployeeRoute>} />
               <Route path="/admin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
