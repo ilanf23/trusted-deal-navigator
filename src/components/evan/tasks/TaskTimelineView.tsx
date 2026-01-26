@@ -236,61 +236,71 @@ export const TaskTimelineView = ({
       {/* Timeline rows - Week/Month view */}
       {viewMode !== 'day' && (
         <div className="divide-y divide-muted-foreground/5">
-          {Object.entries(groupedByAssignee).map(([assignee, assigneeTasks]) => (
-            <div key={assignee} className="flex min-h-[70px]">
-              <div className="w-40 flex-shrink-0 px-4 py-3 flex items-center gap-3">
-                <Avatar className="h-7 w-7 ring-2 ring-background">
-                  <AvatarFallback className="text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
-                    {assignee.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="font-medium text-sm truncate">{assignee}</span>
-              </div>
-              <div className="flex-1 relative overflow-hidden">
-                {/* Grid lines */}
-                <div className="absolute inset-0 flex">
-                  {days.map((day, idx) => {
-                    const isWeekendDay = isWeekend(day);
-                    const isTodayDate = isToday(day);
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex-1 border-l border-muted-foreground/5 ${
-                          isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/20' : ''
-                        }`}
-                      />
-                    );
-                  })}
+          {Object.entries(groupedByAssignee).map(([assignee, assigneeTasks]) => {
+            // Dynamic sizing based on view mode
+            const taskHeight = viewMode === 'month' ? 84 : 56; // 3x and 2x of base 28px
+            const taskSpacing = viewMode === 'month' ? 92 : 64;
+            const rowMinHeight = viewMode === 'month' ? 120 : 90;
+            
+            return (
+              <div key={assignee} className="flex" style={{ minHeight: `${rowMinHeight}px` }}>
+                <div className="w-40 flex-shrink-0 px-4 py-3 flex items-center gap-3">
+                  <Avatar className="h-7 w-7 ring-2 ring-background">
+                    <AvatarFallback className="text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
+                      {assignee.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium text-sm truncate">{assignee}</span>
                 </div>
-                
-                {/* Tasks */}
-                <div className="relative py-3 px-1">
-                  {assigneeTasks.map((task, taskIdx) => {
-                    const pos = getTaskPosition(task);
-                    if (!pos) return null;
-                    
-                    return (
-                      <div
-                        key={task.id}
-                        className="absolute h-7 rounded-lg text-xs text-white px-2 truncate cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg flex items-center font-medium"
-                        style={{
-                          left: pos.left,
-                          width: `calc(${pos.width} - 4px)`,
-                          top: `${taskIdx * 32 + 8}px`,
-                          backgroundColor: statusConfig[task.status || 'todo']?.color,
-                          minWidth: viewMode === 'month' ? '20px' : '60px',
-                        }}
-                        onClick={() => onOpenDetail(task)}
-                        title={task.title}
-                      >
-                        {viewMode !== 'month' && task.title}
-                      </div>
-                    );
-                  })}
+                <div className="flex-1 relative overflow-hidden">
+                  {/* Grid lines */}
+                  <div className="absolute inset-0 flex">
+                    {days.map((day, idx) => {
+                      const isWeekendDay = isWeekend(day);
+                      const isTodayDate = isToday(day);
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex-1 border-l border-muted-foreground/5 ${
+                            isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/20' : ''
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Tasks */}
+                  <div className="relative py-3 px-1">
+                    {assigneeTasks.map((task, taskIdx) => {
+                      const pos = getTaskPosition(task);
+                      if (!pos) return null;
+                      
+                      return (
+                        <div
+                          key={task.id}
+                          className={`absolute rounded-xl text-white px-3 truncate cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg flex items-center font-medium ${
+                            viewMode === 'month' ? 'text-sm' : 'text-xs'
+                          }`}
+                          style={{
+                            left: pos.left,
+                            width: `calc(${pos.width} - 4px)`,
+                            height: `${taskHeight}px`,
+                            top: `${taskIdx * taskSpacing + 8}px`,
+                            backgroundColor: statusConfig[task.status || 'todo']?.color,
+                            minWidth: viewMode === 'month' ? '24px' : '60px',
+                          }}
+                          onClick={() => onOpenDetail(task)}
+                          title={task.title}
+                        >
+                          {viewMode !== 'month' && task.title}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           
           {Object.keys(groupedByAssignee).length === 0 && (
             <div className="p-12 text-center text-muted-foreground">
