@@ -26,13 +26,13 @@ export const TaskTimelineView = ({
   const getViewConfig = () => {
     switch (viewMode) {
       case 'day':
-        return { daysToShow: 7, shiftAmount: 7, label: 'Day' };
+        return { daysToShow: 1, shiftAmount: 1 };
       case 'week':
-        return { daysToShow: 28, shiftAmount: 7, label: 'Week' };
+        return { daysToShow: 7, shiftAmount: 7 };
       case 'month':
-        return { daysToShow: 90, shiftAmount: 30, label: 'Month' };
+        return { daysToShow: 30, shiftAmount: 30 };
       default:
-        return { daysToShow: 28, shiftAmount: 7, label: 'Week' };
+        return { daysToShow: 7, shiftAmount: 7 };
     }
   };
 
@@ -151,7 +151,10 @@ export const TaskTimelineView = ({
             <ChevronRight className="h-4 w-4" />
           </Button>
           <span className="font-medium text-sm ml-2">
-            {format(startDate, 'MMM d')} – {format(addDays(startDate, daysToShow - 1), 'MMM d, yyyy')}
+            {viewMode === 'day' 
+              ? format(startDate, 'EEEE, MMM d, yyyy')
+              : `${format(startDate, 'MMM d')} – ${format(addDays(startDate, daysToShow - 1), 'MMM d, yyyy')}`
+            }
           </span>
         </div>
 
@@ -173,82 +176,129 @@ export const TaskTimelineView = ({
         </div>
       </div>
 
-      {/* Timeline header */}
-      <div className="flex border-b border-muted-foreground/10">
-        <div className="w-40 flex-shrink-0 px-4 py-3 font-medium text-xs text-muted-foreground uppercase tracking-wider">
-          Assignee
-        </div>
-        <div className="flex-1 relative overflow-hidden">
-          <div className="flex">
-            {days.map((day, idx) => renderDayHeader(day, idx))}
+      {/* Timeline header - hide for day view */}
+      {viewMode !== 'day' && (
+        <div className="flex border-b border-muted-foreground/10">
+          <div className="w-40 flex-shrink-0 px-4 py-3 font-medium text-xs text-muted-foreground uppercase tracking-wider">
+            Assignee
+          </div>
+          <div className="flex-1 relative overflow-hidden">
+            <div className="flex">
+              {days.map((day, idx) => renderDayHeader(day, idx))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Timeline rows */}
-      <div className="divide-y divide-muted-foreground/5">
-        {Object.entries(groupedByAssignee).map(([assignee, assigneeTasks]) => (
-          <div key={assignee} className="flex min-h-[70px]">
-            <div className="w-40 flex-shrink-0 px-4 py-3 flex items-center gap-3">
-              <Avatar className="h-7 w-7 ring-2 ring-background">
-                <AvatarFallback className="text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
-                  {assignee.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="font-medium text-sm truncate">{assignee}</span>
+      {/* Day View - List format */}
+      {viewMode === 'day' && (
+        <div className="divide-y divide-muted-foreground/5">
+          {tasksWithDates.filter(task => {
+            const pos = getTaskPosition(task);
+            return pos !== null;
+          }).length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground">
+              No tasks scheduled for this day
             </div>
-            <div className="flex-1 relative overflow-hidden">
-              {/* Grid lines */}
-              <div className="absolute inset-0 flex">
-                {days.map((day, idx) => {
-                  const isWeekendDay = isWeekend(day);
-                  const isTodayDate = isToday(day);
-                  return (
-                    <div
-                      key={idx}
-                      className={`flex-1 border-l border-muted-foreground/5 ${
-                        isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/20' : ''
-                      }`}
-                    />
-                  );
-                })}
+          ) : (
+            tasksWithDates.filter(task => getTaskPosition(task) !== null).map(task => (
+              <div
+                key={task.id}
+                className="flex items-center gap-4 p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                onClick={() => onOpenDetail(task)}
+              >
+                <div 
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: statusConfig[task.status || 'todo']?.color }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{task.title}</p>
+                  {task.description && (
+                    <p className="text-xs text-muted-foreground truncate">{task.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className={`text-xs px-2 py-1 rounded-full ${statusConfig[task.status || 'todo']?.bg} ${statusConfig[task.status || 'todo']?.text}`}>
+                    {statusConfig[task.status || 'todo']?.label}
+                  </span>
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="text-[9px] bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+                      {(task.assignee_name || 'U').substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
               </div>
-              
-              {/* Tasks */}
-              <div className="relative py-3 px-1">
-                {assigneeTasks.map((task, taskIdx) => {
-                  const pos = getTaskPosition(task);
-                  if (!pos) return null;
-                  
-                  return (
-                    <div
-                      key={task.id}
-                      className="absolute h-7 rounded-lg text-xs text-white px-2 truncate cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg flex items-center font-medium"
-                      style={{
-                        left: pos.left,
-                        width: `calc(${pos.width} - 4px)`,
-                        top: `${taskIdx * 32 + 8}px`,
-                        backgroundColor: statusConfig[task.status || 'todo']?.color,
-                        minWidth: viewMode === 'month' ? '20px' : '60px',
-                      }}
-                      onClick={() => onOpenDetail(task)}
-                      title={task.title}
-                    >
-                      {viewMode !== 'month' && task.title}
-                    </div>
-                  );
-                })}
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Timeline rows - Week/Month view */}
+      {viewMode !== 'day' && (
+        <div className="divide-y divide-muted-foreground/5">
+          {Object.entries(groupedByAssignee).map(([assignee, assigneeTasks]) => (
+            <div key={assignee} className="flex min-h-[70px]">
+              <div className="w-40 flex-shrink-0 px-4 py-3 flex items-center gap-3">
+                <Avatar className="h-7 w-7 ring-2 ring-background">
+                  <AvatarFallback className="text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
+                    {assignee.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-sm truncate">{assignee}</span>
+              </div>
+              <div className="flex-1 relative overflow-hidden">
+                {/* Grid lines */}
+                <div className="absolute inset-0 flex">
+                  {days.map((day, idx) => {
+                    const isWeekendDay = isWeekend(day);
+                    const isTodayDate = isToday(day);
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex-1 border-l border-muted-foreground/5 ${
+                          isTodayDate ? 'bg-foreground/5' : isWeekendDay ? 'bg-muted/20' : ''
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+                
+                {/* Tasks */}
+                <div className="relative py-3 px-1">
+                  {assigneeTasks.map((task, taskIdx) => {
+                    const pos = getTaskPosition(task);
+                    if (!pos) return null;
+                    
+                    return (
+                      <div
+                        key={task.id}
+                        className="absolute h-7 rounded-lg text-xs text-white px-2 truncate cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg flex items-center font-medium"
+                        style={{
+                          left: pos.left,
+                          width: `calc(${pos.width} - 4px)`,
+                          top: `${taskIdx * 32 + 8}px`,
+                          backgroundColor: statusConfig[task.status || 'todo']?.color,
+                          minWidth: viewMode === 'month' ? '20px' : '60px',
+                        }}
+                        onClick={() => onOpenDetail(task)}
+                        title={task.title}
+                      >
+                        {viewMode !== 'month' && task.title}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-        
-        {Object.keys(groupedByAssignee).length === 0 && (
-          <div className="p-12 text-center text-muted-foreground">
-            No tasks with due dates to display
-          </div>
-        )}
-      </div>
+          ))}
+          
+          {Object.keys(groupedByAssignee).length === 0 && (
+            <div className="p-12 text-center text-muted-foreground">
+              No tasks with due dates to display
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
