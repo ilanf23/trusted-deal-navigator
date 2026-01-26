@@ -39,8 +39,11 @@ import {
   ArrowUpRight,
   ArrowRight,
   Activity,
+  Star,
+  PhoneIncoming,
+  PhoneOutgoing,
 } from 'lucide-react';
-import { startOfYear, startOfMonth, format, eachMonthOfInterval, differenceInDays } from 'date-fns';
+import { startOfYear, startOfMonth, format, eachMonthOfInterval, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { Link } from 'react-router-dom';
 
 type TimePeriod = 'mtd' | 'ytd';
@@ -176,10 +179,40 @@ const TeamPerformance = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_communications')
-        .select('id, communication_type, created_at, duration_seconds')
-        .gte('created_at', periodStart.toISOString());
+        .select('id, communication_type, created_at, duration_seconds, direction, phone_number, transcript, lead_id')
+        .gte('created_at', periodStart.toISOString())
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Fetch call ratings
+  const { data: callRatingsData } = useQuery({
+    queryKey: ['evan-call-ratings', timePeriod],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('call_rating_notifications')
+        .select('*')
+        .gte('created_at', periodStart.toISOString())
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch leads for mapping to calls
+  const { data: allLeadsMap } = useQuery({
+    queryKey: ['leads-map-for-calls'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, name, company_name');
+      if (error) throw error;
+      return data?.reduce((acc, lead) => {
+        acc[lead.id] = lead;
+        return acc;
+      }, {} as Record<string, { id: string; name: string; company_name: string | null }>);
     },
   });
 
@@ -242,6 +275,11 @@ const TeamPerformance = () => {
     const tasksCompleted = tasksData?.filter(t => t.is_completed).length || 0;
     const tasksPending = tasksData?.filter(t => !t.is_completed).length || 0;
 
+    // Call ratings stats
+    const avgRating = callRatingsData && callRatingsData.length > 0
+      ? callRatingsData.reduce((sum, r) => sum + r.call_rating, 0) / callRatingsData.length
+      : 0;
+
     return {
       totalRevenue,
       totalDeals,
@@ -255,8 +293,10 @@ const TeamPerformance = () => {
       tasksCompleted,
       tasksPending,
       avgCallDuration,
+      avgCallRating: avgRating,
+      ratedCallsCount: callRatingsData?.length || 0,
     };
-  }, [leadsData, pipelineData, fundedLeads, communicationsData, tasksData, now]);
+  }, [leadsData, pipelineData, fundedLeads, communicationsData, tasksData, callRatingsData, now]);
 
   // Monthly revenue chart data
   const monthlyRevenueData = useMemo(() => {
@@ -375,7 +415,7 @@ const TeamPerformance = () => {
         {/* Employee Selector Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
-            { id: 'evan', name: 'Evan', role: 'Analyst', active: true },
+            { id: 'evan', name: 'Evan', role: 'Sales Rep', active: true },
             { id: 'brad', name: 'Brad', role: 'Owner', active: false },
             { id: 'adam', name: 'Adam', role: 'Owner', active: false },
             { id: 'maura', name: 'Maura', role: 'Processor', active: false },
@@ -626,7 +666,7 @@ const TeamPerformance = () => {
             </div>
 
             {/* Activity Stats */}
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="pt-5">
                   <div className="flex items-center gap-4">
@@ -642,6 +682,26 @@ const TeamPerformance = () => {
                         ~{evanMetrics.avgCallDuration} min avg
                       </Badge>
                     )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-yellow-500">
+                <CardContent className="pt-5">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-full bg-yellow-500/10">
+                      <Star className="h-5 w-5 text-yellow-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-2xl font-bold">
+                        {evanMetrics.avgCallRating > 0 ? evanMetrics.avgCallRating.toFixed(1) : 'N/A'}
+                        <span className="text-sm font-normal text-muted-foreground">/10</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground">Avg Call Rating</p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {evanMetrics.ratedCallsCount} rated
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -676,6 +736,170 @@ const TeamPerformance = () => {
                       </Badge>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Call Ratings Summary & Call History */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Call Ratings Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    Call Ratings Summary
+                  </CardTitle>
+                  <CardDescription>AI-analyzed call performance</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {callRatingsData && callRatingsData.length > 0 ? (
+                    <div className="space-y-4">
+                      {/* Rating Distribution */}
+                      <div className="grid grid-cols-5 gap-2">
+                        {[
+                          { label: '9-10', color: 'bg-green-500', range: [9, 10] },
+                          { label: '7-8', color: 'bg-emerald-400', range: [7, 8] },
+                          { label: '5-6', color: 'bg-yellow-500', range: [5, 6] },
+                          { label: '3-4', color: 'bg-orange-500', range: [3, 4] },
+                          { label: '1-2', color: 'bg-red-500', range: [1, 2] },
+                        ].map((bucket) => {
+                          const count = callRatingsData.filter(
+                            (r) => r.call_rating >= bucket.range[0] && r.call_rating <= bucket.range[1]
+                          ).length;
+                          return (
+                            <div key={bucket.label} className="text-center">
+                              <div className={`h-16 rounded-lg ${bucket.color} opacity-${count > 0 ? '100' : '20'} flex items-end justify-center pb-1`}>
+                                <span className="text-white font-bold text-lg">{count}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{bucket.label}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Recent Rated Calls */}
+                      <div className="space-y-2 mt-4">
+                        <p className="text-sm font-medium">Recent Rated Calls</p>
+                        <ScrollArea className="h-[160px]">
+                          <div className="space-y-2">
+                            {callRatingsData.slice(0, 5).map((rating) => (
+                              <div
+                                key={rating.id}
+                                className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                                    rating.call_rating >= 8 ? 'bg-green-500' :
+                                    rating.call_rating >= 6 ? 'bg-yellow-500' :
+                                    rating.call_rating >= 4 ? 'bg-orange-500' : 'bg-red-500'
+                                  }`}>
+                                    {rating.call_rating}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">{rating.lead_name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatDistanceToNow(new Date(rating.call_date), { addSuffix: true })}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge variant={rating.call_direction === 'inbound' ? 'outline' : 'secondary'} className="text-[10px]">
+                                  {rating.call_direction === 'inbound' ? 'Inbound' : 'Outbound'}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                      <Star className="h-8 w-8 mb-2 opacity-30" />
+                      <p className="text-sm">No rated calls yet</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Call History */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-primary" />
+                    Call History
+                  </CardTitle>
+                  <CardDescription>All calls {periodLabel.toLowerCase()}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {communicationsData && communicationsData.filter(c => c.communication_type === 'call').length > 0 ? (
+                    <ScrollArea className="h-[280px]">
+                      <div className="space-y-2">
+                        {communicationsData
+                          .filter((c) => c.communication_type === 'call')
+                          .slice(0, 15)
+                          .map((call) => {
+                            const leadInfo = call.lead_id && allLeadsMap ? allLeadsMap[call.lead_id] : null;
+                            const rating = callRatingsData?.find(
+                              (r) => r.communication_id === call.id
+                            );
+
+                            return (
+                              <div
+                                key={call.id}
+                                className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`p-2 rounded-full ${
+                                    call.direction === 'inbound' ? 'bg-blue-500/10' : 'bg-green-500/10'
+                                  }`}>
+                                    {call.direction === 'inbound' ? (
+                                      <PhoneIncoming className="h-4 w-4 text-blue-500" />
+                                    ) : (
+                                      <PhoneOutgoing className="h-4 w-4 text-green-500" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">
+                                      {leadInfo?.name || call.phone_number || 'Unknown'}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-xs text-muted-foreground">
+                                        {formatDistanceToNow(new Date(call.created_at), { addSuffix: true })}
+                                      </p>
+                                      {call.duration_seconds && call.duration_seconds > 0 && (
+                                        <span className="text-xs text-muted-foreground">
+                                          • {Math.floor(call.duration_seconds / 60)}:{(call.duration_seconds % 60).toString().padStart(2, '0')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {rating && (
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                                      rating.call_rating >= 8 ? 'bg-green-500' :
+                                      rating.call_rating >= 6 ? 'bg-yellow-500' :
+                                      rating.call_rating >= 4 ? 'bg-orange-500' : 'bg-red-500'
+                                    }`}>
+                                      {rating.call_rating}
+                                    </div>
+                                  )}
+                                  {call.transcript && (
+                                    <Badge variant="outline" className="text-[10px]">
+                                      Transcript
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                      <Phone className="h-8 w-8 mb-2 opacity-30" />
+                      <p className="text-sm">No calls in this period</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
