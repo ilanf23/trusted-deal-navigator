@@ -88,7 +88,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         title: 'Dashboard',
         icon: LayoutDashboard,
         items: [
-          { title: 'Team Performance', url: '/admin/ilan', icon: Users },
           { title: 'Dev Dashboard', url: '/admin/ilan/dev', icon: Code2 },
           { title: 'Gmail', url: '/admin/ilan/gmail', icon: Mail },
           { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
@@ -118,6 +117,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         title: 'Team',
         icon: Users,
         items: [
+          { title: 'Team Performance', url: '/admin/ilan', icon: BarChart3 },
           { 
             title: 'Evan', 
             url: '/admin/ilan/team/evan', 
@@ -137,7 +137,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: LayoutDashboard,
         items: [
           { title: 'Overview', url: '/admin', icon: LayoutDashboard },
-          { title: 'Team Performance', url: '/admin/team-performance', icon: Users },
           { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
@@ -147,6 +146,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
           { title: 'Bug Reporting', url: '/admin/bug-reporting', icon: Bug },
+        ],
+      });
+
+      // Team section for owners
+      sections.push({
+        title: 'Team',
+        icon: Users,
+        items: [
+          { title: 'Team Performance', url: '/admin/team-performance', icon: BarChart3 },
         ],
       });
 
