@@ -529,7 +529,7 @@ export const EvanCalendarWidget = () => {
               key={day.toISOString()}
               onClick={() => setSelectedDay(isSelected ? null : day)}
               className={cn(
-                "min-h-[60px] p-1 border rounded-md cursor-pointer transition-colors",
+                "min-h-[72px] p-1 border rounded-md cursor-pointer transition-colors",
                 !isCurrentMonth && "opacity-40",
                 isToday(day) && "border-primary",
                 isSelected && "bg-primary/10 border-primary",
