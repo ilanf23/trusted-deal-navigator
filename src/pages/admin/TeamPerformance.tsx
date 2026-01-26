@@ -469,6 +469,9 @@ const TeamPerformance = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16 border-2 border-primary">
+                      {evanTeamMember?.avatar_url && (
+                        <AvatarImage src={evanTeamMember.avatar_url} alt="Evan" />
+                      )}
                       <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">E</AvatarFallback>
                     </Avatar>
                     <div>
