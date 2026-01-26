@@ -757,11 +757,11 @@ const TeamPerformance = () => {
                       {/* Rating Distribution */}
                       <div className="grid grid-cols-5 gap-2">
                         {[
-                          { label: '9-10', color: 'bg-green-500', range: [9, 10] },
-                          { label: '7-8', color: 'bg-emerald-400', range: [7, 8] },
-                          { label: '5-6', color: 'bg-yellow-500', range: [5, 6] },
-                          { label: '3-4', color: 'bg-orange-500', range: [3, 4] },
                           { label: '1-2', color: 'bg-red-500', range: [1, 2] },
+                          { label: '3-4', color: 'bg-orange-500', range: [3, 4] },
+                          { label: '5-6', color: 'bg-yellow-500', range: [5, 6] },
+                          { label: '7-8', color: 'bg-emerald-400', range: [7, 8] },
+                          { label: '9-10', color: 'bg-green-500', range: [9, 10] },
                         ].map((bucket) => {
                           const count = callRatingsData.filter(
                             (r) => r.call_rating >= bucket.range[0] && r.call_rating <= bucket.range[1]
