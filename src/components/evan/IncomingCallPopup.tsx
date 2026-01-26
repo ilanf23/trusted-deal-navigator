@@ -38,6 +38,7 @@ export const IncomingCallPopup = () => {
   const [callDuration, setCallDuration] = useState(0);
   const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isDeviceReady, setIsDeviceReady] = useState(false);
   const [hasNavigated, setHasNavigated] = useState(false);
   
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,6 +59,30 @@ export const IncomingCallPopup = () => {
     }
   }, [incomingCall, isConnected]);
 
+  // Start call timer - defined before initializeTwilioDevice since it's used there
+  const startCallTimer = useCallback(() => {
+    setCallDuration(0);
+    callTimerRef.current = setInterval(() => {
+      setCallDuration(prev => prev + 1);
+    }, 1000);
+  }, []);
+
+  // Handle call end - defined before initializeTwilioDevice since it's used there
+  const handleCallEnd = useCallback(() => {
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+      callTimerRef.current = null;
+    }
+    setActiveCall(null);
+    setIsConnected(false);
+    setIsMuted(false);
+    setCallDuration(0);
+    setIncomingCall(null);
+    setIsDeviceReady(false);
+    queryClient.invalidateQueries({ queryKey: ['active-calls-ringing'] });
+    queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
+  }, [queryClient]);
+
   // Initialize Twilio Device - Only for Evan
   const initializeTwilioDevice = useCallback(async () => {
     // Only Evan should initialize Twilio
@@ -66,13 +91,20 @@ export const IncomingCallPopup = () => {
       return null;
     }
     
-    if (twilioDevice) {
-      console.log('Twilio Device already initialized');
+    if (twilioDevice && isDeviceReady) {
+      console.log('Twilio Device already initialized and ready');
       return twilioDevice;
+    }
+    
+    // Prevent multiple simultaneous initialization attempts
+    if (isInitializing) {
+      console.log('Twilio Device initialization already in progress');
+      return null;
     }
     
     try {
       setIsInitializing(true);
+      setIsDeviceReady(false);
       console.log('Initializing Twilio Device...');
       
       // Get token from edge function
@@ -101,21 +133,43 @@ export const IncomingCallPopup = () => {
       const { token, identity } = await response.json();
       console.log('Got Twilio token for identity:', identity);
       
-      // Create Twilio Device
+      // Create Twilio Device with edge location for faster connection
       const device = new Device(token, {
         logLevel: 1,
         codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
+        // Enable close protection to prevent accidental disconnects
+        closeProtection: true,
       });
 
-      // Set up device event handlers
-      device.on('registered', () => {
-        console.log('Twilio Device registered and ready to receive calls');
-        toast.success('Phone ready to receive calls');
+      // Create a promise that resolves when device is registered
+      const registrationPromise = new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Device registration timed out'));
+        }, 15000); // 15 second timeout
+
+        device.on('registered', () => {
+          clearTimeout(timeout);
+          console.log('Twilio Device registered and ready to receive calls');
+          setIsDeviceReady(true);
+          toast.success('Phone ready to receive calls');
+          resolve();
+        });
+
+        device.on('registrationFailed', (error) => {
+          clearTimeout(timeout);
+          console.error('Twilio Device registration failed:', error);
+          reject(error);
+        });
       });
 
       device.on('error', (error) => {
         console.error('Twilio Device error:', error);
         toast.error(`Call error: ${error.message}`);
+      });
+
+      device.on('unregistered', () => {
+        console.log('Twilio Device unregistered');
+        setIsDeviceReady(false);
       });
 
       device.on('incoming', (call) => {
@@ -149,19 +203,23 @@ export const IncomingCallPopup = () => {
         });
       });
 
+      // Register and wait for confirmation
       await device.register();
+      await registrationPromise;
+      
       setTwilioDevice(device);
-      console.log('Twilio Device initialized successfully');
+      console.log('Twilio Device initialized and registered successfully');
       
       return device;
     } catch (error) {
       console.error('Failed to initialize Twilio Device:', error);
-      // Don't throw, just log - we'll retry on answer
+      setIsDeviceReady(false);
+      toast.error('Phone initialization failed. Please refresh the page.');
       return null;
     } finally {
       setIsInitializing(false);
     }
-  }, [twilioDevice, isEvan]);
+  }, [twilioDevice, isEvan, isInitializing, isDeviceReady, startCallTimer, handleCallEnd]);
 
   // Auto-initialize Twilio Device on mount - Only for Evan
   useEffect(() => {
@@ -169,29 +227,6 @@ export const IncomingCallPopup = () => {
       initializeTwilioDevice();
     }
   }, [initializeTwilioDevice, isEvan]);
-
-  // Start call timer
-  const startCallTimer = useCallback(() => {
-    setCallDuration(0);
-    callTimerRef.current = setInterval(() => {
-      setCallDuration(prev => prev + 1);
-    }, 1000);
-  }, []);
-
-  // Handle call end
-  const handleCallEnd = useCallback(() => {
-    if (callTimerRef.current) {
-      clearInterval(callTimerRef.current);
-      callTimerRef.current = null;
-    }
-    setActiveCall(null);
-    setIsConnected(false);
-    setIsMuted(false);
-    setCallDuration(0);
-    setIncomingCall(null);
-    queryClient.invalidateQueries({ queryKey: ['active-calls-ringing'] });
-    queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
-  }, [queryClient]);
 
   // Initial fetch for any ringing calls - Only for Evan
   const { data: activeCalls } = useQuery({
