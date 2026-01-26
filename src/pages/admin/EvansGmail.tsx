@@ -1378,16 +1378,34 @@ const EvansGmail = () => {
                                   {getNextStepSuggestion(stageName, email.snippet, lead)}
                                 </span>
                               </div>
-                              {/* Last Touch indicator */}
+                              {/* Last Touch & Loan Size indicators */}
                               {lead && (
-                                <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
-                                  <MessageSquare className="w-3 h-3 flex-shrink-0" />
-                                  <span>
-                                    Last touch: {lead.last_activity_at 
-                                      ? formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true })
-                                      : formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })
+                                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-1.5">
+                                    <MessageSquare className="w-3 h-3 flex-shrink-0" />
+                                    <span>
+                                      Last touch: {lead.last_activity_at 
+                                        ? formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true })
+                                        : formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })
+                                      }
+                                    </span>
+                                  </div>
+                                  {(() => {
+                                    const response = lead.lead_responses?.[0];
+                                    const loanAmount = Number(response?.loan_amount) || Number(response?.funding_amount) || 0;
+                                    if (loanAmount > 0) {
+                                      const formatted = loanAmount >= 1000000 
+                                        ? `$${(loanAmount / 1000000).toFixed(1)}M` 
+                                        : `$${(loanAmount / 1000).toFixed(0)}K`;
+                                      return (
+                                        <div className="flex items-center gap-1.5">
+                                          <Building className="w-3 h-3 flex-shrink-0" />
+                                          <span>Loan: {formatted}</span>
+                                        </div>
+                                      );
                                     }
-                                  </span>
+                                    return null;
+                                  })()}
                                 </div>
                               )}
                             </div>
