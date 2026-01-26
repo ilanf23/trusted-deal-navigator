@@ -953,8 +953,8 @@ const EvansCalls = () => {
             </Card>
 
             {/* Call History Card */}
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="flex flex-col" style={{ height: 'calc(100vh - 280px)' }}>
+              <CardHeader className="pb-3 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <History className="h-5 w-5 text-muted-foreground" />
                   <div>
@@ -963,8 +963,8 @@ const EvansCalls = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[300px]">
+              <CardContent className="p-0 flex-1 overflow-hidden">
+                <ScrollArea className="h-full">
                   {historyLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
