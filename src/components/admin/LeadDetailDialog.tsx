@@ -229,6 +229,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('all');
   const [expandedTranscripts, setExpandedTranscripts] = useState<Record<string, boolean>>({});
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   
   // Collapsible sections state (legacy - kept for compatibility)
   const [customColumnsOpen, setCustomColumnsOpen] = useState(true);
@@ -359,6 +360,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       setShowAddPhone(false);
       setShowAddEmail(false);
       setShowAddTag(false);
+      setSelectedThreadId(null);
     }
   }, [lead, open]);
 
@@ -606,6 +608,128 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       from: 'Emily Wang <ewang@sunrisehealthcare.com>',
       messageCount: 1,
     }],
+  }), []);
+
+  // Mock thread messages for detailed view
+  const mockThreadMessages: Record<string, Array<{ id: string; from: string; to: string; date: string; body: string; }>> = useMemo(() => ({
+    'thread-mock-1': [
+      {
+        id: 'msg-1-1',
+        from: 'Evan <evan@commerciallendingx.com>',
+        to: 'robert.martinez@capitalventures.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
+        body: `Hi Robert,
+
+Thank you for reaching out about financing for your acquisition. I'm excited to discuss the $2.5M loan opportunity for Capital Ventures.
+
+Based on our initial conversation, it sounds like you're looking to acquire a commercial property in the downtown district. Before we proceed, I wanted to gather some additional information to ensure we can structure the best possible deal for your needs.
+
+Could you please provide the following:
+
+1. Property address and current appraisal (if available)
+2. Your most recent 2 years of business tax returns
+3. Personal financial statement
+4. Executive summary of the acquisition opportunity
+
+Once I have these documents, I can start working with our lending partners to get you pre-qualified. Given current market conditions, we're seeing rates in the 7.25-7.75% range for deals of this size with strong borrower profiles.
+
+Best regards,
+Evan`,
+      },
+      {
+        id: 'msg-1-2',
+        from: 'Robert Martinez <robert.martinez@capitalventures.com>',
+        to: 'evan@commerciallendingx.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+        body: `Evan,
+
+Thanks for the quick response. Capital Ventures has been working on this acquisition for the past 6 months and we're finally in a position to move forward.
+
+I've attached the documents you requested:
+- Property appraisal (completed last month) showing a value of $3.2M
+- 2024 and 2023 business tax returns
+- My personal financial statement
+- A detailed executive summary of our expansion plans
+
+The property is located at 4500 Commerce Boulevard, which is in a prime commercial corridor. The building is currently 85% occupied with stable tenants.
+
+Our target closing date is March 15th, so we're on a somewhat tight timeline. Is that feasible from your perspective?
+
+Thanks,
+Robert Martinez
+CEO, Capital Ventures LLC`,
+      },
+      {
+        id: 'msg-1-3',
+        from: 'Evan <evan@commerciallendingx.com>',
+        to: 'robert.martinez@capitalventures.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
+        body: `Robert,
+
+Excellent - I've reviewed all the documents you sent and I'm impressed with the quality of this acquisition opportunity. The property fundamentals look strong and your business financials are well-organized.
+
+I spoke with three of our lending partners this morning and have some promising initial feedback:
+
+LENDER A (Regional Bank):
+- Rate: 7.35% fixed for 5 years
+- Amortization: 25 years
+- Timeline: 45 days to close
+
+LENDER B (Credit Union):
+- Rate: 7.15% fixed for 7 years
+- Timeline: 60 days to close
+
+Given your March 15th target, Lender A seems like the best fit. Thursday at 2 PM works for a call.
+
+Talk soon,
+Evan`,
+      },
+      {
+        id: 'msg-1-4',
+        from: 'Robert Martinez <robert.martinez@capitalventures.com>',
+        to: 'evan@commerciallendingx.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+        body: `Evan,
+
+Great call yesterday! After discussing with my partners, we've decided to move forward with Lender A.
+
+The 7.35% rate with the 5-year fixed term aligns well with our business plan. A couple of follow-up items:
+
+1. Can you confirm if the renovation costs ($500K) can be included in the loan?
+2. Is there any flexibility on the prepayment penalty?
+
+Also, we have another acquisition opportunity in the pipeline - a retail strip center about 2 miles from this property ($1.8M). Once we close this first deal, I'd love to discuss that one as well.
+
+Thanks,
+Robert`,
+      },
+      {
+        id: 'msg-1-5',
+        from: 'Evan <evan@commerciallendingx.com>',
+        to: 'robert.martinez@capitalventures.com',
+        date: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+        body: `Robert,
+
+Great news on all fronts! I'm excited to get this deal across the finish line for you.
+
+Regarding your questions:
+
+1. RENOVATION FINANCING: Yes, Lender A can include the renovation costs. Total loan would be $3M with renovation portion held in escrow.
+
+2. PREPAYMENT: Best they can do is 3-2-1-0, meaning no penalty in year 4 or later.
+
+For the formal application, please send me:
+- Signed LOI or purchase agreement
+- Updated rent roll (dated within 30 days)
+- 3 months of property operating statements
+
+And definitely let's talk about the retail strip center! Send me the details when you're ready.
+
+Best,
+Evan
+Commercial Lending X`,
+      },
+    ],
   }), []);
 
   // Combine database threads with Gmail emails (or mock data)
@@ -1421,17 +1545,90 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                         <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                         <span className="ml-2 text-slate-400">Loading emails...</span>
                       </div>
+                    ) : selectedThreadId ? (
+                      // Thread Detail View
+                      <div className="flex flex-col h-full">
+                        {/* Thread Header */}
+                        <div className="flex items-center gap-2 p-3 border-b bg-slate-50">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setSelectedThreadId(null)}
+                            className="gap-1"
+                          >
+                            <ChevronDown className="w-4 h-4 rotate-90" />
+                            Back
+                          </Button>
+                          <span className="text-sm font-medium truncate">
+                            {allEmailThreads.find(t => t.thread_id === selectedThreadId)?.subject || 'Email Thread'}
+                          </span>
+                        </div>
+                        {/* Thread Messages */}
+                        <ScrollArea className="flex-1 max-h-[400px]">
+                          <div className="p-4 space-y-4">
+                            {mockThreadMessages[selectedThreadId] ? (
+                              mockThreadMessages[selectedThreadId].map((msg, index) => {
+                                const isFromEvan = msg.from.toLowerCase().includes('evan');
+                                const senderName = msg.from.match(/^([^<]+)/)?.[1]?.trim() || msg.from.split('@')[0];
+                                return (
+                                  <div 
+                                    key={msg.id} 
+                                    className={cn(
+                                      "rounded-lg border p-3",
+                                      isFromEvan 
+                                        ? "bg-blue-50/50 border-blue-200" 
+                                        : "bg-white border-slate-200"
+                                    )}
+                                  >
+                                    <div className="flex items-start gap-2 mb-2">
+                                      <Avatar className="w-8 h-8 border flex-shrink-0">
+                                        <AvatarFallback className={cn(
+                                          "text-xs font-semibold",
+                                          isFromEvan ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"
+                                        )}>
+                                          {senderName.charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <p className="text-sm font-medium">{senderName}</p>
+                                          <p className="text-xs text-slate-400 flex-shrink-0">
+                                            {format(new Date(msg.date), 'MMM d, h:mm a')}
+                                          </p>
+                                        </div>
+                                        <p className="text-xs text-slate-500">To: {msg.to}</p>
+                                      </div>
+                                    </div>
+                                    <div className="text-sm whitespace-pre-wrap leading-relaxed pl-10">
+                                      {msg.body}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              // Fallback for threads without detailed messages
+                              <div className="p-4 text-center text-slate-400">
+                                <Mail className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">
+                                  {allEmailThreads.find(t => t.thread_id === selectedThreadId)?.snippet || 'No message content available'}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
                     ) : allEmailThreads.length === 0 ? (
                       <div className="text-center py-12 text-slate-400">
                         <Mail className="w-12 h-12 mx-auto mb-3 opacity-50" />
                         <p>No emails yet</p>
                       </div>
                     ) : (
+                      // Thread List View
                       <div className="divide-y">
                         {allEmailThreads.map((thread: any) => (
-                          <a
+                          <div
                             key={thread.id}
-                            href={`/team/evan/gmail?thread=${thread.thread_id}`}
+                            onClick={() => setSelectedThreadId(thread.thread_id)}
                             className="flex items-start gap-3 p-3 hover:bg-slate-50 cursor-pointer group transition-colors"
                           >
                             <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
@@ -1458,7 +1655,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                                 {thread.waiting_on}
                               </Badge>
                             )}
-                          </a>
+                          </div>
                         ))}
                       </div>
                     )}
