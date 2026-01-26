@@ -91,18 +91,12 @@ interface Appointment {
   sync_status: string | null;
 }
 
-type ViewMode = 'month' | 'week' | 'agenda';
-type TimelinePreset = 'today' | 'week' | 'month' | 'custom';
+type ViewMode = 'day' | 'week' | 'month' | 'agenda';
 
 export const EvanCalendarWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
-  const [timelinePreset, setTimelinePreset] = useState<TimelinePreset>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
-    to: undefined,
-  });
   const [newAppointment, setNewAppointment] = useState({
     title: '',
     start_time: '',
@@ -203,27 +197,22 @@ export const EvanCalendarWidget = () => {
     };
   }, [checkCalendarStatus, queryClient]);
 
-  // Calculate date range based on preset or custom range
+  // Calculate date range based on viewMode
   const getDateRange = useCallback(() => {
-    const today = startOfDay(new Date());
-    
-    if (timelinePreset === 'custom' && customDateRange.from && customDateRange.to) {
-      return { start: startOfDay(customDateRange.from), end: endOfDay(customDateRange.to) };
-    }
-
-    switch (timelinePreset) {
-      case 'today':
-        return { start: today, end: endOfDay(today) };
+    switch (viewMode) {
+      case 'day':
+        return { start: startOfDay(currentDate), end: endOfDay(currentDate) };
       case 'week':
-        return { start: today, end: endOfDay(addDays(today, 7)) };
+        return { start: startOfWeek(currentDate), end: endOfWeek(currentDate) };
       case 'month':
+      case 'agenda':
       default:
         return { start: startOfMonth(currentDate), end: endOfMonth(currentDate) };
     }
-  }, [timelinePreset, currentDate, customDateRange]);
+  }, [viewMode, currentDate]);
 
   const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ['evan-appointments', timelinePreset, currentDate.toISOString(), customDateRange.from?.toISOString(), customDateRange.to?.toISOString()],
+    queryKey: ['evan-appointments', viewMode, currentDate.toISOString()],
     queryFn: async () => {
       const { start, end } = getDateRange();
       
@@ -473,18 +462,34 @@ export const EvanCalendarWidget = () => {
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   const navigatePrev = () => {
-    if (viewMode === 'month') {
-      setCurrentDate(subMonths(currentDate, 1));
-    } else {
-      setCurrentDate(addDays(currentDate, -7));
+    switch (viewMode) {
+      case 'day':
+        setCurrentDate(addDays(currentDate, -1));
+        break;
+      case 'week':
+        setCurrentDate(addDays(currentDate, -7));
+        break;
+      case 'month':
+      case 'agenda':
+      default:
+        setCurrentDate(subMonths(currentDate, 1));
+        break;
     }
   };
 
   const navigateNext = () => {
-    if (viewMode === 'month') {
-      setCurrentDate(addMonths(currentDate, 1));
-    } else {
-      setCurrentDate(addDays(currentDate, 7));
+    switch (viewMode) {
+      case 'day':
+        setCurrentDate(addDays(currentDate, 1));
+        break;
+      case 'week':
+        setCurrentDate(addDays(currentDate, 7));
+        break;
+      case 'month':
+      case 'agenda':
+      default:
+        setCurrentDate(addMonths(currentDate, 1));
+        break;
     }
   };
 
@@ -638,6 +643,75 @@ export const EvanCalendarWidget = () => {
       </div>
     </div>
   );
+
+  // Render Day View
+  const renderDayView = () => {
+    const dayAppointments = getAppointmentsForDay(currentDate);
+    
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-4 border-b">
+          <div className={cn(
+            "text-3xl font-bold",
+            isToday(currentDate) && "text-primary"
+          )}>
+            {format(currentDate, 'd')}
+          </div>
+          <div className="text-lg font-medium text-muted-foreground">
+            {format(currentDate, 'EEEE')}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {format(currentDate, 'MMMM yyyy')}
+          </div>
+        </div>
+        
+        {dayAppointments.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">
+            No appointments scheduled for this day
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {dayAppointments.map(apt => (
+              <div
+                key={apt.id}
+                className="flex items-center gap-3 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  {getTypeIcon(apt.appointment_type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{apt.title}</p>
+                    {apt.google_event_id && (
+                      <Badge variant="secondary" className="text-xs h-5 px-1.5">
+                        <Check className="h-3 w-3" />
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {format(parseISO(apt.start_time), 'h:mm a')}
+                    {apt.end_time && ` - ${format(parseISO(apt.end_time), 'h:mm a')}`}
+                  </p>
+                  {apt.description && (
+                    <p className="text-sm text-muted-foreground mt-1">{apt.description}</p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => deleteAppointment.mutate(apt.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render Agenda View
   const renderAgendaView = () => (
@@ -841,27 +915,27 @@ export const EvanCalendarWidget = () => {
           <div className="flex bg-muted rounded-lg p-0.5">
             <Button
               size="sm"
-              variant={viewMode === 'month' ? 'default' : 'ghost'}
-              className="h-7 px-2"
-              onClick={() => setViewMode('month')}
+              variant={viewMode === 'day' ? 'default' : 'ghost'}
+              className="h-7 px-3 text-xs"
+              onClick={() => setViewMode('day')}
             >
-              <Grid3X3 className="h-4 w-4" />
+              Today
             </Button>
             <Button
               size="sm"
               variant={viewMode === 'week' ? 'default' : 'ghost'}
-              className="h-7 px-2"
+              className="h-7 px-3 text-xs"
               onClick={() => setViewMode('week')}
             >
-              <CalendarDays className="h-4 w-4" />
+              Week
             </Button>
             <Button
               size="sm"
-              variant={viewMode === 'agenda' ? 'default' : 'ghost'}
-              className="h-7 px-2"
-              onClick={() => setViewMode('agenda')}
+              variant={viewMode === 'month' ? 'default' : 'ghost'}
+              className="h-7 px-3 text-xs"
+              onClick={() => setViewMode('month')}
             >
-              <List className="h-4 w-4" />
+              Month
             </Button>
           </div>
 
@@ -880,63 +954,13 @@ export const EvanCalendarWidget = () => {
 
           {/* Current Period Label */}
           <div className="text-sm font-medium">
-            {viewMode === 'week' 
-              ? `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
-              : format(currentDate, 'MMMM yyyy')
+            {viewMode === 'day' 
+              ? format(currentDate, 'EEEE, MMMM d, yyyy')
+              : viewMode === 'week' 
+                ? `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
+                : format(currentDate, 'MMMM yyyy')
             }
           </div>
-        </div>
-
-        {/* Timeline Presets + Custom Range */}
-        <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <div className="flex bg-muted rounded-lg p-0.5">
-            {(['today', 'week', 'month'] as TimelinePreset[]).map(preset => (
-              <Button
-                key={preset}
-                size="sm"
-                variant={timelinePreset === preset ? 'default' : 'ghost'}
-                className="h-6 px-2 text-xs capitalize"
-                onClick={() => {
-                  setTimelinePreset(preset);
-                  if (preset === 'today' || preset === 'week') {
-                    setCurrentDate(new Date());
-                  }
-                }}
-              >
-                {preset}
-              </Button>
-            ))}
-          </div>
-
-          {/* Custom Date Range Picker */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                size="sm"
-                variant={timelinePreset === 'custom' ? 'default' : 'outline'}
-                className="h-6 text-xs"
-              >
-                <CalendarIcon className="h-3 w-3 mr-1" />
-                {timelinePreset === 'custom' && customDateRange.from && customDateRange.to
-                  ? `${format(customDateRange.from, 'MMM d')} - ${format(customDateRange.to, 'MMM d')}`
-                  : 'Custom Range'
-                }
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="range"
-                selected={{ from: customDateRange.from, to: customDateRange.to }}
-                onSelect={(range) => {
-                  setCustomDateRange({ from: range?.from, to: range?.to });
-                  if (range?.from && range?.to) {
-                    setTimelinePreset('custom');
-                  }
-                }}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
         </div>
       </CardHeader>
 
@@ -972,8 +996,9 @@ export const EvanCalendarWidget = () => {
           </div>
         ) : (
           <>
-            {viewMode === 'month' && renderMonthView()}
+            {viewMode === 'day' && renderDayView()}
             {viewMode === 'week' && renderWeekView()}
+            {viewMode === 'month' && renderMonthView()}
             {viewMode === 'agenda' && renderAgendaView()}
           </>
         )}
