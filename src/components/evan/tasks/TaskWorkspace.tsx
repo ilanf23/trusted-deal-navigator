@@ -15,7 +15,6 @@ import {
   Plus, 
   User,
   Mail,
-  Bell,
   Users,
   Filter,
 } from 'lucide-react';
@@ -54,9 +53,13 @@ export const TaskWorkspace = () => {
   const filteredTasks = useMemo(() => {
     let result = tasks;
     
-    // Filter by source
+    // Filter by source (gmail includes nudge/follow-up tasks)
     if (sourceFilter !== 'all') {
-      result = result.filter(task => task.source === sourceFilter);
+      if (sourceFilter === 'gmail') {
+        result = result.filter(task => task.source === 'gmail' || task.source === 'nudge');
+      } else {
+        result = result.filter(task => task.source === sourceFilter);
+      }
     }
     
     // Filter by search term
@@ -110,7 +113,6 @@ export const TaskWorkspace = () => {
     { value: 'all', label: 'All', icon: Filter },
     { value: 'manual', label: 'Self-Made', icon: User },
     { value: 'gmail', label: 'Gmail', icon: Mail },
-    { value: 'nudge', label: 'Follow Up', icon: Bell },
     { value: 'lead', label: 'From Lead', icon: Users },
   ];
 
