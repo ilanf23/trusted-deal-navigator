@@ -64,19 +64,21 @@ const TeamPerformance = () => {
   const now = new Date();
   const periodStart = timePeriod === 'ytd' ? startOfYear(now) : startOfMonth(now);
 
-  // Fetch Evan's team member ID
-  const { data: evanTeamMember } = useQuery({
-    queryKey: ['evan-team-member'],
+  // Fetch all team members for the selector
+  const { data: allTeamMembers } = useQuery({
+    queryKey: ['all-team-members'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('team_members')
-        .select('id, name')
-        .ilike('name', 'evan')
-        .single();
+        .select('id, name, role, avatar_url, is_owner')
+        .order('name');
       if (error) throw error;
       return data;
     },
   });
+
+  // Fetch Evan's team member ID
+  const evanTeamMember = allTeamMembers?.find(tm => tm.name.toLowerCase() === 'evan');
 
   // Fetch leads data for metrics
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
@@ -420,36 +422,42 @@ const TeamPerformance = () => {
             { id: 'adam', name: 'Adam', role: 'Owner', active: false },
             { id: 'maura', name: 'Maura', role: 'Processor', active: false },
             { id: 'wendy', name: 'Wendy', role: 'Processor', active: false },
-          ].map((emp) => (
-            <Card
-              key={emp.id}
-              className={`cursor-pointer transition-all ${
-                selectedEmployee === emp.id
-                  ? 'border-primary bg-primary/5 shadow-md'
-                  : emp.active
-                  ? 'hover:border-primary/50 hover:bg-muted/30'
-                  : 'opacity-50 cursor-not-allowed'
-              }`}
-              onClick={() => emp.active && setSelectedEmployee(emp.id)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 border-2 border-background">
-                    <AvatarFallback className={selectedEmployee === emp.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}>
-                      {emp.name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold text-sm">{emp.name}</p>
-                    <p className="text-xs text-muted-foreground">{emp.role}</p>
+          ].map((emp) => {
+            const teamMemberData = allTeamMembers?.find(tm => tm.name.toLowerCase() === emp.id);
+            return (
+              <Card
+                key={emp.id}
+                className={`cursor-pointer transition-all ${
+                  selectedEmployee === emp.id
+                    ? 'border-primary bg-primary/5 shadow-md'
+                    : emp.active
+                    ? 'hover:border-primary/50 hover:bg-muted/30'
+                    : 'opacity-50 cursor-not-allowed'
+                }`}
+                onClick={() => emp.active && setSelectedEmployee(emp.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10 border-2 border-background">
+                      {teamMemberData?.avatar_url && (
+                        <AvatarImage src={teamMemberData.avatar_url} alt={emp.name} />
+                      )}
+                      <AvatarFallback className={selectedEmployee === emp.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}>
+                        {emp.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-sm">{emp.name}</p>
+                      <p className="text-xs text-muted-foreground">{emp.role}</p>
+                    </div>
                   </div>
-                </div>
-                {!emp.active && (
-                  <Badge variant="secondary" className="mt-2 text-[10px]">Coming Soon</Badge>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  {!emp.active && (
+                    <Badge variant="secondary" className="mt-2 text-[10px]">Coming Soon</Badge>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Evan's Dashboard */}
