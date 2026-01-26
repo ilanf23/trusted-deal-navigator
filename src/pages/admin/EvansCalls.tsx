@@ -793,9 +793,9 @@ const EvansCalls = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ height: 'calc(100vh - 180px)' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Call Info & Lead Details */}
-          <div className="lg:col-span-1 flex flex-col gap-6">
+          <div className="lg:col-span-1 space-y-6">
             {/* Current Call Card */}
             <Card className={`border-2 ${currentCall ? 'border-green-500/50 bg-green-50/30' : 'border-muted'}`}>
               <CardHeader className="pb-3">
@@ -953,8 +953,8 @@ const EvansCalls = () => {
             </Card>
 
             {/* Call History Card */}
-            <Card className="flex-1 flex flex-col min-h-0">
-              <CardHeader className="pb-3 flex-shrink-0">
+            <Card>
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <History className="h-5 w-5 text-muted-foreground" />
                   <div>
@@ -963,8 +963,8 @@ const EvansCalls = () => {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-0 flex-1 overflow-hidden">
-                <ScrollArea className="h-full">
+              <CardContent className="p-0">
+                <ScrollArea className="h-[300px]">
                   {historyLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1080,7 +1080,7 @@ const EvansCalls = () => {
 
           {/* Right Column - Lender Programs & AI Assistant */}
           <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-full">
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-[calc(100vh-280px)]">
               {/* Lender Programs */}
               <div className={showAssistant ? "xl:col-span-3" : "xl:col-span-5"}>
               <Card className="h-full flex flex-col border-slate-200 dark:border-slate-700 dark:bg-slate-900">
