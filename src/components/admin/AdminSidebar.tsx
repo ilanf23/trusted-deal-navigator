@@ -88,7 +88,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         title: 'Dashboard',
         icon: LayoutDashboard,
         items: [
-          { title: 'Overview', url: '/admin/ilan', icon: LayoutDashboard },
+          { title: 'Team Performance', url: '/admin/ilan', icon: Users },
+          { title: 'Dev Dashboard', url: '/admin/ilan/dev', icon: Code2 },
           { title: 'Gmail', url: '/admin/ilan/gmail', icon: Mail },
           { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
@@ -136,6 +137,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: LayoutDashboard,
         items: [
           { title: 'Overview', url: '/admin', icon: LayoutDashboard },
+          { title: 'Team Performance', url: '/admin/team-performance', icon: Users },
           { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
           { title: 'Leads', url: '/admin/leads', icon: UserPlus },
           { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
