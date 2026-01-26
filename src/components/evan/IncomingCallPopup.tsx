@@ -42,6 +42,7 @@ export const IncomingCallPopup = () => {
   const [hasNavigated, setHasNavigated] = useState(false);
   
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const deviceInitializedRef = useRef(false); // Prevent multiple initializations
   const queryClient = useQueryClient();
 
   // Auto-navigate to calls page when an incoming call is detected
@@ -91,8 +92,9 @@ export const IncomingCallPopup = () => {
       return null;
     }
     
-    if (twilioDevice && isDeviceReady) {
-      console.log('Twilio Device already initialized and ready');
+    // Use ref to prevent multiple initializations across re-renders
+    if (deviceInitializedRef.current || twilioDevice) {
+      console.log('Twilio Device already initialized or in progress');
       return twilioDevice;
     }
     
@@ -101,6 +103,8 @@ export const IncomingCallPopup = () => {
       console.log('Twilio Device initialization already in progress');
       return null;
     }
+    
+    deviceInitializedRef.current = true;
     
     try {
       setIsInitializing(true);
@@ -203,8 +207,11 @@ export const IncomingCallPopup = () => {
         });
       });
 
-      // Register and wait for confirmation
-      await device.register();
+      // Start registration - don't await the register() call directly
+      // as it resolves before the 'registered' event fires
+      device.register();
+      
+      // Wait for the 'registered' event to fire
       await registrationPromise;
       
       setTwilioDevice(device);
@@ -214,12 +221,13 @@ export const IncomingCallPopup = () => {
     } catch (error) {
       console.error('Failed to initialize Twilio Device:', error);
       setIsDeviceReady(false);
+      deviceInitializedRef.current = false; // Allow retry on failure
       toast.error('Phone initialization failed. Please refresh the page.');
       return null;
     } finally {
       setIsInitializing(false);
     }
-  }, [twilioDevice, isEvan, isInitializing, isDeviceReady, startCallTimer, handleCallEnd]);
+  }, [twilioDevice, isEvan, isInitializing, startCallTimer, handleCallEnd]);
 
   // Auto-initialize Twilio Device on mount - Only for Evan
   useEffect(() => {
@@ -298,17 +306,23 @@ export const IncomingCallPopup = () => {
     }
   }, [activeCalls, incomingCall, isConnected]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount only - use ref to avoid re-running on device changes
+  const twilioDeviceRef = useRef<Device | null>(null);
+  
+  useEffect(() => {
+    twilioDeviceRef.current = twilioDevice;
+  }, [twilioDevice]);
+  
   useEffect(() => {
     return () => {
       if (callTimerRef.current) {
         clearInterval(callTimerRef.current);
       }
-      if (twilioDevice) {
-        twilioDevice.destroy();
+      if (twilioDeviceRef.current) {
+        twilioDeviceRef.current.destroy();
       }
     };
-  }, [twilioDevice]);
+  }, []); // Only run on unmount
 
   const answerCall = useMutation({
     mutationFn: async () => {
