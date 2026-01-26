@@ -1380,11 +1380,11 @@ const EvansGmail = () => {
                               </div>
                               {/* Last Touch & Loan Size indicators */}
                               {lead && (
-                                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                  <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-3 mt-2">
+                                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300">
                                     <MessageSquare className="w-3 h-3 flex-shrink-0" />
                                     <span>
-                                      Last touch: {lead.last_activity_at 
+                                      {lead.last_activity_at 
                                         ? formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true })
                                         : formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })
                                       }
@@ -1398,9 +1398,9 @@ const EvansGmail = () => {
                                         ? `$${(loanAmount / 1000000).toFixed(1)}M` 
                                         : `$${(loanAmount / 1000).toFixed(0)}K`;
                                       return (
-                                        <div className="flex items-center gap-1.5">
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                                           <Building className="w-3 h-3 flex-shrink-0" />
-                                          <span>Loan: {formatted}</span>
+                                          <span>{formatted}</span>
                                         </div>
                                       );
                                     }
