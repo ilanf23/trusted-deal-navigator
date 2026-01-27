@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BorrowerSearchSelect } from './BorrowerSearchSelect';
 import { format, parseISO } from 'date-fns';
 import { 
   MessageSquare, 
@@ -209,29 +210,14 @@ export const TaskDetailDialog = ({
             {/* Related Customer */}
             <div className="space-y-3">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <Building2 className="h-3.5 w-3.5" /> Related Customer
+                <Building2 className="h-3.5 w-3.5" /> Related Borrower
               </label>
-              <Select 
-                value={newTaskLeadId || 'none'} 
-                onValueChange={(value) => setNewTaskLeadId(value === 'none' ? null : value)}
-              >
-                <SelectTrigger className="max-w-[300px] h-9 rounded-lg">
-                  <SelectValue placeholder="Select a customer" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl max-h-[200px]">
-                  <SelectItem value="none" className="rounded-lg">No customer</SelectItem>
-                  {leads.map((lead) => (
-                    <SelectItem key={lead.id} value={lead.id} className="rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <span>{lead.name}</span>
-                        {lead.company_name && (
-                          <span className="text-muted-foreground text-xs">({lead.company_name})</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BorrowerSearchSelect
+                leads={leads}
+                value={newTaskLeadId}
+                onValueChange={setNewTaskLeadId}
+                placeholder="Search borrowers..."
+              />
             </div>
 
             {/* Due Date */}
@@ -398,29 +384,14 @@ export const TaskDetailDialog = ({
             {/* Related Customer */}
             <div className="space-y-3">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <Building2 className="h-3.5 w-3.5" /> Related Customer
+                <Building2 className="h-3.5 w-3.5" /> Related Borrower
               </label>
-              <Select 
-                value={task!.lead_id || 'none'} 
-                onValueChange={(value) => onUpdateTask(task!.id, { lead_id: value === 'none' ? null : value })}
-              >
-                <SelectTrigger className="max-w-[300px] h-9 rounded-lg">
-                  <SelectValue placeholder="Select a customer" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl max-h-[200px]">
-                  <SelectItem value="none" className="rounded-lg">No customer</SelectItem>
-                  {leads.map((lead) => (
-                    <SelectItem key={lead.id} value={lead.id} className="rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <span>{lead.name}</span>
-                        {lead.company_name && (
-                          <span className="text-muted-foreground text-xs">({lead.company_name})</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BorrowerSearchSelect
+                leads={leads}
+                value={task!.lead_id || null}
+                onValueChange={(value) => onUpdateTask(task!.id, { lead_id: value })}
+                placeholder="Search borrowers..."
+              />
             </div>
 
             {/* Due Date */}
