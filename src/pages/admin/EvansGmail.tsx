@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import { GmailSidebar, FolderType } from '@/components/admin/inbox/GmailSidebar';
 import { cn } from '@/lib/utils';
 
 // Import avatar images
@@ -57,8 +58,6 @@ interface Email {
   isRead: boolean;
   senderPhoto?: string | null;
 }
-
-type FilterType = 'inbox' | 'external' | 'internal' | 'followup' | 'templates';
 
 // Email templates
 interface EmailTemplate {
@@ -420,7 +419,7 @@ const EvansGmail = () => {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showEmailAddress, setShowEmailAddress] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('inbox');
+  const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
   const [readEmailIds, setReadEmailIds] = useState<Record<string, boolean>>({});
   
   // Compose dialog state
@@ -554,14 +553,28 @@ const EvansGmail = () => {
     return [...mockExternalEmails, ...emails];
   }, [emails]);
 
-  // Filter emails based on CRM classification and search query
+  // Filter emails based on CRM classification, folder, and search query
   const filteredEmails = useMemo(() => {
     let result = allEmails;
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
-    // Apply category filter
-    if (activeFilter !== 'inbox') {
+    // Apply folder filter
+    if (activeFolder === 'sent') {
+      // Show only sent emails (those from Evan)
+      result = result.filter(email => {
+        const senderEmail = extractEmailAddress(email.from);
+        return senderEmail.includes('evan') || senderEmail.includes('commerciallendingx');
+      });
+    } else if (activeFolder === 'drafts') {
+      // For now, show empty drafts (would be connected to Gmail drafts API)
+      result = [];
+    } else if (activeFolder === 'starred') {
+      // Would be connected to Gmail starred
+      result = [];
+    } else if (activeFolder === 'spam' || activeFolder === 'trash') {
+      result = [];
+    } else if (activeFolder !== 'inbox' && activeFolder !== 'templates') {
       result = result.filter(email => {
         const senderEmail = extractEmailAddress(email.from);
         const toEmail = extractEmailAddress(email.to || '');
@@ -571,9 +584,9 @@ const EvansGmail = () => {
           return senderEmail === crmLower || toEmail === crmLower;
         });
         
-        if (activeFilter === 'external') return isExternal;
-        if (activeFilter === 'internal') return !isExternal;
-        if (activeFilter === 'followup') {
+        if (activeFolder === 'external') return isExternal;
+        if (activeFolder === 'internal') return !isExternal;
+        if (activeFolder === 'followup') {
           // Show external leads where last activity is older than 7 days
           if (!isExternal) return false;
           const lead = allLeads.find(l => {
@@ -601,7 +614,53 @@ const EvansGmail = () => {
     }
     
     return result;
-  }, [allEmails, crmEmails, activeFilter, searchQuery, allLeads]);
+  }, [allEmails, crmEmails, activeFolder, searchQuery, allLeads]);
+
+  // Calculate folder counts
+  const folderCounts = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    let externalCount = 0;
+    let internalCount = 0;
+    let followupCount = 0;
+    
+    allEmails.forEach(email => {
+      const senderEmail = extractEmailAddress(email.from);
+      const toEmail = extractEmailAddress(email.to || '');
+      
+      const isExternal = crmEmails.some(crmEmail => {
+        const crmLower = crmEmail.toLowerCase().trim();
+        return senderEmail === crmLower || toEmail === crmLower;
+      });
+      
+      if (isExternal) {
+        externalCount++;
+        // Check for follow-up
+        const lead = allLeads.find(l => {
+          if (l.email?.toLowerCase() === senderEmail) return true;
+          if (l.lead_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
+          return false;
+        });
+        if (lead) {
+          const lastActivity = lead.last_activity_at ? new Date(lead.last_activity_at) : new Date(lead.created_at);
+          if (lastActivity < sevenDaysAgo) {
+            followupCount++;
+          }
+        }
+      } else {
+        internalCount++;
+      }
+    });
+    
+    return {
+      inbox: allEmails.length,
+      drafts: 0, // Would be fetched from Gmail API
+      external: externalCount,
+      internal: internalCount,
+      followup: followupCount,
+    };
+  }, [allEmails, crmEmails, allLeads]);
 
   // Fetch pipeline stages for dropdown
   const { data: pipelineStages = [] } = useQuery({
@@ -918,120 +977,70 @@ const EvansGmail = () => {
   const selectedEmail = filteredEmails.find(e => e.id === selectedEmailId);
   const selectedLead = selectedEmail ? findLeadForEmail(selectedEmail) : null;
 
-  const filterLabels: Record<FilterType, string> = {
-    inbox: 'Inbox',
-    external: 'Borrowers',
-    internal: 'Internal',
-    followup: '7 Day Follow Up',
-    templates: 'Templates',
-  };
-
   return (
     <AdminLayout>
-      <div className="flex flex-col h-[calc(100vh-100px)] border rounded-lg overflow-hidden bg-background">
-        {/* Top Header with Compose, Filter, and Search */}
-        <div className="flex items-center gap-3 p-3 border-b bg-muted/30">
-          <Button 
-            variant="outline"
-            size="icon"
-            onClick={async () => {
-              setIsRefreshing(true);
-              setSelectedEmailId(null);
-              // Small delay to show the loading state
-              await new Promise(resolve => setTimeout(resolve, 300));
-              await queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
-              await queryClient.invalidateQueries({ queryKey: ['gmail-connection'] });
-              await queryClient.invalidateQueries({ queryKey: ['crm-emails'] });
-              await queryClient.invalidateQueries({ queryKey: ['all-leads'] });
-              await queryClient.refetchQueries({ queryKey: ['gmail-emails'] });
-              setIsRefreshing(false);
-              toast.success('Emails refreshed');
-            }}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
-          </Button>
-          <Button 
-            className="gap-2"
-            onClick={() => {
-              setComposeTo('');
-              setComposeSubject('');
-              setComposeBody('');
-              setComposeOpen(true);
-            }}
-          >
-            <Plus className="w-4 h-4" />
-            Compose
-          </Button>
-          
-          {/* Filter Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2 min-w-[140px] justify-between">
-                <span className="flex items-center gap-2">
-                  {activeFilter === 'inbox' && <Inbox className="w-4 h-4" />}
-                  {activeFilter === 'external' && <Building className="w-4 h-4" />}
-                  {activeFilter === 'internal' && <Users className="w-4 h-4" />}
-                  {activeFilter === 'followup' && <CalendarClock className="w-4 h-4" />}
-                  {activeFilter === 'templates' && <FileText className="w-4 h-4" />}
-                  {filterLabels[activeFilter]}
-                </span>
-                <ChevronDown className="w-4 h-4 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[180px]">
-              <DropdownMenuItem onClick={() => { setActiveFilter('inbox'); setSelectedEmailId(null); }}>
-                <Inbox className="w-4 h-4 mr-2" />
-                Inbox
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Building className="w-4 h-4 mr-2" />
-                  Borrowers
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-[160px]">
-                  <DropdownMenuItem onClick={() => { setActiveFilter('external'); setSelectedEmailId(null); }}>
-                    <Building className="w-4 h-4 mr-2" />
-                    All Borrowers
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/team/evan/email-templates')}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Templates
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuItem onClick={() => { setActiveFilter('internal'); setSelectedEmailId(null); }}>
-                <Users className="w-4 h-4 mr-2" />
-                Internal
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setActiveFilter('followup'); setSelectedEmailId(null); }}>
-                <CalendarClock className="w-4 h-4 mr-2" />
-                7 Day Follow Up
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <Input
-              placeholder="Search emails..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-8 h-9"
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                onClick={() => setSearchQuery('')}
-              >
-                <X className="w-3.5 h-3.5" />
-              </Button>
-            )}
+      <div className="flex h-[calc(100vh-100px)] border rounded-lg overflow-hidden bg-background">
+        {/* Sidebar */}
+        <GmailSidebar
+          activeFolder={activeFolder}
+          onFolderChange={(folder) => {
+            setActiveFolder(folder);
+            setSelectedEmailId(null);
+          }}
+          onComposeClick={() => {
+            setComposeTo('');
+            setComposeSubject('');
+            setComposeBody('');
+            setComposeOpen(true);
+          }}
+          counts={folderCounts}
+        />
+        
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Top Header with Search and Refresh */}
+          <div className="flex items-center gap-3 p-3 border-b bg-muted/30">
+            <Button 
+              variant="outline"
+              size="icon"
+              onClick={async () => {
+                setIsRefreshing(true);
+                setSelectedEmailId(null);
+                // Small delay to show the loading state
+                await new Promise(resolve => setTimeout(resolve, 300));
+                await queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
+                await queryClient.invalidateQueries({ queryKey: ['gmail-connection'] });
+                await queryClient.invalidateQueries({ queryKey: ['crm-emails'] });
+                await queryClient.invalidateQueries({ queryKey: ['all-leads'] });
+                await queryClient.refetchQueries({ queryKey: ['gmail-emails'] });
+                setIsRefreshing(false);
+                toast.success('Emails refreshed');
+              }}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+            </Button>
+            
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <Input
+                placeholder="Search emails..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pr-8 h-9"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
 
         {/* Email List / Email View */}
         <div className="flex-1 overflow-hidden relative">
@@ -1473,7 +1482,7 @@ const EvansGmail = () => {
                 </div>
               )}
             </div>
-          ) : activeFilter === 'templates' ? (
+          ) : activeFolder === 'templates' ? (
             // Templates View
             <div className="h-full flex flex-col">
               <div className="p-3 border-b">
@@ -1671,6 +1680,7 @@ const EvansGmail = () => {
               </ScrollArea>
             </div>
           )}
+          </div>
         </div>
       </div>
 
