@@ -26,6 +26,7 @@ export const TaskWorkspace = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<TaskSource>('all');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
 
   // Handle URL params for creating new task from Gmail
@@ -137,7 +138,7 @@ export const TaskWorkspace = () => {
       {/* Top Row - New Task + Search */}
       <div className="flex items-center gap-3 sticky top-14 md:top-16 z-30 py-3 md:py-4 -mx-1 px-1 backdrop-blur-xl bg-background/80">
         <Button 
-          onClick={() => handleAddTask({})}
+          onClick={() => setIsNewTaskDialogOpen(true)}
           className="h-9 md:h-10 px-3 md:px-5 rounded-full bg-foreground text-background hover:bg-foreground/90 font-medium shadow-lg shadow-foreground/10 transition-all duration-300 hover:shadow-xl hover:shadow-foreground/20 hover:scale-[1.02] text-sm md:text-base"
         >
           <Plus className="h-4 w-4 mr-1 md:mr-2" />
@@ -242,13 +243,27 @@ export const TaskWorkspace = () => {
         )}
       </div>
 
-      {/* Task Detail Dialog */}
+      {/* Task Detail Dialog - for viewing/editing existing tasks */}
       <TaskDetailDialog
         task={selectedTask}
         open={!!selectedTask}
         onClose={() => setSelectedTask(null)}
         onUpdateTask={handleUpdateTask}
         onAddComment={handleAddComment}
+      />
+
+      {/* New Task Dialog - for creating new tasks */}
+      <TaskDetailDialog
+        task={null}
+        open={isNewTaskDialogOpen}
+        onClose={() => setIsNewTaskDialogOpen(false)}
+        onUpdateTask={handleUpdateTask}
+        onAddComment={handleAddComment}
+        onCreateTask={(task) => {
+          handleAddTask(task);
+          setIsNewTaskDialogOpen(false);
+        }}
+        isNewTask
       />
     </div>
   );

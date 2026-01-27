@@ -32,6 +32,8 @@ interface TaskDetailDialogProps {
   onClose: () => void;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onAddComment: (taskId: string, content: string) => void;
+  onCreateTask?: (task: Partial<Task>) => void;
+  isNewTask?: boolean;
 }
 
 export const TaskDetailDialog = ({
@@ -40,10 +42,22 @@ export const TaskDetailDialog = ({
   onClose,
   onUpdateTask,
   onAddComment,
+  onCreateTask,
+  isNewTask = false,
 }: TaskDetailDialogProps) => {
   const [newComment, setNewComment] = useState('');
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
+  
+  // New task form state
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskStatus, setNewTaskStatus] = useState('todo');
+  const [newTaskAssignee, setNewTaskAssignee] = useState('Evan');
+  const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
+  const [newTaskLeadId, setNewTaskLeadId] = useState<string | null>(null);
+  const [newTaskHours, setNewTaskHours] = useState<number | null>(null);
+  
   const { data: activities = [] } = useTaskActivities(task?.id || null);
 
   // Fetch leads for the customer dropdown
@@ -59,29 +73,59 @@ export const TaskDetailDialog = ({
     },
   });
 
-  if (!task) return null;
+  // Reset new task form when dialog closes
+  const handleClose = () => {
+    if (isNewTask) {
+      setNewTaskTitle('');
+      setNewTaskDescription('');
+      setNewTaskStatus('todo');
+      setNewTaskAssignee('Evan');
+      setNewTaskDueDate(undefined);
+      setNewTaskLeadId(null);
+      setNewTaskHours(null);
+    }
+    onClose();
+  };
+
+  const handleCreateTask = () => {
+    if (!newTaskTitle.trim()) return;
+    
+    onCreateTask?.({
+      title: newTaskTitle,
+      description: newTaskDescription || undefined,
+      status: newTaskStatus,
+      assignee_name: newTaskAssignee || undefined,
+      due_date: newTaskDueDate?.toISOString() || undefined,
+      lead_id: newTaskLeadId || undefined,
+      estimated_hours: newTaskHours || undefined,
+      source: 'manual',
+    });
+  };
+
+  // For existing task view
+  if (!isNewTask && !task) return null;
 
   const handleSaveTitle = () => {
-    if (editedTitle && editedTitle !== task.title) {
-      onUpdateTask(task.id, { title: editedTitle });
+    if (editedTitle && editedTitle !== task!.title) {
+      onUpdateTask(task!.id, { title: editedTitle });
     }
   };
 
   const handleSaveDescription = () => {
-    if (editedDescription !== task.description) {
-      onUpdateTask(task.id, { description: editedDescription });
+    if (editedDescription !== task!.description) {
+      onUpdateTask(task!.id, { description: editedDescription });
     }
   };
 
   const handleAddComment = () => {
     if (newComment.trim()) {
-      onAddComment(task.id, newComment.trim());
+      onAddComment(task!.id, newComment.trim());
       setNewComment('');
     }
   };
 
   const handleDateSelect = (date: Date | undefined) => {
-    onUpdateTask(task.id, { due_date: date?.toISOString() || null });
+    onUpdateTask(task!.id, { due_date: date?.toISOString() || null });
   };
 
   const getActivityIcon = (type: string) => {
@@ -92,23 +136,189 @@ export const TaskDetailDialog = ({
     }
   };
 
+  // New Task Creation View
+  if (isNewTask) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-2xl border-muted-foreground/10">
+          <DialogHeader className="pb-4 border-b border-muted-foreground/10">
+            <DialogTitle className="text-xl font-semibold">Create New Task</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-6 py-4">
+            {/* Title */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Task Name *
+              </label>
+              <Input
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder="Enter task title..."
+                className="h-11 rounded-lg text-lg font-medium"
+                autoFocus
+              />
+            </div>
+
+            {/* Status */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Status
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(statusConfig).map(([key, config]) => (
+                  <button
+                    key={key}
+                    onClick={() => setNewTaskStatus(key)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                      newTaskStatus === key 
+                        ? `${config.bg} ${config.text} ring-2 ring-offset-2 ring-offset-background`
+                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                    }`}
+                    style={newTaskStatus === key ? { '--tw-ring-color': config.color } as React.CSSProperties : {}}
+                  >
+                    {config.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Assignee */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <User className="h-3.5 w-3.5" /> Assignee
+              </label>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9 ring-2 ring-background">
+                  <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-medium">
+                    {(newTaskAssignee || 'E').substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <Input
+                  value={newTaskAssignee}
+                  onChange={(e) => setNewTaskAssignee(e.target.value)}
+                  className="max-w-[200px] h-9 rounded-lg"
+                  placeholder="Assignee name"
+                />
+              </div>
+            </div>
+
+            {/* Related Customer */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Building2 className="h-3.5 w-3.5" /> Related Customer
+              </label>
+              <Select 
+                value={newTaskLeadId || 'none'} 
+                onValueChange={(value) => setNewTaskLeadId(value === 'none' ? null : value)}
+              >
+                <SelectTrigger className="max-w-[300px] h-9 rounded-lg">
+                  <SelectValue placeholder="Select a customer" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl max-h-[200px]">
+                  <SelectItem value="none" className="rounded-lg">No customer</SelectItem>
+                  {leads.map((lead) => (
+                    <SelectItem key={lead.id} value={lead.id} className="rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span>{lead.name}</span>
+                        {lead.company_name && (
+                          <span className="text-muted-foreground text-xs">({lead.company_name})</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Due Date */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <CalendarIcon className="h-3.5 w-3.5" /> Due Date
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="justify-start h-9 rounded-lg font-normal">
+                    {newTaskDueDate ? format(newTaskDueDate, 'PPP') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 rounded-xl" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={newTaskDueDate}
+                    onSelect={setNewTaskDueDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Hours */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5" /> Estimated Hours
+              </label>
+              <Input
+                type="number"
+                step="0.25"
+                min="0"
+                value={newTaskHours || ''}
+                onChange={(e) => setNewTaskHours(parseFloat(e.target.value) || null)}
+                className="max-w-[120px] h-9 rounded-lg"
+                placeholder="Hours"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Description
+              </label>
+              <Textarea
+                value={newTaskDescription}
+                onChange={(e) => setNewTaskDescription(e.target.value)}
+                placeholder="Add a description..."
+                className="min-h-[120px] rounded-lg resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Footer with Create Button */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-muted-foreground/10">
+            <Button variant="outline" onClick={handleClose} className="rounded-lg">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateTask} 
+              disabled={!newTaskTitle.trim()}
+              className="rounded-lg"
+            >
+              Create Task
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Existing Task View
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-2xl border-muted-foreground/10">
         <DialogHeader className="pb-4 border-b border-muted-foreground/10">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => onUpdateTask(task.id, { is_completed: !task.is_completed, status: task.is_completed ? 'todo' : 'done' })}
+              onClick={() => onUpdateTask(task!.id, { is_completed: !task!.is_completed, status: task!.is_completed ? 'todo' : 'done' })}
               className="flex-shrink-0"
             >
-              {task.is_completed ? (
+              {task!.is_completed ? (
                 <CheckCircle2 className="h-6 w-6 text-emerald-500" />
               ) : (
                 <Circle className="h-6 w-6 text-muted-foreground hover:text-emerald-500 transition-colors" />
               )}
             </button>
             <Input
-              value={editedTitle || task.title}
+              value={editedTitle || task!.title}
               onChange={(e) => setEditedTitle(e.target.value)}
               onBlur={handleSaveTitle}
               className="text-lg font-semibold border-0 bg-transparent focus-visible:ring-0 p-0 h-auto"
@@ -148,13 +358,13 @@ export const TaskDetailDialog = ({
                 {Object.entries(statusConfig).map(([key, config]) => (
                   <button
                     key={key}
-                    onClick={() => onUpdateTask(task.id, { status: key, is_completed: key === 'done' })}
+                    onClick={() => onUpdateTask(task!.id, { status: key, is_completed: key === 'done' })}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                      task.status === key 
+                      task!.status === key 
                         ? `${config.bg} ${config.text} ring-2 ring-offset-2 ring-offset-background`
                         : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                     }`}
-                    style={task.status === key ? { '--tw-ring-color': config.color } as React.CSSProperties : {}}
+                    style={task!.status === key ? { '--tw-ring-color': config.color } as React.CSSProperties : {}}
                   >
                     {config.label}
                   </button>
@@ -170,12 +380,12 @@ export const TaskDetailDialog = ({
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9 ring-2 ring-background">
                   <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-medium">
-                    {(task.assignee_name || 'E').substring(0, 2).toUpperCase()}
+                    {(task!.assignee_name || 'E').substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <Input
-                  value={task.assignee_name || ''}
-                  onChange={(e) => onUpdateTask(task.id, { assignee_name: e.target.value })}
+                  value={task!.assignee_name || ''}
+                  onChange={(e) => onUpdateTask(task!.id, { assignee_name: e.target.value })}
                   className="max-w-[200px] h-9 rounded-lg"
                   placeholder="Assignee name"
                 />
@@ -188,8 +398,8 @@ export const TaskDetailDialog = ({
                 <Building2 className="h-3.5 w-3.5" /> Related Customer
               </label>
               <Select 
-                value={task.lead_id || 'none'} 
-                onValueChange={(value) => onUpdateTask(task.id, { lead_id: value === 'none' ? null : value })}
+                value={task!.lead_id || 'none'} 
+                onValueChange={(value) => onUpdateTask(task!.id, { lead_id: value === 'none' ? null : value })}
               >
                 <SelectTrigger className="max-w-[300px] h-9 rounded-lg">
                   <SelectValue placeholder="Select a customer" />
@@ -218,13 +428,13 @@ export const TaskDetailDialog = ({
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="justify-start h-9 rounded-lg font-normal">
-                    {task.due_date ? format(parseISO(task.due_date), 'PPP') : 'Select date'}
+                    {task!.due_date ? format(parseISO(task!.due_date), 'PPP') : 'Select date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 rounded-xl" align="start">
                   <Calendar
                     mode="single"
-                    selected={task.due_date ? parseISO(task.due_date) : undefined}
+                    selected={task!.due_date ? parseISO(task!.due_date) : undefined}
                     onSelect={handleDateSelect}
                     initialFocus
                   />
@@ -241,8 +451,8 @@ export const TaskDetailDialog = ({
                 type="number"
                 step="0.25"
                 min="0"
-                value={task.estimated_hours || ''}
-                onChange={(e) => onUpdateTask(task.id, { estimated_hours: parseFloat(e.target.value) || null })}
+                value={task!.estimated_hours || ''}
+                onChange={(e) => onUpdateTask(task!.id, { estimated_hours: parseFloat(e.target.value) || null })}
                 className="max-w-[120px] h-9 rounded-lg"
                 placeholder="Hours"
               />
@@ -254,7 +464,7 @@ export const TaskDetailDialog = ({
                 Description
               </label>
               <Textarea
-                value={editedDescription || task.description || ''}
+                value={editedDescription || task!.description || ''}
                 onChange={(e) => setEditedDescription(e.target.value)}
                 onBlur={handleSaveDescription}
                 placeholder="Add a description..."
