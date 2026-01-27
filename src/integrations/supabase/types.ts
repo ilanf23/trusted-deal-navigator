@@ -2257,6 +2257,7 @@ export type Database = {
           rate_type: string | null
           re_location: string | null
           seeking_to_improve: string | null
+          status_override: string | null
           target_rate: number
           updated_at: string
           variable_index_spread: string | null
@@ -2287,6 +2288,7 @@ export type Database = {
           rate_type?: string | null
           re_location?: string | null
           seeking_to_improve?: string | null
+          status_override?: string | null
           target_rate: number
           updated_at?: string
           variable_index_spread?: string | null
@@ -2317,6 +2319,7 @@ export type Database = {
           rate_type?: string | null
           re_location?: string | null
           seeking_to_improve?: string | null
+          status_override?: string | null
           target_rate?: number
           updated_at?: string
           variable_index_spread?: string | null
