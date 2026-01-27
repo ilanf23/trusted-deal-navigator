@@ -283,7 +283,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
             <img 
               src="/logo.png" 
               alt="CommercialLendingX" 
-              className="max-h-[140px] max-w-full object-contain brightness-0 invert opacity-95"
+              className="max-h-[180px] max-w-full object-contain brightness-0 invert opacity-95"
             />
           )}
         </Link>
