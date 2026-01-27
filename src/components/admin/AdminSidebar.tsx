@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -68,10 +68,12 @@ interface NavSection {
   icon: LucideIcon;
   items: NavItem[];
   noCollapse?: boolean;
+  navigateOnClick?: string; // If set, clicking the section header navigates to this URL
 }
 
 const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: AdminSidebarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { teamMember, isOwner, loading: teamLoading } = useTeamMember();
   const { state } = useSidebar();
@@ -185,13 +187,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         noCollapse: true,
       });
 
-      // CRM section (collapsible dropdown)
+      // CRM section - clicking opens dropdown AND navigates to pipeline
       sections.push({
         title: 'CRM',
         icon: Kanban,
         items: [
-          { title: 'Pipeline', url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+          { title: 'Main Pipeline', url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
         ],
+        navigateOnClick: `/team/${employeeName.toLowerCase()}/pipeline`,
       });
 
       // Standalone pages below CRM
@@ -214,13 +217,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   const getSectionOpenState = () => {
     const openSections: Record<string, boolean> = {};
     navSections.forEach((section) => {
+      // Check if any item in the section matches the current route
       const hasActiveItem = section.items.some((item) => {
         if (item.url === '/admin') {
           return location.pathname === '/admin';
         }
         return location.pathname.startsWith(item.url);
       });
-      openSections[section.title] = hasActiveItem;
+      // Also check if the section's navigateOnClick matches
+      const sectionNavigatesHere = section.navigateOnClick && location.pathname.startsWith(section.navigateOnClick);
+      openSections[section.title] = hasActiveItem || !!sectionNavigatesHere;
     });
     return openSections;
   };
@@ -405,10 +411,18 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               open={openSections[section.title]}
               onOpenChange={() => toggleSection(section.title)}
             >
-              <CollapsibleTrigger className="w-full">
+              <CollapsibleTrigger 
+                className="w-full"
+                onClick={() => {
+                  // If section has navigateOnClick, navigate to that URL
+                  if (section.navigateOnClick) {
+                    navigate(section.navigateOnClick);
+                  }
+                }}
+              >
                 <div className={`
                   flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px] tracking-tight
-                  ${openSections[section.title] 
+                  ${openSections[section.title] || (section.navigateOnClick && isActive(section.navigateOnClick))
                     ? 'bg-white/10 text-white' 
                     : 'text-white/70 hover:bg-white/5 hover:text-white'
                   }
