@@ -13,6 +13,18 @@ import AIEmailAssistantSheet from '@/components/admin/AIEmailAssistantSheet';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import * as XLSX from 'xlsx';
 import { 
+  DndContext, 
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { 
   Sparkles,
   TrendingDown, 
   TrendingUp, 
@@ -61,6 +73,7 @@ interface RateWatchEntry {
   last_contacted_at: string | null;
   notes: string | null;
   is_active: boolean;
+  status_override: string | null;
   // New fields
   confirm_email: boolean | null;
   initial_review: string | null;
@@ -103,6 +116,8 @@ interface RateWatchEntry {
   };
 }
 
+type ColumnId = 'ready' | 'watching';
+
 interface Lead {
   id: string;
   name: string;
@@ -130,13 +145,22 @@ const RateWatch = () => {
     target_rate?: number | null;
   } | null>(null);
   const [prefilledEmail, setPrefilledEmail] = useState<PrefilledEmail | null>(null);
-  const [draggedEntry, setDraggedEntry] = useState<RateWatchEntry | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Lead detail dialog state
   const [selectedLeadForDetail, setSelectedLeadForDetail] = useState<RateWatchEntry['leads'] | null>(null);
   const [leadDetailOpen, setLeadDetailOpen] = useState(false);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
   
   
   // Form state for adding new entry
@@ -554,43 +578,87 @@ const RateWatch = () => {
     }
   };
 
-  // Separate entries by status
-  const alertEntries = filteredEntries.filter(e => e.current_rate > e.target_rate);
-  const readyEntries = filteredEntries.filter(e => e.current_rate <= e.target_rate);
-
-  // Drag handlers
-  const handleDragStart = (entry: RateWatchEntry) => {
-    setDraggedEntry(entry);
+  // Helper to get which column an entry belongs to
+  const getEntryColumn = (entry: RateWatchEntry): ColumnId => {
+    // status_override takes precedence over auto-calculation
+    if (entry.status_override === 'ready') return 'ready';
+    if (entry.status_override === 'watching') return 'watching';
+    // Auto-calculate based on rates
+    return entry.current_rate <= entry.target_rate ? 'ready' : 'watching';
   };
 
-  const handleDragEnd = () => {
-    setDraggedEntry(null);
+  // Separate entries by status (including override)
+  const readyEntries = filteredEntries.filter(e => getEntryColumn(e) === 'ready');
+  const alertEntries = filteredEntries.filter(e => getEntryColumn(e) === 'watching');
+
+  // Get active entry for overlay
+  const activeEntry = activeId ? rateWatchEntries.find(e => e.id === activeId) : null;
+
+  // Update status override mutation
+  const updateStatusOverride = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string | null }) => {
+      const { error } = await supabase
+        .from('rate_watch')
+        .update({ status_override: status })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rate-watch'] });
+    }
+  });
+
+  // DnD handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
   };
 
-  const handleDropOnEmail = () => {
-    if (draggedEntry) {
-      // Open both AI Assistant and Gmail inbox side by side
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const entryId = active.id as string;
+    const entry = rateWatchEntries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const overId = over.id as string;
+
+    // Handle drop on email zone
+    if (overId === 'email-zone') {
       setSelectedLeadForAI({
-        id: draggedEntry.lead_id,
-        name: draggedEntry.leads.name,
-        email: draggedEntry.leads.email,
-        phone: draggedEntry.leads.phone,
-        company_name: draggedEntry.leads.company_name,
-        loan_type: draggedEntry.loan_type,
-        loan_amount: draggedEntry.loan_amount,
-        current_rate: draggedEntry.current_rate,
-        target_rate: draggedEntry.target_rate,
+        id: entry.lead_id,
+        name: entry.leads.name,
+        email: entry.leads.email,
+        phone: entry.leads.phone,
+        company_name: entry.leads.company_name,
+        loan_type: entry.loan_type,
+        loan_amount: entry.loan_amount,
+        current_rate: entry.current_rate,
+        target_rate: entry.target_rate,
       });
       setPrefilledEmail({
-        to: draggedEntry.leads.email || '',
+        to: entry.leads.email || '',
         subject: '',
         body: '',
-        leadId: draggedEntry.lead_id,
+        leadId: entry.lead_id,
       });
       setAiAssistantOpen(true);
       setInboxOpen(true);
-      updateLastContacted.mutate(draggedEntry.id);
-      setDraggedEntry(null);
+      updateLastContacted.mutate(entry.id);
+      return;
+    }
+
+    // Handle drop on columns
+    if (overId === 'ready' || overId === 'watching') {
+      const currentColumn = getEntryColumn(entry);
+      if (currentColumn !== overId) {
+        // Update the status_override in the database
+        updateStatusOverride.mutate({ id: entryId, status: overId });
+        toast({ title: `Moved to ${overId === 'ready' ? 'Ready to Contact' : 'Watching'}` });
+      }
     }
   };
 
@@ -841,46 +909,34 @@ Commercial Lending X`,
           </Card>
         </div>
 
-        {/* Email Drop Zone */}
-        <Card 
-          className={`border-2 border-dashed transition-all ${
-            draggedEntry 
-              ? 'border-primary bg-primary/5 scale-[1.02]' 
-              : 'border-muted-foreground/20'
-          }`}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={handleDropOnEmail}
+        {/* DnD Context wrapping all draggable/droppable areas */}
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
         >
-          <CardContent className="py-8 text-center">
-            <Mail className={`w-10 h-10 mx-auto mb-2 ${draggedEntry ? 'text-primary' : 'text-muted-foreground'}`} />
-            <p className={`font-medium ${draggedEntry ? 'text-primary' : 'text-muted-foreground'}`}>
-              {draggedEntry ? 'Drop here to compose email' : 'Drag a lead here to send an email'}
-            </p>
-          </CardContent>
-        </Card>
+          {/* Email Drop Zone */}
+          <EmailDropZone isActive={!!activeId} />
 
-        {/* Rate Watch Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Ready to Contact */}
-          <Card className="border-green-200">
-            <CardHeader className="bg-green-50 border-b border-green-200">
-              <CardTitle className="flex items-center gap-2 text-green-700">
-                <CheckCircle2 className="w-5 h-5" />
-                Ready to Contact ({readyEntries.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
+          {/* Rate Watch Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Ready to Contact */}
+            <DroppableColumn 
+              id="ready" 
+              title="Ready to Contact" 
+              count={readyEntries.length}
+              isReady={true}
+            >
               {readyEntries.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   No leads have reached their target rate yet
                 </p>
               ) : (
                 readyEntries.map(entry => (
-                  <RateWatchCard 
+                  <DraggableRateWatchCard 
                     key={entry.id} 
                     entry={entry} 
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
                     onClick={() => {
                       setSelectedLeadForDetail(entry.leads);
                       setLeadDetailOpen(true);
@@ -896,29 +952,24 @@ Commercial Lending X`,
                   />
                 ))
               )}
-            </CardContent>
-          </Card>
+            </DroppableColumn>
 
-          {/* Watching */}
-          <Card>
-            <CardHeader className="bg-muted border-b">
-              <CardTitle className="flex items-center gap-2">
-                <TrendingDown className="w-5 h-5 text-muted-foreground" />
-                Watching ({alertEntries.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
+            {/* Watching */}
+            <DroppableColumn 
+              id="watching" 
+              title="Watching" 
+              count={alertEntries.length}
+              isReady={false}
+            >
               {alertEntries.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   All leads have reached their target rate!
                 </p>
               ) : (
                 alertEntries.map(entry => (
-                  <RateWatchCard 
+                  <DraggableRateWatchCard 
                     key={entry.id} 
                     entry={entry} 
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
                     onClick={() => {
                       setSelectedLeadForDetail(entry.leads);
                       setLeadDetailOpen(true);
@@ -934,9 +985,18 @@ Commercial Lending X`,
                   />
                 ))
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </DroppableColumn>
+          </div>
+
+          {/* Drag Overlay */}
+          <DragOverlay>
+            {activeEntry ? (
+              <div className="opacity-90">
+                <RateWatchCardContent entry={activeEntry} />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
 
         {/* Floating Inbox */}
         <FloatingInbox 
@@ -968,18 +1028,102 @@ Commercial Lending X`,
   );
 };
 
-// Rate Watch Card Component
-interface RateWatchCardProps {
+// Email Drop Zone Component
+const EmailDropZone = ({ isActive }: { isActive: boolean }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: 'email-zone' });
+  
+  return (
+    <Card 
+      ref={setNodeRef}
+      className={`border-2 border-dashed transition-all ${
+        isOver 
+          ? 'border-primary bg-primary/10 scale-[1.02]' 
+          : isActive
+            ? 'border-primary/50 bg-primary/5'
+            : 'border-muted-foreground/20'
+      }`}
+    >
+      <CardContent className="py-8 text-center">
+        <Mail className={`w-10 h-10 mx-auto mb-2 ${isOver || isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+        <p className={`font-medium ${isOver || isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+          {isOver ? 'Drop here to compose email' : isActive ? 'Drag here to send an email' : 'Drag a lead here to send an email'}
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Droppable Column Component
+interface DroppableColumnProps {
+  id: ColumnId;
+  title: string;
+  count: number;
+  isReady: boolean;
+  children: React.ReactNode;
+}
+
+const DroppableColumn = ({ id, title, count, isReady, children }: DroppableColumnProps) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  
+  return (
+    <Card className={`transition-all ${
+      isReady ? 'border-green-200' : ''
+    } ${isOver ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
+      <CardHeader className={`border-b ${isReady ? 'bg-green-50 border-green-200' : 'bg-muted'}`}>
+        <CardTitle className={`flex items-center gap-2 ${isReady ? 'text-green-700' : ''}`}>
+          {isReady ? <CheckCircle2 className="w-5 h-5" /> : <TrendingDown className="w-5 h-5 text-muted-foreground" />}
+          {title} ({count})
+        </CardTitle>
+      </CardHeader>
+      <CardContent ref={setNodeRef} className="p-4 space-y-3 max-h-[600px] overflow-y-auto min-h-[200px]">
+        {children}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Draggable Rate Watch Card
+interface DraggableRateWatchCardProps {
   entry: RateWatchEntry;
-  onDragStart: (entry: RateWatchEntry) => void;
-  onDragEnd: () => void;
   onClick: () => void;
   onEmail: () => void;
   onAIEmail: () => void;
   onPhone: () => void;
 }
 
-const RateWatchCard = ({ entry, onDragStart, onDragEnd, onClick, onEmail, onAIEmail, onPhone }: RateWatchCardProps) => {
+const DraggableRateWatchCard = ({ entry, onClick, onEmail, onAIEmail, onPhone }: DraggableRateWatchCardProps) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: entry.id });
+  
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <RateWatchCardContent 
+        entry={entry} 
+        dragHandleProps={{ ...attributes, ...listeners }}
+        onClick={onClick}
+        onEmail={onEmail}
+        onAIEmail={onAIEmail}
+        onPhone={onPhone}
+      />
+    </div>
+  );
+};
+
+// Rate Watch Card Content Component
+interface RateWatchCardContentProps {
+  entry: RateWatchEntry;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  onClick?: () => void;
+  onEmail?: () => void;
+  onAIEmail?: () => void;
+  onPhone?: () => void;
+}
+
+const RateWatchCardContent = ({ entry, dragHandleProps, onClick, onEmail, onAIEmail, onPhone }: RateWatchCardContentProps) => {
   const rateStatus = entry.current_rate <= entry.target_rate;
   const rateDiff = (entry.current_rate - entry.target_rate).toFixed(3);
   
@@ -989,7 +1133,7 @@ const RateWatchCard = ({ entry, onDragStart, onDragEnd, onClick, onEmail, onAIEm
     if (target.closest('button') || target.closest('[data-drag-handle]')) {
       return;
     }
-    onClick();
+    onClick?.();
   };
   
   return (
@@ -1002,10 +1146,8 @@ const RateWatchCard = ({ entry, onDragStart, onDragEnd, onClick, onEmail, onAIEm
       <div className="flex items-start gap-3">
         <div 
           data-drag-handle
-          className="cursor-grab active:cursor-grabbing"
-          draggable
-          onDragStart={() => onDragStart(entry)}
-          onDragEnd={onDragEnd}
+          className="cursor-grab active:cursor-grabbing touch-none"
+          {...dragHandleProps}
         >
           <GripVertical className="w-5 h-5 text-muted-foreground mt-1 shrink-0" />
         </div>
@@ -1131,19 +1273,25 @@ const RateWatchCard = ({ entry, onDragStart, onDragEnd, onClick, onEmail, onAIEm
           )}
         </div>
         
-        <div className="flex flex-col gap-1 shrink-0">
-          <Button size="icon" variant="ghost" onClick={onAIEmail} className="h-8 w-8" title="AI Generate Email">
-            <Sparkles className="w-4 h-4" />
-          </Button>
-          <Button size="icon" variant="ghost" onClick={onEmail} className="h-8 w-8" title="Template Email">
-            <Mail className="w-4 h-4" />
-          </Button>
-          {entry.leads.phone && (
-            <Button size="icon" variant="ghost" onClick={onPhone} className="h-8 w-8" title="Call">
-              <Phone className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
+        {(onAIEmail || onEmail || onPhone) && (
+          <div className="flex flex-col gap-1 shrink-0">
+            {onAIEmail && (
+              <Button size="icon" variant="ghost" onClick={onAIEmail} className="h-8 w-8" title="AI Generate Email">
+                <Sparkles className="w-4 h-4" />
+              </Button>
+            )}
+            {onEmail && (
+              <Button size="icon" variant="ghost" onClick={onEmail} className="h-8 w-8" title="Template Email">
+                <Mail className="w-4 h-4" />
+              </Button>
+            )}
+            {onPhone && entry.leads.phone && (
+              <Button size="icon" variant="ghost" onClick={onPhone} className="h-8 w-8" title="Call">
+                <Phone className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
