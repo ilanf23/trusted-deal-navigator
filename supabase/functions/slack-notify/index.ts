@@ -18,10 +18,12 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const SLACK_API_KEY = Deno.env.get('SLACK_BOT_TOKEN');
+    const SLACK_API_KEY = Deno.env.get('SLACK_API_KEY') || Deno.env.get('SLACK_BOT_TOKEN');
     if (!SLACK_API_KEY) {
-      throw new Error('SLACK_BOT_TOKEN is not configured');
+      throw new Error('SLACK_API_KEY or SLACK_BOT_TOKEN is not configured');
     }
+    
+    console.log('Using Slack token starting with:', SLACK_API_KEY.substring(0, 10));
 
     const SLACK_CHANNEL_ID = Deno.env.get('SLACK_CHANNEL_ID');
     if (!SLACK_CHANNEL_ID) {
