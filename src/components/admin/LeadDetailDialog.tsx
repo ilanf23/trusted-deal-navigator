@@ -22,7 +22,21 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
-import { format, formatDistanceToNow, differenceInDays } from 'date-fns';
+import { format, formatDistanceToNow, differenceInDays, differenceInHours } from 'date-fns';
+
+// Helper to format activity timestamps - show time if <24h, otherwise show date and time
+const formatActivityTimestamp = (date: Date | string) => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const hoursDiff = differenceInHours(new Date(), d);
+  
+  if (hoursDiff < 24) {
+    // Less than 24 hours - show just the time
+    return format(d, 'h:mm a');
+  } else {
+    // More than 24 hours - show date and time
+    return format(d, 'M/d/yy h:mm a');
+  }
+};
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
@@ -1517,7 +1531,7 @@ Commercial Lending X`,
                                 </p>
                               </div>
                               <span className="text-xs text-slate-400 whitespace-nowrap">
-                                {formatDistanceToNow(new Date(item.created_at), { addSuffix: false })} ago
+                                {formatActivityTimestamp(item.created_at)}
                               </span>
                             </div>
                             {item._type === 'communication' && (item as Communication).transcript && (
@@ -1720,7 +1734,7 @@ Commercial Lending X`,
                           <div key={comment.id} className="p-3 bg-white border border-slate-200 rounded-lg">
                             <p className="text-sm text-slate-800">{comment.content}</p>
                             <p className="text-xs text-slate-400 mt-2">
-                              {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                              {formatActivityTimestamp(comment.created_at)}
                             </p>
                           </div>
                         ))}
@@ -2415,7 +2429,7 @@ Commercial Lending X`,
                               <p className="text-xs text-slate-500 truncate">{thread.snippet}</p>
                               <p className="text-xs text-slate-400">
                                 {thread.last_message_date 
-                                  ? formatDistanceToNow(new Date(thread.last_message_date), { addSuffix: true })
+                                  ? formatActivityTimestamp(thread.last_message_date)
                                   : 'No date'}
                               </p>
                             </div>
