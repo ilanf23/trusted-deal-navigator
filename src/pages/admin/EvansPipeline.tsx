@@ -637,8 +637,15 @@ const EvansPipeline = () => {
       if (!canEdit) throw new Error('Not authorized to update this lead');
       const { error } = await supabase.from('leads').update({ [field]: value }).eq('id', id);
       if (error) throw error;
+      return { field, value };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // If changing ownership to someone other than Evan while filtering by Evan's leads,
+      // switch to "All Leads" filter so the reassigned lead remains visible
+      if (result.field === 'assigned_to' && ownerFilter === 'evan' && result.value !== evanId) {
+        setOwnerFilter('all');
+        toast.success('Lead reassigned - showing all leads');
+      }
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
     },
@@ -708,11 +715,19 @@ const EvansPipeline = () => {
       if (!canEdit) throw new Error('Not authorized');
       const { error } = await supabase.from('leads').update({ assigned_to: ownerId }).in('id', leadIds);
       if (error) throw error;
+      return { ownerId };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // If reassigning to someone other than Evan while filtering by Evan's leads,
+      // switch to "All Leads" filter so the reassigned leads remain visible
+      if (ownerFilter === 'evan' && result.ownerId !== evanId) {
+        setOwnerFilter('all');
+        toast.success(`${selectedLeadIds.size} lead(s) reassigned - showing all leads`);
+      } else {
+        toast.success(`${selectedLeadIds.size} lead(s) reassigned`);
+      }
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-      toast.success(`${selectedLeadIds.size} lead(s) reassigned`);
       clearSelection();
     },
     onError: () => toast.error('Failed to assign owner'),
