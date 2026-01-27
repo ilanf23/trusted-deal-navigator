@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -414,6 +414,7 @@ const extractEmailAddress = (from: string): string => {
 
 const EvansGmail = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
@@ -433,6 +434,24 @@ const EvansGmail = () => {
   const [selectedLeadIdForDetail, setSelectedLeadIdForDetail] = useState<string | null>(null);
   const [showDealSidebar, setShowDealSidebar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Handle URL params to open compose dialog from dashboard nudges
+  useEffect(() => {
+    const compose = searchParams.get('compose');
+    const to = searchParams.get('to');
+    const draftId = searchParams.get('draftId');
+    
+    if (compose === 'draft' && to) {
+      // Open compose dialog with the email pre-filled
+      setComposeTo(decodeURIComponent(to));
+      setComposeSubject('Following up');
+      setComposeBody('');
+      setComposeOpen(true);
+      
+      // Clear the URL params to prevent reopening on refresh
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   // Mark email as read when selected
   const handleSelectEmail = (emailId: string) => {

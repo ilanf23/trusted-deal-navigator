@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bell, Mail, Loader2, Clock, ExternalLink, Zap } from 'lucide-react';
 import { differenceInDays, subDays, format } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect, useRef } from 'react';
 
@@ -35,6 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const tasksCreatedRef = useRef<Set<string>>(new Set());
 
   // Fetch leads needing nudges (no activity in 7+ days)
@@ -118,7 +119,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
     createFollowUpTasks();
   }, [nudgeLeads, existingTasks, queryClient]);
 
-  // Create nudge email draft
+  // Create nudge email draft and navigate to Gmail
   const createNudgeDraft = useMutation({
     mutationFn: async (lead: Lead) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -152,9 +153,11 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
 
       return { lead, draftId: data.id };
     },
-    onSuccess: ({ lead }) => {
-      toast.success(`Draft created for ${lead.name}`);
+    onSuccess: ({ lead, draftId }) => {
+      toast.success(`Draft created for ${lead.name} - Opening Gmail...`);
       queryClient.invalidateQueries({ queryKey: ['evan-dashboard-nudges'] });
+      // Navigate to Gmail with the draft ID to open it directly
+      navigate(`/team/evan/gmail?compose=draft&draftId=${draftId}&to=${encodeURIComponent(lead.email || '')}&leadId=${lead.id}`);
     },
     onError: (error: any) => {
       toast.error('Failed to create draft: ' + error.message);
