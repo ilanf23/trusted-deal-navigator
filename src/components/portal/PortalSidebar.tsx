@@ -48,7 +48,7 @@ const PortalSidebar = () => {
           <img
             src={logo}
             alt="Commercial Lending X logo"
-            className="h-32 w-auto object-contain"
+            className="h-44 w-auto object-contain"
             loading="lazy"
           />
         </Link>
