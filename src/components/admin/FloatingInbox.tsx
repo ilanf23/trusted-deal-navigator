@@ -91,6 +91,7 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
       if (prefilledEmail.leadId) {
         setCurrentLeadId(prefilledEmail.leadId);
       }
+      // Open compose immediately, even if Gmail is not connected
       setComposeOpen(true);
       onPrefilledEmailHandled?.();
     }
@@ -158,6 +159,21 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
 
   const handleSend = async () => {
     if (!composeTo || !composeSubject || !composeBody) return;
+    
+    // If Gmail is not connected, use mailto as fallback
+    if (!status.connected) {
+      const mailtoLink = `mailto:${encodeURIComponent(composeTo)}?subject=${encodeURIComponent(composeSubject)}&body=${encodeURIComponent(composeBody)}`;
+      window.open(mailtoLink, '_blank');
+      toast({ 
+        title: 'Opening email client', 
+        description: 'Gmail is not connected. Opening your default email client instead.' 
+      });
+      setComposeOpen(false);
+      setComposeTo('');
+      setComposeSubject('');
+      setComposeBody('');
+      return;
+    }
     
     setSending(true);
     const success = await sendMessage(composeTo, composeSubject, composeBody);
@@ -627,7 +643,7 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
           </Button>
           <Button size="sm" onClick={handleSend} disabled={sending || !composeTo || !composeSubject || !composeBody}>
             {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-            Send
+            {status.connected ? 'Send' : 'Open in Email'}
           </Button>
         </div>
       </DraggableBox>
