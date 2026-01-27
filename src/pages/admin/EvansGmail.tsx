@@ -5,7 +5,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen, ListTodo, MessageSquare } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen, ListTodo, MessageSquare, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -1566,6 +1566,15 @@ const EvansGmail = () => {
                           } ${isExternal ? 'py-5 px-4' : 'p-3'}`}
                         >
                           <div className="flex items-center gap-2 mb-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Star toggle functionality - for now just visual
+                              }}
+                              className="text-amber-400 hover:text-amber-500 transition-colors flex-shrink-0"
+                            >
+                              <Star className="w-4 h-4 fill-amber-400" />
+                            </button>
                             <Avatar className={isExternal ? 'w-8 h-8' : 'w-6 h-6'}>
                               {email.senderPhoto && <AvatarImage src={email.senderPhoto} />}
                               <AvatarFallback className={isExternal ? 'text-sm' : 'text-xs'}>
