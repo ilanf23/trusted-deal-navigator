@@ -12,6 +12,7 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
 import StageManagerModal from '@/components/admin/StageManagerModal';
 import ColumnManagerModal from '@/components/admin/ColumnManagerModal';
@@ -189,6 +190,16 @@ const EvansPipeline = () => {
   const [newLeadForDialog, setNewLeadForDialog] = useState<Lead | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   
+  // Email compose dialog state
+  const [composeDialogOpen, setComposeDialogOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [composeSending, setComposeSending] = useState(false);
+  const [composeRecipientName, setComposeRecipientName] = useState('');
+  const [composeLeadId, setComposeLeadId] = useState<string | null>(null);
+  const [generatingEmail, setGeneratingEmail] = useState(false);
+  
   // Global undo context
   const { registerUndo } = useUndo();
   
@@ -356,11 +367,166 @@ const EvansPipeline = () => {
     setEmailTypeSelectionOpen(true);
   };
 
-  const handleEmailTypeSelect = (emailType: string) => {
+  const handleEmailTypeSelect = async (emailType: string) => {
     if (!pendingEmailLead?.email) return;
     setEmailTypeSelectionOpen(false);
-    navigate(`/team/evan/gmail?compose=true&to=${encodeURIComponent(pendingEmailLead.email)}&name=${encodeURIComponent(pendingEmailLead.name)}&emailType=${encodeURIComponent(emailType)}&leadId=${encodeURIComponent(pendingEmailLead.id)}`);
-    setPendingEmailLead(null);
+    setGeneratingEmail(true);
+    
+    // Set up compose dialog with lead info
+    setComposeTo(pendingEmailLead.email);
+    setComposeRecipientName(pendingEmailLead.name);
+    setComposeLeadId(pendingEmailLead.id);
+    
+    // If custom, open dialog with empty fields
+    if (emailType === 'custom') {
+      setComposeSubject('');
+      setComposeBody('');
+      setGeneratingEmail(false);
+      setComposeDialogOpen(true);
+      setPendingEmailLead(null);
+      return;
+    }
+    
+    // Generate AI email for other types
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      
+      // Fetch additional lead data for context
+      const { data: leadData } = await supabase
+        .from('leads')
+        .select(`
+          *,
+          pipeline_leads(
+            stage_id,
+            pipeline_id,
+            pipeline_stages(name, color),
+            pipelines(name)
+          ),
+          lead_responses(*)
+        `)
+        .eq('id', pendingEmailLead.id)
+        .single();
+      
+      // Get pipeline stage info
+      const pipelineLead = leadData?.pipeline_leads?.[0];
+      const stageName = pipelineLead?.pipeline_stages?.name || 'Discovery';
+      const pipelineNameVal = pipelineLead?.pipelines?.name || 'Main Pipeline';
+      
+      // Get lead response data
+      const leadResponse = leadData?.lead_responses?.[0];
+      
+      const leadContext = {
+        name: pendingEmailLead.name,
+        company: pendingEmailLead.company_name,
+        email: pendingEmailLead.email,
+        phone: pendingEmailLead.phone,
+        stage: stageName,
+        pipeline: pipelineNameVal,
+        loanAmount: leadResponse?.loan_amount,
+        loanType: leadResponse?.loan_type,
+        fundingPurpose: leadResponse?.funding_purpose,
+        fundingTimeline: leadResponse?.funding_timeline,
+        notes: pendingEmailLead.notes,
+      };
+
+      const aiResponse = await fetch(
+        'https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/generate-lead-email',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            leadContext,
+            emailType,
+            currentStage: stageName,
+          }),
+        }
+      );
+
+      if (!aiResponse.ok) {
+        throw new Error('Failed to generate email');
+      }
+
+      const { subject, body } = await aiResponse.json();
+      
+      setComposeSubject(subject || '');
+      setComposeBody(body || '');
+      setComposeDialogOpen(true);
+    } catch (error: any) {
+      console.error('Error generating email:', error);
+      toast.error('Failed to generate email: ' + error.message);
+      // Fall back to opening with empty fields
+      setComposeSubject('');
+      setComposeBody('');
+      setComposeDialogOpen(true);
+    } finally {
+      setGeneratingEmail(false);
+      setPendingEmailLead(null);
+    }
+  };
+
+  // Send email from compose dialog
+  const handleSendEmail = async (attachments: Attachment[]) => {
+    if (!composeTo) return;
+    
+    setComposeSending(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      // Prepare attachments
+      const attachmentData = attachments.map(att => ({
+        filename: att.name,
+        mimeType: att.type,
+        data: att.base64,
+      }));
+
+      const response = await fetch(
+        'https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send-email',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: composeTo,
+            subject: composeSubject,
+            body: composeBody,
+            attachments: attachmentData.length > 0 ? attachmentData : undefined,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      // Update lead's last_activity_at
+      if (composeLeadId) {
+        await supabase
+          .from('leads')
+          .update({ last_activity_at: new Date().toISOString() })
+          .eq('id', composeLeadId);
+      }
+
+      toast.success('Email sent successfully!');
+      setComposeDialogOpen(false);
+      setComposeTo('');
+      setComposeSubject('');
+      setComposeBody('');
+      setComposeLeadId(null);
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast.error('Failed to send email: ' + error.message);
+    } finally {
+      setComposeSending(false);
+    }
   };
 
   const sources = [...new Set(leads.map(lead => lead.source).filter(Boolean))];
@@ -1591,6 +1757,38 @@ const EvansPipeline = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Email Compose Dialog */}
+      <GmailComposeDialog
+        isOpen={composeDialogOpen}
+        onClose={() => {
+          setComposeDialogOpen(false);
+          setComposeTo('');
+          setComposeSubject('');
+          setComposeBody('');
+          setComposeLeadId(null);
+        }}
+        to={composeTo}
+        onToChange={setComposeTo}
+        subject={composeSubject}
+        onSubjectChange={setComposeSubject}
+        body={composeBody}
+        onBodyChange={setComposeBody}
+        onSend={handleSendEmail}
+        sending={composeSending}
+        recipientName={composeRecipientName}
+      />
+
+      {/* Generating Email Loading Overlay */}
+      {generatingEmail && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-card border shadow-xl">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-lg font-medium">Generating your email...</p>
+            <p className="text-sm text-muted-foreground">AI is crafting the perfect message</p>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };
