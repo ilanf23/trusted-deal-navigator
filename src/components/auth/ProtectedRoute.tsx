@@ -8,6 +8,14 @@ interface ProtectedRouteProps {
   clientOnly?: boolean;
 }
 
+// Team members who should NOT have admin access
+const TEAM_MEMBER_EMAILS: Record<string, string> = {
+  'evan@test.com': '/team/evan',
+  'evan@commerciallendingx.com': '/team/evan',
+  'maura@test.com': '/team/maura',
+  'wendy@test.com': '/team/wendy',
+};
+
 const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: ProtectedRouteProps) => {
   const { user, loading, isAdmin } = useAuth();
   const location = useLocation();
@@ -22,6 +30,14 @@ const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: 
 
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  const userEmail = (user.email ?? '').toLowerCase();
+
+  // Check if user is a team member trying to access admin routes
+  if (requireAdmin && TEAM_MEMBER_EMAILS[userEmail]) {
+    // Redirect team members to their own dashboard
+    return <Navigate to={TEAM_MEMBER_EMAILS[userEmail]} replace />;
   }
 
   // Redirect admins away from client portal
