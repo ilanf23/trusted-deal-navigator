@@ -2498,29 +2498,22 @@ Commercial Lending X`,
 
                 <Separator />
 
-                {/* Notes Section */}
-                <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <MessageSquare className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Notes</span>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !notesOpen && "-rotate-90")} />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-3 pl-6">
-                    <Textarea 
-                      value={notesContent}
-                      onChange={(e) => setNotesContent(e.target.value)}
-                      onBlur={() => notesContent !== lead.notes && saveNotes.mutate()}
-                      placeholder="Add notes..."
-                      className="min-h-[140px] text-sm border-slate-200 resize-none"
-                    />
-                    {lead.updated_at && (
-                      <p className="text-xs text-slate-400 mt-2">
-                        Last updated: {format(new Date(lead.updated_at), 'M/d/yy')}
-                      </p>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
+                {/* Notes Section - No header, content displayed prominently */}
+                <div className="py-3">
+                  <Textarea 
+                    id="lead-notes-textarea"
+                    value={notesContent}
+                    onChange={(e) => setNotesContent(e.target.value)}
+                    onBlur={() => notesContent !== lead.notes && saveNotes.mutate()}
+                    placeholder="Add notes..."
+                    className="min-h-[100px] text-lg font-bold border-transparent hover:border-slate-200 focus:border-slate-300 resize-none bg-transparent px-0 shadow-none focus:ring-0"
+                  />
+                  {lead.updated_at && notesContent && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Last updated: {format(new Date(lead.updated_at), 'M/d/yy')}
+                    </p>
+                  )}
+                </div>
 
                 <Separator />
 
