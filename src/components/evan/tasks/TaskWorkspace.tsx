@@ -17,6 +17,7 @@ import {
   Mail,
   Users,
   Filter,
+  Clock,
 } from 'lucide-react';
 
 export const TaskWorkspace = () => {
@@ -196,18 +197,42 @@ export const TaskWorkspace = () => {
       </div>
 
       {/* Stats Bar - responsive layout */}
-      <div className="flex flex-wrap items-center gap-3 md:gap-6 text-xs md:text-sm">
-        <div className="flex items-center gap-1.5 md:gap-2">
-          <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
-          <span className="text-muted-foreground">{tasks.filter(t => t.status === 'done').length} Complete</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 md:gap-6 text-xs md:text-sm">
+        <div className="flex flex-wrap items-center gap-3 md:gap-6">
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
+            <span className="text-muted-foreground">{tasks.filter(t => t.status === 'done').length} Complete</span>
+          </div>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500" />
+            <span className="text-muted-foreground">{tasks.filter(t => t.status === 'working' || t.status === 'in_progress').length} In Progress</span>
+          </div>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-slate-400" />
+            <span className="text-muted-foreground">{tasks.filter(t => !t.status || t.status === 'todo').length} To Do</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 md:gap-2">
-          <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500" />
-          <span className="text-muted-foreground">{tasks.filter(t => t.status === 'working' || t.status === 'in_progress').length} In Progress</span>
-        </div>
-        <div className="flex items-center gap-1.5 md:gap-2">
-          <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-slate-400" />
-          <span className="text-muted-foreground">{tasks.filter(t => !t.status || t.status === 'todo').length} To Do</span>
+        
+        {/* Time Estimate - Top Right */}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-full">
+          <Clock className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+          <span className="text-rose-700 dark:text-rose-300 font-medium">
+            {(() => {
+              const incompleteTasks = tasks.filter(t => t.status !== 'done');
+              const totalMinutes = incompleteTasks.reduce((sum, task) => {
+                // Use estimated_hours if available, otherwise default to 15 minutes (0.25 hours)
+                const hours = task.estimated_hours ?? 0.25;
+                return sum + (hours * 60);
+              }, 0);
+              const hours = Math.floor(totalMinutes / 60);
+              const mins = Math.round(totalMinutes % 60);
+              if (hours > 0) {
+                return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+              }
+              return `${mins}m`;
+            })()}
+          </span>
+          <span className="text-rose-600/70 dark:text-rose-400/70 text-xs">est.</span>
         </div>
       </div>
 
