@@ -1039,17 +1039,33 @@ Commercial Lending X`,
   const addTask = useMutation({
     mutationFn: async ({ title, dueDate }: { title: string; dueDate?: string }) => {
       if (!lead) return;
-      const { error } = await supabase.from('lead_tasks').insert({
+      
+      // Add to lead_tasks for CRM tracking
+      const { error: leadTaskError } = await supabase.from('lead_tasks').insert({
         lead_id: lead.id,
         title,
         due_date: dueDate || null,
         priority: 'medium',
         status: 'pending',
       });
-      if (error) throw error;
+      if (leadTaskError) throw leadTaskError;
+      
+      // Also add to evan_tasks so it appears in Evan's Tasks page
+      const { error: evanTaskError } = await supabase.from('evan_tasks').insert({
+        title,
+        description: `Task for ${lead.name}${lead.company_name ? ` (${lead.company_name})` : ''}`,
+        due_date: dueDate || null,
+        priority: 'medium',
+        status: 'todo',
+        lead_id: lead.id,
+        source: 'lead',
+        assignee_name: 'Evan',
+      });
+      if (evanTaskError) throw evanTaskError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
       setNewTaskTitle('');
       setNewTaskDueDate('');
       setShowAddTask(false);
