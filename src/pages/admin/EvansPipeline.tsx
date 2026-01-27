@@ -22,7 +22,37 @@ import MoveBoxesModal from '@/components/admin/MoveBoxesModal';
 import { usePipelineColumns } from '@/hooks/usePipelineColumns';
 import HelpTooltip from '@/components/ui/help-tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+// Import avatar images
+import andrewFosterAvatar from '@/assets/avatars/andrew-foster.jpg';
+import davidKimAvatar from '@/assets/avatars/david-kim.jpg';
+import emilyWangAvatar from '@/assets/avatars/emily-wang.jpg';
+import lisaWongAvatar from '@/assets/avatars/lisa-wong.jpg';
+import michaelChenAvatar from '@/assets/avatars/michael-chen.jpg';
+import rachelAdamsAvatar from '@/assets/avatars/rachel-adams.jpg';
+import robertMartinezAvatar from '@/assets/avatars/robert-martinez.jpg';
+import sarahRichardsonAvatar from '@/assets/avatars/sarah-richardson.jpg';
+import sophiaLaurentAvatar from '@/assets/avatars/sophia-laurent.jpg';
+import thomasWrightAvatar from '@/assets/avatars/thomas-wright.jpg';
+
+// Lead name to avatar mapping
+const leadAvatarMap: Record<string, string> = {
+  'andrew foster': andrewFosterAvatar,
+  'david kim': davidKimAvatar,
+  'emily wang': emilyWangAvatar,
+  'lisa wong': lisaWongAvatar,
+  'michael chen': michaelChenAvatar,
+  'rachel adams': rachelAdamsAvatar,
+  'robert martinez': robertMartinezAvatar,
+  'sarah richardson': sarahRichardsonAvatar,
+  'sophia laurent': sophiaLaurentAvatar,
+  'thomas wright': thomasWrightAvatar,
+};
+
+const getLeadAvatar = (name: string): string | null => {
+  return leadAvatarMap[name.toLowerCase()] || null;
+};
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -1183,8 +1213,10 @@ const EvansPipeline = () => {
                                     />
                                   );
                                 case 'avatar':
+                                  const avatarSrc = getLeadAvatar(lead.name);
                                   return (
                                     <Avatar className="h-7 w-7 bg-[#0066FF] flex-shrink-0">
+                                      {avatarSrc && <AvatarImage src={avatarSrc} alt={lead.name} className="object-cover" />}
                                       <AvatarFallback className="text-[10px] text-white font-semibold bg-[#0066FF]">
                                         {getInitials(lead.name)}
                                       </AvatarFallback>
