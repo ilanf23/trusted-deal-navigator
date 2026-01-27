@@ -109,6 +109,7 @@ const App = () => (
               <Route path="/user/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
               <Route path="/user/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
               <Route path="/user/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
+              <Route path="/user/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
               {/* Legacy /team/evan routes - kept for backward compatibility */}
               <Route path="/team/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
               <Route path="/team/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
@@ -120,6 +121,7 @@ const App = () => (
               <Route path="/team/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
               <Route path="/team/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
               <Route path="/team/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
+              <Route path="/team/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
               <Route path="/team/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
               <Route path="/team/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
               {/* Founder/Admin Routes (Brad, Adam, Ilan) */}

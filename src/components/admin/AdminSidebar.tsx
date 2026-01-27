@@ -203,7 +203,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: TrendingDown,
         items: [
           { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
-          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+          { title: 'Messages', url: `/team/${employeeName.toLowerCase()}/messages`, icon: MessageSquare },
           { title: 'Bug Reporting', url: `/team/${employeeName.toLowerCase()}/bug-reporting`, icon: Bug },
         ],
         noCollapse: true,
