@@ -94,6 +94,9 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
         const lastActivity = lead.last_activity_at || lead.created_at;
         const daysSince = differenceInDays(new Date(), new Date(lastActivity));
         
+        // Set due date to today for follow-up tasks
+        const dueDate = new Date();
+        
         const { error } = await supabase.from('evan_tasks').insert({
           title: `7-Day Follow Up: ${lead.name}`,
           description: `No activity in ${daysSince} days. Follow up with ${lead.name}${lead.company_name ? ` at ${lead.company_name}` : ''}.`,
@@ -103,6 +106,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           assignee_name: 'Evan',
           group_name: 'To Do',
           source: 'nudge',
+          due_date: dueDate.toISOString(),
         });
 
         if (!error) {
