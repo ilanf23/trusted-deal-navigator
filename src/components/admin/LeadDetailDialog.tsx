@@ -37,6 +37,25 @@ const formatActivityTimestamp = (date: Date | string) => {
     return format(d, 'M/d/yy h:mm a');
   }
 };
+
+// Helper to format phone numbers to American format (XXX) XXX-XXXX
+const formatPhoneNumber = (phone: string | null | undefined): string => {
+  if (!phone) return '';
+  
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '');
+  
+  // Handle different lengths
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  } else if (digits.length === 11 && digits[0] === '1') {
+    // Handle 1 + 10 digits (country code)
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  
+  // Return original if format doesn't match
+  return phone;
+};
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
@@ -2009,7 +2028,7 @@ Commercial Lending X`,
                     {lead.phone && phones.length === 0 && (
                       <div className="flex items-center justify-between py-1">
                         <div>
-                          <p className="text-sm text-slate-900">{lead.phone}</p>
+                          <p className="text-sm text-slate-900">{formatPhoneNumber(lead.phone)}</p>
                           <p className="text-xs text-slate-400">Primary</p>
                         </div>
                       </div>
@@ -2017,7 +2036,7 @@ Commercial Lending X`,
                     {phones.map(p => (
                       <div key={p.id} className="flex items-center justify-between py-1 group">
                         <div>
-                          <p className="text-sm text-slate-900">{p.phone_number}</p>
+                          <p className="text-sm text-slate-900">{formatPhoneNumber(p.phone_number)}</p>
                           <p className="text-xs text-slate-400 capitalize">{p.phone_type}</p>
                         </div>
                         <Button 
