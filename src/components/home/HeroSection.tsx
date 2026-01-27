@@ -78,15 +78,15 @@ const HeroSection = () => {
           </h1>
 
           {/* Video + Map Grid */}
-          <div className="w-full max-w-[90rem] mb-12 animate-fade-in-up animation-delay-100 mt-12">
-            <div className="grid lg:grid-cols-2 gap-40">
+          <div className="w-full max-w-[90rem] mb-12 animate-fade-in-up animation-delay-100 mt-12 px-4 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 xl:gap-24">
               {/* Video */}
-              <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-primary-foreground/20" style={{ transform: 'scale(1.25)', transformOrigin: 'center center' }}>
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-primary-foreground/20">
                 <iframe src="https://www.youtube.com/embed/z11ValptvRA?start=1" title="Commercial Lending X Overview" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 w-full h-full" />
               </div>
               
               {/* Deal Pulse Map */}
-              <div className="hidden lg:block aspect-video" style={{ transform: 'scale(1.25)', transformOrigin: 'center center' }}>
+              <div className="hidden lg:block aspect-video">
                 <DealPulseMap />
               </div>
             </div>
