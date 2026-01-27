@@ -1286,13 +1286,13 @@ Commercial Lending X`,
           {/* Left Panel - Activity Timeline */}
           <div className="flex-1 flex flex-col border-r">
             {/* Search Bar */}
-            <div className="flex items-center gap-2 px-4 py-2 border-b bg-white">
+            <div className="flex items-center gap-2 px-4 py-2 border-b bg-background">
               <div className="flex-1">
                 <Input
                   value={activitySearch}
                   onChange={(e) => setActivitySearch(e.target.value)}
                   placeholder="Search activity, emails, calls..."
-                  className="h-9 text-sm border-slate-200 bg-slate-50 focus:bg-white pl-3"
+                  className="h-9 text-sm border-border bg-muted focus:bg-background pl-3"
                 />
               </div>
               {/* Add Comment */}
@@ -1425,7 +1425,7 @@ Commercial Lending X`,
 
               {/* AI Action Bar */}
               {showAiBar && (
-                <div className="flex items-center gap-3 px-4 py-3 border-b bg-white">
+                <div className="flex items-center gap-3 px-4 py-3 border-b bg-background">
                   <Sparkles className="w-4 h-4 text-blue-500" />
                   <Button 
                     variant="outline" 
@@ -1474,7 +1474,7 @@ Commercial Lending X`,
 
               {/* Ask Question Dialog */}
               {showAskDialog && (
-                <div className="px-4 py-3 border-b bg-blue-50 space-y-3">
+                <div className="px-4 py-3 border-b bg-blue-50 dark:bg-blue-950/50 space-y-3">
                   <div className="flex items-center gap-2">
                     <HelpCircle className="w-4 h-4 text-blue-600" />
                     <span className="text-sm font-medium text-blue-800">Ask a question about this lead</span>
@@ -1503,7 +1503,7 @@ Commercial Lending X`,
                     </Button>
                   </div>
                   {aiAnswer && (
-                    <div className="p-3 bg-white rounded-md border border-blue-200 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    <div className="p-3 bg-background rounded-md border border-blue-200 dark:border-blue-800 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
                       {aiAnswer}
                     </div>
                   )}
@@ -1512,7 +1512,7 @@ Commercial Lending X`,
 
               {/* AI Summary Display */}
               {aiSummary && (
-                <div className="px-4 py-3 border-b bg-purple-50">
+                <div className="px-4 py-3 border-b bg-purple-50 dark:bg-purple-950/50">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-purple-600" />
@@ -1523,7 +1523,7 @@ Commercial Lending X`,
                       onClick={() => setAiSummary(null)}
                     />
                   </div>
-                  <div className="p-3 bg-white rounded-md border border-purple-200 text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
+                  <div className="p-3 bg-background rounded-md border border-purple-200 dark:border-purple-800 text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
                     {aiSummary}
                   </div>
                 </div>
@@ -1541,7 +1541,7 @@ Commercial Lending X`,
                       </div>
                     ) : (
                       timelineItems.map((item, idx) => (
-                        <div key={item.id} className="flex items-start gap-3 py-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                        <div key={item.id} className="flex items-start gap-3 py-3 border-b border-border hover:bg-muted/50 cursor-pointer">
                           <div className="w-5 h-5 mt-1">
                             {item._type === 'communication' ? (
                               item.direction === 'inbound' ? 
@@ -1554,18 +1554,18 @@ Commercial Lending X`,
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <p className="font-medium text-sm text-slate-900">
+                                <p className="font-medium text-sm text-foreground">
                                   {item._type === 'communication' 
                                     ? `${item.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call`
                                     : item.title || 'Activity'}
                                 </p>
-                                <p className="text-sm text-slate-600 truncate mt-0.5">
+                                <p className="text-sm text-muted-foreground truncate mt-0.5">
                                   {item._type === 'activity' 
                                     ? (item as LeadActivity).content 
                                     : `Duration: ${formatDuration((item as Communication).duration_seconds)}`}
                                 </p>
                               </div>
-                              <span className="text-xs text-slate-400 whitespace-nowrap">
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
                                 {formatActivityTimestamp(item.created_at)}
                               </span>
                             </div>
@@ -1578,7 +1578,7 @@ Commercial Lending X`,
                                   </Button>
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
-                                  <div className="mt-2 p-2 bg-slate-100 rounded text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                  <div className="mt-2 p-2 bg-muted rounded text-xs whitespace-pre-wrap max-h-32 overflow-y-auto">
                                     {(item as Communication).transcript}
                                   </div>
                                 </CollapsibleContent>
@@ -1590,7 +1590,7 @@ Commercial Lending X`,
                     )}
 
                     {/* Stage Change Event */}
-                    <div className="flex items-center gap-3 py-3 text-sm text-slate-600">
+                    <div className="flex items-center gap-3 py-3 text-sm text-muted-foreground">
                       <div className="w-2 h-2 rounded-full bg-blue-600" />
                       <span className="font-medium">Stage changed to</span>
                       <Badge 
@@ -1613,7 +1613,7 @@ Commercial Lending X`,
                       // Thread Detail View
                       <div className="flex flex-col h-full">
                         {/* Thread Header */}
-                        <div className="flex items-center gap-2 p-3 border-b bg-slate-50">
+                        <div className="flex items-center gap-2 p-3 border-b bg-muted/50">
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -1640,8 +1640,8 @@ Commercial Lending X`,
                                     className={cn(
                                       "rounded-lg border p-3",
                                       isFromEvan 
-                                        ? "bg-blue-50/50 border-blue-200" 
-                                        : "bg-white border-slate-200"
+                                        ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800" 
+                                        : "bg-background border-border"
                                     )}
                                   >
                                     <div className="flex items-start gap-2 mb-2">
@@ -1694,14 +1694,14 @@ Commercial Lending X`,
                             <div
                               key={thread.id}
                               onClick={() => setSelectedThreadId(thread.thread_id)}
-                              className="flex items-start gap-3 p-3 hover:bg-slate-50 cursor-pointer group transition-colors"
+                              className="flex items-start gap-3 p-3 hover:bg-muted/50 cursor-pointer group transition-colors"
                             >
-                              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
                                 <Mail className="w-4 h-4 text-slate-500 group-hover:text-primary" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-0.5">
-                                  <p className="text-sm font-medium text-slate-800 truncate group-hover:text-primary">
+                                  <p className="text-sm font-medium text-foreground truncate group-hover:text-primary">
                                     {thread.subject || '(No Subject)'}
                                   </p>
                                   {thread.messageCount > 1 && (
@@ -1738,12 +1738,12 @@ Commercial Lending X`,
                   {/* Comments Tab */}
                   <TabsContent value="comments" className="m-0 space-y-3">
                     {/* Add Comment Form */}
-                    <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50">
+                    <div className="p-3 border border-border rounded-lg bg-muted/50">
                       <Textarea
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
                         placeholder="Write a comment..."
-                        className="min-h-[80px] text-sm border-slate-200 bg-white mb-2"
+                        className="min-h-[80px] text-sm border-border bg-background mb-2"
                       />
                       <div className="flex justify-end">
                         <Button 
@@ -1766,9 +1766,9 @@ Commercial Lending X`,
                     ) : (
                       <div className="space-y-2">
                         {activities.filter(a => a.activity_type === 'comment').map(comment => (
-                          <div key={comment.id} className="p-3 bg-white border border-slate-200 rounded-lg">
-                            <p className="text-sm text-slate-800">{comment.content}</p>
-                            <p className="text-xs text-slate-400 mt-2">
+                          <div key={comment.id} className="p-3 bg-background border border-border rounded-lg">
+                            <p className="text-sm text-foreground">{comment.content}</p>
+                            <p className="text-xs text-muted-foreground mt-2">
                               {formatActivityTimestamp(comment.created_at)}
                             </p>
                           </div>
@@ -1780,20 +1780,20 @@ Commercial Lending X`,
                   {/* Tasks Tab */}
                   <TabsContent value="tasks" className="m-0 space-y-3">
                     {/* Add Task Form */}
-                    <div className="p-3 border border-slate-200 rounded-lg bg-slate-50/50">
+                    <div className="p-3 border border-border rounded-lg bg-muted/50">
                       <div className="space-y-2">
                         <Input
                           value={newTaskTitle}
                           onChange={(e) => setNewTaskTitle(e.target.value)}
                           placeholder="Task title"
-                          className="text-sm border-slate-200 bg-white"
+                          className="text-sm border-border bg-background"
                         />
                         <div className="flex gap-2 items-center">
                           <Input
                             type="date"
                             value={newTaskDueDate}
                             onChange={(e) => setNewTaskDueDate(e.target.value)}
-                            className="text-sm border-slate-200 bg-white flex-1"
+                            className="text-sm border-border bg-background flex-1"
                           />
                           <Button 
                             size="sm" 
@@ -1809,23 +1809,23 @@ Commercial Lending X`,
                     
                     {/* Tasks List */}
                     {tasks.length === 0 ? (
-                      <div className="text-center py-8 text-slate-400">
+                      <div className="text-center py-8 text-muted-foreground">
                         <ListTodo className="w-10 h-10 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">No tasks yet</p>
                       </div>
                     ) : (
                       <div className="space-y-1">
                         {tasks.map(task => (
-                          <div key={task.id} className="flex items-start gap-3 py-2 px-3 hover:bg-slate-50 rounded">
+                          <div key={task.id} className="flex items-start gap-3 py-2 px-3 hover:bg-muted/50 rounded">
                             {task.status === 'completed' ? (
                               <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
                             ) : (
-                              <Circle className="w-5 h-5 text-slate-300 mt-0.5" />
+                              <Circle className="w-5 h-5 text-muted-foreground mt-0.5" />
                             )}
                             <div className="flex-1">
-                              <p className={cn("text-sm", task.status === 'completed' && "line-through text-slate-400")}>{task.title}</p>
+                              <p className={cn("text-sm", task.status === 'completed' && "line-through text-muted-foreground")}>{task.title}</p>
                               {task.due_date && (
-                                <p className="text-xs text-slate-400 mt-0.5">Due {format(new Date(task.due_date), 'MMM d')}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Due {format(new Date(task.due_date), 'MMM d')}</p>
                               )}
                             </div>
                           </div>
@@ -1837,13 +1837,13 @@ Commercial Lending X`,
                   {/* Call Logs Tab */}
                   <TabsContent value="calls" className="m-0 space-y-2">
                     {communications.filter(c => c.communication_type === 'call').length === 0 ? (
-                      <div className="text-center py-12 text-slate-400">
+                      <div className="text-center py-12 text-muted-foreground">
                         <Phone className="w-12 h-12 mx-auto mb-3 opacity-50" />
                         <p>No call logs</p>
                       </div>
                     ) : (
                       communications.filter(c => c.communication_type === 'call').map(call => (
-                        <div key={call.id} className="flex items-start gap-3 py-2 px-3 hover:bg-slate-50 rounded">
+                        <div key={call.id} className="flex items-start gap-3 py-2 px-3 hover:bg-muted/50 rounded">
                           {call.direction === 'inbound' ? (
                             <PhoneIncoming className="w-5 h-5 text-green-600" />
                           ) : (
@@ -1851,7 +1851,7 @@ Commercial Lending X`,
                           )}
                           <div className="flex-1">
                             <p className="text-sm font-medium">{call.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call</p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-muted-foreground">
                               {formatDuration(call.duration_seconds)} • {format(new Date(call.created_at), 'MMM d, yyyy')}
                             </p>
                           </div>
@@ -1862,7 +1862,7 @@ Commercial Lending X`,
 
                   {/* Meeting Notes Tab */}
                   <TabsContent value="meetings" className="m-0">
-                    <div className="text-center py-12 text-slate-400">
+                    <div className="text-center py-12 text-muted-foreground">
                       <Video className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p>No meeting notes</p>
                     </div>
@@ -1873,13 +1873,13 @@ Commercial Lending X`,
           </div>
 
           {/* Right Sidebar */}
-          <div className="w-[380px] flex flex-col bg-white">
+          <div className="w-[380px] flex flex-col bg-background">
             {/* Stage & Assigned To Header */}
             <div className="flex items-start justify-between px-4 py-4 border-b">
               <div>
-                <p className="text-xs text-slate-500 mb-1">Stage</p>
+                <p className="text-xs text-muted-foreground mb-1">Stage</p>
                 <Select value={lead.status} onValueChange={(v) => updateLeadStatus.mutate(v)}>
-                  <SelectTrigger className="w-[180px] h-9 border-slate-200">
+                  <SelectTrigger className="w-[180px] h-9 border-border">
                     <div className="flex items-center gap-2">
                       <div 
                         className="w-3 h-3 rounded-sm" 
@@ -1888,7 +1888,7 @@ Commercial Lending X`,
                       <span className="text-sm">{currentStage?.title}</span>
                     </div>
                   </SelectTrigger>
-                  <SelectContent className="bg-white z-50">
+                  <SelectContent className="bg-popover z-50">
                     {stages.map(s => (
                       <SelectItem key={s.status} value={s.status}>
                         <div className="flex items-center gap-2">
@@ -1901,9 +1901,9 @@ Commercial Lending X`,
                 </Select>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-1">Assigned To</p>
+                <p className="text-xs text-muted-foreground mb-1">Assigned To</p>
                 <Select value={lead.assigned_to || ''} onValueChange={(v) => updateLeadAssignment.mutate(v)}>
-                  <SelectTrigger className="w-[120px] h-9 border-slate-200">
+                  <SelectTrigger className="w-[120px] h-9 border-border">
                     <div className="flex items-center gap-2">
                       <Avatar className="w-6 h-6">
                         <AvatarFallback className="text-xs bg-emerald-600 text-white">
@@ -1913,7 +1913,7 @@ Commercial Lending X`,
                       <span className="text-sm truncate">{assignedMember?.name || 'Unassigned'}</span>
                     </div>
                   </SelectTrigger>
-                  <SelectContent className="bg-white z-50">
+                  <SelectContent className="bg-popover z-50">
                     {teamMembers.map(t => (
                       <SelectItem key={t.id} value={t.id}>
                         <div className="flex items-center gap-2">
@@ -1935,16 +1935,16 @@ Commercial Lending X`,
               <div className="p-4 space-y-2">
                 {/* Contact Info Section */}
                 <Collapsible open={contactInfoOpen} onOpenChange={setContactInfoOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <User className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Contact Info</span>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !contactInfoOpen && "-rotate-90")} />
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Contact Info</span>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground ml-auto transition-transform", !contactInfoOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-3 pt-3 pl-6">
                     <div className="space-y-3">
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Contact Name</p>
+                        <p className="text-xs text-muted-foreground mb-1">Contact Name</p>
                         <Input 
                           defaultValue={lead.name}
                           onBlur={(e) => {
@@ -1952,22 +1952,22 @@ Commercial Lending X`,
                               updateLead.mutate({ name: e.target.value.trim() });
                             }
                           }}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 font-medium"
+                          className="h-8 text-sm border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 font-medium"
                           placeholder="Contact name"
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Known As</p>
+                        <p className="text-xs text-muted-foreground mb-1">Known As</p>
                         <Input 
                           value={contactInfo.knownAs} 
                           onChange={(e) => setContactInfo(p => ({ ...p, knownAs: e.target.value }))}
                           onBlur={() => updateContactInfo.mutate({ knownAs: contactInfo.knownAs })}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                          className="h-8 text-sm border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
                           placeholder="Nickname or alias"
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Company</p>
+                        <p className="text-xs text-muted-foreground mb-1">Company</p>
                         <Input 
                           defaultValue={lead.company_name || ''}
                           onBlur={(e) => {
@@ -1975,22 +1975,22 @@ Commercial Lending X`,
                               updateLead.mutate({ company_name: e.target.value.trim() || null });
                             }
                           }}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                          className="h-8 text-sm border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
                           placeholder="Company name"
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Title</p>
+                        <p className="text-xs text-muted-foreground mb-1">Title</p>
                         <Input 
                           value={contactInfo.contactTitle} 
                           onChange={(e) => setContactInfo(p => ({ ...p, contactTitle: e.target.value }))}
                           onBlur={() => updateContactInfo.mutate({ contactTitle: contactInfo.contactTitle })}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                          className="h-8 text-sm border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
                           placeholder="Job title"
                         />
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Contact Type</p>
+                        <p className="text-xs text-muted-foreground mb-1">Contact Type</p>
                         <Select 
                           value={contactInfo.contactType} 
                           onValueChange={(v: 'customer' | 'potential_customer' | 'referral_source' | 'lender') => {
@@ -1998,10 +1998,10 @@ Commercial Lending X`,
                             updateContactInfo.mutate({ contactType: v });
                           }}
                         >
-                          <SelectTrigger className="h-8 text-sm border-slate-200">
+                          <SelectTrigger className="h-8 text-sm border-border">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-white z-50">
+                          <SelectContent className="bg-popover z-50">
                             <SelectItem value="customer">Customer</SelectItem>
                             <SelectItem value="potential_customer">Potential Customer</SelectItem>
                             <SelectItem value="referral_source">Referral Source</SelectItem>
@@ -2017,27 +2017,27 @@ Commercial Lending X`,
 
                 {/* Phone Numbers Section */}
                 <Collapsible open={phonesOpen} onOpenChange={setPhonesOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <Phone className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Phone Numbers</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Phone Numbers</span>
                     <Badge variant="secondary" className="ml-auto text-xs">{phones.length || (lead.phone ? 1 : 0)}</Badge>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !phonesOpen && "-rotate-90")} />
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", !phonesOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
                     {lead.phone && phones.length === 0 && (
                       <div className="flex items-center justify-between py-1">
                         <div>
-                          <p className="text-sm text-slate-900">{formatPhoneNumber(lead.phone)}</p>
-                          <p className="text-xs text-slate-400">Primary</p>
+                          <p className="text-sm text-foreground">{formatPhoneNumber(lead.phone)}</p>
+                          <p className="text-xs text-muted-foreground">Primary</p>
                         </div>
                       </div>
                     )}
                     {phones.map(p => (
                       <div key={p.id} className="flex items-center justify-between py-1 group">
                         <div>
-                          <p className="text-sm text-slate-900">{formatPhoneNumber(p.phone_number)}</p>
-                          <p className="text-xs text-slate-400 capitalize">{p.phone_type}</p>
+                          <p className="text-sm text-foreground">{formatPhoneNumber(p.phone_number)}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{p.phone_type}</p>
                         </div>
                         <Button 
                           variant="ghost" 
@@ -2045,7 +2045,7 @@ Commercial Lending X`,
                           className="w-6 h-6 opacity-0 group-hover:opacity-100"
                           onClick={() => deletePhone.mutate(p.id)}
                         >
-                          <Trash2 className="w-3 h-3 text-slate-400" />
+                          <Trash2 className="w-3 h-3 text-muted-foreground" />
                         </Button>
                       </div>
                     ))}
@@ -2063,7 +2063,7 @@ Commercial Lending X`,
                           <SelectTrigger className="w-24 h-8 text-xs">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-white z-50">
+                          <SelectContent className="bg-popover z-50">
                             <SelectItem value="mobile">Mobile</SelectItem>
                             <SelectItem value="work">Work</SelectItem>
                             <SelectItem value="home">Home</SelectItem>
@@ -2088,27 +2088,27 @@ Commercial Lending X`,
 
                 {/* Email Addresses Section */}
                 <Collapsible open={emailsOpen} onOpenChange={setEmailsOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <Mail className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Email Addresses</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Email Addresses</span>
                     <Badge variant="secondary" className="ml-auto text-xs">{emails.length || (lead.email ? 1 : 0)}</Badge>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !emailsOpen && "-rotate-90")} />
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", !emailsOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
                     {lead.email && emails.length === 0 && (
                       <div className="flex items-center justify-between py-1">
                         <div>
-                          <p className="text-sm text-slate-900">{lead.email}</p>
-                          <p className="text-xs text-slate-400">Primary</p>
+                          <p className="text-sm text-foreground">{lead.email}</p>
+                          <p className="text-xs text-muted-foreground">Primary</p>
                         </div>
                       </div>
                     )}
                     {emails.map(e => (
                       <div key={e.id} className="flex items-center justify-between py-1 group">
                         <div>
-                          <p className="text-sm text-slate-900">{e.email}</p>
-                          <p className="text-xs text-slate-400 capitalize">{e.email_type}</p>
+                          <p className="text-sm text-foreground">{e.email}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{e.email_type}</p>
                         </div>
                         <Button 
                           variant="ghost" 
@@ -2116,7 +2116,7 @@ Commercial Lending X`,
                           className="w-6 h-6 opacity-0 group-hover:opacity-100"
                           onClick={() => deleteEmail.mutate(e.id)}
                         >
-                          <Trash2 className="w-3 h-3 text-slate-400" />
+                          <Trash2 className="w-3 h-3 text-muted-foreground" />
                         </Button>
                       </div>
                     ))}
@@ -2134,7 +2134,7 @@ Commercial Lending X`,
                           <SelectTrigger className="w-24 h-8 text-xs">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-white z-50">
+                          <SelectContent className="bg-popover z-50">
                             <SelectItem value="work">Work</SelectItem>
                             <SelectItem value="personal">Personal</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
@@ -2158,22 +2158,22 @@ Commercial Lending X`,
 
                 {/* Addresses Section */}
                 <Collapsible open={addressesOpen} onOpenChange={setAddressesOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <MapPin className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Addresses</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Addresses</span>
                     <Badge variant="secondary" className="ml-auto text-xs">{addresses.length}</Badge>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !addressesOpen && "-rotate-90")} />
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", !addressesOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
                     {addresses.length === 0 && !showAddAddress ? (
-                      <p className="text-sm text-slate-400 italic">No addresses on file</p>
+                      <p className="text-sm text-muted-foreground italic">No addresses on file</p>
                     ) : (
                       addresses.map(addr => (
                         <div key={addr.id} className="py-1 group flex items-start justify-between">
                           <div>
-                            <p className="text-xs text-slate-400 capitalize mb-1">{addr.address_type}</p>
-                            <p className="text-sm text-slate-900">
+                            <p className="text-xs text-muted-foreground capitalize mb-1">{addr.address_type}</p>
+                            <p className="text-sm text-foreground">
                               {[addr.address_line_1, addr.address_line_2, addr.city, addr.state, addr.zip_code].filter(Boolean).join(', ')}
                             </p>
                           </div>
@@ -2183,13 +2183,13 @@ Commercial Lending X`,
                             className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={() => deleteAddress.mutate(addr.id)}
                           >
-                            <X className="w-3 h-3 text-slate-400" />
+                            <X className="w-3 h-3 text-muted-foreground" />
                           </Button>
                         </div>
                       ))
                     )}
                     {showAddAddress ? (
-                      <div className="space-y-2 pt-2 border-t border-slate-100">
+                      <div className="space-y-2 pt-2 border-t border-border">
                         <Select value={newAddressType} onValueChange={setNewAddressType}>
                           <SelectTrigger className="h-8 text-sm w-full">
                             <SelectValue />
@@ -2255,48 +2255,48 @@ Commercial Lending X`,
 
                 {/* Social & Web Section */}
                 <Collapsible open={socialOpen} onOpenChange={setSocialOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <Globe className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Social & Web</span>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !socialOpen && "-rotate-90")} />
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <Globe className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Social & Web</span>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground ml-auto transition-transform", !socialOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-3 pt-3 pl-6">
                     <div>
-                      <p className="text-xs text-slate-400 mb-1">Website</p>
+                      <p className="text-xs text-muted-foreground mb-1">Website</p>
                       <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4 text-slate-400" />
+                        <Globe className="w-4 h-4 text-muted-foreground" />
                         <Input 
                           value={contactInfo.website} 
                           onChange={(e) => setContactInfo(p => ({ ...p, website: e.target.value }))}
                           onBlur={() => updateContactInfo.mutate({ website: contactInfo.website })}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 flex-1"
+                          className="h-8 text-sm border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 flex-1"
                           placeholder="https://..."
                         />
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 mb-1">LinkedIn</p>
+                      <p className="text-xs text-muted-foreground mb-1">LinkedIn</p>
                       <div className="flex items-center gap-2">
                         <Linkedin className="w-4 h-4 text-blue-600" />
                         <Input 
                           value={contactInfo.linkedin} 
                           onChange={(e) => setContactInfo(p => ({ ...p, linkedin: e.target.value }))}
                           onBlur={() => updateContactInfo.mutate({ linkedin: contactInfo.linkedin })}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 flex-1"
+                          className="h-8 text-sm border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 flex-1"
                           placeholder="LinkedIn profile URL"
                         />
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400 mb-1">X</p>
+                      <p className="text-xs text-muted-foreground mb-1">X</p>
                       <div className="flex items-center gap-2">
                         <X className="w-4 h-4 text-foreground" />
                         <Input 
                           value={contactInfo.twitter} 
                           onChange={(e) => setContactInfo(p => ({ ...p, twitter: e.target.value }))}
                           onBlur={() => updateContactInfo.mutate({ twitter: contactInfo.twitter })}
-                          className="h-8 text-sm border-0 border-b border-slate-200 rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 flex-1"
+                          className="h-8 text-sm border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600 flex-1"
                           placeholder="@handle"
                         />
                       </div>
@@ -2312,12 +2312,12 @@ Commercial Lending X`,
 
                 {/* Tags Section */}
                 <Collapsible open={tagsOpen} onOpenChange={setTagsOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <Tag className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Tags</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <Tag className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Tags</span>
                     <Badge variant="secondary" className="ml-auto text-xs">{contactInfo.tags.length}</Badge>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !tagsOpen && "-rotate-90")} />
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", !tagsOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
                     <div className="flex flex-wrap gap-2">
@@ -2358,11 +2358,11 @@ Commercial Lending X`,
 
                 {/* About Section */}
                 <Collapsible open={aboutOpen} onOpenChange={setAboutOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <FileText className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">About</span>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !aboutOpen && "-rotate-90")} />
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">About</span>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground ml-auto transition-transform", !aboutOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-3 pl-6">
                     <Textarea 
@@ -2370,7 +2370,7 @@ Commercial Lending X`,
                       onChange={(e) => setContactInfo(p => ({ ...p, about: e.target.value }))}
                       onBlur={() => updateContactInfo.mutate({ about: contactInfo.about })}
                       placeholder="Background info about this contact..."
-                      className="min-h-[80px] text-sm border-slate-200 resize-none"
+                      className="min-h-[80px] text-sm border-border resize-none"
                     />
                   </CollapsibleContent>
                 </Collapsible>
@@ -2379,12 +2379,12 @@ Commercial Lending X`,
 
                 {/* History / Log Activity Section */}
                 <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <History className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">History</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <History className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">History</span>
                     <Badge variant="secondary" className="ml-auto text-xs">{activities.length + communications.length}</Badge>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !historyOpen && "-rotate-90")} />
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", !historyOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
                     <div className="flex gap-2 mb-3">
@@ -2409,10 +2409,10 @@ Commercial Lending X`,
                         content: c.content 
                       }))].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10).map((item) => (
                         <div key={item.id} className="flex items-start gap-2 py-1 text-xs">
-                          <div className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground mt-1.5" />
                           <div>
-                            <p className="text-slate-700">{item.title || item.activity_type}</p>
-                            <p className="text-slate-400">{format(new Date(item.created_at), 'MMM d, yyyy')}</p>
+                            <p className="text-foreground">{item.title || item.activity_type}</p>
+                            <p className="text-muted-foreground">{format(new Date(item.created_at), 'MMM d, yyyy')}</p>
                           </div>
                         </div>
                       ))}
@@ -2424,45 +2424,45 @@ Commercial Lending X`,
 
                 {/* Email Threads Section */}
                 <Collapsible open={emailThreadsOpen} onOpenChange={setEmailThreadsOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <Mail className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Email Threads</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Email Threads</span>
                     {gmailEmailsLoading ? (
-                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-slate-400" />
+                      <Loader2 className="w-3 h-3 animate-spin ml-auto text-muted-foreground" />
                     ) : (
                       <Badge variant="secondary" className="ml-auto text-xs">{allEmailThreads.length}</Badge>
                     )}
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !emailThreadsOpen && "-rotate-90")} />
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", !emailThreadsOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
                     {gmailEmailsLoading ? (
                       <div className="flex items-center gap-2 py-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                        <span className="text-sm text-slate-400">Loading emails...</span>
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Loading emails...</span>
                       </div>
                     ) : allEmailThreads.length === 0 ? (
-                      <p className="text-sm text-slate-400 italic">No email threads found</p>
+                      <p className="text-sm text-muted-foreground italic">No email threads found</p>
                     ) : (
                       <div className="space-y-1 max-h-64 overflow-y-auto">
                         {allEmailThreads.map((thread: any) => (
                           <a
                             key={thread.id}
                             href={`/team/evan/gmail?thread=${thread.thread_id}`}
-                            className="flex items-start gap-2 py-2 px-2 -mx-2 rounded hover:bg-slate-50 cursor-pointer group"
+                            className="flex items-start gap-2 py-2 px-2 -mx-2 rounded hover:bg-muted/50 cursor-pointer group"
                           >
-                            <Mail className="w-4 h-4 text-slate-400 mt-0.5 group-hover:text-primary shrink-0" />
+                            <Mail className="w-4 h-4 text-muted-foreground mt-0.5 group-hover:text-primary shrink-0" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="text-sm text-slate-700 truncate group-hover:text-primary flex-1">
+                                <p className="text-sm text-foreground truncate group-hover:text-primary flex-1">
                                   {thread.subject || '(No Subject)'}
                                 </p>
                                 {thread.messageCount > 1 && (
-                                  <span className="text-xs text-slate-400 shrink-0">({thread.messageCount})</span>
+                                  <span className="text-xs text-muted-foreground shrink-0">({thread.messageCount})</span>
                                 )}
                               </div>
-                              <p className="text-xs text-slate-500 truncate">{thread.snippet}</p>
-                              <p className="text-xs text-slate-400">
+                              <p className="text-xs text-muted-foreground truncate">{thread.snippet}</p>
+                              <p className="text-xs text-muted-foreground">
                                 {thread.last_message_date 
                                   ? formatActivityTimestamp(thread.last_message_date)
                                   : 'No date'}
@@ -2492,14 +2492,14 @@ Commercial Lending X`,
 
                 {/* Connections Section */}
                 <Collapsible open={connectionsOpen} onOpenChange={setConnectionsOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <Users className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Connections</span>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !connectionsOpen && "-rotate-90")} />
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Connections</span>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground ml-auto transition-transform", !connectionsOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
-                    <p className="text-sm text-slate-400 italic">No connections linked</p>
+                    <p className="text-sm text-muted-foreground italic">No connections linked</p>
                     <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
                       <Plus className="w-4 h-4 mr-1" />
                       Link person or company
@@ -2511,28 +2511,28 @@ Commercial Lending X`,
 
                 {/* Tasks Section */}
                 <Collapsible open={tasksOpen} onOpenChange={setTasksOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
-                    <ListTodo className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium text-sm text-slate-700">Tasks</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <ListTodo className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Tasks</span>
                     <Badge variant="secondary" className="ml-auto text-xs">{tasks.filter(t => t.status !== 'completed').length}</Badge>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", !tasksOpen && "-rotate-90")} />
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", !tasksOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
                     {tasks.length === 0 ? (
-                      <p className="text-sm text-slate-400 italic">No tasks assigned</p>
+                      <p className="text-sm text-muted-foreground italic">No tasks assigned</p>
                     ) : (
                       tasks.slice(0, 5).map(task => (
                         <div key={task.id} className="flex items-start gap-2 py-1">
                           {task.status === 'completed' ? (
                             <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
                           ) : (
-                            <Circle className="w-4 h-4 text-slate-300 mt-0.5" />
+                            <Circle className="w-4 h-4 text-muted-foreground mt-0.5" />
                           )}
                           <div className="flex-1">
-                            <p className={cn("text-sm", task.status === 'completed' && "line-through text-slate-400")}>{task.title}</p>
+                            <p className={cn("text-sm", task.status === 'completed' && "line-through text-muted-foreground")}>{task.title}</p>
                             {task.due_date && (
-                              <p className="text-xs text-slate-400">Due {format(new Date(task.due_date), 'MMM d')}</p>
+                              <p className="text-xs text-muted-foreground">Due {format(new Date(task.due_date), 'MMM d')}</p>
                             )}
                           </div>
                         </div>
@@ -2555,10 +2555,10 @@ Commercial Lending X`,
                     onChange={(e) => setNotesContent(e.target.value)}
                     onBlur={() => notesContent !== lead.notes && saveNotes.mutate()}
                     placeholder="Add notes..."
-                    className="min-h-[100px] text-lg font-bold border-transparent hover:border-slate-200 focus:border-slate-300 resize-none bg-transparent px-0 shadow-none focus:ring-0"
+                    className="min-h-[100px] text-lg font-bold border-transparent hover:border-border focus:border-border resize-none bg-transparent px-0 shadow-none focus:ring-0"
                   />
                   {lead.updated_at && notesContent && (
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Last updated: {format(new Date(lead.updated_at), 'M/d/yy')}
                     </p>
                   )}
@@ -2568,35 +2568,35 @@ Commercial Lending X`,
 
                 {/* Magic Columns Section */}
                 <Collapsible open={magicColumnsOpen} onOpenChange={setMagicColumnsOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-slate-50 rounded px-2 -mx-2">
-                    <GripVertical className="w-4 h-4 text-slate-300" />
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
                     <Sparkles className="w-4 h-4 text-purple-500" />
-                    <span className="font-medium text-sm text-slate-700">Magic Columns</span>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-400 ml-auto transition-transform", !magicColumnsOpen && "-rotate-90")} />
+                    <span className="font-medium text-sm text-foreground">Magic Columns</span>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground ml-auto transition-transform", !magicColumnsOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-3 pt-3 pl-6">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Days in Stage</p>
-                        <p className="text-sm text-slate-900 font-medium">{daysInStage}</p>
+                        <p className="text-xs text-muted-foreground mb-1">Days in Stage</p>
+                        <p className="text-sm text-foreground font-medium">{daysInStage}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Last Interaction</p>
-                        <p className="text-sm text-slate-900">
+                        <p className="text-xs text-muted-foreground mb-1">Last Interaction</p>
+                        <p className="text-sm text-foreground">
                           {lastInteractionDate ? format(new Date(lastInteractionDate), 'MMM d') : '—'}
                         </p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Next Due Task</p>
-                        <p className="text-sm text-slate-900">
+                        <p className="text-xs text-muted-foreground mb-1">Next Due Task</p>
+                        <p className="text-sm text-foreground">
                           {nextDueTask?.due_date ? format(new Date(nextDueTask.due_date), 'MMM d') : '—'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">Last Email</p>
-                        <p className="text-sm text-slate-900">
+                        <p className="text-xs text-muted-foreground mb-1">Last Email</p>
+                        <p className="text-sm text-foreground">
                           {lastEmailDate ? format(new Date(lastEmailDate), 'MMM d') : '—'}
                         </p>
                       </div>
