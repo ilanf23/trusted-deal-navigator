@@ -137,6 +137,13 @@ const RateWatchQuestionnaire = () => {
 
   useEffect(() => {
     const validateToken = async () => {
+      // Handle "new" case - no lead association needed
+      if (token === 'new') {
+        setLead({ id: '', name: '', company_name: null, ratewatch_questionnaire_completed_at: null });
+        setLoading(false);
+        return;
+      }
+
       if (!token) {
         setError('Invalid questionnaire link');
         setLoading(false);
@@ -173,8 +180,6 @@ const RateWatchQuestionnaire = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!lead) return;
     
     // Validate required fields
     if (!formData.name || !formData.email || !formData.phone) {
@@ -214,10 +219,32 @@ const RateWatchQuestionnaire = () => {
         ? formData.lender_type_other 
         : formData.lender_type;
 
+      let leadId = lead?.id;
+
+      // If this is a "new" questionnaire (no existing lead), create the lead first
+      if (token === 'new' || !leadId) {
+        const { data: newLead, error: leadError } = await supabase
+          .from('leads')
+          .insert({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            source: 'RateWatch Questionnaire',
+            ratewatch_questionnaire_completed_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+
+        if (leadError || !newLead) {
+          throw new Error('Failed to create lead');
+        }
+        leadId = newLead.id;
+      }
+
       const { error: insertError } = await supabase
         .from('ratewatch_questionnaire_responses')
         .insert({
-          lead_id: lead.id,
+          lead_id: leadId,
           first_name: firstName,
           last_name: lastName,
           email: formData.email,
@@ -243,10 +270,13 @@ const RateWatchQuestionnaire = () => {
 
       if (insertError) throw insertError;
 
-      await supabase
-        .from('leads')
-        .update({ ratewatch_questionnaire_completed_at: new Date().toISOString() })
-        .eq('id', lead.id);
+      // Only update lead if it's an existing lead (not new)
+      if (token !== 'new' && lead?.id) {
+        await supabase
+          .from('leads')
+          .update({ ratewatch_questionnaire_completed_at: new Date().toISOString() })
+          .eq('id', lead.id);
+      }
 
       setSubmitted(true);
       toast({

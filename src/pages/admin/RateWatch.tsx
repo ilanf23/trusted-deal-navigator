@@ -138,10 +138,6 @@ const RateWatch = () => {
   const [selectedLeadForDetail, setSelectedLeadForDetail] = useState<RateWatchEntry['leads'] | null>(null);
   const [leadDetailOpen, setLeadDetailOpen] = useState(false);
   
-  // Questionnaire dialog state
-  const [questionnaireDialogOpen, setQuestionnaireDialogOpen] = useState(false);
-  const [selectedLeadForQuestionnaire, setSelectedLeadForQuestionnaire] = useState<string>('');
-  const [generatedQuestionnaireLink, setGeneratedQuestionnaireLink] = useState<string | null>(null);
   
   // Form state for adding new entry
   const [newEntry, setNewEntry] = useState({
@@ -260,39 +256,12 @@ const RateWatch = () => {
     }
   });
 
-  // Generate questionnaire link mutation
-  const generateQuestionnaire = useMutation({
-    mutationFn: async (leadId: string) => {
-      // Generate a UUID token
-      const token = crypto.randomUUID();
-      
-      // Update the lead with the token
-      const { error } = await supabase
-        .from('leads')
-        .update({ 
-          ratewatch_questionnaire_token: token,
-          ratewatch_questionnaire_sent_at: new Date().toISOString()
-        })
-        .eq('id', leadId);
-      
-      if (error) throw error;
-      
-      // Return the full link
-      return `${window.location.origin}/ratewatch/${token}`;
-    },
-    onSuccess: async (link) => {
-      // Immediately copy to clipboard
-      await navigator.clipboard.writeText(link);
-      setGeneratedQuestionnaireLink(link);
-      setQuestionnaireDialogOpen(false);
-      setSelectedLeadForQuestionnaire('');
-      queryClient.invalidateQueries({ queryKey: ['rate-watch'] });
-      toast({ title: 'Link copied to clipboard!', description: 'Paste it into your message to send to the lead.' });
-    },
-    onError: (error) => {
-      toast({ title: 'Error', description: 'Failed to generate questionnaire link', variant: 'destructive' });
-    }
-  });
+  // Copy questionnaire link to clipboard
+  const copyQuestionnaireLink = async () => {
+    const link = `${window.location.origin}/ratewatch/new`;
+    await navigator.clipboard.writeText(link);
+    toast({ title: 'Link copied to clipboard!', description: 'Paste it into your message to send to the lead.' });
+  };
 
   // Filter entries
   const filteredEntries = rateWatchEntries.filter(entry => {
@@ -825,71 +794,11 @@ Commercial Lending X`,
             </DialogContent>
           </Dialog>
             
-            {/* Send Questionnaire Dialog */}
-            <Dialog 
-              open={questionnaireDialogOpen} 
-              onOpenChange={(open) => {
-                setQuestionnaireDialogOpen(open);
-                if (!open) {
-                  setSelectedLeadForQuestionnaire('');
-                  setGeneratedQuestionnaireLink(null);
-                }
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <ClipboardList className="w-4 h-4" />
-                  Send Questionnaire
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Send Rate Watch Questionnaire</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label>Select Lead</Label>
-                    <Select 
-                      value={selectedLeadForQuestionnaire} 
-                      onValueChange={setSelectedLeadForQuestionnaire}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a lead..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rateWatchEntries.map(entry => (
-                          <SelectItem key={entry.leads.id} value={entry.leads.id}>
-                            {entry.leads.name} {entry.leads.company_name ? `(${entry.leads.company_name})` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground">
-                    This will generate a unique questionnaire link and copy it to your clipboard.
-                  </p>
-                  
-                  <Button 
-                    className="w-full gap-2" 
-                    onClick={() => generateQuestionnaire.mutate(selectedLeadForQuestionnaire)}
-                    disabled={!selectedLeadForQuestionnaire || generateQuestionnaire.isPending}
-                  >
-                    {generateQuestionnaire.isPending ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        Generate & Copy Link
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            {/* Copy Questionnaire Link Button */}
+            <Button variant="outline" className="gap-2" onClick={copyQuestionnaireLink}>
+              <Copy className="w-4 h-4" />
+              Copy Questionnaire Link
+            </Button>
           </div>
         </div>
 
