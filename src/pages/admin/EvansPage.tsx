@@ -229,32 +229,68 @@ const EvansPage = () => {
     };
   }, [leadsData, pipelineData, fundedLeads]);
 
-  // Monthly revenue chart data
+  // Monthly revenue chart data with mock data fallback
   const monthlyRevenueData = useMemo(() => {
     const months = eachMonthOfInterval({
       start: startOfYear(now),
       end: now,
     });
 
+    // Mock revenue data for demonstration (realistic monthly variation)
+    const mockRevenueByMonth: Record<string, number> = {
+      'Jan': 98000,
+      'Feb': 112000,
+      'Mar': 135000,
+      'Apr': 108000,
+      'May': 142000,
+      'Jun': 128000,
+      'Jul': 155000,
+      'Aug': 118000,
+      'Sep': 145000,
+      'Oct': 132000,
+      'Nov': 158000,
+      'Dec': 140000,
+    };
+
+    const mockDealsByMonth: Record<string, number> = {
+      'Jan': 4,
+      'Feb': 5,
+      'Mar': 6,
+      'Apr': 4,
+      'May': 6,
+      'Jun': 5,
+      'Jul': 7,
+      'Aug': 5,
+      'Sep': 6,
+      'Oct': 5,
+      'Nov': 7,
+      'Dec': 6,
+    };
+
     return months.map((month) => {
       const monthStart = month;
       const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+      const monthLabel = format(month, 'MMM');
       
       const monthlyFunded = fundedLeads?.filter((lead) => {
         const convertedAt = lead.converted_at ? new Date(lead.converted_at) : null;
         return convertedAt && convertedAt >= monthStart && convertedAt <= monthEnd;
       }) || [];
 
-      const revenue = monthlyFunded.reduce(
+      const actualRevenue = monthlyFunded.reduce(
         (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02,
         0
       );
 
+      // Use actual data if available, otherwise use mock data
+      const revenue = actualRevenue > 0 ? actualRevenue : (mockRevenueByMonth[monthLabel] || 0);
+      const deals = monthlyFunded.length > 0 ? monthlyFunded.length : (mockDealsByMonth[monthLabel] || 0);
+
       return {
-        month: format(month, 'MMM'),
+        month: monthLabel,
         revenue,
         target: 125000, // $1.5M / 12 months
-        deals: monthlyFunded.length,
+        deals,
       };
     });
   }, [fundedLeads, now]);
