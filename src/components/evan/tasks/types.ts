@@ -68,6 +68,9 @@ export const statusConfig: Record<string, { label: string; bg: string; text: str
   blocked: { label: 'Blocked', bg: 'bg-rose-50 dark:bg-rose-950', text: 'text-rose-700 dark:text-rose-300', color: '#f43f5e' },
 };
 
+// Statuses for UI pickers (excludes the in_progress alias to prevent duplicates)
+export const statusPickerOptions = ['todo', 'working', 'stuck', 'done', 'review', 'blocked'] as const;
+
 export const priorityConfig: Record<string, { label: string; stars: number; color: string }> = {
   critical: { label: 'Critical', stars: 5, color: '#f43f5e' },
   high: { label: 'High', stars: 4, color: '#f97316' },

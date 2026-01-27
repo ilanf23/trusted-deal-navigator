@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Task, TaskActivity, statusConfig } from './types';
+import { Task, TaskActivity, statusConfig, statusPickerOptions } from './types';
 import { useTaskActivities } from '@/hooks/useTasksData';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -166,20 +166,23 @@ export const TaskDetailDialog = ({
                 Status
               </label>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(statusConfig).map(([key, config]) => (
-                  <button
-                    key={key}
-                    onClick={() => setNewTaskStatus(key)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                      newTaskStatus === key 
-                        ? `${config.bg} ${config.text} ring-2 ring-offset-2 ring-offset-background`
-                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                    }`}
-                    style={newTaskStatus === key ? { '--tw-ring-color': config.color } as React.CSSProperties : {}}
-                  >
-                    {config.label}
-                  </button>
-                ))}
+                {statusPickerOptions.map((key) => {
+                  const config = statusConfig[key];
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setNewTaskStatus(key)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        newTaskStatus === key 
+                          ? `${config.bg} ${config.text} ring-2 ring-offset-2 ring-offset-background`
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                      style={newTaskStatus === key ? { '--tw-ring-color': config.color } as React.CSSProperties : {}}
+                    >
+                      {config.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
