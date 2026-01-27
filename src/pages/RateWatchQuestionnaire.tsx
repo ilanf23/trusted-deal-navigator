@@ -314,8 +314,8 @@ const RateWatchQuestionnaire = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 pb-10">
       {/* Header */}
       <header className="bg-card border-b sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
-          <img src={logo} alt="CLX Commercial" className="h-10" />
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-6">
+          <img src={logo} alt="CLX Commercial" className="h-[200px] w-auto object-contain" />
           <div>
             <h1 className="font-bold text-lg">CLX RateWatch Concierge</h1>
             <p className="text-xs text-muted-foreground">Please fill out this form to subscribe to the CLX RateWatch Concierge</p>
