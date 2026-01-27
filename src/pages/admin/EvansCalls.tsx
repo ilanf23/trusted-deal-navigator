@@ -45,6 +45,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { LenderProgramAssistant } from '@/components/admin/LenderProgramAssistant';
+import { IncomingCallPopup } from '@/components/evan/IncomingCallPopup';
 
 interface ActiveCall {
   id: string;
@@ -1580,6 +1581,9 @@ const EvansCalls = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Incoming Call Popup - Only shown on this page */}
+      <IncomingCallPopup />
     </AdminLayout>
   );
 };
