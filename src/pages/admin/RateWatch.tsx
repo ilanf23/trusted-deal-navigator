@@ -28,7 +28,10 @@ import {
   MapPin,
   Building2,
   Calendar,
-  DollarSign
+  DollarSign,
+  ClipboardList,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import {
   Dialog,
@@ -134,6 +137,11 @@ const RateWatch = () => {
   // Lead detail dialog state
   const [selectedLeadForDetail, setSelectedLeadForDetail] = useState<RateWatchEntry['leads'] | null>(null);
   const [leadDetailOpen, setLeadDetailOpen] = useState(false);
+  
+  // Questionnaire dialog state
+  const [questionnaireDialogOpen, setQuestionnaireDialogOpen] = useState(false);
+  const [selectedLeadForQuestionnaire, setSelectedLeadForQuestionnaire] = useState<string>('');
+  const [generatedQuestionnaireLink, setGeneratedQuestionnaireLink] = useState<string | null>(null);
   
   // Form state for adding new entry
   const [newEntry, setNewEntry] = useState({
@@ -251,6 +259,43 @@ const RateWatch = () => {
       queryClient.invalidateQueries({ queryKey: ['rate-watch'] });
     }
   });
+
+  // Generate questionnaire link mutation
+  const generateQuestionnaire = useMutation({
+    mutationFn: async (leadId: string) => {
+      // Generate a UUID token
+      const token = crypto.randomUUID();
+      
+      // Update the lead with the token
+      const { error } = await supabase
+        .from('leads')
+        .update({ 
+          ratewatch_questionnaire_token: token,
+          ratewatch_questionnaire_sent_at: new Date().toISOString()
+        })
+        .eq('id', leadId);
+      
+      if (error) throw error;
+      
+      // Return the full link
+      return `${window.location.origin}/ratewatch/${token}`;
+    },
+    onSuccess: (link) => {
+      setGeneratedQuestionnaireLink(link);
+      queryClient.invalidateQueries({ queryKey: ['rate-watch'] });
+      toast({ title: 'Questionnaire link generated!' });
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: 'Failed to generate questionnaire link', variant: 'destructive' });
+    }
+  });
+
+  const handleCopyLink = async () => {
+    if (generatedQuestionnaireLink) {
+      await navigator.clipboard.writeText(generatedQuestionnaireLink);
+      toast({ title: 'Link copied to clipboard!' });
+    }
+  };
 
   // Filter entries
   const filteredEntries = rateWatchEntries.filter(entry => {
@@ -782,6 +827,101 @@ Commercial Lending X`,
               </div>
             </DialogContent>
           </Dialog>
+            
+            {/* Send Questionnaire Dialog */}
+            <Dialog 
+              open={questionnaireDialogOpen} 
+              onOpenChange={(open) => {
+                setQuestionnaireDialogOpen(open);
+                if (!open) {
+                  setSelectedLeadForQuestionnaire('');
+                  setGeneratedQuestionnaireLink(null);
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <ClipboardList className="w-4 h-4" />
+                  Send Questionnaire
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Send Rate Watch Questionnaire</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  {!generatedQuestionnaireLink ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Select Lead</Label>
+                        <Select 
+                          value={selectedLeadForQuestionnaire} 
+                          onValueChange={setSelectedLeadForQuestionnaire}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a lead..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rateWatchEntries.map(entry => (
+                              <SelectItem key={entry.leads.id} value={entry.leads.id}>
+                                {entry.leads.name} {entry.leads.company_name ? `(${entry.leads.company_name})` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <Button 
+                        className="w-full" 
+                        onClick={() => generateQuestionnaire.mutate(selectedLeadForQuestionnaire)}
+                        disabled={!selectedLeadForQuestionnaire || generateQuestionnaire.isPending}
+                      >
+                        {generateQuestionnaire.isPending ? 'Generating...' : 'Generate Questionnaire Link'}
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        <p className="text-sm text-green-800">Questionnaire link generated!</p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Questionnaire Link</Label>
+                        <div className="flex gap-2">
+                          <Input 
+                            value={generatedQuestionnaireLink} 
+                            readOnly 
+                            className="text-xs"
+                          />
+                          <Button variant="outline" size="icon" onClick={handleCopyLink}>
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1 gap-2"
+                          onClick={() => window.open(generatedQuestionnaireLink, '_blank')}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Preview
+                        </Button>
+                        <Button 
+                          className="flex-1 gap-2"
+                          onClick={handleCopyLink}
+                        >
+                          <Copy className="w-4 h-4" />
+                          Copy Link
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
