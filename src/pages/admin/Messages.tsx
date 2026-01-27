@@ -234,8 +234,12 @@ const AdminMessages = () => {
           <p className="text-muted-foreground text-sm mt-1">Call analytics and client communications</p>
         </div>
 
-        <Tabs defaultValue="call-ratings" className="w-full">
+        <Tabs defaultValue="client-messages" className="w-full">
           <TabsList className="bg-muted/30 border">
+            <TabsTrigger value="client-messages" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <MessageSquare className="w-4 h-4" />
+              Client Messages
+            </TabsTrigger>
             <TabsTrigger value="call-ratings" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Phone className="w-4 h-4" />
               Call Ratings
@@ -244,10 +248,6 @@ const AdminMessages = () => {
                   {unreadRatingsCount}
                 </Badge>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="client-messages" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <MessageSquare className="w-4 h-4" />
-              Client Messages
             </TabsTrigger>
           </TabsList>
 
