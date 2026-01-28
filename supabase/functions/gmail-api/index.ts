@@ -585,11 +585,23 @@ Deno.serve(async (req) => {
       
       const messagesData = await listMessages(accessToken, query, maxResults, pageToken);
       
-      // Fetch full details for each message (filter out any that failed to fetch)
-      const allMessages = await Promise.all(
-        (messagesData.messages || []).map((m: any) => getMessage(accessToken, m.id, fetchPhotos))
-      );
-      const messages = allMessages.filter((m): m is NonNullable<typeof m> => m !== null);
+      // Batch messages to avoid rate limiting (max 10 concurrent requests)
+      const BATCH_SIZE = 10;
+      const messageIds = (messagesData.messages || []).map((m: any) => m.id);
+      const messages: any[] = [];
+      
+      for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
+        const batchIds = messageIds.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batchIds.map((id: string) => getMessage(accessToken, id, fetchPhotos))
+        );
+        messages.push(...batchResults.filter((m): m is NonNullable<typeof m> => m !== null));
+        
+        // Small delay between batches to avoid rate limiting
+        if (i + BATCH_SIZE < messageIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
 
       return new Response(JSON.stringify({
         messages,

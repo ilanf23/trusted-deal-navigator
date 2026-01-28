@@ -578,9 +578,15 @@ const EvansGmail = () => {
     enabled: !!gmailConnection,
   });
 
-  // Combine real emails with mock external emails
+  // Combine real emails with mock external emails and sort by date (newest first)
   const allEmails = useMemo(() => {
-    return [...mockExternalEmails, ...emails];
+    const combined = [...mockExternalEmails, ...emails];
+    // Sort by date, newest first
+    return combined.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateB - dateA;
+    });
   }, [emails]);
 
   // Filter emails based on CRM classification, folder, and search query
