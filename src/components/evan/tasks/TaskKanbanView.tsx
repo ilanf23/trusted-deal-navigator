@@ -1,4 +1,4 @@
-import { Task, statusConfig } from './types';
+import { Task, statusConfig, statusPickerOptions } from './types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Plus, Calendar, Clock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -16,7 +16,7 @@ export const TaskKanbanView = ({
   onAddTask,
   onOpenDetail,
 }: TaskKanbanViewProps) => {
-  const columns = Object.entries(statusConfig);
+  const columns = statusPickerOptions.map(status => [status, statusConfig[status]] as const);
 
   const getTasksByStatus = (status: string) => 
     tasks.filter(task => task.status === status);
