@@ -177,6 +177,55 @@ const stages = [
   { status: 'funded', title: 'Funded', color: '#059669' },
 ];
 
+// Mock lender associations for leads
+interface LeadLenderAssociation {
+  lenderName: string;
+  programName: string;
+  status: 'matched' | 'submitted' | 'approved' | 'declined' | 'pending_review';
+  matchScore?: number;
+  submittedAt?: string;
+  notes?: string;
+}
+
+const leadLenderMockData: Record<string, LeadLenderAssociation[]> = {
+  // Ilan Samuel Fridman
+  '6f00ff2c-4a3a-43af-9f68-88c99411fb59': [
+    { lenderName: 'First National Bank', programName: 'SBA 7(a) Standard', status: 'submitted', matchScore: 92, submittedAt: '2026-01-20' },
+    { lenderName: 'Pacific Capital Partners', programName: 'Tech Startup Lending', status: 'pending_review', matchScore: 88 },
+  ],
+  // Sarah Rodriguez - Meridian Development Group
+  '7768d0c3-ca10-4955-bee0-2af42f0a061a': [
+    { lenderName: 'Bridge Funding Corp', programName: 'Multi-Family Bridge', status: 'approved', matchScore: 95, submittedAt: '2026-01-15', notes: 'Approved at 7.25% for 18 months' },
+    { lenderName: 'Lincoln Park Credit Union', programName: 'Development Financing', status: 'submitted', matchScore: 87, submittedAt: '2026-01-18' },
+    { lenderName: 'Midwest Commercial Lenders', programName: 'Bridge to Perm', status: 'matched', matchScore: 82 },
+  ],
+  // James Patterson - Patterson Holdings LLC
+  'b6329460-e111-4f61-bf18-fc892dab614b': [
+    { lenderName: 'SBA Express Capital', programName: 'SBA 504 Franchise', status: 'approved', matchScore: 98, submittedAt: '2026-01-10', notes: 'Approved - closing scheduled Feb 15' },
+    { lenderName: 'Restaurant Finance Group', programName: 'QSR Expansion', status: 'declined', matchScore: 75, notes: 'Declined - requires 2+ years same location' },
+  ],
+  // Michael Chen - TechVest Capital
+  'e20d9ba8-18dd-4190-8f7b-c7081c8e1f2b': [
+    { lenderName: 'Commercial Real Estate Bank', programName: 'Class A Office Financing', status: 'submitted', matchScore: 90, submittedAt: '2026-01-22' },
+    { lenderName: 'Silicon Valley Bank', programName: 'Tech Company CRE', status: 'matched', matchScore: 94 },
+    { lenderName: 'Wells Fargo Commercial', programName: 'Investment Property', status: 'pending_review', matchScore: 86 },
+  ],
+  // Emily Wang - Sunrise Healthcare Partners
+  '341f4f1c-fbdb-43b6-a25a-7f0e38a7237e': [
+    { lenderName: 'Healthcare Finance Group', programName: 'Medical Office Building', status: 'approved', matchScore: 97, submittedAt: '2026-01-12', notes: 'Approved at 6.95% - exceptional terms' },
+    { lenderName: 'Bank of America Healthcare', programName: 'Healthcare Real Estate', status: 'submitted', matchScore: 91, submittedAt: '2026-01-14' },
+  ],
+};
+
+// Default lenders for leads not in the mapping (generates based on lead data)
+const getDefaultLenders = (lead: Lead | null): LeadLenderAssociation[] => {
+  if (!lead) return [];
+  return [
+    { lenderName: 'First National Bank', programName: 'Conventional Commercial', status: 'matched', matchScore: 75 },
+    { lenderName: 'Community Credit Union', programName: 'Small Business Loan', status: 'matched', matchScore: 70 },
+  ];
+};
+
 // Placeholder data for Evan's CRM leads
 const leadPlaceholderData: Record<string, {
   address: string;
@@ -1415,6 +1464,7 @@ Commercial Lending X`,
                 <TabsList className="h-12 bg-transparent p-0 gap-0">
                   <TabsTrigger value="all" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">All</TabsTrigger>
                   <TabsTrigger value="emails" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Emails</TabsTrigger>
+                  <TabsTrigger value="lenders" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Lenders</TabsTrigger>
                   <TabsTrigger value="files" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Files</TabsTrigger>
                   <TabsTrigger value="comments" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Comments</TabsTrigger>
                   <TabsTrigger value="tasks" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Tasks</TabsTrigger>
@@ -1736,6 +1786,107 @@ Commercial Lending X`,
                         </div>
                       </ScrollArea>
                     )}
+                  </TabsContent>
+
+                  {/* Lenders Tab */}
+                  <TabsContent value="lenders" className="m-0">
+                    {(() => {
+                      const lenders = lead ? (leadLenderMockData[lead.id] || getDefaultLenders(lead)) : [];
+                      
+                      const getStatusConfig = (status: LeadLenderAssociation['status']) => {
+                        switch (status) {
+                          case 'approved':
+                            return { label: 'Approved', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400' };
+                          case 'submitted':
+                            return { label: 'Submitted', bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' };
+                          case 'pending_review':
+                            return { label: 'Pending Review', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' };
+                          case 'declined':
+                            return { label: 'Declined', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' };
+                          case 'matched':
+                          default:
+                            return { label: 'Matched', bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-400' };
+                        }
+                      };
+
+                      return lenders.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400">
+                          <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                          <p>No lenders matched yet</p>
+                          <Button variant="outline" size="sm" className="mt-4">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Find Matching Lenders
+                          </Button>
+                        </div>
+                      ) : (
+                        <ScrollArea className="max-h-[450px]">
+                          <div className="space-y-3 p-1">
+                            {lenders.map((lender, idx) => {
+                              const statusConfig = getStatusConfig(lender.status);
+                              return (
+                                <div
+                                  key={idx}
+                                  className="p-4 border border-border rounded-lg bg-background hover:bg-muted/50 transition-colors"
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <h4 className="font-semibold text-sm text-foreground">{lender.lenderName}</h4>
+                                        <Badge className={`text-xs font-medium border-0 ${statusConfig.bg} ${statusConfig.text}`}>
+                                          {statusConfig.label}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-sm text-muted-foreground">{lender.programName}</p>
+                                      
+                                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                        {lender.matchScore && (
+                                          <span className="flex items-center gap-1">
+                                            <span className={cn(
+                                              "font-semibold",
+                                              lender.matchScore >= 90 ? "text-emerald-600" :
+                                              lender.matchScore >= 80 ? "text-blue-600" :
+                                              "text-amber-600"
+                                            )}>
+                                              {lender.matchScore}%
+                                            </span>
+                                            match
+                                          </span>
+                                        )}
+                                        {lender.submittedAt && (
+                                          <span>Submitted {format(new Date(lender.submittedAt), 'MMM d, yyyy')}</span>
+                                        )}
+                                      </div>
+                                      
+                                      {lender.notes && (
+                                        <p className="text-xs text-muted-foreground mt-2 italic">{lender.notes}</p>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-1">
+                                      {lender.status === 'matched' && (
+                                        <Button variant="outline" size="sm" className="text-xs h-7">
+                                          Submit
+                                        </Button>
+                                      )}
+                                      {lender.status === 'approved' && (
+                                        <Button variant="outline" size="sm" className="text-xs h-7 text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+                                          View Terms
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            
+                            <Button variant="ghost" size="sm" className="w-full mt-2 text-muted-foreground hover:text-foreground">
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add More Lenders
+                            </Button>
+                          </div>
+                        </ScrollArea>
+                      );
+                    })()}
                   </TabsContent>
 
                   {/* Files Tab */}
