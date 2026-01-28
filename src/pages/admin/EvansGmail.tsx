@@ -659,10 +659,17 @@ const EvansGmail = () => {
     let externalCount = 0;
     let internalCount = 0;
     let followupCount = 0;
+    let unreadCount = 0;
     
     allEmails.forEach(email => {
       const senderEmail = extractEmailAddress(email.from);
       const toEmail = extractEmailAddress(email.to || '');
+      
+      // Count unread emails (not read via Gmail API AND not marked read locally)
+      const isUnread = !email.isRead && !readEmailIds[email.id];
+      if (isUnread) {
+        unreadCount++;
+      }
       
       const isExternal = crmEmails.some(crmEmail => {
         const crmLower = crmEmail.toLowerCase().trim();
@@ -689,13 +696,13 @@ const EvansGmail = () => {
     });
     
     return {
-      inbox: allEmails.length,
+      inbox: unreadCount,
       drafts: 0, // Would be fetched from Gmail API
       external: externalCount,
       internal: internalCount,
       followup: followupCount,
     };
-  }, [allEmails, crmEmails, allLeads]);
+  }, [allEmails, crmEmails, allLeads, readEmailIds]);
 
   // Fetch pipeline stages for dropdown
   const { data: pipelineStages = [] } = useQuery({
