@@ -1554,16 +1554,27 @@ Commercial Lending X`,
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <p className="font-medium text-sm text-foreground">
-                                  {item._type === 'communication' 
-                                    ? `${item.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call`
-                                    : item.title || 'Activity'}
-                                </p>
-                                <p className="text-sm text-muted-foreground truncate mt-0.5">
-                                  {item._type === 'activity' 
-                                    ? (item as LeadActivity).content 
-                                    : `Duration: ${formatDuration((item as Communication).duration_seconds)}`}
-                                </p>
+                                {item._type === 'activity' && (item as LeadActivity).activity_type === 'comment' ? (
+                                  <>
+                                    <p className="font-medium text-sm text-foreground">Comment:</p>
+                                    <p className="font-medium text-sm text-foreground mt-0.5">
+                                      {(item as LeadActivity).content}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="font-medium text-sm text-foreground">
+                                      {item._type === 'communication' 
+                                        ? `${item.direction === 'inbound' ? 'Inbound' : 'Outbound'} Call`
+                                        : item.title || 'Activity'}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground truncate mt-0.5">
+                                      {item._type === 'activity' 
+                                        ? (item as LeadActivity).content 
+                                        : `Duration: ${formatDuration((item as Communication).duration_seconds)}`}
+                                    </p>
+                                  </>
+                                )}
                               </div>
                               <span className="text-xs text-muted-foreground whitespace-nowrap">
                                 {formatActivityTimestamp(item.created_at)}
