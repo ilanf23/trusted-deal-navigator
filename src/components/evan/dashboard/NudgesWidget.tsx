@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, Mail, Loader2, Clock, ExternalLink, Zap } from 'lucide-react';
-import { differenceInDays, subDays, format } from 'date-fns';
-import { Link, useNavigate } from 'react-router-dom';
+import { Bell, Loader2, Clock, ExternalLink, Zap } from 'lucide-react';
+import { differenceInDays, subDays } from 'date-fns';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
+import { useGmail } from '@/hooks/useGmail';
 
 interface Lead {
   id: string;
@@ -35,8 +37,19 @@ const STATUS_LABELS: Record<string, string> = {
 
 export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const tasksCreatedRef = useRef<Set<string>>(new Set());
+  const { sendMessage } = useGmail();
+  
+  // Track which lead is currently generating a draft
+  const [generatingLeadId, setGeneratingLeadId] = useState<string | null>(null);
+  
+  // Compose dialog state
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [composeSending, setComposeSending] = useState(false);
+  const [currentLeadId, setCurrentLeadId] = useState<string | null>(null);
 
   // Fetch leads needing nudges (no activity in 7+ days)
   const { data: nudgeLeads = [], isLoading } = useQuery({
@@ -123,143 +136,183 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
     createFollowUpTasks();
   }, [nudgeLeads, existingTasks, queryClient]);
 
-  // Create nudge email draft and navigate to Gmail
-  const createNudgeDraft = useMutation({
-    mutationFn: async (lead: Lead) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
+  // Generate email content and open compose dialog
+  const handleCreateDraft = async (lead: Lead) => {
+    setGeneratingLeadId(lead.id);
+    
+    try {
+      // Generate the email content
+      const firstName = lead.name.split(' ')[0];
       const subject = `Following up - ${lead.company_name || lead.name}`;
-      const body = `Hi ${lead.name.split(' ')[0]},\n\nI wanted to follow up and see if you had any questions about the financing options we discussed.\n\nPlease let me know if there's anything I can help with.\n\nBest regards,\nEvan`;
+      const body = `Hi ${firstName},
 
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ to: lead.email, subject, body }),
-        }
-      );
+I wanted to follow up and see if you had any questions about the financing options we discussed.
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create draft');
-      }
+Please let me know if there's anything I can help with.
 
-      // Update lead's updated_at to prevent repeated nudges
-      await supabase
-        .from('leads')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', lead.id);
+Best regards,
+Evan`;
 
-      return { lead, draftId: data.id };
-    },
-    onSuccess: ({ lead, draftId }) => {
-      toast.success(`Draft created for ${lead.name} - Opening Gmail...`);
-      queryClient.invalidateQueries({ queryKey: ['evan-dashboard-nudges'] });
-      // Navigate to Gmail with the draft ID to open it directly
-      navigate(`/team/evan/gmail?compose=draft&draftId=${draftId}&to=${encodeURIComponent(lead.email || '')}&leadId=${lead.id}`);
-    },
-    onError: (error: any) => {
+      // Set compose dialog state
+      setComposeTo(lead.email || '');
+      setComposeSubject(subject);
+      setComposeBody(body);
+      setCurrentLeadId(lead.id);
+      setComposeOpen(true);
+      
+    } catch (error: any) {
       toast.error('Failed to create draft: ' + error.message);
-    },
-  });
+    } finally {
+      setGeneratingLeadId(null);
+    }
+  };
+
+  // Handle sending the email
+  const handleSendEmail = async () => {
+    setComposeSending(true);
+    try {
+      const success = await sendMessage(composeTo, composeSubject, composeBody);
+      
+      if (success) {
+        // Update lead's updated_at to prevent repeated nudges
+        if (currentLeadId) {
+          await supabase
+            .from('leads')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', currentLeadId);
+        }
+        
+        setComposeOpen(false);
+        queryClient.invalidateQueries({ queryKey: ['evan-dashboard-nudges'] });
+        
+        // Reset compose state
+        setComposeTo('');
+        setComposeSubject('');
+        setComposeBody('');
+        setCurrentLeadId(null);
+      }
+    } catch (error: any) {
+      toast.error('Failed to send email: ' + error.message);
+    } finally {
+      setComposeSending(false);
+    }
+  };
 
   if (!isLoading && nudgeLeads.length === 0) {
     return null; // Don't render widget if no nudges
   }
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Bell className="h-5 w-5 text-primary" />
+    <>
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Bell className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  Leads Needing Follow-Up
+                  {nudgeLeads.length > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      {nudgeLeads.length}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  No activity in 7+ days — send a quick nudge
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                Leads Needing Follow-Up
-                {nudgeLeads.length > 0 && (
-                  <Badge variant="destructive" className="text-xs">
-                    {nudgeLeads.length}
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription className="text-xs">
-                No activity in 7+ days — send a quick nudge
-              </CardDescription>
+            <Link to="/team/evan/gmail">
+              <Button variant="ghost" size="sm" className="gap-1">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Gmail
+              </Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          </div>
-          <Link to="/team/evan/gmail">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <ExternalLink className="h-3.5 w-3.5" />
-              Gmail
-            </Button>
-          </Link>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <ScrollArea className="h-[260px] pr-4">
-            <div className="space-y-2">
-              {nudgeLeads.map((lead) => {
-                const lastActivity = lead.last_activity_at || lead.created_at;
-                const daysSince = differenceInDays(new Date(), new Date(lastActivity));
-                
-                return (
-                  <div
-                    key={lead.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">{lead.name}</p>
-                        <Badge variant="secondary" className="text-xs py-0 px-1.5">
-                          {STATUS_LABELS[lead.status] || lead.status}
-                        </Badge>
-                      </div>
-                      {lead.company_name && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {lead.company_name}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-1 mt-1 text-xs text-primary">
-                        <Clock className="h-3 w-3" />
-                        <span>{daysSince} days since last activity</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 ml-3 shrink-0"
-                      onClick={() => createNudgeDraft.mutate(lead)}
-                      disabled={createNudgeDraft.isPending}
+          ) : (
+            <ScrollArea className="h-[260px] pr-4">
+              <div className="space-y-2">
+                {nudgeLeads.map((lead) => {
+                  const lastActivity = lead.last_activity_at || lead.created_at;
+                  const daysSince = differenceInDays(new Date(), new Date(lastActivity));
+                  const isGenerating = generatingLeadId === lead.id;
+                  
+                  return (
+                    <div
+                      key={lead.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                     >
-                      {createNudgeDraft.isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <>
-                          <Zap className="h-3.5 w-3.5" />
-                          Create Draft
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        )}
-      </CardContent>
-    </Card>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium truncate">{lead.name}</p>
+                          <Badge variant="secondary" className="text-xs py-0 px-1.5">
+                            {STATUS_LABELS[lead.status] || lead.status}
+                          </Badge>
+                        </div>
+                        {lead.company_name && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {lead.company_name}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-1 mt-1 text-xs text-primary">
+                          <Clock className="h-3 w-3" />
+                          <span>{daysSince} days since last activity</span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 ml-3 shrink-0"
+                        onClick={() => handleCreateDraft(lead)}
+                        disabled={isGenerating}
+                      >
+                        {isGenerating ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <Zap className="h-3.5 w-3.5" />
+                            Create Draft
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Compose Dialog */}
+      <GmailComposeDialog
+        isOpen={composeOpen}
+        onClose={() => {
+          setComposeOpen(false);
+          setComposeTo('');
+          setComposeSubject('');
+          setComposeBody('');
+          setCurrentLeadId(null);
+        }}
+        to={composeTo}
+        onToChange={setComposeTo}
+        subject={composeSubject}
+        onSubjectChange={setComposeSubject}
+        body={composeBody}
+        onBodyChange={setComposeBody}
+        onSend={handleSendEmail}
+        sending={composeSending}
+      />
+    </>
   );
 };
 
