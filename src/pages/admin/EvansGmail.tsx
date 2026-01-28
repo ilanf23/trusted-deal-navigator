@@ -443,27 +443,7 @@ const EvansGmail = () => {
   const [taskInitialDescription, setTaskInitialDescription] = useState('');
   const [taskInitialLeadId, setTaskInitialLeadId] = useState<string | null>(null);
 
-  // Handle URL params to open compose dialog from dashboard nudges
-  useEffect(() => {
-    const compose = searchParams.get('compose');
-    const to = searchParams.get('to');
-    const draftId = searchParams.get('draftId');
-    
-    if (compose === 'draft' && draftId) {
-      // Draft was already created - switch to Drafts folder to show it
-      setActiveFolder('drafts');
-      toast.success('Draft created! Check your Drafts folder.');
-      // Clear the URL params to prevent reopening on refresh
-      setSearchParams({});
-    } else if (compose === 'new' && to) {
-      // Open compose dialog for a new email
-      setComposeTo(decodeURIComponent(to));
-      setComposeSubject('');
-      setComposeBody('');
-      setComposeOpen(true);
-      setSearchParams({});
-    }
-  }, [searchParams, setSearchParams]);
+  // URL params compose handling moved below allLeads query to avoid reference before declaration
 
   // Mark email as read when selected
   const handleSelectEmail = (emailId: string) => {
@@ -517,7 +497,105 @@ const EvansGmail = () => {
     },
   });
 
-  // Fetch CRM lead emails for classification
+  // Handle URL params to open compose dialog from dashboard nudges or tasks
+  useEffect(() => {
+    const compose = searchParams.get('compose');
+    const to = searchParams.get('to');
+    const draftId = searchParams.get('draftId');
+    const leadId = searchParams.get('leadId');
+    const template = searchParams.get('template');
+    
+    if (compose === 'draft' && draftId) {
+      // Draft was already created - switch to Drafts folder to show it
+      setActiveFolder('drafts');
+      toast.success('Draft created! Check your Drafts folder.');
+      // Clear the URL params to prevent reopening on refresh
+      setSearchParams({});
+    } else if (compose === 'new' && to) {
+      // Open compose dialog for a new email
+      setComposeTo(decodeURIComponent(to));
+      setComposeSubject('');
+      setComposeBody('');
+      setComposeOpen(true);
+      setSearchParams({});
+    } else if (compose === 'true') {
+      // Open compose dialog with optional lead and template context
+      let recipientEmail = '';
+      let subject = '';
+      let body = '';
+      
+      // If leadId is provided, find the lead and pre-fill recipient
+      if (leadId && allLeads.length > 0) {
+        const lead = allLeads.find((l: any) => l.id === leadId);
+        if (lead) {
+          recipientEmail = lead.email || '';
+          
+          // Check for template type and pre-fill accordingly
+          if (template === 'closing') {
+            subject = `Closing Documents - ${lead.company_name || lead.name}`;
+            body = `Hi ${lead.name?.split(' ')[0] || 'there'},
+
+Congratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.
+
+Please review the following documents carefully:
+1. Loan Agreement
+2. Promissory Note
+3. Security Agreement
+4. Personal Guarantee (if applicable)
+
+Once you've reviewed everything, please sign where indicated and return the documents at your earliest convenience. If you have any questions or need clarification on any terms, don't hesitate to reach out.
+
+Looking forward to completing this transaction with you.
+
+Best regards,
+Evan
+Commercial Lending X`;
+          } else if (template === 'follow_up') {
+            subject = `Following Up - ${lead.company_name || lead.name}`;
+            body = `Hi ${lead.name?.split(' ')[0] || 'there'},
+
+I wanted to check in and see how things are progressing on your end. It's been a little while since we last connected, and I wanted to make sure you have everything you need.
+
+If there's anything I can help with or if you have any questions about the process, please don't hesitate to reach out.
+
+Looking forward to hearing from you.
+
+Best regards,
+Evan
+Commercial Lending X`;
+          }
+        }
+      } else if (template === 'closing') {
+        // Template without specific lead
+        subject = 'Closing Documents';
+        body = `Hi,
+
+Congratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.
+
+Please review the documents carefully and sign where indicated. If you have any questions, please reach out.
+
+Best regards,
+Evan
+Commercial Lending X`;
+      } else if (template === 'follow_up') {
+        subject = 'Following Up';
+        body = `Hi,
+
+I wanted to check in and see how things are progressing. Please let me know if there's anything I can help with.
+
+Best regards,
+Evan
+Commercial Lending X`;
+      }
+      
+      setComposeTo(recipientEmail);
+      setComposeSubject(subject);
+      setComposeBody(body);
+      setComposeOpen(true);
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams, allLeads]);
+
   const { data: crmEmails = [] } = useQuery({
     queryKey: ['crm-lead-emails'],
     queryFn: async () => {

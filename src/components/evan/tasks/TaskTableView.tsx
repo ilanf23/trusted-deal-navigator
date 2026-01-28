@@ -42,34 +42,72 @@ export const TaskTableView = ({
   };
 
   // Determine where to navigate based on task source and context
-  const getNavigationInfo = (task: Task): { path: string; label: string; icon: React.ReactNode } | null => {
+  const getNavigationInfo = (task: Task): { 
+    path: string; 
+    label: string; 
+    icon: React.ReactNode;
+    action?: 'compose' | 'view';
+    template?: string;
+  } | null => {
     const source = task.source?.toLowerCase() || '';
     const title = task.title?.toLowerCase() || '';
+    const hasLead = task.lead_id || task.lead;
     
-    // Gmail/Email tasks
-    if (source === 'gmail' || source === 'nudge' || title.includes('follow up') || title.includes('email')) {
+    // Closing docs / prepare closing - opens email with closing template
+    if (title.includes('closing') || title.includes('prepare closing')) {
       return { 
-        path: '/team/evan/gmail?folder=drafts', 
-        label: 'Go to Gmail', 
-        icon: <Mail className="h-3.5 w-3.5" /> 
+        path: hasLead 
+          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&template=closing`
+          : '/team/evan/gmail?compose=true&template=closing',
+        label: 'Draft Closing Email', 
+        icon: <FileText className="h-3.5 w-3.5" />,
+        action: 'compose',
+        template: 'closing'
       };
     }
     
-    // Lead/CRM tasks
-    if (source === 'lead' || task.lead_id) {
+    // Follow up / nudge tasks - opens email compose with follow-up template
+    if (source === 'nudge' || title.includes('follow up') || title.includes('follow-up')) {
       return { 
-        path: `/team/evan/pipeline?lead=${task.lead_id}`, 
-        label: 'Go to CRM', 
-        icon: <Users className="h-3.5 w-3.5" /> 
+        path: hasLead 
+          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&template=follow_up`
+          : '/team/evan/gmail?compose=true&template=follow_up',
+        label: 'Draft Follow-up Email', 
+        icon: <Mail className="h-3.5 w-3.5" />,
+        action: 'compose',
+        template: 'follow_up'
       };
     }
     
-    // Document tasks
+    // General email tasks - opens compose
+    if (source === 'gmail' || title.includes('email') || title.includes('send')) {
+      return { 
+        path: hasLead 
+          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}`
+          : '/team/evan/gmail?compose=true',
+        label: 'Compose Email', 
+        icon: <Mail className="h-3.5 w-3.5" />,
+        action: 'compose'
+      };
+    }
+    
+    // Lead/CRM tasks - go to the lead in pipeline with lenders tab
+    if (source === 'lead' || hasLead) {
+      return { 
+        path: `/team/evan/pipeline?lead=${task.lead_id}&tab=lenders`, 
+        label: 'View in CRM', 
+        icon: <Users className="h-3.5 w-3.5" />,
+        action: 'view'
+      };
+    }
+    
+    // Document tasks without lead context
     if (title.includes('document') || title.includes('doc') || title.includes('file')) {
       return { 
         path: '/team/evan/pipeline', 
         label: 'Go to Pipeline', 
-        icon: <FileText className="h-3.5 w-3.5" /> 
+        icon: <FileText className="h-3.5 w-3.5" />,
+        action: 'view'
       };
     }
     
