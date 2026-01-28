@@ -344,20 +344,23 @@ export const TaskDetailDialog = ({
                 Status
               </label>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(statusConfig).map(([key, config]) => (
-                  <button
-                    key={key}
-                    onClick={() => onUpdateTask(task!.id, { status: key, is_completed: key === 'done' })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                      task!.status === key 
-                        ? `${config.bg} ${config.text} ring-2 ring-offset-2 ring-offset-background`
-                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                    }`}
-                    style={task!.status === key ? { '--tw-ring-color': config.color } as React.CSSProperties : {}}
-                  >
-                    {config.label}
-                  </button>
-                ))}
+                {statusPickerOptions.map((key) => {
+                  const config = statusConfig[key];
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => onUpdateTask(task!.id, { status: key, is_completed: key === 'done' })}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        task!.status === key 
+                          ? `${config.bg} ${config.text} ring-2 ring-offset-2 ring-offset-background`
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                      style={task!.status === key ? { '--tw-ring-color': config.color } as React.CSSProperties : {}}
+                    >
+                      {config.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
