@@ -435,7 +435,8 @@ const EvansGmail = () => {
   const [selectedLeadIdForDetail, setSelectedLeadIdForDetail] = useState<string | null>(null);
   const [showDealSidebar, setShowDealSidebar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const EMAILS_PER_PAGE = 50;
   // Task creation dialog state
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [taskInitialTitle, setTaskInitialTitle] = useState('');
@@ -650,6 +651,22 @@ const EvansGmail = () => {
     
     return result;
   }, [allEmails, crmEmails, activeFolder, searchQuery, allLeads]);
+
+  // Reset page when folder or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFolder, searchQuery]);
+
+  // Paginated emails
+  const paginatedEmails = useMemo(() => {
+    const startIndex = (currentPage - 1) * EMAILS_PER_PAGE;
+    const endIndex = startIndex + EMAILS_PER_PAGE;
+    return filteredEmails.slice(startIndex, endIndex);
+  }, [filteredEmails, currentPage, EMAILS_PER_PAGE]);
+
+  const totalPages = Math.ceil(filteredEmails.length / EMAILS_PER_PAGE);
+  const startEmailIndex = (currentPage - 1) * EMAILS_PER_PAGE + 1;
+  const endEmailIndex = Math.min(currentPage * EMAILS_PER_PAGE, filteredEmails.length);
 
   // Calculate folder counts
   const folderCounts = useMemo(() => {
@@ -1082,6 +1099,33 @@ const EvansGmail = () => {
                 </Button>
               )}
             </div>
+            
+            {/* Pagination Controls */}
+            {filteredEmails.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground ml-auto">
+                <span>
+                  {startEmailIndex}-{endEmailIndex} of {filteredEmails.length}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronDown className="w-4 h-4 rotate-90" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  <ChevronDown className="w-4 h-4 -rotate-90" />
+                </Button>
+              </div>
+            )}
           </div>
 
         {/* Email List / Email View */}
@@ -1571,7 +1615,7 @@ const EvansGmail = () => {
                   </div>
                 ) : (
                   <div>
-                    {filteredEmails.map((email) => {
+                    {paginatedEmails.map((email) => {
                       const isExternal = isExternalEmail(email);
                       const lead = findLeadForEmail(email);
                       const stageName = lead?.pipeline_leads?.[0]?.pipeline_stages?.name;
