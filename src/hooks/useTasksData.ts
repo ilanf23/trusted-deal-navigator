@@ -12,7 +12,7 @@ export const useTasksData = () => {
       const { data, error } = await supabase
         .from('evan_tasks')
         .select('*, lead:leads(id, name, company_name)')
-        .order('created_at', { ascending: false });
+        .order('due_date', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data as Task[];
     },
