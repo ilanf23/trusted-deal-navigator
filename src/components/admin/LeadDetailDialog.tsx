@@ -545,7 +545,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         lp.lender_name.toLowerCase().includes(searchTerm) ||
         lp.program_name.toLowerCase().includes(searchTerm)
       )
-      .slice(0, 8); // Limit to 8 suggestions
+      .slice(0, 10); // Show up to 10 suggestions
   }, [lenderPrograms, newLenderName]);
 
   const { data: communications = [] } = useQuery({
@@ -1922,7 +1922,7 @@ Commercial Lending X`,
                                       />
                                       {/* Autocomplete suggestions */}
                                       {lenderInputFocused && filteredLenderPrograms.length > 0 && (
-                                        <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
+                                        <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-[320px] overflow-y-auto">
                                           {filteredLenderPrograms.map((lp) => (
                                             <button
                                               key={lp.id}
