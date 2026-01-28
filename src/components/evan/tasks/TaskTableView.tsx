@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Task, statusConfig, priorityConfig } from './types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,8 +7,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Plus, ArrowUpRight, User, Building2, Calendar } from 'lucide-react';
+import { Trash2, Plus, ArrowUpRight, Building2, Calendar, ExternalLink, Mail, Users, FileText } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TaskTableViewProps {
   tasks: Task[];
@@ -28,6 +30,7 @@ export const TaskTableView = ({
   selectedTasks,
   onToggleSelect,
 }: TaskTableViewProps) => {
+  const navigate = useNavigate();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
 
@@ -36,6 +39,50 @@ export const TaskTableView = ({
     onAddTask({ title: newTaskTitle.trim() });
     setNewTaskTitle('');
     setIsAddingTask(false);
+  };
+
+  // Determine where to navigate based on task source and context
+  const getNavigationInfo = (task: Task): { path: string; label: string; icon: React.ReactNode } | null => {
+    const source = task.source?.toLowerCase() || '';
+    const title = task.title?.toLowerCase() || '';
+    
+    // Gmail/Email tasks
+    if (source === 'gmail' || source === 'nudge' || title.includes('follow up') || title.includes('email')) {
+      return { 
+        path: '/team/evan/gmail?folder=drafts', 
+        label: 'Go to Gmail', 
+        icon: <Mail className="h-3.5 w-3.5" /> 
+      };
+    }
+    
+    // Lead/CRM tasks
+    if (source === 'lead' || task.lead_id) {
+      return { 
+        path: `/team/evan/pipeline?lead=${task.lead_id}`, 
+        label: 'Go to CRM', 
+        icon: <Users className="h-3.5 w-3.5" /> 
+      };
+    }
+    
+    // Document tasks
+    if (title.includes('document') || title.includes('doc') || title.includes('file')) {
+      return { 
+        path: '/team/evan/pipeline', 
+        label: 'Go to Pipeline', 
+        icon: <FileText className="h-3.5 w-3.5" /> 
+      };
+    }
+    
+    // Default - no navigation available
+    return null;
+  };
+
+  const handleNavigate = (e: React.MouseEvent, task: Task) => {
+    e.stopPropagation();
+    const navInfo = getNavigationInfo(task);
+    if (navInfo) {
+      navigate(navInfo.path);
+    }
   };
 
   const renderPriorityIndicator = (priority: string | null) => {
@@ -91,6 +138,7 @@ export const TaskTableView = ({
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-muted-foreground/10">
             <TableHead className="w-8 md:w-10"></TableHead>
+            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground w-10">Go To</TableHead>
             <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Task Name</TableHead>
             <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell">Assigned To</TableHead>
             <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Related Customer</TableHead>
@@ -118,6 +166,31 @@ export const TaskTableView = ({
                   })}
                   className="h-5 w-5 rounded-full border-2 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                 />
+              </TableCell>
+
+              {/* Go To / Take Me There column */}
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                {(() => {
+                  const navInfo = getNavigationInfo(task);
+                  if (!navInfo) return <span className="text-muted-foreground">—</span>;
+                  return (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={(e) => handleNavigate(e, task)}
+                            className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
+                          >
+                            {navInfo.icon}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs">
+                          {navInfo.label}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                })()}
               </TableCell>
 
               <TableCell>
@@ -197,7 +270,7 @@ export const TaskTableView = ({
           {/* Empty state */}
           {tasks.length === 0 && !isAddingTask && (
             <TableRow>
-              <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                 No tasks yet. Click "Add task" to create one.
               </TableCell>
             </TableRow>
