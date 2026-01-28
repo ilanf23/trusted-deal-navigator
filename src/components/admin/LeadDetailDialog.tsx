@@ -1922,7 +1922,7 @@ Commercial Lending X`,
                                       />
                                       {lenderInputFocused && filteredLenderPrograms.length > 0 && (
                                         <div 
-                                          className="absolute top-full left-0 right-0 mt-1 z-[9999] bg-background border border-border rounded-lg shadow-lg max-h-[320px] overflow-y-auto"
+                                          className="absolute top-full left-0 right-0 mt-1 z-[9999] bg-background border border-border rounded-lg shadow-lg max-h-[480px] overflow-y-auto"
                                         >
                                           {filteredLenderPrograms.map((lp) => (
                                             <button
