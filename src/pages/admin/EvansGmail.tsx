@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen, ListTodo, MessageSquare, Star } from 'lucide-react';
+import { GmailTaskDialog } from '@/components/admin/GmailTaskDialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -434,6 +435,12 @@ const EvansGmail = () => {
   const [selectedLeadIdForDetail, setSelectedLeadIdForDetail] = useState<string | null>(null);
   const [showDealSidebar, setShowDealSidebar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Task creation dialog state
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [taskInitialTitle, setTaskInitialTitle] = useState('');
+  const [taskInitialDescription, setTaskInitialDescription] = useState('');
+  const [taskInitialLeadId, setTaskInitialLeadId] = useState<string | null>(null);
 
   // Handle URL params to open compose dialog from dashboard nudges
   useEffect(() => {
@@ -1610,8 +1617,10 @@ const EvansGmail = () => {
                                   const senderName = extractSenderName(email.from);
                                   const taskTitle = `Follow up: ${email.subject}`;
                                   const taskDescription = `From: ${senderName}\n\nEmail snippet: ${email.snippet}`;
-                                  const leadId = lead?.id || '';
-                                  navigate(`/team/evan/tasks?newTask=true&title=${encodeURIComponent(taskTitle)}&description=${encodeURIComponent(taskDescription)}&leadId=${leadId}`);
+                                  setTaskInitialTitle(taskTitle);
+                                  setTaskInitialDescription(taskDescription);
+                                  setTaskInitialLeadId(lead?.id || null);
+                                  setTaskDialogOpen(true);
                                 }}>
                                   <ListTodo className="w-4 h-4 mr-2" />
                                   Add to do task
@@ -1737,6 +1746,15 @@ const EvansGmail = () => {
           }}
         />
       )}
+      
+      {/* Task Creation Dialog */}
+      <GmailTaskDialog
+        open={taskDialogOpen}
+        onClose={() => setTaskDialogOpen(false)}
+        initialTitle={taskInitialTitle}
+        initialDescription={taskInitialDescription}
+        initialLeadId={taskInitialLeadId}
+      />
     </AdminLayout>
   );
 };
