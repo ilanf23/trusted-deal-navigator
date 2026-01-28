@@ -187,14 +187,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         noCollapse: true,
       });
 
-      // CRM section - clicking opens dropdown AND navigates to pipeline
+      // Pipeline - direct link, no dropdown
       sections.push({
-        title: 'CRM',
+        title: 'Pipeline',
         icon: Kanban,
         items: [
-          { title: 'Main Pipeline', url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+          { title: 'Pipeline', url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
         ],
-        navigateOnClick: `/team/${employeeName.toLowerCase()}/pipeline`,
+        noCollapse: true,
       });
 
       // Standalone pages below CRM
