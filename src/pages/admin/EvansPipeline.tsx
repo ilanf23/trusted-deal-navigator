@@ -1181,11 +1181,12 @@ const EvansPipeline = () => {
 
         {/* CRM Table - Fixed grid layout */}
         <div className="flex-1 overflow-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
-          {/* Table Header */}
-          <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-            <div 
-              className="grid text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-              style={{ gridTemplateColumns: `${getGridTemplate()} 40px` }}
+          <div className="min-w-fit">
+            {/* Table Header */}
+            <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+              <div 
+                className="grid text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                style={{ gridTemplateColumns: `${getGridTemplate()} 40px` }}
             >
               {getVisibleColumns().map((column) => {
                 // Determine cell alignment and padding
@@ -1592,6 +1593,7 @@ const EvansPipeline = () => {
             })}
           </div>
           </DndContext>
+          </div>
         </div>
       </div>
 
