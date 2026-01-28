@@ -2762,7 +2762,7 @@ Commercial Lending X`,
                         </div>
                       ))
                     )}
-                    <Button variant="link" className="text-blue-600 text-sm p-0 h-auto">
+                    <Button variant="link" className="text-blue-600 text-sm p-0 h-auto" onClick={() => setShowAddTask(true)}>
                       <Plus className="w-4 h-4 mr-1" />
                       Add task
                     </Button>
