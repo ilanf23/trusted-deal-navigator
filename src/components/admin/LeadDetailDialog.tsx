@@ -1911,7 +1911,7 @@ Commercial Lending X`,
                                 {showAddLender ? (
                                   <div className="p-4 border border-border rounded-lg bg-muted/50 space-y-3 overflow-visible">
                                     <p className="text-sm font-medium">Add Lender</p>
-                                    <div className="relative">
+                                    <div className="relative" style={{ zIndex: 50 }}>
                                       <Input
                                         value={newLenderName}
                                         onChange={(e) => setNewLenderName(e.target.value)}
@@ -1922,23 +1922,7 @@ Commercial Lending X`,
                                       />
                                       {lenderInputFocused && filteredLenderPrograms.length > 0 && (
                                         <div 
-                                          className="fixed z-[9999] bg-background border border-border rounded-lg shadow-lg max-h-[320px] overflow-y-auto"
-                                          style={{ 
-                                            width: 'var(--lender-input-width, 300px)',
-                                            marginTop: '4px'
-                                          }}
-                                          ref={(el) => {
-                                            if (el) {
-                                              const input = el.previousElementSibling as HTMLElement;
-                                              if (input) {
-                                                const rect = input.getBoundingClientRect();
-                                                el.style.setProperty('--lender-input-width', `${rect.width}px`);
-                                                el.style.width = `${rect.width}px`;
-                                                el.style.top = `${rect.bottom + 4}px`;
-                                                el.style.left = `${rect.left}px`;
-                                              }
-                                            }
-                                          }}
+                                          className="absolute top-full left-0 right-0 mt-1 z-[9999] bg-background border border-border rounded-lg shadow-lg max-h-[320px] overflow-y-auto"
                                         >
                                           {filteredLenderPrograms.map((lp) => (
                                             <button
