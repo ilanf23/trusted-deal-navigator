@@ -388,6 +388,12 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactIsPrimary, setNewContactIsPrimary] = useState(false);
 
+  // Lender states
+  const [showAddLender, setShowAddLender] = useState(false);
+  const [newLenderName, setNewLenderName] = useState('');
+  const [newLenderProgram, setNewLenderProgram] = useState('');
+  const [localLenders, setLocalLenders] = useState<LeadLenderAssociation[]>([]);
+
   // AI states
   const [aiLoading, setAiLoading] = useState<'summarize' | 'ask' | 'autofill' | null>(null);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -1791,7 +1797,8 @@ Commercial Lending X`,
                   {/* Lenders Tab */}
                   <TabsContent value="lenders" className="m-0">
                     {(() => {
-                      const lenders = lead ? (leadLenderMockData[lead.id] || getDefaultLenders(lead)) : [];
+                      const baseLenders = lead ? (leadLenderMockData[lead.id] || getDefaultLenders(lead)) : [];
+                      const allLenders = [...baseLenders, ...localLenders];
                       
                       const getStatusConfig = (status: LeadLenderAssociation['status']) => {
                         switch (status) {
@@ -1809,80 +1816,109 @@ Commercial Lending X`,
                         }
                       };
 
-                      return lenders.length === 0 ? (
-                        <div className="text-center py-12 text-slate-400">
-                          <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                          <p>No lenders matched yet</p>
-                          <Button variant="outline" size="sm" className="mt-4">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Find Matching Lenders
-                          </Button>
-                        </div>
-                      ) : (
+                      const handleAddLender = () => {
+                        if (!newLenderName.trim() || !newLenderProgram.trim()) return;
+                        setLocalLenders(prev => [...prev, {
+                          lenderName: newLenderName.trim(),
+                          programName: newLenderProgram.trim(),
+                          status: 'matched',
+                        }]);
+                        setNewLenderName('');
+                        setNewLenderProgram('');
+                        setShowAddLender(false);
+                        toast({ title: 'Lender added' });
+                      };
+
+                      return (
                         <ScrollArea className="max-h-[450px]">
                           <div className="space-y-3 p-1">
-                            {lenders.map((lender, idx) => {
-                              const statusConfig = getStatusConfig(lender.status);
-                              return (
-                                <div
-                                  key={idx}
-                                  className="p-4 border border-border rounded-lg bg-background hover:bg-muted/50 transition-colors"
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <h4 className="font-semibold text-sm text-foreground">{lender.lenderName}</h4>
-                                        <Badge className={`text-xs font-medium border-0 ${statusConfig.bg} ${statusConfig.text}`}>
-                                          {statusConfig.label}
-                                        </Badge>
-                                      </div>
-                                      <p className="text-sm text-muted-foreground">{lender.programName}</p>
-                                      
-                                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                        {lender.matchScore && (
-                                          <span className="flex items-center gap-1">
-                                            <span className={cn(
-                                              "font-semibold",
-                                              lender.matchScore >= 90 ? "text-emerald-600" :
-                                              lender.matchScore >= 80 ? "text-blue-600" :
-                                              "text-amber-600"
-                                            )}>
-                                              {lender.matchScore}%
-                                            </span>
-                                            match
-                                          </span>
+                            {allLenders.length === 0 && !showAddLender ? (
+                              <div className="text-center py-12 text-slate-400">
+                                <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                <p>No lenders matched yet</p>
+                                <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowAddLender(true)}>
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Add Lender
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                {allLenders.map((lender, idx) => {
+                                  const statusConfig = getStatusConfig(lender.status);
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className="p-4 border border-border rounded-lg bg-background hover:bg-muted/50 transition-colors"
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-semibold text-sm text-foreground">{lender.lenderName}</h4>
+                                            <Badge className={`text-xs font-medium border-0 ${statusConfig.bg} ${statusConfig.text}`}>
+                                              {statusConfig.label}
+                                            </Badge>
+                                          </div>
+                                          <p className="text-sm text-muted-foreground">{lender.programName}</p>
+                                          
+                                          {lender.submittedAt && (
+                                            <p className="text-xs text-muted-foreground mt-2">
+                                              Submitted {format(new Date(lender.submittedAt), 'MMM d, yyyy')}
+                                            </p>
+                                          )}
+                                          
+                                          {lender.notes && (
+                                            <p className="text-xs text-muted-foreground mt-2 italic">{lender.notes}</p>
+                                          )}
+                                        </div>
+                                        
+                                        {lender.status === 'approved' && (
+                                          <Button variant="outline" size="sm" className="text-xs h-7 text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+                                            View Terms
+                                          </Button>
                                         )}
-                                        {lender.submittedAt && (
-                                          <span>Submitted {format(new Date(lender.submittedAt), 'MMM d, yyyy')}</span>
-                                        )}
                                       </div>
-                                      
-                                      {lender.notes && (
-                                        <p className="text-xs text-muted-foreground mt-2 italic">{lender.notes}</p>
-                                      )}
                                     </div>
-                                    
-                                    <div className="flex items-center gap-1">
-                                      {lender.status === 'matched' && (
-                                        <Button variant="outline" size="sm" className="text-xs h-7">
-                                          Submit
-                                        </Button>
-                                      )}
-                                      {lender.status === 'approved' && (
-                                        <Button variant="outline" size="sm" className="text-xs h-7 text-emerald-600 border-emerald-200 hover:bg-emerald-50">
-                                          View Terms
-                                        </Button>
-                                      )}
+                                  );
+                                })}
+                                
+                                {/* Add Lender Form */}
+                                {showAddLender ? (
+                                  <div className="p-4 border border-border rounded-lg bg-muted/50 space-y-3">
+                                    <p className="text-sm font-medium">Add Lender</p>
+                                    <Input
+                                      value={newLenderName}
+                                      onChange={(e) => setNewLenderName(e.target.value)}
+                                      placeholder="Lender name"
+                                      className="text-sm"
+                                    />
+                                    <Input
+                                      value={newLenderProgram}
+                                      onChange={(e) => setNewLenderProgram(e.target.value)}
+                                      placeholder="Program name"
+                                      className="text-sm"
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                      <Button variant="ghost" size="sm" onClick={() => { setShowAddLender(false); setNewLenderName(''); setNewLenderProgram(''); }}>
+                                        Cancel
+                                      </Button>
+                                      <Button size="sm" onClick={handleAddLender} disabled={!newLenderName.trim() || !newLenderProgram.trim()}>
+                                        Add
+                                      </Button>
                                     </div>
                                   </div>
-                                </div>
-                              );
-                            })}
-                            
-                            <Button variant="ghost" size="sm" className="w-full mt-2 text-muted-foreground hover:text-foreground">
-                              <Plus className="w-4 h-4 mr-2" />
-                              Add More Lenders
-                            </Button>
+                                ) : (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="w-full mt-2 text-muted-foreground hover:text-foreground"
+                                    onClick={() => setShowAddLender(true)}
+                                  >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Add More Lenders
+                                  </Button>
+                                )}
+                              </>
+                            )}
                           </div>
                         </ScrollArea>
                       );
