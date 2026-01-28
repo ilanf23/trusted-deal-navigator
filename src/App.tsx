@@ -122,6 +122,7 @@ const App = () => (
               <Route path="/team/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
               <Route path="/team/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
               <Route path="/team/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
+              <Route path="/team/evan/rate-watch" element={<EmployeeRoute employeeName="Evan"><AdminRateWatch /></EmployeeRoute>} />
               <Route path="/team/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
               <Route path="/team/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
               {/* Founder/Admin Routes (Brad, Adam, Ilan) */}
