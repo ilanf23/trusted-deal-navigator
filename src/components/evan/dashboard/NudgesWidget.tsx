@@ -51,18 +51,19 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
   const [composeSending, setComposeSending] = useState(false);
   const [currentLeadId, setCurrentLeadId] = useState<string | null>(null);
 
-  // Fetch leads needing nudges (no activity in 7+ days)
+  // Fetch leads needing nudges (no activity in 7+ days, never nudged before)
   const { data: nudgeLeads = [], isLoading } = useQuery({
     queryKey: ['evan-dashboard-nudges'],
     queryFn: async () => {
       const sevenDaysAgo = subDays(new Date(), 7).toISOString();
       
-      // Fetch all active leads with emails that have stale activity
+      // Fetch active leads with emails that have stale activity AND have never been nudged
       const { data: leads, error } = await supabase
         .from('leads')
-        .select('id, name, email, phone, company_name, status, last_activity_at, created_at')
+        .select('id, name, email, phone, company_name, status, last_activity_at, created_at, initial_nudge_created_at')
         .neq('status', 'funded')
         .not('email', 'is', null)
+        .is('initial_nudge_created_at', null) // Only leads that have NEVER been nudged
         .order('last_activity_at', { ascending: true, nullsFirst: true })
         .limit(20);
       
@@ -78,29 +79,14 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
     },
   });
 
-  // Fetch existing follow-up tasks to avoid duplicates
-  const { data: existingTasks = [] } = useQuery({
-    queryKey: ['evan-followup-tasks'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('evan_tasks')
-        .select('id, lead_id, title')
-        .ilike('title', '%7-day follow up%');
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  // Auto-create high priority tasks for leads needing follow-up
+  // Auto-create high priority tasks for leads needing follow-up (one-time only)
   useEffect(() => {
     const createFollowUpTasks = async () => {
       if (nudgeLeads.length === 0) return;
-
-      const existingLeadIds = new Set(existingTasks.map(t => t.lead_id));
       
       for (const lead of nudgeLeads) {
-        // Skip if task already exists or we already created one this session
-        if (existingLeadIds.has(lead.id) || tasksCreatedRef.current.has(lead.id)) {
+        // Skip if we already created one this session
+        if (tasksCreatedRef.current.has(lead.id)) {
           continue;
         }
 
@@ -110,7 +96,8 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
         // Set due date to today for follow-up tasks
         const dueDate = new Date();
         
-        const { error } = await supabase.from('evan_tasks').insert({
+        // Create the task
+        const { error: taskError } = await supabase.from('evan_tasks').insert({
           title: `7-Day Follow Up: ${lead.name}`,
           description: `No activity in ${daysSince} days. Follow up with ${lead.name}${lead.company_name ? ` at ${lead.company_name}` : ''}.`,
           status: 'todo',
@@ -122,19 +109,26 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           due_date: dueDate.toISOString(),
         });
 
-        if (!error) {
+        if (!taskError) {
+          // Mark the lead as nudged permanently - this ensures no future nudge tasks
+          await supabase
+            .from('leads')
+            .update({ initial_nudge_created_at: new Date().toISOString() })
+            .eq('id', lead.id);
+            
           tasksCreatedRef.current.add(lead.id);
         }
       }
 
-      // Invalidate tasks query to show new tasks
+      // Invalidate queries to reflect changes
       if (tasksCreatedRef.current.size > 0) {
         queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+        queryClient.invalidateQueries({ queryKey: ['evan-dashboard-nudges'] });
       }
     };
 
     createFollowUpTasks();
-  }, [nudgeLeads, existingTasks, queryClient]);
+  }, [nudgeLeads, queryClient]);
 
   // Generate email content and open compose dialog
   const handleCreateDraft = async (lead: Lead) => {

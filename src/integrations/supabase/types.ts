@@ -1459,6 +1459,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          initial_nudge_created_at: string | null
           known_as: string | null
           last_activity_at: string | null
           linkedin: string | null
@@ -1493,6 +1494,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          initial_nudge_created_at?: string | null
           known_as?: string | null
           last_activity_at?: string | null
           linkedin?: string | null
@@ -1527,6 +1529,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          initial_nudge_created_at?: string | null
           known_as?: string | null
           last_activity_at?: string | null
           linkedin?: string | null
