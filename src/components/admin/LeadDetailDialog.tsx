@@ -1165,7 +1165,7 @@ Commercial Lending X`,
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead?.id] });
-      queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
       setNewTaskTitle('');
       setNewTaskDueDate('');
       setShowAddTask(false);
