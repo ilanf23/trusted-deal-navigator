@@ -579,10 +579,11 @@ const EvansGmail = () => {
     enabled: !!gmailConnection,
   });
 
-  // Use only real emails for now (mock emails hidden for testing)
+  // Combine real emails with mock external emails and sort by date (newest first)
   const allEmails = useMemo(() => {
+    const combined = [...mockExternalEmails, ...emails];
     // Sort by date, newest first
-    return [...emails].sort((a, b) => {
+    return combined.sort((a, b) => {
       const dateA = new Date(a.date).getTime();
       const dateB = new Date(b.date).getTime();
       return dateB - dateA;
