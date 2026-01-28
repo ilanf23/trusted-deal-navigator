@@ -1911,41 +1911,54 @@ Commercial Lending X`,
                                 {showAddLender ? (
                                   <div className="p-4 border border-border rounded-lg bg-muted/50 space-y-3 overflow-visible">
                                     <p className="text-sm font-medium">Add Lender</p>
-                                    <Popover open={lenderInputFocused && filteredLenderPrograms.length > 0} onOpenChange={() => {}}>
-                                      <PopoverTrigger asChild>
-                                        <Input
-                                          value={newLenderName}
-                                          onChange={(e) => setNewLenderName(e.target.value)}
-                                          onFocus={() => setLenderInputFocused(true)}
-                                          onBlur={() => setTimeout(() => setLenderInputFocused(false), 200)}
-                                          placeholder="Search lenders..."
-                                          className="text-sm"
-                                        />
-                                      </PopoverTrigger>
-                                      <PopoverContent 
-                                        className="w-[--radix-popover-trigger-width] p-0 max-h-[320px] overflow-y-auto" 
-                                        align="start"
-                                        sideOffset={4}
-                                        onOpenAutoFocus={(e) => e.preventDefault()}
-                                      >
-                                        {filteredLenderPrograms.map((lp) => (
-                                          <button
-                                            key={lp.id}
-                                            type="button"
-                                            className="w-full px-3 py-2.5 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              setNewLenderName(lp.lender_name);
-                                              setNewLenderProgram(lp.program_name);
-                                              setLenderInputFocused(false);
-                                            }}
-                                          >
-                                            <p className="text-sm font-medium text-foreground">{lp.lender_name}</p>
-                                            <p className="text-xs text-muted-foreground">{lp.program_name} • {lp.program_type}</p>
-                                          </button>
-                                        ))}
-                                      </PopoverContent>
-                                    </Popover>
+                                    <div className="relative">
+                                      <Input
+                                        value={newLenderName}
+                                        onChange={(e) => setNewLenderName(e.target.value)}
+                                        onFocus={() => setLenderInputFocused(true)}
+                                        onBlur={() => setTimeout(() => setLenderInputFocused(false), 200)}
+                                        placeholder="Search lenders..."
+                                        className="text-sm"
+                                      />
+                                      {lenderInputFocused && filteredLenderPrograms.length > 0 && (
+                                        <div 
+                                          className="fixed z-[9999] bg-background border border-border rounded-lg shadow-lg max-h-[320px] overflow-y-auto"
+                                          style={{ 
+                                            width: 'var(--lender-input-width, 300px)',
+                                            marginTop: '4px'
+                                          }}
+                                          ref={(el) => {
+                                            if (el) {
+                                              const input = el.previousElementSibling as HTMLElement;
+                                              if (input) {
+                                                const rect = input.getBoundingClientRect();
+                                                el.style.setProperty('--lender-input-width', `${rect.width}px`);
+                                                el.style.width = `${rect.width}px`;
+                                                el.style.top = `${rect.bottom + 4}px`;
+                                                el.style.left = `${rect.left}px`;
+                                              }
+                                            }
+                                          }}
+                                        >
+                                          {filteredLenderPrograms.map((lp) => (
+                                            <button
+                                              key={lp.id}
+                                              type="button"
+                                              className="w-full px-3 py-2.5 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                setNewLenderName(lp.lender_name);
+                                                setNewLenderProgram(lp.program_name);
+                                                setLenderInputFocused(false);
+                                              }}
+                                            >
+                                              <p className="text-sm font-medium text-foreground">{lp.lender_name}</p>
+                                              <p className="text-xs text-muted-foreground">{lp.program_name} • {lp.program_type}</p>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                     <Input
                                       value={newLenderProgram}
                                       onChange={(e) => setNewLenderProgram(e.target.value)}
