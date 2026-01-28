@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1359,6 +1359,7 @@ Commercial Lending X`,
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] p-0 gap-0 overflow-hidden">
 
@@ -1403,36 +1404,9 @@ Commercial Lending X`,
               </Popover>
 
               {/* Add Task */}
-              <Popover open={showAddTask} onOpenChange={setShowAddTask}>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" title="Add task">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-3" align="end">
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium">Create Task</p>
-                    <Input
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                      placeholder="Task title"
-                      className="text-sm"
-                    />
-                    <Input
-                      type="date"
-                      value={newTaskDueDate}
-                      onChange={(e) => setNewTaskDueDate(e.target.value)}
-                      className="text-sm"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => setShowAddTask(false)}>Cancel</Button>
-                      <Button size="sm" onClick={() => addTask.mutate({ title: newTaskTitle, dueDate: newTaskDueDate })} disabled={!newTaskTitle.trim()}>
-                        Create
-                      </Button>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <Button variant="ghost" size="icon" title="Add task" onClick={() => setShowAddTask(true)}>
+                <CheckCircle2 className="w-4 h-4" />
+              </Button>
 
               {/* Schedule Meeting */}
               <Popover open={showScheduleMeeting} onOpenChange={setShowScheduleMeeting}>
@@ -2859,6 +2833,49 @@ Commercial Lending X`,
         </div>
       </DialogContent>
     </Dialog>
+
+      {/* Add Task Dialog - renders on top of CRM dialog */}
+      <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
+        <DialogContent className="sm:max-w-md z-[100]">
+          <DialogHeader>
+            <DialogTitle>Create Task</DialogTitle>
+            <DialogDescription>
+              Add a new task for {lead?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Task Title</label>
+              <Input
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder="Enter task title..."
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Due Date</label>
+              <Input
+                type="date"
+                value={newTaskDueDate}
+                onChange={(e) => setNewTaskDueDate(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowAddTask(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => addTask.mutate({ title: newTaskTitle, dueDate: newTaskDueDate })} 
+                disabled={!newTaskTitle.trim() || addTask.isPending}
+              >
+                {addTask.isPending ? 'Creating...' : 'Create Task'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
