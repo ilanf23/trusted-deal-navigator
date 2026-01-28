@@ -448,14 +448,18 @@ const EvansGmail = () => {
     const to = searchParams.get('to');
     const draftId = searchParams.get('draftId');
     
-    if (compose === 'draft' && to) {
-      // Open compose dialog with the email pre-filled
+    if (compose === 'draft' && draftId) {
+      // Draft was already created - switch to Drafts folder to show it
+      setActiveFolder('drafts');
+      toast.success('Draft created! Check your Drafts folder.');
+      // Clear the URL params to prevent reopening on refresh
+      setSearchParams({});
+    } else if (compose === 'new' && to) {
+      // Open compose dialog for a new email
       setComposeTo(decodeURIComponent(to));
-      setComposeSubject('Following up');
+      setComposeSubject('');
       setComposeBody('');
       setComposeOpen(true);
-      
-      // Clear the URL params to prevent reopening on refresh
       setSearchParams({});
     }
   }, [searchParams, setSearchParams]);
