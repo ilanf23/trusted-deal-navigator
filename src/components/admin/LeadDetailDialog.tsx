@@ -393,6 +393,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [newLenderName, setNewLenderName] = useState('');
   const [newLenderProgram, setNewLenderProgram] = useState('');
   const [localLenders, setLocalLenders] = useState<LeadLenderAssociation[]>([]);
+  const [lenderInputFocused, setLenderInputFocused] = useState(false);
 
   // AI states
   const [aiLoading, setAiLoading] = useState<'summarize' | 'ask' | 'autofill' | null>(null);
@@ -521,6 +522,31 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
     enabled: open,
   });
+
+  // Query lender programs for autocomplete
+  const { data: lenderPrograms = [] } = useQuery({
+    queryKey: ['lender-programs-list'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lender_programs')
+        .select('id, lender_name, program_name, program_type, loan_types, states')
+        .order('lender_name');
+      return data || [];
+    },
+    enabled: open && showAddLender,
+  });
+
+  // Filter lender programs based on input
+  const filteredLenderPrograms = useMemo(() => {
+    if (!newLenderName.trim()) return [];
+    const searchTerm = newLenderName.toLowerCase();
+    return lenderPrograms
+      .filter(lp => 
+        lp.lender_name.toLowerCase().includes(searchTerm) ||
+        lp.program_name.toLowerCase().includes(searchTerm)
+      )
+      .slice(0, 8); // Limit to 8 suggestions
+  }, [lenderPrograms, newLenderName]);
 
   const { data: communications = [] } = useQuery({
     queryKey: ['lead-communications', lead?.id],
@@ -1885,12 +1911,37 @@ Commercial Lending X`,
                                 {showAddLender ? (
                                   <div className="p-4 border border-border rounded-lg bg-muted/50 space-y-3">
                                     <p className="text-sm font-medium">Add Lender</p>
-                                    <Input
-                                      value={newLenderName}
-                                      onChange={(e) => setNewLenderName(e.target.value)}
-                                      placeholder="Lender name"
-                                      className="text-sm"
-                                    />
+                                    <div className="relative">
+                                      <Input
+                                        value={newLenderName}
+                                        onChange={(e) => setNewLenderName(e.target.value)}
+                                        onFocus={() => setLenderInputFocused(true)}
+                                        onBlur={() => setTimeout(() => setLenderInputFocused(false), 200)}
+                                        placeholder="Search lenders..."
+                                        className="text-sm"
+                                      />
+                                      {/* Autocomplete suggestions */}
+                                      {lenderInputFocused && filteredLenderPrograms.length > 0 && (
+                                        <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
+                                          {filteredLenderPrograms.map((lp) => (
+                                            <button
+                                              key={lp.id}
+                                              type="button"
+                                              className="w-full px-3 py-2 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                setNewLenderName(lp.lender_name);
+                                                setNewLenderProgram(lp.program_name);
+                                                setLenderInputFocused(false);
+                                              }}
+                                            >
+                                              <p className="text-sm font-medium text-foreground">{lp.lender_name}</p>
+                                              <p className="text-xs text-muted-foreground">{lp.program_name} • {lp.program_type}</p>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                     <Input
                                       value={newLenderProgram}
                                       onChange={(e) => setNewLenderProgram(e.target.value)}
