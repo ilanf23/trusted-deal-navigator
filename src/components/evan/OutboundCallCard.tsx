@@ -107,24 +107,24 @@ export const OutboundCallCard = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Tab Buttons */}
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button
             variant={activeTab === 'dial' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActiveTab('dial')}
-            className="flex-1"
+            className="flex-1 min-w-0"
           >
-            <Phone className="h-4 w-4 mr-2" />
-            Dial
+            <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
+            <span className="truncate">Dial</span>
           </Button>
           <Button
             variant={activeTab === 'contacts' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActiveTab('contacts')}
-            className="flex-1"
+            className="flex-1 min-w-0"
           >
-            <User className="h-4 w-4 mr-2" />
-            Contacts
+            <User className="h-4 w-4 mr-2 flex-shrink-0" />
+            <span className="truncate">Contacts</span>
           </Button>
         </div>
 
