@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { 
   X, Minus, Maximize2, ChevronDown,
   Undo2, Redo2, Bold, Italic, Underline, 
@@ -120,6 +120,19 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
       onBodyChange(editorRef.current.innerHTML);
     }
   };
+
+  // Initialize editor content when body prop changes externally (e.g., template loaded)
+  const lastExternalBody = useRef(body);
+  useEffect(() => {
+    if (editorRef.current && body !== lastExternalBody.current) {
+      // Only update if the change came from outside (not from typing)
+      const currentContent = editorRef.current.innerHTML;
+      if (currentContent !== body) {
+        editorRef.current.innerHTML = body;
+      }
+      lastExternalBody.current = body;
+    }
+  }, [body]);
 
   // File attachment handlers - convert to base64 for sending
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,6 +364,8 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
               ref={editorRef}
               contentEditable
               onInput={handleEditorInput}
+              onBlur={handleEditorInput}
+              suppressContentEditableWarning
               className="w-full min-h-[200px] text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-slate-100 focus:ring-0 prose prose-sm max-w-none dark:prose-invert"
               style={{ 
                 caretColor: '#3b82f6',
@@ -359,7 +374,6 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
                 whiteSpace: 'pre-wrap',
                 wordWrap: 'break-word',
               }}
-              dangerouslySetInnerHTML={{ __html: body }}
               data-placeholder="Compose your message..."
             />
           </div>
