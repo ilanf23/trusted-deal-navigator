@@ -424,8 +424,24 @@ async function sendMessage(
   inReplyTo?: string,
   attachments?: { filename: string; mimeType: string; data: string }[]
 ) {
+  // Log what we're about to encode
+  console.log('sendMessage - creating MIME message:', {
+    to,
+    subject,
+    bodyLength: body?.length || 0,
+    bodyPreview: body?.substring(0, 100) || 'EMPTY',
+    hasAttachments: !!attachments?.length,
+  });
+  
   const email = createMimeMessage(to, subject, body, attachments, threadId, inReplyTo);
+  
+  // Log the raw MIME message (first 500 chars)
+  console.log('MIME message preview:', email.substring(0, 500));
+  
   const encodedEmail = encodeBase64Url(email);
+  
+  // Log encoded message length to verify it's not empty
+  console.log('Encoded email length:', encodedEmail.length);
 
   const requestBody: any = { raw: encodedEmail };
   if (threadId) requestBody.threadId = threadId;
@@ -715,17 +731,34 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Send message
+// Send message
     if (action === 'send') {
       const body = await req.json();
       
-      // Debug logging - check what body content is received
-      console.log('Send email request received:', {
+      // CRITICAL: Validate that body content exists before sending
+      if (!body.body || body.body.trim() === '') {
+        console.error('BLOCKED SEND - Empty body detected:', {
+          to: body.to,
+          subject: body.subject,
+          bodyValue: body.body,
+          bodyType: typeof body.body,
+        });
+        return new Response(
+          JSON.stringify({ error: 'Cannot send email: body content missing' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Comprehensive debug logging
+      console.log('Send email request - FULL DETAILS:', {
         to: body.to,
         subject: body.subject,
         bodyLength: body.body?.length || 0,
-        bodyPreview: body.body?.substring(0, 100) || 'EMPTY',
-        hasAttachments: body.attachments?.length > 0
+        bodyPreview: body.body?.substring(0, 200) || 'EMPTY',
+        bodyEnd: body.body?.slice(-100) || 'EMPTY',
+        hasAttachments: body.attachments?.length > 0,
+        threadId: body.threadId || null,
+        inReplyTo: body.inReplyTo || null,
       });
       
       const result = await sendMessage(
@@ -735,8 +768,15 @@ Deno.serve(async (req) => {
         body.body,
         body.threadId,
         body.inReplyTo,
-        body.attachments // Pass attachments to sendMessage
+        body.attachments
       );
+      
+      // Log the result to confirm Gmail accepted it
+      console.log('Gmail API send result:', {
+        messageId: result.id,
+        threadId: result.threadId,
+        labelIds: result.labelIds,
+      });
 
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
