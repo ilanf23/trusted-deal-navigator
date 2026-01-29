@@ -1,13 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Phone, PhoneOff, User, Mic, MicOff, Volume2, AlertTriangle } from 'lucide-react';
+import { Phone, PhoneOff, User, Mic, MicOff, Volume2, AlertTriangle, PhoneOutgoing } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCall } from '@/contexts/CallContext';
 import { CallHealthIndicator } from './CallHealthIndicator';
 
 /**
- * Floating popup that displays incoming/active call UI.
+ * Floating popup that displays incoming/active/outbound call UI.
  * Uses the global CallContext so call state persists across page navigation.
  */
 export const IncomingCallPopup = () => {
@@ -19,6 +19,7 @@ export const IncomingCallPopup = () => {
     callDuration,
     isInitializing,
     healthStatus,
+    outboundCall,
     answerCall,
     hangupCall,
     declineCall,
@@ -29,7 +30,6 @@ export const IncomingCallPopup = () => {
   const answerMutation = useMutation({
     mutationFn: answerCall,
     onError: (error: Error) => {
-      // Toast is handled in context
       console.error('Failed to answer call:', error.message);
     },
   });
@@ -65,11 +65,41 @@ export const IncomingCallPopup = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Only show popup for Evan when there's a call
-  const showPopup = isEvan && (incomingCall || isConnected);
+  // Determine what type of call popup to show
+  const isOutboundCall = outboundCall !== null;
+  const isInboundCall = incomingCall !== null && !isOutboundCall;
+  const showPopup = isEvan && (isInboundCall || isOutboundCall || isConnected);
   
   // Show warning if call system is not healthy
-  const showHealthWarning = isEvan && !healthStatus.deviceReady && !incomingCall && !isConnected;
+  const showHealthWarning = isEvan && !healthStatus.deviceReady && !incomingCall && !isConnected && !outboundCall;
+
+  // Get display info based on call type
+  const getCallDisplayInfo = () => {
+    if (isOutboundCall) {
+      return {
+        title: isConnected ? 'Call in Progress' : outboundCall.status === 'ringing' ? 'Ringing...' : 'Dialing...',
+        subtitle: isConnected ? formatDuration(callDuration) : outboundCall.status === 'ringing' ? 'Waiting for answer' : 'Connecting...',
+        callerName: outboundCall.leadName || 'Unknown',
+        callerNumber: formatPhoneNumber(outboundCall.phoneNumber),
+        headerColor: isConnected ? 'bg-blue-500' : 'bg-amber-500',
+        borderColor: isConnected ? 'border-blue-500/50' : 'border-amber-500/50',
+        icon: PhoneOutgoing,
+      };
+    } else {
+      return {
+        title: isConnected ? 'Call in Progress' : 'Incoming Call',
+        subtitle: isConnected ? formatDuration(callDuration) : 'Ringing...',
+        callerName: incomingCall?.leads?.name || 'Unknown Caller',
+        callerNumber: incomingCall ? formatPhoneNumber(incomingCall.from_number) : '',
+        headerColor: isConnected ? 'bg-blue-500' : 'bg-green-500',
+        borderColor: isConnected ? 'border-blue-500/50' : 'border-green-500/50',
+        icon: Phone,
+      };
+    }
+  };
+
+  const displayInfo = getCallDisplayInfo();
+  const IconComponent = displayInfo.icon;
 
   return (
     <AnimatePresence>
@@ -81,11 +111,11 @@ export const IncomingCallPopup = () => {
           transition={{ type: 'spring', damping: 20, stiffness: 300 }}
           className="fixed top-4 right-4 z-[9999]"
         >
-          <Card className={`w-80 shadow-2xl border-2 ${isConnected ? 'border-blue-500/50' : 'border-green-500/50'} bg-background/95 backdrop-blur-sm overflow-hidden`}>
+          <Card className={`w-80 shadow-2xl border-2 ${displayInfo.borderColor} bg-background/95 backdrop-blur-sm overflow-hidden`}>
             {/* Header */}
-            <div className={`${isConnected ? 'bg-blue-500' : 'bg-green-500'} text-white px-4 py-3 flex items-center gap-3`}>
+            <div className={`${displayInfo.headerColor} text-white px-4 py-3 flex items-center gap-3`}>
               <div className="relative">
-                <Phone className={`h-6 w-6 ${!isConnected && 'animate-pulse'}`} />
+                <IconComponent className={`h-6 w-6 ${!isConnected && 'animate-pulse'}`} />
                 {!isConnected && (
                   <span className="absolute -top-1 -right-1 flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -94,11 +124,9 @@ export const IncomingCallPopup = () => {
                 )}
               </div>
               <div className="flex-1">
-                <p className="font-semibold">
-                  {isConnected ? 'Call in Progress' : 'Incoming Call'}
-                </p>
-                <p className={`text-xs ${isConnected ? 'text-blue-100' : 'text-green-100'}`}>
-                  {isConnected ? formatDuration(callDuration) : 'Ringing...'}
+                <p className="font-semibold">{displayInfo.title}</p>
+                <p className={`text-xs ${isConnected ? 'text-blue-100' : isOutboundCall ? 'text-amber-100' : 'text-green-100'}`}>
+                  {displayInfo.subtitle}
                 </p>
               </div>
               {isConnected && (
@@ -109,18 +137,14 @@ export const IncomingCallPopup = () => {
             </div>
             
             <CardContent className="p-4">
-              {/* Caller info */}
+              {/* Caller/Callee info */}
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                   <User className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-lg">
-                    {incomingCall?.leads?.name || 'Unknown Caller'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {incomingCall ? formatPhoneNumber(incomingCall.from_number) : ''}
-                  </p>
+                  <p className="font-semibold text-lg">{displayInfo.callerName}</p>
+                  <p className="text-sm text-muted-foreground">{displayInfo.callerNumber}</p>
                 </div>
               </div>
 
@@ -154,7 +178,21 @@ export const IncomingCallPopup = () => {
                     End Call
                   </Button>
                 </div>
+              ) : isOutboundCall ? (
+                // Outbound call - only show Cancel button
+                <div className="flex gap-3">
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => hangupMutation.mutate()}
+                    disabled={hangupMutation.isPending}
+                  >
+                    <PhoneOff className="h-4 w-4 mr-2" />
+                    Cancel Call
+                  </Button>
+                </div>
               ) : (
+                // Inbound call - show Decline and Answer
                 <div className="flex gap-3">
                   <Button
                     variant="destructive"

@@ -21,6 +21,14 @@ interface ActiveCallData {
   } | null;
 }
 
+interface OutboundCallState {
+  phoneNumber: string;
+  leadId?: string;
+  leadName?: string;
+  status: 'idle' | 'dialing' | 'ringing' | 'connected' | 'ended';
+  callSid?: string;
+}
+
 interface CallHealthStatus {
   deviceReady: boolean;
   socketConnected: boolean;
@@ -36,10 +44,12 @@ interface CallContextType {
   callDuration: number;
   isInitializing: boolean;
   healthStatus: CallHealthStatus;
+  outboundCall: OutboundCallState | null;
   answerCall: () => Promise<void>;
   hangupCall: () => Promise<void>;
   declineCall: () => Promise<void>;
   toggleMute: () => void;
+  makeOutboundCall: (phoneNumber: string, leadId?: string, leadName?: string) => Promise<void>;
   isEvan: boolean;
 }
 
@@ -69,6 +79,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [hasNavigated, setHasNavigated] = useState(false);
+  const [outboundCall, setOutboundCall] = useState<OutboundCallState | null>(null);
   const [healthStatus, setHealthStatus] = useState<CallHealthStatus>({
     deviceReady: false,
     socketConnected: false,
@@ -142,8 +153,10 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     setIsMuted(false);
     setCallDuration(0);
     setIncomingCall(null);
+    setOutboundCall(null);
     queryClient.invalidateQueries({ queryKey: ['active-calls-ringing'] });
     queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
+    queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
   }, [queryClient]);
 
   // Initialize Twilio Device - EAGER initialization
@@ -545,6 +558,96 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [activeCall, isMuted]);
 
+  // Make outbound call using Twilio Device
+  const makeOutboundCall = useCallback(async (phoneNumber: string, leadId?: string, leadName?: string) => {
+    if (!isEvan) {
+      toast.error('Only Evan can make calls');
+      return;
+    }
+
+    const device = deviceRef.current ?? (await initializeTwilioDevice());
+    if (!device || device.state !== 'registered') {
+      toast.error('Phone is not ready. Please wait and try again.');
+      return;
+    }
+
+    // Format phone number
+    let formattedPhone = phoneNumber.replace(/\D/g, '');
+    if (formattedPhone.length === 10) {
+      formattedPhone = '+1' + formattedPhone;
+    } else if (!formattedPhone.startsWith('+')) {
+      formattedPhone = '+' + formattedPhone;
+    }
+
+    try {
+      // Set outbound call state to dialing
+      setOutboundCall({
+        phoneNumber: formattedPhone,
+        leadId,
+        leadName,
+        status: 'dialing',
+      });
+
+      console.log('[CallContext] Initiating outbound call to:', formattedPhone);
+
+      // Make the call through Twilio Device
+      const call = await device.connect({
+        params: {
+          To: formattedPhone,
+        },
+      });
+
+      setActiveCall(call);
+      setOutboundCall(prev => prev ? { ...prev, status: 'ringing', callSid: call.parameters.CallSid } : null);
+
+      call.on('ringing', () => {
+        console.log('[CallContext] Outbound call ringing');
+        setOutboundCall(prev => prev ? { ...prev, status: 'ringing' } : null);
+      });
+
+      call.on('accept', () => {
+        console.log('[CallContext] Outbound call connected');
+        setOutboundCall(prev => prev ? { ...prev, status: 'connected' } : null);
+        setIsConnected(true);
+        startCallTimer();
+        toast.success('Call connected!');
+      });
+
+      call.on('disconnect', () => {
+        console.log('[CallContext] Outbound call ended');
+        handleCallEnd();
+        toast.info('Call ended');
+      });
+
+      call.on('cancel', () => {
+        console.log('[CallContext] Outbound call cancelled');
+        handleCallEnd();
+      });
+
+      call.on('error', (error) => {
+        console.error('[CallContext] Outbound call error:', error);
+        toast.error(`Call failed: ${error.message}`);
+        handleCallEnd();
+      });
+
+      // Log the call to communications
+      await supabase.from('evan_communications').insert({
+        lead_id: leadId || null,
+        communication_type: 'call',
+        direction: 'outbound',
+        content: `Call initiated to ${formattedPhone}`,
+        phone_number: formattedPhone,
+        status: 'ringing',
+        call_sid: call.parameters.CallSid,
+      });
+
+    } catch (error) {
+      console.error('[CallContext] Failed to make outbound call:', error);
+      toast.error('Failed to initiate call');
+      setOutboundCall(null);
+    }
+  }, [isEvan, initializeTwilioDevice, startCallTimer, handleCallEnd]);
+
   const value: CallContextType = {
     incomingCall,
     activeCall,
@@ -553,10 +656,12 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     callDuration,
     isInitializing,
     healthStatus,
+    outboundCall,
     answerCall,
     hangupCall,
     declineCall,
     toggleMute,
+    makeOutboundCall,
     isEvan,
   };
 
