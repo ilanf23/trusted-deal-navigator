@@ -91,8 +91,24 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastExternalBody = useRef<string | null>(null);
   
+  // Initialize editor content when dialog opens or body prop changes externally
+  useEffect(() => {
+    if (isOpen && editorRef.current) {
+      // Initialize on first render or when body changes from outside
+      if (lastExternalBody.current === null || body !== lastExternalBody.current) {
+        const currentContent = editorRef.current.innerHTML;
+        // Only update DOM if the content actually differs
+        if (currentContent !== body) {
+          editorRef.current.innerHTML = body;
+        }
+        lastExternalBody.current = body;
+      }
+    }
+  }, [body, isOpen]);
 
+  // Early return AFTER all hooks
   if (!isOpen) return null;
 
   const handleDiscard = () => {
@@ -115,24 +131,8 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
       onBodyChange(newContent);
     }
   };
-
-  // Track last external body for sync logic
-  const lastExternalBody = useRef<string | null>(null);
-  useEffect(() => {
-    if (editorRef.current) {
-      // Initialize on first render or when body changes from outside
-      if (lastExternalBody.current === null || body !== lastExternalBody.current) {
-        const currentContent = editorRef.current.innerHTML;
-        // Only update DOM if the content actually differs
-        if (currentContent !== body) {
-          editorRef.current.innerHTML = body;
-        }
-        lastExternalBody.current = body;
-      }
-    }
-  }, [body]);
   
-  // Also sync when the editor content changes (typing)
+  // Sync when the editor content changes (typing)
   const handleEditorInputWithSync = () => {
     if (editorRef.current) {
       const newContent = editorRef.current.innerHTML;
