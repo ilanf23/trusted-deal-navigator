@@ -1,19 +1,14 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SearchableSelect } from '@/components/ui/searchable-select';
 import { 
   Phone, 
   User, 
@@ -21,30 +16,18 @@ import {
   Mail, 
   Calendar, 
   DollarSign, 
-  Percent, 
   Clock, 
-  ChevronDown, 
-  ChevronUp,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
-  PhoneOff,
   AlertCircle,
   FileText,
   PhoneIncoming,
   PhoneOutgoing,
   History,
   UserPlus,
-  Sparkles,
-  MessageSquare,
-  Plus,
-  Filter,
-  X
+  Sparkles
 } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { LenderProgramAssistant } from '@/components/admin/LenderProgramAssistant';
 
 interface ActiveCall {
   id: string;
@@ -79,34 +62,6 @@ interface LeadResponse {
   state: string | null;
 }
 
-interface Program {
-  id: string;
-  lender_name: string;
-  lender_specialty: string | null;
-  program_name: string;
-  program_type: string;
-  description: string | null;
-  min_loan: number | null;
-  max_loan: number | null;
-  interest_range: string | null;
-  term: string | null;
-  call_status: string | null;
-  location: string | null;
-  looking_for: string | null;
-  contact_name: string | null;
-  phone: string | null;
-  email: string | null;
-  lender_type: string | null;
-  loan_types: string | null;
-  states: string | null;
-  loan_size_text: string | null;
-}
-
-interface GroupedLender {
-  name: string;
-  specialty: string;
-  programs: Program[];
-}
 
 interface CallLog {
   id: string;
@@ -194,9 +149,7 @@ const formatDuration = (seconds: number | null) => {
 };
 
 const EvansCalls = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [expandedLenders, setExpandedLenders] = useState<Record<string, boolean>>({});
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
@@ -223,18 +176,6 @@ const EvansCalls = () => {
     callDate: string;
   } | null>(null);
   const [runningAutomation, setRunningAutomation] = useState(false);
-  
-  // Lender panel mode: 'list' | 'filter' | 'advisor'
-  const [lenderPanelMode, setLenderPanelMode] = useState<'list' | 'filter' | 'advisor'>('list');
-  const [lenderFilters, setLenderFilters] = useState({
-    institution: '',
-    lookingFor: '',
-    contact: '',
-    loanSize: '',
-    states: '',
-    lenderType: '',
-    loanTypes: '',
-  });
 
   // Fetch active/recent calls
   const { data: activeCalls = [], isLoading: callsLoading } = useQuery({
@@ -336,233 +277,6 @@ const EvansCalls = () => {
     enabled: !!matchedLead?.id,
   });
 
-  // Fetch all lender programs (flat list for the new design)
-  const { data: allPrograms = [], isLoading: programsLoading } = useQuery({
-    queryKey: ['lender-programs-flat'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('lender_programs')
-        .select('*')
-        .order('lender_name', { ascending: true });
-
-      if (error) throw error;
-      return data as Program[];
-    },
-  });
-
-  // Also keep grouped for backward compatibility
-  const lenders = useMemo(() => {
-    const grouped = allPrograms.reduce((acc: Record<string, GroupedLender>, program) => {
-      if (!acc[program.lender_name]) {
-        acc[program.lender_name] = {
-          name: program.lender_name,
-          specialty: program.lender_specialty || '',
-          programs: [],
-        };
-      }
-      acc[program.lender_name].programs.push(program);
-      return acc;
-    }, {});
-    return Object.values(grouped) as GroupedLender[];
-  }, [allPrograms]);
-
-  // Build lead context for fit matching
-  const leadContext = useMemo(() => {
-    if (!matchedLead && !leadResponse) return null;
-    return {
-      name: matchedLead?.name,
-      loanAmount: leadResponse?.loan_amount || undefined,
-      loanType: leadResponse?.loan_type || undefined,
-      state: leadResponse?.state || undefined,
-      propertyType: leadResponse?.business_type || undefined,
-    };
-  }, [matchedLead, leadResponse]);
-
-  // Valid US state abbreviations
-  const VALID_STATE_ABBREVS = new Set([
-    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
-  ]);
-
-  // Standardized loan size categories (10 buckets)
-  const LOAN_SIZE_CATEGORIES = [
-    { label: 'Under $100K', min: 0, max: 100000 },
-    { label: '$100K - $250K', min: 100000, max: 250000 },
-    { label: '$250K - $500K', min: 250000, max: 500000 },
-    { label: '$500K - $1M', min: 500000, max: 1000000 },
-    { label: '$1M - $2.5M', min: 1000000, max: 2500000 },
-    { label: '$2.5M - $5M', min: 2500000, max: 5000000 },
-    { label: '$5M - $10M', min: 5000000, max: 10000000 },
-    { label: '$10M - $25M', min: 10000000, max: 25000000 },
-    { label: '$25M - $50M', min: 25000000, max: 50000000 },
-    { label: '$50M+', min: 50000000, max: Infinity },
-  ];
-
-  // Parse loan size text to extract numeric values
-  const parseLoanSizeText = (text: string | null): { min: number; max: number } | null => {
-    if (!text) return null;
-    const cleaned = text.replace(/[$,]/g, '').toLowerCase().trim();
-    
-    // Extract numbers with K/M/B suffixes
-    const parseNumber = (str: string): number => {
-      const match = str.match(/([\d.]+)\s*(k|m|mm|b|million|mil)?/i);
-      if (!match) return 0;
-      let num = parseFloat(match[1]);
-      const suffix = (match[2] || '').toLowerCase();
-      if (suffix === 'k') num *= 1000;
-      else if (suffix === 'm' || suffix === 'mm' || suffix === 'million' || suffix === 'mil') num *= 1000000;
-      else if (suffix === 'b') num *= 1000000000;
-      // If no suffix and number is small (likely in millions written as "1-10" meaning 1M-10M)
-      else if (num <= 100 && !suffix) {
-        // Check if context suggests millions (common in loan industry)
-        if (cleaned.includes('mm') || cleaned.includes('million') || cleaned.includes('mil')) {
-          num *= 1000000;
-        }
-      }
-      return num;
-    };
-
-    // Look for range patterns like "1M - 5M" or "1-5M" or "$1M-$5M" or "1MM-10MM"
-    const rangeMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*[-–to]+\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
-    if (rangeMatch) {
-      const min = parseNumber(rangeMatch[1]);
-      const max = parseNumber(rangeMatch[2]);
-      // If both numbers are small and no suffix, they might be in millions
-      if (min <= 100 && max <= 100 && min > 0) {
-        return { min: min * 1000000, max: max * 1000000 };
-      }
-      return { min, max };
-    }
-
-    // Look for "up to" or "max" patterns
-    const upToMatch = cleaned.match(/up\s*to\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
-    if (upToMatch) {
-      return { min: 0, max: parseNumber(upToMatch[1]) };
-    }
-
-    // Look for "minimum" or "min" patterns like "min $1M" or "$1M minimum"
-    const minMatch = cleaned.match(/(?:min(?:imum)?)\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i) ||
-                     cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*(?:min(?:imum)?|\+)/i);
-    if (minMatch) {
-      return { min: parseNumber(minMatch[1]), max: Infinity };
-    }
-
-    // Look for single number with + (e.g., "$1M+")
-    const plusMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*\+/i);
-    if (plusMatch) {
-      return { min: parseNumber(plusMatch[1]), max: Infinity };
-    }
-
-    // Look for single number (treat as approximate - use as both min and max with some flex)
-    const singleMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
-    if (singleMatch) {
-      const val = parseNumber(singleMatch[1]);
-      // For single values, assume they can go somewhat below and above
-      return { min: val * 0.5, max: val * 2 };
-    }
-
-    return null;
-  };
-
-  // Check if a program's loan size falls within a category
-  const programMatchesLoanCategory = (program: Program, categoryLabel: string): boolean => {
-    const category = LOAN_SIZE_CATEGORIES.find(c => c.label === categoryLabel);
-    if (!category) return false;
-
-    const programRange = parseLoanSizeText(program.loan_size_text);
-    if (!programRange) return false;
-
-    // For the last category ($50M+), check if program handles loans at or above $50M
-    if (category.max === Infinity) {
-      return programRange.max >= category.min;
-    }
-
-    // A lender matches a category if:
-    // 1. Their minimum is not above the category maximum (they can do loans small enough)
-    // 2. Their maximum is not below the category minimum (they can do loans large enough)
-    // This is true overlap logic
-    const lenderCanDoSmallEnough = programRange.min <= category.max;
-    const lenderCanDoLargeEnough = programRange.max >= category.min;
-    
-    return lenderCanDoSmallEnough && lenderCanDoLargeEnough;
-  };
-
-  // Filter lender programs based on individual filters
-  const filteredPrograms = useMemo(() => {
-    return allPrograms.filter((program) => {
-      if (lenderFilters.institution && program.lender_name !== lenderFilters.institution) return false;
-      if (lenderFilters.lookingFor && !program.looking_for?.toLowerCase().includes(lenderFilters.lookingFor.toLowerCase())) return false;
-      if (lenderFilters.contact && program.contact_name !== lenderFilters.contact) return false;
-      if (lenderFilters.loanSize && !programMatchesLoanCategory(program, lenderFilters.loanSize)) return false;
-      if (lenderFilters.states && !program.states?.toLowerCase().includes(lenderFilters.states.toLowerCase())) return false;
-      if (lenderFilters.lenderType && program.lender_type !== lenderFilters.lenderType) return false;
-      if (lenderFilters.loanTypes && !program.loan_types?.toLowerCase().includes(lenderFilters.loanTypes.toLowerCase())) return false;
-      return true;
-    });
-  }, [allPrograms, lenderFilters]);
-
-
-  const hasActiveFilters = Object.values(lenderFilters).some(v => v.trim() !== '');
-
-  const clearAllFilters = () => {
-    setLenderFilters({
-      institution: '',
-      lookingFor: '',
-      contact: '',
-      loanSize: '',
-      states: '',
-      lenderType: '',
-      loanTypes: '',
-    });
-  };
-
-  // Extract unique values for dropdown options
-
-  const filterOptions = useMemo(() => {
-    const getUniqueValues = (key: keyof Program) => {
-      const values = allPrograms
-        .map(p => p[key])
-        .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
-        .map(v => v.trim());
-      return [...new Set(values)].sort();
-    };
-
-    // For states, split by comma and get unique individual states (only valid abbreviations)
-    const getUniqueStates = () => {
-      const states = allPrograms
-        .flatMap(p => (p.states || '').split(/[,\s]+/).map(s => s.trim().toUpperCase()))
-        .filter(s => VALID_STATE_ABBREVS.has(s));
-      return [...new Set(states)].sort();
-    };
-
-    // For loan types, split by comma and get unique individual types
-    const getUniqueLoanTypes = () => {
-      const types = allPrograms
-        .flatMap(p => (p.loan_types || '').split(',').map(t => t.trim()))
-        .filter(t => t !== '');
-      return [...new Set(types)].sort();
-    };
-
-    return {
-      institutions: getUniqueValues('lender_name'),
-      contacts: getUniqueValues('contact_name'),
-      phones: getUniqueValues('phone'),
-      loanSizes: LOAN_SIZE_CATEGORIES.map(c => c.label),
-      states: getUniqueStates(),
-      lenderTypes: getUniqueValues('lender_type'),
-      loanTypes: getUniqueLoanTypes(),
-    };
-  }, [allPrograms]);
-
-  const toggleLender = (lenderName: string) => {
-    setExpandedLenders((prev) => ({
-      ...prev,
-      [lenderName]: !prev[lenderName],
-    }));
-  };
 
   // Add lead mutation with full automation workflow
   const addLeadMutation = useMutation({
@@ -764,7 +478,7 @@ const EvansCalls = () => {
     toast.info('Automation skipped - lead created without follow-up task');
   };
 
-  const isLoading = callsLoading || programsLoading;
+  const isLoading = callsLoading;
 
   if (isLoading) {
     return (
@@ -790,9 +504,9 @@ const EvansCalls = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Left Column - Call Info & Lead Details */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="space-y-6">
             {/* Current Call Card */}
             <Card className={`border-2 ${currentCall ? 'border-green-500/50 bg-green-50/30' : 'border-muted'}`}>
               <CardHeader className="pb-3">
@@ -968,7 +682,7 @@ const EvansCalls = () => {
                     </div>
                   ) : callHistory.length === 0 ? (
                     <div className="text-center py-8 px-4">
-                      <PhoneOff className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                      <Phone className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground text-sm">No call history yet</p>
                     </div>
                   ) : (
@@ -1073,293 +787,6 @@ const EvansCalls = () => {
                 </ScrollArea>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Right Column - Lender Programs & AI Assistant */}
-          <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-[calc(100vh-280px)]">
-              {/* Lender Programs */}
-              <div className={lenderPanelMode !== 'list' ? "xl:col-span-3" : "xl:col-span-5"}>
-              <Card className="h-full flex flex-col border-slate-200 dark:border-slate-700 dark:bg-slate-900">
-                  <CardHeader className="flex-shrink-0 pb-3 border-b bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <CardTitle className="text-lg font-semibold truncate">Lender Programs</CardTitle>
-                        <CardDescription className="text-xs truncate">
-                          {filteredPrograms.length} programs{leadContext ? ' • Matching to lead' : ''}
-                        </CardDescription>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                        <Button
-                          variant={lenderPanelMode === 'filter' ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setLenderPanelMode(lenderPanelMode === 'filter' ? 'list' : 'filter')}
-                          className="gap-1 text-xs"
-                        >
-                          <Filter className="h-3.5 w-3.5" />
-                          Filter
-                          {hasActiveFilters && (
-                            <span className="ml-1 bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full">
-                              {Object.values(lenderFilters).filter(v => v.trim()).length}
-                            </span>
-                          )}
-                        </Button>
-                        <Button
-                          variant={lenderPanelMode === 'advisor' ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setLenderPanelMode(lenderPanelMode === 'advisor' ? 'list' : 'advisor')}
-                          className="gap-1 text-xs"
-                        >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          Advisor
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate('/admin/lender-programs')}
-                          className="gap-1 text-xs flex-shrink-0"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          Manage
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
-                    {filteredPrograms.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                        <p className="text-muted-foreground text-sm">
-                          {allPrograms.length === 0 ? 'No lender programs available' : 'No lenders match your filters'}
-                        </p>
-                        {allPrograms.length === 0 ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-3"
-                            onClick={() => navigate('/admin/lender-programs')}
-                          >
-                            Add Lenders
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="mt-3"
-                            onClick={clearAllFilters}
-                          >
-                            Clear Filters
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="h-full max-h-[800px] overflow-auto">
-                        <div className="min-w-[900px]">
-                          <Table>
-                            <TableHeader className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
-                              <TableRow className="dark:border-slate-700">
-                                <TableHead className="text-xs font-semibold w-[180px] pl-4 dark:text-slate-300">Institution</TableHead>
-                                <TableHead className="text-xs font-semibold w-[300px] px-2 dark:text-slate-300">Looking For</TableHead>
-                                <TableHead className="text-xs font-semibold w-[120px] px-2 dark:text-slate-300">Contact</TableHead>
-                                <TableHead className="text-xs font-semibold w-[130px] px-2 dark:text-slate-300">Phone</TableHead>
-                                <TableHead className="text-xs font-semibold w-[100px] px-2 dark:text-slate-300">Loan Size</TableHead>
-                                <TableHead className="text-xs font-semibold w-[120px] px-2 dark:text-slate-300">States</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredPrograms.map((program) => (
-                                <TableRow key={program.id} className="min-h-[48px] dark:border-slate-700 dark:hover:bg-slate-800/50">
-                                  <TableCell className="py-2 pl-4 pr-2">
-                                    <div className="font-medium text-sm dark:text-slate-100">{program.lender_name}</div>
-                                    {program.lender_type && (
-                                      <div className="text-xs text-muted-foreground dark:text-slate-400">{program.lender_type}</div>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="py-2 px-2">
-                                    <div className="text-sm whitespace-pre-wrap break-words line-clamp-3 dark:text-slate-200">
-                                      {program.looking_for || program.description || '—'}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="py-2 px-2">
-                                    <div className="text-sm dark:text-slate-200">{program.contact_name || '—'}</div>
-                                  </TableCell>
-                                  <TableCell className="py-2 px-2">
-                                    {program.phone ? (
-                                      <a href={`tel:${program.phone}`} className="text-sm text-blue-500 dark:text-blue-400 hover:underline">
-                                        {program.phone}
-                                      </a>
-                                    ) : (
-                                      <span className="text-sm text-muted-foreground dark:text-slate-500">—</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="py-2 px-2">
-                                    <div className="text-sm dark:text-slate-200">{program.loan_size_text || '—'}</div>
-                                  </TableCell>
-                                  <TableCell className="py-2 px-2">
-                                    <div className="text-sm truncate max-w-[100px] dark:text-slate-200" title={program.states || ''}>
-                                      {program.states || '—'}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Filter Panel */}
-              {lenderPanelMode === 'filter' && (
-                <div className="xl:col-span-2 h-full">
-                  <Card className="h-full flex flex-col border-slate-300">
-                    <CardHeader 
-                      className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors bg-slate-50"
-                      onClick={() => setLenderPanelMode('list')}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-lg bg-slate-700">
-                            <Filter className="h-4 w-4 text-white" />
-                          </div>
-                          <CardTitle className="text-base">Filter Lenders</CardTitle>
-                          {hasActiveFilters && (
-                            <Badge variant="secondary" className="text-xs">
-                              {Object.values(lenderFilters).filter(v => v.trim()).length} active
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {hasActiveFilters && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                clearAllFilters();
-                              }}
-                              className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                            >
-                              <X className="h-3 w-3 mr-1" />
-                              Clear
-                            </Button>
-                          )}
-                          <X className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex-1 p-4 min-h-0 overflow-auto">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">Institution</Label>
-                          <SearchableSelect
-                            options={filterOptions.institutions}
-                            value={lenderFilters.institution}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, institution: value }))}
-                            placeholder="All institutions"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">Looking For</Label>
-                          <Input
-                            placeholder="Type to search..."
-                            value={lenderFilters.lookingFor}
-                            onChange={(e) => setLenderFilters(prev => ({ ...prev, lookingFor: e.target.value }))}
-                            className="h-8 text-sm pl-3"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">Contact Name</Label>
-                          <SearchableSelect
-                            options={filterOptions.contacts}
-                            value={lenderFilters.contact}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, contact: value }))}
-                            placeholder="All contacts"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">Loan Size</Label>
-                          <SearchableSelect
-                            options={filterOptions.loanSizes}
-                            value={lenderFilters.loanSize}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, loanSize: value }))}
-                            placeholder="All loan sizes"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">States</Label>
-                          <SearchableSelect
-                            options={filterOptions.states}
-                            value={lenderFilters.states}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, states: value }))}
-                            placeholder="All states"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">Lender Type</Label>
-                          <SearchableSelect
-                            options={filterOptions.lenderTypes}
-                            value={lenderFilters.lenderType}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, lenderType: value }))}
-                            placeholder="All lender types"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">Loan Types</Label>
-                          <SearchableSelect
-                            options={filterOptions.loanTypes}
-                            value={lenderFilters.loanTypes}
-                            onValueChange={(value) => setLenderFilters(prev => ({ ...prev, loanTypes: value }))}
-                            placeholder="All loan types"
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-
-              {/* AI Advisor Panel */}
-              {lenderPanelMode === 'advisor' && (
-                <div className="xl:col-span-2 h-full">
-                  <Card className="h-full flex flex-col border-admin-blue/20">
-                    <CardHeader 
-                      className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => setLenderPanelMode('list')}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark">
-                            <Sparkles className="h-4 w-4 text-white" />
-                          </div>
-                          <CardTitle className="text-base">Program Advisor</CardTitle>
-                        </div>
-                        <X className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex-1 p-0 min-h-0">
-                      <LenderProgramAssistant
-                        leadContext={
-                          matchedLead
-                            ? {
-                                name: matchedLead.name,
-                                company: matchedLead.company_name || undefined,
-                                loanType: leadResponse?.loan_type || undefined,
-                                loanAmount: leadResponse?.loan_amount || undefined,
-                                purpose: leadResponse?.funding_purpose || undefined,
-                                annualRevenue: leadResponse?.annual_revenue || undefined,
-                                businessType: leadResponse?.business_type || undefined,
-                              }
-                            : undefined
-                        }
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
