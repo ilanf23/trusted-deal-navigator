@@ -3,8 +3,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Content-Type': 'application/json',
+  'Content-Type': 'application/xml',
 };
+
+function okTwiML() {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<Response></Response>`;
+}
 
 // Transcribe audio using OpenAI Whisper
 async function transcribeAudio(audioUrl: string): Promise<string | null> {
@@ -114,7 +118,7 @@ Deno.serve(async (req) => {
     );
 
     if (!callSid) {
-      return new Response('Missing CallSid', { status: 400, headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
+      return new Response(okTwiML(), { status: 200, headers: corsHeaders });
     }
 
     // Handle recording completed callback - update the communication with the recording URL and transcription
@@ -191,7 +195,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      return new Response('OK', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
+      return new Response(okTwiML(), { status: 200, headers: corsHeaders });
     }
 
     // Prefer DialCallStatus if present (it describes the <Dial> leg result)
@@ -261,13 +265,11 @@ Deno.serve(async (req) => {
       console.error('Error updating call status:', error);
     }
 
-    return new Response('OK', { headers: { ...corsHeaders, 'Content-Type': 'text/plain' } });
+    return new Response(okTwiML(), { status: 200, headers: corsHeaders });
 
   } catch (error) {
     console.error('Error in twilio-call-status function:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: corsHeaders }
-    );
+    // Still return valid TwiML so Twilio never falls back to a provider voice/flow.
+    return new Response(okTwiML(), { status: 200, headers: corsHeaders });
   }
 });
