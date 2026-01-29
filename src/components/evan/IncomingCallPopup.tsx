@@ -43,13 +43,13 @@ export const IncomingCallPopup = () => {
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
 
-  // Auto-navigate to calls page when an incoming call is detected
+  // Auto-navigate to calls page when an incoming call is detected (only for ringing, not connected)
   useEffect(() => {
-    if (incomingCall && isEvan && !hasNavigated && location.pathname !== '/user/evan/calls') {
+    if (incomingCall && isEvan && !hasNavigated && !isConnected && location.pathname !== '/user/evan/calls' && location.pathname !== '/team/evan/calls') {
       setHasNavigated(true);
-      navigate('/user/evan/calls');
+      navigate('/team/evan/calls');
     }
-  }, [incomingCall, isEvan, hasNavigated, navigate, location.pathname]);
+  }, [incomingCall, isEvan, hasNavigated, isConnected, navigate, location.pathname]);
 
   // Reset navigation flag when call ends
   useEffect(() => {
