@@ -231,7 +231,7 @@ const EvansPipeline = () => {
   const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
 
   // Fetch all available pipelines
-  const { data: pipelines = [], isLoading: pipelinesLoading } = useQuery({
+  const { data: pipelines = [] } = useQuery({
     queryKey: ['all-pipelines'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -240,28 +240,20 @@ const EvansPipeline = () => {
         .order('is_main', { ascending: false })
         .order('name');
       
-      if (error) {
-        console.error('Error fetching pipelines:', error);
-        return [];
-      }
+      if (error) throw error;
       return data as { id: string; name: string; color: string | null; is_main: boolean | null }[];
     },
   });
 
-  // Include a "Main Pipeline" virtual option if no pipelines exist
-  const displayPipelines = pipelines.length > 0 ? pipelines : [
-    { id: 'main', name: 'Main Pipeline', color: '#0066FF', is_main: true }
-  ];
-
   // Auto-select the main pipeline or first available when pipelines load
   useEffect(() => {
-    if (displayPipelines.length > 0 && !selectedPipelineId) {
-      const mainPipeline = displayPipelines.find(p => p.is_main);
-      setSelectedPipelineId(mainPipeline?.id || displayPipelines[0]?.id || null);
+    if (pipelines.length > 0 && !selectedPipelineId) {
+      const mainPipeline = pipelines.find(p => p.is_main);
+      setSelectedPipelineId(mainPipeline?.id || pipelines[0]?.id || null);
     }
-  }, [displayPipelines, selectedPipelineId]);
+  }, [pipelines, selectedPipelineId]);
 
-  const selectedPipeline = displayPipelines.find(p => p.id === selectedPipelineId);
+  const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
   const pipelineName = selectedPipeline?.name || 'Main Pipeline';
 
   const { data: evanTeamMember } = useQuery({
@@ -976,7 +968,7 @@ const EvansPipeline = () => {
                   </div>
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-800 z-50">
-                  {displayPipelines.map((pipeline) => (
+                  {pipelines.map((pipeline) => (
                     <SelectItem key={pipeline.id} value={pipeline.id}>
                       <div className="flex items-center gap-2">
                         <div 
@@ -992,6 +984,11 @@ const EvansPipeline = () => {
                       </div>
                     </SelectItem>
                   ))}
+                  {pipelines.length === 0 && (
+                    <div className="px-2 py-3 text-sm text-slate-500 text-center">
+                      No pipelines found
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
               
