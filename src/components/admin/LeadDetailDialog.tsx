@@ -23,6 +23,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow, differenceInDays, differenceInHours } from 'date-fns';
+import { TaskDetailDialog } from '@/components/evan/tasks/TaskDetailDialog';
+import { Task } from '@/components/evan/tasks/types';
 
 // Helper to format activity timestamps - show time if <24h, otherwise show date and time
 const formatActivityTimestamp = (date: Date | string) => {
@@ -2834,47 +2836,53 @@ Commercial Lending X`,
       </DialogContent>
     </Dialog>
 
-      {/* Add Task Dialog - renders on top of CRM dialog */}
-      <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
-        <DialogContent className="sm:max-w-md z-[100]">
-          <DialogHeader>
-            <DialogTitle>Create Task</DialogTitle>
-            <DialogDescription>
-              Add a new task for {lead?.name}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Task Title</label>
-              <Input
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder="Enter task title..."
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Due Date</label>
-              <Input
-                type="date"
-                value={newTaskDueDate}
-                onChange={(e) => setNewTaskDueDate(e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowAddTask(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => addTask.mutate({ title: newTaskTitle, dueDate: newTaskDueDate })} 
-                disabled={!newTaskTitle.trim() || addTask.isPending}
-              >
-                {addTask.isPending ? 'Creating...' : 'Create Task'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Add Task Dialog - uses same dialog as To Do page */}
+      <TaskDetailDialog
+        task={null}
+        open={showAddTask}
+        onClose={() => setShowAddTask(false)}
+        onUpdateTask={() => {}}
+        onAddComment={() => {}}
+        onCreateTask={async (task) => {
+          if (!lead) return;
+          
+          // Add to lead_tasks for CRM tracking
+          const { error: leadTaskError } = await supabase.from('lead_tasks').insert({
+            lead_id: lead.id,
+            title: task.title || '',
+            due_date: task.due_date || null,
+            priority: task.priority || 'medium',
+            status: 'pending',
+          });
+          if (leadTaskError) {
+            toast({ title: 'Failed to create task', variant: 'destructive' });
+            return;
+          }
+          
+          // Also add to evan_tasks so it appears in Tasks page
+          const { error: evanTaskError } = await supabase.from('evan_tasks').insert({
+            title: task.title || '',
+            description: task.description || `Task for ${lead.name}${lead.company_name ? ` (${lead.company_name})` : ''}`,
+            due_date: task.due_date || null,
+            priority: task.priority || 'medium',
+            status: task.status || 'todo',
+            lead_id: lead.id,
+            source: 'lead',
+            assignee_name: task.assignee_name || 'Evan',
+            estimated_hours: task.estimated_hours || null,
+          });
+          if (evanTaskError) {
+            toast({ title: 'Failed to sync task', variant: 'destructive' });
+            return;
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead.id] });
+          queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+          setShowAddTask(false);
+          toast({ title: 'Task created' });
+        }}
+        isNewTask
+      />
     </>
   );
 };
