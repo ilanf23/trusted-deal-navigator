@@ -92,21 +92,39 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastExternalBody = useRef<string | null>(null);
+  const pendingBody = useRef<string | null>(null);
+  
+  // Reset tracking when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      lastExternalBody.current = null;
+      pendingBody.current = null;
+    }
+  }, [isOpen]);
   
   // Initialize editor content when dialog opens or body prop changes externally
   useEffect(() => {
-    if (isOpen && editorRef.current) {
-      // Initialize on first render or when body changes from outside
-      if (lastExternalBody.current === null || body !== lastExternalBody.current) {
-        const currentContent = editorRef.current.innerHTML;
-        // Only update DOM if the content actually differs
-        if (currentContent !== body) {
-          editorRef.current.innerHTML = body;
-        }
-        lastExternalBody.current = body;
+    if (isOpen && body !== lastExternalBody.current) {
+      // Store the body to be set when editor mounts
+      pendingBody.current = body;
+      lastExternalBody.current = body;
+      
+      // If editor is already mounted, set content immediately
+      if (editorRef.current) {
+        editorRef.current.innerHTML = body;
+        pendingBody.current = null;
       }
     }
   }, [body, isOpen]);
+  
+  // Handle editor mount - set pending content if any
+  const handleEditorRef = useCallback((node: HTMLDivElement | null) => {
+    editorRef.current = node;
+    if (node && pendingBody.current !== null) {
+      node.innerHTML = pendingBody.current;
+      pendingBody.current = null;
+    }
+  }, []);
 
   // Early return AFTER all hooks
   if (!isOpen) return null;
@@ -368,7 +386,7 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="flex-1 px-5 py-3 overflow-auto">
             <div 
-              ref={editorRef}
+              ref={handleEditorRef}
               contentEditable
               onInput={handleEditorInputWithSync}
               onBlur={handleEditorInputWithSync}
