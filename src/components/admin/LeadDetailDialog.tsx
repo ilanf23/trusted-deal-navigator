@@ -520,7 +520,12 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members'],
     queryFn: async () => {
-      const { data } = await supabase.from('team_members').select('id, name, avatar_url').eq('is_active', true);
+      const { data } = await supabase
+        .from('team_members')
+        .select('id, name, avatar_url')
+        .eq('is_active', true)
+        .not('name', 'ilike', 'adam')
+        .not('name', 'ilike', 'ilan');
       return (data || []) as TeamMember[];
     },
     enabled: open,

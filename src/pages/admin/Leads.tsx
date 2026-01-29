@@ -66,6 +66,8 @@ const AdminLeads = () => {
         .from('team_members')
         .select('*')
         .eq('is_active', true)
+        .not('name', 'ilike', 'adam')
+        .not('name', 'ilike', 'ilan')
         .order('name');
       
       if (error) throw error;

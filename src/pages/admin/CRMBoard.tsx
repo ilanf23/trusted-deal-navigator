@@ -45,7 +45,7 @@ const CRMBoard = () => {
   const [collapsedSections, setCollapsedSections] = useState<Record<LeadStatus, boolean>>({} as Record<LeadStatus, boolean>);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
 
-  // Fetch all team members for owner filter
+  // Fetch all team members for owner filter (exclude Adam and Ilan)
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members'],
     queryFn: async () => {
@@ -53,6 +53,8 @@ const CRMBoard = () => {
         .from('team_members')
         .select('*')
         .eq('is_active', true)
+        .not('name', 'ilike', 'adam')
+        .not('name', 'ilike', 'ilan')
         .order('name');
       if (error) throw error;
       return data as TeamMember[];
