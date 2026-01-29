@@ -24,6 +24,7 @@ import { usePipelineColumns } from '@/hooks/usePipelineColumns';
 import HelpTooltip from '@/components/ui/help-tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
 
 // Import avatar images
 import andrewFosterAvatar from '@/assets/avatars/andrew-foster.jpg';
@@ -387,7 +388,7 @@ const EvansPipeline = () => {
     // If custom, open dialog with empty fields
     if (emailType === 'custom') {
       setComposeSubject('');
-      setComposeBody('');
+      setComposeBody(EVAN_SIGNATURE_HTML);
       setGeneratingEmail(false);
       setComposeDialogOpen(true);
       setPendingEmailLead(null);
@@ -460,14 +461,14 @@ const EvansPipeline = () => {
       const { subject, body } = await aiResponse.json();
       
       setComposeSubject(subject || '');
-      setComposeBody(body || '');
+      setComposeBody(appendSignature(body || ''));
       setComposeDialogOpen(true);
     } catch (error: any) {
       console.error('Error generating email:', error);
       toast.error('Failed to generate email: ' + error.message);
       // Fall back to opening with empty fields
       setComposeSubject('');
-      setComposeBody('');
+      setComposeBody(EVAN_SIGNATURE_HTML);
       setComposeDialogOpen(true);
     } finally {
       setGeneratingEmail(false);
