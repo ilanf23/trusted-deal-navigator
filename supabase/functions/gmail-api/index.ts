@@ -353,64 +353,84 @@ function createMimeMessage(
   body: string, 
   attachments?: { filename: string; mimeType: string; data: string }[],
   threadId?: string,
-  inReplyTo?: string
+  inReplyTo?: string,
+  flowId?: string
 ): string {
   const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(2)}`;
   
   // Format the body for proper HTML rendering
   const formattedBody = formatEmailBody(body);
   
-  // If no attachments, use simple format
+  console.log(`[${flowId}] createMimeMessage - formattedBody length: ${formattedBody.length}, preview: ${formattedBody.substring(0, 100)}`);
+  
+  // Build headers array - NEVER filter out empty strings as they create required blank lines
+  const headers: string[] = [
+    'From: me',
+    `To: ${to}`,
+    `Subject: ${subject}`,
+  ];
+  
+  // Add reply headers if this is a reply
+  if (inReplyTo) {
+    headers.push(`In-Reply-To: <${inReplyTo}>`);
+    headers.push(`References: <${inReplyTo}>`);
+  }
+  
+  headers.push('MIME-Version: 1.0');
+  
+// If no attachments, use simple format
   if (!attachments || attachments.length === 0) {
-    const email = [
-      // Gmail will ultimately set the actual From based on the authenticated user,
-      // but including From + MIME-Version improves compatibility.
-      'From: me',
-      `To: ${to}`,
-      `Subject: ${subject}`,
-      inReplyTo ? `In-Reply-To: ${inReplyTo}` : '',
-      inReplyTo ? `References: ${inReplyTo}` : '',
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=utf-8',
-      'Content-Transfer-Encoding: 8bit',
-      '',
-      formattedBody,
-    ].filter(Boolean).join('\r\n');
+    headers.push('Content-Type: text/html; charset="UTF-8"');
+    headers.push('Content-Transfer-Encoding: 8bit');
+    
+    // CRITICAL: Join headers, add blank line, then body
+    // The blank line (\r\n\r\n) separates headers from body per RFC 5322
+    const headersStr = headers.join('\r\n');
+    const email = headersStr + '\r\n\r\n' + formattedBody;
+    
+    console.log(`[${flowId}] MIME simple message constructed:`, {
+      headersLength: headersStr.length,
+      bodyLength: formattedBody.length,
+      totalLength: email.length,
+      firstHeaderLine: headers[0],
+      lastHeaderLine: headers[headers.length - 1],
+    });
     
     return email;
   }
   
-  // Build multipart message with attachments
-  let email = [
-    'From: me',
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    inReplyTo ? `In-Reply-To: ${inReplyTo}` : '',
-    inReplyTo ? `References: ${inReplyTo}` : '',
-    'MIME-Version: 1.0',
-    `Content-Type: multipart/mixed; boundary="${boundary}"`,
-    '',
-    `--${boundary}`,
-    'Content-Type: text/html; charset=utf-8',
-    'Content-Transfer-Encoding: 8bit',
-    '',
-    formattedBody,
-  ].filter(Boolean).join('\r\n');
+  // Multipart message with attachments
+  headers.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+  
+  const headersStr = headers.join('\r\n');
+  
+  // Build multipart body
+  let multipartBody = '';
+  
+// First part: HTML body
+  multipartBody += `--${boundary}\r\n`;
+  multipartBody += 'Content-Type: text/html; charset="UTF-8"\r\n';
+  multipartBody += 'Content-Transfer-Encoding: 8bit\r\n';
+  multipartBody += '\r\n'; // Blank line before body
+  multipartBody += formattedBody + '\r\n';
   
   // Add each attachment
   for (const attachment of attachments) {
-    email += '\r\n' + [
-      `--${boundary}`,
-      `Content-Type: ${attachment.mimeType}; name="${attachment.filename}"`,
-      'Content-Transfer-Encoding: base64',
-      `Content-Disposition: attachment; filename="${attachment.filename}"`,
-      '',
-      attachment.data.replace(/(.{76})/g, '$1\r\n'), // Line wrap base64 at 76 chars
-    ].join('\r\n');
+    multipartBody += `--${boundary}\r\n`;
+    multipartBody += `Content-Type: ${attachment.mimeType}; name="${attachment.filename}"\r\n`;
+    multipartBody += 'Content-Transfer-Encoding: base64\r\n';
+    multipartBody += `Content-Disposition: attachment; filename="${attachment.filename}"\r\n`;
+    multipartBody += '\r\n'; // Blank line before body
+    multipartBody += attachment.data.replace(/(.{76})/g, '$1\r\n') + '\r\n';
   }
   
   // Close the boundary
-  email += `\r\n--${boundary}--`;
+  multipartBody += `--${boundary}--\r\n`;
+  
+  // CRITICAL: Headers + blank line + multipart body
+  const email = headersStr + '\r\n\r\n' + multipartBody;
+  
+  console.log(`[${flowId}] MIME multipart message - total length: ${email.length}`);
   
   return email;
 }
@@ -422,26 +442,56 @@ async function sendMessage(
   body: string, 
   threadId?: string, 
   inReplyTo?: string,
-  attachments?: { filename: string; mimeType: string; data: string }[]
-) {
-  // Log what we're about to encode
-  console.log('sendMessage - creating MIME message:', {
+  attachments?: { filename: string; mimeType: string; data: string }[],
+  flowId?: string
+): Promise<{ id: string; threadId: string; verified: boolean; verificationDetails?: any }> {
+  const fid = flowId || `flow_${Date.now()}`;
+  
+  // HARD FAIL: Validate body is not empty
+  const bodyTrimmed = (body || '').trim();
+  if (bodyTrimmed.length === 0) {
+    console.error(`[${fid}] HARD FAIL: body is empty`);
+    throw new Error(`Move Forward failed: email body was empty. See flow_id: ${fid}`);
+  }
+  
+  console.log(`[${fid}] sendMessage - input validation passed:`, {
     to,
     subject,
-    bodyLength: body?.length || 0,
-    bodyPreview: body?.substring(0, 100) || 'EMPTY',
+    bodyLength: body.length,
+    bodyPreview: body.substring(0, 200),
+    threadId: threadId || null,
+    inReplyTo: inReplyTo || null,
     hasAttachments: !!attachments?.length,
   });
   
-  const email = createMimeMessage(to, subject, body, attachments, threadId, inReplyTo);
+  const email = createMimeMessage(to, subject, body, attachments, threadId, inReplyTo, fid);
   
-  // Log the raw MIME message (first 500 chars)
-  console.log('MIME message preview:', email.substring(0, 500));
+  // HARD FAIL: Validate MIME body section is not too short
+  // The body should be at least 20 chars after we strip headers
+  const blankLineIndex = email.indexOf('\r\n\r\n');
+  const mimeBodySection = blankLineIndex > -1 ? email.substring(blankLineIndex + 4) : '';
+  
+  console.log(`[${fid}] MIME structure:`, {
+    totalLength: email.length,
+    blankLineIndex,
+    bodyPartLength: mimeBodySection.length,
+    bodyPartPreview: mimeBodySection.substring(0, 100),
+  });
+  
+  if (mimeBodySection.length < 20) {
+    console.error(`[${fid}] HARD FAIL: MIME body section too short (${mimeBodySection.length} chars)`);
+    throw new Error(`Move Forward failed: MIME body too short. See flow_id: ${fid}`);
+  }
   
   const encodedEmail = encodeBase64Url(email);
   
-  // Log encoded message length to verify it's not empty
-  console.log('Encoded email length:', encodedEmail.length);
+  // HARD FAIL: Validate base64url encoding is not empty
+  if (!encodedEmail || encodedEmail.length < 50) {
+    console.error(`[${fid}] HARD FAIL: base64url encoding too short (${encodedEmail?.length || 0} chars)`);
+    throw new Error(`Move Forward failed: encoding failed. See flow_id: ${fid}`);
+  }
+  
+  console.log(`[${fid}] Encoded email - length: ${encodedEmail.length}`);
 
   const requestBody: any = { raw: encodedEmail };
   if (threadId) requestBody.threadId = threadId;
@@ -457,11 +507,101 @@ async function sendMessage(
 
   if (!response.ok) {
     const error = await response.text();
-    console.error('Send message error:', error);
-    throw new Error('Failed to send message');
+    console.error(`[${fid}] Gmail API send error:`, error);
+    throw new Error(`Failed to send message: ${error}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  
+  console.log(`[${fid}] Gmail API send success:`, {
+    messageId: result.id,
+    threadId: result.threadId,
+    labelIds: result.labelIds,
+  });
+  
+  // FETCH-BACK VERIFICATION: Get the sent message and verify it has body content
+  let verified = false;
+  let verificationDetails: any = null;
+  
+  try {
+    console.log(`[${fid}] Fetching sent message for verification: ${result.id}`);
+    
+    const verifyResponse = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${result.id}?format=full`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    
+    if (verifyResponse.ok) {
+      const verifyMsg = await verifyResponse.json();
+      
+      // Check for body parts
+      const snippet = verifyMsg.snippet || '';
+      const payload = verifyMsg.payload || {};
+      const parts = payload.parts || [];
+      const bodyData = payload.body?.data || '';
+      
+      // Find text/html or text/plain parts
+      let htmlPartSize = 0;
+      let plainPartSize = 0;
+      
+      function scanParts(partsList: any[]) {
+        for (const part of partsList) {
+          if (part.mimeType === 'text/html' && part.body?.size) {
+            htmlPartSize += part.body.size;
+          }
+          if (part.mimeType === 'text/plain' && part.body?.size) {
+            plainPartSize += part.body.size;
+          }
+          if (part.parts) {
+            scanParts(part.parts);
+          }
+        }
+      }
+      
+      if (parts.length > 0) {
+        scanParts(parts);
+      } else if (bodyData) {
+        // Single-part message
+        if (payload.mimeType === 'text/html') {
+          htmlPartSize = bodyData.length;
+        } else {
+          plainPartSize = bodyData.length;
+        }
+      }
+      
+      verificationDetails = {
+        snippet: snippet.substring(0, 100),
+        snippetLength: snippet.length,
+        htmlPartSize,
+        plainPartSize,
+        mimeType: payload.mimeType,
+        partsCount: parts.length,
+      };
+      
+      verified = (htmlPartSize > 0 || plainPartSize > 0 || snippet.length > 0);
+      
+      console.log(`[${fid}] Verification result:`, {
+        verified,
+        ...verificationDetails,
+      });
+      
+      if (!verified) {
+        console.error(`[${fid}] WARNING: Sent message appears to have empty body!`);
+      }
+    } else {
+      const verifyError = await verifyResponse.text();
+      console.warn(`[${fid}] Could not verify sent message:`, verifyError);
+    }
+  } catch (verifyErr) {
+    console.warn(`[${fid}] Verification fetch failed:`, verifyErr);
+  }
+
+  return { 
+    id: result.id, 
+    threadId: result.threadId,
+    verified,
+    verificationDetails,
+  };
 }
 
 async function modifyMessage(accessToken: string, messageId: string, addLabels: string[] = [], removeLabels: string[] = []) {
@@ -734,53 +874,71 @@ Deno.serve(async (req) => {
 // Send message
     if (action === 'send') {
       const body = await req.json();
+      const flowId = body.flowId || `flow_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       
-      // CRITICAL: Validate that body content exists before sending
-      if (!body.body || body.body.trim() === '') {
-        console.error('BLOCKED SEND - Empty body detected:', {
-          to: body.to,
-          subject: body.subject,
-          bodyValue: body.body,
-          bodyType: typeof body.body,
-        });
+      console.log(`[${flowId}] Send request received:`, {
+        to: body.to,
+        subject: body.subject,
+        bodyHtmlLength: body.body?.length || 0,
+        bodyPlainLength: body.bodyPlain?.length || 0,
+        bodyPreview: (body.body || body.bodyPlain || '').substring(0, 200),
+        threadId: body.threadId || null,
+        inReplyTo: body.inReplyTo || null,
+        hasAttachments: !!body.attachments?.length,
+      });
+      
+      // HARD FAIL: Validate that body content exists before sending
+      const bodyContent = body.body || body.bodyPlain || '';
+      if (!bodyContent || bodyContent.trim() === '') {
+        console.error(`[${flowId}] HARD FAIL - Empty body detected`);
         return new Response(
-          JSON.stringify({ error: 'Cannot send email: body content missing' }),
+          JSON.stringify({ 
+            error: `Move Forward failed: email body was empty. See flow_id: ${flowId}`,
+            flowId,
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      // Comprehensive debug logging
-      console.log('Send email request - FULL DETAILS:', {
-        to: body.to,
-        subject: body.subject,
-        bodyLength: body.body?.length || 0,
-        bodyPreview: body.body?.substring(0, 200) || 'EMPTY',
-        bodyEnd: body.body?.slice(-100) || 'EMPTY',
-        hasAttachments: body.attachments?.length > 0,
-        threadId: body.threadId || null,
-        inReplyTo: body.inReplyTo || null,
-      });
-      
-      const result = await sendMessage(
-        accessToken,
-        body.to,
-        body.subject,
-        body.body,
-        body.threadId,
-        body.inReplyTo,
-        body.attachments
-      );
-      
-      // Log the result to confirm Gmail accepted it
-      console.log('Gmail API send result:', {
-        messageId: result.id,
-        threadId: result.threadId,
-        labelIds: result.labelIds,
-      });
+      try {
+        const result = await sendMessage(
+          accessToken,
+          body.to,
+          body.subject,
+          bodyContent,
+          body.threadId,
+          body.inReplyTo,
+          body.attachments,
+          flowId
+        );
+        
+        console.log(`[${flowId}] Send complete:`, {
+          messageId: result.id,
+          threadId: result.threadId,
+          verified: result.verified,
+          verificationDetails: result.verificationDetails,
+        });
 
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+        return new Response(JSON.stringify({
+          success: true,
+          id: result.id,
+          threadId: result.threadId,
+          flowId,
+          verified: result.verified,
+          verificationDetails: result.verificationDetails,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (sendErr: any) {
+        console.error(`[${flowId}] Send failed:`, sendErr.message);
+        return new Response(
+          JSON.stringify({ 
+            error: sendErr.message,
+            flowId,
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Archive message
