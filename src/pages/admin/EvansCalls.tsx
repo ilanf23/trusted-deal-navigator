@@ -225,11 +225,8 @@ const EvansCalls = () => {
   } | null>(null);
   const [runningAutomation, setRunningAutomation] = useState(false);
   
-  // AI Assistant state
-  const [showAssistant, setShowAssistant] = useState(true);
-  
-  // Lender filter panel state
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  // Lender panel mode: 'list' | 'filter' | 'advisor'
+  const [lenderPanelMode, setLenderPanelMode] = useState<'list' | 'filter' | 'advisor'>('list');
   const [lenderFilters, setLenderFilters] = useState({
     institution: '',
     lookingFor: '',
@@ -1083,7 +1080,7 @@ const EvansCalls = () => {
           <div className="lg:col-span-2">
             <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-[calc(100vh-280px)]">
               {/* Lender Programs */}
-              <div className={showAssistant ? "xl:col-span-3" : "xl:col-span-5"}>
+              <div className={lenderPanelMode !== 'list' ? "xl:col-span-3" : "xl:col-span-5"}>
               <Card className="h-full flex flex-col border-slate-200 dark:border-slate-700 dark:bg-slate-900">
                   <CardHeader className="flex-shrink-0 pb-3 border-b bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1095,9 +1092,9 @@ const EvansCalls = () => {
                       </div>
                       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                         <Button
-                          variant={showFilterPanel ? "default" : "outline"}
+                          variant={lenderPanelMode === 'filter' ? "default" : "outline"}
                           size="sm"
-                          onClick={() => setShowFilterPanel(!showFilterPanel)}
+                          onClick={() => setLenderPanelMode(lenderPanelMode === 'filter' ? 'list' : 'filter')}
                           className="gap-1 text-xs"
                         >
                           <Filter className="h-3.5 w-3.5" />
@@ -1107,6 +1104,15 @@ const EvansCalls = () => {
                               {Object.values(lenderFilters).filter(v => v.trim()).length}
                             </span>
                           )}
+                        </Button>
+                        <Button
+                          variant={lenderPanelMode === 'advisor' ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setLenderPanelMode(lenderPanelMode === 'advisor' ? 'list' : 'advisor')}
+                          className="gap-1 text-xs"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Advisor
                         </Button>
                         <Button
                           variant="outline"
@@ -1206,13 +1212,13 @@ const EvansCalls = () => {
                 </Card>
               </div>
 
-              {/* Filter Panel - Separate collapsible card */}
-              {showFilterPanel ? (
+              {/* Filter Panel */}
+              {lenderPanelMode === 'filter' && (
                 <div className="xl:col-span-2 h-full">
                   <Card className="h-full flex flex-col border-slate-300">
                     <CardHeader 
                       className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors bg-slate-50"
-                      onClick={() => setShowFilterPanel(false)}
+                      onClick={() => setLenderPanelMode('list')}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -1241,7 +1247,7 @@ const EvansCalls = () => {
                               Clear
                             </Button>
                           )}
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          <X className="h-4 w-4 text-muted-foreground" />
                         </div>
                       </div>
                     </CardHeader>
@@ -1314,13 +1320,15 @@ const EvansCalls = () => {
                     </CardContent>
                   </Card>
                 </div>
-              ) : showAssistant ? (
+              )}
+
+              {/* AI Advisor Panel */}
+              {lenderPanelMode === 'advisor' && (
                 <div className="xl:col-span-2 h-full">
                   <Card className="h-full flex flex-col border-admin-blue/20">
-                    {/* Clickable header to collapse */}
                     <CardHeader 
                       className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => setShowAssistant(false)}
+                      onClick={() => setLenderPanelMode('list')}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -1329,7 +1337,7 @@ const EvansCalls = () => {
                           </div>
                           <CardTitle className="text-base">Program Advisor</CardTitle>
                         </div>
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        <X className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </CardHeader>
                     <CardContent className="flex-1 p-0 min-h-0">
@@ -1350,16 +1358,6 @@ const EvansCalls = () => {
                       />
                     </CardContent>
                   </Card>
-                </div>
-              ) : (
-                <div className="fixed bottom-20 right-6 z-50">
-                  <Button
-                    onClick={() => setShowAssistant(true)}
-                    className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-admin-blue to-admin-blue-dark hover:from-admin-blue-dark hover:to-admin-blue overflow-visible"
-                    size="icon"
-                  >
-                    <Sparkles className="h-10 w-10 text-white -m-2" />
-                  </Button>
                 </div>
               )}
             </div>
