@@ -35,6 +35,7 @@ import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeD
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { GmailSidebar, FolderType } from '@/components/admin/inbox/GmailSidebar';
 import { cn } from '@/lib/utils';
+import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
 
 // Import avatar images
 import robertMartinezAvatar from '@/assets/avatars/robert-martinez.jpg';
@@ -568,7 +569,7 @@ const EvansGmail = () => {
       // Open compose dialog for a new email
       setComposeTo(decodeURIComponent(to));
       setComposeSubject('');
-      setComposeBody('');
+      setComposeBody(EVAN_SIGNATURE_HTML);
       setComposeOpen(true);
       setSearchParams({});
     } else if (compose === 'true') {
@@ -643,7 +644,7 @@ Commercial Lending X`;
       
       setComposeTo(recipientEmail);
       setComposeSubject(subject);
-      setComposeBody(body);
+      setComposeBody(appendSignature(body));
       setComposeOpen(true);
       setSearchParams({});
     }
@@ -1140,7 +1141,7 @@ Commercial Lending X`;
       // Open compose dialog with generated content (HTML version)
       setComposeTo(toEmail);
       setComposeSubject(finalSubject);
-      setComposeBody(bodyHtml); // Use HTML so it renders correctly
+      setComposeBody(appendSignature(bodyHtml)); // Use HTML so it renders correctly
       setComposeOpen(true);
       
     } catch (error: any) {
@@ -1158,7 +1159,7 @@ Commercial Lending X`;
       setCurrentBodyHtml(fallbackHtml);
       setComposeTo(extractEmailAddress(email.from));
       setComposeSubject(`Re: ${email.subject}`);
-      setComposeBody(fallbackHtml);
+      setComposeBody(appendSignature(fallbackHtml));
       setComposeOpen(true);
     } finally {
       setGeneratingDraftForId(null);
@@ -1404,7 +1405,7 @@ Commercial Lending X`;
           onComposeClick={() => {
             setComposeTo('');
             setComposeSubject('');
-            setComposeBody('');
+            setComposeBody(EVAN_SIGNATURE_HTML);
             setComposeOpen(true);
           }}
           counts={folderCounts}
@@ -1947,7 +1948,7 @@ Commercial Lending X`;
                       onClick={() => {
                         setComposeTo('');
                         setComposeSubject(template.subject);
-                        setComposeBody(template.body);
+                        setComposeBody(appendSignature(template.body));
                         setComposeOpen(true);
                       }}
                       className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"

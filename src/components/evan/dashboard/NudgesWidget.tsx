@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useEffect, useRef, useState } from 'react';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { useGmail } from '@/hooks/useGmail';
+import { appendSignature } from '@/lib/email-signature';
 
 interface Lead {
   id: string;
@@ -150,7 +151,7 @@ Evan`;
       // Set compose dialog state
       setComposeTo(lead.email || '');
       setComposeSubject(subject);
-      setComposeBody(body);
+      setComposeBody(appendSignature(body));
       setCurrentLeadId(lead.id);
       setComposeOpen(true);
       
