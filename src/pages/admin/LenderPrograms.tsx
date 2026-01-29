@@ -1,15 +1,16 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, Loader2, Save, Trash2, Search, Plus, Upload, Filter, Sparkles, X } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Building2, Loader2, Save, Trash2, Upload, Filter, Sparkles, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LenderProgramAssistant } from '@/components/admin/LenderProgramAssistant';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import * as XLSX from 'xlsx';
 
 interface LenderRow {
@@ -77,14 +78,115 @@ const LenderPrograms = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingCell, setEditingCell] = useState<{ rowId: string; colKey: string } | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  // Panel mode: 'list' | 'filter' | 'advisor' (matches EvansCalls pattern)
+  const [panelMode, setPanelMode] = useState<'list' | 'filter' | 'advisor'>('list');
   const [filters, setFilters] = useState({
-    lenderType: '',
+    institution: '',
+    lookingFor: '',
+    contact: '',
+    loanSize: '',
     states: '',
+    lenderType: '',
+    loanTypes: '',
     callStatus: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Valid US state abbreviations
+  const VALID_STATE_ABBREVS = new Set([
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+  ]);
+
+  // Standardized loan size categories
+  const LOAN_SIZE_CATEGORIES = [
+    { label: 'Under $100K', min: 0, max: 100000 },
+    { label: '$100K - $250K', min: 100000, max: 250000 },
+    { label: '$250K - $500K', min: 250000, max: 500000 },
+    { label: '$500K - $1M', min: 500000, max: 1000000 },
+    { label: '$1M - $2.5M', min: 1000000, max: 2500000 },
+    { label: '$2.5M - $5M', min: 2500000, max: 5000000 },
+    { label: '$5M - $10M', min: 5000000, max: 10000000 },
+    { label: '$10M - $25M', min: 10000000, max: 25000000 },
+    { label: '$25M - $50M', min: 25000000, max: 50000000 },
+    { label: '$50M+', min: 50000000, max: Infinity },
+  ];
+
+  // Parse loan size text to extract numeric values
+  const parseLoanSizeText = (text: string | null): { min: number; max: number } | null => {
+    if (!text) return null;
+    const cleaned = text.replace(/[$,]/g, '').toLowerCase().trim();
+    
+    const parseNumber = (str: string): number => {
+      const match = str.match(/([\d.]+)\s*(k|m|mm|b|million|mil)?/i);
+      if (!match) return 0;
+      let num = parseFloat(match[1]);
+      const suffix = (match[2] || '').toLowerCase();
+      if (suffix === 'k') num *= 1000;
+      else if (suffix === 'm' || suffix === 'mm' || suffix === 'million' || suffix === 'mil') num *= 1000000;
+      else if (suffix === 'b') num *= 1000000000;
+      else if (num <= 100 && !suffix) {
+        if (cleaned.includes('mm') || cleaned.includes('million') || cleaned.includes('mil')) {
+          num *= 1000000;
+        }
+      }
+      return num;
+    };
+
+    const rangeMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*[-–to]+\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
+    if (rangeMatch) {
+      const min = parseNumber(rangeMatch[1]);
+      const max = parseNumber(rangeMatch[2]);
+      if (min <= 100 && max <= 100 && min > 0) {
+        return { min: min * 1000000, max: max * 1000000 };
+      }
+      return { min, max };
+    }
+
+    const upToMatch = cleaned.match(/up\s*to\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
+    if (upToMatch) {
+      return { min: 0, max: parseNumber(upToMatch[1]) };
+    }
+
+    const minMatch = cleaned.match(/(?:min(?:imum)?)\s*([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i) ||
+                     cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*(?:min(?:imum)?|\+)/i);
+    if (minMatch) {
+      return { min: parseNumber(minMatch[1]), max: Infinity };
+    }
+
+    const plusMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)\s*\+/i);
+    if (plusMatch) {
+      return { min: parseNumber(plusMatch[1]), max: Infinity };
+    }
+
+    const singleMatch = cleaned.match(/([\d.]+\s*(?:k|m|mm|b|million|mil)?)/i);
+    if (singleMatch) {
+      const val = parseNumber(singleMatch[1]);
+      return { min: val * 0.5, max: val * 2 };
+    }
+
+    return null;
+  };
+
+  const rowMatchesLoanCategory = (row: LenderRow, categoryLabel: string): boolean => {
+    const category = LOAN_SIZE_CATEGORIES.find(c => c.label === categoryLabel);
+    if (!category) return false;
+
+    const rowRange = parseLoanSizeText(row.loan_size_text);
+    if (!rowRange) return false;
+
+    if (category.max === Infinity) {
+      return rowRange.max >= category.min;
+    }
+
+    const lenderCanDoSmallEnough = rowRange.min <= category.max;
+    const lenderCanDoLargeEnough = rowRange.max >= category.min;
+    
+    return lenderCanDoSmallEnough && lenderCanDoLargeEnough;
+  };
 
   useEffect(() => {
     fetchPrograms();
@@ -145,34 +247,73 @@ const LenderPrograms = () => {
         row.loan_types?.toLowerCase().includes(query) ||
         row.states?.toLowerCase().includes(query) ||
         row.lender_type?.toLowerCase().includes(query) ||
-        row.contact_name?.toLowerCase().includes(query)
+        row.contact_name?.toLowerCase().includes(query) ||
+        row.looking_for?.toLowerCase().includes(query)
       );
       if (!matchesSearch) return false;
     }
     
-    // Dropdown filters
-    if (filters.lenderType && row.lender_type?.toLowerCase() !== filters.lenderType.toLowerCase()) {
-      return false;
-    }
-    if (filters.states && !row.states?.toLowerCase().includes(filters.states.toLowerCase())) {
-      return false;
-    }
-    if (filters.callStatus && row.call_status?.toLowerCase() !== filters.callStatus.toLowerCase()) {
-      return false;
-    }
+    // Dropdown filters (matching EvansCalls pattern)
+    if (filters.institution && row.lender_name !== filters.institution) return false;
+    if (filters.lookingFor && !row.looking_for?.toLowerCase().includes(filters.lookingFor.toLowerCase())) return false;
+    if (filters.contact && row.contact_name !== filters.contact) return false;
+    if (filters.loanSize && !rowMatchesLoanCategory(row, filters.loanSize)) return false;
+    if (filters.states && !row.states?.toLowerCase().includes(filters.states.toLowerCase())) return false;
+    if (filters.lenderType && row.lender_type !== filters.lenderType) return false;
+    if (filters.loanTypes && !row.loan_types?.toLowerCase().includes(filters.loanTypes.toLowerCase())) return false;
+    if (filters.callStatus && row.call_status?.toLowerCase() !== filters.callStatus.toLowerCase()) return false;
     
     return true;
   });
 
-  // Get unique values for filter dropdowns
-  const uniqueLenderTypes = [...new Set(rows.filter(r => r.lender_type).map(r => r.lender_type))].sort();
-  const uniqueStates = [...new Set(rows.filter(r => r.states).flatMap(r => r.states.split(/[,\s]+/).filter(Boolean)))].sort();
+  // Extract unique values for filter dropdowns (matching EvansCalls pattern)
+  const filterOptions = useMemo(() => {
+    const getUniqueValues = (key: keyof LenderRow) => {
+      const values = rows
+        .map(r => r[key])
+        .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+        .map(v => v.trim());
+      return [...new Set(values)].sort();
+    };
+
+    const getUniqueStates = () => {
+      const states = rows
+        .flatMap(r => (r.states || '').split(/[,\s]+/).map(s => s.trim().toUpperCase()))
+        .filter(s => VALID_STATE_ABBREVS.has(s));
+      return [...new Set(states)].sort();
+    };
+
+    const getUniqueLoanTypes = () => {
+      const types = rows
+        .flatMap(r => (r.loan_types || '').split(',').map(t => t.trim()))
+        .filter(t => t !== '');
+      return [...new Set(types)].sort();
+    };
+
+    return {
+      institutions: getUniqueValues('lender_name'),
+      contacts: getUniqueValues('contact_name'),
+      loanSizes: LOAN_SIZE_CATEGORIES.map(c => c.label),
+      states: getUniqueStates(),
+      lenderTypes: getUniqueValues('lender_type'),
+      loanTypes: getUniqueLoanTypes(),
+    };
+  }, [rows, VALID_STATE_ABBREVS, LOAN_SIZE_CATEGORIES]);
 
   const clearFilters = () => {
-    setFilters({ lenderType: '', states: '', callStatus: '' });
+    setFilters({
+      institution: '',
+      lookingFor: '',
+      contact: '',
+      loanSize: '',
+      states: '',
+      lenderType: '',
+      loanTypes: '',
+      callStatus: '',
+    });
   };
 
-  const hasActiveFilters = filters.lenderType || filters.states || filters.callStatus;
+  const hasActiveFilters = Object.values(filters).some(v => v.trim() !== '');
 
   const handleCellClick = (rowId: string, colKey: string) => {
     const col = COLUMNS.find(c => c.key === colKey);
@@ -643,7 +784,7 @@ const LenderPrograms = () => {
               {rows.filter(r => r.lender_name.trim()).length} of 900 rows filled
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -652,224 +793,306 @@ const LenderPrograms = () => {
               className="hidden"
             />
             <Button
-              variant={filterPanelOpen ? "default" : "outline"}
+              variant={panelMode === 'filter' ? "default" : "outline"}
               size="sm"
-              className="gap-2"
-              onClick={() => setFilterPanelOpen(!filterPanelOpen)}
+              className="gap-1.5"
+              onClick={() => setPanelMode(panelMode === 'filter' ? 'list' : 'filter')}
             >
-              <Filter className="w-4 h-4" strokeWidth={1.75} />
+              <Filter className="h-3.5 w-3.5" />
               Filter
-              {hasActiveFilters && <span className="w-2 h-2 rounded-full bg-primary" />}
+              {hasActiveFilters && (
+                <span className="ml-1 bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full">
+                  {Object.values(filters).filter(v => v.trim()).length}
+                </span>
+              )}
             </Button>
             <Button
-              variant={aiAssistantOpen ? "default" : "outline"}
+              variant={panelMode === 'advisor' ? "default" : "outline"}
               size="sm"
-              className="gap-2"
-              onClick={() => setAiAssistantOpen(true)}
+              className="gap-1.5"
+              onClick={() => setPanelMode(panelMode === 'advisor' ? 'list' : 'advisor')}
             >
-              <Sparkles className="w-4 h-4" strokeWidth={1.75} />
+              <Sparkles className="h-3.5 w-3.5" />
               AI Advisor
             </Button>
             <Button 
               variant="outline" 
               size="sm" 
-              className="gap-2" 
+              className="gap-1.5" 
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
             >
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" strokeWidth={1.75} />}
-              Upload CSV/Excel
+              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              Upload
             </Button>
             {dirtyCount > 0 && (
-              <Button onClick={handleSaveAll} disabled={saving} className="gap-2 bg-green-600 hover:bg-green-700">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save {dirtyCount} Change{dirtyCount > 1 ? 's' : ''}
+              <Button onClick={handleSaveAll} disabled={saving} className="gap-1.5 bg-green-600 hover:bg-green-700">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                Save {dirtyCount}
               </Button>
             )}
           </div>
         </div>
 
-        {/* Filter Panel */}
-        {filterPanelOpen && (
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex-1 min-w-[150px] max-w-[200px]">
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Lender Type</label>
-                  <Select value={filters.lenderType} onValueChange={(v) => setFilters(f => ({ ...f, lenderType: v }))}>
-                    <SelectTrigger className="h-9 bg-background border-border">
-                      <SelectValue placeholder="All types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All types</SelectItem>
-                      {uniqueLenderTypes.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1 min-w-[150px] max-w-[200px]">
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">State</label>
-                  <Select value={filters.states} onValueChange={(v) => setFilters(f => ({ ...f, states: v }))}>
-                    <SelectTrigger className="h-9 bg-background border-border">
-                      <SelectValue placeholder="All states" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All states</SelectItem>
-                      {uniqueStates.map(state => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1 min-w-[150px] max-w-[200px]">
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Call Status</label>
-                  <Select value={filters.callStatus} onValueChange={(v) => setFilters(f => ({ ...f, callStatus: v }))}>
-                    <SelectTrigger className="h-9 bg-background border-border">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All</SelectItem>
-                      <SelectItem value="Y">Called (Y)</SelectItem>
-                      <SelectItem value="N">Not Called (N)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {hasActiveFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-muted-foreground hover:text-foreground">
-                    <X className="w-4 h-4" />
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Main content grid - spreadsheet + optional panel */}
+        <div className={`grid gap-4 ${panelMode !== 'list' ? 'grid-cols-1 xl:grid-cols-4' : 'grid-cols-1'}`}>
+          {/* Spreadsheet Section */}
+          <div className={panelMode !== 'list' ? 'xl:col-span-3' : ''}>
+            {/* Search */}
+            <div className="relative max-w-md mb-4">
+              <Input
+                placeholder="Search lenders..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-3 bg-background border-border"
+              />
+            </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Input
-            placeholder="Search lenders..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-3 bg-background border-border"
-          />
-        </div>
-
-        {/* Spreadsheet Table */}
-        <div className="bg-card rounded-md border border-border overflow-hidden">
-          <ScrollArea className="h-[calc(100vh-280px)]">
-            <div style={{ minWidth: COLUMNS.reduce((sum, c) => sum + c.width, 50) }}>
-              {/* Header */}
-              <div className="flex bg-muted border-b-2 border-border sticky top-0 z-10">
-                {COLUMNS.map((col) => (
-                  <div
-                    key={col.key}
-                    className="px-3 py-3 text-sm font-semibold text-foreground border-r border-border last:border-r-0 flex-shrink-0"
-                    style={{ width: col.width }}
-                  >
-                    {col.label}
-                  </div>
-                ))}
-                <div className="w-12 px-3 py-3 flex-shrink-0" />
-              </div>
-
-              {/* Rows */}
-              {filteredRows.map((row) => (
-                <div
-                  key={row.id}
-                  className={`flex border-b border-border hover:bg-muted/50 group min-h-[48px] ${
-                    row.isDirty ? 'bg-amber-500/10' : ''
-                  }`}
-                >
-                  {COLUMNS.map((col) => {
-                      const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key;
-                      const value = row[col.key] as string | number;
-                      const isLookingFor = col.key === 'looking_for';
-
-                    return (
+            {/* Spreadsheet Table */}
+            <div className="bg-card rounded-md border border-border overflow-hidden">
+              <ScrollArea className="h-[calc(100vh-320px)]">
+                <div style={{ minWidth: COLUMNS.reduce((sum, c) => sum + c.width, 50) }}>
+                  {/* Header */}
+                  <div className="flex bg-muted border-b-2 border-border sticky top-0 z-10">
+                    {COLUMNS.map((col) => (
                       <div
                         key={col.key}
-                        className={`px-2 py-2 border-r border-border/50 last:border-r-0 flex-shrink-0 flex ${
-                          isLookingFor ? 'items-start' : 'items-center'
-                        } ${
-                          col.editable ? 'cursor-text' : ''
-                        } ${col.key === 'rowNum' ? 'bg-muted/50 text-muted-foreground text-sm font-medium justify-center' : ''}`}
+                        className="px-3 py-3 text-sm font-semibold text-foreground border-r border-border last:border-r-0 flex-shrink-0"
                         style={{ width: col.width }}
-                        onClick={() => handleCellClick(row.id, col.key)}
                       >
-                        {isEditing ? (
-                          isLookingFor ? (
-                            <textarea
-                              autoFocus
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellBlur}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Escape') {
-                                  setEditingCell(null);
-                                  setEditValue('');
-                                }
-                              }}
-                              className="w-full h-20 text-sm px-2 py-1 border border-primary rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                            />
-                          ) : (
-                            <Input
-                              autoFocus
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={handleCellBlur}
-                              onKeyDown={handleKeyDown}
-                              className="h-8 text-sm px-2 border-primary focus-visible:ring-1 focus-visible:ring-primary bg-background"
-                            />
-                          )
-                        ) : (
-                          <span className={`text-sm w-full ${
-                            col.key === 'call_status' && value === 'Y' ? 'text-green-500 font-medium' : 'text-foreground'
-                          } ${isLookingFor ? 'whitespace-pre-wrap break-words line-clamp-3' : 'truncate'}`}>
-                            {value || (col.key === 'rowNum' ? '' : '')}
-                          </span>
+                        {col.label}
+                      </div>
+                    ))}
+                    <div className="w-12 px-3 py-3 flex-shrink-0" />
+                  </div>
+
+                  {/* Rows */}
+                  {filteredRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className={`flex border-b border-border hover:bg-muted/50 group min-h-[48px] ${
+                        row.isDirty ? 'bg-amber-500/10' : ''
+                      }`}
+                    >
+                      {COLUMNS.map((col) => {
+                          const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key;
+                          const value = row[col.key] as string | number;
+                          const isLookingFor = col.key === 'looking_for';
+
+                        return (
+                          <div
+                            key={col.key}
+                            className={`px-2 py-2 border-r border-border/50 last:border-r-0 flex-shrink-0 flex ${
+                              isLookingFor ? 'items-start' : 'items-center'
+                            } ${
+                              col.editable ? 'cursor-text' : ''
+                            } ${col.key === 'rowNum' ? 'bg-muted/50 text-muted-foreground text-sm font-medium justify-center' : ''}`}
+                            style={{ width: col.width }}
+                            onClick={() => handleCellClick(row.id, col.key)}
+                          >
+                            {isEditing ? (
+                              isLookingFor ? (
+                                <textarea
+                                  autoFocus
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={handleCellBlur}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') {
+                                      setEditingCell(null);
+                                      setEditValue('');
+                                    }
+                                  }}
+                                  className="w-full h-20 text-sm px-2 py-1 border border-primary rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                />
+                              ) : (
+                                <Input
+                                  autoFocus
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={handleCellBlur}
+                                  onKeyDown={handleKeyDown}
+                                  className="h-8 text-sm px-2 border-primary focus-visible:ring-1 focus-visible:ring-primary bg-background"
+                                />
+                              )
+                            ) : (
+                              <span className={`text-sm w-full ${
+                                col.key === 'call_status' && value === 'Y' ? 'text-green-500 font-medium' : 'text-foreground'
+                              } ${isLookingFor ? 'whitespace-pre-wrap break-words line-clamp-3' : 'truncate'}`}>
+                                {value || (col.key === 'rowNum' ? '' : '')}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div className="w-12 flex items-center justify-center flex-shrink-0">
+                        {(row.lender_name.trim() || !row.isNew) && (
+                          <button
+                            onClick={() => handleDeleteRow(row)}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity p-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         )}
                       </div>
-                    );
-                  })}
-                  <div className="w-12 flex items-center justify-center flex-shrink-0">
-                    {(row.lender_name.trim() || !row.isNew) && (
-                      <button
-                        onClick={() => handleDeleteRow(row)}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity p-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                <ScrollBar orientation="horizontal" />
+                <ScrollBar orientation="vertical" />
+              </ScrollArea>
             </div>
-            <ScrollBar orientation="horizontal" />
-            <ScrollBar orientation="vertical" />
-          </ScrollArea>
-        </div>
 
-        <p className="text-xs text-muted-foreground">
-          Click any cell to edit. Changes are highlighted in yellow. Click "Save Changes" to persist.
-        </p>
-      </div>
-
-      {/* AI Advisor Sheet */}
-      <Sheet open={aiAssistantOpen} onOpenChange={setAiAssistantOpen}>
-        <SheetContent className="w-[400px] sm:w-[450px] flex flex-col">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              Lender Program Advisor
-            </SheetTitle>
-          </SheetHeader>
-          <div className="flex-1 overflow-hidden">
-            <LenderProgramAssistant />
+            <p className="text-xs text-muted-foreground mt-2">
+              Click any cell to edit. Changes are highlighted in yellow.
+            </p>
           </div>
-        </SheetContent>
-      </Sheet>
+
+          {/* Filter Panel */}
+          {panelMode === 'filter' && (
+            <div className="xl:col-span-1">
+              <Card className="h-full flex flex-col border-border">
+                <CardHeader 
+                  className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors bg-muted/30"
+                  onClick={() => setPanelMode('list')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-slate-700 dark:bg-slate-600">
+                        <Filter className="h-4 w-4 text-white" />
+                      </div>
+                      <CardTitle className="text-base">Filter Lenders</CardTitle>
+                      {hasActiveFilters && (
+                        <Badge variant="secondary" className="text-xs">
+                          {Object.values(filters).filter(v => v.trim()).length} active
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {hasActiveFilters && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearFilters();
+                          }}
+                          className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Clear
+                        </Button>
+                      )}
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 p-4 min-h-0 overflow-auto">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">Institution</Label>
+                      <SearchableSelect
+                        options={filterOptions.institutions}
+                        value={filters.institution}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, institution: value }))}
+                        placeholder="All institutions"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">Looking For</Label>
+                      <Input
+                        placeholder="Type to search..."
+                        value={filters.lookingFor}
+                        onChange={(e) => setFilters(prev => ({ ...prev, lookingFor: e.target.value }))}
+                        className="h-8 text-sm pl-3"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">Contact Name</Label>
+                      <SearchableSelect
+                        options={filterOptions.contacts}
+                        value={filters.contact}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, contact: value }))}
+                        placeholder="All contacts"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">Loan Size</Label>
+                      <SearchableSelect
+                        options={filterOptions.loanSizes}
+                        value={filters.loanSize}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, loanSize: value }))}
+                        placeholder="All loan sizes"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">States</Label>
+                      <SearchableSelect
+                        options={filterOptions.states}
+                        value={filters.states}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, states: value }))}
+                        placeholder="All states"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">Lender Type</Label>
+                      <SearchableSelect
+                        options={filterOptions.lenderTypes}
+                        value={filters.lenderType}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, lenderType: value }))}
+                        placeholder="All lender types"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">Loan Types</Label>
+                      <SearchableSelect
+                        options={filterOptions.loanTypes}
+                        value={filters.loanTypes}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, loanTypes: value }))}
+                        placeholder="All loan types"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">Call Status</Label>
+                      <SearchableSelect
+                        options={['Y', 'N']}
+                        value={filters.callStatus}
+                        onValueChange={(value) => setFilters(prev => ({ ...prev, callStatus: value }))}
+                        placeholder="All"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* AI Advisor Panel */}
+          {panelMode === 'advisor' && (
+            <div className="xl:col-span-1">
+              <Card className="h-full flex flex-col border-primary/20">
+                <CardHeader 
+                  className="pb-3 border-b flex-shrink-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => setPanelMode('list')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary to-primary/80">
+                        <Sparkles className="h-4 w-4 text-white" />
+                      </div>
+                      <CardTitle className="text-base">Program Advisor</CardTitle>
+                    </div>
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 p-0 min-h-0">
+                  <LenderProgramAssistant />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </div>
     </AdminLayout>
   );
 };
