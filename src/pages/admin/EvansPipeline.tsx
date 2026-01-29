@@ -1054,7 +1054,7 @@ const EvansPipeline = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setSharingModalOpen(true)}
-                  className="border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 h-8 md:h-9 text-xs md:text-sm"
+                  className="border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 h-8 md:h-9 text-xs md:text-sm"
                 >
                   <Users className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2" />
                   <span className="hidden md:inline">Share</span>
@@ -1092,7 +1092,7 @@ const EvansPipeline = () => {
             <Button 
               variant="outline" 
               onClick={() => navigate('/team/evan/leads')}
-              className="h-8 md:h-9 px-2 md:px-4 border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 text-xs md:text-sm"
+              className="h-8 md:h-9 px-2 md:px-4 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs md:text-sm"
             >
               <List className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2" />
               <span className="hidden sm:inline">List View</span>
@@ -1101,7 +1101,7 @@ const EvansPipeline = () => {
             {canEdit && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 md:h-9 border-slate-200 text-slate-600 hover:bg-slate-50 text-xs md:text-sm px-2 md:px-3">
+                  <Button variant="outline" size="sm" className="h-8 md:h-9 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs md:text-sm px-2 md:px-3">
                     <span className="hidden sm:inline">Settings</span>
                     <MoreVertical className="w-4 h-4 sm:hidden" />
                   </Button>
