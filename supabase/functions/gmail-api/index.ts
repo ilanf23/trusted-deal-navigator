@@ -313,24 +313,27 @@ function encodeBase64Url(str: string): string {
 }
 
 // Helper to create a multipart MIME message with attachments
-// Convert plain text line breaks to HTML <br> tags for proper email formatting
+// Format email body to ensure proper HTML rendering while preserving original formatting
 function formatEmailBody(body: string): string {
-  // If body already contains HTML tags, assume it's properly formatted
-  if (/<[a-z][\s\S]*>/i.test(body)) {
-    // Still ensure newlines within text are converted to <br>
-    // But preserve existing HTML structure
-    return body
-      .replace(/\r\n/g, '\n')
-      .replace(/\n/g, '<br>\n');
+  if (!body || body.trim() === '') {
+    return '<p>&nbsp;</p>';
   }
   
-  // Plain text - wrap in a div with proper styling and convert newlines
+  // Check if body already contains HTML block-level elements (div, p, br, etc.)
+  const hasHtmlBlocks = /<(div|p|br|table|ul|ol|li|h[1-6])[^>]*>/i.test(body);
+  
+  if (hasHtmlBlocks) {
+    // Body is already HTML formatted from contentEditable - wrap it for consistent styling
+    return `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333;">${body}</div>`;
+  }
+  
+  // Plain text - convert line breaks and wrap properly
   const formattedBody = body
     .replace(/\r\n/g, '\n')
-    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n\n+/g, '</p><p style="margin: 1em 0;">')
     .replace(/\n/g, '<br>');
   
-  return `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333;"><p>${formattedBody}</p></div>`;
+  return `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333;"><p style="margin: 0;">${formattedBody}</p></div>`;
 }
 
 function createMimeMessage(
