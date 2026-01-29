@@ -288,7 +288,7 @@ const pendingBody = useRef<string | null>(null);
   const handleInsertSignature = () => {
     const signature = `
 <br><br>
-<div style="font-size: 13px; font-family: Arial, sans-serif;">
+<div style="font-size: 13px; font-family: Arial, sans-serif; line-height: 1.2;">
 <strong style="color: #333;">Evan Hettich<br>
 Associate<br>
 Commercial Lending X<br>
@@ -302,7 +302,7 @@ Saint Augustine, FL 32092</strong><br>
 <strong style="color: #0066FF;">The CLX Way</strong><br>
 <em>Proven process to navigate the commercial lending journey</em><br>
 <br>
-<span style="font-size: 11px; color: #888;">CONFIDENTIALITY NOTICE: This message and all content and files transmitted with it, is a confidential and proprietary business communication, which is solely for the use of the intended recipient(s). Any use, distribution, duplication or disclosure by any other person or entity is strictly prohibited. If you are not the intended recipient of this email or you have received this email in error, please contact the sender directly and immediately delete all copies of this email and any attachments.</span>
+<span style="font-size: 11px; color: #888; line-height: 1.3;">CONFIDENTIALITY NOTICE: This message and all content and files transmitted with it, is a confidential and proprietary business communication, which is solely for the use of the intended recipient(s). Any use, distribution, duplication or disclosure by any other person or entity is strictly prohibited. If you are not the intended recipient of this email or you have received this email in error, please contact the sender directly and immediately delete all copies of this email and any attachments.</span>
 </div>
     `.trim();
     execCommand('insertHTML', signature);
