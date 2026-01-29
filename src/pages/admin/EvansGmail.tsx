@@ -424,7 +424,7 @@ const EvansGmail = () => {
   const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
   const [readEmailIds, setReadEmailIds] = useState<Record<string, boolean>>({});
   
-  // Compose dialog state
+// Compose dialog state
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTo, setComposeTo] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
@@ -442,6 +442,12 @@ const EvansGmail = () => {
   const [taskInitialTitle, setTaskInitialTitle] = useState('');
   const [taskInitialDescription, setTaskInitialDescription] = useState('');
   const [taskInitialLeadId, setTaskInitialLeadId] = useState<string | null>(null);
+  
+  // Move Forward flow tracking
+  const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
+  const [currentLeadIdForEmail, setCurrentLeadIdForEmail] = useState<string | null>(null);
+  const [currentBodyPlain, setCurrentBodyPlain] = useState<string>('');
+  const [currentBodyHtml, setCurrentBodyHtml] = useState<string>('');
 
   // URL params compose handling moved below allLeads query to avoid reference before declaration
 
@@ -963,7 +969,7 @@ Commercial Lending X`;
     return crmEmails.some(crmEmail => senderEmail === crmEmail.toLowerCase());
   };
 
-  // Generate AI draft for moving deal forward
+// Generate AI draft for moving deal forward - with persist-first pattern
   const handleMoveForward = async (email: Email) => {
     const lead = findLeadForEmail(email);
     if (!lead) {
@@ -971,7 +977,13 @@ Commercial Lending X`;
       return;
     }
 
+    // Generate unique flow_id for end-to-end tracking
+    const flowId = `mf_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    console.log(`[${flowId}] Move Forward initiated for lead: ${lead.name}`);
+    
     setGeneratingDraftForId(email.id);
+    setCurrentFlowId(flowId);
+    setCurrentLeadIdForEmail(lead.id);
     
     try {
       // Get pipeline stage info
@@ -999,6 +1011,8 @@ Commercial Lending X`;
         lastEmailSnippet: email.snippet,
       };
 
+      console.log(`[${flowId}] Calling generate-lead-email API...`);
+      
       // Call AI to generate email
       const { data: { session } } = await supabase.auth.getSession();
       const aiResponse = await fetch(
@@ -1021,30 +1035,88 @@ Commercial Lending X`;
         throw new Error('Failed to generate email');
       }
 
-      const { subject, body } = await aiResponse.json();
+      const { subject, body: generatedBody } = await aiResponse.json();
       
-      // Open compose dialog with generated content
-      setComposeTo(extractEmailAddress(email.from));
-      setComposeSubject(subject || `Re: ${email.subject}`);
-      setComposeBody(body || '');
+      console.log(`[${flowId}] AI generated content:`, {
+        subject,
+        generatedBodyLength: generatedBody?.length || 0,
+        generatedBodyPreview: generatedBody?.substring(0, 200) || 'EMPTY',
+      });
+      
+      // Normalize: plain text (from AI) and HTML (for sending)
+      const bodyPlain = generatedBody || '';
+      // Convert plain text to HTML (replace newlines with <br>)
+      const bodyHtml = bodyPlain
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+      
+      console.log(`[${flowId}] Normalized content:`, {
+        bodyPlainLength: bodyPlain.length,
+        bodyHtmlLength: bodyHtml.length,
+        bodyPlainPreview: bodyPlain.substring(0, 100),
+        bodyHtmlPreview: bodyHtml.substring(0, 100),
+      });
+      
+      // Store in state for sending
+      setCurrentBodyPlain(bodyPlain);
+      setCurrentBodyHtml(bodyHtml);
+      
+      // Persist to outbound_emails table BEFORE showing to user
+      const toEmail = extractEmailAddress(email.from);
+      const finalSubject = subject || `Re: ${email.subject}`;
+      
+      const { error: persistError } = await supabase
+        .from('outbound_emails')
+        .insert({
+          user_id: session?.user?.id,
+          flow_id: flowId,
+          source: 'move_forward',
+          lead_id: lead.id,
+          to_email: toEmail,
+          subject: finalSubject,
+          body_html: bodyHtml,
+          body_plain: bodyPlain,
+          status: 'queued',
+        });
+      
+      if (persistError) {
+        console.error(`[${flowId}] Failed to persist to outbound_emails:`, persistError);
+        // Continue anyway - we still have the content in memory
+      } else {
+        console.log(`[${flowId}] Persisted to outbound_emails with status=queued`);
+      }
+      
+      // Open compose dialog with generated content (HTML version)
+      setComposeTo(toEmail);
+      setComposeSubject(finalSubject);
+      setComposeBody(bodyHtml); // Use HTML so it renders correctly
       setComposeOpen(true);
       
     } catch (error: any) {
-      console.error('Error generating email:', error);
+      console.error(`[${flowId}] Error generating email:`, error);
       // Fallback to basic template
-      const lead = findLeadForEmail(email);
       const firstName = lead?.name?.split(' ')[0] || extractSenderName(email.from).split(' ')[0];
+      const fallbackPlain = `Hi ${firstName},\n\nThank you for your message. I wanted to follow up and discuss the next steps for moving your loan application forward.\n\nPlease let me know a good time to connect this week.\n\nBest regards,\nEvan`;
+      const fallbackHtml = fallbackPlain
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
       
+      setCurrentBodyPlain(fallbackPlain);
+      setCurrentBodyHtml(fallbackHtml);
       setComposeTo(extractEmailAddress(email.from));
       setComposeSubject(`Re: ${email.subject}`);
-      setComposeBody(`Hi ${firstName},\n\nThank you for your message. I wanted to follow up and discuss the next steps for moving your loan application forward.\n\nPlease let me know a good time to connect this week.\n\nBest regards,\nEvan`);
+      setComposeBody(fallbackHtml);
       setComposeOpen(true);
     } finally {
       setGeneratingDraftForId(null);
     }
   };
 
-// Send email - optimized for speed
+// Send email - with flow_id tracking and persist-first verification
   const handleSendEmail = async (attachments: Attachment[]) => {
     // Validate first before any async operations
     if (!composeTo.trim()) {
@@ -1062,29 +1134,36 @@ Commercial Lending X`;
 
     setComposeSending(true);
     
+    // Use existing flow_id if from Move Forward, otherwise generate new one
+    const flowId = currentFlowId || `send_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    
     // Capture values BEFORE closing dialog
     const toSend = composeTo;
     const subjectSend = composeSubject;
     const bodySend = composeBody;
+    const bodyPlainSend = currentBodyPlain || composeBody; // Fallback to current body
     const attachmentsSend = attachments.map(a => ({
       filename: a.name,
       mimeType: a.type,
       data: a.base64,
     }));
     
-    // CRITICAL: Log exactly what we're about to send
-    console.log('[SEND EMAIL] Captured values before send:', {
+    // CRITICAL: Comprehensive logging with flow_id
+    console.log(`[${flowId}] SEND EMAIL - Captured values:`, {
       to: toSend,
       subject: subjectSend,
-      bodyLength: bodySend?.length || 0,
-      bodyPreview: bodySend?.substring(0, 200) || 'EMPTY',
+      bodyHtmlLength: bodySend?.length || 0,
+      bodyPlainLength: bodyPlainSend?.length || 0,
+      bodyHtmlPreview: bodySend?.substring(0, 200) || 'EMPTY',
+      bodyPlainPreview: bodyPlainSend?.substring(0, 200) || 'EMPTY',
       attachmentsCount: attachmentsSend.length,
+      leadId: currentLeadIdForEmail,
     });
     
-    // SAFEGUARD: Double-check body is not empty after capture
+    // HARD FAIL: Block if body is empty
     if (!bodySend || bodySend.trim() === '') {
-      console.error('[SEND EMAIL] BLOCKED - Body is empty after capture!');
-      toast.error('Cannot send email: body content missing');
+      console.error(`[${flowId}] HARD FAIL - Body is empty!`);
+      toast.error(`Move Forward failed: email body was empty. See flow_id: ${flowId}`);
       setComposeSending(false);
       return;
     }
@@ -1099,9 +1178,24 @@ Commercial Lending X`;
     const toastId = toast.loading('Sending email...');
     
     try {
-      // Get session in parallel with preparing the request
+      // Get session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
+
+      // Log the exact payload being sent to the edge function
+      const payload = {
+        to: toSend,
+        subject: subjectSend,
+        body: bodySend,
+        bodyPlain: bodyPlainSend,
+        flowId,
+        attachments: attachmentsSend,
+      };
+      
+      console.log(`[${flowId}] Sending to gmail-api edge function:`, {
+        payloadBodyLength: payload.body.length,
+        payloadBodyPreview: payload.body.substring(0, 300),
+      });
 
       const response = await fetch(
         'https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send',
@@ -1111,29 +1205,72 @@ Commercial Lending X`;
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            to: toSend,
-            subject: subjectSend,
-            body: bodySend,
-            attachments: attachmentsSend,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to send email');
+        throw new Error(responseData.error || 'Failed to send email');
       }
       
-      toast.success('Email sent successfully', { id: toastId });
+      console.log(`[${flowId}] Gmail API response:`, {
+        success: responseData.success,
+        messageId: responseData.id,
+        threadId: responseData.threadId,
+        verified: responseData.verified,
+        verificationDetails: responseData.verificationDetails,
+      });
+      
+      // Update outbound_emails record with success
+      if (currentFlowId) {
+        await supabase
+          .from('outbound_emails')
+          .update({
+            status: 'sent',
+            gmail_message_id: responseData.id,
+            gmail_thread_id: responseData.threadId,
+            sent_at: new Date().toISOString(),
+          })
+          .eq('flow_id', currentFlowId);
+        
+        console.log(`[${flowId}] Updated outbound_emails to status=sent`);
+      }
+      
+      // Show verification result
+      if (responseData.verified === false) {
+        console.warn(`[${flowId}] WARNING: Email may have empty body - verification failed`);
+        toast.warning('Email sent, but body verification failed. Check Gmail to confirm.', { id: toastId });
+      } else {
+        toast.success('Email sent successfully', { id: toastId });
+      }
       
       // Refresh sent emails in background
       queryClient.invalidateQueries({ queryKey: ['evan-gmail-sent-emails'] });
+      
     } catch (error: any) {
-      console.error('Send email error:', error);
-      toast.error('Failed to send: ' + error.message, { id: toastId });
+      console.error(`[${flowId}] Send email error:`, error);
+      
+      // Update outbound_emails record with error
+      if (currentFlowId) {
+        await supabase
+          .from('outbound_emails')
+          .update({
+            status: 'failed',
+            error: error.message,
+          })
+          .eq('flow_id', currentFlowId);
+      }
+      
+      toast.error(`Failed to send: ${error.message}`, { id: toastId });
     } finally {
       setComposeSending(false);
+      // Clear flow state
+      setCurrentFlowId(null);
+      setCurrentLeadIdForEmail(null);
+      setCurrentBodyPlain('');
+      setCurrentBodyHtml('');
     }
   };
 

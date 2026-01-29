@@ -1876,6 +1876,77 @@ export type Database = {
         }
         Relationships: []
       }
+      outbound_emails: {
+        Row: {
+          body_html: string
+          body_plain: string
+          created_at: string
+          error: string | null
+          flow_id: string
+          gmail_message_id: string | null
+          gmail_thread_id: string | null
+          id: string
+          lead_id: string | null
+          reply_in_reply_to: string | null
+          reply_thread_id: string | null
+          sent_at: string | null
+          source: string
+          status: string
+          subject: string
+          to_email: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_html?: string
+          body_plain?: string
+          created_at?: string
+          error?: string | null
+          flow_id: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
+          id?: string
+          lead_id?: string | null
+          reply_in_reply_to?: string | null
+          reply_thread_id?: string | null
+          sent_at?: string | null
+          source?: string
+          status?: string
+          subject: string
+          to_email: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_html?: string
+          body_plain?: string
+          created_at?: string
+          error?: string | null
+          flow_id?: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
+          id?: string
+          lead_id?: string | null
+          reply_in_reply_to?: string | null
+          reply_thread_id?: string | null
+          sent_at?: string | null
+          source?: string
+          status?: string
+          subject?: string
+          to_email?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_emails_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_column_values: {
         Row: {
           assigned_to_id: string | null
