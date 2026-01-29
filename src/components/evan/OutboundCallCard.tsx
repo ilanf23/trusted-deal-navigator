@@ -10,11 +10,11 @@ import {
   Phone, 
   PhoneOutgoing, 
   Loader2, 
-  Search,
   User,
   Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCall } from '@/contexts/CallContext';
 
 interface Lead {
   id: string;
@@ -37,8 +37,10 @@ const formatPhoneNumber = (phone: string) => {
 export const OutboundCallCard = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCalling, setIsCalling] = useState(false);
   const [activeTab, setActiveTab] = useState<'dial' | 'contacts'>('dial');
+  
+  const { makeOutboundCall, outboundCall, isConnected, healthStatus } = useCall();
+  const isCallInProgress = outboundCall !== null || isConnected;
 
   // Fetch leads with phone numbers for contact list
   const { data: leads = [], isLoading: leadsLoading } = useQuery({
@@ -61,47 +63,13 @@ export const OutboundCallCard = () => {
     },
   });
 
-  const initiateCall = async (to: string, leadId?: string) => {
-    if (!to) {
+  const handleDialpadCall = () => {
+    if (!phoneNumber) {
       toast.error('Please enter a phone number');
       return;
     }
-
-    setIsCalling(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('You must be logged in to make calls');
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('twilio-call', {
-        body: { to, leadId },
-      });
-
-      if (error) {
-        console.error('Call error:', error);
-        toast.error(error.message || 'Failed to initiate call');
-        return;
-      }
-
-      if (data?.error) {
-        toast.error(data.error);
-        return;
-      }
-
-      toast.success(`Calling ${formatPhoneNumber(to)}...`);
-      setPhoneNumber('');
-    } catch (err) {
-      console.error('Call error:', err);
-      toast.error('Failed to initiate call');
-    } finally {
-      setIsCalling(false);
-    }
-  };
-
-  const handleDialpadCall = () => {
-    initiateCall(phoneNumber);
+    makeOutboundCall(phoneNumber);
+    setPhoneNumber('');
   };
 
   const handleContactCall = (lead: Lead) => {
@@ -109,7 +77,7 @@ export const OutboundCallCard = () => {
       toast.error('This contact has no phone number');
       return;
     }
-    initiateCall(lead.phone, lead.id);
+    makeOutboundCall(lead.phone, lead.id, lead.name);
   };
 
   return (
@@ -121,7 +89,11 @@ export const OutboundCallCard = () => {
           </div>
           <div>
             <CardTitle className="text-lg">Make a Call</CardTitle>
-            <CardDescription>Dial a number or select a contact</CardDescription>
+            <CardDescription>
+              {healthStatus.deviceReady 
+                ? 'Dial a number or select a contact' 
+                : 'Connecting phone system...'}
+            </CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -159,21 +131,27 @@ export const OutboundCallCard = () => {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && phoneNumber) {
+                  if (e.key === 'Enter' && phoneNumber && !isCallInProgress) {
                     handleDialpadCall();
                   }
                 }}
+                disabled={isCallInProgress}
               />
             </div>
             <Button
               onClick={handleDialpadCall}
-              disabled={!phoneNumber || isCalling}
+              disabled={!phoneNumber || isCallInProgress || !healthStatus.deviceReady}
               className="w-full"
             >
-              {isCalling ? (
+              {!healthStatus.deviceReady ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Calling...
+                  Connecting...
+                </>
+              ) : isCallInProgress ? (
+                <>
+                  <Phone className="h-4 w-4 mr-2 animate-pulse" />
+                  Call in Progress
                 </>
               ) : (
                 <>
@@ -205,7 +183,7 @@ export const OutboundCallCard = () => {
                     <button
                       key={lead.id}
                       onClick={() => handleContactCall(lead)}
-                      disabled={isCalling}
+                      disabled={isCallInProgress || !healthStatus.deviceReady}
                       className="w-full p-3 rounded-lg hover:bg-muted/50 transition-colors text-left flex items-center gap-3 disabled:opacity-50"
                     >
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-admin-blue to-admin-blue-dark flex items-center justify-center flex-shrink-0">
