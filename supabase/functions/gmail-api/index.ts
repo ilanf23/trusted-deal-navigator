@@ -718,6 +718,16 @@ Deno.serve(async (req) => {
     // Send message
     if (action === 'send') {
       const body = await req.json();
+      
+      // Debug logging - check what body content is received
+      console.log('Send email request received:', {
+        to: body.to,
+        subject: body.subject,
+        bodyLength: body.body?.length || 0,
+        bodyPreview: body.body?.substring(0, 100) || 'EMPTY',
+        hasAttachments: body.attachments?.length > 0
+      });
+      
       const result = await sendMessage(
         accessToken,
         body.to,
