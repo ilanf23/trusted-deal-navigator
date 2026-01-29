@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import AdminLayout from '@/components/admin/AdminLayout';
+import EvanLayout from '@/components/evan/EvanLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -426,19 +426,19 @@ const EvansPage = () => {
   // Show loading state on initial load to prevent flash of stale data
   if (isLoading) {
     return (
-      <AdminLayout>
+      <EvanLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-muted-foreground">Loading dashboard...</p>
           </div>
         </div>
-      </AdminLayout>
+      </EvanLayout>
     );
   }
 
   return (
-    <AdminLayout>
+    <EvanLayout>
       <div className="space-y-4 md:space-y-6">
         {/* Header - responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
@@ -916,7 +916,7 @@ const EvansPage = () => {
           </CardContent>
         </Card>
       </div>
-    </AdminLayout>
+    </EvanLayout>
   );
 };
 

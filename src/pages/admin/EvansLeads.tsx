@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import AdminLayout from '@/components/admin/AdminLayout';
+import EvanLayout from '@/components/evan/EvanLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 
 type Communication = Database['public']['Tables']['evan_communications']['Row'];
@@ -288,7 +288,7 @@ const EvansLeads = () => {
   }, {} as Record<LeadStatus, number>);
 
   return (
-    <AdminLayout>
+    <EvanLayout>
       <div className="flex flex-col h-[calc(100vh-200px)]">
       {/* Header Section */}
       <div className="flex items-start justify-between mb-6">
@@ -895,7 +895,7 @@ const EvansLeads = () => {
           queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
         }}
       />
-    </AdminLayout>
+    </EvanLayout>
   );
 };
 

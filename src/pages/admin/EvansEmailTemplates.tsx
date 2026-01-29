@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import AdminLayout from '@/components/admin/AdminLayout';
+import EvanLayout from '@/components/evan/EvanLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -157,7 +157,7 @@ const EvansEmailTemplates = () => {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <AdminLayout>
+    <EvanLayout>
       <div className="p-6 max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -282,7 +282,7 @@ const EvansEmailTemplates = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </AdminLayout>
+    </EvanLayout>
   );
 };
 

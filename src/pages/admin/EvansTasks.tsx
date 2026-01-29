@@ -1,9 +1,9 @@
-import AdminLayout from '@/components/admin/AdminLayout';
+import EvanLayout from '@/components/evan/EvanLayout';
 import { TaskWorkspace } from '@/components/evan/tasks/TaskWorkspace';
 
 const EvansTasks = () => {
   return (
-    <AdminLayout>
+    <EvanLayout>
       <div className="space-y-2">
         {/* Clean Apple-style Header */}
         <div className="pb-4">
@@ -14,7 +14,7 @@ const EvansTasks = () => {
         {/* Task Workspace */}
         <TaskWorkspace />
       </div>
-    </AdminLayout>
+    </EvanLayout>
   );
 };
 
