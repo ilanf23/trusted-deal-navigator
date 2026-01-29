@@ -313,27 +313,38 @@ function encodeBase64Url(str: string): string {
 }
 
 // Helper to create a multipart MIME message with attachments
-// Format email body to ensure proper HTML rendering while preserving original formatting
+// Format email body to ensure it renders reliably in Gmail while preserving spacing/indents.
+// - If the editor provides HTML, we keep it.
+// - If it's plain text, we escape it and convert newlines to <br>, while using pre-wrap to preserve spacing.
 function formatEmailBody(body: string): string {
-  if (!body || body.trim() === '') {
-    return '<p>&nbsp;</p>';
+  const raw = (body ?? '');
+  if (raw.trim() === '') {
+    // Avoid totally-empty HTML bodies (some clients can render them oddly)
+    return '<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333;">&nbsp;</div>';
   }
-  
-  // Check if body already contains HTML block-level elements (div, p, br, etc.)
-  const hasHtmlBlocks = /<(div|p|br|table|ul|ol|li|h[1-6])[^>]*>/i.test(body);
-  
-  if (hasHtmlBlocks) {
-    // Body is already HTML formatted from contentEditable - wrap it for consistent styling
-    return `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333;">${body}</div>`;
+
+  // Only treat as HTML if it contains common HTML tags the editor outputs.
+  // This avoids false positives for strings like "2 < 3".
+  const looksLikeHtml = /<\/?(div|p|br|span|b|strong|i|em|u|ul|ol|li|table|thead|tbody|tr|td|h[1-6])\b/i.test(raw);
+
+  if (looksLikeHtml) {
+    return `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.8; color: #333;">${raw}</div>`;
   }
-  
-  // Plain text - convert line breaks and wrap properly
-  const formattedBody = body
+
+  // Plain text: escape and preserve formatting.
+  const escaped = raw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  // Convert newlines to <br> but keep pre-wrap for indentation/spaces.
+  const withBreaks = escaped
     .replace(/\r\n/g, '\n')
-    .replace(/\n\n+/g, '</p><p style="margin: 1em 0;">')
-    .replace(/\n/g, '<br>');
-  
-  return `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333;"><p style="margin: 0;">${formattedBody}</p></div>`;
+    .replace(/\n/g, '<br>\r\n');
+
+  return `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.8; color: #333; white-space: pre-wrap;">${withBreaks}</div>`;
 }
 
 function createMimeMessage(
@@ -352,10 +363,14 @@ function createMimeMessage(
   // If no attachments, use simple format
   if (!attachments || attachments.length === 0) {
     const email = [
+      // Gmail will ultimately set the actual From based on the authenticated user,
+      // but including From + MIME-Version improves compatibility.
+      'From: me',
       `To: ${to}`,
       `Subject: ${subject}`,
       inReplyTo ? `In-Reply-To: ${inReplyTo}` : '',
       inReplyTo ? `References: ${inReplyTo}` : '',
+      'MIME-Version: 1.0',
       'Content-Type: text/html; charset=utf-8',
       'Content-Transfer-Encoding: 8bit',
       '',
@@ -367,6 +382,7 @@ function createMimeMessage(
   
   // Build multipart message with attachments
   let email = [
+    'From: me',
     `To: ${to}`,
     `Subject: ${subject}`,
     inReplyTo ? `In-Reply-To: ${inReplyTo}` : '',
