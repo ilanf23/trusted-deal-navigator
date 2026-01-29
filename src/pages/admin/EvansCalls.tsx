@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { OutboundCallCard } from '@/components/evan/OutboundCallCard';
 import { 
   Phone, 
   User, 
@@ -504,9 +505,9 @@ const EvansCalls = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Call Info & Lead Details */}
-          <div className="space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             {/* Current Call Card */}
             <Card className={`border-2 ${currentCall ? 'border-green-500/50 bg-green-50/30' : 'border-muted'}`}>
               <CardHeader className="pb-3">
@@ -787,6 +788,11 @@ const EvansCalls = () => {
                 </ScrollArea>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Right Column - Outbound Call */}
+          <div className="space-y-6">
+            <OutboundCallCard />
           </div>
         </div>
       </div>
