@@ -424,8 +424,8 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-// Lightweight sanitization: strip scripts/iframes and inline event handlers.
-// (We still render email HTML, but avoid obvious injection vectors.)
+// Lightweight sanitization: strip scripts/iframes, inline event handlers,
+// and inline color styles so dark mode prose-invert can apply proper contrast.
 const sanitizeEmailHtml = (html: string) => {
   if (!html) return '';
   return html
@@ -435,7 +435,11 @@ const sanitizeEmailHtml = (html: string) => {
     .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
     .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
     .replace(/href\s*=\s*"javascript:[^"]*"/gi, 'href="#"')
-    .replace(/href\s*=\s*'javascript:[^']*'/gi, "href='#'");
+    .replace(/href\s*=\s*'javascript:[^']*'/gi, "href='#'")
+    // Strip inline color styles so dark mode text colors work
+    .replace(/\bcolor\s*:\s*[^;}"']+;?/gi, '')
+    .replace(/\bbackground-color\s*:\s*[^;}"']+;?/gi, '')
+    .replace(/\bbackground\s*:\s*[^;}"']+;?/gi, '');
 };
 
 const toRenderableHtml = (value: string) => {
