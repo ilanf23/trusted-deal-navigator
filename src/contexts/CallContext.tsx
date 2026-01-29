@@ -15,9 +15,17 @@ interface ActiveCallData {
   direction: string;
   lead_id: string | null;
   created_at: string;
+  call_flow_id?: string;
   leads?: {
     name: string;
   } | null;
+}
+
+interface CallHealthStatus {
+  deviceReady: boolean;
+  socketConnected: boolean;
+  lastHeartbeat: Date | null;
+  missedCallsCount: number;
 }
 
 interface CallContextType {
@@ -27,6 +35,7 @@ interface CallContextType {
   isMuted: boolean;
   callDuration: number;
   isInitializing: boolean;
+  healthStatus: CallHealthStatus;
   answerCall: () => Promise<void>;
   hangupCall: () => Promise<void>;
   declineCall: () => Promise<void>;
@@ -60,9 +69,59 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   const [twilioDevice, setTwilioDevice] = useState<Device | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [hasNavigated, setHasNavigated] = useState(false);
+  const [healthStatus, setHealthStatus] = useState<CallHealthStatus>({
+    deviceReady: false,
+    socketConnected: false,
+    lastHeartbeat: null,
+    missedCallsCount: 0,
+  });
   
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const deviceRef = useRef<Device | null>(null);
+  const pendingCallsRef = useRef<ActiveCallData[]>([]);
+
+  // Log frontend event for call tracing
+  const logCallEvent = useCallback(async (
+    callSid: string, 
+    eventType: string, 
+    callFlowId?: string,
+    metadata?: Record<string, unknown>
+  ) => {
+    try {
+      await supabase.from('call_events').insert({
+        call_flow_id: callFlowId || crypto.randomUUID(),
+        call_sid: callSid,
+        event_type: eventType,
+        frontend_received: true,
+        frontend_acknowledged_at: new Date().toISOString(),
+        device_ready: deviceRef.current?.state === 'registered',
+        socket_connected: healthStatus.socketConnected,
+        user_session_active: true,
+        metadata: {
+          ...metadata,
+          location: location.pathname,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error('[CallContext] Failed to log call event:', error);
+    }
+  }, [healthStatus.socketConnected, location.pathname]);
+
+  // Acknowledge call receipt to database
+  const acknowledgeCall = useCallback(async (call: ActiveCallData) => {
+    try {
+      await supabase
+        .from('active_calls')
+        .update({ frontend_ack_at: new Date().toISOString() })
+        .eq('id', call.id);
+      
+      await logCallEvent(call.call_sid, 'frontend_acknowledged', call.call_flow_id);
+      console.log('[CallContext] Call acknowledged:', call.call_sid);
+    } catch (error) {
+      console.error('[CallContext] Failed to acknowledge call:', error);
+    }
+  }, [logCallEvent]);
 
   // Start call timer
   const startCallTimer = useCallback(() => {
@@ -87,25 +146,25 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
   }, [queryClient]);
 
-  // Initialize Twilio Device
+  // Initialize Twilio Device - EAGER initialization
   const initializeTwilioDevice = useCallback(async () => {
     if (!isEvan) {
-      console.log('Not Evan, skipping Twilio initialization');
+      console.log('[CallContext] Not Evan, skipping Twilio initialization');
       return null;
     }
     
-    if (deviceRef.current) {
-      console.log('Twilio Device already initialized');
+    if (deviceRef.current?.state === 'registered') {
+      console.log('[CallContext] Twilio Device already registered');
       return deviceRef.current;
     }
     
     try {
       setIsInitializing(true);
-      console.log('Initializing Twilio Device...');
+      console.log('[CallContext] Initializing Twilio Device...');
       
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
-        console.log('Not authenticated, skipping Twilio initialization');
+        console.log('[CallContext] Not authenticated, skipping Twilio initialization');
         return null;
       }
 
@@ -126,48 +185,90 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const { token, identity } = await response.json();
-      console.log('Got Twilio token for identity:', identity);
+      console.log('[CallContext] Got Twilio token for identity:', identity);
+      
+      // Destroy existing device if any
+      if (deviceRef.current) {
+        deviceRef.current.destroy();
+      }
       
       const device = new Device(token, {
         logLevel: 1,
         codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
+        // Enable edge locations for better connectivity
+        edge: ['ashburn', 'dublin', 'singapore'],
       });
 
       device.on('registered', () => {
-        console.log('Twilio Device registered and ready to receive calls');
+        console.log('[CallContext] Twilio Device registered and ready');
+        setHealthStatus(prev => ({ ...prev, deviceReady: true, lastHeartbeat: new Date() }));
         toast.success('Phone ready to receive calls');
+        
+        // Process any pending calls
+        if (pendingCallsRef.current.length > 0) {
+          console.log('[CallContext] Processing pending calls:', pendingCallsRef.current.length);
+          const pendingCall = pendingCallsRef.current.shift();
+          if (pendingCall && !incomingCall && !isConnected) {
+            setIncomingCall(pendingCall);
+            acknowledgeCall(pendingCall);
+          }
+        }
+      });
+
+      device.on('unregistered', () => {
+        console.log('[CallContext] Twilio Device unregistered');
+        setHealthStatus(prev => ({ ...prev, deviceReady: false }));
       });
 
       device.on('error', (error) => {
-        console.error('Twilio Device error:', error);
+        console.error('[CallContext] Twilio Device error:', error);
+        setHealthStatus(prev => ({ ...prev, deviceReady: false }));
         toast.error(`Call error: ${error.message}`);
+        
+        // Try to re-register on error
+        setTimeout(() => {
+          if (deviceRef.current && deviceRef.current.state !== 'registered') {
+            console.log('[CallContext] Attempting to re-register device...');
+            deviceRef.current.register();
+          }
+        }, 5000);
       });
 
       device.on('incoming', (call) => {
-        console.log('Incoming call via Twilio SDK:', call.parameters);
+        console.log('[CallContext] Incoming call via Twilio SDK:', call.parameters);
         setActiveCall(call);
         
         const fromNumber = call.parameters.From || 'Unknown';
-        console.log('Call from:', fromNumber);
+        console.log('[CallContext] Call from:', fromNumber);
+        
+        // Log SDK event
+        logCallEvent(call.parameters.CallSid || 'unknown', 'sdk_incoming_received', undefined, {
+          from: fromNumber,
+          call_parameters: call.parameters,
+        });
         
         call.on('accept', () => {
-          console.log('Call accepted');
+          console.log('[CallContext] Call accepted');
           setIsConnected(true);
           startCallTimer();
+          logCallEvent(call.parameters.CallSid || 'unknown', 'call_accepted');
         });
         
         call.on('disconnect', () => {
-          console.log('Call disconnected');
+          console.log('[CallContext] Call disconnected');
+          logCallEvent(call.parameters.CallSid || 'unknown', 'call_disconnected');
           handleCallEnd();
         });
         
         call.on('cancel', () => {
-          console.log('Call cancelled');
+          console.log('[CallContext] Call cancelled');
+          logCallEvent(call.parameters.CallSid || 'unknown', 'call_cancelled');
           handleCallEnd();
         });
         
         call.on('reject', () => {
-          console.log('Call rejected');
+          console.log('[CallContext] Call rejected');
+          logCallEvent(call.parameters.CallSid || 'unknown', 'call_rejected');
           handleCallEnd();
         });
       });
@@ -175,27 +276,52 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       await device.register();
       deviceRef.current = device;
       setTwilioDevice(device);
-      console.log('Twilio Device initialized successfully');
+      console.log('[CallContext] Twilio Device initialized successfully');
       
       return device;
     } catch (error) {
-      console.error('Failed to initialize Twilio Device:', error);
+      console.error('[CallContext] Failed to initialize Twilio Device:', error);
+      setHealthStatus(prev => ({ ...prev, deviceReady: false }));
       return null;
     } finally {
       setIsInitializing(false);
     }
-  }, [isEvan, startCallTimer, handleCallEnd]);
+  }, [isEvan, startCallTimer, handleCallEnd, incomingCall, isConnected, acknowledgeCall, logCallEvent]);
 
-  // Auto-initialize Twilio Device on mount
+  // EAGER initialization - initialize as soon as Evan is detected
   useEffect(() => {
     if (isEvan) {
+      console.log('[CallContext] Evan detected, eagerly initializing Twilio Device');
       initializeTwilioDevice();
     }
     
     return () => {
-      // Don't destroy the device on unmount - we want it to persist
+      // Don't destroy on unmount - persist across navigation
     };
-  }, [initializeTwilioDevice, isEvan]);
+  }, [isEvan]); // Only depend on isEvan, not the function
+
+  // Keep device warm with periodic re-registration
+  useEffect(() => {
+    if (!isEvan) return;
+    
+    const keepWarm = setInterval(() => {
+      if (deviceRef.current) {
+        if (deviceRef.current.state !== 'registered') {
+          console.log('[CallContext] Device not registered, attempting to register...');
+          deviceRef.current.register().catch(err => {
+            console.error('[CallContext] Failed to re-register:', err);
+          });
+        } else {
+          setHealthStatus(prev => ({ ...prev, lastHeartbeat: new Date() }));
+        }
+      } else {
+        console.log('[CallContext] No device, reinitializing...');
+        initializeTwilioDevice();
+      }
+    }, 30000); // Every 30 seconds
+
+    return () => clearInterval(keepWarm);
+  }, [isEvan, initializeTwilioDevice]);
 
   // Cleanup on provider unmount (app close)
   useEffect(() => {
@@ -226,11 +352,11 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [incomingCall, isConnected]);
 
-  // Subscribe to realtime changes
+  // Subscribe to realtime changes with robust handling
   useEffect(() => {
     if (!isEvan) return;
     
-    // Initial fetch for any ringing calls
+    // Initial fetch for any ringing calls - process buffered calls
     const fetchRingingCalls = async () => {
       const { data, error } = await supabase
         .from('active_calls')
@@ -239,13 +365,29 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         .eq('direction', 'inbound')
         .order('created_at', { ascending: false });
       
-      if (!error && data && data.length > 0 && !incomingCall && !isConnected) {
-        setIncomingCall(data[0] as ActiveCallData);
+      if (!error && data && data.length > 0) {
+        console.log('[CallContext] Found ringing calls:', data.length);
+        
+        if (!incomingCall && !isConnected) {
+          const call = data[0] as ActiveCallData;
+          
+          // Check if device is ready - if not, buffer the call
+          if (deviceRef.current?.state !== 'registered') {
+            console.log('[CallContext] Device not ready, buffering call:', call.call_sid);
+            pendingCallsRef.current.push(call);
+            
+            // Try to initialize device
+            initializeTwilioDevice();
+          } else {
+            setIncomingCall(call);
+            acknowledgeCall(call);
+          }
+        }
       }
     };
     
     fetchRingingCalls();
-    const pollInterval = setInterval(fetchRingingCalls, 3000);
+    const pollInterval = setInterval(fetchRingingCalls, 2000); // Poll every 2s for faster response
     
     const channel = supabase
       .channel('active-calls-realtime-context')
@@ -257,15 +399,33 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
           table: 'active_calls',
         },
         (payload) => {
-          console.log('Realtime call update:', payload);
+          console.log('[CallContext] Realtime call update:', payload.eventType, payload.new);
+          setHealthStatus(prev => ({ ...prev, socketConnected: true, lastHeartbeat: new Date() }));
           
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const call = payload.new as ActiveCallData;
             
             if (call.status === 'ringing' && call.direction === 'inbound') {
-              setIncomingCall(call);
+              console.log('[CallContext] New ringing call detected:', call.call_sid);
+              
+              // Log that we received the realtime event
+              logCallEvent(call.call_sid, 'realtime_received', call.call_flow_id);
+              
+              // Check if device is ready
+              if (deviceRef.current?.state !== 'registered') {
+                console.log('[CallContext] Device not ready for realtime call, buffering');
+                pendingCallsRef.current.push(call);
+                initializeTwilioDevice();
+              } else if (!incomingCall && !isConnected) {
+                setIncomingCall(call);
+                acknowledgeCall(call);
+              }
             } else if (incomingCall?.call_sid === call.call_sid && !isConnected) {
-              setIncomingCall(null);
+              // Call status changed from ringing
+              if (call.status !== 'ringing') {
+                console.log('[CallContext] Call no longer ringing:', call.status);
+                setIncomingCall(null);
+              }
             }
           }
           
@@ -280,13 +440,20 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
           queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[CallContext] Realtime subscription status:', status);
+        setHealthStatus(prev => ({ 
+          ...prev, 
+          socketConnected: status === 'SUBSCRIBED',
+          lastHeartbeat: new Date(),
+        }));
+      });
 
     return () => {
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, [isEvan, incomingCall, isConnected, queryClient]);
+  }, [isEvan, incomingCall, isConnected, queryClient, acknowledgeCall, logCallEvent, initializeTwilioDevice]);
 
   const answerCall = useCallback(async () => {
     if (!incomingCall) throw new Error('No incoming call');
@@ -306,6 +473,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       throw new Error('Microphone access is required to answer calls.');
     }
 
+    await logCallEvent(incomingCall.call_sid, 'answer_attempted', incomingCall.call_flow_id);
+    
     activeCall.accept();
 
     const { error } = await supabase
@@ -318,8 +487,9 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) throw error;
     
+    await logCallEvent(incomingCall.call_sid, 'call_answered', incomingCall.call_flow_id);
     toast.success('Call connected!');
-  }, [incomingCall, activeCall, initializeTwilioDevice]);
+  }, [incomingCall, activeCall, initializeTwilioDevice, logCallEvent]);
 
   const hangupCall = useCallback(async () => {
     if (activeCall) {
@@ -327,6 +497,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     }
     
     if (incomingCall) {
+      await logCallEvent(incomingCall.call_sid, 'hangup', incomingCall.call_flow_id);
+      
       const { error } = await supabase
         .from('active_calls')
         .update({ 
@@ -340,10 +512,12 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     
     handleCallEnd();
     toast.info('Call ended');
-  }, [activeCall, incomingCall, handleCallEnd]);
+  }, [activeCall, incomingCall, handleCallEnd, logCallEvent]);
 
   const declineCall = useCallback(async () => {
     if (!incomingCall) throw new Error('No incoming call');
+    
+    await logCallEvent(incomingCall.call_sid, 'declined', incomingCall.call_flow_id);
     
     if (activeCall) {
       activeCall.reject();
@@ -361,7 +535,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     
     toast.info('Call declined');
     handleCallEnd();
-  }, [incomingCall, activeCall, handleCallEnd]);
+  }, [incomingCall, activeCall, handleCallEnd, logCallEvent]);
 
   const toggleMute = useCallback(() => {
     if (activeCall) {
@@ -378,6 +552,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     isMuted,
     callDuration,
     isInitializing,
+    healthStatus,
     answerCall,
     hangupCall,
     declineCall,

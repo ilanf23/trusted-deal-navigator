@@ -17,42 +17,51 @@ export type Database = {
       active_calls: {
         Row: {
           answered_at: string | null
+          call_flow_id: string | null
           call_sid: string
           created_at: string
           direction: string
           ended_at: string | null
           from_number: string
+          frontend_ack_at: string | null
           id: string
           lead_id: string | null
           status: string
           to_number: string
           updated_at: string
+          webhook_timestamp: string | null
         }
         Insert: {
           answered_at?: string | null
+          call_flow_id?: string | null
           call_sid: string
           created_at?: string
           direction?: string
           ended_at?: string | null
           from_number: string
+          frontend_ack_at?: string | null
           id?: string
           lead_id?: string | null
           status?: string
           to_number: string
           updated_at?: string
+          webhook_timestamp?: string | null
         }
         Update: {
           answered_at?: string | null
+          call_flow_id?: string | null
           call_sid?: string
           created_at?: string
           direction?: string
           ended_at?: string | null
           from_number?: string
+          frontend_ack_at?: string | null
           id?: string
           lead_id?: string | null
           status?: string
           to_number?: string
           updated_at?: string
+          webhook_timestamp?: string | null
         }
         Relationships: [
           {
@@ -153,6 +162,77 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      call_events: {
+        Row: {
+          call_flow_id: string
+          call_sid: string
+          created_at: string
+          db_inserted: boolean | null
+          device_ready: boolean | null
+          event_type: string
+          from_number: string | null
+          frontend_acknowledged_at: string | null
+          frontend_received: boolean | null
+          id: string
+          lead_id: string | null
+          lead_name: string | null
+          metadata: Json | null
+          realtime_sent: boolean | null
+          socket_connected: boolean | null
+          to_number: string | null
+          user_session_active: boolean | null
+          webhook_received: boolean | null
+        }
+        Insert: {
+          call_flow_id?: string
+          call_sid: string
+          created_at?: string
+          db_inserted?: boolean | null
+          device_ready?: boolean | null
+          event_type: string
+          from_number?: string | null
+          frontend_acknowledged_at?: string | null
+          frontend_received?: boolean | null
+          id?: string
+          lead_id?: string | null
+          lead_name?: string | null
+          metadata?: Json | null
+          realtime_sent?: boolean | null
+          socket_connected?: boolean | null
+          to_number?: string | null
+          user_session_active?: boolean | null
+          webhook_received?: boolean | null
+        }
+        Update: {
+          call_flow_id?: string
+          call_sid?: string
+          created_at?: string
+          db_inserted?: boolean | null
+          device_ready?: boolean | null
+          event_type?: string
+          from_number?: string | null
+          frontend_acknowledged_at?: string | null
+          frontend_received?: boolean | null
+          id?: string
+          lead_id?: string | null
+          lead_name?: string | null
+          metadata?: Json | null
+          realtime_sent?: boolean | null
+          socket_connected?: boolean | null
+          to_number?: string | null
+          user_session_active?: boolean | null
+          webhook_received?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       call_rating_notifications: {
         Row: {
