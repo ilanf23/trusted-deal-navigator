@@ -967,15 +967,19 @@ const EvansPipeline = () => {
                     <SelectValue placeholder="Select pipeline" />
                   </div>
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800 z-50">
+                <SelectContent className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-lg z-[100]">
                   {pipelines.map((pipeline) => (
-                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                    <SelectItem 
+                      key={pipeline.id} 
+                      value={pipeline.id}
+                      className="text-slate-900 dark:text-slate-100 focus:bg-slate-100 dark:focus:bg-slate-700"
+                    >
                       <div className="flex items-center gap-2">
                         <div 
-                          className="w-2 h-2 rounded-full" 
+                          className="w-2 h-2 rounded-full flex-shrink-0" 
                           style={{ backgroundColor: pipeline.color || '#0066FF' }} 
                         />
-                        {pipeline.name}
+                        <span>{pipeline.name}</span>
                         {pipeline.is_main && (
                           <Badge className="ml-1 bg-amber-100 text-amber-700 border-amber-200 text-[8px] font-semibold px-1 py-0">
                             MAIN
@@ -985,7 +989,7 @@ const EvansPipeline = () => {
                     </SelectItem>
                   ))}
                   {pipelines.length === 0 && (
-                    <div className="px-2 py-3 text-sm text-slate-500 text-center">
+                    <div className="px-2 py-3 text-sm text-slate-500 dark:text-slate-400 text-center">
                       No pipelines found
                     </div>
                   )}
