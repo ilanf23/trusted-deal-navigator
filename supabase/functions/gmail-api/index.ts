@@ -289,6 +289,8 @@ async function getMessage(accessToken: string, messageId: string, fetchPhoto: bo
       snippet: message.snippet || '',
       from: headers.from || '',
       to: headers.to || '',
+      cc: headers.cc || '',
+      bcc: headers.bcc || '',
       subject: headers.subject || '(No Subject)',
       date: headers.date || '',
       body: htmlBody || plainBody,
