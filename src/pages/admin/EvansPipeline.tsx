@@ -269,10 +269,32 @@ const EvansPipeline = () => {
     },
   });
 
+  // Fetch all team members for the owner filter
+  const { data: allTeamMembers = [] } = useQuery({
+    queryKey: ['all-team-members-for-filter'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const evanId = evanTeamMember?.id;
 
+  // Create a map of team member names to IDs for filtering
+  const teamMemberNameToId = useMemo(() => {
+    const map: Record<string, string> = {};
+    allTeamMembers.forEach(tm => {
+      map[tm.name.toLowerCase()] = tm.id;
+    });
+    return map;
+  }, [allTeamMembers]);
+
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['evans-pipeline-leads', evanId, ownerFilter],
+    queryKey: ['evans-pipeline-leads', evanId, ownerFilter, teamMemberNameToId],
     queryFn: async () => {
       if (!evanId) return [];
       
@@ -281,9 +303,12 @@ const EvansPipeline = () => {
         .select('*')
         .order('updated_at', { ascending: false });
       
-      // Filter to only Evan's leads when "evan" is selected
-      if (ownerFilter === 'evan') {
-        query = query.eq('assigned_to', evanId);
+      // Filter by specific team member when not "all"
+      if (ownerFilter !== 'all') {
+        const memberId = teamMemberNameToId[ownerFilter.toLowerCase()];
+        if (memberId) {
+          query = query.eq('assigned_to', memberId);
+        }
       }
       
       const { data, error } = await query;
@@ -683,11 +708,14 @@ const EvansPipeline = () => {
       return { field, value };
     },
     onSuccess: (result) => {
-      // If changing ownership to someone other than Evan while filtering by Evan's leads,
-      // switch to "All Leads" filter so the reassigned lead remains visible
-      if (result.field === 'assigned_to' && ownerFilter === 'evan' && result.value !== evanId) {
-        setOwnerFilter('all');
-        toast.success('Lead reassigned - showing all leads');
+      // If changing ownership while filtering by a specific team member,
+      // and the new owner doesn't match the filter, switch to "All Leads"
+      if (result.field === 'assigned_to' && ownerFilter !== 'all') {
+        const currentFilterId = teamMemberNameToId[ownerFilter.toLowerCase()];
+        if (result.value !== currentFilterId) {
+          setOwnerFilter('all');
+          toast.success('Lead reassigned - showing all leads');
+        }
       }
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
@@ -761,11 +789,16 @@ const EvansPipeline = () => {
       return { ownerId };
     },
     onSuccess: (result) => {
-      // If reassigning to someone other than Evan while filtering by Evan's leads,
+      // If reassigning while filtering by a specific team member,
       // switch to "All Leads" filter so the reassigned leads remain visible
-      if (ownerFilter === 'evan' && result.ownerId !== evanId) {
-        setOwnerFilter('all');
-        toast.success(`${selectedLeadIds.size} lead(s) reassigned - showing all leads`);
+      if (ownerFilter !== 'all') {
+        const currentFilterId = teamMemberNameToId[ownerFilter.toLowerCase()];
+        if (result.ownerId !== currentFilterId) {
+          setOwnerFilter('all');
+          toast.success(`${selectedLeadIds.size} lead(s) reassigned - showing all leads`);
+        } else {
+          toast.success(`${selectedLeadIds.size} lead(s) reassigned`);
+        }
       } else {
         toast.success(`${selectedLeadIds.size} lead(s) reassigned`);
       }
@@ -1219,13 +1252,16 @@ const EvansPipeline = () => {
               </SelectContent>
             </Select>
             <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-              <SelectTrigger className="w-full sm:w-36 md:w-44 h-9 md:h-10 border-slate-200 dark:border-slate-600 text-sm">
+              <SelectTrigger className="w-full sm:w-40 md:w-48 h-9 md:h-10 border-slate-200 dark:border-slate-600 text-sm">
                 <Users className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 text-slate-400" />
                 <SelectValue placeholder="Owner" />
               </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-slate-800 z-50">
-                <SelectItem value="evan">Just Evan's Leads</SelectItem>
-                <SelectItem value="all">All Leads</SelectItem>
+              <SelectContent className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-lg z-[100]">
+                <SelectItem value="evan" className="text-slate-900 dark:text-slate-100">Evan's Leads</SelectItem>
+                <SelectItem value="brad" className="text-slate-900 dark:text-slate-100">Brad's Leads</SelectItem>
+                <SelectItem value="maura" className="text-slate-900 dark:text-slate-100">Maura's Leads</SelectItem>
+                <SelectItem value="wendy" className="text-slate-900 dark:text-slate-100">Wendy's Leads</SelectItem>
+                <SelectItem value="all" className="text-slate-900 dark:text-slate-100">All Leads</SelectItem>
               </SelectContent>
             </Select>
             <HelpTooltip 
