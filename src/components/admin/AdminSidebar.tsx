@@ -182,6 +182,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: "To Do's", url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
           { title: 'Calendar', url: `/team/${employeeName.toLowerCase()}/calendar`, icon: Calendar },
           { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
+          { title: 'LP', url: `/team/${employeeName.toLowerCase()}/lender-programs`, icon: Building2 },
           { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
         ],
         noCollapse: true,
