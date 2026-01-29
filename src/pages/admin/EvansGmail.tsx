@@ -623,7 +623,7 @@ Commercial Lending X`;
     },
   });
 
-  // Fetch emails
+  // Fetch inbox emails
   const { data: emails = [], isLoading: emailsLoading } = useQuery({
     queryKey: ['evan-gmail-emails'],
     queryFn: async () => {
@@ -641,6 +641,39 @@ Commercial Lending X`;
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to fetch emails');
+
+      return (data?.messages || []).map((msg: any) => ({
+        id: msg.id,
+        threadId: msg.threadId,
+        subject: msg.subject || '(No Subject)',
+        from: msg.from || '',
+        to: msg.to || '',
+        date: msg.date || new Date().toISOString(),
+        snippet: msg.snippet || '',
+        isRead: !msg.isUnread,
+        senderPhoto: msg.senderPhoto || null,
+      })) as Email[];
+    },
+    enabled: !!gmailConnection,
+  });
+
+  // Fetch sent emails separately (only emails sent by Evan)
+  const { data: sentEmails = [], isLoading: sentEmailsLoading } = useQuery({
+    queryKey: ['evan-gmail-sent-emails'],
+    queryFn: async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
+      if (sessionError || !session) {
+        console.error('Session refresh failed:', sessionError);
+        return [];
+      }
+
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=in:sent&maxResults=50&fetchPhotos=true`,
+        { headers: { 'Authorization': `Bearer ${session.access_token}` } }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch sent emails');
 
       return (data?.messages || []).map((msg: any) => ({
         id: msg.id,
@@ -676,10 +709,11 @@ Commercial Lending X`;
     
     // Apply folder filter
     if (activeFolder === 'sent') {
-      // Show only sent emails (those from Evan)
-      result = result.filter(email => {
-        const senderEmail = extractEmailAddress(email.from);
-        return senderEmail.includes('evan') || senderEmail.includes('commerciallendingx');
+      // Use the dedicated sent emails from Gmail API (not inbox emails)
+      result = sentEmails.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateB - dateA;
       });
     } else if (activeFolder === 'drafts') {
       // For now, show empty drafts (would be connected to Gmail drafts API)
@@ -729,7 +763,7 @@ Commercial Lending X`;
     }
     
     return result;
-  }, [allEmails, crmEmails, activeFolder, searchQuery, allLeads]);
+  }, [allEmails, crmEmails, activeFolder, searchQuery, allLeads, sentEmails]);
 
   // Reset page when folder or search changes
   useEffect(() => {
