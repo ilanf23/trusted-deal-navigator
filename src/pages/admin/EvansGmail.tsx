@@ -56,6 +56,7 @@ interface Email {
   to?: string;
   date: string;
   snippet: string;
+  body?: string;
   isRead: boolean;
   senderPhoto?: string | null;
 }
@@ -413,6 +414,37 @@ const extractEmailAddress = (from: string): string => {
   return '';
 };
 
+const looksLikeHtml = (value: string) => /<\/?[a-z][\s\S]*>/i.test(value);
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+// Lightweight sanitization: strip scripts/iframes and inline event handlers.
+// (We still render email HTML, but avoid obvious injection vectors.)
+const sanitizeEmailHtml = (html: string) => {
+  if (!html) return '';
+  return html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/href\s*=\s*"javascript:[^"]*"/gi, 'href="#"')
+    .replace(/href\s*=\s*'javascript:[^']*'/gi, "href='#'");
+};
+
+const toRenderableHtml = (value: string) => {
+  const v = value ?? '';
+  if (!v.trim()) return '';
+  if (looksLikeHtml(v)) return sanitizeEmailHtml(v);
+  return escapeHtml(v).replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
+};
+
 const EvansGmail = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -453,6 +485,17 @@ const EvansGmail = () => {
 
   // Mark email as read when selected
   const handleSelectEmail = (emailId: string) => {
+    const email = filteredEmails.find((e) => e.id === emailId);
+    if (email) {
+      const body = (email.body || '').toString();
+      console.log('[gmail-view] open email', {
+        id: email.id,
+        subject: email.subject,
+        snippetLength: (email.snippet || '').length,
+        bodyLength: body.length,
+        bodyPreview: body.substring(0, 200),
+      });
+    }
     setSelectedEmailId(emailId);
     setReadEmailIds(prev => ({ ...prev, [emailId]: true }));
   };
@@ -656,6 +699,7 @@ Commercial Lending X`;
         to: msg.to || '',
         date: msg.date || new Date().toISOString(),
         snippet: msg.snippet || '',
+        body: msg.body || '',
         isRead: !msg.isUnread,
         senderPhoto: msg.senderPhoto || null,
       })) as Email[];
@@ -689,6 +733,7 @@ Commercial Lending X`;
         to: msg.to || '',
         date: msg.date || new Date().toISOString(),
         snippet: msg.snippet || '',
+        body: msg.body || '',
         isRead: !msg.isUnread,
         senderPhoto: msg.senderPhoto || null,
       })) as Email[];
@@ -1546,7 +1591,16 @@ Commercial Lending X`;
                             </p>
                           </div>
                         </div>
-                        <p className="text-sm whitespace-pre-wrap">{selectedEmail.snippet}</p>
+                        <div
+                          className="prose prose-sm max-w-none dark:prose-invert text-sm leading-relaxed"
+                          dangerouslySetInnerHTML={{
+                            __html: toRenderableHtml(
+                              (selectedEmail.body && selectedEmail.body.trim())
+                                ? selectedEmail.body
+                                : selectedEmail.snippet
+                            ),
+                          }}
+                        />
                       </>
                     )}
                   </div>
