@@ -118,13 +118,20 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   }, [body, isOpen]);
   
   // Handle editor mount - set pending content if any
+  // CRITICAL: Also sync back to parent to ensure state is correct for sending
   const handleEditorRef = useCallback((node: HTMLDivElement | null) => {
     editorRef.current = node;
     if (node && pendingBody.current !== null) {
       node.innerHTML = pendingBody.current;
+      // Sync the content back to parent state to ensure it's captured when sending
+      const contentToSync = pendingBody.current;
       pendingBody.current = null;
+      // Use setTimeout to avoid state update during render
+      setTimeout(() => {
+        onBodyChange(contentToSync);
+      }, 0);
     }
-  }, []);
+  }, [onBodyChange]);
 
   // Early return AFTER all hooks
   if (!isOpen) return null;
