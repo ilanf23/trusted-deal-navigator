@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import AdminLayout from '@/components/admin/AdminLayout';
+import EvanLayout from '@/components/evan/EvanLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -768,16 +768,16 @@ const EvansCalls = () => {
 
   if (isLoading) {
     return (
-      <AdminLayout>
+      <EvanLayout>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-admin-blue" />
         </div>
-      </AdminLayout>
+      </EvanLayout>
     );
   }
 
   return (
-    <AdminLayout>
+    <EvanLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -1578,7 +1578,7 @@ const EvansCalls = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </EvanLayout>
   );
 };
 

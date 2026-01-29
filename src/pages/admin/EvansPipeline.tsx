@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { Link, useNavigate } from 'react-router-dom';
-import AdminLayout from '@/components/admin/AdminLayout';
+import EvanLayout from '@/components/evan/EvanLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
@@ -898,16 +898,16 @@ const EvansPipeline = () => {
 
   if (isLoading) {
     return (
-      <AdminLayout>
+      <EvanLayout>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0066FF]"></div>
         </div>
-      </AdminLayout>
+      </EvanLayout>
     );
   }
 
   return (
-    <AdminLayout>
+    <EvanLayout>
       <div className="flex flex-col h-full font-['Inter',_'SF_Pro_Display',_system-ui,_sans-serif]">
         {/* Header - responsive layout */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-4">
@@ -1808,7 +1808,7 @@ const EvansPipeline = () => {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </EvanLayout>
   );
 };
 

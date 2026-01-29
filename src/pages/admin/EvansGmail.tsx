@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import AdminLayout from '@/components/admin/AdminLayout';
+import EvanLayout from '@/components/evan/EvanLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -1360,18 +1360,18 @@ Commercial Lending X`;
   // Loading
   if (connectionLoading) {
     return (
-      <AdminLayout>
+      <EvanLayout>
         <div className="flex items-center justify-center h-[calc(100vh-100px)]">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      </AdminLayout>
+      </EvanLayout>
     );
   }
 
   // Not connected
   if (!gmailConnection) {
     return (
-      <AdminLayout>
+      <EvanLayout>
         <div className="flex items-center justify-center h-[calc(100vh-100px)]">
           <div className="text-center">
             <Mail className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -1384,7 +1384,7 @@ Commercial Lending X`;
             </Button>
           </div>
         </div>
-      </AdminLayout>
+      </EvanLayout>
     );
   }
 
@@ -1392,7 +1392,7 @@ Commercial Lending X`;
   const selectedLead = selectedEmail ? findLeadForEmail(selectedEmail) : null;
 
   return (
-    <AdminLayout>
+    <EvanLayout>
       <div className="flex h-[calc(100vh-100px)] border rounded-lg overflow-hidden bg-background">
         {/* Sidebar */}
         <GmailSidebar
@@ -2179,7 +2179,7 @@ Commercial Lending X`;
         initialDescription={taskInitialDescription}
         initialLeadId={taskInitialLeadId}
       />
-    </AdminLayout>
+    </EvanLayout>
   );
 };
 

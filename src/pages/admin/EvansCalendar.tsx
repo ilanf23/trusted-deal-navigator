@@ -1,9 +1,9 @@
-import AdminLayout from '@/components/admin/AdminLayout';
+import EvanLayout from '@/components/evan/EvanLayout';
 import { EvanCalendarWidget } from '@/components/evan/EvanCalendarWidget';
 
 const EvansCalendar = () => {
   return (
-    <AdminLayout>
+    <EvanLayout>
       <div className="space-y-2">
         {/* Clean Apple-style Header */}
         <div className="pb-4">
@@ -14,7 +14,7 @@ const EvansCalendar = () => {
         {/* Calendar Widget */}
         <EvanCalendarWidget />
       </div>
-    </AdminLayout>
+    </EvanLayout>
   );
 };
 
