@@ -55,6 +55,8 @@ interface Email {
   subject: string;
   from: string;
   to?: string;
+  cc?: string;
+  bcc?: string;
   date: string;
   snippet: string;
   body?: string;
@@ -736,6 +738,8 @@ Commercial Lending X`;
         subject: msg.subject || '(No Subject)',
         from: msg.from || '',
         to: msg.to || '',
+        cc: msg.cc || '',
+        bcc: msg.bcc || '',
         date: msg.date || new Date().toISOString(),
         snippet: msg.snippet || '',
         body: msg.body || '',
@@ -1590,6 +1594,20 @@ Commercial Lending X`;
                             </div>
                             {showEmailAddress && (
                               <p className="text-xs text-muted-foreground">{selectedEmail.from}</p>
+                            )}
+                            {/* Show To, CC, BCC for sent emails */}
+                            {activeFolder === 'sent' && (
+                              <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                                {selectedEmail.to && (
+                                  <p><span className="font-medium">To:</span> {selectedEmail.to}</p>
+                                )}
+                                {selectedEmail.cc && (
+                                  <p><span className="font-medium">Cc:</span> {selectedEmail.cc}</p>
+                                )}
+                                {selectedEmail.bcc && (
+                                  <p><span className="font-medium">Bcc:</span> {selectedEmail.bcc}</p>
+                                )}
+                              </div>
                             )}
                             <p className="text-sm text-muted-foreground">
                               {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
