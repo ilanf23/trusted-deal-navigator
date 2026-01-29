@@ -313,6 +313,26 @@ function encodeBase64Url(str: string): string {
 }
 
 // Helper to create a multipart MIME message with attachments
+// Convert plain text line breaks to HTML <br> tags for proper email formatting
+function formatEmailBody(body: string): string {
+  // If body already contains HTML tags, assume it's properly formatted
+  if (/<[a-z][\s\S]*>/i.test(body)) {
+    // Still ensure newlines within text are converted to <br>
+    // But preserve existing HTML structure
+    return body
+      .replace(/\r\n/g, '\n')
+      .replace(/\n/g, '<br>\n');
+  }
+  
+  // Plain text - wrap in a div with proper styling and convert newlines
+  const formattedBody = body
+    .replace(/\r\n/g, '\n')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+  
+  return `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333;"><p>${formattedBody}</p></div>`;
+}
+
 function createMimeMessage(
   to: string, 
   subject: string, 
@@ -322,6 +342,9 @@ function createMimeMessage(
   inReplyTo?: string
 ): string {
   const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+  
+  // Format the body for proper HTML rendering
+  const formattedBody = formatEmailBody(body);
   
   // If no attachments, use simple format
   if (!attachments || attachments.length === 0) {
@@ -333,7 +356,7 @@ function createMimeMessage(
       'Content-Type: text/html; charset=utf-8',
       'Content-Transfer-Encoding: 8bit',
       '',
-      body,
+      formattedBody,
     ].filter(Boolean).join('\r\n');
     
     return email;
@@ -352,7 +375,7 @@ function createMimeMessage(
     'Content-Type: text/html; charset=utf-8',
     'Content-Transfer-Encoding: 8bit',
     '',
-    body,
+    formattedBody,
   ].filter(Boolean).join('\r\n');
   
   // Add each attachment
