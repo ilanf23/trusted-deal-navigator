@@ -348,13 +348,15 @@ const EvansPipeline = () => {
     enabled: leads.length > 0,
   });
 
-  // Fetch team members for "Assigned To" column
+  // Fetch team members for "Assigned To" column (exclude Adam and Ilan from ownership)
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members-list'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('team_members')
-        .select('id, name');
+        .select('id, name')
+        .not('name', 'ilike', 'adam')
+        .not('name', 'ilike', 'ilan');
       if (error) throw error;
       return data;
     },
