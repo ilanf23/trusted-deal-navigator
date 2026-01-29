@@ -6,17 +6,27 @@ const corsHeaders = {
   'Content-Type': 'application/xml',
 };
 
+// Generate unique flow ID for tracing
+function generateFlowId(): string {
+  return crypto.randomUUID();
+}
+
 // This endpoint handles incoming calls from Twilio
 Deno.serve(async (req) => {
+  const callFlowId = generateFlowId();
+  const webhookTimestamp = new Date().toISOString();
+  
+  console.log(`[CALL_FLOW:${callFlowId}] Webhook received at ${webhookTimestamp}`);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
+  try {
     // Parse form data from Twilio webhook
     const formData = await req.formData().catch(() => null);
     
@@ -25,10 +35,33 @@ Deno.serve(async (req) => {
     const toNumber = formData?.get('To')?.toString() || '';
     const callStatus = formData?.get('CallStatus')?.toString() || 'ringing';
 
-    console.log(`Incoming call: ${callSid} from ${fromNumber} to ${toNumber}, status: ${callStatus}`);
+    console.log(`[CALL_FLOW:${callFlowId}] Call details - SID: ${callSid}, From: ${fromNumber}, Status: ${callStatus}`);
+
+    // Log webhook received event
+    await supabase.from('call_events').insert({
+      call_flow_id: callFlowId,
+      call_sid: callSid || 'unknown',
+      event_type: 'webhook_received',
+      from_number: fromNumber,
+      to_number: toNumber,
+      webhook_received: true,
+      metadata: {
+        call_status: callStatus,
+        webhook_timestamp: webhookTimestamp,
+        raw_params: Object.fromEntries(formData?.entries() || []),
+      },
+    });
 
     if (!callSid || !fromNumber) {
-      console.log('Missing required fields');
+      console.log(`[CALL_FLOW:${callFlowId}] ERROR: Missing required fields`);
+      
+      await supabase.from('call_events').insert({
+        call_flow_id: callFlowId,
+        call_sid: callSid || 'unknown',
+        event_type: 'error',
+        metadata: { error: 'Missing required fields', from_number: fromNumber, call_sid: callSid },
+      });
+      
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say>We are unable to process your call at this time. Please try again later.</Say>
@@ -45,8 +78,10 @@ Deno.serve(async (req) => {
       .limit(1)
       .single();
 
-    // Insert the active call record
-    const { error: insertError } = await supabase
+    console.log(`[CALL_FLOW:${callFlowId}] Lead lookup - Found: ${lead ? lead.name : 'No match'}`);
+
+    // Insert the active call record with call_flow_id for tracing
+    const { data: insertedCall, error: insertError } = await supabase
       .from('active_calls')
       .upsert({
         call_sid: callSid,
@@ -55,14 +90,46 @@ Deno.serve(async (req) => {
         status: 'ringing',
         direction: 'inbound',
         lead_id: lead?.id || null,
+        call_flow_id: callFlowId,
+        webhook_timestamp: webhookTimestamp,
       }, {
         onConflict: 'call_sid',
-      });
+      })
+      .select()
+      .single();
 
     if (insertError) {
-      console.error('Error inserting active call:', insertError);
+      console.error(`[CALL_FLOW:${callFlowId}] ERROR inserting active call:`, insertError);
+      
+      await supabase.from('call_events').insert({
+        call_flow_id: callFlowId,
+        call_sid: callSid,
+        event_type: 'db_error',
+        from_number: fromNumber,
+        to_number: toNumber,
+        db_inserted: false,
+        metadata: { error: insertError.message },
+      });
     } else {
-      console.log('Active call record created/updated');
+      console.log(`[CALL_FLOW:${callFlowId}] Active call record created - ID: ${insertedCall?.id}`);
+      
+      // Log successful DB insert
+      await supabase.from('call_events').insert({
+        call_flow_id: callFlowId,
+        call_sid: callSid,
+        event_type: 'db_inserted',
+        from_number: fromNumber,
+        to_number: toNumber,
+        lead_id: lead?.id,
+        lead_name: lead?.name,
+        webhook_received: true,
+        db_inserted: true,
+        realtime_sent: true, // Supabase realtime is automatic
+        metadata: {
+          active_call_id: insertedCall?.id,
+          lead_found: !!lead,
+        },
+      });
     }
 
     // Get admin users to find Twilio client identities
@@ -71,21 +138,10 @@ Deno.serve(async (req) => {
       .select('user_id')
       .eq('role', 'admin');
 
+    const clientCount = adminRoles?.length || 0;
+    console.log(`[CALL_FLOW:${callFlowId}] Found ${clientCount} admin clients to dial`);
+
     // Build client dial targets for all admin users
-    let clientDialTargets = '';
-    if (adminRoles && adminRoles.length > 0) {
-      clientDialTargets = adminRoles
-        .map(role => `<Client>evan-${role.user_id.substring(0, 8)}</Client>`)
-        .join('\n    ');
-    } else {
-      // Fallback to a generic client identity
-      clientDialTargets = '<Client>evan-admin</Client>';
-    }
-
-    console.log('Dialing Twilio clients:', clientDialTargets);
-
-    // Generate TwiML to connect to all Twilio Client browsers
-    // Note: transcribe attribute on <Dial> is deprecated - recordings are handled via recordingStatusCallback
     const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-call-status`;
 
     // Build the client targets with proper formatting
@@ -101,6 +157,19 @@ Deno.serve(async (req) => {
       <Identity>evan-admin</Identity>
     </Client>`;
 
+    // Log TwiML generation
+    await supabase.from('call_events').insert({
+      call_flow_id: callFlowId,
+      call_sid: callSid,
+      event_type: 'twiml_generated',
+      from_number: fromNumber,
+      to_number: toNumber,
+      metadata: {
+        client_count: clientCount,
+        status_callback_url: statusCallbackUrl,
+      },
+    });
+
     // Include a fallback action if no one answers - this prevents instant hangup
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -112,12 +181,24 @@ ${clientTargets}
   <Say>Thank you for your message. Goodbye.</Say>
 </Response>`;
 
-    console.log('TwiML response:', twiml);
+    console.log(`[CALL_FLOW:${callFlowId}] TwiML response generated, returning to Twilio`);
 
     return new Response(twiml, { headers: corsHeaders });
 
   } catch (error) {
-    console.error('Error in twilio-inbound function:', error);
+    console.error(`[CALL_FLOW:${callFlowId}] CRITICAL ERROR in twilio-inbound:`, error);
+    
+    // Log the error
+    await supabase.from('call_events').insert({
+      call_flow_id: callFlowId,
+      call_sid: 'unknown',
+      event_type: 'critical_error',
+      metadata: { 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+    });
+    
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say>An error occurred. Please try again later.</Say>

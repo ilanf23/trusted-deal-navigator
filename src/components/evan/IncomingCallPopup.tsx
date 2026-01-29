@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Phone, PhoneOff, User, Mic, MicOff, Volume2 } from 'lucide-react';
+import { Phone, PhoneOff, User, Mic, MicOff, Volume2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCall } from '@/contexts/CallContext';
+import { CallHealthIndicator } from './CallHealthIndicator';
 
 /**
  * Floating popup that displays incoming/active call UI.
@@ -17,6 +18,7 @@ export const IncomingCallPopup = () => {
     isMuted,
     callDuration,
     isInitializing,
+    healthStatus,
     answerCall,
     hangupCall,
     declineCall,
@@ -65,6 +67,9 @@ export const IncomingCallPopup = () => {
 
   // Only show popup for Evan when there's a call
   const showPopup = isEvan && (incomingCall || isConnected);
+  
+  // Show warning if call system is not healthy
+  const showHealthWarning = isEvan && !healthStatus.deviceReady && !incomingCall && !isConnected;
 
   return (
     <AnimatePresence>
@@ -170,6 +175,31 @@ export const IncomingCallPopup = () => {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+      
+      {/* Health warning when system is offline */}
+      {showHealthWarning && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className="fixed top-4 right-4 z-[9998]"
+        >
+          <Card className="w-72 shadow-lg border-amber-500/50 bg-background/95 backdrop-blur-sm">
+            <div className="bg-amber-500 text-white px-3 py-2 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">Call System Reconnecting</span>
+            </div>
+            <CardContent className="p-3">
+              <p className="text-xs text-muted-foreground">
+                The call system is reconnecting. Incoming calls may be delayed.
+              </p>
+              <div className="mt-2">
+                <CallHealthIndicator />
+              </div>
             </CardContent>
           </Card>
         </motion.div>
