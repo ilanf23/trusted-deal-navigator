@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import EmployeeRoute from "@/components/admin/EmployeeRoute";
 import PublicLayout from "@/components/layout/PublicLayout";
+import EvanPortalWrapper from "@/components/evan/EvanPortalWrapper";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
 import Contact from "./pages/Contact";
@@ -97,32 +98,37 @@ const App = () => (
               <Route path="/admin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
               <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
               <Route path="/admin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
-              {/* Team Member Routes (employees like Evan, Maura, Wendy) */}
-              {/* /user/evan routes - primary paths used in the app */}
-              <Route path="/user/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
-              <Route path="/user/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
-              <Route path="/user/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
-              <Route path="/user/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
-              <Route path="/user/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
-              <Route path="/user/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
-              <Route path="/user/evan/email-templates" element={<EmployeeRoute employeeName="Evan"><EvansEmailTemplates /></EmployeeRoute>} />
-              <Route path="/user/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
-              <Route path="/user/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
-              <Route path="/user/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
-              <Route path="/user/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
-              {/* Legacy /team/evan routes - kept for backward compatibility */}
-              <Route path="/team/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
-              <Route path="/team/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
-              <Route path="/team/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
-              <Route path="/team/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
-              <Route path="/team/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
-              <Route path="/team/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
-              <Route path="/team/evan/email-templates" element={<EmployeeRoute employeeName="Evan"><EvansEmailTemplates /></EmployeeRoute>} />
-              <Route path="/team/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
-              <Route path="/team/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
-              <Route path="/team/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
-              <Route path="/team/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
-              <Route path="/team/evan/rate-watch" element={<EmployeeRoute employeeName="Evan"><AdminRateWatch /></EmployeeRoute>} />
+              
+              {/* Evan Portal Routes - wrapped with EvanPortalWrapper for persistent call state */}
+              {/* /user/evan routes */}
+              <Route element={<EvanPortalWrapper />}>
+                <Route path="/user/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
+                <Route path="/user/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
+                <Route path="/user/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
+                <Route path="/user/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
+                <Route path="/user/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
+                <Route path="/user/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
+                <Route path="/user/evan/email-templates" element={<EmployeeRoute employeeName="Evan"><EvansEmailTemplates /></EmployeeRoute>} />
+                <Route path="/user/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
+                <Route path="/user/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
+                <Route path="/user/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
+                <Route path="/user/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
+                {/* /team/evan routes - legacy paths */}
+                <Route path="/team/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
+                <Route path="/team/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
+                <Route path="/team/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><EvansPipeline /></EmployeeRoute>} />
+                <Route path="/team/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
+                <Route path="/team/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
+                <Route path="/team/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
+                <Route path="/team/evan/email-templates" element={<EmployeeRoute employeeName="Evan"><EvansEmailTemplates /></EmployeeRoute>} />
+                <Route path="/team/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
+                <Route path="/team/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
+                <Route path="/team/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
+                <Route path="/team/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
+                <Route path="/team/evan/rate-watch" element={<EmployeeRoute employeeName="Evan"><AdminRateWatch /></EmployeeRoute>} />
+              </Route>
+              
+              {/* Other Team Member Routes */}
               <Route path="/team/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
               <Route path="/team/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
               {/* Founder/Admin Routes (Brad, Adam, Ilan) */}
