@@ -457,6 +457,10 @@ async function getLabels(accessToken: string) {
   return response.json();
 }
 
+// Cache for admin role checks to avoid repeated DB queries
+const adminRoleCache = new Map<string, { isAdmin: boolean; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -495,15 +499,26 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub as string;
 
-    // Check if user is admin
-    const { data: roleData } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('role', 'admin')
-      .single();
+    // Check admin role cache first
+    const cachedRole = adminRoleCache.get(userId);
+    let isAdmin = false;
+    
+    if (cachedRole && (Date.now() - cachedRole.timestamp) < CACHE_TTL) {
+      isAdmin = cachedRole.isAdmin;
+    } else {
+      // Check if user is admin
+      const { data: roleData } = await supabaseAdmin
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .single();
+      
+      isAdmin = !!roleData;
+      adminRoleCache.set(userId, { isAdmin, timestamp: Date.now() });
+    }
 
-    if (!roleData) {
+    if (!isAdmin) {
       return new Response(JSON.stringify({ error: 'Admin access required' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
