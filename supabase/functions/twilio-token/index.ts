@@ -145,8 +145,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate identity for this user
-    const identity = `evan-${userId.substring(0, 8)}`;
+    // Restrict Twilio receiving to Evan only (privacy + routing correctness)
+    const { data: teamMember } = await supabase
+      .from('team_members')
+      .select('name')
+      .eq('user_id', userId)
+      .limit(1)
+      .single();
+
+    if (!teamMember?.name || teamMember.name.toLowerCase() !== 'evan') {
+      return new Response(
+        JSON.stringify({ error: 'Evan access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use a single stable identity so inbound <Dial><Client> can always ring Evan.
+    const identity = 'evan-admin';
     
     console.log('Creating access token for identity:', identity, 'with TwiML App:', twimlAppSid);
     
