@@ -707,16 +707,7 @@ const EvansPipeline = () => {
       if (error) throw error;
       return { field, value };
     },
-    onSuccess: (result) => {
-      // If changing ownership while filtering by a specific team member,
-      // and the new owner doesn't match the filter, switch to "All Leads"
-      if (result.field === 'assigned_to' && ownerFilter !== 'all') {
-        const currentFilterId = teamMemberNameToId[ownerFilter.toLowerCase()];
-        if (result.value !== currentFilterId) {
-          setOwnerFilter('all');
-          toast.success('Lead reassigned - showing all leads');
-        }
-      }
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
     },
@@ -788,20 +779,8 @@ const EvansPipeline = () => {
       if (error) throw error;
       return { ownerId };
     },
-    onSuccess: (result) => {
-      // If reassigning while filtering by a specific team member,
-      // switch to "All Leads" filter so the reassigned leads remain visible
-      if (ownerFilter !== 'all') {
-        const currentFilterId = teamMemberNameToId[ownerFilter.toLowerCase()];
-        if (result.ownerId !== currentFilterId) {
-          setOwnerFilter('all');
-          toast.success(`${selectedLeadIds.size} lead(s) reassigned - showing all leads`);
-        } else {
-          toast.success(`${selectedLeadIds.size} lead(s) reassigned`);
-        }
-      } else {
-        toast.success(`${selectedLeadIds.size} lead(s) reassigned`);
-      }
+    onSuccess: () => {
+      toast.success(`${selectedLeadIds.size} lead(s) reassigned`);
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       clearSelection();
