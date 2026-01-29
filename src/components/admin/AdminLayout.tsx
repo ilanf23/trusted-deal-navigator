@@ -5,6 +5,7 @@ import FloatingInbox from './FloatingInbox';
 import FloatingBugReport from './FloatingBugReport';
 import FloatingAIChat from './FloatingAIChat';
 import AIEmailAssistant from './AIEmailAssistant';
+import { IncomingCallPopup } from '@/components/evan/IncomingCallPopup';
 import { Menu, Moon, Sun, Undo2, Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -120,6 +121,9 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
           onUseEmail={() => {}}
         />
         <FloatingBugReport />
+        
+        {/* Global incoming call popup - allows navigation while on call */}
+        <IncomingCallPopup />
       </div>
     </SidebarProvider>
   );
