@@ -156,6 +156,7 @@ const EvansCalls = () => {
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
   const [retryingTranscriptId, setRetryingTranscriptId] = useState<string | null>(null);
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
+  const [directionFilter, setDirectionFilter] = useState<'all' | 'inbound' | 'outbound'>('all');
   
   // Add Lead Dialog state
   const [addLeadDialogOpen, setAddLeadDialogOpen] = useState(false);
@@ -667,11 +668,45 @@ const EvansCalls = () => {
             {/* Call History Card */}
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <History className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <CardTitle className="text-lg">Call History</CardTitle>
-                    <CardDescription>{callHistory.length} calls</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <History className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <CardTitle className="text-lg">Call History</CardTitle>
+                      <CardDescription>
+                        {directionFilter === 'all' 
+                          ? `${callHistory.length} calls` 
+                          : `${callHistory.filter(c => c.direction === directionFilter).length} ${directionFilter} calls`}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant={directionFilter === 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setDirectionFilter('all')}
+                      className="h-8 px-3"
+                    >
+                      All
+                    </Button>
+                    <Button
+                      variant={directionFilter === 'inbound' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setDirectionFilter('inbound')}
+                      className="h-8 px-3"
+                    >
+                      <PhoneIncoming className="h-3.5 w-3.5 mr-1" />
+                      In
+                    </Button>
+                    <Button
+                      variant={directionFilter === 'outbound' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setDirectionFilter('outbound')}
+                      className="h-8 px-3"
+                    >
+                      <PhoneOutgoing className="h-3.5 w-3.5 mr-1" />
+                      Out
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -681,14 +716,18 @@ const EvansCalls = () => {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
-                  ) : callHistory.length === 0 ? (
+                  ) : callHistory.filter(c => directionFilter === 'all' || c.direction === directionFilter).length === 0 ? (
                     <div className="text-center py-8 px-4">
                       <Phone className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                      <p className="text-muted-foreground text-sm">No call history yet</p>
+                      <p className="text-muted-foreground text-sm">
+                        {directionFilter === 'all' ? 'No call history yet' : `No ${directionFilter} calls`}
+                      </p>
                     </div>
                   ) : (
                     <div className="divide-y">
-                      {callHistory.map((call) => (
+                      {callHistory
+                        .filter(c => directionFilter === 'all' || c.direction === directionFilter)
+                        .map((call) => (
                         <div
                           key={call.id}
                           className="p-4 hover:bg-muted/50 transition-colors"
