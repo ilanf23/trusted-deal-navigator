@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow, differenceInDays, differenceInHours } from 'date-fns';
 import { TaskDetailDialog } from '@/components/evan/tasks/TaskDetailDialog';
 import { Task } from '@/components/evan/tasks/types';
+import { LeadTodosSection } from '@/components/admin/LeadTodosSection';
 
 // Helper to format activity timestamps - show time if <24h, otherwise show date and time
 const formatActivityTimestamp = (date: Date | string) => {
@@ -1657,6 +1658,12 @@ Commercial Lending X`,
                         </div>
                       ))
                     )}
+
+                    <LeadTodosSection
+                      tasks={tasks}
+                      onAddTask={() => setShowAddTask(true)}
+                      onViewAll={() => setActiveTab('tasks')}
+                    />
 
                     {/* Stage Change Event */}
                     <div className="flex items-center gap-3 py-3 text-sm text-muted-foreground">
