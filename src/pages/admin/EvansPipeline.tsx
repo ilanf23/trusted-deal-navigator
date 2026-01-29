@@ -174,7 +174,7 @@ const EvansPipeline = () => {
   const [sharingModalOpen, setSharingModalOpen] = useState(false);
   const [stageManagerOpen, setStageManagerOpen] = useState(false);
   const [columnManagerOpen, setColumnManagerOpen] = useState(false);
-  const [pipelineName, setPipelineName] = useState('Main Pipeline');
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [callConfirmOpen, setCallConfirmOpen] = useState(false);
   const [pendingCallLead, setPendingCallLead] = useState<Lead | null>(null);
@@ -229,6 +229,32 @@ const EvansPipeline = () => {
   } = usePipelineColumns();
 
   const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
+
+  // Fetch all available pipelines
+  const { data: pipelines = [] } = useQuery({
+    queryKey: ['all-pipelines'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pipelines')
+        .select('id, name, color, is_main')
+        .order('is_main', { ascending: false })
+        .order('name');
+      
+      if (error) throw error;
+      return data as { id: string; name: string; color: string | null; is_main: boolean | null }[];
+    },
+  });
+
+  // Auto-select the main pipeline or first available when pipelines load
+  useEffect(() => {
+    if (pipelines.length > 0 && !selectedPipelineId) {
+      const mainPipeline = pipelines.find(p => p.is_main);
+      setSelectedPipelineId(mainPipeline?.id || pipelines[0]?.id || null);
+    }
+  }, [pipelines, selectedPipelineId]);
+
+  const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
+  const pipelineName = selectedPipeline?.name || 'Main Pipeline';
 
   const { data: evanTeamMember } = useQuery({
     queryKey: ['evan-team-member'],
@@ -313,6 +339,22 @@ const EvansPipeline = () => {
     acc[tm.id] = tm.name;
     return acc;
   }, {} as Record<string, string>);
+
+  // Update pipeline name mutation
+  const updatePipelineNameMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const { error } = await supabase
+        .from('pipelines')
+        .update({ name })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-pipelines'] });
+      toast.success('Pipeline name updated');
+    },
+    onError: () => toast.error('Failed to update pipeline name'),
+  });
 
   // Call mutation
   const makeCallMutation = useMutation({
@@ -914,21 +956,58 @@ const EvansPipeline = () => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Pipeline Selector Dropdown */}
+              <Select 
+                value={selectedPipelineId || ''} 
+                onValueChange={(value) => setSelectedPipelineId(value)}
+              >
+                <SelectTrigger className="w-auto min-w-[180px] h-9 md:h-10 border-slate-200 dark:border-slate-600 text-sm font-medium">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-slate-400" />
+                    <SelectValue placeholder="Select pipeline" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-slate-800 z-50">
+                  {pipelines.map((pipeline) => (
+                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: pipeline.color || '#0066FF' }} 
+                        />
+                        {pipeline.name}
+                        {pipeline.is_main && (
+                          <Badge className="ml-1 bg-amber-100 text-amber-700 border-amber-200 text-[8px] font-semibold px-1 py-0">
+                            MAIN
+                          </Badge>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                  {pipelines.length === 0 && (
+                    <div className="px-2 py-3 text-sm text-slate-500 text-center">
+                      No pipelines found
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+              
+              {/* Inline edit for pipeline name */}
               {isEditingName ? (
                 <input
                   type="text"
                   value={editingNameValue}
                   onChange={(e) => setEditingNameValue(e.target.value)}
                   onBlur={() => {
-                    if (editingNameValue.trim()) {
-                      setPipelineName(editingNameValue.trim());
+                    if (editingNameValue.trim() && selectedPipelineId) {
+                      updatePipelineNameMutation.mutate({ id: selectedPipelineId, name: editingNameValue.trim() });
                     }
                     setIsEditingName(false);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      if (editingNameValue.trim()) {
-                        setPipelineName(editingNameValue.trim());
+                      if (editingNameValue.trim() && selectedPipelineId) {
+                        updatePipelineNameMutation.mutate({ id: selectedPipelineId, name: editingNameValue.trim() });
                       }
                       setIsEditingName(false);
                     } else if (e.key === 'Escape') {
@@ -936,28 +1015,25 @@ const EvansPipeline = () => {
                     }
                   }}
                   autoFocus
-                  className="text-lg md:text-xl font-medium tracking-tight text-slate-800 bg-transparent border-b-2 border-[#0066FF] outline-none px-0 py-0"
+                  className="text-sm font-medium tracking-tight text-slate-800 bg-transparent border-b-2 border-[#0066FF] outline-none px-0 py-0"
                   style={{ width: `${Math.max(editingNameValue.length, 8)}ch` }}
                 />
-              ) : (
-                <h1 
-                  className="text-lg md:text-xl font-medium tracking-tight text-slate-800 cursor-pointer hover:text-[#0066FF] transition-colors"
+              ) : canEdit && selectedPipelineId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
-                    if (canEdit) {
-                      setEditingNameValue(pipelineName);
-                      setIsEditingName(true);
-                    }
+                    setEditingNameValue(pipelineName);
+                    setIsEditingName(true);
                   }}
-                  title={canEdit ? "Click to edit pipeline name" : undefined}
+                  className="h-6 px-2 text-xs text-slate-500 hover:text-[#0066FF] hover:bg-[#0066FF]/5"
                 >
-                  {pipelineName}
-                </h1>
+                  Rename
+                </Button>
               )}
-              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[9px] md:text-[10px] font-semibold px-1.5 md:px-2 py-0.5 flex-shrink-0">
-                MAIN
-              </Badge>
+              
               <HelpTooltip 
-                content="Click the pipeline name to rename it. Your main pipeline tracks all your primary leads through the sales process."
+                content="Select a pipeline from the dropdown to view its leads. Click 'Rename' to edit the pipeline name."
                 side="bottom"
                 className="hidden sm:block"
               />
@@ -1650,8 +1726,9 @@ const EvansPipeline = () => {
         stages={stages.map(s => ({ id: s.status, name: s.title, color: s.barColor.replace('bg-[', '').replace(']', '').replace('bg-emerald-600', '#10b981') }))}
         pipelineName={pipelineName}
         onPipelineNameChange={(name) => {
-          setPipelineName(name);
-          toast.success('Pipeline name updated');
+          if (selectedPipelineId) {
+            updatePipelineNameMutation.mutate({ id: selectedPipelineId, name });
+          }
         }}
         onSave={(updatedStages) => {
           // For now, just show a toast - full persistence requires database migration
