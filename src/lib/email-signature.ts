@@ -1,17 +1,16 @@
 // Evan's professional email signature
 export const EVAN_SIGNATURE_HTML = `
 <br><br>
-<div style="color: #555; font-size: 13px; font-family: Arial, sans-serif; line-height: 1.5;">
-<strong>Evan Hettich</strong><br>
+<div style="font-size: 13px; font-family: Arial, sans-serif;">
+<strong style="color: #333;">Evan Hettich<br>
 Associate<br>
 Commercial Lending X<br>
 Check out our commercial lending videos on our <a href="https://www.youtube.com/@commerciallendingx" style="color: #1a73e8;">CLX YouTube Channel</a>.<br>
 <a href="https://www.commerciallendingx.com" style="color: #1a73e8;">www.commerciallendingx.com</a><br>
 Email: <a href="mailto:evan@commerciallendingx.com" style="color: #1a73e8;">evan@commerciallendingx.com</a><br>
-<br>
-<strong>Offices In:</strong><br>
+Offices In:<br>
 Naperville, IL 60563<br>
-Saint Augustine, FL 32092<br>
+Saint Augustine, FL 32092</strong><br>
 <br>
 <strong style="color: #0066FF;">The CLX Way</strong><br>
 <em>Proven process to navigate the commercial lending journey</em><br>
