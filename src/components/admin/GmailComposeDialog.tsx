@@ -104,35 +104,42 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
     onClose();
   };
 
-  // Format command helper
+  // Format command helper - also syncs content after formatting
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
     // Sync content back to body
     if (editorRef.current) {
-      onBodyChange(editorRef.current.innerHTML);
+      const newContent = editorRef.current.innerHTML;
+      lastExternalBody.current = newContent;
+      onBodyChange(newContent);
     }
   };
 
-  // Handle editor input
-  const handleEditorInput = () => {
-    if (editorRef.current) {
-      onBodyChange(editorRef.current.innerHTML);
-    }
-  };
-
-  // Initialize editor content when body prop changes externally (e.g., template loaded)
-  const lastExternalBody = useRef(body);
+  // Track last external body for sync logic
+  const lastExternalBody = useRef<string | null>(null);
   useEffect(() => {
-    if (editorRef.current && body !== lastExternalBody.current) {
-      // Only update if the change came from outside (not from typing)
-      const currentContent = editorRef.current.innerHTML;
-      if (currentContent !== body) {
-        editorRef.current.innerHTML = body;
+    if (editorRef.current) {
+      // Initialize on first render or when body changes from outside
+      if (lastExternalBody.current === null || body !== lastExternalBody.current) {
+        const currentContent = editorRef.current.innerHTML;
+        // Only update DOM if the content actually differs
+        if (currentContent !== body) {
+          editorRef.current.innerHTML = body;
+        }
+        lastExternalBody.current = body;
       }
-      lastExternalBody.current = body;
     }
   }, [body]);
+  
+  // Also sync when the editor content changes (typing)
+  const handleEditorInputWithSync = () => {
+    if (editorRef.current) {
+      const newContent = editorRef.current.innerHTML;
+      lastExternalBody.current = newContent; // Track this as the latest
+      onBodyChange(newContent);
+    }
+  };
 
   // File attachment handlers - convert to base64 for sending
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -363,8 +370,8 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
             <div 
               ref={editorRef}
               contentEditable
-              onInput={handleEditorInput}
-              onBlur={handleEditorInput}
+              onInput={handleEditorInputWithSync}
+              onBlur={handleEditorInputWithSync}
               suppressContentEditableWarning
               className="w-full min-h-[200px] text-sm bg-transparent border-0 outline-none text-slate-900 dark:text-slate-100 focus:ring-0 prose prose-sm max-w-none dark:prose-invert"
               style={{ 

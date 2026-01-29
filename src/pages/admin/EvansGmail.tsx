@@ -1017,6 +1017,13 @@ Commercial Lending X`;
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      // Validate required fields
+      if (!composeTo.trim()) throw new Error('Recipient is required');
+      if (!composeSubject.trim()) throw new Error('Subject is required');
+      if (!composeBody.trim()) throw new Error('Message body is required');
+
+      console.log('Sending email to:', composeTo, 'Subject:', composeSubject);
+
       const response = await fetch(
         'https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send',
         {
@@ -1029,18 +1036,31 @@ Commercial Lending X`;
             to: composeTo,
             subject: composeSubject,
             body: composeBody,
+            attachments: attachments.map(a => ({
+              filename: a.name,
+              mimeType: a.type,
+              data: a.base64,
+            })),
           }),
         }
       );
 
-      if (!response.ok) throw new Error('Failed to send email');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Send email error response:', errorData);
+        throw new Error(errorData.error || 'Failed to send email');
+      }
       
       toast.success('Email sent successfully');
       setComposeOpen(false);
       setComposeTo('');
       setComposeSubject('');
       setComposeBody('');
+      
+      // Refresh the email list to show sent email
+      queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
     } catch (error: any) {
+      console.error('Send email error:', error);
       toast.error('Failed to send: ' + error.message);
     } finally {
       setComposeSending(false);
