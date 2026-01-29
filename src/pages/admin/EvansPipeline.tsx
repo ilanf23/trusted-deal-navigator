@@ -956,45 +956,24 @@ const EvansPipeline = () => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Pipeline Selector Dropdown */}
-              <Select 
-                value={selectedPipelineId || ''} 
-                onValueChange={(value) => setSelectedPipelineId(value)}
-              >
-                <SelectTrigger className="w-auto min-w-[180px] h-9 md:h-10 border-slate-200 dark:border-slate-600 text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-slate-400" />
-                    <SelectValue placeholder="Select pipeline" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-lg z-[100]">
-                  {pipelines.map((pipeline) => (
-                    <SelectItem 
-                      key={pipeline.id} 
-                      value={pipeline.id}
-                      className="text-slate-900 dark:text-slate-100 focus:bg-slate-100 dark:focus:bg-slate-700"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-2 h-2 rounded-full flex-shrink-0" 
-                          style={{ backgroundColor: pipeline.color || '#0066FF' }} 
-                        />
-                        <span>{pipeline.name}</span>
-                        {pipeline.is_main && (
-                          <Badge className="ml-1 bg-amber-100 text-amber-700 border-amber-200 text-[8px] font-semibold px-1 py-0">
-                            MAIN
-                          </Badge>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                  {pipelines.length === 0 && (
-                    <div className="px-2 py-3 text-sm text-slate-500 dark:text-slate-400 text-center">
-                      No pipelines found
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+              {/* Pipeline Title */}
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-slate-400" />
+                {selectedPipeline && (
+                  <div 
+                    className="w-2 h-2 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: selectedPipeline.color || '#0066FF' }} 
+                  />
+                )}
+                <span className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                  {pipelineName}
+                </span>
+                {selectedPipeline?.is_main && (
+                  <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[8px] font-semibold px-1 py-0">
+                    MAIN
+                  </Badge>
+                )}
+              </div>
               
               {/* Inline edit for pipeline name */}
               {isEditingName ? (
