@@ -1044,7 +1044,7 @@ Commercial Lending X`;
     }
   };
 
-  // Send email - optimized for speed
+// Send email - optimized for speed
   const handleSendEmail = async (attachments: Attachment[]) => {
     // Validate first before any async operations
     if (!composeTo.trim()) {
@@ -1062,7 +1062,7 @@ Commercial Lending X`;
 
     setComposeSending(true);
     
-    // Close dialog immediately to give user feedback that action is in progress
+    // Capture values BEFORE closing dialog
     const toSend = composeTo;
     const subjectSend = composeSubject;
     const bodySend = composeBody;
@@ -1071,6 +1071,23 @@ Commercial Lending X`;
       mimeType: a.type,
       data: a.base64,
     }));
+    
+    // CRITICAL: Log exactly what we're about to send
+    console.log('[SEND EMAIL] Captured values before send:', {
+      to: toSend,
+      subject: subjectSend,
+      bodyLength: bodySend?.length || 0,
+      bodyPreview: bodySend?.substring(0, 200) || 'EMPTY',
+      attachmentsCount: attachmentsSend.length,
+    });
+    
+    // SAFEGUARD: Double-check body is not empty after capture
+    if (!bodySend || bodySend.trim() === '') {
+      console.error('[SEND EMAIL] BLOCKED - Body is empty after capture!');
+      toast.error('Cannot send email: body content missing');
+      setComposeSending(false);
+      return;
+    }
     
     // Clear form immediately
     setComposeOpen(false);

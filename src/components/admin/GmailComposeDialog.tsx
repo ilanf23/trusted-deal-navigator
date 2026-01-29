@@ -92,7 +92,24 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastExternalBody = useRef<string | null>(null);
-  const pendingBody = useRef<string | null>(null);
+const pendingBody = useRef<string | null>(null);
+  
+  // Helper to convert plain text to HTML for contentEditable
+  // This ensures newlines are preserved when setting innerHTML
+  const textToHtml = useCallback((text: string): string => {
+    if (!text) return '';
+    // Check if already HTML (contains common HTML tags)
+    const looksLikeHtml = /<\/?(div|p|br|span|b|strong|i|em|u|ul|ol|li)\b/i.test(text);
+    if (looksLikeHtml) {
+      return text;
+    }
+    // Plain text: escape HTML entities and convert newlines to <br>
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return escaped.replace(/\n/g, '<br>');
+  }, []);
   
   // Reset tracking when dialog closes
   useEffect(() => {
@@ -105,17 +122,20 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   // Initialize editor content when dialog opens or body prop changes externally
   useEffect(() => {
     if (isOpen && body !== lastExternalBody.current) {
-      // Store the body to be set when editor mounts
-      pendingBody.current = body;
+      // Convert to HTML for proper display in contentEditable
+      const htmlContent = textToHtml(body);
+      pendingBody.current = htmlContent;
       lastExternalBody.current = body;
       
       // If editor is already mounted, set content immediately
       if (editorRef.current) {
-        editorRef.current.innerHTML = body;
+        editorRef.current.innerHTML = htmlContent;
         pendingBody.current = null;
+        // Sync back the HTML content to parent
+        onBodyChange(htmlContent);
       }
     }
-  }, [body, isOpen]);
+  }, [body, isOpen, textToHtml, onBodyChange]);
   
   // Handle editor mount - set pending content if any
   // CRITICAL: Also sync back to parent to ensure state is correct for sending
