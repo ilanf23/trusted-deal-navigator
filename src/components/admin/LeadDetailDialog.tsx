@@ -2876,8 +2876,8 @@ Commercial Lending X`,
             return;
           }
           
-          queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead.id] });
-          queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+          queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead.id], refetchType: 'all' });
+          queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'], refetchType: 'all' });
           setShowAddTask(false);
           toast({ title: 'Task created' });
         }}
