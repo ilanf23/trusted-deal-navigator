@@ -109,19 +109,20 @@ export const TaskDetailDialog = ({
     });
   };
   
-  // Priority star renderer
-  const renderPriorityStars = (priority: string) => {
+  // Priority bar renderer (matches list view)
+  const renderPriorityIndicator = (priority: string) => {
     const config = priorityConfig[priority] || priorityConfig.medium;
     return (
-      <div className="flex items-center gap-0.5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Star
-            key={i}
-            className="h-3.5 w-3.5"
-            style={{ 
-              color: i < config.stars ? config.color : '#e2e8f0',
-              fill: i < config.stars ? config.color : 'transparent'
-            }}
+      <div className="flex items-center gap-1">
+        {[1, 2, 3].map((level) => (
+          <div
+            key={level}
+            className={`w-1.5 rounded-full transition-all ${
+              level <= Math.ceil(config.stars / 2) 
+                ? 'h-3 bg-current opacity-100' 
+                : 'h-2 bg-current opacity-20'
+            }`}
+            style={{ color: config.color }}
           />
         ))}
       </div>
@@ -285,7 +286,7 @@ export const TaskDetailDialog = ({
                           : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                       }`}
                     >
-                      {renderPriorityStars(key)}
+                      {renderPriorityIndicator(key)}
                       <span>{config.label}</span>
                     </button>
                   );
@@ -488,7 +489,7 @@ export const TaskDetailDialog = ({
                           : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                       }`}
                     >
-                      {renderPriorityStars(key)}
+                      {renderPriorityIndicator(key)}
                       <span>{config.label}</span>
                     </button>
                   );
