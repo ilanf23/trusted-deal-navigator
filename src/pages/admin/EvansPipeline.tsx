@@ -832,7 +832,12 @@ const EvansPipeline = () => {
       lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
     
-    // Handle dead leads filter - show only lost leads
+    // Handle won leads filter - show only funded leads
+    if (ownerFilter === 'won') {
+      return matchesSearch && matchesSource && lead.status === 'funded';
+    }
+    
+    // Handle finished leads filter - show only lost leads
     if (ownerFilter === 'dead') {
       return matchesSearch && matchesSource && lead.status === 'lost';
     }
@@ -1138,8 +1143,8 @@ const EvansPipeline = () => {
           </div>
         </div>
 
-        {/* Pipeline Progress Bar or Dead Leads Header - responsive */}
-        {ownerFilter !== 'dead' ? (
+        {/* Pipeline Progress Bar or Special Section Headers - responsive */}
+        {ownerFilter !== 'dead' && ownerFilter !== 'won' ? (
           <>
             <div className="mb-1.5 md:mb-2 flex items-center gap-2">
               <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
@@ -1200,6 +1205,18 @@ const EvansPipeline = () => {
               })}
             </div>
           </>
+        ) : ownerFilter === 'won' ? (
+          <div className="mb-4 md:mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
+                <span className="text-white text-lg font-bold">{filteredLeads.length}</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-emerald-700 dark:text-emerald-300">Won Leads</h3>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400">Successfully funded deals that have been closed</p>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="mb-4 md:mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <div className="flex items-center gap-3">
@@ -1207,7 +1224,7 @@ const EvansPipeline = () => {
                 <span className="text-white text-lg font-bold">{filteredLeads.length}</span>
               </div>
               <div>
-                <h3 className="font-semibold text-red-700 dark:text-red-300">Dead Leads</h3>
+                <h3 className="font-semibold text-red-700 dark:text-red-300">Finished Leads</h3>
                 <p className="text-xs text-red-600 dark:text-red-400">Leads that have been marked as lost or are no longer in the active pipeline</p>
               </div>
             </div>
@@ -1269,7 +1286,8 @@ const EvansPipeline = () => {
                 <SelectItem value="maura" className="text-slate-900 dark:text-slate-100">Maura's Leads</SelectItem>
                 <SelectItem value="wendy" className="text-slate-900 dark:text-slate-100">Wendy's Leads</SelectItem>
                 <SelectItem value="all" className="text-slate-900 dark:text-slate-100">All Leads</SelectItem>
-                <SelectItem value="dead" className="text-slate-900 dark:text-slate-100">Dead Leads</SelectItem>
+                <SelectItem value="won" className="text-slate-900 dark:text-slate-100">Won Leads</SelectItem>
+                <SelectItem value="dead" className="text-slate-900 dark:text-slate-100">Finished Leads</SelectItem>
               </SelectContent>
             </Select>
             <HelpTooltip 
@@ -1368,8 +1386,8 @@ const EvansPipeline = () => {
             onDragCancel={handleDragCancel}
           >
           <div>
-            {/* Show either dead leads section or normal pipeline stages */}
-            {(ownerFilter === 'dead' ? [lostStage] : stages).map((stage) => {
+            {/* Show either won/finished leads section or normal pipeline stages */}
+            {(ownerFilter === 'won' ? [stages.find(s => s.status === 'funded')!] : ownerFilter === 'dead' ? [lostStage] : stages).map((stage) => {
               const stageLeads = getLeadsByStatus(stage.status);
               const isCollapsed = collapsedSections[stage.status];
 
