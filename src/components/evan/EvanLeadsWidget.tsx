@@ -18,6 +18,7 @@ const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
   underwriting: { label: 'Underwriting', color: 'bg-orange-500' },
   approval: { label: 'Approval', color: 'bg-purple-500' },
   funded: { label: 'Funded', color: 'bg-green-500' },
+  lost: { label: 'Lost', color: 'bg-red-500' },
 };
 
 export const EvanLeadsWidget = () => {

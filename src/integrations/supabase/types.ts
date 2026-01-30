@@ -2746,6 +2746,7 @@ export type Database = {
         | "underwriting"
         | "approval"
         | "funded"
+        | "lost"
       pipeline_column_type:
         | "free_form"
         | "date"
@@ -2907,6 +2908,7 @@ export const Constants = {
         "underwriting",
         "approval",
         "funded",
+        "lost",
       ],
       pipeline_column_type: [
         "free_form",

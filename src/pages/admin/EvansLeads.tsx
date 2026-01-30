@@ -34,6 +34,7 @@ const statusConfig: Record<LeadStatus, { label: string; color: string; bg: strin
   underwriting: { label: 'Underwriting', color: 'text-orange-600', bg: 'bg-orange-50' },
   approval: { label: 'Approved', color: 'text-emerald-600', bg: 'bg-emerald-50' },
   funded: { label: 'Funded', color: 'text-violet-600', bg: 'bg-violet-50' },
+  lost: { label: 'Lost', color: 'text-red-600', bg: 'bg-red-50' },
 };
 
 const EvansLeads = () => {

@@ -108,6 +108,9 @@ const stages: { status: LeadStatus; title: string; bgColor: string; borderColor:
   { status: 'funded', title: 'Funded', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600', hexColor: '#059669' },
 ];
 
+// Lost stage for dead leads section
+const lostStage = { status: 'lost' as LeadStatus, title: 'Lost', bgColor: 'bg-red-500/10', borderColor: 'border-red-600', textColor: 'text-red-700', barColor: 'bg-red-600', hexColor: '#dc2626' };
+
 // Sortable Lead Row Component
 interface SortableLeadRowProps {
   lead: Lead;
@@ -828,7 +831,14 @@ const EvansPipeline = () => {
       lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
-    return matchesSearch && matchesSource;
+    
+    // Handle dead leads filter - show only lost leads
+    if (ownerFilter === 'dead') {
+      return matchesSearch && matchesSource && lead.status === 'lost';
+    }
+    
+    // For all other filters, exclude lost leads from the main pipeline view
+    return matchesSearch && matchesSource && lead.status !== 'lost';
   });
 
   const getLeadsByStatus = (status: LeadStatus) => 
@@ -1128,65 +1138,81 @@ const EvansPipeline = () => {
           </div>
         </div>
 
-        {/* Pipeline Progress Bar - responsive */}
-        <div className="mb-1.5 md:mb-2 flex items-center gap-2">
-          <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
-          <HelpTooltip 
-            content="Click any stage to jump to that section. Right-click or hold to customize colors. Each segment shows the count of leads in that stage."
-            side="right"
-            className="hidden sm:block"
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setStageManagerOpen(true)}
-            className="h-6 px-2 text-xs text-slate-500 hover:text-[#0066FF] hover:bg-[#0066FF]/5"
-          >
-            <Layers className="h-3 w-3 mr-1" />
-            Customize
-          </Button>
-        </div>
-        <div className="flex h-12 md:h-16 mb-4 md:mb-6 overflow-x-auto">
-          {stageCounts.map((stage, index) => {
-            const isFirst = index === 0;
-            const isLast = index === stageCounts.length - 1;
-            
-            return (
-              <div
-                key={stage.status}
-                className="relative flex-1 min-w-[60px] md:min-w-0 cursor-pointer group"
-                onClick={() => jumpToStage(stage.status)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setStageManagerOpen(true);
-                }}
+        {/* Pipeline Progress Bar or Dead Leads Header - responsive */}
+        {ownerFilter !== 'dead' ? (
+          <>
+            <div className="mb-1.5 md:mb-2 flex items-center gap-2">
+              <span className="text-xs md:text-sm font-medium text-slate-500 uppercase tracking-wider">Stage Progress</span>
+              <HelpTooltip 
+                content="Click any stage to jump to that section. Right-click or hold to customize colors. Each segment shows the count of leads in that stage."
+                side="right"
+                className="hidden sm:block"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setStageManagerOpen(true)}
+                className="h-6 px-2 text-xs text-slate-500 hover:text-[#0066FF] hover:bg-[#0066FF]/5"
               >
-                {/* Main segment */}
-                <div 
-                  className={cn(
-                    "absolute inset-0 flex items-center justify-center transition-all group-hover:brightness-110",
-                    stage.barColor,
-                    isFirst && "rounded-l-md",
-                    isLast && "rounded-r-md"
-                  )}
-                  style={{
-                    clipPath: isLast 
-                      ? 'polygon(0 0, calc(100% - 0px) 0, 100% 50%, calc(100% - 0px) 100%, 0 100%, 12px 50%)'
-                      : isFirst
-                        ? 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 0 50%)'
-                        : 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)'
-                  }}
-                >
-                  <div className="flex flex-col items-center text-white pl-1 md:pl-2">
-                    <span className="text-lg md:text-2xl font-bold tracking-tight leading-none">{stage.count}</span>
-                    <span className="text-[8px] md:text-[10px] font-semibold uppercase tracking-wider opacity-95 mt-0.5 whitespace-nowrap hidden sm:block">{stage.title}</span>
-                    <span className="text-[7px] font-semibold uppercase tracking-wider opacity-95 mt-0.5 whitespace-nowrap sm:hidden">{stage.title.slice(0, 4)}</span>
+                <Layers className="h-3 w-3 mr-1" />
+                Customize
+              </Button>
+            </div>
+            <div className="flex h-12 md:h-16 mb-4 md:mb-6 overflow-x-auto">
+              {stageCounts.map((stage, index) => {
+                const isFirst = index === 0;
+                const isLast = index === stageCounts.length - 1;
+                
+                return (
+                  <div
+                    key={stage.status}
+                    className="relative flex-1 min-w-[60px] md:min-w-0 cursor-pointer group"
+                    onClick={() => jumpToStage(stage.status)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setStageManagerOpen(true);
+                    }}
+                  >
+                    {/* Main segment */}
+                    <div 
+                      className={cn(
+                        "absolute inset-0 flex items-center justify-center transition-all group-hover:brightness-110",
+                        stage.barColor,
+                        isFirst && "rounded-l-md",
+                        isLast && "rounded-r-md"
+                      )}
+                      style={{
+                        clipPath: isLast 
+                          ? 'polygon(0 0, calc(100% - 0px) 0, 100% 50%, calc(100% - 0px) 100%, 0 100%, 12px 50%)'
+                          : isFirst
+                            ? 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 0 50%)'
+                            : 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)'
+                      }}
+                    >
+                      <div className="flex flex-col items-center text-white pl-1 md:pl-2">
+                        <span className="text-lg md:text-2xl font-bold tracking-tight leading-none">{stage.count}</span>
+                        <span className="text-[8px] md:text-[10px] font-semibold uppercase tracking-wider opacity-95 mt-0.5 whitespace-nowrap hidden sm:block">{stage.title}</span>
+                        <span className="text-[7px] font-semibold uppercase tracking-wider opacity-95 mt-0.5 whitespace-nowrap sm:hidden">{stage.title.slice(0, 4)}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="mb-4 md:mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center">
+                <span className="text-white text-lg font-bold">{filteredLeads.length}</span>
               </div>
-            );
-          })}
-        </div>
+              <div>
+                <h3 className="font-semibold text-red-700 dark:text-red-300">Dead Leads</h3>
+                <p className="text-xs text-red-600 dark:text-red-400">Leads that have been marked as lost or are no longer in the active pipeline</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Bulk Selection Toolbar - positioned below stage progress */}
         {selectedLeadIds.size > 0 && (
@@ -1243,6 +1269,7 @@ const EvansPipeline = () => {
                 <SelectItem value="maura" className="text-slate-900 dark:text-slate-100">Maura's Leads</SelectItem>
                 <SelectItem value="wendy" className="text-slate-900 dark:text-slate-100">Wendy's Leads</SelectItem>
                 <SelectItem value="all" className="text-slate-900 dark:text-slate-100">All Leads</SelectItem>
+                <SelectItem value="dead" className="text-slate-900 dark:text-slate-100">Dead Leads</SelectItem>
               </SelectContent>
             </Select>
             <HelpTooltip 
@@ -1341,7 +1368,8 @@ const EvansPipeline = () => {
             onDragCancel={handleDragCancel}
           >
           <div>
-            {stages.map((stage) => {
+            {/* Show either dead leads section or normal pipeline stages */}
+            {(ownerFilter === 'dead' ? [lostStage] : stages).map((stage) => {
               const stageLeads = getLeadsByStatus(stage.status);
               const isCollapsed = collapsedSections[stage.status];
 
@@ -1493,6 +1521,8 @@ const EvansPipeline = () => {
                                     />
                                   );
                                 case 'stage':
+                                  const allStagesForDropdown = [...stages, lostStage];
+                                  const currentStageEntry = allStagesForDropdown.find(s => s.status === lead.status);
                                   return (
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
@@ -1504,11 +1534,11 @@ const EvansPipeline = () => {
                                             variant="outline" 
                                             className={cn(
                                               "text-[10px] font-medium px-2 py-0.5 rounded whitespace-nowrap border-transparent",
-                                              stageEntry?.bgColor,
-                                              stageEntry?.textColor
+                                              currentStageEntry?.bgColor,
+                                              currentStageEntry?.textColor
                                             )}
                                           >
-                                            {stageEntry?.title}
+                                            {currentStageEntry?.title}
                                           </Badge>
                                           <ChevronDown className="h-3 w-3 text-slate-400 flex-shrink-0" />
                                         </button>
@@ -1531,6 +1561,20 @@ const EvansPipeline = () => {
                                             {s.status === lead.status && <span className="ml-auto text-[#0066FF]">✓</span>}
                                           </DropdownMenuItem>
                                         ))}
+                                        <div className="h-px bg-slate-200 dark:bg-slate-600 my-1" />
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (lead.status !== 'lost') {
+                                              updateStatusMutation.mutate({ id: lead.id, status: 'lost', previousStatus: lead.status });
+                                            }
+                                          }}
+                                          className={cn("cursor-pointer gap-2 text-sm text-red-600", lead.status === 'lost' && "bg-red-50")}
+                                        >
+                                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-red-500" />
+                                          <span className={cn(lead.status === 'lost' && "font-semibold")}>Mark as Lost</span>
+                                          {lead.status === 'lost' && <span className="ml-auto text-red-500">✓</span>}
+                                        </DropdownMenuItem>
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                   );
