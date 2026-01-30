@@ -139,6 +139,22 @@ export const TaskWorkspace = () => {
       );
     }
     
+    // Sort: completed tasks go to the bottom, then by due date
+    result = [...result].sort((a, b) => {
+      // Completed tasks go to the bottom
+      const aCompleted = a.is_completed || a.status === 'done';
+      const bCompleted = b.is_completed || b.status === 'done';
+      
+      if (aCompleted && !bCompleted) return 1;
+      if (!aCompleted && bCompleted) return -1;
+      
+      // Within same completion state, sort by due date (nulls at bottom)
+      if (!a.due_date && !b.due_date) return 0;
+      if (!a.due_date) return 1;
+      if (!b.due_date) return -1;
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    });
+    
     return result;
   }, [tasks, searchTerm, sourceFilter, statusFilter, priorityFilter, hiddenTasks]);
 
