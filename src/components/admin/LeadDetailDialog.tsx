@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Loader2, Mail, Phone, Building2, Calendar, FileText, User, Clock, 
-  PhoneCall, ChevronDown, ChevronUp, Play, PhoneIncoming, PhoneOutgoing, 
+  PhoneCall, ChevronDown, ChevronUp, ChevronRight, Play, PhoneIncoming, PhoneOutgoing, 
   MessageSquare, History, Plus, Trash2, Globe, Linkedin, MapPin,
   Link2, Users, ListTodo, Tag, CheckCircle2, Circle, X, GripVertical,
   Briefcase, FileSpreadsheet, MessagesSquare, Video, Sparkles, HelpCircle, Columns
@@ -419,6 +419,9 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [meetingTitle, setMeetingTitle] = useState('');
   const [meetingDate, setMeetingDate] = useState('');
+  
+  // Expanded tasks state for viewing descriptions
+  const [expandedTasksInDialog, setExpandedTasksInDialog] = useState<Set<string>>(new Set());
 
   // Reset when lead changes
   useEffect(() => {
@@ -511,8 +514,21 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-tasks', lead?.id],
     queryFn: async () => {
       if (!lead) return [];
-      const { data } = await supabase.from('lead_tasks').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false });
-      return (data || []) as LeadTask[];
+      // Query from evan_tasks which has richer data (descriptions, etc)
+      const { data } = await supabase
+        .from('evan_tasks')
+        .select('id, title, description, due_date, status, priority, estimated_hours')
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false });
+      return (data || []) as Array<{
+        id: string;
+        title: string;
+        description: string | null;
+        due_date: string | null;
+        status: string | null;
+        priority: string | null;
+        estimated_hours: number | null;
+      }>;
     },
     enabled: !!lead && open,
   });
@@ -2017,57 +2033,148 @@ Commercial Lending X`,
 
                   {/* Tasks Tab */}
                   <TabsContent value="tasks" className="m-0 space-y-3">
-                    {/* Add Task Form */}
-                    <div className="p-3 border border-border rounded-lg bg-muted/50">
-                      <div className="space-y-2">
-                        <Input
-                          value={newTaskTitle}
-                          onChange={(e) => setNewTaskTitle(e.target.value)}
-                          placeholder="Task title"
-                          className="text-sm border-border bg-background"
-                        />
-                        <div className="flex gap-2 items-center">
-                          <Input
-                            type="date"
-                            value={newTaskDueDate}
-                            onChange={(e) => setNewTaskDueDate(e.target.value)}
-                            className="text-sm border-border bg-background flex-1"
-                          />
-                          <Button 
-                            size="sm" 
-                            onClick={() => addTask.mutate({ title: newTaskTitle, dueDate: newTaskDueDate })} 
-                            disabled={!newTaskTitle.trim() || addTask.isPending}
-                          >
-                            {addTask.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-                            Add Task
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                    {/* Add Task Button - opens full dialog like To Do's page */}
+                    <Button 
+                      onClick={() => setShowAddTask(true)}
+                      className="w-full gap-2"
+                      variant="outline"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add New Task
+                    </Button>
                     
-                    {/* Tasks List */}
+                    {/* Tasks List with Expandable Descriptions */}
                     {tasks.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <ListTodo className="w-10 h-10 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">No tasks yet</p>
                       </div>
                     ) : (
-                      <div className="space-y-1">
-                        {tasks.map(task => (
-                          <div key={task.id} className="flex items-start gap-3 py-2 px-3 hover:bg-muted/50 rounded">
-                            {task.status === 'completed' ? (
-                              <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-                            ) : (
-                              <Circle className="w-5 h-5 text-muted-foreground mt-0.5" />
-                            )}
-                            <div className="flex-1">
-                              <p className={cn("text-sm", task.status === 'completed' && "line-through text-muted-foreground")}>{task.title}</p>
-                              {task.due_date && (
-                                <p className="text-xs text-muted-foreground mt-0.5">Due {format(new Date(task.due_date), 'MMM d')}</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="rounded-lg border border-border overflow-hidden">
+                        <div className="divide-y divide-border">
+                          {tasks.map(task => {
+                            const completed = task.status === 'completed' || task.status === 'done';
+                            const isExpanded = expandedTasksInDialog.has(task.id);
+                            const hasDescription = task.description && task.description.trim().length > 0;
+
+                            const priorityColors: Record<string, string> = {
+                              critical: '#ef4444',
+                              high: '#f97316',
+                              medium: '#eab308',
+                              low: '#22c55e',
+                              none: '#94a3b8',
+                            };
+                            const priorityColor = priorityColors[task.priority || 'none'];
+
+                            return (
+                              <div key={task.id} className="group">
+                                <div 
+                                  className={cn(
+                                    "flex items-start gap-2 px-3 py-2.5 transition-colors",
+                                    hasDescription && "hover:bg-muted/50 cursor-pointer"
+                                  )}
+                                  onClick={() => {
+                                    if (hasDescription) {
+                                      setExpandedTasksInDialog(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(task.id)) {
+                                          next.delete(task.id);
+                                        } else {
+                                          next.add(task.id);
+                                        }
+                                        return next;
+                                      });
+                                    }
+                                  }}
+                                >
+                                  {/* Priority indicator */}
+                                  <div className="flex items-center gap-0.5 mt-1.5">
+                                    {[1, 2, 3].map((level) => (
+                                      <div
+                                        key={level}
+                                        className={`w-1 rounded-full transition-all ${
+                                          level <= 3 ? 'h-2.5' : 'h-1.5'
+                                        }`}
+                                        style={{ 
+                                          backgroundColor: priorityColor,
+                                          opacity: level <= (task.priority === 'critical' ? 3 : task.priority === 'high' ? 2 : 1) ? 1 : 0.25
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+
+                                  {/* Expand indicator */}
+                                  {hasDescription ? (
+                                    <button 
+                                      className="mt-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setExpandedTasksInDialog(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(task.id)) {
+                                            next.delete(task.id);
+                                          } else {
+                                            next.add(task.id);
+                                          }
+                                          return next;
+                                        });
+                                      }}
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronDown className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4" />
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <div className="w-4" />
+                                  )}
+
+                                  {/* Status icon */}
+                                  {completed ? (
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-500 flex-shrink-0" />
+                                  ) : (
+                                    <Circle className="mt-0.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  )}
+
+                                  {/* Content */}
+                                  <div className="min-w-0 flex-1">
+                                    <p className={cn(
+                                      "text-sm leading-snug",
+                                      completed ? 'text-muted-foreground line-through' : 'text-foreground'
+                                    )}>
+                                      {task.title}
+                                    </p>
+                                    
+                                    {/* Meta row */}
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {task.due_date && (
+                                        <span className="text-[11px] text-muted-foreground">
+                                          Due {format(new Date(task.due_date), 'MMM d')}
+                                        </span>
+                                      )}
+                                      {task.estimated_hours && (
+                                        <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
+                                          <Clock className="h-3 w-3" />
+                                          {task.estimated_hours}h
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Expanded description */}
+                                {isExpanded && hasDescription && (
+                                  <div className="px-3 pb-3 pl-[72px]">
+                                    <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-2.5 whitespace-pre-wrap">
+                                      {task.description}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </TabsContent>
