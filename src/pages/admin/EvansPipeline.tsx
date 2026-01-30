@@ -1652,10 +1652,10 @@ const EvansPipeline = () => {
                                           <HoverCardTrigger asChild>
                                             <button
                                               onClick={(e) => handleEmail(e, lead)}
-                                              className="inline-flex items-center gap-1 h-6 px-2 rounded bg-[#0066FF]/10 hover:bg-[#0066FF]/20 border border-[#0066FF]/30"
+                                              className="inline-flex items-center gap-1 h-6 px-2 rounded bg-blue-100 hover:bg-blue-200 border border-blue-300"
                                             >
-                                              <Mail className="h-3 w-3 text-[#0066FF]" />
-                                              <span className="text-[11px] font-medium text-[#0066FF]">Email</span>
+                                              <Mail className="h-3 w-3 text-blue-700" />
+                                              <span className="text-[11px] font-medium text-blue-700">Email</span>
                                             </button>
                                           </HoverCardTrigger>
                                           <HoverCardContent side="top" className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
