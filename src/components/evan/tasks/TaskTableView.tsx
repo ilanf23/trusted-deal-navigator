@@ -61,8 +61,8 @@ export const TaskTableView = ({
     if (title.includes('closing') || title.includes('prepare closing')) {
       return { 
         path: hasLead 
-          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&template=closing`
-          : '/team/evan/gmail?compose=true&template=closing',
+          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&template=closing&taskId=${task.id}`
+          : `/team/evan/gmail?compose=true&template=closing&taskId=${task.id}`,
         label: 'Draft Closing Email', 
         icon: <FileText className="h-3.5 w-3.5" />,
         action: 'compose',
@@ -74,8 +74,8 @@ export const TaskTableView = ({
     if (source === 'nudge' || title.includes('follow up') || title.includes('follow-up')) {
       return { 
         path: hasLead 
-          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&template=follow_up`
-          : '/team/evan/gmail?compose=true&template=follow_up',
+          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&template=follow_up&taskId=${task.id}`
+          : `/team/evan/gmail?compose=true&template=follow_up&taskId=${task.id}`,
         label: 'Draft Follow-up Email', 
         icon: <Mail className="h-3.5 w-3.5" />,
         action: 'compose',
@@ -87,8 +87,8 @@ export const TaskTableView = ({
     if (source === 'gmail' || title.includes('email') || title.includes('send')) {
       return { 
         path: hasLead 
-          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}`
-          : '/team/evan/gmail?compose=true',
+          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`
+          : `/team/evan/gmail?compose=true&taskId=${task.id}`,
         label: 'Compose Email', 
         icon: <Mail className="h-3.5 w-3.5" />,
         action: 'compose'

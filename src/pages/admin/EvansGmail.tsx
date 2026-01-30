@@ -481,6 +481,8 @@ const EvansGmail = () => {
     setReplyThreadId,
     replyInReplyTo,
     setReplyInReplyTo,
+    originatingTaskId,
+    setOriginatingTaskId,
     clearCompose,
   } = useDraft();
   
@@ -515,7 +517,7 @@ const EvansGmail = () => {
 
   const clearComposeParams = () => {
     const next = new URLSearchParams(searchParams);
-    ['compose', 'to', 'draftId', 'leadId', 'template'].forEach((k) => next.delete(k));
+    ['compose', 'to', 'draftId', 'leadId', 'template', 'taskId'].forEach((k) => next.delete(k));
     setSearchParams(next, { replace: true });
   };
 
@@ -592,6 +594,7 @@ const EvansGmail = () => {
     const draftId = searchParams.get('draftId');
     const leadId = searchParams.get('leadId');
     const template = searchParams.get('template');
+    const taskId = searchParams.get('taskId'); // Track originating task for auto-completion
 
     // If there's no explicit target, allow future targets to be processed.
     if (!compose) {
@@ -608,6 +611,12 @@ const EvansGmail = () => {
     if (handledComposeKeyRef.current === intentKey) return;
     handledComposeKeyRef.current = intentKey;
 
+    // Store the originating task ID so we can mark it complete after sending
+    if (taskId) {
+      setOriginatingTaskId(taskId);
+      console.debug('[EvansGmail] Task linked to compose', { taskId });
+    }
+
     console.debug('[EvansGmail] compose intent', {
       from: `${location.pathname}${location.search}`,
       compose,
@@ -615,6 +624,7 @@ const EvansGmail = () => {
       draftId,
       leadId,
       template,
+      taskId,
     });
     
     if (compose === 'draft' && draftId) {
@@ -1439,6 +1449,40 @@ const EvansGmail = () => {
         toast.warning('Email sent, but body verification failed. Check Gmail to confirm.', { id: toastId });
       } else {
         toast.success('Email sent successfully', { id: toastId });
+      }
+      
+      // Mark originating task as complete if this email was triggered from "Go To"
+      if (originatingTaskId) {
+        console.log(`[${flowId}] Marking task ${originatingTaskId} as complete`);
+        try {
+          await supabase
+            .from('evan_tasks')
+            .update({ 
+              status: 'done', 
+              is_completed: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', originatingTaskId);
+          
+          // Also update lead_tasks if it exists there
+          await supabase
+            .from('lead_tasks')
+            .update({ 
+              status: 'completed',
+              completed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', originatingTaskId);
+          
+          // Invalidate task queries so the UI updates
+          queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
+          queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+          
+          toast.success('Task marked complete', { duration: 2000 });
+        } catch (taskError) {
+          console.error('Failed to mark task complete:', taskError);
+          // Don't show error toast - email was still sent successfully
+        }
       }
       
       // Refresh sent emails in background

@@ -31,6 +31,10 @@ interface DraftContextType {
   replyInReplyTo: string | null;
   setReplyInReplyTo: (id: string | null) => void;
   
+  // Task completion tracking - when email is sent via "Go To", mark task complete
+  originatingTaskId: string | null;
+  setOriginatingTaskId: (id: string | null) => void;
+  
   // Saved drafts for persistence
   savedDrafts: DraftEmail[];
   saveDraft: (draft: Omit<DraftEmail, 'id' | 'createdAt'>) => string;
@@ -58,6 +62,9 @@ export const DraftProvider = ({ children }: { children: ReactNode }) => {
   const [replyThreadId, setReplyThreadId] = useState<string | null>(null);
   const [replyInReplyTo, setReplyInReplyTo] = useState<string | null>(null);
   
+  // Track which task initiated the email (for auto-completion on send)
+  const [originatingTaskId, setOriginatingTaskId] = useState<string | null>(null);
+  
   // Saved drafts storage
   const [savedDrafts, setSavedDrafts] = useState<DraftEmail[]>([]);
   
@@ -72,6 +79,7 @@ export const DraftProvider = ({ children }: { children: ReactNode }) => {
     setComposeRecipientName('');
     setReplyThreadId(null);
     setReplyInReplyTo(null);
+    setOriginatingTaskId(null);
   };
   
   const saveDraft = (draft: Omit<DraftEmail, 'id' | 'createdAt'>): string => {
@@ -129,6 +137,8 @@ export const DraftProvider = ({ children }: { children: ReactNode }) => {
       setReplyThreadId,
       replyInReplyTo,
       setReplyInReplyTo,
+      originatingTaskId,
+      setOriginatingTaskId,
       savedDrafts,
       saveDraft,
       updateDraft,
