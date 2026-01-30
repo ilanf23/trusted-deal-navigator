@@ -1083,7 +1083,7 @@ const EvansPipeline = () => {
                 ) : (
                   <span 
                     className={cn(
-                      "text-lg font-semibold text-slate-800 dark:text-slate-100",
+                      "text-lg font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap",
                       canEdit && selectedPipelineId && "cursor-pointer hover:text-[#0066FF] transition-colors"
                     )}
                     onClick={() => {
