@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OutboundCallCard } from '@/components/evan/OutboundCallCard';
+import { useCall } from '@/contexts/CallContext';
 import { 
   Phone, 
   User, 
@@ -153,6 +154,7 @@ const formatDuration = (seconds: number | null) => {
 const EvansCalls = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { outboundCall } = useCall();
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
@@ -247,8 +249,11 @@ const EvansCalls = () => {
 
   const currentCall = activeCalls[0];
   
-  // Determine which phone number to look up - prioritize selected history call, then active call
-  const lookupPhone = selectedHistoryCall?.phone_number || currentCall?.from_number;
+  // Determine which phone number to look up - prioritize: selected history > outbound call > prefilled > active inbound
+  const lookupPhone = selectedHistoryCall?.phone_number 
+    || outboundCall?.phoneNumber 
+    || prefilledPhone 
+    || currentCall?.from_number;
 
   // Fetch lead matching the phone number (from active call or selected history call)
   const { data: matchedLead, isLoading: leadLoading } = useQuery({
