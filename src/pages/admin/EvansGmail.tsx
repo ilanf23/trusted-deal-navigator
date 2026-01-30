@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDraft } from '@/contexts/DraftContext';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
@@ -464,11 +465,25 @@ const EvansGmail = () => {
   const [activeFolder, setActiveFolder] = useState<FolderType>('inbox');
   const [readEmailIds, setReadEmailIds] = useState<Record<string, boolean>>({});
   
-// Compose dialog state
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [composeTo, setComposeTo] = useState('');
-  const [composeSubject, setComposeSubject] = useState('');
-  const [composeBody, setComposeBody] = useState('');
+// Compose dialog state - use context for persistence across navigation
+  const {
+    composeOpen,
+    setComposeOpen,
+    composeTo,
+    setComposeTo,
+    composeSubject,
+    setComposeSubject,
+    composeBody,
+    setComposeBody,
+    composeLeadId: currentLeadIdForEmail,
+    setComposeLeadId: setCurrentLeadIdForEmail,
+    replyThreadId,
+    setReplyThreadId,
+    replyInReplyTo,
+    setReplyInReplyTo,
+    clearCompose,
+  } = useDraft();
+  
   const [composeSending, setComposeSending] = useState(false);
   const [generatingDraftForId, setGeneratingDraftForId] = useState<string | null>(null);
   const handledComposeKeyRef = useRef<string | null>(null);
@@ -487,13 +502,9 @@ const EvansGmail = () => {
   
   // Move Forward flow tracking
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
-  const [currentLeadIdForEmail, setCurrentLeadIdForEmail] = useState<string | null>(null);
   const [currentBodyPlain, setCurrentBodyPlain] = useState<string>('');
   const [currentBodyHtml, setCurrentBodyHtml] = useState<string>('');
-  
-  // Reply context tracking
-  const [replyThreadId, setReplyThreadId] = useState<string | null>(null);
-  const [replyInReplyTo, setReplyInReplyTo] = useState<string | null>(null);
+
 
   // URL params compose handling moved below allLeads query to avoid reference before declaration
 
@@ -1348,11 +1359,8 @@ const EvansGmail = () => {
     // Clear any compose/draft URL params so we don't reopen after send.
     clearComposeParams();
 
-    // Clear form immediately
-    setComposeOpen(false);
-    setComposeTo('');
-    setComposeSubject('');
-    setComposeBody('');
+    // Clear form immediately using context clearCompose
+    clearCompose();
     
     // Show sending toast
     const toastId = toast.loading('Sending email...');
@@ -2463,7 +2471,16 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
       <GmailComposeDialog
         isOpen={composeOpen}
         onClose={() => {
+          // Just close the dialog - DON'T clear the content
+          // This allows the draft to persist when navigating away and back
           setComposeOpen(false);
+          openedDraftIdRef.current = null;
+          handledComposeKeyRef.current = null;
+          clearComposeParams();
+        }}
+        onDiscard={() => {
+          // User explicitly discards - clear everything
+          clearCompose();
           openedDraftIdRef.current = null;
           handledComposeKeyRef.current = null;
           clearComposeParams();
