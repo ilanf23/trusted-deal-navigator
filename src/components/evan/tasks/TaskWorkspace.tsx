@@ -374,14 +374,14 @@ export const TaskWorkspace = () => {
         {/* Left side - Source Filter + Additional Filters */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Source Filter - Pill Style */}
-          <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 rounded-full backdrop-blur-sm">
+          <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 dark:bg-slate-800/60 rounded-full backdrop-blur-sm">
             {sourceFilters.map(({ value, label, icon: Icon }) => (
               <button
                 key={value}
                 onClick={() => setSourceFilter(value)}
                 className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                   sourceFilter === value 
-                    ? 'bg-background text-foreground shadow-sm' 
+                    ? 'bg-white dark:bg-slate-700 text-foreground shadow-sm' 
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -497,14 +497,14 @@ export const TaskWorkspace = () => {
         </div>
 
         {/* View Switcher - Pill Style */}
-        <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 rounded-full backdrop-blur-sm">
+        <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 dark:bg-slate-800/60 rounded-full backdrop-blur-sm">
           {viewOptions.map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
               className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
                 viewMode === mode 
-                  ? 'bg-background text-foreground shadow-sm' 
+                  ? 'bg-white dark:bg-slate-700 text-foreground shadow-sm' 
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
