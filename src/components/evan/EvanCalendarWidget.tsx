@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, Plus, Phone, Video, Users, Clock, Trash2, RefreshCw, Link2, Unlink, Loader2, Check, ChevronLeft, ChevronRight, List, Grid3X3, CalendarDays } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Phone, Video, Users, Clock, Trash2, RefreshCw, Link2, Unlink, Loader2, Check, ChevronLeft, ChevronRight, List, Grid3X3, CalendarDays, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   format, 
@@ -90,6 +90,20 @@ interface Appointment {
   google_event_id: string | null;
   sync_status: string | null;
 }
+
+interface TaskItem {
+  id: string;
+  title: string;
+  due_date: string;
+  is_completed: boolean;
+  priority: string | null;
+  status: string | null;
+  lead?: { name: string; company_name: string | null } | null;
+}
+
+type CalendarItem = 
+  | (Appointment & { itemType: 'appointment' })
+  | (TaskItem & { itemType: 'task' });
 
 type ViewMode = 'day' | 'week' | 'month' | 'agenda';
 
@@ -211,7 +225,7 @@ export const EvanCalendarWidget = () => {
     }
   }, [viewMode, currentDate]);
 
-  const { data: appointments = [], isLoading } = useQuery({
+  const { data: appointments = [], isLoading: appointmentsLoading } = useQuery({
     queryKey: ['evan-appointments', viewMode, currentDate.toISOString()],
     queryFn: async () => {
       const { start, end } = getDateRange();
@@ -226,6 +240,26 @@ export const EvanCalendarWidget = () => {
       return data as Appointment[];
     },
   });
+
+  // Fetch tasks with due dates for calendar display
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ['evan-tasks-calendar', viewMode, currentDate.toISOString()],
+    queryFn: async () => {
+      const { start, end } = getDateRange();
+      
+      const { data, error } = await supabase
+        .from('evan_tasks')
+        .select('id, title, due_date, is_completed, priority, status, lead:leads(name, company_name)')
+        .not('due_date', 'is', null)
+        .gte('due_date', start.toISOString())
+        .lte('due_date', end.toISOString())
+        .order('due_date', { ascending: true });
+      if (error) throw error;
+      return data as TaskItem[];
+    },
+  });
+
+  const isLoading = appointmentsLoading || tasksLoading;
 
   const addAppointment = useMutation({
     mutationFn: async () => {
@@ -449,6 +483,18 @@ export const EvanCalendarWidget = () => {
     return appointments.filter(apt => isSameDay(parseISO(apt.start_time), day));
   };
 
+  // Get tasks for a specific day
+  const getTasksForDay = (day: Date) => {
+    return tasks.filter(task => task.due_date && isSameDay(parseISO(task.due_date), day));
+  };
+
+  // Get all items (appointments + tasks) for a specific day
+  const getItemsForDay = (day: Date): CalendarItem[] => {
+    const dayAppointments = getAppointmentsForDay(day).map(apt => ({ ...apt, itemType: 'appointment' as const }));
+    const dayTasks = getTasksForDay(day).map(task => ({ ...task, itemType: 'task' as const }));
+    return [...dayAppointments, ...dayTasks];
+  };
+
   // Generate calendar days for month view
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -504,6 +550,18 @@ export const EvanCalendarWidget = () => {
     return acc;
   }, {} as Record<string, Appointment[]>);
 
+  // Group tasks by due date
+  const groupedTasks = tasks.reduce((acc, task) => {
+    if (!task.due_date) return acc;
+    const dateKey = format(new Date(task.due_date), 'yyyy-MM-dd');
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(task);
+    return acc;
+  }, {} as Record<string, TaskItem[]>);
+
+  // Get all unique dates that have either appointments or tasks
+  const allDatesWithItems = [...new Set([...Object.keys(groupedAppointments), ...Object.keys(groupedTasks)])].sort();
+
   const isSyncing = syncToGoogle.isPending || importFromGoogle.isPending;
 
   // Render Month View
@@ -521,6 +579,8 @@ export const EvanCalendarWidget = () => {
       <div className="grid grid-cols-7 gap-1">
         {calendarDays.map(day => {
           const dayAppointments = getAppointmentsForDay(day);
+          const dayTasks = getTasksForDay(day);
+          const totalItems = dayAppointments.length + dayTasks.length;
           const isCurrentMonth = isSameMonth(day, currentDate);
           const isSelected = selectedDay && isSameDay(day, selectedDay);
           
@@ -543,7 +603,8 @@ export const EvanCalendarWidget = () => {
                 {format(day, 'd')}
               </div>
               <div className="space-y-0.5">
-                {dayAppointments.slice(0, 2).map(apt => (
+                {/* Show appointments */}
+                {dayAppointments.slice(0, 1).map(apt => (
                   <div
                     key={apt.id}
                     className="text-[10px] bg-primary/20 text-primary rounded px-1 py-0.5 truncate flex items-center gap-1"
@@ -552,9 +613,24 @@ export const EvanCalendarWidget = () => {
                     <span className="truncate">{apt.title}</span>
                   </div>
                 ))}
-                {dayAppointments.length > 2 && (
+                {/* Show tasks */}
+                {dayTasks.slice(0, dayAppointments.length > 0 ? 1 : 2).map(task => (
+                  <div
+                    key={task.id}
+                    className={cn(
+                      "text-[10px] rounded px-1 py-0.5 truncate flex items-center gap-1",
+                      task.is_completed 
+                        ? "bg-emerald-500/20 text-emerald-600 line-through opacity-60"
+                        : "bg-amber-500/20 text-amber-600"
+                    )}
+                  >
+                    <CheckSquare className="h-2.5 w-2.5 flex-shrink-0" />
+                    <span className="truncate">{task.title}</span>
+                  </div>
+                ))}
+                {totalItems > 2 && (
                   <div className="text-[10px] text-muted-foreground">
-                    +{dayAppointments.length - 2} more
+                    +{totalItems - 2} more
                   </div>
                 )}
               </div>
@@ -567,10 +643,11 @@ export const EvanCalendarWidget = () => {
       {selectedDay && (
         <div className="mt-4 p-3 border rounded-lg bg-card">
           <h4 className="font-medium mb-2">{format(selectedDay, 'EEEE, MMMM d')}</h4>
-          {getAppointmentsForDay(selectedDay).length === 0 ? (
-            <p className="text-sm text-muted-foreground">No appointments</p>
+          {getItemsForDay(selectedDay).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No appointments or tasks</p>
           ) : (
             <div className="space-y-2">
+              {/* Appointments */}
               {getAppointmentsForDay(selectedDay).map(apt => (
                 <div key={apt.id} className="flex items-center gap-2 text-sm">
                   <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -595,6 +672,26 @@ export const EvanCalendarWidget = () => {
                   </Button>
                 </div>
               ))}
+              {/* Tasks */}
+              {getTasksForDay(selectedDay).map(task => (
+                <div key={task.id} className={cn(
+                  "flex items-center gap-2 text-sm",
+                  task.is_completed && "opacity-60"
+                )}>
+                  <div className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center",
+                    task.is_completed ? "bg-emerald-500/20 text-emerald-600" : "bg-amber-500/20 text-amber-600"
+                  )}>
+                    <CheckSquare className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className={cn("font-medium", task.is_completed && "line-through")}>{task.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      To Do • {task.status || 'todo'}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -608,6 +705,7 @@ export const EvanCalendarWidget = () => {
       <div className="grid grid-cols-7 gap-2">
         {weekDays.map(day => {
           const dayAppointments = getAppointmentsForDay(day);
+          const dayTasks = getTasksForDay(day);
           
           return (
             <div key={day.toISOString()} className="space-y-1">
@@ -622,6 +720,7 @@ export const EvanCalendarWidget = () => {
                 )}>{format(day, 'd')}</div>
               </div>
               <div className="space-y-1 min-h-[120px]">
+                {/* Appointments */}
                 {dayAppointments.map(apt => (
                   <div
                     key={apt.id}
@@ -636,6 +735,27 @@ export const EvanCalendarWidget = () => {
                     </div>
                   </div>
                 ))}
+                {/* Tasks */}
+                {dayTasks.map(task => (
+                  <div
+                    key={task.id}
+                    className={cn(
+                      "p-2 rounded text-xs border",
+                      task.is_completed 
+                        ? "bg-emerald-500/10 border-emerald-500/20" 
+                        : "bg-amber-500/10 border-amber-500/20"
+                    )}
+                  >
+                    <div className={cn(
+                      "flex items-center gap-1",
+                      task.is_completed ? "text-emerald-600" : "text-amber-600"
+                    )}>
+                      <CheckSquare className="h-3 w-3" />
+                      <span className={cn("font-medium truncate", task.is_completed && "line-through")}>{task.title}</span>
+                    </div>
+                    <div className="text-muted-foreground mt-0.5">To Do</div>
+                  </div>
+                ))}
               </div>
             </div>
           );
@@ -647,6 +767,8 @@ export const EvanCalendarWidget = () => {
   // Render Day View
   const renderDayView = () => {
     const dayAppointments = getAppointmentsForDay(currentDate);
+    const dayTasks = getTasksForDay(currentDate);
+    const hasItems = dayAppointments.length > 0 || dayTasks.length > 0;
     
     return (
       <div className="space-y-4">
@@ -665,48 +787,89 @@ export const EvanCalendarWidget = () => {
           </div>
         </div>
         
-        {dayAppointments.length === 0 ? (
+        {!hasItems ? (
           <div className="text-center text-muted-foreground py-8">
-            No appointments scheduled for this day
+            No appointments or tasks scheduled for this day
           </div>
         ) : (
-          <div className="space-y-2">
-            {dayAppointments.map(apt => (
-              <div
-                key={apt.id}
-                className="flex items-center gap-3 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  {getTypeIcon(apt.appointment_type)}
+          <div className="space-y-4">
+            {/* Appointments section */}
+            {dayAppointments.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Appointments</h4>
+                <div className="space-y-2">
+                  {dayAppointments.map(apt => (
+                    <div
+                      key={apt.id}
+                      className="flex items-center gap-3 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        {getTypeIcon(apt.appointment_type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{apt.title}</p>
+                          {apt.google_event_id && (
+                            <Badge variant="secondary" className="text-xs h-5 px-1.5">
+                              <Check className="h-3 w-3" />
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {format(parseISO(apt.start_time), 'h:mm a')}
+                          {apt.end_time && ` - ${format(parseISO(apt.end_time), 'h:mm a')}`}
+                        </p>
+                        {apt.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{apt.description}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteAppointment.mutate(apt.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{apt.title}</p>
-                    {apt.google_event_id && (
-                      <Badge variant="secondary" className="text-xs h-5 px-1.5">
-                        <Check className="h-3 w-3" />
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {format(parseISO(apt.start_time), 'h:mm a')}
-                    {apt.end_time && ` - ${format(parseISO(apt.end_time), 'h:mm a')}`}
-                  </p>
-                  {apt.description && (
-                    <p className="text-sm text-muted-foreground mt-1">{apt.description}</p>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteAppointment.mutate(apt.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
-            ))}
+            )}
+            
+            {/* Tasks section */}
+            {dayTasks.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">To Do's</h4>
+                <div className="space-y-2">
+                  {dayTasks.map(task => (
+                    <div
+                      key={task.id}
+                      className={cn(
+                        "flex items-center gap-3 p-4 rounded-lg border transition-colors",
+                        task.is_completed 
+                          ? "bg-emerald-500/5 border-emerald-500/20 opacity-60" 
+                          : "bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center",
+                        task.is_completed ? "bg-emerald-500/20 text-emerald-600" : "bg-amber-500/20 text-amber-600"
+                      )}>
+                        <CheckSquare className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("font-medium", task.is_completed && "line-through")}>{task.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {task.status === 'done' ? 'Completed' : task.priority ? `${task.priority} priority` : 'To Do'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -716,52 +879,87 @@ export const EvanCalendarWidget = () => {
   // Render Agenda View
   const renderAgendaView = () => (
     <div className="space-y-4">
-      {Object.keys(groupedAppointments).length === 0 ? (
+      {allDatesWithItems.length === 0 ? (
         <div className="text-center text-muted-foreground py-8">
-          No appointments in this time range
+          No appointments or tasks in this time range
         </div>
       ) : (
-        Object.entries(groupedAppointments).map(([date, apts]) => (
-          <div key={date}>
-            <h4 className="text-sm font-semibold text-muted-foreground mb-2 sticky top-0 bg-background py-1">
-              {getDateLabel(apts[0].start_time)}
-            </h4>
-            <div className="space-y-2">
-              {apts.map((apt) => (
-                <div
-                  key={apt.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    {getTypeIcon(apt.appointment_type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate">{apt.title}</p>
-                      {apt.google_event_id && (
-                        <Badge variant="secondary" className="text-xs h-5 px-1.5">
-                          <Check className="h-3 w-3" />
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {format(new Date(apt.start_time), 'h:mm a')}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => deleteAppointment.mutate(apt.id)}
+        allDatesWithItems.map((dateKey) => {
+          const dayAppointments = groupedAppointments[dateKey] || [];
+          const dayTasks = groupedTasks[dateKey] || [];
+          const firstItem = dayAppointments[0] || dayTasks[0];
+          const dateStr = dayAppointments[0]?.start_time || dayTasks[0]?.due_date || dateKey;
+          
+          return (
+            <div key={dateKey}>
+              <h4 className="text-sm font-semibold text-muted-foreground mb-2 sticky top-0 bg-background py-1">
+                {getDateLabel(dateStr)}
+              </h4>
+              <div className="space-y-2">
+                {/* Appointments */}
+                {dayAppointments.map((apt) => (
+                  <div
+                    key={apt.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      {getTypeIcon(apt.appointment_type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">{apt.title}</p>
+                        {apt.google_event_id && (
+                          <Badge variant="secondary" className="text-xs h-5 px-1.5">
+                            <Check className="h-3 w-3" />
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(apt.start_time), 'h:mm a')}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteAppointment.mutate(apt.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {/* Tasks */}
+                {dayTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                      task.is_completed 
+                        ? "bg-emerald-500/5 border-emerald-500/20 opacity-60" 
+                        : "bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10"
+                    )}
+                  >
+                    <div className={cn(
+                      "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
+                      task.is_completed ? "bg-emerald-500/20 text-emerald-600" : "bg-amber-500/20 text-amber-600"
+                    )}>
+                      <CheckSquare className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-sm font-medium truncate", task.is_completed && "line-through")}>
+                        {task.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        To Do • {task.priority || 'medium'} priority
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );
