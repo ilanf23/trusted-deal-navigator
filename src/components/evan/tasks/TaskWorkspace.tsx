@@ -6,8 +6,13 @@ import { TaskTableView } from './TaskTableView';
 import { TaskKanbanView } from './TaskKanbanView';
 import { TaskTimelineView } from './TaskTimelineView';
 import { TaskDetailDialog } from './TaskDetailDialog';
+import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { useGmail } from '@/hooks/useGmail';
+import { appendSignature } from '@/lib/email-signature';
+import { toast } from 'sonner';
 import { 
   LayoutGrid, 
   Table, 
@@ -23,6 +28,7 @@ import {
 export const TaskWorkspace = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { tasks, isLoading, addTask, updateTask, deleteTask, addComment } = useTasksData();
+  const { sendMessage } = useGmail();
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<TaskSource>('all');
@@ -30,9 +36,17 @@ export const TaskWorkspace = () => {
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   
+  // Compose dialog state
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [composeSending, setComposeSending] = useState(false);
+  const [composeLeadId, setComposeLeadId] = useState<string | null>(null);
+  const [composeRecipientName, setComposeRecipientName] = useState('');
+  
   // Track if we've already handled the URL params to prevent loops
   const handledNewTaskRef = useRef(false);
-
   // Handle URL params for creating new task from Gmail
   useEffect(() => {
     const newTask = searchParams.get('newTask');
@@ -103,6 +117,89 @@ export const TaskWorkspace = () => {
 
   const handleAddComment = (taskId: string, content: string) => {
     addComment.mutate({ taskId, content });
+  };
+
+  // Handle compose email from task detail dialog
+  const handleComposeEmail = async (leadId: string | null, template?: string) => {
+    if (!leadId) {
+      // Just open empty compose if no lead
+      setComposeOpen(true);
+      return;
+    }
+
+    try {
+      // Fetch lead details
+      const { data: lead, error } = await supabase
+        .from('leads')
+        .select('id, name, email, company_name')
+        .eq('id', leadId)
+        .single();
+
+      if (error || !lead) {
+        toast.error('Could not load lead details');
+        return;
+      }
+
+      if (!lead.email) {
+        toast.error('Lead has no email address');
+        return;
+      }
+
+      // Set recipient info
+      setComposeLeadId(lead.id);
+      setComposeTo(lead.email);
+      setComposeRecipientName(lead.name);
+
+      // Generate email content based on template
+      const response = await supabase.functions.invoke('generate-lead-email', {
+        body: {
+          leadId: lead.id,
+          emailType: template || 'follow_up',
+        },
+      });
+
+      if (response.error) throw response.error;
+
+      const { subject, body } = response.data;
+      setComposeSubject(subject || `Following up - ${lead.company_name || lead.name}`);
+      setComposeBody(appendSignature(body || ''));
+      setComposeOpen(true);
+    } catch (error: any) {
+      toast.error('Failed to generate email: ' + error.message);
+    }
+  };
+
+  // Handle sending the email
+  const handleSendEmail = async () => {
+    setComposeSending(true);
+    try {
+      const success = await sendMessage(composeTo, composeSubject, composeBody);
+      
+      if (success) {
+        // Update lead's last_activity_at
+        if (composeLeadId) {
+          await supabase
+            .from('leads')
+            .update({ last_activity_at: new Date().toISOString() })
+            .eq('id', composeLeadId);
+        }
+        
+        setComposeOpen(false);
+        
+        // Reset compose state
+        setComposeTo('');
+        setComposeSubject('');
+        setComposeBody('');
+        setComposeLeadId(null);
+        setComposeRecipientName('');
+        
+        toast.success('Email sent successfully');
+      }
+    } catch (error: any) {
+      toast.error('Failed to send email: ' + error.message);
+    } finally {
+      setComposeSending(false);
+    }
   };
 
   const toggleTaskSelection = (id: string) => {
@@ -282,6 +379,7 @@ export const TaskWorkspace = () => {
         onClose={() => setSelectedTask(null)}
         onUpdateTask={handleUpdateTask}
         onAddComment={handleAddComment}
+        onComposeEmail={handleComposeEmail}
       />
 
       {/* New Task Dialog - for creating new tasks */}
@@ -296,6 +394,28 @@ export const TaskWorkspace = () => {
           setIsNewTaskDialogOpen(false);
         }}
         isNewTask
+      />
+
+      {/* Gmail Compose Dialog */}
+      <GmailComposeDialog
+        isOpen={composeOpen}
+        onClose={() => {
+          setComposeOpen(false);
+          setComposeTo('');
+          setComposeSubject('');
+          setComposeBody('');
+          setComposeLeadId(null);
+          setComposeRecipientName('');
+        }}
+        to={composeTo}
+        onToChange={setComposeTo}
+        subject={composeSubject}
+        onSubjectChange={setComposeSubject}
+        body={composeBody}
+        onBodyChange={setComposeBody}
+        onSend={handleSendEmail}
+        sending={composeSending}
+        recipientName={composeRecipientName}
       />
     </div>
   );

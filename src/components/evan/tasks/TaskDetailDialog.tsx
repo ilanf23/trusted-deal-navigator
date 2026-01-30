@@ -41,6 +41,7 @@ interface TaskDetailDialogProps {
   onAddComment: (taskId: string, content: string) => void;
   onCreateTask?: (task: Partial<Task>) => void;
   isNewTask?: boolean;
+  onComposeEmail?: (leadId: string | null, template?: string) => void;
 }
 
 export const TaskDetailDialog = ({
@@ -51,6 +52,7 @@ export const TaskDetailDialog = ({
   onAddComment,
   onCreateTask,
   isNewTask = false,
+  onComposeEmail,
 }: TaskDetailDialogProps) => {
   const navigate = useNavigate();
   const [newComment, setNewComment] = useState('');
@@ -209,8 +211,14 @@ export const TaskDetailDialog = ({
     return null;
   };
 
-  const handleNavigate = (path: string) => {
-    navigate(path);
+  const handleNavigate = (navInfo: { path: string; action?: 'compose' | 'view'; template?: string }) => {
+    // If it's a compose action and we have the callback, use it to open compose dialog inline
+    if (navInfo.action === 'compose' && onComposeEmail) {
+      onComposeEmail(task?.lead_id || null, navInfo.template);
+    } else {
+      // Otherwise navigate normally
+      navigate(navInfo.path);
+    }
   };
 
   // For existing task view
@@ -594,7 +602,7 @@ export const TaskDetailDialog = ({
                     <Button
                       variant="outline"
                       className="h-10 px-4 rounded-lg gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-colors"
-                      onClick={() => handleNavigate(navInfo.path)}
+                      onClick={() => handleNavigate(navInfo)}
                     >
                       {navInfo.icon}
                       <span>{navInfo.label}</span>
