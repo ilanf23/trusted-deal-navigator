@@ -778,15 +778,43 @@ const EvansPipeline = () => {
   const bulkAssignOwnerMutation = useMutation({
     mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
       if (!canEdit) throw new Error('Not authorized');
+      
+      // Get current assignments before updating (for undo)
+      const { data: leadsBeforeUpdate } = await supabase
+        .from('leads')
+        .select('id, assigned_to, name')
+        .in('id', leadIds);
+      
       const { error } = await supabase.from('leads').update({ assigned_to: ownerId }).in('id', leadIds);
       if (error) throw error;
-      return { ownerId };
+      return { ownerId, leadsBeforeUpdate, leadCount: leadIds.length };
     },
-    onSuccess: () => {
-      toast.success(`${selectedLeadIds.size} lead(s) reassigned`);
+    onSuccess: (result) => {
+      toast.success(`${result.leadCount} lead(s) reassigned`);
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       clearSelection();
+      
+      // Register undo for bulk owner change
+      if (result.leadsBeforeUpdate && result.leadsBeforeUpdate.length > 0) {
+        const leadNames = result.leadsBeforeUpdate.map(l => l.name).slice(0, 2).join(', ');
+        const label = result.leadsBeforeUpdate.length === 1
+          ? `Reassigned ${leadNames}`
+          : `Reassigned ${result.leadsBeforeUpdate.length} leads`;
+        
+        registerUndo({
+          label,
+          execute: async () => {
+            // Restore original assignments
+            for (const lead of result.leadsBeforeUpdate!) {
+              await supabase.from('leads').update({ assigned_to: lead.assigned_to }).eq('id', lead.id);
+            }
+            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+            queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+            toast.success('Undo successful');
+          },
+        });
+      }
     },
     onError: () => toast.error('Failed to assign owner'),
   });

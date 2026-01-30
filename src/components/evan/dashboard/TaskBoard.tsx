@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Plus, ChevronDown, Star, Trash2, MessageSquare, Search, Filter, SlidersHorizontal, EyeOff, ArrowUpDown, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, addDays, isToday, isTomorrow, parseISO, isSameDay } from 'date-fns';
+import { useUndo } from '@/contexts/UndoContext';
 
 interface Task {
   id: string;
@@ -54,6 +55,7 @@ export const TaskBoard = () => {
   });
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
+  const { registerUndo } = useUndo();
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['evan-tasks-board'],
@@ -99,12 +101,45 @@ export const TaskBoard = () => {
 
   const deleteTask = useMutation({
     mutationFn: async (id: string) => {
+      // Get task data before deleting (for undo)
+      const { data: taskToDelete } = await supabase
+        .from('evan_tasks')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
       const { error } = await supabase.from('evan_tasks').delete().eq('id', id);
       if (error) throw error;
+      
+      return taskToDelete;
     },
-    onSuccess: () => {
+    onSuccess: (deletedTask) => {
       queryClient.invalidateQueries({ queryKey: ['evan-tasks-board'] });
+      queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
       toast.success('Task deleted');
+      
+      // Register undo for task deletion
+      if (deletedTask) {
+        registerUndo({
+          label: `Deleted "${deletedTask.title}"`,
+          execute: async () => {
+            const { error } = await supabase.from('evan_tasks').insert({
+              id: deletedTask.id,
+              title: deletedTask.title,
+              status: deletedTask.status,
+              priority: deletedTask.priority,
+              assignee_name: deletedTask.assignee_name,
+              due_date: deletedTask.due_date,
+              description: deletedTask.description,
+              is_completed: deletedTask.is_completed,
+            });
+            if (error) throw error;
+            queryClient.invalidateQueries({ queryKey: ['evan-tasks-board'] });
+            queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+            toast.success('Task restored');
+          },
+        });
+      }
     },
     onError: () => toast.error('Failed to delete task'),
   });
