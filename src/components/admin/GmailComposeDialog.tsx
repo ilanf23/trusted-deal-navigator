@@ -47,6 +47,7 @@ export interface Attachment {
 interface GmailComposeDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onDiscard?: () => void; // Optional: called when user explicitly discards the draft
   to: string;
   onToChange: (value: string) => void;
   subject: string;
@@ -61,6 +62,7 @@ interface GmailComposeDialogProps {
 const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   isOpen,
   onClose,
+  onDiscard,
   to,
   onToChange,
   subject,
@@ -162,7 +164,12 @@ const pendingBody = useRef<string | null>(null);
     onBodyChange('');
     setAttachments([]);
     setIsConfidential(false);
-    onClose();
+    // Call onDiscard if provided (for context-based clearing), otherwise just onClose
+    if (onDiscard) {
+      onDiscard();
+    } else {
+      onClose();
+    }
   };
 
   // Format command helper - also syncs content after formatting
