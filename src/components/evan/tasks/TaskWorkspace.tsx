@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTasksData } from '@/hooks/useTasksData';
-import { Task, ViewMode, TaskSource, sourceConfig } from './types';
+import { Task, ViewMode, TaskSource, sourceConfig, statusConfig, priorityConfig, statusPickerOptions } from './types';
 import { TaskTableView } from './TaskTableView';
 import { TaskKanbanView } from './TaskKanbanView';
 import { TaskTimelineView } from './TaskTimelineView';
@@ -23,7 +23,17 @@ import {
   Users,
   Filter,
   Clock,
+  ChevronDown,
+  AlertCircle,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 
 export const TaskWorkspace = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,6 +42,8 @@ export const TaskWorkspace = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<TaskSource>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
@@ -97,6 +109,26 @@ export const TaskWorkspace = () => {
       }
     }
     
+    // Filter by status
+    if (statusFilter !== 'all') {
+      result = result.filter(task => {
+        const taskStatus = task.status || 'todo';
+        // Handle in_progress/working alias
+        if (statusFilter === 'working') {
+          return taskStatus === 'working' || taskStatus === 'in_progress';
+        }
+        return taskStatus === statusFilter;
+      });
+    }
+    
+    // Filter by priority
+    if (priorityFilter !== 'all') {
+      result = result.filter(task => {
+        const taskPriority = task.priority || 'none';
+        return taskPriority === priorityFilter;
+      });
+    }
+    
     // Filter by search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -108,13 +140,37 @@ export const TaskWorkspace = () => {
     }
     
     return result;
-  }, [tasks, searchTerm, sourceFilter, hiddenTasks]);
+  }, [tasks, searchTerm, sourceFilter, statusFilter, priorityFilter, hiddenTasks]);
 
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {
-    updateTask.mutate({ id, updates });
+    // Auto-sync is_completed with status
+    const enhancedUpdates = { ...updates };
+    
+    // If status is being set to 'done', also mark is_completed = true
+    if (updates.status === 'done' && updates.is_completed === undefined) {
+      enhancedUpdates.is_completed = true;
+    }
+    
+    // If is_completed is being set to true, also set status to 'done'
+    if (updates.is_completed === true && updates.status === undefined) {
+      enhancedUpdates.status = 'done';
+    }
+    
+    // If status is being changed FROM 'done' to something else, unmark is_completed
+    if (updates.status && updates.status !== 'done' && updates.is_completed === undefined) {
+      enhancedUpdates.is_completed = false;
+    }
+    
+    // If is_completed is being set to false, reset status to 'todo' if it was 'done'
+    if (updates.is_completed === false && updates.status === undefined) {
+      // Check current task status - we'll default to 'todo' when uncompleting
+      enhancedUpdates.status = 'todo';
+    }
+    
+    updateTask.mutate({ id, updates: enhancedUpdates });
     
     // If task is being completed, trigger fade-out and hide after delay
-    if (updates.is_completed === true || updates.status === 'done') {
+    if (enhancedUpdates.is_completed === true || enhancedUpdates.status === 'done') {
       setFadingTasks(prev => new Set(prev).add(id));
       
       // After fade animation (1.5s), hide the task
@@ -129,7 +185,7 @@ export const TaskWorkspace = () => {
     }
     
     // If task is being uncompleted, make sure it's visible again
-    if (updates.is_completed === false || (updates.status && updates.status !== 'done')) {
+    if (enhancedUpdates.is_completed === false || (enhancedUpdates.status && enhancedUpdates.status !== 'done')) {
       setHiddenTasks(prev => {
         const next = new Set(prev);
         next.delete(id);
@@ -297,24 +353,131 @@ export const TaskWorkspace = () => {
         </div>
       </div>
 
-      {/* Unified Filter Bar - Source Filters (left) + View Switcher (right) */}
-      <div className="flex items-center justify-between gap-4 p-1.5 bg-muted/40 rounded-2xl border border-muted-foreground/10">
-        {/* Source Filter - Pill Style */}
-        <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 rounded-full backdrop-blur-sm">
-          {sourceFilters.map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              onClick={() => setSourceFilter(value)}
-              className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                sourceFilter === value 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+      {/* Unified Filter Bar - Source Filters (left) + Status/Priority + View Switcher (right) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-1.5 bg-muted/40 rounded-2xl border border-muted-foreground/10">
+        {/* Left side - Source Filter + Additional Filters */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Source Filter - Pill Style */}
+          <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 rounded-full backdrop-blur-sm">
+            {sourceFilters.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                onClick={() => setSourceFilter(value)}
+                className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                  sourceFilter === value 
+                    ? 'bg-background text-foreground shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </div>
+          
+          {/* Status Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant={statusFilter !== 'all' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className={`h-9 gap-1.5 rounded-full ${statusFilter !== 'all' ? 'bg-background shadow-sm' : ''}`}
+              >
+                {statusFilter !== 'all' && (
+                  <div 
+                    className="w-2 h-2 rounded-full" 
+                    style={{ backgroundColor: statusConfig[statusFilter]?.color || '#64748b' }} 
+                  />
+                )}
+                <span className="text-sm">
+                  {statusFilter === 'all' ? 'Status' : statusConfig[statusFilter]?.label || statusFilter}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Filter by Status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                  <span>All Statuses</span>
+                </div>
+                {statusFilter === 'all' && <span className="ml-auto">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {statusPickerOptions.map(status => {
+                const config = statusConfig[status];
+                return (
+                  <DropdownMenuItem key={status} onClick={() => setStatusFilter(status)}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: config.color }} />
+                      <span>{config.label}</span>
+                    </div>
+                    {statusFilter === status && <span className="ml-auto">✓</span>}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          {/* Priority Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant={priorityFilter !== 'all' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className={`h-9 gap-1.5 rounded-full ${priorityFilter !== 'all' ? 'bg-background shadow-sm' : ''}`}
+              >
+                {priorityFilter !== 'all' && (
+                  <AlertCircle 
+                    className="h-3.5 w-3.5" 
+                    style={{ color: priorityConfig[priorityFilter]?.color || '#94a3b8' }} 
+                  />
+                )}
+                <span className="text-sm">
+                  {priorityFilter === 'all' ? 'Priority' : priorityConfig[priorityFilter]?.label || priorityFilter}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Filter by Priority</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setPriorityFilter('all')}>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-muted-foreground/50" />
+                  <span>All Priorities</span>
+                </div>
+                {priorityFilter === 'all' && <span className="ml-auto">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {Object.entries(priorityConfig).map(([priority, config]) => (
+                <DropdownMenuItem key={priority} onClick={() => setPriorityFilter(priority)}>
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-3.5 w-3.5" style={{ color: config.color }} />
+                    <span>{config.label}</span>
+                  </div>
+                  {priorityFilter === priority && <span className="ml-auto">✓</span>}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          {/* Clear Filters Button - only show when filters are active */}
+          {(statusFilter !== 'all' || priorityFilter !== 'all') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 px-3 rounded-full text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setStatusFilter('all');
+                setPriorityFilter('all');
+              }}
             >
-              <Icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
+              Clear filters
+            </Button>
+          )}
         </div>
 
         {/* View Switcher - Pill Style */}
