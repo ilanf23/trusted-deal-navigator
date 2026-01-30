@@ -2145,14 +2145,75 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                         templates={emailTemplates}
                       />
                     ) : (
-                      <div className="mt-6 pt-4 border-t border-border">
+                      <div className="mt-6 pt-4 border-t border-border flex items-center gap-3">
                         <Button
                           variant="outline"
-                          className="w-full justify-start gap-2 h-12 text-muted-foreground hover:text-foreground"
+                          className="flex-1 justify-center gap-2 h-11 rounded-full"
                           onClick={() => setShowInlineReply(true)}
                         >
                           <Reply className="w-4 h-4" />
-                          Click to reply...
+                          Reply
+                        </Button>
+                        {/* Show Reply all if there are CC recipients */}
+                        {(selectedEmail.cc || (selectedEmail.to && selectedEmail.to.includes(','))) && (
+                          <Button
+                            variant="outline"
+                            className="flex-1 justify-center gap-2 h-11 rounded-full"
+                            onClick={() => {
+                              // Get all recipients for reply all
+                              const toAddresses = selectedEmail.to?.split(',').map(e => e.trim()) || [];
+                              const ccAddresses = selectedEmail.cc?.split(',').map(e => e.trim()) || [];
+                              const fromAddress = extractEmailAddress(selectedEmail.from);
+                              const allRecipients = [fromAddress, ...toAddresses, ...ccAddresses]
+                                .filter(e => e && !e.toLowerCase().includes('evan'))
+                                .join(', ');
+                              
+                              const replySubject = selectedEmail.subject.toLowerCase().startsWith('re:') 
+                                ? selectedEmail.subject 
+                                : `Re: ${selectedEmail.subject}`;
+                              
+                              setReplyThreadId(selectedEmail.threadId);
+                              setReplyInReplyTo(selectedEmail.id);
+                              setComposeTo(allRecipients);
+                              setComposeSubject(replySubject);
+                              setComposeBody(appendSignature(''));
+                              setComposeOpen(true);
+                            }}
+                          >
+                            <ReplyAll className="w-4 h-4" />
+                            Reply all
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          className="flex-1 justify-center gap-2 h-11 rounded-full"
+                          onClick={() => {
+                            const fwdSubject = selectedEmail.subject.toLowerCase().startsWith('fwd:') 
+                              ? selectedEmail.subject 
+                              : `Fwd: ${selectedEmail.subject}`;
+                            
+                            const messageDate = format(new Date(selectedEmail.date), 'EEE, MMM d, yyyy \'at\' h:mm a');
+                            const bodyToForward = selectedEmail.body || selectedEmail.snippet || '';
+                            const forwardContent = `
+<br><br>
+---------- Forwarded message ---------<br>
+From: ${selectedEmail.from}<br>
+Date: ${messageDate}<br>
+Subject: ${selectedEmail.subject}<br>
+To: ${selectedEmail.to || 'evan@commerciallendingx.com'}<br>
+<br>
+${bodyToForward.replace(/\n/g, '<br>')}`;
+                            
+                            setReplyThreadId(null);
+                            setReplyInReplyTo(null);
+                            setComposeTo('');
+                            setComposeSubject(fwdSubject);
+                            setComposeBody(appendSignature('') + forwardContent);
+                            setComposeOpen(true);
+                          }}
+                        >
+                          <Forward className="w-4 h-4" />
+                          Forward
                         </Button>
                       </div>
                     )}
