@@ -564,6 +564,8 @@ const EvansGmail = () => {
     if (compose === 'draft' && draftId) {
       // Draft was already created - switch to Drafts folder to show it
       setActiveFolder('drafts');
+      // Refetch drafts to show the new one
+      refetchDrafts();
       toast.success('Draft created! Check your Drafts folder.');
       // Clear the URL params to prevent reopening on refresh
       setSearchParams({});
@@ -750,6 +752,42 @@ Commercial Lending X`;
     enabled: !!gmailConnection,
   });
 
+  // Fetch drafts from Gmail
+  const { data: draftEmails = [], isLoading: draftsLoading, refetch: refetchDrafts } = useQuery({
+    queryKey: ['evan-gmail-drafts'],
+    queryFn: async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
+      if (sessionError || !session) {
+        console.error('Session refresh failed:', sessionError);
+        return [];
+      }
+
+      const response = await fetch(
+        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=in:drafts&maxResults=50&fetchPhotos=true`,
+        { headers: { 'Authorization': `Bearer ${session.access_token}` } }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch drafts');
+
+      return (data?.messages || []).map((msg: any) => ({
+        id: msg.id,
+        threadId: msg.threadId,
+        subject: msg.subject || '(No Subject)',
+        from: msg.from || '',
+        to: msg.to || '',
+        cc: msg.cc || '',
+        bcc: msg.bcc || '',
+        date: msg.date || new Date().toISOString(),
+        snippet: msg.snippet || '',
+        body: msg.body || '',
+        isRead: true, // Drafts are always "read"
+        senderPhoto: null,
+      })) as Email[];
+    },
+    enabled: !!gmailConnection,
+  });
+
   // Combine real emails with mock external emails and sort by date (newest first)
   const allEmails = useMemo(() => {
     const combined = [...mockExternalEmails, ...emails];
@@ -776,8 +814,12 @@ Commercial Lending X`;
         return dateB - dateA;
       });
     } else if (activeFolder === 'drafts') {
-      // For now, show empty drafts (would be connected to Gmail drafts API)
-      result = [];
+      // Use the dedicated drafts from Gmail API
+      result = draftEmails.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateB - dateA;
+      });
     } else if (activeFolder === 'starred') {
       // Would be connected to Gmail starred
       result = [];
@@ -823,7 +865,7 @@ Commercial Lending X`;
     }
     
     return result;
-  }, [allEmails, crmEmails, activeFolder, searchQuery, allLeads, sentEmails]);
+  }, [allEmails, crmEmails, activeFolder, searchQuery, allLeads, sentEmails, draftEmails]);
 
   // Reset page when folder or search changes
   useEffect(() => {
@@ -887,12 +929,12 @@ Commercial Lending X`;
     
     return {
       inbox: unreadCount,
-      drafts: 0, // Would be fetched from Gmail API
+      drafts: draftEmails.length,
       external: externalCount,
       internal: internalCount,
       followup: followupCount,
     };
-  }, [allEmails, crmEmails, allLeads, readEmailIds]);
+  }, [allEmails, crmEmails, allLeads, readEmailIds, draftEmails]);
 
   // Fetch pipeline stages for dropdown
   const { data: pipelineStages = [] } = useQuery({
