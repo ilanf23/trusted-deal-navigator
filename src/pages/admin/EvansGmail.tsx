@@ -1994,6 +1994,27 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                             // Get signature and build full body
                             const fullBody = appendSignature(body);
 
+                            // Detect if this is a mock email (not a real Gmail thread)
+                            const isMockEmail = selectedEmail.id.startsWith('mock-') || selectedEmail.threadId.startsWith('thread-mock-');
+                            
+                            // Build request payload - don't include threadId/inReplyTo for mock emails
+                            const sendPayload: any = {
+                              to: extractEmailAddress(selectedEmail.from),
+                              subject: replySubject,
+                              body: fullBody,
+                              attachments: attachments.map(att => ({
+                                filename: att.name,
+                                mimeType: att.type,
+                                data: att.base64,
+                              })),
+                            };
+                            
+                            // Only add threading info for real Gmail messages
+                            if (!isMockEmail) {
+                              sendPayload.threadId = selectedEmail.threadId;
+                              sendPayload.inReplyTo = selectedEmail.id;
+                            }
+
                             // Send the email
                             const response = await fetch(
                               `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send`,
@@ -2003,18 +2024,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                                   Authorization: authHeader,
                                   'Content-Type': 'application/json',
                                 },
-                                body: JSON.stringify({
-                                  to: extractEmailAddress(selectedEmail.from),
-                                  subject: replySubject,
-                                  body: fullBody,
-                                  threadId: selectedEmail.threadId,
-                                  inReplyTo: selectedEmail.id,
-                                  attachments: attachments.map(att => ({
-                                    filename: att.name,
-                                    mimeType: att.type,
-                                    data: att.base64,
-                                  })),
-                                }),
+                                body: JSON.stringify(sendPayload),
                               }
                             );
 
