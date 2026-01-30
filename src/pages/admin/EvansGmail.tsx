@@ -1877,10 +1877,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                               "py-6",
                               index === 0 && "pt-0"
                             )}>
-                              <div className={cn(
-                                "p-4 rounded-lg",
-                                isFromEvan ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
-                              )}>
+                              <div className="p-4 rounded-lg">
                                 <div className="flex items-start gap-3 mb-4">
                                   <Avatar className="w-10 h-10 flex-shrink-0">
                                     {msg.senderPhoto ? (
