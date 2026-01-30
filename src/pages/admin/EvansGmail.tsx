@@ -1869,21 +1869,20 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                     
                     {/* Thread Messages */}
                     {mockThreadMessages[selectedEmail.threadId] ? (
-                      <div className="space-y-6">
+                      <div className="divide-y divide-border">
                         {mockThreadMessages[selectedEmail.threadId].map((msg, index) => {
                           const isFromEvan = msg.from.toLowerCase().includes('evan');
                           return (
-                            <div key={msg.id} className="relative">
-                              {/* Connector line between messages */}
-                              {index < mockThreadMessages[selectedEmail.threadId].length - 1 && (
-                                <div className="absolute left-5 top-12 bottom-0 w-px bg-border" style={{ height: 'calc(100% + 1.5rem)' }} />
-                              )}
+                            <div key={msg.id} className={cn(
+                              "py-6",
+                              index === 0 && "pt-0"
+                            )}>
                               <div className={cn(
-                                "rounded-lg border p-4",
-                                isFromEvan ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" : "bg-background"
+                                "p-4 rounded-lg",
+                                isFromEvan ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
                               )}>
                                 <div className="flex items-start gap-3 mb-4">
-                                  <Avatar className="w-10 h-10 border flex-shrink-0">
+                                  <Avatar className="w-10 h-10 flex-shrink-0">
                                     {msg.senderPhoto ? (
                                       <AvatarImage src={msg.senderPhoto} />
                                     ) : null}
