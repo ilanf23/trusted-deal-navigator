@@ -71,7 +71,7 @@ export const TaskDetailDialog = ({
   
   const { data: activities = [] } = useTaskActivities(task?.id || null);
   
-  const priorityOptions = ['critical', 'high', 'medium', 'low', 'none'] as const;
+  const priorityOptions = ['none', 'low', 'medium', 'high', 'critical'] as const;
 
   // Fetch leads for the customer dropdown
   const { data: leads = [] } = useQuery({
