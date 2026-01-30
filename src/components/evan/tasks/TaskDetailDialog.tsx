@@ -264,12 +264,12 @@ export const TaskDetailDialog = ({
   if (isNewTask) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col rounded-2xl border-muted-foreground/10">
-          <DialogHeader className="pb-4 border-b border-muted-foreground/10">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl border-muted-foreground/10 z-[100]">
+          <DialogHeader className="pb-4 border-b border-muted-foreground/10 flex-shrink-0">
             <DialogTitle className="text-xl font-semibold">Create New Task</DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto space-y-6 py-4">
+          <div className="flex-1 overflow-y-auto space-y-6 py-4 px-1">
             {/* Title */}
             <div className="space-y-3">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
