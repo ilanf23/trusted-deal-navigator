@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useUndo } from '@/contexts/UndoContext';
 import EvanLayout from '@/components/evan/EvanLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 
@@ -41,6 +42,7 @@ const EvansLeads = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { teamMember, isOwner } = useTeamMember();
+  const { registerUndo } = useUndo();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -209,19 +211,51 @@ const EvansLeads = () => {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       if (!canEdit) throw new Error('Not authorized to delete this lead');
+      
+      // Get lead data before deleting (for undo)
+      const { data: leadToDelete } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
       const { error } = await supabase.from('leads').delete().eq('id', id);
       if (error) throw error;
+      
+      return leadToDelete;
     },
-    onSuccess: () => {
+    onSuccess: (deletedLead) => {
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       toast.success('Lead deleted successfully');
       setPreviewLead(null);
+      
+      // Register undo for lead deletion
+      if (deletedLead) {
+        registerUndo({
+          label: `Deleted ${deletedLead.name}`,
+          execute: async () => {
+            const { error } = await supabase.from('leads').insert({
+              ...deletedLead,
+              updated_at: new Date().toISOString(),
+            });
+            if (error) throw error;
+            queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+            queryClient.invalidateQueries({ queryKey: ['leads'] });
+            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+            toast.success('Lead restored');
+          },
+        });
+      }
     },
     onError: () => toast.error('Failed to delete lead'),
   });
 
-  const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
+  const handleStatusChange = async (leadId: string, newStatus: LeadStatus, leadName?: string) => {
+    // Get current status before updating (for undo)
+    const lead = leads.find(l => l.id === leadId);
+    const previousStatus = lead?.status;
+    
     try {
       const updateData: Partial<Lead> = { status: newStatus };
       if (newStatus === 'approval') {
@@ -232,6 +266,24 @@ const EvansLeads = () => {
       toast.success('Lead status updated');
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      
+      // Register undo for status change
+      if (previousStatus) {
+        registerUndo({
+          label: `${leadName || lead?.name || 'Lead'} moved to ${statusConfig[newStatus]?.label || newStatus}`,
+          execute: async () => {
+            const { error: undoError } = await supabase
+              .from('leads')
+              .update({ status: previousStatus })
+              .eq('id', leadId);
+            if (undoError) throw undoError;
+            queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
+            queryClient.invalidateQueries({ queryKey: ['leads'] });
+            queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+            toast.success('Undo successful');
+          },
+        });
+      }
     } catch (error) {
       toast.error('Failed to update lead');
     }
