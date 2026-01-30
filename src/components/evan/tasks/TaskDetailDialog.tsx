@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Task, TaskActivity, statusConfig, statusPickerOptions } from './types';
+import { Task, TaskActivity, statusConfig, statusPickerOptions, priorityConfig } from './types';
 import { useTaskActivities } from '@/hooks/useTasksData';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -24,7 +24,8 @@ import {
   History,
   CheckCircle2,
   Circle,
-  Building2
+  Building2,
+  Star
 } from 'lucide-react';
 
 interface TaskDetailDialogProps {
@@ -58,8 +59,11 @@ export const TaskDetailDialog = ({
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
   const [newTaskLeadId, setNewTaskLeadId] = useState<string | null>(null);
   const [newTaskHours, setNewTaskHours] = useState<number | null>(null);
+  const [newTaskPriority, setNewTaskPriority] = useState<string>('medium');
   
   const { data: activities = [] } = useTaskActivities(task?.id || null);
+  
+  const priorityOptions = ['critical', 'high', 'medium', 'low', 'none'] as const;
 
   // Fetch leads for the customer dropdown
   const { data: leads = [] } = useQuery({
@@ -84,6 +88,7 @@ export const TaskDetailDialog = ({
       setNewTaskDueDate(undefined);
       setNewTaskLeadId(null);
       setNewTaskHours(null);
+      setNewTaskPriority('medium');
     }
     onClose();
   };
@@ -99,8 +104,28 @@ export const TaskDetailDialog = ({
       due_date: newTaskDueDate?.toISOString() || undefined,
       lead_id: newTaskLeadId || undefined,
       estimated_hours: newTaskHours || undefined,
+      priority: newTaskPriority,
       source: 'manual',
     });
+  };
+  
+  // Priority star renderer
+  const renderPriorityStars = (priority: string) => {
+    const config = priorityConfig[priority] || priorityConfig.medium;
+    return (
+      <div className="flex items-center gap-0.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star
+            key={i}
+            className="h-3.5 w-3.5"
+            style={{ 
+              color: i < config.stars ? config.color : '#e2e8f0',
+              fill: i < config.stars ? config.color : 'transparent'
+            }}
+          />
+        ))}
+      </div>
+    );
   };
 
   // For existing task view
@@ -240,6 +265,32 @@ export const TaskDetailDialog = ({
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+
+            {/* Priority */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Star className="h-3.5 w-3.5" /> Priority
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {priorityOptions.map((key) => {
+                  const config = priorityConfig[key];
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setNewTaskPriority(key)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                        newTaskPriority === key 
+                          ? 'bg-primary/10 text-primary ring-2 ring-offset-2 ring-offset-background ring-primary'
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                    >
+                      {renderPriorityStars(key)}
+                      <span>{config.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Hours */}
@@ -417,6 +468,32 @@ export const TaskDetailDialog = ({
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+
+            {/* Priority */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Star className="h-3.5 w-3.5" /> Priority
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {priorityOptions.map((key) => {
+                  const config = priorityConfig[key];
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => onUpdateTask(task!.id, { priority: key })}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                        task!.priority === key 
+                          ? 'bg-primary/10 text-primary ring-2 ring-offset-2 ring-offset-background ring-primary'
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                    >
+                      {renderPriorityStars(key)}
+                      <span>{config.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Hours */}
