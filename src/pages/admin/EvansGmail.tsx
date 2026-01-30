@@ -2142,6 +2142,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                         onDiscard={() => setShowInlineReply(false)}
                         sending={inlineReplySending}
                         placeholder="Write your reply..."
+                        templates={emailTemplates}
                       />
                     ) : (
                       <div className="mt-6 pt-4 border-t border-border">
@@ -2719,6 +2720,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
         onBodyChange={setComposeBody}
         onSend={handleSendEmail}
         sending={composeSending}
+        templates={emailTemplates}
       />
 
       {/* Lead Detail Dialog */}

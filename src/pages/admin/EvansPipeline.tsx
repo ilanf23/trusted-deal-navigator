@@ -38,6 +38,40 @@ import sarahRichardsonAvatar from '@/assets/avatars/sarah-richardson.jpg';
 import sophiaLaurentAvatar from '@/assets/avatars/sophia-laurent.jpg';
 import thomasWrightAvatar from '@/assets/avatars/thomas-wright.jpg';
 
+// Email templates for compose
+const emailTemplates = [
+  {
+    id: 'template-1',
+    name: 'Initial Outreach',
+    subject: 'Commercial Lending Opportunity',
+    body: 'Hi, I wanted to reach out about financing options that could help grow your business.',
+  },
+  {
+    id: 'template-2',
+    name: 'Follow-Up',
+    subject: 'Following Up on Our Conversation',
+    body: 'Just checking in to see if you had any questions about the loan options we discussed.',
+  },
+  {
+    id: 'template-3',
+    name: 'Document Request',
+    subject: 'Documents Needed for Your Application',
+    body: 'To move forward with your application, please provide the following documents at your earliest convenience.',
+  },
+  {
+    id: 'template-4',
+    name: 'Rate Update',
+    subject: 'Great News - Rates Have Changed',
+    body: 'I wanted to let you know that rates have moved favorably and now might be a good time to revisit your financing.',
+  },
+  {
+    id: 'template-5',
+    name: 'Thank You',
+    subject: 'Thank You for Your Business',
+    body: 'Thank you for choosing us for your financing needs - please don\'t hesitate to reach out if you need anything.',
+  },
+];
+
 // Lead name to avatar mapping
 const leadAvatarMap: Record<string, string> = {
   'andrew foster': andrewFosterAvatar,
@@ -2015,6 +2049,7 @@ const EvansPipeline = () => {
         onSend={handleSendEmail}
         sending={composeSending}
         recipientName={composeRecipientName}
+        templates={emailTemplates}
       />
 
       {/* Generating Email Loading Overlay */}
