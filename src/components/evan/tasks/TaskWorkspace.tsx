@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTasksData } from '@/hooks/useTasksData';
 import { Task, ViewMode, TaskSource, sourceConfig } from './types';
@@ -29,14 +29,21 @@ export const TaskWorkspace = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  
+  // Track if we've already handled the URL params to prevent loops
+  const handledNewTaskRef = useRef(false);
 
   // Handle URL params for creating new task from Gmail
   useEffect(() => {
     const newTask = searchParams.get('newTask');
-    if (newTask === 'true') {
+    if (newTask === 'true' && !handledNewTaskRef.current) {
+      handledNewTaskRef.current = true;
       const title = searchParams.get('title') || '';
       const description = searchParams.get('description') || '';
       const leadId = searchParams.get('leadId') || undefined;
+      
+      // Clear URL params first to prevent re-triggering
+      setSearchParams({});
       
       // Create the task with pre-filled data from Gmail
       addTask.mutate({
@@ -46,9 +53,9 @@ export const TaskWorkspace = () => {
         lead_id: leadId || undefined,
         source: 'gmail',
       });
-      
-      // Clear URL params
-      setSearchParams({});
+    } else if (!newTask) {
+      // Reset the flag when there's no newTask param
+      handledNewTaskRef.current = false;
     }
   }, [searchParams, setSearchParams, addTask]);
 
