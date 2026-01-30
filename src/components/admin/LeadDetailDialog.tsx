@@ -1414,7 +1414,7 @@ Commercial Lending X`,
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[92vh] p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-6xl max-h-[90vh] p-0 gap-0 overflow-hidden">
 
         {/* Main Content - Two Column Layout */}
         <div className="flex h-[calc(90vh-60px)]">
