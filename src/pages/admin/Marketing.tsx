@@ -24,6 +24,7 @@ const statusColors: Record<LeadStatus, string> = {
   underwriting: 'bg-orange-100 text-orange-800',
   approval: 'bg-green-100 text-green-800',
   funded: 'bg-purple-100 text-purple-800',
+  lost: 'bg-red-100 text-red-800',
 };
 
 const AdminMarketing = () => {
