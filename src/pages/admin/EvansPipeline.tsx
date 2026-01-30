@@ -1274,7 +1274,7 @@ const EvansPipeline = () => {
               </SelectContent>
             </Select>
             <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-              <SelectTrigger className="w-full sm:w-40 md:w-48 h-9 md:h-10 border-slate-200 dark:border-slate-600 text-sm">
+              <SelectTrigger className="w-auto min-w-[100px] h-9 md:h-10 border-slate-200 dark:border-slate-600 text-sm px-3">
                 <Users className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 text-slate-400" />
                 <SelectValue placeholder="Owner" />
               </SelectTrigger>
