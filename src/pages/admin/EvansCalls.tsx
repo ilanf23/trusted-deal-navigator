@@ -157,6 +157,7 @@ const EvansCalls = () => {
   const [retryingTranscriptId, setRetryingTranscriptId] = useState<string | null>(null);
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
   const [directionFilter, setDirectionFilter] = useState<'all' | 'inbound' | 'outbound'>('all');
+  const [selectedHistoryCall, setSelectedHistoryCall] = useState<CallLog | null>(null);
   
   // Add Lead Dialog state
   const [addLeadDialogOpen, setAddLeadDialogOpen] = useState(false);
@@ -228,18 +229,20 @@ const EvansCalls = () => {
   }, [callHistory, selectedTranscriptCall?.id]);
 
   const currentCall = activeCalls[0];
-  const callerPhone = currentCall?.from_number;
+  
+  // Determine which phone number to look up - prioritize selected history call, then active call
+  const lookupPhone = selectedHistoryCall?.phone_number || currentCall?.from_number;
 
-  // Fetch lead matching the caller's phone number
+  // Fetch lead matching the phone number (from active call or selected history call)
   const { data: matchedLead, isLoading: leadLoading } = useQuery({
-    queryKey: ['caller-lead', callerPhone],
+    queryKey: ['caller-lead', lookupPhone],
     queryFn: async () => {
-      if (!callerPhone) return null;
+      if (!lookupPhone) return null;
       
       // Clean the phone number for comparison
-      const cleanedPhone = callerPhone.replace(/\D/g, '');
+      const cleanedPhone = lookupPhone.replace(/\D/g, '');
       const phoneVariants = [
-        callerPhone,
+        lookupPhone,
         cleanedPhone,
         cleanedPhone.length === 11 && cleanedPhone.startsWith('1') ? cleanedPhone.slice(1) : cleanedPhone,
         `+1${cleanedPhone.slice(-10)}`,
@@ -251,12 +254,12 @@ const EvansCalls = () => {
         .select('*')
         .or(phoneVariants.map(p => `phone.ilike.%${p.slice(-10)}%`).join(','))
         .limit(1)
-        .single();
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data as Lead | null;
     },
-    enabled: !!callerPhone,
+    enabled: !!lookupPhone,
   });
 
   // Fetch lead response/questionnaire data if we have a matched lead
@@ -543,10 +546,36 @@ const EvansCalls = () => {
             {/* Matched Lead Card */}
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-muted-foreground" />
-                  <CardTitle className="text-lg">Caller Information</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle className="text-lg">
+                      {selectedHistoryCall 
+                        ? (selectedHistoryCall.direction === 'outbound' ? 'Contact Information' : 'Caller Information')
+                        : 'Caller Information'}
+                    </CardTitle>
+                  </div>
+                  {selectedHistoryCall && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setSelectedHistoryCall(null)}
+                    >
+                      Clear
+                    </Button>
+                  )}
                 </div>
+                {selectedHistoryCall && (
+                  <CardDescription className="flex items-center gap-1.5 mt-1">
+                    {selectedHistoryCall.direction === 'inbound' ? (
+                      <PhoneIncoming className="h-3.5 w-3.5" />
+                    ) : (
+                      <PhoneOutgoing className="h-3.5 w-3.5" />
+                    )}
+                    {selectedHistoryCall.direction === 'inbound' ? 'Inbound' : 'Outbound'} call on {format(new Date(selectedHistoryCall.created_at), 'MMM d, yyyy')}
+                  </CardDescription>
+                )}
               </CardHeader>
               <CardContent>
                 {leadLoading ? (
@@ -656,10 +685,23 @@ const EvansCalls = () => {
                   <div className="text-center py-8">
                     <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                     <p className="text-muted-foreground">
-                      {currentCall 
+                      {selectedHistoryCall
                         ? 'No matching lead found for this number'
-                        : 'Lead information will appear when a call comes in'}
+                        : currentCall 
+                          ? 'No matching lead found for this number'
+                          : 'Click on a call in the history or wait for an incoming call'}
                     </p>
+                    {selectedHistoryCall && !matchedLead && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() => handleOpenAddLeadDialog(selectedHistoryCall)}
+                      >
+                        <UserPlus className="h-4 w-4 mr-1.5" />
+                        Create Lead
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -730,7 +772,10 @@ const EvansCalls = () => {
                         .map((call) => (
                         <div
                           key={call.id}
-                          className="p-4 hover:bg-muted/50 transition-colors"
+                          className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
+                            selectedHistoryCall?.id === call.id ? 'bg-primary/10 border-l-2 border-l-primary' : ''
+                          }`}
+                          onClick={() => setSelectedHistoryCall(selectedHistoryCall?.id === call.id ? null : call)}
                         >
                           <div className="flex items-start gap-3">
                             <div className={`p-2 rounded-full ${
