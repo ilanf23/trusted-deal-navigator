@@ -5,7 +5,7 @@ import EvanLayout from '@/components/evan/EvanLayout';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen, ListTodo, MessageSquare, Star } from 'lucide-react';
+import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen, ListTodo, MessageSquare, Star, Reply, ReplyAll, Forward } from 'lucide-react';
 import { GmailTaskDialog } from '@/components/admin/GmailTaskDialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -490,6 +490,10 @@ const EvansGmail = () => {
   const [currentLeadIdForEmail, setCurrentLeadIdForEmail] = useState<string | null>(null);
   const [currentBodyPlain, setCurrentBodyPlain] = useState<string>('');
   const [currentBodyHtml, setCurrentBodyHtml] = useState<string>('');
+  
+  // Reply context tracking
+  const [replyThreadId, setReplyThreadId] = useState<string | null>(null);
+  const [replyInReplyTo, setReplyInReplyTo] = useState<string | null>(null);
 
   // URL params compose handling moved below allLeads query to avoid reference before declaration
 
@@ -1311,6 +1315,8 @@ const EvansGmail = () => {
     const subjectSend = composeSubject;
     const bodySend = composeBody;
     const bodyPlainSend = currentBodyPlain || composeBody; // Fallback to current body
+    const threadIdSend = replyThreadId;
+    const inReplyToSend = replyInReplyTo;
     const attachmentsSend = attachments.map(a => ({
       filename: a.name,
       mimeType: a.type,
@@ -1327,6 +1333,8 @@ const EvansGmail = () => {
       bodyPlainPreview: bodyPlainSend?.substring(0, 200) || 'EMPTY',
       attachmentsCount: attachmentsSend.length,
       leadId: currentLeadIdForEmail,
+      threadId: threadIdSend,
+      inReplyTo: inReplyToSend,
     });
     
     // HARD FAIL: Block if body is empty
@@ -1354,8 +1362,7 @@ const EvansGmail = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      // Log the exact payload being sent to the edge function
-      const payload = {
+      const payload: Record<string, any> = {
         to: toSend,
         subject: subjectSend,
         body: bodySend,
@@ -1363,6 +1370,14 @@ const EvansGmail = () => {
         flowId,
         attachments: attachmentsSend,
       };
+      
+      // Include thread context for replies
+      if (threadIdSend) {
+        payload.threadId = threadIdSend;
+      }
+      if (inReplyToSend) {
+        payload.inReplyTo = inReplyToSend;
+      }
       
       console.log(`[${flowId}] Sending to gmail-api edge function:`, {
         payloadBodyLength: payload.body.length,
@@ -1443,6 +1458,9 @@ const EvansGmail = () => {
       setCurrentLeadIdForEmail(null);
       setCurrentBodyPlain('');
       setCurrentBodyHtml('');
+      // Clear reply context
+      setReplyThreadId(null);
+      setReplyInReplyTo(null);
     }
   };
 
@@ -1480,7 +1498,65 @@ const EvansGmail = () => {
     }
   };
 
-  // Loading
+  // Handle reply to email thread
+  const handleReply = (email: Email) => {
+    // Extract sender email for reply
+    const senderEmail = extractEmailAddress(email.from);
+    
+    // Build reply subject (add Re: if not already present)
+    const replySubject = email.subject.toLowerCase().startsWith('re:') 
+      ? email.subject 
+      : `Re: ${email.subject}`;
+    
+    // Get the last message body for quoting
+    const threadMessages = mockThreadMessages[email.threadId];
+    let quotedContent = '';
+    
+    if (threadMessages && threadMessages.length > 0) {
+      const lastMessage = threadMessages[threadMessages.length - 1];
+      const messageDate = format(new Date(lastMessage.date), 'EEE, MMM d, yyyy \'at\' h:mm a');
+      quotedContent = `
+<br><br>
+<div style="border-left: 2px solid #ccc; padding-left: 12px; margin-left: 0; color: #666;">
+<p style="margin: 0 0 8px 0; font-size: 12px;">On ${messageDate}, ${extractSenderName(lastMessage.from)} wrote:</p>
+<div style="white-space: pre-wrap;">${lastMessage.body.replace(/\n/g, '<br>')}</div>
+</div>`;
+    } else {
+      // Quote the email snippet/body
+      const messageDate = format(new Date(email.date), 'EEE, MMM d, yyyy \'at\' h:mm a');
+      const bodyToQuote = email.body || email.snippet || '';
+      quotedContent = `
+<br><br>
+<div style="border-left: 2px solid #ccc; padding-left: 12px; margin-left: 0; color: #666;">
+<p style="margin: 0 0 8px 0; font-size: 12px;">On ${messageDate}, ${extractSenderName(email.from)} wrote:</p>
+<div style="white-space: pre-wrap;">${bodyToQuote.replace(/\n/g, '<br>')}</div>
+</div>`;
+    }
+    
+    // Set reply context
+    setReplyThreadId(email.threadId);
+    setReplyInReplyTo(email.id);
+    
+    // Find the lead for this email
+    const lead = findLeadForEmail(email);
+    if (lead) {
+      setCurrentLeadIdForEmail(lead.id);
+    }
+    
+    // Open compose with reply content
+    setComposeTo(senderEmail);
+    setComposeSubject(replySubject);
+    setComposeBody(appendSignature('') + quotedContent);
+    setComposeOpen(true);
+    
+    console.debug('[EvansGmail] Reply initiated', {
+      threadId: email.threadId,
+      inReplyTo: email.id,
+      to: senderEmail,
+      subject: replySubject,
+    });
+  };
+
   if (connectionLoading) {
     return (
       <EvanLayout>
@@ -1632,22 +1708,101 @@ const EvansGmail = () => {
             <div className="h-full flex">
               {/* Email Content */}
               <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="p-3 border-b flex items-center justify-between">
-                  <Button variant="ghost" size="sm" onClick={() => { setSelectedEmailId(null); setShowDealSidebar(false); }}>
-                    ← Back
-                  </Button>
-                  {/* Toggle Deal Sidebar button - only for external leads */}
-                  {selectedLead && isExternalEmail(selectedEmail) && (
+                <div className="p-3 border-b flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => { setSelectedEmailId(null); setShowDealSidebar(false); }}>
+                      ← Back
+                    </Button>
+                  </div>
+                  
+                  {/* Email Action Buttons */}
+                  <div className="flex items-center gap-1">
+                    {/* Reply Button */}
                     <Button
-                      variant={showDealSidebar ? "secondary" : "outline"}
+                      variant="outline"
                       size="sm"
-                      onClick={() => setShowDealSidebar(!showDealSidebar)}
+                      onClick={() => handleReply(selectedEmail)}
                       className="gap-2"
                     >
-                      <User className="w-4 h-4" />
-                      {showDealSidebar ? 'Hide Lead Info' : 'Show Lead Info'}
+                      <Reply className="w-4 h-4" />
+                      Reply
                     </Button>
-                  )}
+                    
+                    {/* Reply All - show only if there are CC recipients */}
+                    {selectedEmail.cc && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Reply All: include CC recipients
+                          const senderEmail = extractEmailAddress(selectedEmail.from);
+                          const ccEmails = selectedEmail.cc;
+                          const allRecipients = ccEmails ? `${senderEmail}, ${ccEmails}` : senderEmail;
+                          
+                          const replySubject = selectedEmail.subject.toLowerCase().startsWith('re:') 
+                            ? selectedEmail.subject 
+                            : `Re: ${selectedEmail.subject}`;
+                          
+                          setReplyThreadId(selectedEmail.threadId);
+                          setReplyInReplyTo(selectedEmail.id);
+                          setComposeTo(allRecipients);
+                          setComposeSubject(replySubject);
+                          setComposeBody(appendSignature(''));
+                          setComposeOpen(true);
+                        }}
+                        className="gap-2"
+                      >
+                        <ReplyAll className="w-4 h-4" />
+                      </Button>
+                    )}
+                    
+                    {/* Forward */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const fwdSubject = selectedEmail.subject.toLowerCase().startsWith('fwd:') 
+                          ? selectedEmail.subject 
+                          : `Fwd: ${selectedEmail.subject}`;
+                        
+                        // Get the message body for forwarding
+                        const messageDate = format(new Date(selectedEmail.date), 'EEE, MMM d, yyyy \'at\' h:mm a');
+                        const bodyToForward = selectedEmail.body || selectedEmail.snippet || '';
+                        const forwardContent = `
+<br><br>
+---------- Forwarded message ---------<br>
+From: ${selectedEmail.from}<br>
+Date: ${messageDate}<br>
+Subject: ${selectedEmail.subject}<br>
+To: ${selectedEmail.to || 'evan@commerciallendingx.com'}<br>
+<br>
+${bodyToForward.replace(/\n/g, '<br>')}`;
+                        
+                        setReplyThreadId(null); // New thread for forward
+                        setReplyInReplyTo(null);
+                        setComposeTo('');
+                        setComposeSubject(fwdSubject);
+                        setComposeBody(appendSignature('') + forwardContent);
+                        setComposeOpen(true);
+                      }}
+                      className="gap-2"
+                    >
+                      <Forward className="w-4 h-4" />
+                    </Button>
+                    
+                    {/* Toggle Deal Sidebar button - only for external leads */}
+                    {selectedLead && isExternalEmail(selectedEmail) && (
+                      <Button
+                        variant={showDealSidebar ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setShowDealSidebar(!showDealSidebar)}
+                        className="gap-2 ml-2"
+                      >
+                        <User className="w-4 h-4" />
+                        {showDealSidebar ? 'Hide Lead Info' : 'Show Lead Info'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="p-6">
@@ -1754,6 +1909,18 @@ const EvansGmail = () => {
                         />
                       </>
                     )}
+                    
+                    {/* Quick Reply Bar */}
+                    <div className="mt-6 pt-4 border-t border-border">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-2 h-12 text-muted-foreground hover:text-foreground"
+                        onClick={() => handleReply(selectedEmail)}
+                      >
+                        <Reply className="w-4 h-4" />
+                        Click to reply...
+                      </Button>
+                    </div>
                   </div>
                 </ScrollArea>
               </div>
