@@ -44,6 +44,13 @@ export interface Attachment {
   base64?: string; // Base64 encoded data for sending
 }
 
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+}
+
 interface GmailComposeDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -57,6 +64,7 @@ interface GmailComposeDialogProps {
   onSend: (attachments: Attachment[]) => void;
   sending?: boolean;
   recipientName?: string;
+  templates?: EmailTemplate[];
 }
 
 const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
@@ -72,6 +80,7 @@ const GmailComposeDialog: React.FC<GmailComposeDialogProps> = ({
   onSend,
   sending = false,
   recipientName,
+  templates = [],
 }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -793,6 +802,36 @@ Saint Augustine, FL 32092</strong><br>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs">Insert signature</TooltipContent>
                 </Tooltip>
+                
+                {/* Templates dropdown */}
+                {templates.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-colors flex items-center gap-1">
+                        <FileText className="w-5 h-5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      {templates.map((template) => (
+                        <DropdownMenuItem 
+                          key={template.id}
+                          onClick={() => {
+                            onSubjectChange(template.subject);
+                            onBodyChange(template.body);
+                            // Update the editor content
+                            if (editorRef.current) {
+                              editorRef.current.innerHTML = template.body;
+                            }
+                            toast.success(`Template "${template.name}" applied`);
+                          }}
+                        >
+                          <FileText className="w-4 h-4 mr-2 text-muted-foreground" />
+                          {template.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
             

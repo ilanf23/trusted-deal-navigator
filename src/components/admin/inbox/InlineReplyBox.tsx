@@ -1,10 +1,16 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { 
   Send, Loader2, Paperclip, Bold, Italic, Underline, 
-  Link2, List, ListOrdered, Trash2, XCircle
+  Link2, List, ListOrdered, Trash2, XCircle, FileText, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +23,13 @@ export interface InlineAttachment {
   base64?: string;
 }
 
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+}
+
 interface InlineReplyBoxProps {
   recipientEmail: string;
   recipientName: string;
@@ -26,6 +39,7 @@ interface InlineReplyBoxProps {
   sending?: boolean;
   initialBody?: string;
   placeholder?: string;
+  templates?: EmailTemplate[];
 }
 
 const InlineReplyBox: React.FC<InlineReplyBoxProps> = ({
@@ -37,6 +51,7 @@ const InlineReplyBox: React.FC<InlineReplyBoxProps> = ({
   sending = false,
   initialBody = '',
   placeholder = 'Write your reply...',
+  templates = [],
 }) => {
   const [body, setBody] = useState(initialBody);
   const [attachments, setAttachments] = useState<InlineAttachment[]>([]);
@@ -255,6 +270,41 @@ const InlineReplyBox: React.FC<InlineReplyBoxProps> = ({
             className="hidden"
             accept="*/*"
           />
+          
+          {/* Templates dropdown */}
+          {templates.length > 0 && (
+            <>
+              <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-1"
+                    title="Insert template"
+                  >
+                    <FileText className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                    <ChevronDown className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  {templates.map((template) => (
+                    <DropdownMenuItem 
+                      key={template.id}
+                      onClick={() => {
+                        if (editorRef.current) {
+                          editorRef.current.innerHTML = template.body;
+                          setBody(template.body);
+                        }
+                        toast.success(`Template "${template.name}" applied`);
+                      }}
+                    >
+                      <FileText className="w-4 h-4 mr-2 text-muted-foreground" />
+                      {template.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
         </div>
 
         {/* Action buttons */}
