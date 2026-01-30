@@ -294,7 +294,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
             />
           )}
         </Link>
-        {!isCollapsed && <div className="h-px bg-white/15 mx-2 -mt-8" />}
+        {!isCollapsed && <div className="h-px bg-white/15 -mt-8" />}
       </SidebarHeader>
       
       <SidebarContent className={`pt-3 space-y-0.5 ${isCollapsed ? 'px-1' : 'px-3'}`}>
