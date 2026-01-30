@@ -567,6 +567,9 @@ const EvansGmail = () => {
     },
   });
 
+  // State for tracking email generation loading
+  const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
+
   // Handle URL params to open compose dialog from dashboard nudges or tasks
   useEffect(() => {
     const compose = searchParams.get('compose');
@@ -613,78 +616,87 @@ const EvansGmail = () => {
       setComposeOpen(true);
     } else if (compose === 'true') {
       // Open compose dialog with optional lead and template context
-      let recipientEmail = '';
-      let subject = '';
-      let body = '';
+      // Use AI to generate email content if leadId is provided
       
-      // If leadId is provided, find the lead and pre-fill recipient
-      if (leadId && allLeads.length > 0) {
-        const lead = allLeads.find((l: any) => l.id === leadId);
-        if (lead) {
-          recipientEmail = lead.email || '';
-          
-          // Check for template type and pre-fill accordingly
-          if (template === 'closing') {
-            subject = `Closing Documents - ${lead.company_name || lead.name}`;
-            body = `Hi ${lead.name?.split(' ')[0] || 'there'},
+      const generateAndOpenCompose = async () => {
+        if (leadId && allLeads.length > 0) {
+          const lead = allLeads.find((l: any) => l.id === leadId);
+          if (lead) {
+            const recipientEmail = lead.email || '';
+            
+            if (!recipientEmail) {
+              toast.error('Lead has no email address');
+              clearComposeParams();
+              return;
+            }
 
-Congratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.
+            setIsGeneratingEmail(true);
+            setComposeTo(recipientEmail);
+            setCurrentLeadIdForEmail(lead.id);
+            
+            try {
+              // Call AI to generate email content
+              const response = await supabase.functions.invoke('generate-lead-email', {
+                body: {
+                  leadId: lead.id,
+                  emailType: template || 'follow_up',
+                },
+              });
 
-Please review the following documents carefully:
-1. Loan Agreement
-2. Promissory Note
-3. Security Agreement
-4. Personal Guarantee (if applicable)
+              if (response.error) throw response.error;
 
-Once you've reviewed everything, please sign where indicated and return the documents at your earliest convenience. If you have any questions or need clarification on any terms, don't hesitate to reach out.
-
-Looking forward to completing this transaction with you.
-
-Best regards,
-Evan
-Commercial Lending X`;
-          } else if (template === 'follow_up') {
-            subject = `Following Up - ${lead.company_name || lead.name}`;
-            body = `Hi ${lead.name?.split(' ')[0] || 'there'},
-
-I wanted to check in and see how things are progressing on your end. It's been a little while since we last connected, and I wanted to make sure you have everything you need.
-
-If there's anything I can help with or if you have any questions about the process, please don't hesitate to reach out.
-
-Looking forward to hearing from you.
-
-Best regards,
-Evan
-Commercial Lending X`;
+              const { subject, body } = response.data;
+              setComposeSubject(subject || `Following up - ${lead.company_name || lead.name}`);
+              setComposeBody(appendSignature(body || ''));
+              setComposeOpen(true);
+              toast.success('Email draft generated');
+            } catch (error: any) {
+              console.error('Failed to generate email:', error);
+              toast.error('Failed to generate email: ' + error.message);
+              // Fall back to basic template
+              const fallbackSubject = template === 'closing' 
+                ? `Closing Documents - ${lead.company_name || lead.name}`
+                : `Following Up - ${lead.company_name || lead.name}`;
+              const fallbackBody = template === 'closing'
+                ? `Hi ${lead.name?.split(' ')[0] || 'there'},\n\nCongratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.\n\nBest regards,\nEvan\nCommercial Lending X`
+                : `Hi ${lead.name?.split(' ')[0] || 'there'},\n\nI wanted to check in and see how things are progressing on your end.\n\nBest regards,\nEvan\nCommercial Lending X`;
+              setComposeSubject(fallbackSubject);
+              setComposeBody(appendSignature(fallbackBody));
+              setComposeOpen(true);
+            } finally {
+              setIsGeneratingEmail(false);
+            }
+          } else {
+            toast.error('Lead not found');
+            clearComposeParams();
           }
+        } else if (template) {
+          // Template without specific lead - use static template
+          let subject = '';
+          let body = '';
+          
+          if (template === 'closing') {
+            subject = 'Closing Documents';
+            body = `Hi,\n\nCongratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.\n\nPlease review the documents carefully and sign where indicated. If you have any questions, please reach out.\n\nBest regards,\nEvan\nCommercial Lending X`;
+          } else if (template === 'follow_up') {
+            subject = 'Following Up';
+            body = `Hi,\n\nI wanted to check in and see how things are progressing. Please let me know if there's anything I can help with.\n\nBest regards,\nEvan\nCommercial Lending X`;
+          }
+          
+          setComposeTo('');
+          setComposeSubject(subject);
+          setComposeBody(appendSignature(body));
+          setComposeOpen(true);
+        } else {
+          // Just open empty compose
+          setComposeTo('');
+          setComposeSubject('');
+          setComposeBody(EVAN_SIGNATURE_HTML);
+          setComposeOpen(true);
         }
-      } else if (template === 'closing') {
-        // Template without specific lead
-        subject = 'Closing Documents';
-        body = `Hi,
-
-Congratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.
-
-Please review the documents carefully and sign where indicated. If you have any questions, please reach out.
-
-Best regards,
-Evan
-Commercial Lending X`;
-      } else if (template === 'follow_up') {
-        subject = 'Following Up';
-        body = `Hi,
-
-I wanted to check in and see how things are progressing. Please let me know if there's anything I can help with.
-
-Best regards,
-Evan
-Commercial Lending X`;
-      }
+      };
       
-      setComposeTo(recipientEmail);
-      setComposeSubject(subject);
-      setComposeBody(appendSignature(body));
-      setComposeOpen(true);
+      generateAndOpenCompose();
     }
   }, [searchParams, allLeads, location.pathname, location.search]);
 
@@ -1504,6 +1516,16 @@ Commercial Lending X`;
 
   return (
     <EvanLayout>
+      {/* Email generation loading overlay */}
+      {isGeneratingEmail && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-card border rounded-xl p-6 shadow-xl flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-sm font-medium">Generating email draft...</p>
+            <p className="text-xs text-muted-foreground">Using AI to craft your message</p>
+          </div>
+        </div>
+      )}
       <div className="flex h-[calc(100vh-100px)] border rounded-lg overflow-hidden bg-background">
         {/* Sidebar */}
         <GmailSidebar

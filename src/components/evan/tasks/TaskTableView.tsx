@@ -123,21 +123,14 @@ export const TaskTableView = ({
     e.stopPropagation();
     const navInfo = getNavigationInfo(task);
     if (navInfo) {
-      const currentRoute = `${window.location.pathname}${window.location.search}`;
       console.debug('[TaskTableView] Go To click', {
-        from: currentRoute,
         taskId: task.id,
         action: navInfo.action,
         path: navInfo.path,
         template: navInfo.template,
       });
 
-      // Prefer opening compose as an in-page popup (no navigation) when possible.
-      if (navInfo.action === 'compose' && onComposeEmail) {
-        void onComposeEmail(task.lead_id || null, navInfo.template);
-        return;
-      }
-
+      // Always navigate to Gmail page for compose actions - Gmail will handle email generation
       navigate(navInfo.path);
     }
   };
