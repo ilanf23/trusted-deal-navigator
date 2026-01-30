@@ -1612,10 +1612,10 @@ const EvansPipeline = () => {
                                             <button
                                               onClick={(e) => handleCall(e, lead)}
                                               disabled={isCallingThis}
-                                              className="inline-flex items-center gap-1 h-6 px-2 rounded bg-green-100 hover:bg-green-200 border border-green-300 disabled:opacity-50"
+                                              className="inline-flex items-center gap-1 h-6 px-2 rounded bg-green-50 hover:bg-green-100 border border-green-200 disabled:opacity-50"
                                             >
-                                              {isCallingThis ? <Loader2 className="h-3 w-3 text-green-700 animate-spin" /> : <Phone className="h-3 w-3 text-green-700" />}
-                                              <span className="text-[11px] font-medium text-green-700">Call</span>
+                                              {isCallingThis ? <Loader2 className="h-3 w-3 text-green-600 animate-spin" /> : <Phone className="h-3 w-3 text-green-600" />}
+                                              <span className="text-[11px] font-medium text-green-600">Call</span>
                                             </button>
                                           </HoverCardTrigger>
                                           <HoverCardContent side="top" className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
@@ -1652,10 +1652,10 @@ const EvansPipeline = () => {
                                           <HoverCardTrigger asChild>
                                             <button
                                               onClick={(e) => handleEmail(e, lead)}
-                                              className="inline-flex items-center gap-1 h-6 px-2 rounded bg-blue-100 hover:bg-blue-200 border border-blue-300"
+                                              className="inline-flex items-center gap-1 h-6 px-2 rounded bg-blue-50 hover:bg-blue-100 border border-blue-200"
                                             >
-                                              <Mail className="h-3 w-3 text-blue-700" />
-                                              <span className="text-[11px] font-medium text-blue-700">Email</span>
+                                              <Mail className="h-3 w-3 text-blue-600" />
+                                              <span className="text-[11px] font-medium text-blue-600">Email</span>
                                             </button>
                                           </HoverCardTrigger>
                                           <HoverCardContent side="top" className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
