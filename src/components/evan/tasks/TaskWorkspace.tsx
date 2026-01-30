@@ -388,6 +388,7 @@ export const TaskWorkspace = () => {
             selectedTasks={selectedTasks}
             onToggleSelect={toggleTaskSelection}
             fadingTasks={fadingTasks}
+            onComposeEmail={handleComposeEmail}
           />
         )}
 
