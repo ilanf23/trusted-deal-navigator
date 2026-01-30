@@ -6,21 +6,25 @@ import { cn } from '@/lib/utils';
 interface InlineEditableCellProps {
   value: string;
   onChange: (newValue: string) => void;
+  onSingleClick?: () => void;
   type?: 'text' | 'select';
   options?: { id: string; label: string }[];
   placeholder?: string;
   className?: string;
   displayClassName?: string;
+  editOnDoubleClick?: boolean;
 }
 
 export const InlineEditableCell = ({
   value,
   onChange,
+  onSingleClick,
   type = 'text',
   options = [],
   placeholder = '—',
   className,
   displayClassName,
+  editOnDoubleClick = false,
 }: InlineEditableCellProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -55,7 +59,20 @@ export const InlineEditableCell = ({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsEditing(true);
+    if (editOnDoubleClick) {
+      // For double-click mode, single click triggers the callback
+      onSingleClick?.();
+    } else {
+      // Legacy mode: single click edits
+      setIsEditing(true);
+    }
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (editOnDoubleClick) {
+      setIsEditing(true);
+    }
   };
 
   if (type === 'select') {
@@ -109,11 +126,15 @@ export const InlineEditableCell = ({
   return (
     <span
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       className={cn(
-        "truncate block cursor-text hover:bg-slate-100 dark:hover:bg-slate-700 rounded px-1 py-0.5 -mx-1 transition-colors",
+        "truncate block rounded px-1 py-0.5 -mx-1 transition-colors",
+        editOnDoubleClick 
+          ? "cursor-pointer hover:text-[#0066FF] hover:underline" 
+          : "cursor-text hover:bg-slate-100 dark:hover:bg-slate-700",
         displayClassName
       )}
-      title="Click to edit"
+      title={editOnDoubleClick ? "Click to view, double-click to edit" : "Click to edit"}
     >
       {value || <span className="text-slate-400 italic">{placeholder}</span>}
     </span>
