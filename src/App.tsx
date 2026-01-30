@@ -62,7 +62,17 @@ import PortalInvoices from "./pages/portal/Invoices";
 import PortalMessages from "./pages/portal/Messages";
 import PortalProfile from "./pages/portal/Profile";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Prevent refetching when window regains focus (e.g., switching browser tabs)
+      // This ensures dialogs/popups and page state remain stable
+      refetchOnWindowFocus: false,
+      // Keep data fresh but don't aggressively refetch
+      staleTime: 1000 * 60 * 2, // 2 minutes
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
