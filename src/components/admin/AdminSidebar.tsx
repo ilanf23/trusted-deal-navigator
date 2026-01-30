@@ -314,7 +314,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                       flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px] tracking-tight
                       ${openSections[item.title] 
                         ? 'bg-white/10 text-white' 
-                        : 'text-white/70 hover:bg-white/5 hover:text-white'
+                        : 'text-white/90 hover:bg-white/5 hover:text-white'
                       }
                     `}>
                       <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
@@ -336,7 +336,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                             flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px] tracking-tight
                             ${isActive(subItem.url) 
                               ? 'bg-white/15 text-white' 
-                              : 'text-white/60 hover:bg-white/5 hover:text-white/90'
+                              : 'text-white/80 hover:bg-white/5 hover:text-white'
                             }
                           `}
                         >
@@ -357,7 +357,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                         flex items-center justify-center py-2 px-2 rounded-md transition-all duration-150
                         ${isActive(item.url) 
                           ? 'bg-white/15 text-white' 
-                          : 'text-white/70 hover:bg-white/5 hover:text-white'
+                          : 'text-white/90 hover:bg-white/5 hover:text-white'
                         }
                       `}
                     >
@@ -376,7 +376,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 text-[13px] tracking-tight
                     ${isActive(item.url) 
                       ? 'bg-white/15 text-white' 
-                      : 'text-white/70 hover:bg-white/5 hover:text-white'
+                      : 'text-white/90 hover:bg-white/5 hover:text-white'
                     }
                   `}
                 >
@@ -395,7 +395,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     flex items-center justify-center py-2 px-2 rounded-md transition-all duration-150
                     ${section.items.some(item => isActive(item.url)) 
                       ? 'bg-white/15 text-white' 
-                      : 'text-white/70 hover:bg-white/5 hover:text-white'
+                      : 'text-white/90 hover:bg-white/5 hover:text-white'
                     }
                   `}
                 >
@@ -425,7 +425,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px] tracking-tight
                   ${openSections[section.title] || (section.navigateOnClick && isActive(section.navigateOnClick))
                     ? 'bg-white/10 text-white' 
-                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                    : 'text-white/90 hover:bg-white/5 hover:text-white'
                   }
                 `}>
                   <section.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
@@ -452,7 +452,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                             flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 cursor-pointer text-[12px] tracking-tight
                             ${openSections[item.title] 
                               ? 'bg-white/10 text-white' 
-                              : 'text-white/60 hover:bg-white/5 hover:text-white/90'
+                              : 'text-white/80 hover:bg-white/5 hover:text-white'
                             }
                           `}>
                             <item.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.75} />
@@ -474,7 +474,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                   flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[11px] tracking-tight
                                   ${isActive(subItem.url) 
                                     ? 'bg-white/15 text-white' 
-                                    : 'text-white/50 hover:bg-white/5 hover:text-white/80'
+                                    : 'text-white/75 hover:bg-white/5 hover:text-white'
                                   }
                                 `}
                               >
@@ -493,7 +493,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                           flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px] tracking-tight
                           ${isActive(item.url) 
                             ? 'bg-white/15 text-white' 
-                            : 'text-white/60 hover:bg-white/5 hover:text-white/90'
+                            : 'text-white/80 hover:bg-white/5 hover:text-white'
                           }
                         `}
                       >
