@@ -989,9 +989,49 @@ const EvansPipeline = () => {
                     style={{ backgroundColor: selectedPipeline.color || '#0066FF' }} 
                   />
                 )}
-                <span className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-                  {pipelineName}
-                </span>
+                {/* Inline editable pipeline name */}
+                {isEditingName ? (
+                  <input
+                    type="text"
+                    value={editingNameValue}
+                    onChange={(e) => setEditingNameValue(e.target.value)}
+                    onBlur={() => {
+                      if (editingNameValue.trim() && selectedPipelineId) {
+                        updatePipelineNameMutation.mutate({ id: selectedPipelineId, name: editingNameValue.trim() });
+                      }
+                      setIsEditingName(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (editingNameValue.trim() && selectedPipelineId) {
+                          updatePipelineNameMutation.mutate({ id: selectedPipelineId, name: editingNameValue.trim() });
+                        }
+                        setIsEditingName(false);
+                      } else if (e.key === 'Escape') {
+                        setIsEditingName(false);
+                      }
+                    }}
+                    autoFocus
+                    className="text-lg font-semibold text-slate-800 dark:text-slate-100 bg-transparent border-b-2 border-[#0066FF] outline-none px-0 py-0"
+                    style={{ width: `${Math.max(editingNameValue.length, 8)}ch` }}
+                  />
+                ) : (
+                  <span 
+                    className={cn(
+                      "text-lg font-semibold text-slate-800 dark:text-slate-100",
+                      canEdit && selectedPipelineId && "cursor-pointer hover:text-[#0066FF] transition-colors"
+                    )}
+                    onClick={() => {
+                      if (canEdit && selectedPipelineId) {
+                        setEditingNameValue(pipelineName);
+                        setIsEditingName(true);
+                      }
+                    }}
+                    title={canEdit ? "Click to rename" : undefined}
+                  >
+                    {pipelineName}
+                  </span>
+                )}
                 {selectedPipeline?.is_main && (
                   <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[8px] font-semibold px-1 py-0">
                     MAIN
@@ -999,48 +1039,8 @@ const EvansPipeline = () => {
                 )}
               </div>
               
-              {/* Inline edit for pipeline name */}
-              {isEditingName ? (
-                <input
-                  type="text"
-                  value={editingNameValue}
-                  onChange={(e) => setEditingNameValue(e.target.value)}
-                  onBlur={() => {
-                    if (editingNameValue.trim() && selectedPipelineId) {
-                      updatePipelineNameMutation.mutate({ id: selectedPipelineId, name: editingNameValue.trim() });
-                    }
-                    setIsEditingName(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      if (editingNameValue.trim() && selectedPipelineId) {
-                        updatePipelineNameMutation.mutate({ id: selectedPipelineId, name: editingNameValue.trim() });
-                      }
-                      setIsEditingName(false);
-                    } else if (e.key === 'Escape') {
-                      setIsEditingName(false);
-                    }
-                  }}
-                  autoFocus
-                  className="text-sm font-medium tracking-tight text-slate-800 bg-transparent border-b-2 border-[#0066FF] outline-none px-0 py-0"
-                  style={{ width: `${Math.max(editingNameValue.length, 8)}ch` }}
-                />
-              ) : canEdit && selectedPipelineId && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setEditingNameValue(pipelineName);
-                    setIsEditingName(true);
-                  }}
-                  className="h-6 px-2 text-xs text-slate-500 hover:text-[#0066FF] hover:bg-[#0066FF]/5"
-                >
-                  Rename
-                </Button>
-              )}
-              
               <HelpTooltip 
-                content="Select a pipeline from the dropdown to view its leads. Click 'Rename' to edit the pipeline name."
+                content="Click the pipeline name to rename it. Select a different pipeline from the dropdown."
                 side="bottom"
                 className="hidden sm:block"
               />
