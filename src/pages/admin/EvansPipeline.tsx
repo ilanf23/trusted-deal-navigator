@@ -1398,7 +1398,7 @@ const EvansPipeline = () => {
                       <PipelineColumnHeader
                         column={column}
                         helpText={
-                          column.id === 'name' ? "Lead's full name. Click any row to open details." :
+                          column.id === 'name' ? "Click name to view details. Double-click to edit." :
                           column.id === 'contact' ? "Quick call or email actions." :
                           column.id === 'last_touch' ? "Most recent communication." : undefined
                         }
@@ -1594,8 +1594,10 @@ const EvansPipeline = () => {
                                     <InlineEditableCell
                                       value={lead.name}
                                       onChange={(newValue) => updateLeadFieldMutation.mutate({ id: lead.id, field: 'name', value: newValue })}
+                                      onSingleClick={() => setDetailDialogLead(lead)}
+                                      editOnDoubleClick={true}
                                       placeholder="Enter name"
-                                      displayClassName="text-[13px] text-slate-800 dark:text-slate-200"
+                                      displayClassName="text-[13px] text-slate-800 dark:text-slate-200 font-medium"
                                     />
                                   );
                                 case 'stage':
