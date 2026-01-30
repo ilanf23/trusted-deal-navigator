@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { 
   Send, Loader2, Paperclip, Bold, Italic, Underline, 
-  Link2, List, ListOrdered, Trash2, XCircle, FileText, ChevronDown
+  Link2, List, ListOrdered, Trash2, XCircle, FileText, ChevronDown, Users
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -34,12 +35,14 @@ interface InlineReplyBoxProps {
   recipientEmail: string;
   recipientName: string;
   recipientPhoto?: string | null;
-  onSend: (body: string, attachments: InlineAttachment[]) => void;
+  onSend: (body: string, attachments: InlineAttachment[], cc?: string, bcc?: string) => void;
   onDiscard: () => void;
   sending?: boolean;
   initialBody?: string;
   placeholder?: string;
   templates?: EmailTemplate[];
+  initialCc?: string;
+  initialBcc?: string;
 }
 
 const InlineReplyBox: React.FC<InlineReplyBoxProps> = ({
@@ -52,10 +55,15 @@ const InlineReplyBox: React.FC<InlineReplyBoxProps> = ({
   initialBody = '',
   placeholder = 'Write your reply...',
   templates = [],
+  initialCc = '',
+  initialBcc = '',
 }) => {
   const [body, setBody] = useState(initialBody);
   const [attachments, setAttachments] = useState<InlineAttachment[]>([]);
   const [isFocused, setIsFocused] = useState(false);
+  const [showCcBcc, setShowCcBcc] = useState(!!initialCc || !!initialBcc);
+  const [cc, setCc] = useState(initialCc);
+  const [bcc, setBcc] = useState(initialBcc);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -135,12 +143,15 @@ const InlineReplyBox: React.FC<InlineReplyBoxProps> = ({
       toast.error('Please write a message');
       return;
     }
-    onSend(content, attachments);
+    onSend(content, attachments, cc || undefined, bcc || undefined);
   };
 
   const handleDiscard = () => {
     setBody('');
     setAttachments([]);
+    setCc('');
+    setBcc('');
+    setShowCcBcc(false);
     if (editorRef.current) {
       editorRef.current.innerHTML = '';
     }
@@ -155,17 +166,56 @@ const InlineReplyBox: React.FC<InlineReplyBoxProps> = ({
         : "border-border hover:border-slate-300 dark:hover:border-slate-600"
     )}>
       {/* Header with recipient */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-slate-50/50 dark:bg-slate-800/30 rounded-t-lg">
-        <Avatar className="w-8 h-8">
-          {recipientPhoto && <AvatarImage src={recipientPhoto} />}
-          <AvatarFallback className="text-xs bg-primary/10 text-primary">
-            {recipientName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{recipientName}</p>
-          <p className="text-xs text-muted-foreground truncate">{recipientEmail}</p>
+      <div className="px-4 py-3 border-b border-border bg-slate-50/50 dark:bg-slate-800/30 rounded-t-lg space-y-2">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-8 h-8">
+            {recipientPhoto && <AvatarImage src={recipientPhoto} />}
+            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+              {recipientName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{recipientName}</p>
+            <p className="text-xs text-muted-foreground truncate">{recipientEmail}</p>
+          </div>
+          {!showCcBcc && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCcBcc(true)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Users className="w-3.5 h-3.5 mr-1" />
+              Cc/Bcc
+            </Button>
+          )}
         </div>
+        
+        {/* CC/BCC fields */}
+        {showCcBcc && (
+          <div className="space-y-2 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-muted-foreground w-8">Cc</label>
+              <Input
+                type="text"
+                value={cc}
+                onChange={(e) => setCc(e.target.value)}
+                placeholder="Add recipients..."
+                className="h-8 text-sm flex-1"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-muted-foreground w-8">Bcc</label>
+              <Input
+                type="text"
+                value={bcc}
+                onChange={(e) => setBcc(e.target.value)}
+                placeholder="Add hidden recipients..."
+                className="h-8 text-sm flex-1"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Editor area */}
