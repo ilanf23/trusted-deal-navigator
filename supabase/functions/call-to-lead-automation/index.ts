@@ -447,6 +447,68 @@ ${followUpEmailContent}`;
       console.error("Failed to send rating email:", emailError);
     }
 
+    // Step 7: Send rating notification to Slack
+    console.log("Sending rating notification to Slack...");
+    
+    const slackBlocks = [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: `${ratingEmoji} New Call Rating: ${callRating}/10`,
+          emoji: true
+        }
+      },
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: `*Lead:*\n${leadName}` },
+          { type: "mrkdwn", text: `*Phone:*\n${leadPhone}` },
+          { type: "mrkdwn", text: `*Direction:*\n${callDirection === 'inbound' ? '📥 Inbound' : '📤 Outbound'}` },
+          { type: "mrkdwn", text: `*Date:*\n${callDate}` }
+        ]
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*AI Analysis:*\n${ratingReasoning}`
+        }
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `${gmailDraftCreated ? '✉️ Gmail draft created' : ''} ${task ? '✅ Follow-up task created' : ''}`
+          }
+        ]
+      }
+    ];
+
+    try {
+      const slackResponse = await fetch(`${supabaseUrl}/functions/v1/slack-notify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          message: `${ratingEmoji} Evan's Call Rating: ${callRating}/10 - ${leadName}`,
+          blocks: slackBlocks,
+        }),
+      });
+
+      if (slackResponse.ok) {
+        console.log("Slack notification sent successfully");
+      } else {
+        const slackError = await slackResponse.text();
+        console.error("Slack notification failed:", slackError);
+      }
+    } catch (slackError) {
+      console.error("Failed to send Slack notification:", slackError);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
