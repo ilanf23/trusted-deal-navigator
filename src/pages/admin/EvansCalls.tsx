@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -151,6 +152,7 @@ const formatDuration = (seconds: number | null) => {
 
 const EvansCalls = () => {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
@@ -158,6 +160,21 @@ const EvansCalls = () => {
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
   const [directionFilter, setDirectionFilter] = useState<'all' | 'inbound' | 'outbound'>('all');
   const [selectedHistoryCall, setSelectedHistoryCall] = useState<CallLog | null>(null);
+  
+  // Get pre-filled phone from URL params (from pipeline redirect)
+  const prefilledPhone = searchParams.get('phone');
+  const prefilledLeadId = searchParams.get('leadId');
+  
+  // Clear URL params after reading them (so refresh doesn't re-fill)
+  useEffect(() => {
+    if (prefilledPhone || prefilledLeadId) {
+      // Clear params after a short delay to allow OutboundCallCard to read them
+      const timer = setTimeout(() => {
+        setSearchParams({}, { replace: true });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [prefilledPhone, prefilledLeadId, setSearchParams]);
   
   // Add Lead Dialog state
   const [addLeadDialogOpen, setAddLeadDialogOpen] = useState(false);
@@ -876,7 +893,7 @@ const EvansCalls = () => {
 
           {/* Right Column - Outbound Call */}
           <div className="space-y-6">
-            <OutboundCallCard />
+            <OutboundCallCard initialPhone={prefilledPhone || undefined} initialLeadId={prefilledLeadId || undefined} />
           </div>
         </div>
       </div>

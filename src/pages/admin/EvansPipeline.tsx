@@ -423,12 +423,9 @@ const EvansPipeline = () => {
 
   const confirmCall = () => {
     if (!pendingCallLead?.phone) return;
-    setCallingLeadId(pendingCallLead.id);
     setCallConfirmOpen(false);
-    // Navigate to calls page first
-    navigate('/team/evan/calls');
-    // Then initiate the call
-    makeCallMutation.mutate({ phone: pendingCallLead.phone, leadId: pendingCallLead.id });
+    // Navigate to calls page with phone number pre-filled (don't auto-dial)
+    navigate(`/team/evan/calls?phone=${encodeURIComponent(pendingCallLead.phone)}&leadId=${pendingCallLead.id}`);
     setPendingCallLead(null);
   };
 
