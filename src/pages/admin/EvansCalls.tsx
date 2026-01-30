@@ -697,7 +697,7 @@ const EvansCalls = () => {
 
                     {/* Lead Notes */}
                     {matchedLead.notes && (
-                      <div className="p-4 rounded-lg border bg-yellow-50/50">
+                      <div className="p-4 rounded-lg border border-border bg-amber-50/50 dark:bg-amber-950/20">
                         <h4 className="font-medium mb-2 text-sm">Notes</h4>
                         <p className="text-sm text-muted-foreground">{matchedLead.notes}</p>
                       </div>
