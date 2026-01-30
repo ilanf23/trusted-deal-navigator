@@ -214,7 +214,12 @@ export const TaskDetailDialog = ({
   const handleNavigate = (navInfo: { path: string; action?: 'compose' | 'view'; template?: string }) => {
     // If it's a compose action and we have the callback, use it to open compose dialog inline
     if (navInfo.action === 'compose' && onComposeEmail) {
-      onComposeEmail(task?.lead_id || null, navInfo.template);
+      // Close the task dialog first so the compose dialog is visible
+      onClose();
+      // Small delay to ensure dialog closes before opening compose
+      setTimeout(() => {
+        onComposeEmail(task?.lead_id || null, navInfo.template);
+      }, 100);
     } else {
       // Otherwise navigate normally
       navigate(navInfo.path);
