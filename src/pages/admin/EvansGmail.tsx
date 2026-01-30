@@ -511,6 +511,9 @@ const EvansGmail = () => {
   // Inline reply state
   const [showInlineReply, setShowInlineReply] = useState(false);
   const [inlineReplySending, setInlineReplySending] = useState(false);
+  
+  // Local sent replies to show in thread (keyed by threadId or emailId)
+  const [localReplies, setLocalReplies] = useState<Record<string, ThreadMessage[]>>({});
 
 
   // URL params compose handling moved below allLeads query to avoid reference before declaration
@@ -1868,100 +1871,154 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                     <h1 className="text-xl font-semibold mb-6 leading-tight">{selectedEmail.subject}</h1>
                     
                     {/* Thread Messages */}
-                    {mockThreadMessages[selectedEmail.threadId] ? (
-                      <div className="divide-y divide-border">
-                        {mockThreadMessages[selectedEmail.threadId].map((msg, index) => {
-                          const isFromEvan = msg.from.toLowerCase().includes('evan');
-                          return (
-                            <div key={msg.id} className={cn(
-                              "py-6",
-                              index === 0 && "pt-0"
-                            )}>
-                              <div className="p-4 rounded-lg">
-                                <div className="flex items-start gap-3 mb-4">
-                                  <Avatar className="w-10 h-10 flex-shrink-0">
-                                    {msg.senderPhoto ? (
-                                      <AvatarImage src={msg.senderPhoto} />
-                                    ) : null}
-                                    <AvatarFallback className={cn(
-                                      "font-semibold",
-                                      isFromEvan ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"
-                                    )}>
-                                      {extractSenderName(msg.from).charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <p className="font-medium text-sm">{extractSenderName(msg.from)}</p>
-                                      <p className="text-xs text-muted-foreground flex-shrink-0">
-                                        {format(new Date(msg.date), 'MMM d, yyyy, h:mm a')}
-                                      </p>
+                    {(() => {
+                      const threadKey = selectedEmail.threadId || selectedEmail.id;
+                      const baseMessages = mockThreadMessages[selectedEmail.threadId] || [];
+                      const sentReplies = localReplies[threadKey] || [];
+                      const allMessages = [...baseMessages, ...sentReplies];
+                      
+                      if (allMessages.length > 0) {
+                        return (
+                          <div className="divide-y divide-border">
+                            {allMessages.map((msg, index) => {
+                              const isFromEvan = msg.from.toLowerCase().includes('evan');
+                              return (
+                                <div key={msg.id} className={cn(
+                                  "py-6",
+                                  index === 0 && "pt-0"
+                                )}>
+                                  <div className="p-4 rounded-lg">
+                                    <div className="flex items-start gap-3 mb-4">
+                                      <Avatar className="w-10 h-10 flex-shrink-0">
+                                        {msg.senderPhoto ? (
+                                          <AvatarImage src={msg.senderPhoto} />
+                                        ) : null}
+                                        <AvatarFallback className={cn(
+                                          "font-semibold",
+                                          isFromEvan ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"
+                                        )}>
+                                          {extractSenderName(msg.from).charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <p className="font-medium text-sm">{extractSenderName(msg.from)}</p>
+                                          <p className="text-xs text-muted-foreground flex-shrink-0">
+                                            {format(new Date(msg.date), 'MMM d, yyyy, h:mm a')}
+                                          </p>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                          To: {msg.to}
+                                        </p>
+                                      </div>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      To: {msg.to}
-                                    </p>
+                                    <div 
+                                      className="text-sm whitespace-pre-wrap leading-relaxed pl-[52px]"
+                                      dangerouslySetInnerHTML={{ __html: toRenderableHtml(msg.body) }}
+                                    />
                                   </div>
                                 </div>
-                                <div className="text-sm whitespace-pre-wrap leading-relaxed pl-[52px]">
-                                  {msg.body}
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })() || (
+                      // Fallback for emails without thread messages - show original + any local replies
+                      <>
+                        <div className="divide-y divide-border">
+                          {/* Original email */}
+                          <div className="pb-6">
+                            <div className="flex items-center gap-3 mb-4">
+                              <Avatar className="w-10 h-10 flex-shrink-0">
+                                {selectedEmail.senderPhoto ? (
+                                  <AvatarImage src={selectedEmail.senderPhoto} />
+                                ) : null}
+                                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                  {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-medium text-sm">{extractSenderName(selectedEmail.from)}</p>
+                                    <ChevronDown 
+                                      className={`w-3.5 h-3.5 text-muted-foreground cursor-pointer hover:text-foreground transition-transform ${showEmailAddress ? 'rotate-180' : ''}`}
+                                      onClick={() => setShowEmailAddress(!showEmailAddress)}
+                                    />
+                                  </div>
+                                  <p className="text-xs text-muted-foreground flex-shrink-0">
+                                    {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
+                                  </p>
+                                </div>
+                                {showEmailAddress && (
+                                  <p className="text-xs text-muted-foreground">{selectedEmail.from}</p>
+                                )}
+                                {/* Show To, CC, BCC for sent emails */}
+                                {activeFolder === 'sent' && (
+                                  <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                                    {selectedEmail.to && (
+                                      <p><span className="font-medium">To:</span> {selectedEmail.to}</p>
+                                    )}
+                                    {selectedEmail.cc && (
+                                      <p><span className="font-medium">Cc:</span> {selectedEmail.cc}</p>
+                                    )}
+                                    {selectedEmail.bcc && (
+                                      <p><span className="font-medium">Bcc:</span> {selectedEmail.bcc}</p>
+                                    )}
+                                  </div>
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                  To: {selectedEmail.to || 'evan@commerciallendingx.com'}
+                                </p>
+                              </div>
+                            </div>
+                            <div
+                              className="prose prose-sm max-w-none dark:prose-invert text-sm leading-relaxed pl-[52px]"
+                              dangerouslySetInnerHTML={{
+                                __html: toRenderableHtml(
+                                  (selectedEmail.body && selectedEmail.body.trim())
+                                    ? selectedEmail.body
+                                    : selectedEmail.snippet
+                                ),
+                              }}
+                            />
+                          </div>
+                          
+                          {/* Local replies for this thread */}
+                          {(localReplies[selectedEmail.threadId || selectedEmail.id] || []).map((msg) => {
+                            const isFromEvan = msg.from.toLowerCase().includes('evan');
+                            return (
+                              <div key={msg.id} className="py-6">
+                                <div className="p-4 rounded-lg">
+                                  <div className="flex items-start gap-3 mb-4">
+                                    <Avatar className="w-10 h-10 flex-shrink-0">
+                                      <AvatarFallback className="bg-emerald-100 text-emerald-700 font-semibold">
+                                        E
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <p className="font-medium text-sm">{extractSenderName(msg.from)}</p>
+                                        <p className="text-xs text-muted-foreground flex-shrink-0">
+                                          {format(new Date(msg.date), 'MMM d, yyyy, h:mm a')}
+                                        </p>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">
+                                        To: {msg.to}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div 
+                                    className="text-sm whitespace-pre-wrap leading-relaxed pl-[52px]"
+                                    dangerouslySetInnerHTML={{ __html: toRenderableHtml(msg.body) }}
+                                  />
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      // Fallback for emails without thread messages
-                      <>
-                        <div className="flex items-center gap-3 mb-6">
-                          <Avatar className="w-10 h-10 border">
-                            {selectedEmail.senderPhoto ? (
-                              <AvatarImage src={selectedEmail.senderPhoto} />
-                            ) : null}
-                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                              {extractSenderName(selectedEmail.from).charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="font-medium">{extractSenderName(selectedEmail.from)}</p>
-                              <ChevronDown 
-                                className={`w-3.5 h-3.5 text-muted-foreground cursor-pointer hover:text-foreground transition-transform ${showEmailAddress ? 'rotate-180' : ''}`}
-                                onClick={() => setShowEmailAddress(!showEmailAddress)}
-                              />
-                            </div>
-                            {showEmailAddress && (
-                              <p className="text-xs text-muted-foreground">{selectedEmail.from}</p>
-                            )}
-                            {/* Show To, CC, BCC for sent emails */}
-                            {activeFolder === 'sent' && (
-                              <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
-                                {selectedEmail.to && (
-                                  <p><span className="font-medium">To:</span> {selectedEmail.to}</p>
-                                )}
-                                {selectedEmail.cc && (
-                                  <p><span className="font-medium">Cc:</span> {selectedEmail.cc}</p>
-                                )}
-                                {selectedEmail.bcc && (
-                                  <p><span className="font-medium">Bcc:</span> {selectedEmail.bcc}</p>
-                                )}
-                              </div>
-                            )}
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(selectedEmail.date), 'MMM d, yyyy, h:mm a')}
-                            </p>
-                          </div>
+                            );
+                          })}
                         </div>
-                        <div
-                          className="prose prose-sm max-w-none dark:prose-invert text-sm leading-relaxed"
-                          dangerouslySetInnerHTML={{
-                            __html: toRenderableHtml(
-                              (selectedEmail.body && selectedEmail.body.trim())
-                                ? selectedEmail.body
-                                : selectedEmail.snippet
-                            ),
-                          }}
-                        />
                       </>
                     )}
                     
@@ -2029,6 +2086,22 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                               throw new Error(data.error || 'Failed to send email');
                             }
 
+                            // Add the sent reply to local state so it appears in the thread
+                            const threadKey = selectedEmail.threadId || selectedEmail.id;
+                            const newReply: ThreadMessage = {
+                              id: `sent-${Date.now()}`,
+                              from: 'Evan <evan@commerciallendingx.com>',
+                              to: extractEmailAddress(selectedEmail.from),
+                              date: new Date().toISOString(),
+                              body: body, // Use the original body without signature for cleaner display
+                              senderPhoto: null,
+                            };
+                            
+                            setLocalReplies(prev => ({
+                              ...prev,
+                              [threadKey]: [...(prev[threadKey] || []), newReply],
+                            }));
+                            
                             toast.success('Reply sent!');
                             setShowInlineReply(false);
                             
