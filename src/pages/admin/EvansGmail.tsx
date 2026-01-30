@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { Button } from '@/components/ui/button';
@@ -454,6 +454,7 @@ const toRenderableHtml = (value: string) => {
 
 const EvansGmail = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -470,6 +471,8 @@ const EvansGmail = () => {
   const [composeBody, setComposeBody] = useState('');
   const [composeSending, setComposeSending] = useState(false);
   const [generatingDraftForId, setGeneratingDraftForId] = useState<string | null>(null);
+  const handledComposeKeyRef = useRef<string | null>(null);
+  const openedDraftIdRef = useRef<string | null>(null);
   const [leadDetailOpen, setLeadDetailOpen] = useState(false);
   const [selectedLeadIdForDetail, setSelectedLeadIdForDetail] = useState<string | null>(null);
   const [showDealSidebar, setShowDealSidebar] = useState(false);
@@ -489,6 +492,17 @@ const EvansGmail = () => {
   const [currentBodyHtml, setCurrentBodyHtml] = useState<string>('');
 
   // URL params compose handling moved below allLeads query to avoid reference before declaration
+
+  // Debug: log route transitions (helps identify unexpected redirects/resets)
+  useEffect(() => {
+    console.debug('[EvansGmail] route', `${location.pathname}${location.search}`);
+  }, [location.pathname, location.search]);
+
+  const clearComposeParams = () => {
+    const next = new URLSearchParams(searchParams);
+    ['compose', 'to', 'draftId', 'leadId', 'template'].forEach((k) => next.delete(k));
+    setSearchParams(next, { replace: true });
+  };
 
   // Mark email as read when selected
   const handleSelectEmail = (emailId: string) => {
@@ -560,22 +574,43 @@ const EvansGmail = () => {
     const draftId = searchParams.get('draftId');
     const leadId = searchParams.get('leadId');
     const template = searchParams.get('template');
+
+    // If there's no explicit target, allow future targets to be processed.
+    if (!compose) {
+      handledComposeKeyRef.current = null;
+      return;
+    }
+
+    // If we need lead data to build the draft, wait until it's available.
+    if (compose === 'true' && leadId && allLeads.length === 0) {
+      return;
+    }
+
+    const intentKey = searchParams.toString();
+    if (handledComposeKeyRef.current === intentKey) return;
+    handledComposeKeyRef.current = intentKey;
+
+    console.debug('[EvansGmail] compose intent', {
+      from: `${location.pathname}${location.search}`,
+      compose,
+      to,
+      draftId,
+      leadId,
+      template,
+    });
     
     if (compose === 'draft' && draftId) {
-      // Draft was already created - switch to Drafts folder to show it
+      // Draft was already created - keep target in URL so it can be restored after refresh.
       setActiveFolder('drafts');
-      // Refetch drafts to show the new one
+      // Refetch drafts to ensure the new one is available
       refetchDrafts();
-      toast.success('Draft created! Check your Drafts folder.');
-      // Clear the URL params to prevent reopening on refresh
-      setSearchParams({});
+      toast.success('Draft ready');
     } else if (compose === 'new' && to) {
       // Open compose dialog for a new email
       setComposeTo(decodeURIComponent(to));
       setComposeSubject('');
       setComposeBody(EVAN_SIGNATURE_HTML);
       setComposeOpen(true);
-      setSearchParams({});
     } else if (compose === 'true') {
       // Open compose dialog with optional lead and template context
       let recipientEmail = '';
@@ -650,9 +685,8 @@ Commercial Lending X`;
       setComposeSubject(subject);
       setComposeBody(appendSignature(body));
       setComposeOpen(true);
-      setSearchParams({});
     }
-  }, [searchParams, setSearchParams, allLeads]);
+  }, [searchParams, allLeads, location.pathname, location.search]);
 
   const { data: crmEmails = [] } = useQuery({
     queryKey: ['crm-lead-emails'],
@@ -787,6 +821,33 @@ Commercial Lending X`;
     },
     enabled: !!gmailConnection,
   });
+
+  // If the URL explicitly targets a draft, open it in the compose popup and keep it open until user closes.
+  useEffect(() => {
+    const compose = searchParams.get('compose');
+    const draftId = searchParams.get('draftId');
+    if (compose !== 'draft' || !draftId) return;
+
+    // Prevent re-opening loops.
+    if (openedDraftIdRef.current === draftId && composeOpen) return;
+
+    const draft = draftEmails.find((d) => d.id === draftId);
+    if (!draft) return;
+
+    openedDraftIdRef.current = draftId;
+
+    console.debug('[EvansGmail] opening draft in compose modal', {
+      draftId,
+      to: draft.to,
+      subject: draft.subject,
+    });
+
+    setActiveFolder('drafts');
+    setComposeTo(draft.to || '');
+    setComposeSubject(draft.subject || '');
+    setComposeBody(draft.body || EVAN_SIGNATURE_HTML);
+    setComposeOpen(true);
+  }, [draftEmails, composeOpen, searchParams]);
 
   // Combine real emails with mock external emails and sort by date (newest first)
   const allEmails = useMemo(() => {
@@ -1264,6 +1325,9 @@ Commercial Lending X`;
       return;
     }
     
+    // Clear any compose/draft URL params so we don't reopen after send.
+    clearComposeParams();
+
     // Clear form immediately
     setComposeOpen(false);
     setComposeTo('');
@@ -2209,7 +2273,12 @@ Commercial Lending X`;
       {/* Compose Dialog */}
       <GmailComposeDialog
         isOpen={composeOpen}
-        onClose={() => setComposeOpen(false)}
+        onClose={() => {
+          setComposeOpen(false);
+          openedDraftIdRef.current = null;
+          handledComposeKeyRef.current = null;
+          clearComposeParams();
+        }}
         to={composeTo}
         onToChange={setComposeTo}
         subject={composeSubject}

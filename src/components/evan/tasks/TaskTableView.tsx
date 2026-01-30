@@ -20,6 +20,7 @@ interface TaskTableViewProps {
   selectedTasks: Set<string>;
   onToggleSelect: (id: string) => void;
   fadingTasks?: Set<string>;
+  onComposeEmail?: (leadId: string | null, template?: string) => void | Promise<void>;
 }
 
 export const TaskTableView = ({
@@ -31,6 +32,7 @@ export const TaskTableView = ({
   selectedTasks,
   onToggleSelect,
   fadingTasks = new Set(),
+  onComposeEmail,
 }: TaskTableViewProps) => {
   const navigate = useNavigate();
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -121,6 +123,21 @@ export const TaskTableView = ({
     e.stopPropagation();
     const navInfo = getNavigationInfo(task);
     if (navInfo) {
+      const currentRoute = `${window.location.pathname}${window.location.search}`;
+      console.debug('[TaskTableView] Go To click', {
+        from: currentRoute,
+        taskId: task.id,
+        action: navInfo.action,
+        path: navInfo.path,
+        template: navInfo.template,
+      });
+
+      // Prefer opening compose as an in-page popup (no navigation) when possible.
+      if (navInfo.action === 'compose' && onComposeEmail) {
+        void onComposeEmail(task.lead_id || null, navInfo.template);
+        return;
+      }
+
       navigate(navInfo.path);
     }
   };
