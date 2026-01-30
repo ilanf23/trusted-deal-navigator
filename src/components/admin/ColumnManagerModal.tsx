@@ -392,7 +392,19 @@ const ColumnManagerModal = ({
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-5 py-3 border-t gap-2">
+        <DialogFooter className="px-5 py-3 border-t gap-2 flex-wrap">
+          <Button 
+            variant="ghost" 
+            onClick={() => {
+              // Reset to only foundational columns
+              const foundationalOnly = localColumns.filter(c => c.type === 'foundational');
+              setLocalColumns(foundationalOnly);
+              toast.success('Removed all custom columns');
+            }}
+            className="text-red-500 hover:text-red-600 hover:bg-red-50 mr-auto"
+          >
+            Reset to Defaults
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
