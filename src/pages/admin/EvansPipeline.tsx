@@ -1756,12 +1756,13 @@ const EvansPipeline = () => {
                               >
                                 {getVisibleColumns().filter(c => c.id !== 'drag_handle').map((column) => {
                                   const isUtilityCol = ['checkbox', 'avatar'].includes(column.id);
+                                  const isCenteredCol = column.id === 'stage';
                                   return (
                                     <div 
                                       key={column.id} 
                                       className={cn(
                                         "flex items-center h-12 overflow-hidden border-r border-slate-200 dark:border-slate-700",
-                                        isUtilityCol ? "justify-center px-1" : "px-3"
+                                        isUtilityCol ? "justify-center px-1" : isCenteredCol ? "justify-center px-2" : "px-3"
                                       )}
                                     >
                                       {renderCellContent(column)}
