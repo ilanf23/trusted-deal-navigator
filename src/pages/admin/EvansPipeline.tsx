@@ -1544,19 +1544,19 @@ const EvansPipeline = () => {
                                       <DropdownMenuTrigger asChild>
                                         <button 
                                           onClick={(e) => e.stopPropagation()}
-                                          className="flex items-center gap-1 hover:opacity-80"
+                                          className="flex items-center gap-1.5 hover:opacity-80 w-full justify-center"
                                         >
                                           <Badge 
                                             variant="outline" 
                                             className={cn(
-                                              "text-[10px] font-medium px-2 py-0.5 rounded whitespace-nowrap border-transparent",
+                                              "text-[12px] font-medium px-3 py-1 rounded whitespace-nowrap border-transparent",
                                               currentStageEntry?.bgColor,
                                               currentStageEntry?.textColor
                                             )}
                                           >
                                             {currentStageEntry?.title}
                                           </Badge>
-                                          <ChevronDown className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                                          <ChevronDown className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                                         </button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="start" className="w-40 bg-white dark:bg-slate-800 z-50">
