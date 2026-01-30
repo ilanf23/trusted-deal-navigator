@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Task, TaskActivity, statusConfig, statusPickerOptions, priorityConfig } from './types';
 import { useTaskActivities } from '@/hooks/useTasksData';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +26,11 @@ import {
   CheckCircle2,
   Circle,
   Building2,
-  Star
+  Star,
+  Mail,
+  Users,
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 
 interface TaskDetailDialogProps {
@@ -47,6 +52,7 @@ export const TaskDetailDialog = ({
   onCreateTask,
   isNewTask = false,
 }: TaskDetailDialogProps) => {
+  const navigate = useNavigate();
   const [newComment, setNewComment] = useState('');
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
@@ -127,6 +133,84 @@ export const TaskDetailDialog = ({
         ))}
       </div>
     );
+  };
+
+  // Determine where to navigate based on task source and context
+  const getNavigationInfo = (taskData: Task): { 
+    path: string; 
+    label: string; 
+    icon: React.ReactNode;
+    action?: 'compose' | 'view';
+    template?: string;
+  } | null => {
+    const source = taskData.source?.toLowerCase() || '';
+    const title = taskData.title?.toLowerCase() || '';
+    const hasLead = taskData.lead_id || taskData.lead;
+    
+    // Closing docs / prepare closing - opens email with closing template
+    if (title.includes('closing') || title.includes('prepare closing')) {
+      return { 
+        path: hasLead 
+          ? `/team/evan/gmail?compose=true&leadId=${taskData.lead_id}&template=closing`
+          : '/team/evan/gmail?compose=true&template=closing',
+        label: 'Draft Closing Email', 
+        icon: <FileText className="h-4 w-4" />,
+        action: 'compose',
+        template: 'closing'
+      };
+    }
+    
+    // Follow up / nudge tasks - opens email compose with follow-up template
+    if (source === 'nudge' || title.includes('follow up') || title.includes('follow-up')) {
+      return { 
+        path: hasLead 
+          ? `/team/evan/gmail?compose=true&leadId=${taskData.lead_id}&template=follow_up`
+          : '/team/evan/gmail?compose=true&template=follow_up',
+        label: 'Draft Follow-up Email', 
+        icon: <Mail className="h-4 w-4" />,
+        action: 'compose',
+        template: 'follow_up'
+      };
+    }
+    
+    // General email tasks - opens compose
+    if (source === 'gmail' || title.includes('email') || title.includes('send')) {
+      return { 
+        path: hasLead 
+          ? `/team/evan/gmail?compose=true&leadId=${taskData.lead_id}`
+          : '/team/evan/gmail?compose=true',
+        label: 'Compose Email', 
+        icon: <Mail className="h-4 w-4" />,
+        action: 'compose'
+      };
+    }
+    
+    // Lead/CRM tasks - go to the lead in pipeline with lenders tab
+    if (source === 'lead' || hasLead) {
+      return { 
+        path: `/team/evan/pipeline?lead=${taskData.lead_id}&tab=lenders`, 
+        label: 'View in CRM', 
+        icon: <Users className="h-4 w-4" />,
+        action: 'view'
+      };
+    }
+    
+    // Document tasks without lead context
+    if (title.includes('document') || title.includes('doc') || title.includes('file')) {
+      return { 
+        path: '/team/evan/pipeline', 
+        label: 'Go to Pipeline', 
+        icon: <FileText className="h-4 w-4" />,
+        action: 'view'
+      };
+    }
+    
+    // Default - no navigation available
+    return null;
+  };
+
+  const handleNavigate = (path: string) => {
+    navigate(path);
   };
 
   // For existing task view
@@ -496,6 +580,29 @@ export const TaskDetailDialog = ({
                 })}
               </div>
             </div>
+
+            {/* Go To Section */}
+            {(() => {
+              const navInfo = getNavigationInfo(task!);
+              if (!navInfo) return null;
+              return (
+                <div className="space-y-3">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <ExternalLink className="h-3.5 w-3.5" /> Go To
+                  </label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-10 px-4 rounded-lg gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-colors"
+                      onClick={() => handleNavigate(navInfo.path)}
+                    >
+                      {navInfo.icon}
+                      <span>{navInfo.label}</span>
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Hours */}
             <div className="space-y-3">
