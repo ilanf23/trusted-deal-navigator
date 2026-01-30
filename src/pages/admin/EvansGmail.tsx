@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import EvanLayout from '@/components/evan/EvanLayout';
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Mail, Inbox, Loader2, ChevronDown, Users, Building, ArrowRight, ArrowDown, Phone, Tag, Clock, FileText, BarChart3, User, Plus, Maximize2, Search, X, CalendarClock, RefreshCw, Check, MoreHorizontal, MailOpen, ListTodo, MessageSquare, Star, Reply, ReplyAll, Forward } from 'lucide-react';
 import { GmailTaskDialog } from '@/components/admin/GmailTaskDialog';
 import { Badge } from '@/components/ui/badge';
+import InlineReplyBox, { InlineAttachment } from '@/components/admin/inbox/InlineReplyBox';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import {
@@ -506,6 +507,10 @@ const EvansGmail = () => {
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
   const [currentBodyPlain, setCurrentBodyPlain] = useState<string>('');
   const [currentBodyHtml, setCurrentBodyHtml] = useState<string>('');
+  
+  // Inline reply state
+  const [showInlineReply, setShowInlineReply] = useState(false);
+  const [inlineReplySending, setInlineReplySending] = useState(false);
 
 
   // URL params compose handling moved below allLeads query to avoid reference before declaration
@@ -536,6 +541,8 @@ const EvansGmail = () => {
     }
     setSelectedEmailId(emailId);
     setReadEmailIds(prev => ({ ...prev, [emailId]: true }));
+    // Reset inline reply when switching emails
+    setShowInlineReply(false);
   };
 
   // Mark email as unread
@@ -1773,7 +1780,7 @@ const EvansGmail = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleReply(selectedEmail)}
+                      onClick={() => setShowInlineReply(true)}
                       className="gap-2"
                     >
                       <Reply className="w-4 h-4" />
@@ -1962,17 +1969,113 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                       </>
                     )}
                     
-                    {/* Quick Reply Bar */}
-                    <div className="mt-6 pt-4 border-t border-border">
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-2 h-12 text-muted-foreground hover:text-foreground"
-                        onClick={() => handleReply(selectedEmail)}
-                      >
-                        <Reply className="w-4 h-4" />
-                        Click to reply...
-                      </Button>
-                    </div>
+                    {/* Inline Reply Box */}
+                    {showInlineReply ? (
+                      <InlineReplyBox
+                        recipientEmail={extractEmailAddress(selectedEmail.from)}
+                        recipientName={extractSenderName(selectedEmail.from)}
+                        recipientPhoto={selectedEmail.senderPhoto}
+                        onSend={async (body, attachments) => {
+                          setInlineReplySending(true);
+                          try {
+                            // Get auth header
+                            const { data: { session } } = await supabase.auth.getSession();
+                            const authHeader = session?.access_token ? `Bearer ${session.access_token}` : null;
+                            if (!authHeader) {
+                              toast.error('Not authenticated');
+                              return;
+                            }
+
+                            // Build reply subject
+                            const replySubject = selectedEmail.subject.toLowerCase().startsWith('re:') 
+                              ? selectedEmail.subject 
+                              : `Re: ${selectedEmail.subject}`;
+
+                            // Get signature and build full body
+                            const fullBody = appendSignature(body);
+
+                            // Send the email
+                            const response = await fetch(
+                              `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send`,
+                              {
+                                method: 'POST',
+                                headers: {
+                                  Authorization: authHeader,
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  to: extractEmailAddress(selectedEmail.from),
+                                  subject: replySubject,
+                                  body: fullBody,
+                                  threadId: selectedEmail.threadId,
+                                  inReplyTo: selectedEmail.id,
+                                  attachments: attachments.map(att => ({
+                                    filename: att.name,
+                                    mimeType: att.type,
+                                    data: att.base64,
+                                  })),
+                                }),
+                              }
+                            );
+
+                            if (!response.ok) {
+                              const data = await response.json();
+                              throw new Error(data.error || 'Failed to send email');
+                            }
+
+                            toast.success('Reply sent!');
+                            setShowInlineReply(false);
+                            
+                            // Update lead's last_activity_at
+                            const lead = findLeadForEmail(selectedEmail);
+                            if (lead) {
+                              await supabase
+                                .from('leads')
+                                .update({ last_activity_at: new Date().toISOString() })
+                                .eq('id', lead.id);
+                            }
+
+                            // If originated from a task, mark it complete
+                            if (originatingTaskId) {
+                              await supabase
+                                .from('evan_tasks')
+                                .update({ status: 'done', is_completed: true })
+                                .eq('id', originatingTaskId);
+                              
+                              await supabase
+                                .from('lead_tasks')
+                                .update({ status: 'completed', completed_at: new Date().toISOString() })
+                                .eq('id', originatingTaskId);
+                              
+                              queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
+                              queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+                              setOriginatingTaskId(null);
+                            }
+
+                            // Refresh emails
+                            queryClient.invalidateQueries({ queryKey: ['gmail-messages'] });
+                          } catch (error: any) {
+                            toast.error(error.message || 'Failed to send reply');
+                          } finally {
+                            setInlineReplySending(false);
+                          }
+                        }}
+                        onDiscard={() => setShowInlineReply(false)}
+                        sending={inlineReplySending}
+                        placeholder="Write your reply..."
+                      />
+                    ) : (
+                      <div className="mt-6 pt-4 border-t border-border">
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start gap-2 h-12 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowInlineReply(true)}
+                        >
+                          <Reply className="w-4 h-4" />
+                          Click to reply...
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </ScrollArea>
               </div>
