@@ -1684,7 +1684,7 @@ const EvansGmail = () => {
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Top Header with Search and Refresh */}
-          <div className="flex items-center gap-3 p-3 border-b bg-muted/30">
+          <div className="flex items-center gap-3 p-3 border-b border-border bg-muted/30">
             <Button 
               variant="outline"
               size="icon"
@@ -1770,7 +1770,7 @@ const EvansGmail = () => {
             <div className="h-full flex">
               {/* Email Content */}
               <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="p-3 border-b flex items-center justify-between gap-2">
+                <div className="p-3 border-b border-border flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={() => { setSelectedEmailId(null); setShowDealSidebar(false); }}>
                       ← Back
@@ -2545,7 +2545,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
           ) : activeFolder === 'templates' ? (
             // Templates View
             <div className="h-full flex flex-col">
-              <div className="p-3 border-b">
+              <div className="p-3 border-b border-border">
                 <h2 className="font-semibold text-sm">Email Templates</h2>
                 <p className="text-xs text-muted-foreground mt-1">Click a template to use it in a new email</p>
               </div>
