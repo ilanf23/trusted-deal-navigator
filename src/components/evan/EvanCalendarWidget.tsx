@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, Plus, Phone, Video, Users, Clock, Trash2, RefreshCw, Link2, Unlink, Loader2, Check, ChevronLeft, ChevronRight, List, Grid3X3, CalendarDays, CheckSquare } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar as CalendarIcon, Plus, Phone, Video, Users, Clock, Trash2, RefreshCw, Link2, Unlink, Loader2, Check, ChevronLeft, ChevronRight, List, Grid3X3, CalendarDays, CheckSquare, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   format, 
@@ -107,6 +108,14 @@ type CalendarItem =
 
 type ViewMode = 'day' | 'week' | 'month' | 'agenda';
 
+// Calendar visibility filters
+interface CalendarFilter {
+  id: string;
+  label: string;
+  color: string;
+  enabled: boolean;
+}
+
 export const EvanCalendarWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -120,7 +129,21 @@ export const EvanCalendarWidget = () => {
   const [calendarStatus, setCalendarStatus] = useState<{ connected: boolean; email?: string } | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [calendarFilters, setCalendarFilters] = useState<CalendarFilter[]>([
+    { id: 'appointments', label: 'Appointments', color: 'bg-primary', enabled: true },
+    { id: 'tasks', label: 'To-Dos', color: 'bg-amber-500', enabled: true },
+  ]);
   const queryClient = useQueryClient();
+
+  const toggleFilter = (filterId: string) => {
+    setCalendarFilters(prev => 
+      prev.map(f => f.id === filterId ? { ...f, enabled: !f.enabled } : f)
+    );
+  };
+
+  const showAppointments = calendarFilters.find(f => f.id === 'appointments')?.enabled ?? true;
+  const showTasks = calendarFilters.find(f => f.id === 'tasks')?.enabled ?? true;
 
   // Check Google Calendar connection status
   const checkCalendarStatus = useCallback(async () => {
@@ -478,20 +501,26 @@ export const EvanCalendarWidget = () => {
     return format(date, 'EEEE, MMM d');
   };
 
-  // Get appointments for a specific day
+  // Get appointments for a specific day (filtered)
   const getAppointmentsForDay = (day: Date) => {
+    if (!showAppointments) return [];
     return appointments.filter(apt => isSameDay(parseISO(apt.start_time), day));
   };
 
-  // Get tasks for a specific day
+  // Get tasks for a specific day (filtered)
   const getTasksForDay = (day: Date) => {
+    if (!showTasks) return [];
     return tasks.filter(task => task.due_date && isSameDay(parseISO(task.due_date), day));
   };
 
-  // Get all items (appointments + tasks) for a specific day
+  // Get all items (appointments + tasks) for a specific day (filtered)
   const getItemsForDay = (day: Date): CalendarItem[] => {
-    const dayAppointments = getAppointmentsForDay(day).map(apt => ({ ...apt, itemType: 'appointment' as const }));
-    const dayTasks = getTasksForDay(day).map(task => ({ ...task, itemType: 'task' as const }));
+    const dayAppointments = showAppointments 
+      ? getAppointmentsForDay(day).map(apt => ({ ...apt, itemType: 'appointment' as const }))
+      : [];
+    const dayTasks = showTasks 
+      ? getTasksForDay(day).map(task => ({ ...task, itemType: 'task' as const }))
+      : [];
     return [...dayAppointments, ...dayTasks];
   };
 
@@ -543,21 +572,25 @@ export const EvanCalendarWidget = () => {
     setCurrentDate(new Date());
   };
 
-  const groupedAppointments = appointments.reduce((acc, apt) => {
-    const dateKey = format(new Date(apt.start_time), 'yyyy-MM-dd');
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(apt);
-    return acc;
-  }, {} as Record<string, Appointment[]>);
+  const groupedAppointments = showAppointments 
+    ? appointments.reduce((acc, apt) => {
+        const dateKey = format(new Date(apt.start_time), 'yyyy-MM-dd');
+        if (!acc[dateKey]) acc[dateKey] = [];
+        acc[dateKey].push(apt);
+        return acc;
+      }, {} as Record<string, Appointment[]>)
+    : {};
 
-  // Group tasks by due date
-  const groupedTasks = tasks.reduce((acc, task) => {
-    if (!task.due_date) return acc;
-    const dateKey = format(new Date(task.due_date), 'yyyy-MM-dd');
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(task);
-    return acc;
-  }, {} as Record<string, TaskItem[]>);
+  // Group tasks by due date (filtered)
+  const groupedTasks = showTasks 
+    ? tasks.reduce((acc, task) => {
+        if (!task.due_date) return acc;
+        const dateKey = format(new Date(task.due_date), 'yyyy-MM-dd');
+        if (!acc[dateKey]) acc[dateKey] = [];
+        acc[dateKey].push(task);
+        return acc;
+      }, {} as Record<string, TaskItem[]>)
+    : {};
 
   // Get all unique dates that have either appointments or tasks
   const allDatesWithItems = [...new Set([...Object.keys(groupedAppointments), ...Object.keys(groupedTasks)])].sort();
@@ -1162,44 +1195,130 @@ export const EvanCalendarWidget = () => {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto pt-2">
-        {/* Google Calendar Connection Banner */}
-        {!calendarStatus?.connected && !isConnecting && (
-          <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-primary/10">
-                  <CalendarIcon className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Connect Google Calendar</p>
-                  <p className="text-xs text-muted-foreground">Sync your events to see them here</p>
+      <CardContent className="flex-1 overflow-hidden pt-2">
+        <div className="flex h-full gap-3">
+          {/* Sidebar Filter Panel */}
+          <div className={cn(
+            "transition-all duration-300 ease-in-out flex-shrink-0 border-r pr-3",
+            sidebarOpen ? "w-48" : "w-0 overflow-hidden border-r-0 pr-0"
+          )}>
+            <div className="space-y-4">
+              {/* Toggle Sidebar Button */}
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Calendars
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Calendar Filters */}
+              <div className="space-y-2">
+                {calendarFilters.map(filter => (
+                  <label 
+                    key={filter.id}
+                    className="flex items-center gap-3 cursor-pointer group py-1.5 px-2 rounded-md hover:bg-accent/50 transition-colors"
+                  >
+                    <Checkbox 
+                      checked={filter.enabled}
+                      onCheckedChange={() => toggleFilter(filter.id)}
+                      className={cn(
+                        "border-2",
+                        filter.id === 'appointments' && "data-[state=checked]:bg-primary data-[state=checked]:border-primary",
+                        filter.id === 'tasks' && "data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                      )}
+                    />
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className={cn(
+                        "w-2.5 h-2.5 rounded-full",
+                        filter.id === 'appointments' ? "bg-primary" : "bg-amber-500"
+                      )} />
+                      <span className="text-sm font-medium">{filter.label}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {/* Quick Stats */}
+              <div className="pt-3 border-t space-y-2">
+                <div className="text-xs text-muted-foreground">This period</div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Appointments</span>
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                      {appointments.length}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">To-Dos</span>
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-amber-500/10 text-amber-600">
+                      {tasks.length}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-              <Button 
-                onClick={connectCalendar}
-                size="sm"
-                className="shrink-0"
-              >
-                <Link2 className="h-4 w-4 mr-2" />
-                Connect
-              </Button>
             </div>
           </div>
-        )}
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          {/* Collapsed Sidebar Toggle */}
+          {!sidebarOpen && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 flex-shrink-0"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <PanelLeft className="h-4 w-4" />
+            </Button>
+          )}
+
+          {/* Main Calendar Content */}
+          <div className="flex-1 overflow-y-auto">
+            {/* Google Calendar Connection Banner */}
+            {!calendarStatus?.connected && !isConnecting && (
+              <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <CalendarIcon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Connect Google Calendar</p>
+                      <p className="text-xs text-muted-foreground">Sync your events to see them here</p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={connectCalendar}
+                    size="sm"
+                    className="shrink-0"
+                  >
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Connect
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                {viewMode === 'day' && renderDayView()}
+                {viewMode === 'week' && renderWeekView()}
+                {viewMode === 'month' && renderMonthView()}
+                {viewMode === 'agenda' && renderAgendaView()}
+              </>
+            )}
           </div>
-        ) : (
-          <>
-            {viewMode === 'day' && renderDayView()}
-            {viewMode === 'week' && renderWeekView()}
-            {viewMode === 'month' && renderMonthView()}
-            {viewMode === 'agenda' && renderAgendaView()}
-          </>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
