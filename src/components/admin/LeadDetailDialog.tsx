@@ -510,7 +510,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!lead && open,
   });
 
-  const { data: tasks = [] } = useQuery({
+  const { data: rawTasks = [] } = useQuery({
     queryKey: ['lead-tasks', lead?.id],
     queryFn: async () => {
       if (!lead) return [];
@@ -532,6 +532,17 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     },
     enabled: !!lead && open,
   });
+
+  // Sort tasks: incomplete first, completed at bottom
+  const tasks = useMemo(() => {
+    return [...rawTasks].sort((a, b) => {
+      const aCompleted = a.status === 'done' || a.status === 'completed';
+      const bCompleted = b.status === 'done' || b.status === 'completed';
+      if (aCompleted && !bCompleted) return 1;
+      if (!aCompleted && bCompleted) return -1;
+      return 0;
+    });
+  }, [rawTasks]);
 
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members'],
@@ -1197,6 +1208,24 @@ Commercial Lending X`,
     },
   });
 
+  const updateTaskStatus = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: { status?: string } }) => {
+      const isDone = updates.status === 'done' || updates.status === 'completed';
+      const { error } = await supabase
+        .from('evan_tasks')
+        .update({ 
+          status: updates.status,
+          is_completed: isDone,
+        })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-tasks', lead?.id] });
+      queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
+    },
+  });
+
   const addMeeting = useMutation({
     mutationFn: async ({ title, date }: { title: string; date: string }) => {
       if (!lead) return;
@@ -1684,6 +1713,7 @@ Commercial Lending X`,
                       tasks={tasks}
                       onAddTask={() => setShowAddTask(true)}
                       onViewAll={() => setActiveTab('tasks')}
+                      onUpdateTask={(id, updates) => updateTaskStatus.mutate({ id, updates })}
                     />
 
                     {/* Stage Change Event */}
