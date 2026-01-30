@@ -235,12 +235,12 @@ const AdminMessages = () => {
         </div>
 
         <Tabs defaultValue="client-messages" className="w-full">
-          <TabsList className="bg-muted/30 border">
-            <TabsTrigger value="client-messages" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsList className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+            <TabsTrigger value="client-messages" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
               <MessageSquare className="w-4 h-4" />
               Client Messages
             </TabsTrigger>
-            <TabsTrigger value="call-ratings" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="call-ratings" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
               <Phone className="w-4 h-4" />
               Call Ratings
               {unreadRatingsCount > 0 && (
