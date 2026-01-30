@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,11 @@ interface Lead {
   company_name: string | null;
 }
 
+interface OutboundCallCardProps {
+  initialPhone?: string;
+  initialLeadId?: string;
+}
+
 const formatPhoneNumber = (phone: string) => {
   const cleaned = phone.replace(/\D/g, '');
   if (cleaned.length === 11 && cleaned.startsWith('1')) {
@@ -42,9 +47,16 @@ const formatPhoneAsYouType = (value: string) => {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
 };
 
-export const OutboundCallCard = () => {
+export const OutboundCallCard = ({ initialPhone, initialLeadId }: OutboundCallCardProps) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Pre-fill phone number from props
+  useEffect(() => {
+    if (initialPhone) {
+      setPhoneNumber(formatPhoneAsYouType(initialPhone));
+    }
+  }, [initialPhone]);
   const [activeTab, setActiveTab] = useState<'dial' | 'contacts'>('dial');
   
   const { makeOutboundCall, outboundCall, isConnected, healthStatus } = useCall();
