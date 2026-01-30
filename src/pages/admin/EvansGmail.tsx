@@ -2600,7 +2600,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                         <div
                           key={email.id}
                           onClick={() => handleSelectEmail(email.id)}
-                          className={`border-b cursor-pointer transition-colors ${
+                          className={`border-b border-border cursor-pointer transition-colors ${
                             !isRead 
                               ? 'bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50' 
                               : 'bg-white dark:bg-background hover:bg-muted/50'
