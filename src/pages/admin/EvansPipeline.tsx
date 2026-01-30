@@ -58,6 +58,7 @@ const getLeadAvatar = (name: string): string | null => {
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InlineEditableCell } from '@/components/admin/InlineEditableCell';
 import { useUndo } from '@/contexts/UndoContext';
@@ -1609,8 +1610,8 @@ const EvansPipeline = () => {
                                   return (
                                     <div className="flex items-center gap-1.5">
                                       {lead.phone && (
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
+                                        <HoverCard openDelay={200} closeDelay={100}>
+                                          <HoverCardTrigger asChild>
                                             <button
                                               onClick={(e) => handleCall(e, lead)}
                                               disabled={isCallingThis}
@@ -1619,13 +1620,39 @@ const EvansPipeline = () => {
                                               {isCallingThis ? <Loader2 className="h-3 w-3 text-green-700 animate-spin" /> : <Phone className="h-3 w-3 text-green-700" />}
                                               <span className="text-[11px] font-medium text-green-700">Call</span>
                                             </button>
-                                          </TooltipTrigger>
-                                          <TooltipContent><p>Call {lead.phone}</p></TooltipContent>
-                                        </Tooltip>
+                                          </HoverCardTrigger>
+                                          <HoverCardContent side="top" className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <Phone className="h-4 w-4 text-green-600" />
+                                                <span className="text-sm font-medium">Phone Contact</span>
+                                              </div>
+                                              <div className="space-y-1.5 text-sm">
+                                                <div className="flex justify-between">
+                                                  <span className="text-muted-foreground">Name</span>
+                                                  <span className="font-medium">{lead.name}</span>
+                                                </div>
+                                                {lead.company_name && (
+                                                  <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Company</span>
+                                                    <span>{lead.company_name}</span>
+                                                  </div>
+                                                )}
+                                                <div className="flex justify-between">
+                                                  <span className="text-muted-foreground">Phone</span>
+                                                  <span className="font-mono text-green-700">{lead.phone}</span>
+                                                </div>
+                                              </div>
+                                              <div className="pt-1 border-t">
+                                                <span className="text-xs text-muted-foreground">Click to initiate call</span>
+                                              </div>
+                                            </div>
+                                          </HoverCardContent>
+                                        </HoverCard>
                                       )}
                                       {lead.email && (
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
+                                        <HoverCard openDelay={200} closeDelay={100}>
+                                          <HoverCardTrigger asChild>
                                             <button
                                               onClick={(e) => handleEmail(e, lead)}
                                               className="inline-flex items-center gap-1 h-6 px-2 rounded bg-[#0066FF]/10 hover:bg-[#0066FF]/20 border border-[#0066FF]/30"
@@ -1633,9 +1660,35 @@ const EvansPipeline = () => {
                                               <Mail className="h-3 w-3 text-[#0066FF]" />
                                               <span className="text-[11px] font-medium text-[#0066FF]">Email</span>
                                             </button>
-                                          </TooltipTrigger>
-                                          <TooltipContent><p>Email {lead.email}</p></TooltipContent>
-                                        </Tooltip>
+                                          </HoverCardTrigger>
+                                          <HoverCardContent side="top" className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <Mail className="h-4 w-4 text-[#0066FF]" />
+                                                <span className="text-sm font-medium">Email Contact</span>
+                                              </div>
+                                              <div className="space-y-1.5 text-sm">
+                                                <div className="flex justify-between">
+                                                  <span className="text-muted-foreground">Name</span>
+                                                  <span className="font-medium">{lead.name}</span>
+                                                </div>
+                                                {lead.company_name && (
+                                                  <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Company</span>
+                                                    <span>{lead.company_name}</span>
+                                                  </div>
+                                                )}
+                                                <div className="flex justify-between">
+                                                  <span className="text-muted-foreground">Email</span>
+                                                  <span className="font-mono text-[#0066FF] text-xs truncate max-w-[140px]">{lead.email}</span>
+                                                </div>
+                                              </div>
+                                              <div className="pt-1 border-t">
+                                                <span className="text-xs text-muted-foreground">Click to compose email</span>
+                                              </div>
+                                            </div>
+                                          </HoverCardContent>
+                                        </HoverCard>
                                       )}
                                       {!lead.phone && !lead.email && <span className="text-slate-300 text-xs">—</span>}
                                     </div>
