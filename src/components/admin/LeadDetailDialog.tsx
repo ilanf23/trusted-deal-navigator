@@ -2043,70 +2043,119 @@ Commercial Lending X`,
                       Add New Task
                     </Button>
                     
-                    {/* Tasks List with Expandable Descriptions */}
+                    {/* Tasks List - Card Style */}
                     {tasks.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <ListTodo className="w-10 h-10 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">No tasks yet</p>
                       </div>
                     ) : (
-                      <div className="rounded-lg border border-border overflow-hidden">
-                        <div className="divide-y divide-border">
-                          {tasks.map(task => {
-                            const completed = task.status === 'completed' || task.status === 'done';
-                            const isExpanded = expandedTasksInDialog.has(task.id);
-                            const hasDescription = task.description && task.description.trim().length > 0;
+                      <div className="space-y-2">
+                        {tasks.map(task => {
+                          const completed = task.status === 'completed' || task.status === 'done';
+                          const isExpanded = expandedTasksInDialog.has(task.id);
+                          const hasDescription = task.description && task.description.trim().length > 0;
 
-                            const priorityColors: Record<string, string> = {
-                              critical: '#ef4444',
-                              high: '#f97316',
-                              medium: '#eab308',
-                              low: '#22c55e',
-                              none: '#94a3b8',
-                            };
-                            const priorityColor = priorityColors[task.priority || 'none'];
+                          const priorityConfig: Record<string, { color: string; stars: number }> = {
+                            critical: { color: '#ef4444', stars: 6 },
+                            high: { color: '#f97316', stars: 4 },
+                            medium: { color: '#eab308', stars: 3 },
+                            low: { color: '#22c55e', stars: 2 },
+                            none: { color: '#94a3b8', stars: 0 },
+                          };
+                          const pConfig = priorityConfig[task.priority || 'none'];
 
-                            return (
-                              <div key={task.id} className="group">
-                                <div 
-                                  className={cn(
-                                    "flex items-start gap-2 px-3 py-2.5 transition-colors",
-                                    hasDescription && "hover:bg-muted/50 cursor-pointer"
-                                  )}
-                                  onClick={() => {
-                                    if (hasDescription) {
-                                      setExpandedTasksInDialog(prev => {
-                                        const next = new Set(prev);
-                                        if (next.has(task.id)) {
-                                          next.delete(task.id);
-                                        } else {
-                                          next.add(task.id);
-                                        }
-                                        return next;
-                                      });
-                                    }
+                          const taskStatusConfig: Record<string, { label: string; bg: string; text: string }> = {
+                            todo: { label: 'To Do', bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400' },
+                            working: { label: 'Working', bg: 'bg-pink-500/10', text: 'text-pink-600 dark:text-pink-400' },
+                            in_progress: { label: 'In Progress', bg: 'bg-pink-500/10', text: 'text-pink-600 dark:text-pink-400' },
+                            blocked: { label: 'Blocked', bg: 'bg-red-500/10', text: 'text-red-600 dark:text-red-400' },
+                            done: { label: 'Done', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' },
+                            completed: { label: 'Completed', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' },
+                          };
+                          const sConfig = taskStatusConfig[task.status || 'todo'] || taskStatusConfig.todo;
+
+                          return (
+                            <div
+                              key={task.id}
+                              className={cn(
+                                "group rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden transition-all duration-200",
+                                "hover:border-muted-foreground/30 hover:shadow-sm cursor-pointer",
+                                completed && "opacity-60"
+                              )}
+                            >
+                              {/* Main task row */}
+                              <div className="flex items-start gap-3 p-3">
+                                {/* Checkbox */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Toggle completion
                                   }}
+                                  className="mt-0.5 flex-shrink-0"
                                 >
-                                  {/* Priority indicator */}
-                                  <div className="flex items-center gap-0.5 mt-1.5">
-                                    {[1, 2, 3].map((level) => (
-                                      <div
-                                        key={level}
-                                        className={`w-1 rounded-full transition-all ${
-                                          level <= 3 ? 'h-2.5' : 'h-1.5'
-                                        }`}
-                                        style={{ 
-                                          backgroundColor: priorityColor,
-                                          opacity: level <= (task.priority === 'critical' ? 3 : task.priority === 'high' ? 2 : 1) ? 1 : 0.25
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
+                                  {completed ? (
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                  ) : (
+                                    <Circle className="h-5 w-5 text-muted-foreground hover:text-emerald-500 transition-colors" />
+                                  )}
+                                </button>
 
-                                  {/* Expand indicator */}
-                                  {hasDescription ? (
+                                {/* Content */}
+                                <div className="flex-1 min-w-0">
+                                  {/* Title row with priority */}
+                                  <div className="flex items-start gap-2">
+                                    {/* Priority indicator */}
+                                    <div className="flex items-center gap-0.5 mt-1">
+                                      {[1, 2, 3].map((level) => (
+                                        <div
+                                          key={level}
+                                          className={`w-1 rounded-full transition-all ${
+                                            level <= Math.ceil(pConfig.stars / 2) 
+                                              ? 'h-2.5 opacity-100' 
+                                              : 'h-1.5 opacity-25'
+                                          }`}
+                                          style={{ backgroundColor: pConfig.color }}
+                                        />
+                                      ))}
+                                    </div>
+                                    
+                                    <div className="flex-1 min-w-0">
+                                      <p className={cn(
+                                        "text-sm font-medium leading-snug",
+                                        completed && "line-through text-muted-foreground"
+                                      )}>
+                                        {task.title}
+                                      </p>
+                                      
+                                      {/* Meta row */}
+                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                                        {task.due_date && (
+                                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                            <Calendar className="h-3 w-3" />
+                                            {format(new Date(task.due_date), 'MMM d')}
+                                          </span>
+                                        )}
+                                        {task.estimated_hours && (
+                                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                            <Clock className="h-3 w-3" />
+                                            {task.estimated_hours}h
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Right side - Status + Expand */}
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${sConfig.bg} ${sConfig.text}`}>
+                                    {sConfig.label}
+                                  </span>
+                                  
+                                  {hasDescription && (
                                     <button 
-                                      className="mt-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                                      className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setExpandedTasksInDialog(prev => {
@@ -2126,55 +2175,21 @@ Commercial Lending X`,
                                         <ChevronRight className="h-4 w-4" />
                                       )}
                                     </button>
-                                  ) : (
-                                    <div className="w-4" />
                                   )}
+                                </div>
+                              </div>
 
-                                  {/* Status icon */}
-                                  {completed ? (
-                                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-500 flex-shrink-0" />
-                                  ) : (
-                                    <Circle className="mt-0.5 h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                  )}
-
-                                  {/* Content */}
-                                  <div className="min-w-0 flex-1">
-                                    <p className={cn(
-                                      "text-sm leading-snug",
-                                      completed ? 'text-muted-foreground line-through' : 'text-foreground'
-                                    )}>
-                                      {task.title}
-                                    </p>
-                                    
-                                    {/* Meta row */}
-                                    <div className="flex items-center gap-2 mt-1">
-                                      {task.due_date && (
-                                        <span className="text-[11px] text-muted-foreground">
-                                          Due {format(new Date(task.due_date), 'MMM d')}
-                                        </span>
-                                      )}
-                                      {task.estimated_hours && (
-                                        <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
-                                          <Clock className="h-3 w-3" />
-                                          {task.estimated_hours}h
-                                        </span>
-                                      )}
-                                    </div>
+                              {/* Expanded description */}
+                              {isExpanded && hasDescription && (
+                                <div className="px-3 pb-3 pl-11">
+                                  <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 whitespace-pre-wrap">
+                                    {task.description}
                                   </div>
                                 </div>
-
-                                {/* Expanded description */}
-                                {isExpanded && hasDescription && (
-                                  <div className="px-3 pb-3 pl-[72px]">
-                                    <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-2.5 whitespace-pre-wrap">
-                                      {task.description}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </TabsContent>
