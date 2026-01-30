@@ -218,28 +218,20 @@ export const IncomingCallPopup = () => {
         </motion.div>
       )}
       
-      {/* Health warning when system is offline */}
+      {/* Health warning when system is offline - small toast-style at bottom right */}
       {showHealthWarning && (
         <motion.div
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -50 }}
-          className="fixed top-4 right-4 z-[9998]"
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          className="fixed bottom-4 right-4 z-[9998]"
         >
-          <Card className="w-72 shadow-lg border-amber-500/50 bg-background/95 backdrop-blur-sm">
-            <div className="bg-amber-500 text-white px-3 py-2 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm font-medium">Call System Reconnecting</span>
-            </div>
-            <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">
-                The call system is reconnecting. Incoming calls may be delayed.
-              </p>
-              <div className="mt-2">
-                <CallHealthIndicator />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg border border-amber-500/30 bg-background/95 backdrop-blur-sm">
+            <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+            <span className="text-xs text-muted-foreground">Syncing call system...</span>
+            <CallHealthIndicator />
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
