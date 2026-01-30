@@ -19,6 +19,7 @@ interface TaskTableViewProps {
   onOpenDetail: (task: Task) => void;
   selectedTasks: Set<string>;
   onToggleSelect: (id: string) => void;
+  fadingTasks?: Set<string>;
 }
 
 export const TaskTableView = ({
@@ -29,6 +30,7 @@ export const TaskTableView = ({
   onOpenDetail,
   selectedTasks,
   onToggleSelect,
+  fadingTasks = new Set(),
 }: TaskTableViewProps) => {
   const navigate = useNavigate();
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -190,8 +192,12 @@ export const TaskTableView = ({
           {tasks.map((task) => (
             <TableRow
               key={task.id}
-              className={`group cursor-pointer transition-colors hover:bg-muted/40 ${
-                task.is_completed ? 'opacity-50' : ''
+              className={`group cursor-pointer transition-all duration-500 hover:bg-muted/40 ${
+                fadingTasks.has(task.id) 
+                  ? 'opacity-0 scale-95 translate-x-4' 
+                  : task.is_completed 
+                    ? 'opacity-50' 
+                    : ''
               }`}
               onClick={() => onOpenDetail(task)}
             >
