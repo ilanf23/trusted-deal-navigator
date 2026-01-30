@@ -73,8 +73,15 @@ export const TaskWorkspace = () => {
     }
   }, [searchParams, setSearchParams, addTask]);
 
+  // Track recently completed tasks for fade-out animation
+  const [fadingTasks, setFadingTasks] = useState<Set<string>>(new Set());
+  const [hiddenTasks, setHiddenTasks] = useState<Set<string>>(new Set());
+
   const filteredTasks = useMemo(() => {
     let result = tasks;
+    
+    // Filter out hidden (completed) tasks
+    result = result.filter(task => !hiddenTasks.has(task.id));
     
     // Filter by source (gmail includes nudge/follow-up tasks and tasks with follow-up keywords)
     if (sourceFilter !== 'all') {
@@ -101,10 +108,39 @@ export const TaskWorkspace = () => {
     }
     
     return result;
-  }, [tasks, searchTerm, sourceFilter]);
+  }, [tasks, searchTerm, sourceFilter, hiddenTasks]);
 
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {
     updateTask.mutate({ id, updates });
+    
+    // If task is being completed, trigger fade-out and hide after delay
+    if (updates.is_completed === true || updates.status === 'done') {
+      setFadingTasks(prev => new Set(prev).add(id));
+      
+      // After fade animation (1.5s), hide the task
+      setTimeout(() => {
+        setFadingTasks(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        setHiddenTasks(prev => new Set(prev).add(id));
+      }, 1500);
+    }
+    
+    // If task is being uncompleted, make sure it's visible again
+    if (updates.is_completed === false || (updates.status && updates.status !== 'done')) {
+      setHiddenTasks(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setFadingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   };
 
   const handleDeleteTask = (id: string) => {
@@ -351,6 +387,7 @@ export const TaskWorkspace = () => {
             onOpenDetail={setSelectedTask}
             selectedTasks={selectedTasks}
             onToggleSelect={toggleTaskSelection}
+            fadingTasks={fadingTasks}
           />
         )}
 
