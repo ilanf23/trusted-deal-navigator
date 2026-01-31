@@ -6,7 +6,7 @@ export const EVAN_SIGNATURE_HTML = `
 Associate<br>
 Commercial Lending X<br>
 Check out our commercial lending videos on our <a href="https://www.youtube.com/@commerciallendingx661/featured" style="color: #1a73e8;">CLX YouTube Channel</a>.<br>
-<a href="https://www.commerciallendingx.com" style="color: #1a73e8;">www.commerciallendingx.com</a><br>
+<a href="https://www.commerciallendingx.com/" style="color: #1a73e8;">www.commerciallendingx.com</a><br>
 Email: <a href="mailto:evan@commerciallendingx.com" style="color: #1a73e8;">evan@commerciallendingx.com</a><br>
 Offices In:<br>
 Naperville, IL 60563<br>
