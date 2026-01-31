@@ -1852,6 +1852,27 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                       <Forward className="w-4 h-4" />
                     </Button>
                     
+                    {/* Add to do task - available for borrower threads */}
+                    {selectedLead && isExternalEmail(selectedEmail) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const senderName = extractSenderName(selectedEmail.from);
+                          const taskTitle = `Follow up: ${selectedEmail.subject}`;
+                          const taskDescription = `From: ${senderName}\n\nEmail snippet: ${selectedEmail.snippet}`;
+                          setTaskInitialTitle(taskTitle);
+                          setTaskInitialDescription(taskDescription);
+                          setTaskInitialLeadId(selectedLead.id);
+                          setTaskDialogOpen(true);
+                        }}
+                        className="gap-2"
+                      >
+                        <ListTodo className="w-4 h-4" />
+                        Add Task
+                      </Button>
+                    )}
+                    
                     {/* Toggle Deal Sidebar button - only for external leads */}
                     {selectedLead && isExternalEmail(selectedEmail) && (
                       <Button
