@@ -471,43 +471,121 @@ const EvansPage = () => {
           </div>
         </div>
 
-        {/* Annual Goal Progress - responsive */}
-        <Card className="bg-gradient-to-r from-primary/5 via-background to-primary/5 border-primary/20">
-          <CardHeader className="pb-2 px-4 md:px-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <CardTitle className="text-base md:text-lg">Annual Goal Progress</CardTitle>
-                <CardDescription className="text-xs md:text-sm">Road to $1.5M revenue target</CardDescription>
+        {/* Annual Goal Progress - Hero Style */}
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white">
+          {/* Background decorative elements */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          
+          <CardContent className="relative z-10 p-6 md:p-8">
+            <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10">
+              {/* Circular Progress Indicator */}
+              <div className="relative flex-shrink-0">
+                <svg className="w-40 h-40 md:w-48 md:h-48 -rotate-90" viewBox="0 0 100 100">
+                  {/* Background circle */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.2)"
+                    strokeWidth="8"
+                  />
+                  {/* Progress circle */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(ytdRevenue / annualTarget) * 264} 264`}
+                    className="transition-all duration-1000 ease-out"
+                  />
+                </svg>
+                {/* Center content */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl md:text-4xl font-bold">{Math.round((ytdRevenue / annualTarget) * 100)}%</span>
+                  <span className="text-xs md:text-sm text-white/70">of goal</span>
+                </div>
               </div>
-              <Badge variant={ytdRevenue >= annualTarget * 0.8 ? 'default' : 'secondary'} className="w-fit text-xs">
-                {ytdRevenue >= annualTarget * 0.8 ? 'On Track' : 'Behind Pace'}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 md:px-6">
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-2xl md:text-3xl font-bold">{formatCurrency(ytdRevenue)}</span>
-                <span className="text-sm md:text-lg text-muted-foreground">of $1.5M</span>
+              
+              {/* Main content */}
+              <div className="flex-1 text-center lg:text-left space-y-4">
+                <div>
+                  <p className="text-white/70 text-sm font-medium uppercase tracking-wider">2026 Revenue Goal</p>
+                  <div className="flex items-baseline gap-2 justify-center lg:justify-start mt-1">
+                    <span className="text-4xl md:text-5xl font-bold">{formatCurrency(ytdRevenue)}</span>
+                    <span className="text-xl md:text-2xl text-white/60">/ $1.5M</span>
+                  </div>
+                </div>
+                
+                {/* Motivational message */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 max-w-md mx-auto lg:mx-0">
+                  {ytdRevenue >= annualTarget * 0.8 ? (
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-500/20 rounded-lg">
+                        <TrendingUp className="h-5 w-5 text-green-300" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">You're on fire! 🔥</p>
+                        <p className="text-sm text-white/70">Keep this momentum going</p>
+                      </div>
+                    </div>
+                  ) : ytdRevenue >= annualTarget * 0.5 ? (
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-amber-500/20 rounded-lg">
+                        <Target className="h-5 w-5 text-amber-300" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">Halfway there!</p>
+                        <p className="text-sm text-white/70">{formatCurrency(annualTarget - ytdRevenue)} to go</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <Activity className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">Building momentum</p>
+                        <p className="text-sm text-white/70">{formatCurrency(annualTarget - ytdRevenue)} to reach your goal</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <Progress value={(ytdRevenue / annualTarget) * 100} className="h-3 md:h-4" />
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 pt-2">
-                <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Q1</p>
-                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[0])}</p>
-                </div>
-                <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Q2</p>
-                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[1])}</p>
-                </div>
-                <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Q3</p>
-                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[2])}</p>
-                </div>
-                <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground mb-1">Q4</p>
-                  <p className="font-semibold">{formatCurrency(quarterlyRevenue[3])}</p>
-                </div>
+              
+              {/* Quarterly breakdown */}
+              <div className="grid grid-cols-4 lg:grid-cols-2 gap-2 lg:gap-3 w-full lg:w-auto">
+                {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter, index) => {
+                  const quarterTarget = annualTarget / 4;
+                  const isCurrentQuarter = Math.floor(now.getMonth() / 3) === index;
+                  const isPastQuarter = Math.floor(now.getMonth() / 3) > index;
+                  
+                  return (
+                    <div 
+                      key={quarter}
+                      className={`text-center p-3 rounded-xl transition-all ${
+                        isCurrentQuarter 
+                          ? 'bg-white/20 ring-2 ring-white/40' 
+                          : 'bg-white/10'
+                      }`}
+                    >
+                      <p className="text-xs text-white/60 mb-1">{quarter}</p>
+                      <p className="font-bold text-sm md:text-base">{formatCurrency(quarterlyRevenue[index])}</p>
+                      {isPastQuarter && (
+                        <p className={`text-[10px] mt-0.5 ${quarterlyRevenue[index] >= quarterTarget ? 'text-green-300' : 'text-amber-300'}`}>
+                          {quarterlyRevenue[index] >= quarterTarget ? '✓ Hit' : 'Missed'}
+                        </p>
+                      )}
+                      {isCurrentQuarter && (
+                        <p className="text-[10px] mt-0.5 text-white/60">Current</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </CardContent>
