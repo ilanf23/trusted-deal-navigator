@@ -1115,12 +1115,6 @@ const EvansPipeline = () => {
             <span className="text-xs md:text-[13px] text-slate-500 font-normal whitespace-nowrap">
               {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
             </span>
-            {!canEdit && (
-              <Badge variant="outline" className="gap-1 text-slate-500 border-slate-300 flex-shrink-0 text-xs">
-                <Lock className="h-3 w-3" />
-                View Only
-              </Badge>
-            )}
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
             {canEdit && evanId && (
