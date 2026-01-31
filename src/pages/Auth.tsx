@@ -166,9 +166,9 @@ const Auth = () => {
           >
             ← Back to Website
           </Button>
-          <CardTitle className="text-2xl">Client Portal</CardTitle>
+          <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Sign in to access your contracts, invoices, and messages
+            Sign in to access your account
           </CardDescription>
         </CardHeader>
         <CardContent>
