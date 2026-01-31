@@ -154,6 +154,14 @@ const Auth = () => {
           <div className="flex justify-center">
             <img src={logo} alt="Commercial Lending X" className="h-20" />
           </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/')}
+            className="absolute top-4 left-4"
+          >
+            ← Back to Website
+          </Button>
           <CardTitle className="text-2xl">Client Portal</CardTitle>
           <CardDescription>
             Sign in to access your contracts, invoices, and messages
