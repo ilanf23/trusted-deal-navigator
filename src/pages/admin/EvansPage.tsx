@@ -76,6 +76,19 @@ const EvansPage = () => {
   const now = new Date();
   const periodStart = timePeriod === 'ytd' ? startOfYear(now) : startOfMonth(now);
 
+  // Dynamic greeting based on time of day
+  const getGreeting = () => {
+    const hour = now.getHours();
+    if (hour < 12) {
+      return 'Good morning, Evan!';
+    } else if (hour >= 12 && hour < 16) {
+      const dayName = format(now, 'EEEE');
+      return `Happy ${dayName}, Evan!`;
+    } else {
+      return 'Good afternoon, Evan!';
+    }
+  };
+
   // Fetch Evan's team member ID
   const { data: evanTeamMember } = useQuery({
     queryKey: ['evan-team-member'],
@@ -443,7 +456,7 @@ const EvansPage = () => {
         {/* Header - responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Hi Evan!</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">{getGreeting()}</h1>
             <p className="text-sm md:text-base text-muted-foreground">Here's your performance overview</p>
           </div>
           
