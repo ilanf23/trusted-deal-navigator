@@ -442,14 +442,9 @@ const EvansPage = () => {
       <div className="space-y-4 md:space-y-6">
         {/* Header - responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-2 md:p-2.5 rounded-lg md:rounded-xl bg-primary/10">
-              <BarChart3 className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold">Analytics Dashboard</h1>
-              <p className="text-xs md:text-sm text-muted-foreground">Performance metrics & insights</p>
-            </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Hi Evan!</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Here's your performance overview</p>
           </div>
           
           <div className="flex items-center gap-2 md:gap-3">
