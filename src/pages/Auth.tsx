@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { z } from 'zod';
+import PublicLayout from '@/components/layout/PublicLayout';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -141,13 +142,16 @@ const Auth = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <PublicLayout>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </PublicLayout>
     );
   }
 
   return (
+    <PublicLayout>
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
@@ -280,6 +284,7 @@ const Auth = () => {
         </CardContent>
       </Card>
     </div>
+    </PublicLayout>
   );
 };
 
