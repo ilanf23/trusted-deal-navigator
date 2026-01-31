@@ -2,7 +2,7 @@
 export const EVAN_SIGNATURE_HTML = `
 <br><br>
 <div style="font-size: 13px; font-family: Arial, sans-serif; line-height: 1.2;">
-<strong style="color: #333;">Evan Hettich<br>
+<strong style="color: inherit;">Evan Hettich<br>
 Associate<br>
 Commercial Lending X<br>
 Check out our commercial lending videos on our <a href="https://www.youtube.com/@commerciallendingx661/featured" style="color: #1a73e8;">CLX YouTube Channel</a>.<br>
