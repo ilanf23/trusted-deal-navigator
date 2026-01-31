@@ -65,6 +65,7 @@ export const TaskDetailDialog = ({
   const [newTaskStatus, setNewTaskStatus] = useState('todo');
   const [newTaskAssignee, setNewTaskAssignee] = useState('Evan');
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
+  const [newTaskDueTime, setNewTaskDueTime] = useState<string>('');
   const [newTaskLeadId, setNewTaskLeadId] = useState<string | null>(null);
   const [newTaskHours, setNewTaskHours] = useState<number | null>(null);
   const [newTaskPriority, setNewTaskPriority] = useState<string>('medium');
@@ -94,11 +95,37 @@ export const TaskDetailDialog = ({
       setNewTaskStatus('todo');
       setNewTaskAssignee('Evan');
       setNewTaskDueDate(undefined);
+      setNewTaskDueTime('');
       setNewTaskLeadId(null);
       setNewTaskHours(null);
       setNewTaskPriority('medium');
     }
     onClose();
+  };
+
+  // Combine date and time into ISO string
+  const combineDateAndTime = (date: Date | undefined, time: string): string | undefined => {
+    if (!date) return undefined;
+    if (!time) return date.toISOString();
+    
+    const [hours, minutes] = time.split(':').map(Number);
+    const combined = new Date(date);
+    combined.setHours(hours, minutes, 0, 0);
+    return combined.toISOString();
+  };
+
+  // Extract time from ISO string
+  const extractTimeFromDate = (isoString: string | null): string => {
+    if (!isoString) return '';
+    try {
+      const date = parseISO(isoString);
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      if (hours === 0 && minutes === 0) return '';
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    } catch {
+      return '';
+    }
   };
 
   const handleCreateTask = () => {
@@ -109,7 +136,7 @@ export const TaskDetailDialog = ({
       description: newTaskDescription || undefined,
       status: newTaskStatus,
       assignee_name: newTaskAssignee || undefined,
-      due_date: newTaskDueDate?.toISOString() || undefined,
+      due_date: combineDateAndTime(newTaskDueDate, newTaskDueTime),
       lead_id: newTaskLeadId || undefined,
       estimated_hours: newTaskHours || undefined,
       priority: newTaskPriority,
@@ -249,7 +276,30 @@ export const TaskDetailDialog = ({
   };
 
   const handleDateSelect = (date: Date | undefined) => {
-    onUpdateTask(task!.id, { due_date: date?.toISOString() || null });
+    if (!date) {
+      onUpdateTask(task!.id, { due_date: null });
+      return;
+    }
+    // Preserve existing time if there was one
+    const existingTime = extractTimeFromDate(task!.due_date);
+    if (existingTime) {
+      const [hours, minutes] = existingTime.split(':').map(Number);
+      date.setHours(hours, minutes, 0, 0);
+    }
+    onUpdateTask(task!.id, { due_date: date.toISOString() });
+  };
+
+  const handleTimeChange = (time: string) => {
+    if (!task!.due_date) return;
+    
+    const existingDate = parseISO(task!.due_date);
+    if (time) {
+      const [hours, minutes] = time.split(':').map(Number);
+      existingDate.setHours(hours, minutes, 0, 0);
+    } else {
+      existingDate.setHours(0, 0, 0, 0);
+    }
+    onUpdateTask(task!.id, { due_date: existingDate.toISOString() });
   };
 
   const getActivityIcon = (type: string) => {
@@ -343,26 +393,54 @@ export const TaskDetailDialog = ({
               />
             </div>
 
-            {/* Due Date */}
+            {/* Due Date & Time */}
             <div className="space-y-3">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                 <CalendarIcon className="h-3.5 w-3.5" /> Due Date
               </label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="justify-start h-9 rounded-lg font-normal">
-                    {newTaskDueDate ? format(newTaskDueDate, 'PPP') : 'Select date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={newTaskDueDate}
-                    onSelect={setNewTaskDueDate}
-                    initialFocus
+              <div className="flex items-center gap-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start h-9 rounded-lg font-normal">
+                      {newTaskDueDate ? format(newTaskDueDate, 'PPP') : 'Select date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-xl pointer-events-auto" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={newTaskDueDate}
+                      onSelect={setNewTaskDueDate}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                {/* Optional Time */}
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="time"
+                    value={newTaskDueTime}
+                    onChange={(e) => setNewTaskDueTime(e.target.value)}
+                    className="w-[120px] h-9 rounded-lg"
+                    placeholder="Time (optional)"
                   />
-                </PopoverContent>
-              </Popover>
+                  {newTaskDueTime && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => setNewTaskDueTime('')}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Time is optional — leave blank for date-only due dates
+              </p>
             </div>
 
             {/* Priority */}
@@ -546,26 +624,56 @@ export const TaskDetailDialog = ({
               />
             </div>
 
-            {/* Due Date */}
+            {/* Due Date & Time */}
             <div className="space-y-3">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                 <CalendarIcon className="h-3.5 w-3.5" /> Due Date
               </label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="justify-start h-9 rounded-lg font-normal">
-                    {task!.due_date ? format(parseISO(task!.due_date), 'PPP') : 'Select date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={task!.due_date ? parseISO(task!.due_date) : undefined}
-                    onSelect={handleDateSelect}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="flex items-center gap-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start h-9 rounded-lg font-normal">
+                      {task!.due_date ? format(parseISO(task!.due_date), 'PPP') : 'Select date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-xl pointer-events-auto" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={task!.due_date ? parseISO(task!.due_date) : undefined}
+                      onSelect={handleDateSelect}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                {/* Optional Time */}
+                {task!.due_date && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="time"
+                      value={extractTimeFromDate(task!.due_date)}
+                      onChange={(e) => handleTimeChange(e.target.value)}
+                      className="w-[120px] h-9 rounded-lg"
+                      placeholder="Time"
+                    />
+                    {extractTimeFromDate(task!.due_date) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => handleTimeChange('')}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Time is optional — leave blank for date-only due dates
+              </p>
             </div>
 
             {/* Priority */}
