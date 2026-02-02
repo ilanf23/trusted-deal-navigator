@@ -490,44 +490,69 @@ const EvansPage = () => {
                 </div>
               </div>
               
-              {/* Revenue Chart */}
-              <div className="w-full lg:w-[400px] h-[160px] bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                <p className="text-xs text-white/60 mb-2 font-medium uppercase tracking-wider">Monthly Revenue</p>
-                <ResponsiveContainer width="100%" height="85%">
-                  <AreaChart data={monthlyRevenueData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                    <defs>
-                      <linearGradient id="heroRevenueGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="rgba(255,255,255,0.4)" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="rgba(255,255,255,0.1)" stopOpacity={0.1}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis 
-                      dataKey="month" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10 }}
-                      interval={0}
-                    />
-                    <YAxis hide />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(0,0,0,0.8)', 
-                        border: 'none', 
-                        borderRadius: '8px',
-                        color: 'white'
-                      }}
-                      formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                      labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="revenue" 
-                      stroke="rgba(255,255,255,0.8)" 
-                      strokeWidth={2}
-                      fill="url(#heroRevenueGradient)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              {/* Revenue Chart - Horizontal */}
+              <div className="w-full lg:w-[450px] bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-white/60 font-medium uppercase tracking-wider">Monthly Revenue</p>
+                  <p className="text-xs text-white/60">{monthlyRevenueData.filter(m => m.revenue > 0).length} active months</p>
+                </div>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={monthlyRevenueData} 
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, bottom: 5, left: 35 }}
+                    >
+                      <defs>
+                        <linearGradient id="heroBarGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
+                          <stop offset="100%" stopColor="rgba(255,255,255,0.9)" />
+                        </linearGradient>
+                      </defs>
+                      <XAxis 
+                        type="number"
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10 }}
+                        tickFormatter={(value) => value >= 1000 ? `$${(value/1000).toFixed(0)}K` : `$${value}`}
+                      />
+                      <YAxis 
+                        type="category"
+                        dataKey="month" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: 500 }}
+                        width={30}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(0,0,0,0.85)', 
+                          border: 'none', 
+                          borderRadius: '8px',
+                          color: 'white',
+                          padding: '10px 14px'
+                        }}
+                        formatter={(value: number) => [formatCurrencyFull(value), 'Revenue']}
+                        labelStyle={{ color: 'rgba(255,255,255,0.7)', marginBottom: '4px' }}
+                        cursor={{ fill: 'rgba(255,255,255,0.1)' }}
+                      />
+                      <Bar 
+                        dataKey="revenue" 
+                        fill="url(#heroBarGradient)"
+                        radius={[0, 4, 4, 0]}
+                        barSize={14}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
+                  <div className="text-xs text-white/60">
+                    <span className="text-white font-semibold">{formatCurrency(ytdRevenue)}</span> total YTD
+                  </div>
+                  <div className="text-xs text-white/60">
+                    Avg: <span className="text-white font-semibold">{formatCurrency(ytdRevenue / Math.max(1, monthlyRevenueData.filter(m => m.revenue > 0).length))}</span>/mo
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
