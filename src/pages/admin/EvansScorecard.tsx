@@ -18,8 +18,22 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
+  Calendar,
 } from 'lucide-react';
-import { startOfMonth, format, subMonths, differenceInDays } from 'date-fns';
+import { 
+  startOfMonth, 
+  format, 
+  differenceInDays, 
+  startOfWeek, 
+  endOfWeek, 
+  addWeeks, 
+  subWeeks, 
+  startOfYear, 
+  endOfMonth,
+  eachWeekOfInterval,
+  eachMonthOfInterval,
+  getYear,
+} from 'date-fns';
 import { Link } from 'react-router-dom';
 
 // Stage labels for display
@@ -34,14 +48,70 @@ const STAGE_LABELS: Record<string, string> = {
   lost: 'Lost',
 };
 
+// Generate years for filter (current year and 2 previous years)
+const generateYearOptions = () => {
+  const currentYear = getYear(new Date());
+  return [currentYear, currentYear - 1, currentYear - 2];
+};
+
+// Generate weeks for a given year and month (weeks identified by Monday date)
+const generateWeekOptions = (year: number, month: number) => {
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = endOfMonth(monthStart);
+  
+  // Get all weeks that have any days in this month
+  const weeks = eachWeekOfInterval(
+    { start: monthStart, end: monthEnd },
+    { weekStartsOn: 1 } // Monday
+  );
+  
+  return weeks.map((weekStart) => ({
+    value: format(weekStart, 'yyyy-MM-dd'),
+    label: `Week of ${format(weekStart, 'MMM d')}`,
+    start: weekStart,
+    end: endOfWeek(weekStart, { weekStartsOn: 1 }),
+  }));
+};
+
+// Generate month options for a given year
+const generateMonthOptions = (year: number) => {
+  const now = new Date();
+  const currentYear = getYear(now);
+  const currentMonth = now.getMonth();
+  
+  // If it's the current year, only show months up to current month
+  const endMonth = year === currentYear ? currentMonth : 11;
+  
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, endMonth, 1);
+  
+  return eachMonthOfInterval({ start: yearStart, end: yearEnd }).map((date) => ({
+    value: date.getMonth(),
+    label: format(date, 'MMMM'),
+  }));
+};
+
 const EvansScorecard = () => {
-  const [monthFilter, setMonthFilter] = useState<string>('current');
+  const now = new Date();
+  const currentYear = getYear(now);
+  const currentMonth = now.getMonth();
+  
+  // Initialize with current week's Monday
+  const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
+  
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
+  const [selectedWeek, setSelectedWeek] = useState<string>(format(currentWeekStart, 'yyyy-MM-dd'));
   const [repFilter, setRepFilter] = useState<string>('evan');
 
-  const now = new Date();
-  const monthStart = monthFilter === 'current' 
-    ? startOfMonth(now) 
-    : startOfMonth(subMonths(now, 1));
+  // Compute period boundaries based on selected week
+  const periodBoundaries = useMemo(() => {
+    const weekStart = new Date(selectedWeek);
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+    return { start: weekStart, end: weekEnd };
+  }, [selectedWeek]);
+
+  const periodStart = periodBoundaries.start;
 
   // Get Evan's team member ID for filtering
   const { data: evanMember } = useQuery({
@@ -57,9 +127,45 @@ const EvansScorecard = () => {
     },
   });
 
+  // Memoize week options based on selected year and month
+  const weekOptions = useMemo(() => 
+    generateWeekOptions(selectedYear, selectedMonth), 
+    [selectedYear, selectedMonth]
+  );
+
+  // Memoize month options based on selected year
+  const monthOptions = useMemo(() => 
+    generateMonthOptions(selectedYear), 
+    [selectedYear]
+  );
+
+  const yearOptions = useMemo(() => generateYearOptions(), []);
+
+  // When year or month changes, reset week to first week of that month
+  const handleYearChange = (year: string) => {
+    const newYear = parseInt(year);
+    setSelectedYear(newYear);
+    const newMonths = generateMonthOptions(newYear);
+    const newMonth = newMonths.length > 0 ? newMonths[newMonths.length - 1].value : 0;
+    setSelectedMonth(newMonth);
+    const newWeeks = generateWeekOptions(newYear, newMonth);
+    if (newWeeks.length > 0) {
+      setSelectedWeek(newWeeks[newWeeks.length - 1].value);
+    }
+  };
+
+  const handleMonthChange = (month: string) => {
+    const newMonth = parseInt(month);
+    setSelectedMonth(newMonth);
+    const newWeeks = generateWeekOptions(selectedYear, newMonth);
+    if (newWeeks.length > 0) {
+      setSelectedWeek(newWeeks[newWeeks.length - 1].value);
+    }
+  };
+
   // Fetch all leads (for counting new leads this period)
   const { data: allLeads, isLoading: leadsLoading } = useQuery({
-    queryKey: ['scorecard-all-leads', repFilter, evanMember?.id, monthFilter],
+    queryKey: ['scorecard-all-leads', repFilter, evanMember?.id, selectedWeek],
     queryFn: async () => {
       let query = supabase
         .from('leads')
@@ -78,12 +184,13 @@ const EvansScorecard = () => {
 
   // Fetch communications (touchpoints)
   const { data: communications } = useQuery({
-    queryKey: ['scorecard-communications', monthFilter],
+    queryKey: ['scorecard-communications', selectedWeek],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_communications')
         .select('id, communication_type, direction, created_at, lead_id, duration_seconds')
-        .gte('created_at', monthStart.toISOString());
+        .gte('created_at', periodStart.toISOString())
+        .lte('created_at', periodBoundaries.end.toISOString());
       if (error) throw error;
       return data;
     },
@@ -91,12 +198,13 @@ const EvansScorecard = () => {
 
   // Fetch lead activities (for stage movements)
   const { data: leadActivities } = useQuery({
-    queryKey: ['scorecard-activities', monthFilter],
+    queryKey: ['scorecard-activities', selectedWeek],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lead_activities')
         .select('id, lead_id, activity_type, title, content, created_at')
-        .gte('created_at', monthStart.toISOString());
+        .gte('created_at', periodStart.toISOString())
+        .lte('created_at', periodBoundaries.end.toISOString());
       if (error) throw error;
       return data;
     },
@@ -104,12 +212,13 @@ const EvansScorecard = () => {
 
   // Fetch tasks for follow-up tracking
   const { data: tasks } = useQuery({
-    queryKey: ['scorecard-tasks', monthFilter],
+    queryKey: ['scorecard-tasks', selectedWeek],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_tasks')
         .select('id, title, is_completed, lead_id, created_at, due_date')
-        .gte('created_at', monthStart.toISOString());
+        .gte('created_at', periodStart.toISOString())
+        .lte('created_at', periodBoundaries.end.toISOString());
       if (error) throw error;
       return data;
     },
@@ -119,21 +228,26 @@ const EvansScorecard = () => {
   const metrics = useMemo(() => {
     if (!allLeads) return null;
 
-    // New leads this period
-    const newLeadsThisPeriod = allLeads.filter(
-      (lead) => new Date(lead.created_at) >= monthStart
-    );
+    const periodEnd = periodBoundaries.end;
+
+    // New leads this period (within the selected week)
+    const newLeadsThisPeriod = allLeads.filter((lead) => {
+      const createdAt = new Date(lead.created_at);
+      return createdAt >= periodStart && createdAt <= periodEnd;
+    });
 
     // Leads by status
     const activeLeads = allLeads.filter(
       (lead) => !['funded', 'lost'].includes(lead.status)
     );
-    const closedWon = allLeads.filter(
-      (lead) => lead.status === 'funded' && new Date(lead.updated_at) >= monthStart
-    );
-    const closedLost = allLeads.filter(
-      (lead) => lead.status === 'lost' && new Date(lead.updated_at) >= monthStart
-    );
+    const closedWon = allLeads.filter((lead) => {
+      const updatedAt = new Date(lead.updated_at);
+      return lead.status === 'funded' && updatedAt >= periodStart && updatedAt <= periodEnd;
+    });
+    const closedLost = allLeads.filter((lead) => {
+      const updatedAt = new Date(lead.updated_at);
+      return lead.status === 'lost' && updatedAt >= periodStart && updatedAt <= periodEnd;
+    });
 
     // Touchpoints breakdown
     const calls = communications?.filter((c) => c.communication_type === 'call') || [];
@@ -216,7 +330,7 @@ const EvansScorecard = () => {
       // Attention needed
       leadsNeedingAttention,
     };
-  }, [allLeads, communications, leadActivities, tasks, monthStart, now]);
+  }, [allLeads, communications, leadActivities, tasks, periodStart, periodBoundaries, now]);
 
   if (leadsLoading) {
     return (
@@ -243,19 +357,51 @@ const EvansScorecard = () => {
             <p className="text-muted-foreground">Track your lead activity & performance</p>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-[130px]">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Year filter */}
+            <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
+              <SelectTrigger className="w-[90px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="current">{format(now, 'MMMM')}</SelectItem>
-                <SelectItem value="previous">{format(subMonths(now, 1), 'MMMM')}</SelectItem>
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Month filter */}
+            <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((month) => (
+                  <SelectItem key={month.value} value={month.value.toString()}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Week filter */}
+            <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+              <SelectTrigger className="w-[150px]">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {weekOptions.map((week) => (
+                  <SelectItem key={week.value} value={week.value}>
+                    {week.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             
+            {/* Rep filter */}
             <Select value={repFilter} onValueChange={setRepFilter}>
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-[110px]">
                 <SelectValue placeholder="Evan" />
               </SelectTrigger>
               <SelectContent>
