@@ -20,6 +20,7 @@ import {
   PanelLeft,
   Paperclip,
   FileText,
+  Square,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -93,6 +94,7 @@ export const FloatingAIChat = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Resizable state
   const [size, setSize] = useState(getSavedSize);
@@ -271,6 +273,10 @@ export const FloatingAIChat = () => {
     setUploadedFile(null);
     setIsLoading(true);
 
+    // Create abort controller for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
@@ -288,6 +294,7 @@ export const FloatingAIChat = () => {
             evanId: evanTeamMember?.id,
             file: fileToSend,
           }),
+          signal: abortController.signal,
         }
       );
 
@@ -353,6 +360,11 @@ export const FloatingAIChat = () => {
         await saveMessages(convId, finalMessages);
       }
     } catch (error: any) {
+      // Handle abort gracefully
+      if (error.name === 'AbortError') {
+        // Keep whatever content we have so far
+        return;
+      }
       console.error('AI error:', error);
       toast.error(error.message || 'Failed to get AI response');
       setMessages(prev => {
@@ -363,7 +375,16 @@ export const FloatingAIChat = () => {
       });
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
       inputRef.current?.focus();
+    }
+  };
+
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -719,13 +740,22 @@ export const FloatingAIChat = () => {
                 disabled={isLoading}
                 className="flex-1 h-9 text-sm"
               />
-              <Button type="submit" size="sm" disabled={isLoading || (!input.trim() && !uploadedFile)} className="h-9 w-9 p-0">
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
+              {isLoading ? (
+                <Button 
+                  type="button" 
+                  size="sm" 
+                  variant="destructive"
+                  className="h-9 w-9 p-0"
+                  onClick={handleStopGeneration}
+                  title="Stop generating"
+                >
+                  <Square className="h-3 w-3 fill-current" />
+                </Button>
+              ) : (
+                <Button type="submit" size="sm" disabled={!input.trim() && !uploadedFile} className="h-9 w-9 p-0">
                   <Send className="h-4 w-4" />
-                )}
-              </Button>
+                </Button>
+              )}
             </form>
           </div>
         </div>
