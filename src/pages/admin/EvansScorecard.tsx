@@ -413,7 +413,7 @@ const EvansScorecard = () => {
           <div className="flex items-center gap-2 flex-wrap">
             {/* Year filter */}
             <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
-              <SelectTrigger className="w-[90px]">
+              <SelectTrigger className="w-[100px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -425,7 +425,7 @@ const EvansScorecard = () => {
 
             {/* Month filter */}
             <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-[130px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
