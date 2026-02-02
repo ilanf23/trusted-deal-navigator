@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -232,18 +232,19 @@ export const FloatingAIChat = () => {
     return `Help me with this task: "${task.title}"`;
   };
 
-  if (!isOpen) return null;
-
   return (
-    <motion.div 
-      drag
-      dragMomentum={false}
-      dragElastic={0}
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 20, scale: 0.95 }}
-      className="fixed bottom-4 left-4 z-50 w-[400px] h-[520px] flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden"
-    >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          drag
+          dragMomentum={false}
+          dragElastic={0}
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          transition={{ duration: 0.2 }}
+          className="fixed bottom-4 left-4 z-50 w-[400px] h-[520px] flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden"
+        >
       {/* Draggable Header */}
       <div 
         className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent cursor-grab active:cursor-grabbing"
@@ -494,7 +495,9 @@ export const FloatingAIChat = () => {
           </div>
         </>
       )}
-    </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
