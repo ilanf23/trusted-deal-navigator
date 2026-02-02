@@ -101,13 +101,13 @@ export const FloatingAIChat = () => {
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number; corner: string } | null>(null);
 
-  // Fetch Evan's team member ID
+  // Fetch Evan's team member ID and avatar
   const { data: evanTeamMember } = useQuery({
     queryKey: ['evan-team-member-ai'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('team_members')
-        .select('id, name')
+        .select('id, name, avatar_url')
         .ilike('name', 'evan')
         .single();
       if (error) throw error;
@@ -663,9 +663,17 @@ export const FloatingAIChat = () => {
                     </div>
                     {msg.role === 'user' && (
                       <Avatar className="h-6 w-6 shrink-0">
-                        <AvatarFallback className="bg-muted text-xs">
-                          <User className="h-3 w-3" />
-                        </AvatarFallback>
+                        {evanTeamMember?.avatar_url ? (
+                          <img 
+                            src={evanTeamMember.avatar_url} 
+                            alt={evanTeamMember.name || 'User'} 
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <AvatarFallback className="bg-muted text-xs">
+                            <User className="h-3 w-3" />
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                     )}
                   </div>
