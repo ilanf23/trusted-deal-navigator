@@ -41,6 +41,7 @@ import EvansCalls from "./pages/admin/EvansCalls";
 import EvansGmail from "./pages/admin/EvansGmail";
 import EvansEmailTemplates from "./pages/admin/EvansEmailTemplates";
 import EvansCalendar from "./pages/admin/EvansCalendar";
+import EvansScorecard from "./pages/admin/EvansScorecard";
 import DevNotes from "./pages/admin/DevNotes";
 import MaurasPage from "./pages/admin/MaurasPage";
 import WendysPage from "./pages/admin/WendysPage";
@@ -121,6 +122,7 @@ const App = () => (
                 <Route path="/user/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
                 <Route path="/user/evan/email-templates" element={<EmployeeRoute employeeName="Evan"><EvansEmailTemplates /></EmployeeRoute>} />
                 <Route path="/user/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
+                <Route path="/user/evan/scorecard" element={<EmployeeRoute employeeName="Evan"><EvansScorecard /></EmployeeRoute>} />
                 <Route path="/user/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
                 <Route path="/user/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
                 <Route path="/user/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
@@ -134,6 +136,7 @@ const App = () => (
                 <Route path="/team/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
                 <Route path="/team/evan/email-templates" element={<EmployeeRoute employeeName="Evan"><EvansEmailTemplates /></EmployeeRoute>} />
                 <Route path="/team/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
+                <Route path="/team/evan/scorecard" element={<EmployeeRoute employeeName="Evan"><EvansScorecard /></EmployeeRoute>} />
                 <Route path="/team/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
                 <Route path="/team/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
                 <Route path="/team/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
