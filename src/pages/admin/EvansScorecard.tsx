@@ -6,45 +6,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  AlertTriangle, 
-  TrendingUp, 
-  TrendingDown, 
-  Target,
-  Clock,
   Users,
-  DollarSign,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  ArrowRight,
   Phone,
   Mail,
+  MessageSquare,
+  UserPlus,
+  Trophy,
+  ArrowRightLeft,
+  TrendingUp,
+  Loader2,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
 } from 'lucide-react';
-import { differenceInDays, startOfMonth, format, subMonths } from 'date-fns';
+import { startOfMonth, format, subMonths, differenceInDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 
-// Stage configuration with SLA targets (in days)
-const STAGE_CONFIG = {
-  discovery: { label: 'Initial Consult', sla: 3, order: 1 },
-  pre_qualification: { label: 'Onboarding', sla: 5, order: 2 },
-  document_collection: { label: 'Underwriting', sla: 7, order: 3 },
-  underwriting: { label: 'Lender Mgmt', sla: 10, order: 4 },
-  approval: { label: 'Path to Close', sla: 5, order: 5 },
-};
-
-// Historical conversion rates by stage (mock - would come from analytics)
-const CONVERSION_RATES = {
-  discovery: 0.4,
-  pre_qualification: 0.6,
-  document_collection: 0.7,
-  underwriting: 0.85,
-  approval: 0.95,
+// Stage labels for display
+const STAGE_LABELS: Record<string, string> = {
+  new: 'New',
+  discovery: 'Initial Consult',
+  pre_qualification: 'Onboarding',
+  document_collection: 'Underwriting',
+  underwriting: 'Lender Mgmt',
+  approval: 'Path to Close',
+  funded: 'Funded',
+  lost: 'Lost',
 };
 
 const EvansScorecard = () => {
   const [monthFilter, setMonthFilter] = useState<string>('current');
-  const [repFilter, setRepFilter] = useState<string>('all');
-  const [stageFilter, setStageFilter] = useState<string>('all');
+  const [repFilter, setRepFilter] = useState<string>('evan');
 
   const now = new Date();
   const monthStart = monthFilter === 'current' 
@@ -65,27 +57,14 @@ const EvansScorecard = () => {
     },
   });
 
-  // Fetch all pipeline leads with responses
-  const { data: pipelineLeads, isLoading: pipelineLoading } = useQuery({
-    queryKey: ['scorecard-pipeline', repFilter, evanMember?.id],
+  // Fetch all leads (for counting new leads this period)
+  const { data: allLeads, isLoading: leadsLoading } = useQuery({
+    queryKey: ['scorecard-all-leads', repFilter, evanMember?.id, monthFilter],
     queryFn: async () => {
       let query = supabase
         .from('leads')
-        .select(`
-          id,
-          name,
-          company_name,
-          status,
-          assigned_to,
-          created_at,
-          updated_at,
-          waiting_on,
-          lead_responses (loan_amount),
-          team_members!leads_assigned_to_team_member_fkey (name)
-        `)
-        .not('status', 'in', '(funded,lost)');
+        .select('id, name, company_name, status, assigned_to, created_at, updated_at');
       
-      // Filter by Evan when "evan" is selected
       if (repFilter === 'evan' && evanMember?.id) {
         query = query.eq('assigned_to', evanMember.id);
       }
@@ -97,271 +76,155 @@ const EvansScorecard = () => {
     enabled: repFilter === 'all' || !!evanMember?.id,
   });
 
-  // Fetch funded leads for this month
-  const { data: fundedLeads } = useQuery({
-    queryKey: ['scorecard-funded', monthFilter, repFilter, evanMember?.id],
-    queryFn: async () => {
-      let query = supabase
-        .from('leads')
-        .select(`
-          id,
-          name,
-          converted_at,
-          assigned_to,
-          lead_responses (loan_amount),
-          team_members!leads_assigned_to_team_member_fkey (name)
-        `)
-        .eq('status', 'funded')
-        .gte('converted_at', monthStart.toISOString());
-      
-      // Filter by Evan when "evan" is selected
-      if (repFilter === 'evan' && evanMember?.id) {
-        query = query.eq('assigned_to', evanMember.id);
-      }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-    enabled: repFilter === 'all' || !!evanMember?.id,
-  });
-
-  // Fetch team members for rep scorecards
-  const { data: teamMembers } = useQuery({
-    queryKey: ['scorecard-team-members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('id, name')
-        .in('name', ['Evan', 'Brad', 'Maura', 'Wendy']);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Fetch communications for response time analysis
+  // Fetch communications (touchpoints)
   const { data: communications } = useQuery({
     queryKey: ['scorecard-communications', monthFilter],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_communications')
-        .select('*')
+        .select('id, communication_type, direction, created_at, lead_id, duration_seconds')
         .gte('created_at', monthStart.toISOString());
       if (error) throw error;
       return data;
     },
   });
 
-  // Fetch tasks for follow-up compliance
+  // Fetch lead activities (for stage movements)
+  const { data: leadActivities } = useQuery({
+    queryKey: ['scorecard-activities', monthFilter],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lead_activities')
+        .select('id, lead_id, activity_type, title, content, created_at')
+        .gte('created_at', monthStart.toISOString());
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch tasks for follow-up tracking
   const { data: tasks } = useQuery({
     queryKey: ['scorecard-tasks', monthFilter],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_tasks')
-        .select('*')
+        .select('id, title, is_completed, lead_id, created_at, due_date')
         .gte('created_at', monthStart.toISOString());
       if (error) throw error;
       return data;
     },
   });
 
-  // Calculate metrics
+  // Calculate lead-centric metrics
   const metrics = useMemo(() => {
-    if (!pipelineLeads) return null;
+    if (!allLeads) return null;
 
-    const MONTHLY_TARGET = 125000; // $125K/month revenue target
+    // New leads this period
+    const newLeadsThisPeriod = allLeads.filter(
+      (lead) => new Date(lead.created_at) >= monthStart
+    );
+
+    // Leads by status
+    const activeLeads = allLeads.filter(
+      (lead) => !['funded', 'lost'].includes(lead.status)
+    );
+    const closedWon = allLeads.filter(
+      (lead) => lead.status === 'funded' && new Date(lead.updated_at) >= monthStart
+    );
+    const closedLost = allLeads.filter(
+      (lead) => lead.status === 'lost' && new Date(lead.updated_at) >= monthStart
+    );
+
+    // Touchpoints breakdown
+    const calls = communications?.filter((c) => c.communication_type === 'call') || [];
+    const emails = communications?.filter((c) => c.communication_type === 'email') || [];
+    const sms = communications?.filter((c) => c.communication_type === 'sms') || [];
     
-    // Pipeline by stage
-    const stageData: Record<string, { deals: number; value: number; totalDays: number; overSla: number }> = {};
-    const stuckDeals: Array<{
-      id: string;
-      name: string;
-      company: string;
-      stage: string;
-      daysStuck: number;
-      owner: string;
-      waitingOn: string;
-      value: number;
-    }> = [];
+    const inboundCalls = calls.filter((c) => c.direction === 'inbound');
+    const outboundCalls = calls.filter((c) => c.direction === 'outbound');
+    
+    const totalTouchpoints = (communications?.length || 0);
 
-    pipelineLeads.forEach((lead) => {
-      const stage = lead.status as string;
-      const config = STAGE_CONFIG[stage as keyof typeof STAGE_CONFIG];
-      if (!config) return;
+    // Calculate total call duration in minutes
+    const totalCallMinutes = calls.reduce((sum, call) => 
+      sum + (call.duration_seconds || 0) / 60, 0
+    );
 
-      const loanAmount = lead.lead_responses?.[0]?.loan_amount || 0;
-      const revenue = loanAmount * 0.02;
-      const daysInStage = differenceInDays(now, new Date(lead.updated_at));
-      const isOverSla = daysInStage > config.sla;
+    // Unique leads contacted
+    const uniqueLeadsContacted = new Set(
+      communications?.filter((c) => c.lead_id).map((c) => c.lead_id) || []
+    ).size;
 
-      if (!stageData[stage]) {
-        stageData[stage] = { deals: 0, value: 0, totalDays: 0, overSla: 0 };
-      }
-      stageData[stage].deals++;
-      stageData[stage].value += revenue;
-      stageData[stage].totalDays += daysInStage;
-      if (isOverSla) stageData[stage].overSla++;
+    // Stage movements from activities
+    const stageChanges = leadActivities?.filter(
+      (a) => a.activity_type === 'stage_change' || a.title?.includes('moved to')
+    ) || [];
 
-      // Track stuck deals (over SLA)
-      if (isOverSla) {
-        stuckDeals.push({
-          id: lead.id,
-          name: lead.name,
-          company: lead.company_name || '',
-          stage: config.label,
-          daysStuck: daysInStage,
-          owner: (lead.team_members as any)?.name || 'Unassigned',
-          waitingOn: lead.waiting_on || 'Unknown',
-          value: revenue,
-        });
-      }
-    });
+    // Tasks metrics
+    const tasksCompleted = tasks?.filter((t) => t.is_completed).length || 0;
+    const tasksCreated = tasks?.length || 0;
+    const tasksOverdue = tasks?.filter(
+      (t) => !t.is_completed && t.due_date && new Date(t.due_date) < now
+    ).length || 0;
 
-    // Sort stuck deals by days stuck (most overdue first)
-    stuckDeals.sort((a, b) => b.daysStuck - a.daysStuck);
-
-    // Calculate projections
-    let worstCase = 0;
-    let likelyCase = 0;
-    let bestCase = 0;
-
-    pipelineLeads.forEach((lead) => {
-      const stage = lead.status as string;
-      const rate = CONVERSION_RATES[stage as keyof typeof CONVERSION_RATES] || 0;
-      const loanAmount = lead.lead_responses?.[0]?.loan_amount || 0;
-      const revenue = loanAmount * 0.02;
-
-      worstCase += revenue * (rate * 0.5);
-      likelyCase += revenue * rate;
-      bestCase += revenue * (rate + (1 - rate) * 0.3);
-    });
-
-    // Revenue closed this month
-    const revenueClosed = fundedLeads?.reduce((sum, lead) => {
-      const loanAmount = lead.lead_responses?.[0]?.loan_amount || 0;
-      return sum + loanAmount * 0.02;
-    }, 0) || 0;
-
-    // Rep scorecards
-    const repData: Record<string, {
-      name: string;
-      activeDeals: number;
-      pipelineValue: number;
-      dealsClosed: number;
-      revenueClosed: number;
-      tasksCompleted: number;
-      tasksDue: number;
-      callsMade: number;
-      emailsSent: number;
-    }> = {};
-
-    // Initialize reps
-    teamMembers?.forEach((tm) => {
-      repData[tm.id] = {
-        name: tm.name,
-        activeDeals: 0,
-        pipelineValue: 0,
-        dealsClosed: 0,
-        revenueClosed: 0,
-        tasksCompleted: 0,
-        tasksDue: 0,
-        callsMade: 0,
-        emailsSent: 0,
+    // Recent stage movements for display
+    const recentMovements = stageChanges.slice(0, 10).map((activity) => {
+      const lead = allLeads.find((l) => l.id === activity.lead_id);
+      return {
+        id: activity.id,
+        leadName: lead?.name || 'Unknown',
+        company: lead?.company_name || '',
+        action: activity.title || activity.content || 'Stage changed',
+        date: activity.created_at,
       };
     });
 
-    // Count active deals per rep
-    pipelineLeads.forEach((lead) => {
-      if (lead.assigned_to && repData[lead.assigned_to]) {
-        repData[lead.assigned_to].activeDeals++;
-        const loanAmount = lead.lead_responses?.[0]?.loan_amount || 0;
-        repData[lead.assigned_to].pipelineValue += loanAmount * 0.02;
-      }
-    });
-
-    // Count funded deals per rep
-    fundedLeads?.forEach((lead) => {
-      if (lead.assigned_to && repData[lead.assigned_to]) {
-        repData[lead.assigned_to].dealsClosed++;
-        const loanAmount = lead.lead_responses?.[0]?.loan_amount || 0;
-        repData[lead.assigned_to].revenueClosed += loanAmount * 0.02;
-      }
-    });
-
-    // Task completion (simplified - assign all to Evan for now)
-    const tasksCompleted = tasks?.filter((t) => t.is_completed).length || 0;
-    const tasksDue = tasks?.filter((t) => !t.is_completed && t.due_date).length || 0;
-
-    // Communications (simplified)
-    const callsMade = communications?.filter((c) => c.communication_type === 'call').length || 0;
-    const emailsSent = communications?.filter((c) => c.communication_type === 'email').length || 0;
-
-    // Assign to Evan if exists
-    const evanMember = teamMembers?.find((tm) => tm.name === 'Evan');
-    if (evanMember && repData[evanMember.id]) {
-      repData[evanMember.id].tasksCompleted = tasksCompleted;
-      repData[evanMember.id].tasksDue = tasksDue;
-      repData[evanMember.id].callsMade = callsMade;
-      repData[evanMember.id].emailsSent = emailsSent;
-    }
+    // Leads needing attention (no touchpoint in 7+ days)
+    const leadsNeedingAttention = activeLeads.filter((lead) => {
+      const lastTouchpoint = communications?.find((c) => c.lead_id === lead.id);
+      if (!lastTouchpoint) return true;
+      return differenceInDays(now, new Date(lastTouchpoint.created_at)) >= 7;
+    }).slice(0, 10);
 
     return {
-      monthlyTarget: MONTHLY_TARGET,
-      revenueClosed,
-      projectedRevenue: likelyCase + revenueClosed,
-      gap: MONTHLY_TARGET - (likelyCase + revenueClosed),
-      worstCase: worstCase + revenueClosed,
-      likelyCase: likelyCase + revenueClosed,
-      bestCase: bestCase + revenueClosed,
-      stageData,
-      stuckDeals: stuckDeals.slice(0, 10),
-      repData: Object.values(repData).sort((a, b) => b.revenueClosed - a.revenueClosed),
-      totalPipelineValue: Object.values(stageData).reduce((sum, s) => sum + s.value, 0),
-      totalDeals: pipelineLeads.length,
+      // Lead counts
+      totalLeads: allLeads.length,
+      activeLeads: activeLeads.length,
+      newLeads: newLeadsThisPeriod.length,
+      closedWon: closedWon.length,
+      closedLost: closedLost.length,
+      
+      // Touchpoints
+      totalTouchpoints,
+      calls: calls.length,
+      inboundCalls: inboundCalls.length,
+      outboundCalls: outboundCalls.length,
+      emails: emails.length,
+      sms: sms.length,
+      totalCallMinutes: Math.round(totalCallMinutes),
+      uniqueLeadsContacted,
+      
+      // Stage movements
+      stageMovements: stageChanges.length,
+      recentMovements,
+      
+      // Tasks
+      tasksCreated,
+      tasksCompleted,
+      tasksOverdue,
+      
+      // Attention needed
+      leadsNeedingAttention,
     };
-  }, [pipelineLeads, fundedLeads, teamMembers, tasks, communications, now]);
+  }, [allLeads, communications, leadActivities, tasks, monthStart, now]);
 
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-    return `$${value.toFixed(0)}`;
-  };
-
-  const getHealthStatus = (actual: number, target: number, inverse = false) => {
-    const ratio = actual / target;
-    if (inverse) {
-      if (ratio > 1.5) return 'red';
-      if (ratio > 1) return 'yellow';
-      return 'green';
-    }
-    if (ratio >= 1) return 'green';
-    if (ratio >= 0.7) return 'yellow';
-    return 'red';
-  };
-
-  const getStatusColor = (status: 'red' | 'yellow' | 'green') => {
-    switch (status) {
-      case 'red': return 'bg-red-500/10 text-red-600 border-red-500/30';
-      case 'yellow': return 'bg-amber-500/10 text-amber-600 border-amber-500/30';
-      case 'green': return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30';
-    }
-  };
-
-  const getStatusIcon = (status: 'red' | 'yellow' | 'green') => {
-    switch (status) {
-      case 'red': return <AlertCircle className="h-4 w-4" />;
-      case 'yellow': return <AlertTriangle className="h-4 w-4" />;
-      case 'green': return <CheckCircle2 className="h-4 w-4" />;
-    }
-  };
-
-  if (pipelineLoading) {
+  if (leadsLoading) {
     return (
       <EvanLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">Loading sales control panel...</p>
+            <p className="text-muted-foreground">Loading scorecard...</p>
           </div>
         </div>
       </EvanLayout>
@@ -370,16 +233,14 @@ const EvansScorecard = () => {
 
   if (!metrics) return null;
 
-  const overallHealth = metrics.gap > 0 ? (metrics.gap > metrics.monthlyTarget * 0.3 ? 'red' : 'yellow') : 'green';
-
   return (
     <EvanLayout>
       <div className="space-y-6">
         {/* Header with Filters */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Sales Control Panel</h1>
-            <p className="text-muted-foreground">Real-time pipeline health & performance</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Lead Scorecard</h1>
+            <p className="text-muted-foreground">Track your lead activity & performance</p>
           </div>
           
           <div className="flex items-center gap-2">
@@ -395,7 +256,7 @@ const EvansScorecard = () => {
             
             <Select value={repFilter} onValueChange={setRepFilter}>
               <SelectTrigger className="w-[130px]">
-                <SelectValue placeholder="Company" />
+                <SelectValue placeholder="Evan" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Company</SelectItem>
@@ -405,284 +266,250 @@ const EvansScorecard = () => {
           </div>
         </div>
 
-        {/* Section 1: Target vs Projection */}
-        <Card className={`border-2 ${getStatusColor(overallHealth)}`}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Target vs Projection
-              </CardTitle>
-              <Badge variant="outline" className={getStatusColor(overallHealth)}>
-                {getStatusIcon(overallHealth)}
-                <span className="ml-1">
-                  {overallHealth === 'green' ? 'On Track' : overallHealth === 'yellow' ? 'At Risk' : 'Off Track'}
-                </span>
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Monthly Target */}
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Monthly Target</p>
-                <p className="text-3xl font-bold">{formatCurrency(metrics.monthlyTarget)}</p>
+        {/* Section 1: Lead Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
+                <Users className="h-4 w-4" />
+                <span className="text-xs font-medium">Active Leads</span>
               </div>
-              
-              {/* Projected Revenue */}
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Projected Revenue</p>
-                <p className="text-3xl font-bold text-primary">{formatCurrency(metrics.projectedRevenue)}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(metrics.revenueClosed)} closed + {formatCurrency(metrics.likelyCase - metrics.revenueClosed)} pipeline
-                </p>
-              </div>
-              
-              {/* Gap */}
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Gap to Goal</p>
-                <p className={`text-3xl font-bold ${metrics.gap > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                  {metrics.gap > 0 ? `-${formatCurrency(metrics.gap)}` : `+${formatCurrency(Math.abs(metrics.gap))}`}
-                </p>
-              </div>
-              
-              {/* Scenarios */}
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Forecast Range</p>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-red-600">Worst:</span>
-                    <span className="font-medium">{formatCurrency(metrics.worstCase)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-amber-600">Likely:</span>
-                    <span className="font-medium">{formatCurrency(metrics.likelyCase)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-emerald-600">Best:</span>
-                    <span className="font-medium">{formatCurrency(metrics.bestCase)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="text-3xl font-bold">{metrics.activeLeads}</p>
+            </CardContent>
+          </Card>
 
-        {/* Section 2: Pipeline Health by Stage */}
+          <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/20 border-emerald-200 dark:border-emerald-800">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
+                <UserPlus className="h-4 w-4" />
+                <span className="text-xs font-medium">New Leads</span>
+              </div>
+              <p className="text-3xl font-bold">{metrics.newLeads}</p>
+              <p className="text-xs text-muted-foreground">this period</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/20 border-amber-200 dark:border-amber-800">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1">
+                <Trophy className="h-4 w-4" />
+                <span className="text-xs font-medium">Closed Won</span>
+              </div>
+              <p className="text-3xl font-bold">{metrics.closedWon}</p>
+              <p className="text-xs text-muted-foreground">this period</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/20 border-red-200 dark:border-red-800">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400 mb-1">
+                <Users className="h-4 w-4" />
+                <span className="text-xs font-medium">Closed Lost</span>
+              </div>
+              <p className="text-3xl font-bold">{metrics.closedLost}</p>
+              <p className="text-xs text-muted-foreground">this period</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 border-purple-200 dark:border-purple-800">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
+                <ArrowRightLeft className="h-4 w-4" />
+                <span className="text-xs font-medium">Stage Moves</span>
+              </div>
+              <p className="text-3xl font-bold">{metrics.stageMovements}</p>
+              <p className="text-xs text-muted-foreground">this period</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Section 2: Touchpoints */}
         <Card>
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Pipeline Health by Stage
-              </CardTitle>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Healthy</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Risk</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> Broken</span>
-              </div>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Touchpoints This Period
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium">Stage</th>
-                    <th className="text-right py-3 px-2 font-medium"># Deals</th>
-                    <th className="text-right py-3 px-2 font-medium">$ Value</th>
-                    <th className="text-right py-3 px-2 font-medium">Avg Days</th>
-                    <th className="text-right py-3 px-2 font-medium">SLA Target</th>
-                    <th className="text-right py-3 px-2 font-medium">Over SLA</th>
-                    <th className="text-center py-3 px-2 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(STAGE_CONFIG)
-                    .sort(([, a], [, b]) => a.order - b.order)
-                    .map(([stage, config]) => {
-                      const data = metrics.stageData[stage] || { deals: 0, value: 0, totalDays: 0, overSla: 0 };
-                      const avgDays = data.deals > 0 ? Math.round(data.totalDays / data.deals) : 0;
-                      const overSlaPercent = data.deals > 0 ? (data.overSla / data.deals) * 100 : 0;
-                      
-                      let status: 'red' | 'yellow' | 'green' = 'green';
-                      if (overSlaPercent > 50) status = 'red';
-                      else if (overSlaPercent > 25 || avgDays > config.sla) status = 'yellow';
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+              <div className="text-center p-4 bg-muted/50 rounded-lg">
+                <p className="text-3xl font-bold text-primary">{metrics.totalTouchpoints}</p>
+                <p className="text-sm text-muted-foreground">Total Touchpoints</p>
+              </div>
+              
+              <div className="text-center p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Phone className="h-4 w-4 text-blue-500" />
+                </div>
+                <p className="text-2xl font-bold">{metrics.calls}</p>
+                <p className="text-xs text-muted-foreground">Calls</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {metrics.totalCallMinutes} mins
+                </p>
+              </div>
 
-                      return (
-                        <tr key={stage} className={`border-b ${status === 'red' ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
-                          <td className="py-3 px-2 font-medium">{config.label}</td>
-                          <td className="text-right py-3 px-2">{data.deals}</td>
-                          <td className="text-right py-3 px-2">{formatCurrency(data.value)}</td>
-                          <td className={`text-right py-3 px-2 ${avgDays > config.sla ? 'text-red-600 font-medium' : ''}`}>
-                            {avgDays}d
-                          </td>
-                          <td className="text-right py-3 px-2 text-muted-foreground">{config.sla}d</td>
-                          <td className={`text-right py-3 px-2 ${data.overSla > 0 ? 'text-red-600 font-medium' : ''}`}>
-                            {data.overSla}
-                          </td>
-                          <td className="text-center py-3 px-2">
-                            <Badge variant="outline" className={getStatusColor(status)}>
-                              {getStatusIcon(status)}
-                            </Badge>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-muted/50">
-                    <td className="py-3 px-2 font-bold">Total Pipeline</td>
-                    <td className="text-right py-3 px-2 font-bold">{metrics.totalDeals}</td>
-                    <td className="text-right py-3 px-2 font-bold">{formatCurrency(metrics.totalPipelineValue)}</td>
-                    <td colSpan={4}></td>
-                  </tr>
-                </tfoot>
-              </table>
+              <div className="text-center p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Phone className="h-4 w-4 text-emerald-500" />
+                </div>
+                <p className="text-2xl font-bold">{metrics.outboundCalls}</p>
+                <p className="text-xs text-muted-foreground">Outbound</p>
+              </div>
+
+              <div className="text-center p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Phone className="h-4 w-4 text-amber-500" />
+                </div>
+                <p className="text-2xl font-bold">{metrics.inboundCalls}</p>
+                <p className="text-xs text-muted-foreground">Inbound</p>
+              </div>
+              
+              <div className="text-center p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Mail className="h-4 w-4 text-purple-500" />
+                </div>
+                <p className="text-2xl font-bold">{metrics.emails}</p>
+                <p className="text-xs text-muted-foreground">Emails</p>
+              </div>
+              
+              <div className="text-center p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <MessageSquare className="h-4 w-4 text-green-500" />
+                </div>
+                <p className="text-2xl font-bold">{metrics.sms}</p>
+                <p className="text-xs text-muted-foreground">SMS</p>
+              </div>
+
+              <div className="text-center p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <Users className="h-4 w-4 text-indigo-500" />
+                </div>
+                <p className="text-2xl font-bold">{metrics.uniqueLeadsContacted}</p>
+                <p className="text-xs text-muted-foreground">Leads Reached</p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Section 3: Stuck Deals */}
-        <Card className={metrics.stuckDeals.length > 5 ? 'border-red-500/30' : ''}>
+        {/* Section 3: Tasks & Follow-ups */}
+        <Card>
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                Stuck Deals
-                {metrics.stuckDeals.length > 0 && (
-                  <Badge variant="destructive" className="ml-2">{metrics.stuckDeals.length} Over SLA</Badge>
-                )}
-              </CardTitle>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5" />
+              Tasks & Follow-ups
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {metrics.stuckDeals.length === 0 ? (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-muted/30 rounded-lg">
+                <p className="text-3xl font-bold">{metrics.tasksCreated}</p>
+                <p className="text-sm text-muted-foreground">Tasks Created</p>
+              </div>
+              
+              <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+                <p className="text-3xl font-bold text-emerald-600">{metrics.tasksCompleted}</p>
+                <p className="text-sm text-muted-foreground">Completed</p>
+              </div>
+              
+              <div className={`text-center p-4 rounded-lg ${metrics.tasksOverdue > 0 ? 'bg-red-50 dark:bg-red-950/30' : 'bg-muted/30'}`}>
+                <p className={`text-3xl font-bold ${metrics.tasksOverdue > 0 ? 'text-red-600' : ''}`}>
+                  {metrics.tasksOverdue}
+                </p>
+                <p className="text-sm text-muted-foreground">Overdue</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 4: Recent Stage Movements */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5" />
+              Recent Stage Movements
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {metrics.recentMovements.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
-                <p>No deals currently over SLA. Pipeline is healthy!</p>
+                <ArrowRightLeft className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No stage movements this period</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-2 font-medium">Deal</th>
-                      <th className="text-left py-3 px-2 font-medium">Stage</th>
-                      <th className="text-right py-3 px-2 font-medium">Days Stuck</th>
-                      <th className="text-left py-3 px-2 font-medium">Owner</th>
-                      <th className="text-left py-3 px-2 font-medium">Waiting On</th>
-                      <th className="text-right py-3 px-2 font-medium">Value</th>
-                      <th className="text-center py-3 px-2 font-medium">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {metrics.stuckDeals.map((deal, idx) => (
-                      <tr key={deal.id} className={`border-b ${idx < 3 ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
-                        <td className="py-3 px-2">
-                          <div>
-                            <p className="font-medium">{deal.name}</p>
-                            {deal.company && <p className="text-xs text-muted-foreground">{deal.company}</p>}
-                          </div>
-                        </td>
-                        <td className="py-3 px-2">
-                          <Badge variant="outline">{deal.stage}</Badge>
-                        </td>
-                        <td className={`text-right py-3 px-2 font-bold ${deal.daysStuck > 14 ? 'text-red-600' : 'text-amber-600'}`}>
-                          {deal.daysStuck}d
-                        </td>
-                        <td className="py-3 px-2">{deal.owner}</td>
-                        <td className="py-3 px-2">
-                          <Badge variant="secondary" className="text-xs">{deal.waitingOn}</Badge>
-                        </td>
-                        <td className="text-right py-3 px-2 font-medium">{formatCurrency(deal.value)}</td>
-                        <td className="text-center py-3 px-2">
-                          <Link 
-                            to={`/team/evan/pipeline`}
-                            className="text-primary hover:underline text-xs flex items-center justify-center gap-1"
-                          >
-                            View <ArrowRight className="h-3 w-3" />
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-2">
+                {metrics.recentMovements.map((movement) => (
+                  <div 
+                    key={movement.id}
+                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium">{movement.leadName}</p>
+                      {movement.company && (
+                        <p className="text-xs text-muted-foreground">{movement.company}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <Badge variant="secondary" className="text-xs">
+                        {movement.action}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(movement.date), 'MMM d')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Section 4: Rep Scorecards */}
-        <Card>
+        {/* Section 5: Leads Needing Attention */}
+        <Card className={metrics.leadsNeedingAttention.length > 5 ? 'border-amber-500/30' : ''}>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Rep Performance
+              <Clock className="h-5 w-5 text-amber-500" />
+              Leads Needing Attention
+              {metrics.leadsNeedingAttention.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {metrics.leadsNeedingAttention.length} leads
+                </Badge>
+              )}
             </CardTitle>
+            <p className="text-sm text-muted-foreground">No touchpoint in 7+ days</p>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {metrics.repData.map((rep, idx) => {
-                const followUpCompliance = rep.tasksDue + rep.tasksCompleted > 0 
-                  ? Math.round((rep.tasksCompleted / (rep.tasksDue + rep.tasksCompleted)) * 100)
-                  : 100;
-                
-                const performance = rep.revenueClosed > 0 ? 'green' : rep.activeDeals > 3 ? 'yellow' : 'red';
-
-                return (
+            {metrics.leadsNeedingAttention.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
+                <p>All leads have been contacted recently!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {metrics.leadsNeedingAttention.map((lead) => (
                   <div 
-                    key={rep.name}
-                    className={`p-4 rounded-lg border-2 ${getStatusColor(performance)}`}
+                    key={lead.id}
+                    className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-bold text-lg">{rep.name}</h3>
-                      {idx === 0 && rep.revenueClosed > 0 && (
-                        <Badge className="bg-amber-500 text-white">Top Performer</Badge>
+                    <div>
+                      <p className="font-medium">{lead.name}</p>
+                      {lead.company_name && (
+                        <p className="text-xs text-muted-foreground">{lead.company_name}</p>
                       )}
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {STAGE_LABELS[lead.status] || lead.status}
+                      </Badge>
                     </div>
-                    
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Active Deals</span>
-                        <span className="font-medium">{rep.activeDeals}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Pipeline Value</span>
-                        <span className="font-medium">{formatCurrency(rep.pipelineValue)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Deals Closed</span>
-                        <span className="font-bold text-primary">{rep.dealsClosed}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Revenue Closed</span>
-                        <span className="font-bold text-primary">{formatCurrency(rep.revenueClosed)}</span>
-                      </div>
-                      
-                      <div className="pt-2 border-t mt-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" /> Follow-up
-                          </span>
-                          <span className={`font-medium ${followUpCompliance < 70 ? 'text-red-600' : ''}`}>
-                            {followUpCompliance}%
-                          </span>
-                        </div>
-                        <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" /> {rep.callsMade}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" /> {rep.emailsSent}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    <Link 
+                      to={`/team/evan/pipeline`}
+                      className="text-primary hover:underline text-xs flex items-center gap-1"
+                    >
+                      View <ArrowRight className="h-3 w-3" />
+                    </Link>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
