@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,35 @@ interface Message {
   content: string;
 }
 
+const DEFAULT_WIDTH = 400;
+const DEFAULT_HEIGHT = 520;
+const MIN_WIDTH = 320;
+const MIN_HEIGHT = 400;
+const MAX_WIDTH = 800;
+const MAX_HEIGHT = 900;
+
+const STORAGE_KEY = 'ai-assistant-size';
+
+const getSavedSize = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        width: Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, parsed.width || DEFAULT_WIDTH)),
+        height: Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, parsed.height || DEFAULT_HEIGHT)),
+      };
+    }
+  } catch {}
+  return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+};
+
+const saveSize = (width: number, height: number) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ width, height }));
+  } catch {}
+};
+
 export const FloatingAIChat = () => {
   const {
     isOpen,
@@ -53,6 +82,11 @@ export const FloatingAIChat = () => {
   const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Resizable state
+  const [size, setSize] = useState(getSavedSize);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number; corner: string } | null>(null);
 
   // Fetch Evan's team member ID
   const { data: evanTeamMember } = useQuery({
@@ -98,6 +132,68 @@ export const FloatingAIChat = () => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent, corner: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    resizeRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: size.width,
+      startHeight: size.height,
+      corner,
+    };
+  }, [size]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeRef.current) return;
+      
+      const { startX, startY, startWidth, startHeight, corner } = resizeRef.current;
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+
+      // Calculate delta based on corner
+      if (corner.includes('e')) {
+        newWidth = startWidth + (e.clientX - startX);
+      }
+      if (corner.includes('w')) {
+        newWidth = startWidth - (e.clientX - startX);
+      }
+      if (corner.includes('s')) {
+        newHeight = startHeight + (e.clientY - startY);
+      }
+      if (corner.includes('n')) {
+        newHeight = startHeight - (e.clientY - startY);
+      }
+
+      // Clamp to min/max
+      newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth));
+      newHeight = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, newHeight));
+
+      setSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      if (resizeRef.current) {
+        saveSize(size.width, size.height);
+      }
+      resizeRef.current = null;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, size]);
 
   const handleSubmit = async (messageText?: string) => {
     const text = messageText || input.trim();
@@ -238,15 +334,50 @@ export const FloatingAIChat = () => {
     <AnimatePresence>
       {isOpen && (
         <motion.div 
-          drag
+          drag={!isResizing}
           dragMomentum={false}
           dragElastic={0}
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed bottom-4 left-4 z-50 w-[400px] h-[520px] flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden"
+          style={{ width: size.width, height: size.height }}
+          className="fixed bottom-4 left-4 z-50 flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden"
         >
+          {/* Resize handles */}
+          <div 
+            className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-10 hover:bg-primary/10 rounded-bl transition-colors"
+            onMouseDown={(e) => handleResizeStart(e, 'ne')}
+          />
+          <div 
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10 hover:bg-primary/10 rounded-tl transition-colors"
+            onMouseDown={(e) => handleResizeStart(e, 'se')}
+          />
+          <div 
+            className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-10 hover:bg-primary/10 rounded-tr transition-colors"
+            onMouseDown={(e) => handleResizeStart(e, 'sw')}
+          />
+          <div 
+            className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-10 hover:bg-primary/10 rounded-br transition-colors"
+            onMouseDown={(e) => handleResizeStart(e, 'nw')}
+          />
+          {/* Edge resize handles */}
+          <div 
+            className="absolute top-0 left-4 right-4 h-1 cursor-n-resize z-10 hover:bg-primary/20 transition-colors"
+            onMouseDown={(e) => handleResizeStart(e, 'n')}
+          />
+          <div 
+            className="absolute bottom-0 left-4 right-4 h-1 cursor-s-resize z-10 hover:bg-primary/20 transition-colors"
+            onMouseDown={(e) => handleResizeStart(e, 's')}
+          />
+          <div 
+            className="absolute left-0 top-4 bottom-4 w-1 cursor-w-resize z-10 hover:bg-primary/20 transition-colors"
+            onMouseDown={(e) => handleResizeStart(e, 'w')}
+          />
+          <div 
+            className="absolute right-0 top-4 bottom-4 w-1 cursor-e-resize z-10 hover:bg-primary/20 transition-colors"
+            onMouseDown={(e) => handleResizeStart(e, 'e')}
+          />
       {/* Draggable Header */}
       <div 
         className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent cursor-grab active:cursor-grabbing"
