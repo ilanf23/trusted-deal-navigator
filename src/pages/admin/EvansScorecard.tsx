@@ -93,14 +93,16 @@ const generateMonthOptions = (year: number) => {
 
 const EvansScorecard = () => {
   const now = new Date();
-  const currentYear = getYear(now);
-  const currentMonth = now.getMonth();
   
   // Initialize with current week's Monday
   const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
   
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
+  // Use the week start's month/year so the filter always shows the current week
+  const currentWeekYear = getYear(currentWeekStart);
+  const currentWeekMonth = currentWeekStart.getMonth();
+  
+  const [selectedYear, setSelectedYear] = useState<number>(currentWeekYear);
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentWeekMonth);
   const [selectedWeek, setSelectedWeek] = useState<string>(format(currentWeekStart, 'yyyy-MM-dd'));
   const [repFilter, setRepFilter] = useState<string>('evan');
 
