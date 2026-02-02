@@ -615,54 +615,6 @@ const EvansScorecard = () => {
           </CardContent>
         </Card>
 
-        {/* Section 5: Leads Needing Attention */}
-        <Card className={metrics.leadsNeedingAttention.length > 5 ? 'border-amber-500/30' : ''}>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-500" />
-              Leads Needing Attention
-              {metrics.leadsNeedingAttention.length > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {metrics.leadsNeedingAttention.length} leads
-                </Badge>
-              )}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">No touchpoint in 7+ days</p>
-          </CardHeader>
-          <CardContent>
-            {metrics.leadsNeedingAttention.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
-                <p>All leads have been contacted recently!</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {metrics.leadsNeedingAttention.map((lead) => (
-                  <div 
-                    key={lead.id}
-                    className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800"
-                  >
-                    <div>
-                      <p className="font-medium">{lead.name}</p>
-                      {lead.company_name && (
-                        <p className="text-xs text-muted-foreground">{lead.company_name}</p>
-                      )}
-                      <Badge variant="outline" className="text-xs mt-1">
-                        {STAGE_LABELS[lead.status] || lead.status}
-                      </Badge>
-                    </div>
-                    <Link 
-                      to={`/team/evan/pipeline`}
-                      className="text-primary hover:underline text-xs flex items-center gap-1"
-                    >
-                      View <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </EvanLayout>
   );
