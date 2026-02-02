@@ -479,38 +479,6 @@ const EvansPage = () => {
           
           <CardContent className="relative z-10 p-6 md:p-8">
             <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10">
-              {/* Circular Progress Indicator */}
-              <div className="relative flex-shrink-0">
-                <svg className="w-40 h-40 md:w-48 md:h-48 -rotate-90" viewBox="0 0 100 100">
-                  {/* Background circle */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.2)"
-                    strokeWidth="8"
-                  />
-                  {/* Progress circle */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={`${(ytdRevenue / annualTarget) * 264} 264`}
-                    className="transition-all duration-1000 ease-out"
-                  />
-                </svg>
-                {/* Center content */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl md:text-4xl font-bold">{Math.round((ytdRevenue / annualTarget) * 100)}%</span>
-                  <span className="text-xs md:text-sm text-white/70">of goal</span>
-                </div>
-              </div>
-              
               {/* Main content */}
               <div className="flex-1 text-center lg:text-left space-y-4">
                 <div>
