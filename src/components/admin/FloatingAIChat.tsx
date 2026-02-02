@@ -15,9 +15,12 @@ import {
   Plus,
   History,
   Trash2,
-  ChevronLeft,
   CheckCircle2,
   GripVertical,
+  PanelLeftClose,
+  PanelLeft,
+  Paperclip,
+  FileText,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -29,6 +32,12 @@ import ReactMarkdown from 'react-markdown';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface UploadedFile {
+  name: string;
+  type: string;
+  content: string; // base64
 }
 
 const DEFAULT_WIDTH = 400;
@@ -79,9 +88,11 @@ export const FloatingAIChat = () => {
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistorySidebar, setShowHistorySidebar] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Resizable state
   const [size, setSize] = useState(getSavedSize);
@@ -195,9 +206,48 @@ export const FloatingAIChat = () => {
     };
   }, [isResizing, size]);
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      toast.error('Only PDF files are supported');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      setUploadedFile({
+        name: file.name,
+        type: file.type,
+        content: base64,
+      });
+      toast.success(`Attached: ${file.name}`);
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read file');
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeUploadedFile = () => {
+    setUploadedFile(null);
+  };
+
   const handleSubmit = async (messageText?: string) => {
     const text = messageText || input.trim();
-    if (!text || isLoading) return;
+    if ((!text && !uploadedFile) || isLoading) return;
 
     // Create conversation if needed
     let convId = currentConversationId;
@@ -210,10 +260,15 @@ export const FloatingAIChat = () => {
       setCurrentConversationId(convId);
     }
 
-    const userMsg: Message = { role: 'user', content: text };
+    const userContent = uploadedFile 
+      ? `${text}\n\n[Attached PDF: ${uploadedFile.name}]`
+      : text;
+    const userMsg: Message = { role: 'user', content: userContent };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput('');
+    const fileToSend = uploadedFile;
+    setUploadedFile(null);
     setIsLoading(true);
 
     try {
@@ -231,6 +286,7 @@ export const FloatingAIChat = () => {
           body: JSON.stringify({ 
             messages: newMessages,
             evanId: evanTeamMember?.id,
+            file: fileToSend,
           }),
         }
       );
@@ -313,17 +369,19 @@ export const FloatingAIChat = () => {
 
   const handleNewChat = () => {
     startNewConversation();
-    setShowHistory(false);
   };
 
   const handleLoadConversation = async (id: string) => {
     await loadConversation(id);
-    setShowHistory(false);
   };
 
   const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     await deleteConversation(id);
+  };
+
+  const toggleHistorySidebar = () => {
+    setShowHistorySidebar(prev => !prev);
   };
 
   const generateTaskPrompt = (task: { title: string; priority: string | null; due_date: string | null }) => {
@@ -383,91 +441,101 @@ export const FloatingAIChat = () => {
         className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent cursor-grab active:cursor-grabbing"
       >
         <div className="flex items-center gap-2">
-          {showHistory ? (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(false)}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          ) : (
-            <div className="p-1 text-muted-foreground/50">
-              <GripVertical className="h-4 w-4" />
-            </div>
-          )}
+          <div className="p-1 text-muted-foreground/50">
+            <GripVertical className="h-4 w-4" />
+          </div>
           <div className="p-1.5 rounded-lg bg-primary/10">
             <Sparkles className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold">
-              {showHistory ? 'Conversation History' : 'AI Assistant'}
-            </h3>
-            <p className="text-[10px] text-muted-foreground">
-              {showHistory ? `${conversations.length} conversations` : 'Powered by OpenAI'}
-            </p>
+            <h3 className="text-sm font-semibold">AI Assistant</h3>
+            <p className="text-[10px] text-muted-foreground">Powered by OpenAI</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {!showHistory && (
-            <>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNewChat} title="New Chat">
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(true)} title="History">
-                <History className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNewChat} title="New Chat">
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={cn("h-7 w-7", showHistorySidebar && "bg-muted")} 
+            onClick={toggleHistorySidebar} 
+            title="Toggle History"
+          >
+            {showHistorySidebar ? <PanelLeftClose className="h-3.5 w-3.5" /> : <PanelLeft className="h-3.5 w-3.5" />}
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOpen(false)}>
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {showHistory ? (
-        /* History View */
-        <ScrollArea className="flex-1 p-3">
-          {isLoadingConversations ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : conversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-center">
-              <History className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">No conversations yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {conversations.map((conv) => (
-                <div
-                  key={conv.id}
-                  onClick={() => handleLoadConversation(conv.id)}
-                  className={cn(
-                    "p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors group",
-                    currentConversationId === conv.id && "bg-primary/5 border-primary/20"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{conv.title || 'Untitled'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(conv.updated_at), 'MMM d, h:mm a')}
-                      </p>
+      {/* Main content area with optional sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* History Sidebar */}
+        <AnimatePresence>
+          {showHistorySidebar && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 200, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="border-r bg-muted/30 overflow-hidden flex-shrink-0"
+            >
+              <ScrollArea className="h-full">
+                <div className="p-2">
+                  <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">
+                    History ({conversations.length})
+                  </p>
+                  {isLoadingConversations ? (
+                    <div className="flex items-center justify-center h-20">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => handleDeleteConversation(e, conv.id)}
-                    >
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
-                  </div>
+                  ) : conversations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-20 text-center">
+                      <History className="h-5 w-5 text-muted-foreground mb-1" />
+                      <p className="text-xs text-muted-foreground">No history</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {conversations.map((conv) => (
+                        <div
+                          key={conv.id}
+                          onClick={() => handleLoadConversation(conv.id)}
+                          className={cn(
+                            "p-2 rounded-md cursor-pointer hover:bg-muted transition-colors group text-left",
+                            currentConversationId === conv.id && "bg-primary/10 border border-primary/20"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-1">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{conv.title || 'Untitled'}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {format(new Date(conv.updated_at), 'MMM d')}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                              onClick={(e) => handleDeleteConversation(e, conv.id)}
+                            >
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              </ScrollArea>
+            </motion.div>
           )}
-        </ScrollArea>
-      ) : (
-        /* Chat View */
-        <>
+        </AnimatePresence>
+
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">(
           <ScrollArea className="flex-1 p-3" ref={scrollRef}>
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-4">
@@ -602,6 +670,21 @@ export const FloatingAIChat = () => {
 
           {/* Input */}
           <div className="p-3 border-t bg-muted/30">
+            {/* Uploaded file indicator */}
+            {uploadedFile && (
+              <div className="flex items-center gap-2 mb-2 p-2 bg-muted rounded-md">
+                <FileText className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-xs truncate flex-1">{uploadedFile.name}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 shrink-0"
+                  onClick={removeUploadedFile}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -609,6 +692,24 @@ export const FloatingAIChat = () => {
               }}
               className="flex gap-2"
             >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                title="Attach PDF"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
               <Input
                 ref={inputRef}
                 value={input}
@@ -617,7 +718,7 @@ export const FloatingAIChat = () => {
                 disabled={isLoading}
                 className="flex-1 h-9 text-sm"
               />
-              <Button type="submit" size="sm" disabled={isLoading || !input.trim()} className="h-9 w-9 p-0">
+              <Button type="submit" size="sm" disabled={isLoading || (!input.trim() && !uploadedFile)} className="h-9 w-9 p-0">
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -626,8 +727,8 @@ export const FloatingAIChat = () => {
               </Button>
             </form>
           </div>
-        </>
-      )}
+        </div>
+      </div>
         </motion.div>
       )}
     </AnimatePresence>
