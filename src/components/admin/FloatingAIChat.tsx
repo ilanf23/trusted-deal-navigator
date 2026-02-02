@@ -11,33 +11,44 @@ import {
   User, 
   Sparkles,
   X,
-  Minimize2,
-  Lightbulb
+  Plus,
+  History,
+  Trash2,
+  ChevronLeft,
+  CheckCircle2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAIAssistant } from '@/contexts/AIAssistantContext';
+import { format } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-interface FloatingAIChatProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+export const FloatingAIChat = () => {
+  const {
+    isOpen,
+    setIsOpen,
+    messages,
+    setMessages,
+    currentConversationId,
+    setCurrentConversationId,
+    conversations,
+    isLoadingConversations,
+    createConversation,
+    loadConversation,
+    saveMessages,
+    deleteConversation,
+    startNewConversation,
+  } = useAIAssistant();
 
-const QUICK_PROMPTS = [
-  "What leads need follow-up?",
-  "Summarize my pipeline",
-  "What tasks are overdue?",
-];
-
-export const FloatingAIChat = ({ isOpen, onClose }: FloatingAIChatProps) => {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -50,6 +61,22 @@ export const FloatingAIChat = ({ isOpen, onClose }: FloatingAIChatProps) => {
         .select('id, name')
         .ilike('name', 'evan')
         .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch suggested tasks (incomplete, high priority or due soon)
+  const { data: suggestedTasks = [] } = useQuery({
+    queryKey: ['ai-suggested-tasks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evan_tasks')
+        .select('id, title, priority, due_date')
+        .eq('is_completed', false)
+        .order('priority', { ascending: false })
+        .order('due_date', { ascending: true, nullsFirst: false })
+        .limit(3);
       if (error) throw error;
       return data;
     },
@@ -72,8 +99,20 @@ export const FloatingAIChat = ({ isOpen, onClose }: FloatingAIChatProps) => {
     const text = messageText || input.trim();
     if (!text || isLoading) return;
 
+    // Create conversation if needed
+    let convId = currentConversationId;
+    if (!convId) {
+      convId = await createConversation();
+      if (!convId) {
+        toast.error('Failed to create conversation');
+        return;
+      }
+      setCurrentConversationId(convId);
+    }
+
     const userMsg: Message = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
@@ -90,7 +129,7 @@ export const FloatingAIChat = ({ isOpen, onClose }: FloatingAIChatProps) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ 
-            messages: [...messages, userMsg],
+            messages: newMessages,
             evanId: evanTeamMember?.id,
           }),
         }
@@ -112,7 +151,7 @@ export const FloatingAIChat = ({ isOpen, onClose }: FloatingAIChatProps) => {
       const decoder = new TextDecoder();
       let assistantContent = '';
 
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+      setMessages([...newMessages, { role: 'assistant', content: '' }]);
 
       let buffer = '';
       while (true) {
@@ -139,9 +178,9 @@ export const FloatingAIChat = ({ isOpen, onClose }: FloatingAIChatProps) => {
             if (delta) {
               assistantContent += delta;
               setMessages(prev => {
-                const newMsgs = [...prev];
-                newMsgs[newMsgs.length - 1] = { role: 'assistant', content: assistantContent };
-                return newMsgs;
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: assistantContent };
+                return updated;
               });
             }
           } catch {
@@ -149,6 +188,13 @@ export const FloatingAIChat = ({ isOpen, onClose }: FloatingAIChatProps) => {
             break;
           }
         }
+      }
+
+      // Save messages to database
+      const finalMessages = [...newMessages, { role: 'assistant' as const, content: assistantContent }];
+      setMessages(finalMessages);
+      if (convId) {
+        await saveMessages(convId, finalMessages);
       }
     } catch (error: any) {
       console.error('AI error:', error);
@@ -165,147 +211,235 @@ export const FloatingAIChat = ({ isOpen, onClose }: FloatingAIChatProps) => {
     }
   };
 
-  const handleClear = () => {
-    setMessages([]);
-    setInput('');
+  const handleNewChat = () => {
+    startNewConversation();
+    setShowHistory(false);
+  };
+
+  const handleLoadConversation = async (id: string) => {
+    await loadConversation(id);
+    setShowHistory(false);
+  };
+
+  const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await deleteConversation(id);
+  };
+
+  const generateTaskPrompt = (task: { title: string; priority: string | null; due_date: string | null }) => {
+    return `Help me with this task: "${task.title}"`;
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 w-[380px] h-[500px] flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
+    <div className="fixed bottom-4 left-4 z-50 w-[400px] h-[520px] flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
         <div className="flex items-center gap-2">
+          {showHistory && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(false)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
           <div className="p-1.5 rounded-lg bg-primary/10">
             <Sparkles className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold">AI Assistant</h3>
-            <p className="text-[10px] text-muted-foreground">Powered by OpenAI</p>
+            <h3 className="text-sm font-semibold">
+              {showHistory ? 'Conversation History' : 'AI Assistant'}
+            </h3>
+            <p className="text-[10px] text-muted-foreground">
+              {showHistory ? `${conversations.length} conversations` : 'Powered by Lovable AI'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {messages.length > 0 && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClear}>
-              <Minimize2 className="h-3.5 w-3.5" />
-            </Button>
+          {!showHistory && (
+            <>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNewChat} title="New Chat">
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(true)} title="History">
+                <History className="h-3.5 w-3.5" />
+              </Button>
+            </>
           )}
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOpen(false)}>
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-3" ref={scrollRef}>
-        {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center py-6">
-            <div className="p-3 rounded-full bg-primary/10 mb-3">
-              <Bot className="h-6 w-6 text-primary" />
+      {showHistory ? (
+        /* History View */
+        <ScrollArea className="flex-1 p-3">
+          {isLoadingConversations ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-            <h4 className="text-sm font-medium mb-1">How can I help?</h4>
-            <p className="text-xs text-muted-foreground max-w-[250px] mb-4">
-              I have access to your leads, tasks, and pipeline data.
-            </p>
-            
-            <div className="flex flex-col gap-1.5 w-full px-2">
-              {QUICK_PROMPTS.map((prompt, i) => (
-                <Button
-                  key={i}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8 justify-start"
-                  onClick={() => handleSubmit(prompt)}
-                >
-                  <Lightbulb className="h-3 w-3 mr-2 text-primary" />
-                  {prompt}
-                </Button>
-              ))}
+          ) : conversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-center">
+              <History className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">No conversations yet</p>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "flex gap-2",
-                  msg.role === 'user' ? 'justify-end' : 'justify-start'
-                )}
-              >
-                {msg.role === 'assistant' && (
-                  <Avatar className="h-6 w-6 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                      <Bot className="h-3 w-3" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+          ) : (
+            <div className="space-y-2">
+              {conversations.map((conv) => (
                 <div
+                  key={conv.id}
+                  onClick={() => handleLoadConversation(conv.id)}
                   className={cn(
-                    "max-w-[85%] rounded-xl px-3 py-2 text-sm",
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
+                    "p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors group",
+                    currentConversationId === conv.id && "bg-primary/5 border-primary/20"
                   )}
                 >
-                  <p className="text-xs whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                </div>
-                {msg.role === 'user' && (
-                  <Avatar className="h-6 w-6 shrink-0">
-                    <AvatarFallback className="bg-muted text-xs">
-                      <User className="h-3 w-3" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-            ))}
-            {isLoading && messages[messages.length - 1]?.content === '' && (
-              <div className="flex gap-2">
-                <Avatar className="h-6 w-6 shrink-0">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                    <Bot className="h-3 w-3" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="bg-muted rounded-xl px-3 py-2.5">
-                  <div className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" />
-                    <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.1s]" />
-                    <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{conv.title || 'Untitled'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(conv.updated_at), 'MMM d, h:mm a')}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => handleDeleteConversation(e, conv.id)}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      ) : (
+        /* Chat View */
+        <>
+          <ScrollArea className="flex-1 p-3" ref={scrollRef}>
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center py-4">
+                <div className="p-3 rounded-full bg-primary/10 mb-3">
+                  <Bot className="h-6 w-6 text-primary" />
+                </div>
+                <h4 className="text-sm font-medium mb-1">How can I help?</h4>
+                <p className="text-xs text-muted-foreground max-w-[250px] mb-4">
+                  I have access to your leads, tasks, and pipeline data.
+                </p>
+                
+                {suggestedTasks.length > 0 && (
+                  <div className="w-full px-2">
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Suggested from your tasks:
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      {suggestedTasks.map((task) => (
+                        <Button
+                          key={task.id}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-auto py-2 px-3 justify-start text-left"
+                          onClick={() => handleSubmit(generateTaskPrompt(task))}
+                        >
+                          <div className="flex items-start gap-2 w-full">
+                            <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
+                            <span className="truncate">{task.title}</span>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex gap-2",
+                      msg.role === 'user' ? 'justify-end' : 'justify-start'
+                    )}
+                  >
+                    {msg.role === 'assistant' && (
+                      <Avatar className="h-6 w-6 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                          <Bot className="h-3 w-3" />
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div
+                      className={cn(
+                        "max-w-[85%] rounded-xl px-3 py-2 text-sm",
+                        msg.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      )}
+                    >
+                      <div className="text-xs leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    </div>
+                    {msg.role === 'user' && (
+                      <Avatar className="h-6 w-6 shrink-0">
+                        <AvatarFallback className="bg-muted text-xs">
+                          <User className="h-3 w-3" />
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                  </div>
+                ))}
+                {isLoading && messages[messages.length - 1]?.content === '' && (
+                  <div className="flex gap-2">
+                    <Avatar className="h-6 w-6 shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        <Bot className="h-3 w-3" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="bg-muted rounded-xl px-3 py-2.5">
+                      <div className="flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" />
+                        <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.1s]" />
+                        <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.2s]" />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
-      </ScrollArea>
+          </ScrollArea>
 
-      {/* Input */}
-      <div className="p-3 border-t bg-muted/30">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmit();
-          }}
-          className="flex gap-2"
-        >
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask anything..."
-            disabled={isLoading}
-            className="flex-1 h-9 text-sm"
-          />
-          <Button type="submit" size="sm" disabled={isLoading || !input.trim()} className="h-9 w-9 p-0">
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </form>
-      </div>
+          {/* Input */}
+          <div className="p-3 border-t bg-muted/30">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSubmit();
+              }}
+              className="flex gap-2"
+            >
+              <Input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask anything..."
+                disabled={isLoading}
+                className="flex-1 h-9 text-sm"
+              />
+              <Button type="submit" size="sm" disabled={isLoading || !input.trim()} className="h-9 w-9 p-0">
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </form>
+          </div>
+        </>
+      )}
     </div>
   );
 };
