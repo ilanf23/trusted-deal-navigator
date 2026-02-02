@@ -253,6 +253,20 @@ Deno.serve(async (req) => {
             .eq('id', existingComm.id);
           console.log('Updated existing communication');
         }
+
+        // Update lead's last_activity_at for scorecard tracking
+        if (activeCall.lead_id) {
+          const { error: leadError } = await supabase
+            .from('leads')
+            .update({ last_activity_at: new Date().toISOString() })
+            .eq('id', activeCall.lead_id);
+
+          if (leadError) {
+            console.error('Failed to update lead last_activity_at:', leadError);
+          } else {
+            console.log(`Updated last_activity_at for lead ${activeCall.lead_id}`);
+          }
+        }
       }
     }
 

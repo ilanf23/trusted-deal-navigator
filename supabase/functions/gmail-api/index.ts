@@ -887,6 +887,7 @@ Deno.serve(async (req) => {
         threadId: body.threadId || null,
         inReplyTo: body.inReplyTo || null,
         hasAttachments: !!body.attachments?.length,
+        leadId: body.leadId || null,
       });
       
       // HARD FAIL: Validate that body content exists before sending
@@ -920,6 +921,39 @@ Deno.serve(async (req) => {
           verified: result.verified,
           verificationDetails: result.verificationDetails,
         });
+
+        // Log email as a communication/touchpoint for the scorecard
+        if (body.leadId) {
+          try {
+            const { error: commError } = await supabaseAdmin
+              .from('evan_communications')
+              .insert({
+                lead_id: body.leadId,
+                communication_type: 'email',
+                direction: 'outbound',
+                content: `Subject: ${body.subject}\n\n${bodyContent.substring(0, 500)}...`,
+                status: 'sent',
+              });
+
+            if (commError) {
+              console.error(`[${flowId}] Failed to log email communication:`, commError);
+            } else {
+              console.log(`[${flowId}] Email logged as communication for lead ${body.leadId}`);
+            }
+
+            // Update lead's last_activity_at
+            const { error: leadError } = await supabaseAdmin
+              .from('leads')
+              .update({ last_activity_at: new Date().toISOString() })
+              .eq('id', body.leadId);
+
+            if (leadError) {
+              console.error(`[${flowId}] Failed to update lead last_activity_at:`, leadError);
+            }
+          } catch (logErr) {
+            console.error(`[${flowId}] Error logging email touchpoint:`, logErr);
+          }
+        }
 
         return new Response(JSON.stringify({
           success: true,
