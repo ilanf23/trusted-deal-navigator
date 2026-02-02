@@ -559,6 +559,68 @@ const EvansPage = () => {
           </CardContent>
         </Card>
 
+        {/* P&L Revenue Breakdown */}
+        <Card className="border">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-primary" />
+                P&L Revenue Breakdown
+              </CardTitle>
+              <Badge variant="outline" className="text-xs">
+                {timePeriod === 'ytd' ? 'Year to Date' : 'Month to Date'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              // Calculate revenue per increment based on time period
+              const periodRevenue = timePeriod === 'ytd' ? ytdRevenue : monthlyRevenueData[monthlyRevenueData.length - 1]?.revenue || 0;
+              
+              // YTD calculations
+              const dayOfYear = Math.floor((now.getTime() - startOfYear(now).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+              const weekOfYear = Math.ceil(dayOfYear / 7);
+              const monthOfYear = now.getMonth() + 1;
+              
+              // MTD calculations
+              const dayOfMonth = now.getDate();
+              const weekOfMonth = Math.ceil(dayOfMonth / 7);
+              
+              const increments = timePeriod === 'ytd' 
+                ? [
+                    { label: 'Per Day', value: periodRevenue / dayOfYear, count: dayOfYear, unit: 'days' },
+                    { label: 'Per Week', value: periodRevenue / weekOfYear, count: weekOfYear, unit: 'weeks' },
+                    { label: 'Per Month', value: periodRevenue / monthOfYear, count: monthOfYear, unit: 'months' },
+                  ]
+                : [
+                    { label: 'Per Day', value: periodRevenue / dayOfMonth, count: dayOfMonth, unit: 'days' },
+                    { label: 'Per Week', value: periodRevenue / Math.max(1, weekOfMonth), count: weekOfMonth, unit: 'weeks' },
+                  ];
+
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {increments.map((inc) => (
+                    <div key={inc.label} className="p-4 rounded-lg bg-muted/50 border">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{inc.label}</p>
+                      <p className="text-2xl font-bold text-primary mt-1">{formatCurrency(inc.value)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Based on {inc.count} {inc.unit}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Revenue</p>
+                    <p className="text-2xl font-bold mt-1">{formatCurrency(periodRevenue)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {timePeriod === 'ytd' ? `Jan 1 - ${format(now, 'MMM d')}` : format(now, 'MMMM yyyy')}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+
         {/* KPI Cards Row - responsive */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
           <Card className="border hover:border-primary/30 transition-colors">
