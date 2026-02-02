@@ -521,9 +521,9 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-emerald-500/30 to-emerald-600/40 dark:from-emerald-700/40 dark:to-emerald-800/50 border-0">
+          <Card className="bg-gradient-to-br from-blue-900/50 to-blue-950/60 dark:from-slate-800/55 dark:to-slate-900/65 border-0">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-300 mb-1">
+              <div className="flex items-center gap-2 text-blue-300 dark:text-blue-200 mb-1">
                 <Send className="h-4 w-4" />
                 <span className="text-xs font-medium">7-Day Follow-ups</span>
               </div>
@@ -532,9 +532,9 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-500/30 to-purple-600/40 dark:from-purple-700/40 dark:to-purple-800/50 border-0">
+          <Card className="bg-gradient-to-br from-blue-950/55 to-slate-900/65 dark:from-slate-900/60 dark:to-slate-950/70 border-0">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-300 mb-1">
+              <div className="flex items-center gap-2 text-blue-200 dark:text-blue-100 mb-1">
                 <Eye className="h-4 w-4" />
                 <span className="text-xs font-medium">Rate Watch Signups</span>
               </div>
