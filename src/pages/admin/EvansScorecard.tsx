@@ -105,8 +105,11 @@ const EvansScorecard = () => {
   const [repFilter, setRepFilter] = useState<string>('evan');
 
   // Compute period boundaries based on selected week
+  // Parse the date as local time to avoid timezone offset issues
   const periodBoundaries = useMemo(() => {
-    const weekStart = new Date(selectedWeek);
+    const [year, month, day] = selectedWeek.split('-').map(Number);
+    const weekStart = new Date(year, month - 1, day);
+    weekStart.setHours(0, 0, 0, 0);
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     return { start: weekStart, end: weekEnd };
   }, [selectedWeek]);
