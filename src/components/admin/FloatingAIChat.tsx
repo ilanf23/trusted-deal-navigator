@@ -250,7 +250,7 @@ export const FloatingAIChat = () => {
               {showHistory ? 'Conversation History' : 'AI Assistant'}
             </h3>
             <p className="text-[10px] text-muted-foreground">
-              {showHistory ? `${conversations.length} conversations` : 'Powered by Lovable AI'}
+              {showHistory ? `${conversations.length} conversations` : 'Powered by OpenAI'}
             </p>
           </div>
         </div>
@@ -329,30 +329,68 @@ export const FloatingAIChat = () => {
                   I have access to your leads, tasks, and pipeline data.
                 </p>
                 
-                {suggestedTasks.length > 0 && (
-                  <div className="w-full px-2">
+                {/* Prompt Suggestions */}
+                <div className="w-full px-2 space-y-3">
+                  {/* Quick action prompts */}
+                  <div>
                     <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Suggested from your tasks:
+                      <Sparkles className="h-3 w-3" />
+                      Quick prompts:
                     </p>
                     <div className="flex flex-col gap-1.5">
-                      {suggestedTasks.map((task) => (
-                        <Button
-                          key={task.id}
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-auto py-2 px-3 justify-start text-left"
-                          onClick={() => handleSubmit(generateTaskPrompt(task))}
-                        >
-                          <div className="flex items-start gap-2 w-full">
-                            <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
-                            <span className="truncate">{task.title}</span>
-                          </div>
-                        </Button>
-                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-auto py-2 px-3 justify-start text-left"
+                        onClick={() => handleSubmit("What leads need follow-up today?")}
+                      >
+                        <span className="truncate">📋 What leads need follow-up today?</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-auto py-2 px-3 justify-start text-left"
+                        onClick={() => handleSubmit("Summarize my pipeline status")}
+                      >
+                        <span className="truncate">📊 Summarize my pipeline status</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-auto py-2 px-3 justify-start text-left"
+                        onClick={() => handleSubmit("What are my overdue tasks?")}
+                      >
+                        <span className="truncate">⏰ What are my overdue tasks?</span>
+                      </Button>
                     </div>
                   </div>
-                )}
+                  
+                  {/* Task-based suggestions */}
+                  {suggestedTasks.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Help with your tasks:
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {suggestedTasks.map((task) => (
+                          <Button
+                            key={task.id}
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-auto py-2 px-3 justify-start text-left"
+                            onClick={() => handleSubmit(generateTaskPrompt(task))}
+                          >
+                            <div className="flex items-start gap-2 w-full">
+                              <CheckCircle2 className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
+                              <span className="truncate">{task.title}</span>
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
