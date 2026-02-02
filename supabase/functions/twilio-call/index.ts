@@ -131,10 +131,25 @@ Deno.serve(async (req) => {
         content: `Call initiated to ${formattedPhone}`,
         phone_number: formattedPhone,
         status: twilioData.status,
+        call_sid: twilioData.sid,
       });
 
     if (dbError) {
       console.error('Failed to log communication:', dbError);
+    }
+
+    // Update lead's last_activity_at for scorecard tracking
+    if (leadId) {
+      const { error: leadError } = await supabase
+        .from('leads')
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq('id', leadId);
+
+      if (leadError) {
+        console.error('Failed to update lead last_activity_at:', leadError);
+      } else {
+        console.log(`Updated last_activity_at for lead ${leadId}`);
+      }
     }
 
     return new Response(
