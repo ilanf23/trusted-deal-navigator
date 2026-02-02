@@ -535,57 +535,58 @@ const EvansPage = () => {
                 </div>
               </div>
               
-              {/* Revenue Chart - Professional Horizontal with Target Line */}
-              <div className="w-full lg:w-[500px] bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              {/* Revenue Chart - Line Chart with Cumulative Trend */}
+              <div className="w-full lg:w-[520px] bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-white/60 font-medium uppercase tracking-wider">Monthly Revenue vs Target</p>
+                  <p className="text-xs text-white/60 font-medium uppercase tracking-wider">Cumulative Revenue</p>
                   <div className="flex items-center gap-3 text-[10px] text-white/50">
                     <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-white/80" /> Revenue
+                      <span className="w-3 h-0.5 bg-white/90 rounded" /> Actual
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-4 h-0.5 border-t border-dashed border-orange-400" /> $125K Target
+                      <span className="w-3 h-0.5 border-t border-dashed border-sky-300/60" /> Trend
                     </span>
                   </div>
                 </div>
                 <div className="h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart 
-                      data={monthlyRevenueData} 
-                      layout="vertical"
-                      margin={{ top: 5, right: 40, bottom: 5, left: 35 }}
+                      data={monthlyRevenueData}
+                      margin={{ top: 10, right: 20, bottom: 5, left: 10 }}
                     >
                       <defs>
-                        <linearGradient id="heroBarMeetsTarget" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="rgba(74, 222, 128, 0.7)" />
-                          <stop offset="100%" stopColor="rgba(74, 222, 128, 0.95)" />
-                        </linearGradient>
-                        <linearGradient id="heroBarBelowTarget" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
-                          <stop offset="100%" stopColor="rgba(255,255,255,0.75)" />
+                        <linearGradient id="cumulativeAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="rgba(255,255,255,0.3)" />
+                          <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
                         </linearGradient>
                       </defs>
+                      <CartesianGrid 
+                        strokeDasharray="3 3" 
+                        stroke="rgba(255,255,255,0.08)" 
+                        vertical={false}
+                      />
                       <XAxis 
-                        type="number"
+                        dataKey="month"
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }}
+                      />
+                      <YAxis 
                         axisLine={false} 
                         tickLine={false} 
                         tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10 }}
                         tickFormatter={(value) => value >= 1000 ? `$${(value/1000).toFixed(0)}K` : `$${value}`}
-                        domain={[0, 'dataMax']}
+                        width={45}
                       />
-                      <YAxis 
-                        type="category"
-                        dataKey="month" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: 500 }}
-                        width={30}
-                      />
+                      {/* Trend line (linear projection) */}
                       <ReferenceLine 
-                        x={125000} 
-                        stroke="rgba(251, 146, 60, 0.8)" 
-                        strokeDasharray="4 3" 
-                        strokeWidth={2}
+                        segment={[
+                          { x: monthlyRevenueData[0]?.month, y: 0 },
+                          { x: monthlyRevenueData[monthlyRevenueData.length - 1]?.month, y: chartStats.ytdTotal }
+                        ]}
+                        stroke="rgba(147, 197, 253, 0.5)" 
+                        strokeDasharray="6 4" 
+                        strokeWidth={1.5}
                       />
                       <Tooltip 
                         contentStyle={{ 
@@ -604,22 +605,20 @@ const EvansPage = () => {
                                 <p className="font-semibold text-white mb-2">{label}</p>
                                 <div className="space-y-1.5">
                                   <p className="flex justify-between gap-4">
-                                    <span className="text-white/60">Revenue:</span>
-                                    <span className="font-semibold">{formatCurrencyFull(data.revenue)}</span>
+                                    <span className="text-white/60">Cumulative:</span>
+                                    <span className="font-semibold">{formatCurrencyFull(data.cumulative)}</span>
+                                  </p>
+                                  <p className="flex justify-between gap-4">
+                                    <span className="text-white/60">Month:</span>
+                                    <span className="font-medium">{formatCurrencyFull(data.revenue)}</span>
                                   </p>
                                   <p className="flex justify-between gap-4">
                                     <span className="text-white/60">Deals:</span>
                                     <span className="font-medium">{data.deals}</span>
                                   </p>
-                                  <p className="flex justify-between gap-4">
-                                    <span className="text-white/60">vs Target:</span>
-                                    <span className={`font-medium ${data.vsTarget >= 100 ? 'text-green-400' : 'text-orange-400'}`}>
-                                      {data.vsTarget}%
-                                    </span>
-                                  </p>
                                   {data.growth !== 0 && (
                                     <p className="flex justify-between gap-4">
-                                      <span className="text-white/60">Growth:</span>
+                                      <span className="text-white/60">MoM Growth:</span>
                                       <span className={`font-medium ${data.growth >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                         {data.growth > 0 ? '+' : ''}{data.growth}%
                                       </span>
@@ -631,20 +630,21 @@ const EvansPage = () => {
                           }
                           return null;
                         }}
-                        cursor={{ fill: 'rgba(255,255,255,0.08)' }}
                       />
-                      <Bar 
-                        dataKey="revenue" 
-                        radius={[0, 4, 4, 0]}
-                        barSize={16}
-                      >
-                        {monthlyRevenueData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`}
-                            fill={entry.meetsTarget ? 'url(#heroBarMeetsTarget)' : 'url(#heroBarBelowTarget)'}
-                          />
-                        ))}
-                      </Bar>
+                      <Area
+                        type="monotone"
+                        dataKey="cumulative"
+                        stroke="transparent"
+                        fill="url(#cumulativeAreaGradient)"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="cumulative"
+                        stroke="rgba(255,255,255,0.9)"
+                        strokeWidth={2.5}
+                        dot={{ fill: 'white', strokeWidth: 0, r: 4 }}
+                        activeDot={{ r: 6, fill: 'white', stroke: 'rgba(255,255,255,0.3)', strokeWidth: 3 }}
+                      />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
