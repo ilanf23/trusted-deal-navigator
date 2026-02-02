@@ -419,9 +419,9 @@ const EvansScorecard = () => {
 
         {/* Section 1: Lead Overview */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-800">
+          <Card className="bg-gradient-to-br from-blue-400/20 to-blue-500/30 dark:from-blue-600/30 dark:to-blue-700/40 border-blue-300 dark:border-blue-600">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
                 <Users className="h-4 w-4" />
                 <span className="text-xs font-medium">Active Leads</span>
               </div>
@@ -429,9 +429,9 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/20 border-emerald-200 dark:border-emerald-800">
+          <Card className="bg-gradient-to-br from-blue-500/25 to-blue-600/35 dark:from-blue-700/35 dark:to-blue-800/45 border-blue-400 dark:border-blue-600">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
                 <UserPlus className="h-4 w-4" />
                 <span className="text-xs font-medium">New Leads</span>
               </div>
@@ -440,9 +440,9 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/20 border-amber-200 dark:border-amber-800">
+          <Card className="bg-gradient-to-br from-blue-600/30 to-blue-700/40 dark:from-blue-800/40 dark:to-blue-900/50 border-blue-500 dark:border-blue-700">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
                 <Trophy className="h-4 w-4" />
                 <span className="text-xs font-medium">Closed Won</span>
               </div>
@@ -451,9 +451,9 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/20 border-red-200 dark:border-red-800">
+          <Card className="bg-gradient-to-br from-blue-700/35 to-blue-800/45 dark:from-blue-900/45 dark:to-blue-950/55 border-blue-600 dark:border-blue-800">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-red-600 dark:text-red-400 mb-1">
+              <div className="flex items-center gap-2 text-blue-500 dark:text-blue-300 mb-1">
                 <Users className="h-4 w-4" />
                 <span className="text-xs font-medium">Closed Lost</span>
               </div>
@@ -462,9 +462,9 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 border-purple-200 dark:border-purple-800">
+          <Card className="bg-gradient-to-br from-blue-800/40 to-blue-900/50 dark:from-blue-950/50 dark:to-slate-900/60 border-blue-700 dark:border-blue-900">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
+              <div className="flex items-center gap-2 text-blue-400 dark:text-blue-300 mb-1">
                 <ArrowRightLeft className="h-4 w-4" />
                 <span className="text-xs font-medium">Stage Moves</span>
               </div>
