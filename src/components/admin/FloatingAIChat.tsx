@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,6 +17,7 @@ import {
   Trash2,
   ChevronLeft,
   CheckCircle2,
+  GripVertical,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -233,14 +235,28 @@ export const FloatingAIChat = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 w-[400px] h-[520px] flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
+    <motion.div 
+      drag
+      dragMomentum={false}
+      dragElastic={0}
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.95 }}
+      className="fixed bottom-4 left-4 z-50 w-[400px] h-[520px] flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden"
+    >
+      {/* Draggable Header */}
+      <div 
+        className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent cursor-grab active:cursor-grabbing"
+      >
         <div className="flex items-center gap-2">
-          {showHistory && (
+          {showHistory ? (
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(false)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
+          ) : (
+            <div className="p-1 text-muted-foreground/50">
+              <GripVertical className="h-4 w-4" />
+            </div>
           )}
           <div className="p-1.5 rounded-lg bg-primary/10">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -478,7 +494,7 @@ export const FloatingAIChat = () => {
           </div>
         </>
       )}
-    </div>
+    </motion.div>
   );
 };
 
