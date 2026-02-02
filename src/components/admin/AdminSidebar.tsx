@@ -22,12 +22,12 @@ import {
   Bug,
   ClipboardList,
   Calendar,
-  Sparkles,
   Plus,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import chatgptLogo from '@/assets/chatgpt-logo.png';
 import {
   Sidebar,
   SidebarContent,
@@ -539,7 +539,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   }`}
                   onClick={onAIToggle}
                 >
-                  <Sparkles className="w-5 h-5" strokeWidth={1.75} />
+                  <img src={chatgptLogo} alt="AI" className="w-5 h-5 invert" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
@@ -556,7 +556,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               }`}
               onClick={onAIToggle}
             >
-              <Sparkles className="w-4 h-4" strokeWidth={1.75} />
+              <img src={chatgptLogo} alt="AI" className="w-4 h-4 invert" />
               <span className="font-semibold">AI Assistant</span>
             </Button>
           )
