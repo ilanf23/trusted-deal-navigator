@@ -444,7 +444,7 @@ export const FloatingAIChat = () => {
           <div className="p-1 text-muted-foreground/50">
             <GripVertical className="h-4 w-4" />
           </div>
-          <img src={chatgptLogo} alt="ChatGPT" className="h-7 w-7 rounded-lg" />
+          <img src={chatgptLogo} alt="ChatGPT" className="h-7 w-7 rounded-lg dark:invert dark:brightness-0 dark:invert" />
           <div>
             <h3 className="text-sm font-semibold">AI Assistant</h3>
             <p className="text-[10px] text-muted-foreground">Powered by OpenAI</p>
@@ -483,9 +483,12 @@ export const FloatingAIChat = () => {
             >
               <ScrollArea className="h-full">
                 <div className="p-2">
-                  <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">
-                    History ({conversations.length})
-                  </p>
+                  <div className="flex items-center gap-2 px-2 py-1 mb-2">
+                    <img src={chatgptLogo} alt="ChatGPT" className="h-5 w-5 rounded dark:invert dark:brightness-0 dark:invert" />
+                    <p className="text-xs font-medium text-muted-foreground">
+                      History ({conversations.length})
+                    </p>
+                  </div>
                   {isLoadingConversations ? (
                     <div className="flex items-center justify-center h-20">
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
