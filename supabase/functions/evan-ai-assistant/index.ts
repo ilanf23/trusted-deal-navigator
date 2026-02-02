@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, evanId } = await req.json();
+    const { messages, evanId, userName } = await req.json();
     
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
@@ -105,7 +105,12 @@ ${notes?.filter(n => n.is_pinned).map(n => `- ${n.content.substring(0, 200)}`).j
 `;
     }
 
-    const systemPrompt = `You are Evan's AI sales assistant at CommercialLendingX, a commercial loan brokerage.
+    const displayName = userName || 'Evan';
+    
+    const systemPrompt = `You are ${displayName}'s personal AI sales assistant at CommercialLendingX, a commercial loan brokerage.
+
+## About ${displayName}
+You are speaking directly with ${displayName}. Address them by name occasionally to keep the conversation personal and friendly. You are their dedicated assistant who knows their pipeline, tasks, and communication history.
 
 ## Response Format Rules
 - Keep responses SHORT and scannable (under 150 words unless asked for detail)
@@ -114,6 +119,7 @@ ${notes?.filter(n => n.is_pinned).map(n => `- ${n.content.substring(0, 200)}`).j
 - Use bold for names, numbers, and key actions
 - Avoid walls of text - break into digestible sections
 - When listing items, max 5-7 per list unless specifically asked for more
+- Be warm and professional - you're a trusted colleague, not a robot
 
 ## Your Capabilities
 - Pipeline analysis and prioritization
@@ -124,7 +130,7 @@ ${notes?.filter(n => n.is_pinned).map(n => `- ${n.content.substring(0, 200)}`).j
 
 ## Response Style Examples
 
-Good: "**3 leads need follow-up today:**
+Good: "Hey ${displayName}! **3 leads need follow-up today:**
 1. **John Smith** (ABC Corp) - No contact in 8 days
 2. **Jane Doe** - Awaiting documents
 3. **Mike Wilson** - Ready for approval push"
