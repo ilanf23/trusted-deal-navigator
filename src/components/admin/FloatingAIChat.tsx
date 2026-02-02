@@ -10,7 +10,6 @@ import {
   Send, 
   Loader2, 
   User, 
-  Sparkles,
   X,
   Plus,
   History,
@@ -28,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { useAIAssistant } from '@/contexts/AIAssistantContext';
 import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
+import chatgptLogo from '@/assets/chatgpt-logo.png';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -444,9 +444,7 @@ export const FloatingAIChat = () => {
           <div className="p-1 text-muted-foreground/50">
             <GripVertical className="h-4 w-4" />
           </div>
-          <div className="p-1.5 rounded-lg bg-primary/10">
-            <Sparkles className="h-4 w-4 text-primary" />
-          </div>
+          <img src={chatgptLogo} alt="ChatGPT" className="h-7 w-7 rounded-lg" />
           <div>
             <h3 className="text-sm font-semibold">AI Assistant</h3>
             <p className="text-[10px] text-muted-foreground">Powered by OpenAI</p>
@@ -552,7 +550,7 @@ export const FloatingAIChat = () => {
                   {/* Quick action prompts */}
                   <div>
                     <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                      <Sparkles className="h-3 w-3" />
+                      <Bot className="h-3 w-3" />
                       Quick prompts:
                     </p>
                     <div className="flex flex-col gap-1.5">
