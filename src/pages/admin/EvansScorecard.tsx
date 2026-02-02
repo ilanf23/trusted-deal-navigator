@@ -184,7 +184,7 @@ const EvansScorecard = () => {
 
   // Fetch communications (touchpoints)
   const { data: communications } = useQuery({
-    queryKey: ['scorecard-communications', selectedWeek],
+    queryKey: ['scorecard-communications', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_communications')
@@ -198,7 +198,7 @@ const EvansScorecard = () => {
 
   // Fetch lead activities (for stage movements)
   const { data: leadActivities } = useQuery({
-    queryKey: ['scorecard-activities', selectedWeek],
+    queryKey: ['scorecard-activities', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lead_activities')
@@ -212,7 +212,7 @@ const EvansScorecard = () => {
 
   // Fetch tasks for follow-up tracking
   const { data: tasks } = useQuery({
-    queryKey: ['scorecard-tasks', selectedWeek],
+    queryKey: ['scorecard-tasks', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_tasks')
