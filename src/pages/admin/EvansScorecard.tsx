@@ -51,9 +51,23 @@ const EvansScorecard = () => {
     ? startOfMonth(now) 
     : startOfMonth(subMonths(now, 1));
 
+  // Get Evan's team member ID for filtering
+  const { data: evanMember } = useQuery({
+    queryKey: ['evan-member-id'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('name', 'Evan')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Fetch all pipeline leads with responses
   const { data: pipelineLeads, isLoading: pipelineLoading } = useQuery({
-    queryKey: ['scorecard-pipeline', repFilter],
+    queryKey: ['scorecard-pipeline', repFilter, evanMember?.id],
     queryFn: async () => {
       let query = supabase
         .from('leads')
@@ -71,19 +85,21 @@ const EvansScorecard = () => {
         `)
         .not('status', 'in', '(funded,lost)');
       
-      if (repFilter !== 'all') {
-        query = query.eq('assigned_to', repFilter);
+      // Filter by Evan when "evan" is selected
+      if (repFilter === 'evan' && evanMember?.id) {
+        query = query.eq('assigned_to', evanMember.id);
       }
       
       const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: repFilter === 'all' || !!evanMember?.id,
   });
 
   // Fetch funded leads for this month
   const { data: fundedLeads } = useQuery({
-    queryKey: ['scorecard-funded', monthFilter, repFilter],
+    queryKey: ['scorecard-funded', monthFilter, repFilter, evanMember?.id],
     queryFn: async () => {
       let query = supabase
         .from('leads')
@@ -98,17 +114,19 @@ const EvansScorecard = () => {
         .eq('status', 'funded')
         .gte('converted_at', monthStart.toISOString());
       
-      if (repFilter !== 'all') {
-        query = query.eq('assigned_to', repFilter);
+      // Filter by Evan when "evan" is selected
+      if (repFilter === 'evan' && evanMember?.id) {
+        query = query.eq('assigned_to', evanMember.id);
       }
       
       const { data, error } = await query;
       if (error) throw error;
       return data;
     },
+    enabled: repFilter === 'all' || !!evanMember?.id,
   });
 
-  // Fetch team members for filter
+  // Fetch team members for rep scorecards
   const { data: teamMembers } = useQuery({
     queryKey: ['scorecard-team-members'],
     queryFn: async () => {
@@ -376,14 +394,12 @@ const EvansScorecard = () => {
             </Select>
             
             <Select value={repFilter} onValueChange={setRepFilter}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="All Reps" />
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Company" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Reps</SelectItem>
-                {teamMembers?.map((tm) => (
-                  <SelectItem key={tm.id} value={tm.id}>{tm.name}</SelectItem>
-                ))}
+                <SelectItem value="all">Company</SelectItem>
+                <SelectItem value="evan">Evan</SelectItem>
               </SelectContent>
             </Select>
           </div>
