@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
+import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
+import FloatingAIChat from "@/components/admin/FloatingAIChat";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import EmployeeRoute from "@/components/admin/EmployeeRoute";
 import PublicLayout from "@/components/layout/PublicLayout";
@@ -82,8 +84,12 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
-            <Routes>
+          <AIAssistantProvider>
+            {/* Global floating assistant so it persists across Evan/admin page navigation */}
+            <FloatingAIChat />
+
+            <BrowserRouter>
+              <Routes>
               <Route path="/" element={<PublicLayout><Index /></PublicLayout>} />
               <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
               <Route path="/contact" element={<PublicLayout><Contact /></PublicLayout>} />
@@ -166,8 +172,9 @@ const App = () => (
               <Route path="/user/messages" element={<ProtectedRoute clientOnly><PortalMessages /></ProtectedRoute>} />
               <Route path="/user/profile" element={<ProtectedRoute clientOnly><PortalProfile /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+              </Routes>
+            </BrowserRouter>
+          </AIAssistantProvider>
         </TooltipProvider>
       </AuthProvider>
     </ThemeProvider>
