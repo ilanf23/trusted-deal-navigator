@@ -66,6 +66,7 @@ export const FloatingAIChat = () => {
       if (error) throw error;
       return data;
     },
+    enabled: isOpen,
   });
 
   // Fetch suggested tasks (incomplete, high priority or due soon)
@@ -82,6 +83,7 @@ export const FloatingAIChat = () => {
       if (error) throw error;
       return data;
     },
+    enabled: isOpen,
   });
 
   // Auto-scroll and focus when opened
