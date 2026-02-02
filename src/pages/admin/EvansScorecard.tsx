@@ -19,6 +19,8 @@ import {
   Clock,
   ArrowRight,
   Calendar,
+  Send,
+  Eye,
 } from 'lucide-react';
 import { 
   startOfMonth, 
@@ -221,7 +223,35 @@ const EvansScorecard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_tasks')
-        .select('id, title, is_completed, lead_id, created_at, due_date')
+        .select('id, title, is_completed, lead_id, created_at, due_date, source')
+        .gte('created_at', periodStart.toISOString())
+        .lte('created_at', periodBoundaries.end.toISOString());
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch 7-day follow-up emails sent
+  const { data: followUpEmails } = useQuery({
+    queryKey: ['scorecard-follow-up-emails', periodStart.toISOString(), periodBoundaries.end.toISOString()],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('outbound_emails')
+        .select('id, source, created_at, status')
+        .gte('created_at', periodStart.toISOString())
+        .lte('created_at', periodBoundaries.end.toISOString());
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch Rate Watch signups
+  const { data: rateWatchSignups } = useQuery({
+    queryKey: ['scorecard-ratewatch-signups', periodStart.toISOString(), periodBoundaries.end.toISOString()],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ratewatch_questionnaire_responses')
+        .select('id, created_at')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
       if (error) throw error;
@@ -305,6 +335,20 @@ const EvansScorecard = () => {
       return differenceInDays(now, new Date(lastTouchpoint.created_at)) >= 7;
     }).slice(0, 10);
 
+    // 7-day follow-ups sent (from outbound_emails with follow_up/7day sources or nudge tasks)
+    const followUpEmailsSent = followUpEmails?.filter(
+      (e) => e.source?.toLowerCase().includes('follow') || e.source?.toLowerCase().includes('nudge') || e.source?.toLowerCase().includes('7day')
+    ).length || 0;
+    
+    const nudgeTasksCompleted = tasks?.filter(
+      (t) => t.source === 'nudge' && t.is_completed
+    ).length || 0;
+
+    const totalFollowUpsSent = followUpEmailsSent + nudgeTasksCompleted;
+
+    // Rate Watch signups this period
+    const rateWatchSignupsCount = rateWatchSignups?.length || 0;
+
     return {
       // Lead counts
       totalLeads: allLeads.length,
@@ -332,10 +376,14 @@ const EvansScorecard = () => {
       tasksCompleted,
       tasksOverdue,
       
+      // New metrics
+      followUpsSent: totalFollowUpsSent,
+      rateWatchSignups: rateWatchSignupsCount,
+      
       // Attention needed
       leadsNeedingAttention,
     };
-  }, [allLeads, communications, leadActivities, tasks, periodStart, periodBoundaries, now]);
+  }, [allLeads, communications, leadActivities, tasks, followUpEmails, rateWatchSignups, periodStart, periodBoundaries, now]);
 
   if (leadsLoading) {
     return (
@@ -418,7 +466,7 @@ const EvansScorecard = () => {
         </div>
 
         {/* Section 1: Lead Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
           <Card className="bg-gradient-to-br from-blue-400/25 to-blue-500/35 dark:from-blue-600/35 dark:to-blue-700/45 border-0">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
@@ -469,6 +517,28 @@ const EvansScorecard = () => {
                 <span className="text-xs font-medium">Stage Moves</span>
               </div>
               <p className="text-3xl font-bold">{metrics.stageMovements}</p>
+              <p className="text-xs text-muted-foreground">this period</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-emerald-500/30 to-emerald-600/40 dark:from-emerald-700/40 dark:to-emerald-800/50 border-0">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-300 mb-1">
+                <Send className="h-4 w-4" />
+                <span className="text-xs font-medium">7-Day Follow-ups</span>
+              </div>
+              <p className="text-3xl font-bold">{metrics.followUpsSent}</p>
+              <p className="text-xs text-muted-foreground">sent this period</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-500/30 to-purple-600/40 dark:from-purple-700/40 dark:to-purple-800/50 border-0">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-300 mb-1">
+                <Eye className="h-4 w-4" />
+                <span className="text-xs font-medium">Rate Watch Signups</span>
+              </div>
+              <p className="text-3xl font-bold">{metrics.rateWatchSignups}</p>
               <p className="text-xs text-muted-foreground">this period</p>
             </CardContent>
           </Card>
