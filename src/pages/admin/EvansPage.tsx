@@ -43,7 +43,7 @@ import {
   Clock,
   CalendarDays
 } from 'lucide-react';
-import { startOfYear, startOfMonth, format, eachMonthOfInterval, isAfter, isBefore, addDays } from 'date-fns';
+import { startOfYear, startOfMonth, format, eachMonthOfInterval, eachDayOfInterval, isAfter, isBefore, addDays, isSameDay, endOfDay } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { TopActions } from '@/components/evan/dashboard/TopActions';
 import { NudgesWidget } from '@/components/evan/dashboard/NudgesWidget';
@@ -72,6 +72,7 @@ const SOURCE_COLORS = [
 
 const EvansPage = () => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
+  const [chartPeriod, setChartPeriod] = useState<TimePeriod>('ytd');
   const [calcLoanAmount, setCalcLoanAmount] = useState<string>('500000');
   const [calcExtraDeals, setCalcExtraDeals] = useState<string>('0');
 
@@ -244,79 +245,136 @@ const EvansPage = () => {
     };
   }, [leadsData, pipelineData, fundedLeads]);
 
-  // Monthly revenue chart data with enhanced metrics
-  const monthlyRevenueData = useMemo(() => {
-    const months = eachMonthOfInterval({
-      start: startOfYear(now),
-      end: now,
-    });
+  // Chart data based on chartPeriod (YTD = monthly, MTD = daily)
+  const chartRevenueData = useMemo(() => {
+    if (chartPeriod === 'ytd') {
+      // Monthly data for YTD view
+      const months = eachMonthOfInterval({
+        start: startOfYear(now),
+        end: now,
+      });
 
-    let runningTotal = 0;
-    let previousRevenue = 0;
+      let runningTotal = 0;
+      let previousRevenue = 0;
 
-    return months.map((month, index) => {
-      const monthStart = month;
-      const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-      const monthLabel = format(month, 'MMM');
-      
-      const monthlyFunded = fundedLeads?.filter((lead) => {
-        const convertedAt = lead.converted_at ? new Date(lead.converted_at) : null;
-        return convertedAt && convertedAt >= monthStart && convertedAt <= monthEnd;
-      }) || [];
+      return months.map((month, index) => {
+        const monthStart = month;
+        const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+        const label = format(month, 'MMM');
+        
+        const periodFunded = fundedLeads?.filter((lead) => {
+          const convertedAt = lead.converted_at ? new Date(lead.converted_at) : null;
+          return convertedAt && convertedAt >= monthStart && convertedAt <= monthEnd;
+        }) || [];
 
-      const revenue = monthlyFunded.reduce(
-        (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02,
-        0
-      );
+        const revenue = periodFunded.reduce(
+          (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02,
+          0
+        );
 
-      runningTotal += revenue;
-      const target = 125000; // $1.5M / 12 months
-      const vsTarget = Math.round((revenue / target) * 100);
-      const growth = index > 0 && previousRevenue > 0 
-        ? Math.round(((revenue - previousRevenue) / previousRevenue) * 100) 
-        : 0;
-      const avgDealSize = monthlyFunded.length > 0 ? revenue / monthlyFunded.length : 0;
-      
-      previousRevenue = revenue;
+        runningTotal += revenue;
+        const target = 125000; // $1.5M / 12 months
+        const vsTarget = Math.round((revenue / target) * 100);
+        const growth = index > 0 && previousRevenue > 0 
+          ? Math.round(((revenue - previousRevenue) / previousRevenue) * 100) 
+          : 0;
+        const avgDealSize = periodFunded.length > 0 ? revenue / periodFunded.length : 0;
+        
+        previousRevenue = revenue;
 
-      return {
-        month: monthLabel,
-        revenue,
-        target,
-        deals: monthlyFunded.length,
-        vsTarget,
-        cumulative: runningTotal,
-        growth,
-        avgDealSize,
-        meetsTarget: revenue >= target,
-      };
-    });
-  }, [fundedLeads, now]);
+        return {
+          label,
+          revenue,
+          target,
+          deals: periodFunded.length,
+          vsTarget,
+          cumulative: runningTotal,
+          growth,
+          avgDealSize,
+          meetsTarget: revenue >= target,
+        };
+      });
+    } else {
+      // Daily data for MTD view
+      const monthStart = startOfMonth(now);
+      const days = eachDayOfInterval({
+        start: monthStart,
+        end: now,
+      });
 
-  // Derived chart stats
+      let runningTotal = 0;
+      let previousRevenue = 0;
+      const dailyTarget = 125000 / 30; // ~$4.17K per day
+
+      return days.map((day, index) => {
+        const label = format(day, 'd');
+        const dayStart = day;
+        const dayEnd = endOfDay(day);
+        
+        const dayFunded = fundedLeads?.filter((lead) => {
+          const convertedAt = lead.converted_at ? new Date(lead.converted_at) : null;
+          return convertedAt && convertedAt >= dayStart && convertedAt <= dayEnd;
+        }) || [];
+
+        const revenue = dayFunded.reduce(
+          (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02,
+          0
+        );
+
+        runningTotal += revenue;
+        const growth = index > 0 && previousRevenue > 0 
+          ? Math.round(((revenue - previousRevenue) / previousRevenue) * 100) 
+          : 0;
+        const avgDealSize = dayFunded.length > 0 ? revenue / dayFunded.length : 0;
+        
+        previousRevenue = revenue;
+
+        return {
+          label,
+          revenue,
+          target: dailyTarget,
+          deals: dayFunded.length,
+          vsTarget: Math.round((revenue / dailyTarget) * 100),
+          cumulative: runningTotal,
+          growth,
+          avgDealSize,
+          meetsTarget: revenue >= dailyTarget,
+        };
+      });
+    }
+  }, [fundedLeads, now, chartPeriod]);
+
+  // Derived chart stats based on chartPeriod
   const chartStats = useMemo(() => {
-    const activeMonths = monthlyRevenueData.filter(m => m.revenue > 0);
-    const totalDeals = monthlyRevenueData.reduce((sum, m) => sum + m.deals, 0);
-    const ytdTotal = monthlyRevenueData.reduce((sum, m) => sum + m.revenue, 0);
-    const avgMonthly = activeMonths.length > 0 ? ytdTotal / activeMonths.length : 0;
-    const avgDealSize = totalDeals > 0 ? ytdTotal / totalDeals : 0;
-    const bestMonth = monthlyRevenueData.reduce((best, m) => 
+    const activePoints = chartRevenueData.filter(m => m.revenue > 0);
+    const totalDeals = chartRevenueData.reduce((sum, m) => sum + m.deals, 0);
+    const periodTotal = chartRevenueData.reduce((sum, m) => sum + m.revenue, 0);
+    const avgPerPoint = activePoints.length > 0 ? periodTotal / activePoints.length : 0;
+    const avgDealSize = totalDeals > 0 ? periodTotal / totalDeals : 0;
+    const bestPoint = chartRevenueData.reduce((best, m) => 
       m.revenue > best.revenue ? m : best, 
-      { month: '-', revenue: 0 }
+      { label: '-', revenue: 0 }
     );
-    const monthsAboveTarget = monthlyRevenueData.filter(m => m.meetsTarget).length;
+    const pointsAboveTarget = chartRevenueData.filter(m => m.meetsTarget).length;
+    
+    // Goal progress depends on period
+    const annualTarget = 1500000;
+    const monthlyTarget = 125000;
+    const goalProgress = chartPeriod === 'ytd' 
+      ? Math.round((periodTotal / annualTarget) * 100)
+      : Math.round((periodTotal / monthlyTarget) * 100);
     
     return {
-      activeMonths: activeMonths.length,
+      activePoints: activePoints.length,
       totalDeals,
-      ytdTotal,
-      avgMonthly,
+      periodTotal,
+      avgPerPoint,
       avgDealSize,
-      bestMonth,
-      monthsAboveTarget,
-      goalProgress: Math.round((ytdTotal / 1500000) * 100),
+      bestPoint,
+      pointsAboveTarget,
+      goalProgress,
     };
-  }, [monthlyRevenueData]);
+  }, [chartRevenueData, chartPeriod]);
 
   // Pipeline stage data
   const pipelineStageData = useMemo(() => {
@@ -430,7 +488,7 @@ const EvansPage = () => {
   }, [fundedLeads]);
 
   const annualTarget = 1500000; // $1.5M goal
-  const ytdRevenue = monthlyRevenueData.reduce((sum, m) => sum + m.revenue, 0);
+  const ytdRevenue = chartStats.periodTotal;
 
   const getPriorityColor = (priority: string | null) => {
     switch (priority) {
@@ -538,7 +596,17 @@ const EvansPage = () => {
               {/* Revenue Chart - Line Chart with Cumulative Trend */}
               <div className="w-full lg:w-[520px] bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-white/60 font-medium uppercase tracking-wider">Cumulative Revenue</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-white/60 font-medium uppercase tracking-wider">
+                      {chartPeriod === 'ytd' ? 'Cumulative Revenue' : 'Daily Revenue (MTD)'}
+                    </p>
+                    <Tabs value={chartPeriod} onValueChange={(v) => setChartPeriod(v as TimePeriod)}>
+                      <TabsList className="bg-white/10 h-6">
+                        <TabsTrigger value="mtd" className="text-[10px] px-2 py-0.5 h-5 text-white/70 data-[state=active]:bg-white/20 data-[state=active]:text-white">MTD</TabsTrigger>
+                        <TabsTrigger value="ytd" className="text-[10px] px-2 py-0.5 h-5 text-white/70 data-[state=active]:bg-white/20 data-[state=active]:text-white">YTD</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
                   <div className="flex items-center gap-3 text-[10px] text-white/50">
                     <span className="flex items-center gap-1">
                       <span className="w-3 h-0.5 bg-white/90 rounded" /> Actual
@@ -551,7 +619,7 @@ const EvansPage = () => {
                 <div className="h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart 
-                      data={monthlyRevenueData}
+                      data={chartRevenueData}
                       margin={{ top: 10, right: 20, bottom: 5, left: 10 }}
                     >
                       <defs>
@@ -566,10 +634,11 @@ const EvansPage = () => {
                         vertical={false}
                       />
                       <XAxis 
-                        dataKey="month"
+                        dataKey="label"
                         axisLine={false} 
                         tickLine={false} 
                         tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 11 }}
+                        interval={chartPeriod === 'mtd' ? 2 : 0}
                       />
                       <YAxis 
                         axisLine={false} 
@@ -581,8 +650,8 @@ const EvansPage = () => {
                       {/* Trend line (linear projection) */}
                       <ReferenceLine 
                         segment={[
-                          { x: monthlyRevenueData[0]?.month, y: 0 },
-                          { x: monthlyRevenueData[monthlyRevenueData.length - 1]?.month, y: chartStats.ytdTotal }
+                          { x: chartRevenueData[0]?.label, y: 0 },
+                          { x: chartRevenueData[chartRevenueData.length - 1]?.label, y: chartStats.periodTotal }
                         ]}
                         stroke="rgba(147, 197, 253, 0.5)" 
                         strokeDasharray="6 4" 
@@ -651,19 +720,25 @@ const EvansPage = () => {
                 {/* Professional Stats Footer */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/10">
                   <div>
-                    <p className="text-[10px] text-white/50 uppercase tracking-wide">YTD Revenue</p>
-                    <p className="text-lg font-bold">{formatCurrency(chartStats.ytdTotal)}</p>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wide">
+                      {chartPeriod === 'ytd' ? 'YTD Revenue' : 'MTD Revenue'}
+                    </p>
+                    <p className="text-lg font-bold">{formatCurrency(chartStats.periodTotal)}</p>
                     <p className="text-xs text-white/60">{chartStats.goalProgress}% of goal</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-white/50 uppercase tracking-wide">Monthly Avg</p>
-                    <p className="text-lg font-bold">{formatCurrency(chartStats.avgMonthly)}</p>
-                    <p className="text-xs text-white/60">{chartStats.activeMonths} active months</p>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wide">
+                      {chartPeriod === 'ytd' ? 'Monthly Avg' : 'Daily Avg'}
+                    </p>
+                    <p className="text-lg font-bold">{formatCurrency(chartStats.avgPerPoint)}</p>
+                    <p className="text-xs text-white/60">{chartStats.activePoints} active {chartPeriod === 'ytd' ? 'months' : 'days'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-white/50 uppercase tracking-wide">Best Month</p>
-                    <p className="text-lg font-bold">{chartStats.bestMonth.month}</p>
-                    <p className="text-xs text-white/60">{formatCurrency(chartStats.bestMonth.revenue)}</p>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wide">
+                      {chartPeriod === 'ytd' ? 'Best Month' : 'Best Day'}
+                    </p>
+                    <p className="text-lg font-bold">{chartStats.bestPoint.label}</p>
+                    <p className="text-xs text-white/60">{formatCurrency(chartStats.bestPoint.revenue)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-white/50 uppercase tracking-wide">Deals Closed</p>
@@ -692,7 +767,7 @@ const EvansPage = () => {
           <CardContent>
             {(() => {
               // Calculate revenue per increment based on time period
-              const periodRevenue = timePeriod === 'ytd' ? ytdRevenue : monthlyRevenueData[monthlyRevenueData.length - 1]?.revenue || 0;
+              const periodRevenue = timePeriod === 'ytd' ? ytdRevenue : chartRevenueData[chartRevenueData.length - 1]?.cumulative || 0;
               
               // YTD calculations
               const dayOfYear = Math.floor((now.getTime() - startOfYear(now).getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -845,7 +920,7 @@ const EvansPage = () => {
             <CardContent>
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyRevenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <AreaChart data={chartRevenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
@@ -853,7 +928,7 @@ const EvansPage = () => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
                     <YAxis 
                       tick={{ fontSize: 12 }} 
                       tickLine={false} 
