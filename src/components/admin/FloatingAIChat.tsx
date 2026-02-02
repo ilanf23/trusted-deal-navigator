@@ -292,6 +292,7 @@ export const FloatingAIChat = () => {
           body: JSON.stringify({ 
             messages: newMessages,
             evanId: evanTeamMember?.id,
+            userName: evanTeamMember?.name || 'Evan',
             file: fileToSend,
           }),
           signal: abortController.signal,
