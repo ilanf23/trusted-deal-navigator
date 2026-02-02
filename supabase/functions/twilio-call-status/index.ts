@@ -10,8 +10,62 @@ function okTwiML() {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<Response></Response>`;
 }
 
+// Add speaker labels using GPT
+async function addSpeakerLabels(rawTranscript: string, direction: string): Promise<string> {
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+  if (!OPENAI_API_KEY) return rawTranscript;
+
+  const isInbound = direction === 'inbound';
+  const party1 = isInbound ? 'Caller' : 'Evan';
+  const party2 = isInbound ? 'Evan' : 'Caller';
+
+  const systemPrompt = `You are a transcript formatter. Given a raw phone call transcript, your job is to:
+1. Identify which parts were spoken by each party
+2. Format it as a clean dialogue with speaker labels
+
+The call is ${isInbound ? 'an inbound call (customer called Evan)' : 'an outbound call (Evan called the customer)'}.
+- "${party1}" is the person who initiated the call
+- "${party2}" is the other party
+
+Rules:
+- Use "${party1}:" and "${party2}:" as speaker labels
+- Each speaker's turn should be on its own line
+- Infer speakers based on context: greetings, questions vs answers, professional vs casual tone
+- Keep the original words, just add speaker labels and line breaks
+- Do NOT add any commentary, just return the formatted transcript`;
+
+  try {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: rawTranscript }
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!resp.ok) {
+      console.error('GPT speaker labeling failed');
+      return rawTranscript;
+    }
+
+    const json = await resp.json();
+    return json.choices?.[0]?.message?.content || rawTranscript;
+  } catch (error) {
+    console.error('Speaker labeling error:', error);
+    return rawTranscript;
+  }
+}
+
 // Transcribe audio using OpenAI Whisper
-async function transcribeAudio(audioUrl: string): Promise<string | null> {
+async function transcribeAudio(audioUrl: string, direction: string): Promise<string | null> {
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID');
   const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN');
@@ -69,9 +123,18 @@ async function transcribeAudio(audioUrl: string): Promise<string | null> {
     }
     
     const result = await whisperResponse.json();
-    console.log('Transcription completed, length:', result.text?.length || 0);
+    const rawTranscript = result.text || null;
+    console.log('Transcription completed, length:', rawTranscript?.length || 0);
     
-    return result.text || null;
+    // Add speaker labels
+    if (rawTranscript) {
+      console.log('Adding speaker labels...');
+      const labeledTranscript = await addSpeakerLabels(rawTranscript, direction);
+      console.log('Speaker labeling completed');
+      return labeledTranscript;
+    }
+    
+    return rawTranscript;
   } catch (error) {
     console.error('Transcription error:', error);
     return null;
@@ -127,8 +190,17 @@ Deno.serve(async (req) => {
       
       const mp3Url = `${recordingUrl}.mp3`;
       
-      // Transcribe the audio
-      const transcript = await transcribeAudio(mp3Url);
+      // Get call direction from active_calls
+      const { data: activeCallForDir } = await supabase
+        .from('active_calls')
+        .select('direction')
+        .eq('call_sid', callSid)
+        .maybeSingle();
+      
+      const callDirection = activeCallForDir?.direction || 'inbound';
+      
+      // Transcribe the audio with speaker labels
+      const transcript = await transcribeAudio(mp3Url, callDirection);
       
       // Find the communication by call_sid
       const { data: comm, error: findError } = await supabase
