@@ -23,6 +23,8 @@ import {
   Line,
   Area,
   AreaChart,
+  ComposedChart,
+  ReferenceLine,
 } from 'recharts';
 import { 
   TrendingUp, 
@@ -242,14 +244,17 @@ const EvansPage = () => {
     };
   }, [leadsData, pipelineData, fundedLeads]);
 
-  // Monthly revenue chart data
+  // Monthly revenue chart data with enhanced metrics
   const monthlyRevenueData = useMemo(() => {
     const months = eachMonthOfInterval({
       start: startOfYear(now),
       end: now,
     });
 
-    return months.map((month) => {
+    let runningTotal = 0;
+    let previousRevenue = 0;
+
+    return months.map((month, index) => {
       const monthStart = month;
       const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
       const monthLabel = format(month, 'MMM');
@@ -264,14 +269,54 @@ const EvansPage = () => {
         0
       );
 
+      runningTotal += revenue;
+      const target = 125000; // $1.5M / 12 months
+      const vsTarget = Math.round((revenue / target) * 100);
+      const growth = index > 0 && previousRevenue > 0 
+        ? Math.round(((revenue - previousRevenue) / previousRevenue) * 100) 
+        : 0;
+      const avgDealSize = monthlyFunded.length > 0 ? revenue / monthlyFunded.length : 0;
+      
+      previousRevenue = revenue;
+
       return {
         month: monthLabel,
         revenue,
-        target: 125000, // $1.5M / 12 months
+        target,
         deals: monthlyFunded.length,
+        vsTarget,
+        cumulative: runningTotal,
+        growth,
+        avgDealSize,
+        meetsTarget: revenue >= target,
       };
     });
   }, [fundedLeads, now]);
+
+  // Derived chart stats
+  const chartStats = useMemo(() => {
+    const activeMonths = monthlyRevenueData.filter(m => m.revenue > 0);
+    const totalDeals = monthlyRevenueData.reduce((sum, m) => sum + m.deals, 0);
+    const ytdTotal = monthlyRevenueData.reduce((sum, m) => sum + m.revenue, 0);
+    const avgMonthly = activeMonths.length > 0 ? ytdTotal / activeMonths.length : 0;
+    const avgDealSize = totalDeals > 0 ? ytdTotal / totalDeals : 0;
+    const bestMonth = monthlyRevenueData.reduce((best, m) => 
+      m.revenue > best.revenue ? m : best, 
+      { month: '-', revenue: 0 }
+    );
+    const monthsAboveTarget = monthlyRevenueData.filter(m => m.meetsTarget).length;
+    
+    return {
+      activeMonths: activeMonths.length,
+      totalDeals,
+      ytdTotal,
+      avgMonthly,
+      avgDealSize,
+      bestMonth,
+      monthsAboveTarget,
+      goalProgress: Math.round((ytdTotal / 1500000) * 100),
+    };
+  }, [monthlyRevenueData]);
 
   // Pipeline stage data
   const pipelineStageData = useMemo(() => {
@@ -490,23 +535,34 @@ const EvansPage = () => {
                 </div>
               </div>
               
-              {/* Revenue Chart - Horizontal */}
-              <div className="w-full lg:w-[450px] bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              {/* Revenue Chart - Professional Horizontal with Target Line */}
+              <div className="w-full lg:w-[500px] bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-white/60 font-medium uppercase tracking-wider">Monthly Revenue</p>
-                  <p className="text-xs text-white/60">{monthlyRevenueData.filter(m => m.revenue > 0).length} active months</p>
+                  <p className="text-xs text-white/60 font-medium uppercase tracking-wider">Monthly Revenue vs Target</p>
+                  <div className="flex items-center gap-3 text-[10px] text-white/50">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-white/80" /> Revenue
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-4 h-0.5 border-t border-dashed border-orange-400" /> $125K Target
+                    </span>
+                  </div>
                 </div>
-                <div className="h-[200px]">
+                <div className="h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart 
+                    <ComposedChart 
                       data={monthlyRevenueData} 
                       layout="vertical"
-                      margin={{ top: 5, right: 30, bottom: 5, left: 35 }}
+                      margin={{ top: 5, right: 40, bottom: 5, left: 35 }}
                     >
                       <defs>
-                        <linearGradient id="heroBarGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
-                          <stop offset="100%" stopColor="rgba(255,255,255,0.9)" />
+                        <linearGradient id="heroBarMeetsTarget" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="rgba(74, 222, 128, 0.7)" />
+                          <stop offset="100%" stopColor="rgba(74, 222, 128, 0.95)" />
+                        </linearGradient>
+                        <linearGradient id="heroBarBelowTarget" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
+                          <stop offset="100%" stopColor="rgba(255,255,255,0.75)" />
                         </linearGradient>
                       </defs>
                       <XAxis 
@@ -515,6 +571,7 @@ const EvansPage = () => {
                         tickLine={false} 
                         tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10 }}
                         tickFormatter={(value) => value >= 1000 ? `$${(value/1000).toFixed(0)}K` : `$${value}`}
+                        domain={[0, 'dataMax']}
                       />
                       <YAxis 
                         type="category"
@@ -524,33 +581,94 @@ const EvansPage = () => {
                         tick={{ fill: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: 500 }}
                         width={30}
                       />
+                      <ReferenceLine 
+                        x={125000} 
+                        stroke="rgba(251, 146, 60, 0.8)" 
+                        strokeDasharray="4 3" 
+                        strokeWidth={2}
+                      />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: 'rgba(0,0,0,0.85)', 
-                          border: 'none', 
-                          borderRadius: '8px',
+                          backgroundColor: 'rgba(0,0,0,0.9)', 
+                          border: '1px solid rgba(255,255,255,0.1)', 
+                          borderRadius: '10px',
                           color: 'white',
-                          padding: '10px 14px'
+                          padding: '12px 16px',
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
                         }}
-                        formatter={(value: number) => [formatCurrencyFull(value), 'Revenue']}
-                        labelStyle={{ color: 'rgba(255,255,255,0.7)', marginBottom: '4px' }}
-                        cursor={{ fill: 'rgba(255,255,255,0.1)' }}
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="text-sm">
+                                <p className="font-semibold text-white mb-2">{label}</p>
+                                <div className="space-y-1.5">
+                                  <p className="flex justify-between gap-4">
+                                    <span className="text-white/60">Revenue:</span>
+                                    <span className="font-semibold">{formatCurrencyFull(data.revenue)}</span>
+                                  </p>
+                                  <p className="flex justify-between gap-4">
+                                    <span className="text-white/60">Deals:</span>
+                                    <span className="font-medium">{data.deals}</span>
+                                  </p>
+                                  <p className="flex justify-between gap-4">
+                                    <span className="text-white/60">vs Target:</span>
+                                    <span className={`font-medium ${data.vsTarget >= 100 ? 'text-green-400' : 'text-orange-400'}`}>
+                                      {data.vsTarget}%
+                                    </span>
+                                  </p>
+                                  {data.growth !== 0 && (
+                                    <p className="flex justify-between gap-4">
+                                      <span className="text-white/60">Growth:</span>
+                                      <span className={`font-medium ${data.growth >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {data.growth > 0 ? '+' : ''}{data.growth}%
+                                      </span>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                        cursor={{ fill: 'rgba(255,255,255,0.08)' }}
                       />
                       <Bar 
                         dataKey="revenue" 
-                        fill="url(#heroBarGradient)"
                         radius={[0, 4, 4, 0]}
-                        barSize={14}
-                      />
-                    </BarChart>
+                        barSize={16}
+                      >
+                        {monthlyRevenueData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`}
+                            fill={entry.meetsTarget ? 'url(#heroBarMeetsTarget)' : 'url(#heroBarBelowTarget)'}
+                          />
+                        ))}
+                      </Bar>
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
-                  <div className="text-xs text-white/60">
-                    <span className="text-white font-semibold">{formatCurrency(ytdRevenue)}</span> total YTD
+                {/* Professional Stats Footer */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/10">
+                  <div>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wide">YTD Revenue</p>
+                    <p className="text-lg font-bold">{formatCurrency(chartStats.ytdTotal)}</p>
+                    <p className="text-xs text-white/60">{chartStats.goalProgress}% of goal</p>
                   </div>
-                  <div className="text-xs text-white/60">
-                    Avg: <span className="text-white font-semibold">{formatCurrency(ytdRevenue / Math.max(1, monthlyRevenueData.filter(m => m.revenue > 0).length))}</span>/mo
+                  <div>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wide">Monthly Avg</p>
+                    <p className="text-lg font-bold">{formatCurrency(chartStats.avgMonthly)}</p>
+                    <p className="text-xs text-white/60">{chartStats.activeMonths} active months</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wide">Best Month</p>
+                    <p className="text-lg font-bold">{chartStats.bestMonth.month}</p>
+                    <p className="text-xs text-white/60">{formatCurrency(chartStats.bestMonth.revenue)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wide">Deals Closed</p>
+                    <p className="text-lg font-bold">{chartStats.totalDeals}</p>
+                    <p className="text-xs text-white/60">Avg: {formatCurrency(chartStats.avgDealSize)}</p>
                   </div>
                 </div>
               </div>
