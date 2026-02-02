@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import AdminSidebar from './AdminSidebar';
 import FloatingInbox from './FloatingInbox';
@@ -9,7 +8,9 @@ import { Menu, Moon, Sun, Undo2, Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { UndoProvider, useUndo } from '@/contexts/UndoContext';
+import { AIAssistantProvider, useAIAssistant } from '@/contexts/AIAssistantContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useState } from 'react';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -17,9 +18,9 @@ interface AdminLayoutProps {
 
 const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const [inboxOpen, setInboxOpen] = useState(false);
-  const [aiChatOpen, setAiChatOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { lastAction, isUndoing, executeUndo } = useUndo();
+  const { isOpen: aiChatOpen, setIsOpen: setAiChatOpen } = useAIAssistant();
 
   return (
     <SidebarProvider>
@@ -112,7 +113,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
         </main>
         
         <FloatingInbox isOpen={inboxOpen} onClose={() => setInboxOpen(false)} />
-        <FloatingAIChat isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
+        <FloatingAIChat />
         <AIEmailAssistant 
           isOpen={false} 
           onClose={() => {}}
@@ -128,7 +129,9 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   return (
     <UndoProvider>
-      <AdminLayoutContent>{children}</AdminLayoutContent>
+      <AIAssistantProvider>
+        <AdminLayoutContent>{children}</AdminLayoutContent>
+      </AIAssistantProvider>
     </UndoProvider>
   );
 };
