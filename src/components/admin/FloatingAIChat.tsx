@@ -344,7 +344,7 @@ export const FloatingAIChat = () => {
                         className="text-xs h-auto py-2 px-3 justify-start text-left"
                         onClick={() => handleSubmit("What leads need follow-up today?")}
                       >
-                        <span className="truncate">📋 What leads need follow-up today?</span>
+                        <span className="truncate">What leads need follow-up today?</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -352,7 +352,7 @@ export const FloatingAIChat = () => {
                         className="text-xs h-auto py-2 px-3 justify-start text-left"
                         onClick={() => handleSubmit("Summarize my pipeline status")}
                       >
-                        <span className="truncate">📊 Summarize my pipeline status</span>
+                        <span className="truncate">Summarize my pipeline status</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -360,7 +360,7 @@ export const FloatingAIChat = () => {
                         className="text-xs h-auto py-2 px-3 justify-start text-left"
                         onClick={() => handleSubmit("What are my overdue tasks?")}
                       >
-                        <span className="truncate">⏰ What are my overdue tasks?</span>
+                        <span className="truncate">What are my overdue tasks?</span>
                       </Button>
                     </div>
                   </div>
