@@ -419,7 +419,7 @@ const EvansScorecard = () => {
 
         {/* Section 1: Lead Overview */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="bg-gradient-to-br from-blue-400/25 to-blue-500/35 dark:from-blue-600/35 dark:to-blue-700/45 border-blue-300 dark:border-blue-600">
+          <Card className="bg-gradient-to-br from-blue-400/25 to-blue-500/35 dark:from-blue-600/35 dark:to-blue-700/45 border-0">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
                 <Users className="h-4 w-4" />
@@ -429,7 +429,7 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-blue-500/30 to-blue-600/40 dark:from-blue-700/40 dark:to-blue-800/50 border-blue-400 dark:border-blue-700">
+          <Card className="bg-gradient-to-br from-blue-500/30 to-blue-600/40 dark:from-blue-700/40 dark:to-blue-800/50 border-0">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
                 <UserPlus className="h-4 w-4" />
@@ -440,7 +440,7 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-blue-600/35 to-blue-700/45 dark:from-blue-800/45 dark:to-blue-900/55 border-blue-500 dark:border-blue-800">
+          <Card className="bg-gradient-to-br from-blue-600/35 to-blue-700/45 dark:from-blue-800/45 dark:to-blue-900/55 border-0">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
                 <Trophy className="h-4 w-4" />
@@ -451,7 +451,7 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-blue-700/40 to-blue-800/50 dark:from-blue-900/50 dark:to-blue-950/60 border-blue-600 dark:border-blue-800">
+          <Card className="bg-gradient-to-br from-blue-700/40 to-blue-800/50 dark:from-blue-900/50 dark:to-blue-950/60 border-0">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-blue-500 dark:text-blue-300 mb-1">
                 <Users className="h-4 w-4" />
@@ -462,7 +462,7 @@ const EvansScorecard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-blue-800/45 to-blue-900/55 dark:from-blue-950/55 dark:to-slate-900/65 border-blue-700 dark:border-blue-900">
+          <Card className="bg-gradient-to-br from-blue-800/45 to-blue-900/55 dark:from-blue-950/55 dark:to-slate-900/65 border-0">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-blue-400 dark:text-blue-300 mb-1">
                 <ArrowRightLeft className="h-4 w-4" />
