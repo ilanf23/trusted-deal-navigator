@@ -490,35 +490,44 @@ const EvansPage = () => {
                 </div>
               </div>
               
-              {/* Quarterly breakdown */}
-              <div className="grid grid-cols-4 lg:grid-cols-2 gap-2 lg:gap-3 w-full lg:w-auto">
-                {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter, index) => {
-                  const quarterTarget = annualTarget / 4;
-                  const isCurrentQuarter = Math.floor(now.getMonth() / 3) === index;
-                  const isPastQuarter = Math.floor(now.getMonth() / 3) > index;
-                  
-                  return (
-                    <div 
-                      key={quarter}
-                      className={`text-center p-3 rounded-xl transition-all ${
-                        isCurrentQuarter 
-                          ? 'bg-white/20 ring-2 ring-white/40' 
-                          : 'bg-white/10'
-                      }`}
-                    >
-                      <p className="text-xs text-white/60 mb-1">{quarter}</p>
-                      <p className="font-bold text-sm md:text-base">{formatCurrency(quarterlyRevenue[index])}</p>
-                      {isPastQuarter && (
-                        <p className={`text-[10px] mt-0.5 ${quarterlyRevenue[index] >= quarterTarget ? 'text-green-300' : 'text-amber-300'}`}>
-                          {quarterlyRevenue[index] >= quarterTarget ? '✓ Hit' : 'Missed'}
-                        </p>
-                      )}
-                      {isCurrentQuarter && (
-                        <p className="text-[10px] mt-0.5 text-white/60">Current</p>
-                      )}
-                    </div>
-                  );
-                })}
+              {/* Revenue Chart */}
+              <div className="w-full lg:w-[400px] h-[160px] bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <p className="text-xs text-white/60 mb-2 font-medium uppercase tracking-wider">Monthly Revenue</p>
+                <ResponsiveContainer width="100%" height="85%">
+                  <AreaChart data={monthlyRevenueData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                    <defs>
+                      <linearGradient id="heroRevenueGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="rgba(255,255,255,0.4)" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="rgba(255,255,255,0.1)" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis 
+                      dataKey="month" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10 }}
+                      interval={0}
+                    />
+                    <YAxis hide />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(0,0,0,0.8)', 
+                        border: 'none', 
+                        borderRadius: '8px',
+                        color: 'white'
+                      }}
+                      formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                      labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="rgba(255,255,255,0.8)" 
+                      strokeWidth={2}
+                      fill="url(#heroRevenueGradient)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </CardContent>
