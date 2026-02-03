@@ -26,6 +26,7 @@ import { format, formatDistanceToNow, differenceInDays, differenceInHours } from
 import { TaskDetailDialog } from '@/components/evan/tasks/TaskDetailDialog';
 import { Task } from '@/components/evan/tasks/types';
 import { LeadTodosSection } from '@/components/admin/LeadTodosSection';
+import { FormattedPhoneInput } from '@/components/admin/FormattedPhoneInput';
 
 // Helper to format activity timestamps - show time if <24h, otherwise show date and time
 const formatActivityTimestamp = (date: Date | string) => {
@@ -2653,16 +2654,9 @@ Commercial Lending X`,
                     {lead.phone && phones.length === 0 && (
                       <div className="flex items-center justify-between py-1 group">
                         <div className="flex-1">
-                          <Input
-                            defaultValue={lead.phone}
-                            onBlur={(e) => {
-                              const newValue = e.target.value.trim();
-                              if (newValue !== lead.phone && newValue) {
-                                updateLead.mutate({ phone: newValue });
-                              }
-                            }}
-                            className="h-7 text-sm border-0 border-b border-transparent hover:border-border focus:border-blue-600 rounded-none px-0 focus-visible:ring-0"
-                            placeholder="Phone number"
+                          <FormattedPhoneInput
+                            value={lead.phone}
+                            onSave={(newValue) => updateLead.mutate({ phone: newValue })}
                           />
                           <p className="text-xs text-muted-foreground">Primary</p>
                         </div>
@@ -2671,16 +2665,9 @@ Commercial Lending X`,
                     {phones.map(p => (
                       <div key={p.id} className="flex items-center justify-between py-1 group">
                         <div className="flex-1">
-                          <Input
-                            defaultValue={p.phone_number}
-                            onBlur={(e) => {
-                              const newValue = e.target.value.trim();
-                              if (newValue !== p.phone_number && newValue) {
-                                updatePhone.mutate({ id: p.id, phone_number: newValue });
-                              }
-                            }}
-                            className="h-7 text-sm border-0 border-b border-transparent hover:border-border focus:border-blue-600 rounded-none px-0 focus-visible:ring-0"
-                            placeholder="Phone number"
+                          <FormattedPhoneInput
+                            value={p.phone_number}
+                            onSave={(newValue) => updatePhone.mutate({ id: p.id, phone_number: newValue })}
                           />
                           <p className="text-xs text-muted-foreground capitalize">{p.phone_type}</p>
                         </div>
