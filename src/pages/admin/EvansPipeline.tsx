@@ -1705,18 +1705,23 @@ const EvansPipeline = () => {
                                           </HoverCardContent>
                                         </HoverCard>
                                       )}
-                                      {lead.email && (
-                                        <HoverCard openDelay={200} closeDelay={100}>
-                                          <HoverCardTrigger asChild>
-                                            <button
-                                              onClick={(e) => handleEmail(e, lead)}
-                                              className="inline-flex items-center gap-1 h-6 px-2 rounded bg-blue-50/50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200/50 dark:border-blue-700/50 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
-                                            >
-                                              <Mail className="h-3 w-3 text-blue-500/70 dark:text-blue-400" />
-                                              <span className="text-[11px] font-medium text-blue-600/70 dark:text-blue-400">Email</span>
-                                            </button>
-                                          </HoverCardTrigger>
-                                          <HoverCardContent side="top" className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                      <HoverCard openDelay={200} closeDelay={100}>
+                                        <HoverCardTrigger asChild>
+                                          <button
+                                            onClick={(e) => lead.email ? handleEmail(e, lead) : e.stopPropagation()}
+                                            disabled={!lead.email}
+                                            className={`inline-flex items-center gap-1 h-6 px-2 rounded border transition-colors ${
+                                              lead.email 
+                                                ? 'bg-blue-50/50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 border-blue-200/50 dark:border-blue-700/50 hover:border-blue-300 dark:hover:border-blue-600'
+                                                : 'bg-muted/30 border-muted-foreground/10 opacity-50 cursor-not-allowed'
+                                            }`}
+                                          >
+                                            <Mail className={`h-3 w-3 ${lead.email ? 'text-blue-500/70 dark:text-blue-400' : 'text-muted-foreground/50'}`} />
+                                            <span className={`text-[11px] font-medium ${lead.email ? 'text-blue-600/70 dark:text-blue-400' : 'text-muted-foreground/50'}`}>Email</span>
+                                          </button>
+                                        </HoverCardTrigger>
+                                        <HoverCardContent side="top" className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                          {lead.email ? (
                                             <div className="space-y-2">
                                               <div className="flex items-center gap-2">
                                                 <Mail className="h-4 w-4 text-[#0066FF]" />
@@ -1742,9 +1747,19 @@ const EvansPipeline = () => {
                                                 <span className="text-xs text-muted-foreground">Click to compose email</span>
                                               </div>
                                             </div>
-                                          </HoverCardContent>
-                                        </HoverCard>
-                                      )}
+                                          ) : (
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <Mail className="h-4 w-4 text-muted-foreground" />
+                                                <span className="text-sm font-medium text-muted-foreground">No email on file</span>
+                                              </div>
+                                              <p className="text-xs text-muted-foreground">
+                                                Add an email address to this contact to enable email actions.
+                                              </p>
+                                            </div>
+                                          )}
+                                        </HoverCardContent>
+                                      </HoverCard>
                                       {!lead.phone && !lead.email && <span className="text-slate-300 text-xs">—</span>}
                                     </div>
                                   );

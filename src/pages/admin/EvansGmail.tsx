@@ -660,7 +660,7 @@ const EvansGmail = () => {
             const recipientEmail = lead.email || '';
             
             if (!recipientEmail) {
-              toast.error('Lead has no email address');
+              toast.error('Contact has no email address');
               clearComposeParams();
               return;
             }
@@ -702,7 +702,7 @@ const EvansGmail = () => {
               setIsGeneratingEmail(false);
             }
           } else {
-            toast.error('Lead not found');
+            toast.error('Contact not found');
             clearComposeParams();
           }
         } else if (template) {
