@@ -72,6 +72,9 @@ export const CompletedTasksSection = ({
 
   return (
     <div className="mt-8">
+      {/* Thick Divider Line */}
+      <div className="h-1 bg-gradient-to-r from-transparent via-border to-transparent mb-6" />
+      
       {/* Section Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
