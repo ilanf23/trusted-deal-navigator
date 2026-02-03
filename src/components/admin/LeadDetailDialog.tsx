@@ -1935,7 +1935,7 @@ Commercial Lending X`,
                   </TabsContent>
 
                   {/* Emails Tab */}
-                  <TabsContent value="emails" className="m-0">
+                  <TabsContent value="emails" className="m-0 h-[calc(90vh-200px)] overflow-hidden">
                     {gmailEmailsLoading ? (
                       <div className="flex items-center justify-center py-12">
                         <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
@@ -1943,7 +1943,7 @@ Commercial Lending X`,
                       </div>
                     ) : selectedThreadId ? (
                       // Thread Detail View
-                      <div className="flex flex-col h-full">
+                      <div className="flex flex-col h-full overflow-hidden">
                         {/* Thread Header */}
                         <div className="flex items-center gap-2 p-3 border-b bg-muted/50">
                           <Button 
@@ -1960,7 +1960,7 @@ Commercial Lending X`,
                           </span>
                         </div>
                         {/* Thread Messages */}
-                        <ScrollArea className="flex-1 h-[calc(90vh-280px)]">
+                        <ScrollArea className="flex-1 min-h-0">
                           <div className="p-4 space-y-4">
                             {mockThreadMessages[selectedThreadId] ? (
                               mockThreadMessages[selectedThreadId].map((msg, index) => {
