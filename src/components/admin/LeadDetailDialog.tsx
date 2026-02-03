@@ -1384,10 +1384,16 @@ Commercial Lending X`,
   const lastInteractionDate = communications.length > 0 ? communications[0].created_at : null;
   const nextDueTask = tasks.find(t => t.status !== 'completed' && t.due_date);
 
-  // Combine activities for timeline
+  // Combine activities for timeline (including emails)
   const timelineItems = [
     ...activities.map(a => ({ ...a, _type: 'activity' as const })),
-    ...communications.map(c => ({ ...c, _type: 'communication' as const, activity_type: c.communication_type, title: null, content: null }))
+    ...communications.map(c => ({ ...c, _type: 'communication' as const, activity_type: c.communication_type, title: null, content: null })),
+    ...allEmailThreads.map((thread: any) => ({ 
+      ...thread, 
+      _type: 'email' as const, 
+      id: thread.id || thread.thread_id,
+      created_at: thread.last_message_date || new Date().toISOString(),
+    }))
   ]
     .filter(item => {
       if (!activitySearch.trim()) return true;
@@ -1399,13 +1405,19 @@ Commercial Lending X`,
           activity.content?.toLowerCase().includes(searchLower) ||
           activity.activity_type?.toLowerCase().includes(searchLower)
         );
-      } else {
+      } else if (item._type === 'communication') {
         const comm = item as Communication & { _type: 'communication' };
         return (
           comm.communication_type?.toLowerCase().includes(searchLower) ||
           comm.content?.toLowerCase().includes(searchLower) ||
           comm.transcript?.toLowerCase().includes(searchLower) ||
           comm.direction?.toLowerCase().includes(searchLower)
+        );
+      } else {
+        // Email thread
+        return (
+          item.subject?.toLowerCase().includes(searchLower) ||
+          item.snippet?.toLowerCase().includes(searchLower)
         );
       }
     })
@@ -1650,14 +1662,25 @@ Commercial Lending X`,
                       </div>
                     ) : (
                       timelineItems.map((item, idx) => (
-                        <div key={item.id} className="flex items-start gap-3 py-3 border-b border-border hover:bg-muted/50 cursor-pointer">
+                        <div 
+                          key={item.id} 
+                          className="flex items-start gap-3 py-3 border-b border-border hover:bg-muted/50 cursor-pointer"
+                          onClick={() => {
+                            if (item._type === 'email') {
+                              setActiveTab('emails');
+                              setSelectedThreadId(item.thread_id);
+                            }
+                          }}
+                        >
                           <div className="w-5 h-5 mt-1">
                             {item._type === 'communication' ? (
                               item.direction === 'inbound' ? 
                                 <PhoneIncoming className="w-5 h-5 text-green-600" /> : 
                                 <PhoneOutgoing className="w-5 h-5 text-blue-600" />
+                            ) : item._type === 'email' ? (
+                              <Mail className="w-5 h-5 text-blue-500" />
                             ) : (
-                              <Mail className="w-5 h-5 text-slate-400" />
+                              <MessageSquare className="w-5 h-5 text-slate-400" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1669,6 +1692,20 @@ Commercial Lending X`,
                                     <p className="font-medium text-sm text-foreground mt-0.5">
                                       {(item as LeadActivity).content}
                                     </p>
+                                  </>
+                                ) : item._type === 'email' ? (
+                                  <>
+                                    <p className="font-medium text-sm text-foreground">
+                                      {item.subject || '(No Subject)'}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground truncate mt-0.5">
+                                      {item.snippet || 'Email thread'}
+                                    </p>
+                                    {item.messageCount > 1 && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {item.messageCount} messages
+                                      </span>
+                                    )}
                                   </>
                                 ) : (
                                   <>
