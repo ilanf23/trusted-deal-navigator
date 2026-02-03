@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import RecipientAutocomplete from '@/components/admin/inbox/RecipientAutocomplete';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -413,17 +414,13 @@ Saint Augustine, FL 32092</strong><br>
           </div>
         </div>
 
-        {/* Recipients Field - Rounded pill style */}
+        {/* Recipients Field - Rounded pill style with autocomplete */}
         <div className="px-5 pt-4 pb-2">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Recipients"
-              value={to}
-              onChange={(e) => onToChange(e.target.value)}
-              className="w-full text-sm bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-all"
-            />
-          </div>
+          <RecipientAutocomplete
+            value={to}
+            onChange={onToChange}
+            placeholder="Recipients"
+          />
         </div>
 
         {/* Subject Field - Rounded pill style */}
