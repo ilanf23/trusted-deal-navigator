@@ -6,6 +6,7 @@ import { TaskTableView } from './TaskTableView';
 import { TaskKanbanView } from './TaskKanbanView';
 import { TaskTimelineView } from './TaskTimelineView';
 import { TaskDetailDialog } from './TaskDetailDialog';
+import { CompletedTasksSection } from './CompletedTasksSection';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -558,17 +559,27 @@ export const TaskWorkspace = () => {
       {/* View Content */}
       <div className="min-h-[500px]">
         {viewMode === 'table' && (
-          <TaskTableView
-            tasks={filteredTasks}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-            onAddTask={handleAddTask}
-            onOpenDetail={setSelectedTask}
-            selectedTasks={selectedTasks}
-            onToggleSelect={toggleTaskSelection}
-            fadingTasks={fadingTasks}
-            onComposeEmail={handleComposeEmail}
-          />
+          <>
+            <TaskTableView
+              tasks={filteredTasks}
+              onUpdateTask={handleUpdateTask}
+              onDeleteTask={handleDeleteTask}
+              onAddTask={handleAddTask}
+              onOpenDetail={setSelectedTask}
+              selectedTasks={selectedTasks}
+              onToggleSelect={toggleTaskSelection}
+              fadingTasks={fadingTasks}
+              onComposeEmail={handleComposeEmail}
+            />
+            
+            {/* Completed Tasks Section - only in table view */}
+            <CompletedTasksSection
+              tasks={tasks}
+              onUpdateTask={handleUpdateTask}
+              onDeleteTask={handleDeleteTask}
+              onOpenDetail={setSelectedTask}
+            />
+          </>
         )}
 
         {viewMode === 'kanban' && (
@@ -579,7 +590,6 @@ export const TaskWorkspace = () => {
             onOpenDetail={setSelectedTask}
           />
         )}
-
 
         {viewMode === 'timeline' && (
           <TaskTimelineView
