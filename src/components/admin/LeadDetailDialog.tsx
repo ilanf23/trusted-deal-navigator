@@ -1960,7 +1960,7 @@ Commercial Lending X`,
                           </span>
                         </div>
                         {/* Thread Messages */}
-                        <ScrollArea className="flex-1 max-h-[400px]">
+                        <ScrollArea className="flex-1 h-[calc(90vh-280px)]">
                           <div className="p-4 space-y-4">
                             {mockThreadMessages[selectedThreadId] ? (
                               mockThreadMessages[selectedThreadId].map((msg, index) => {
@@ -2020,7 +2020,7 @@ Commercial Lending X`,
                       </div>
                     ) : (
                       // Thread List View
-                      <ScrollArea className="max-h-[450px]">
+                      <ScrollArea className="h-[calc(90vh-280px)]">
                         <div className="divide-y">
                           {allEmailThreads.map((thread: any) => (
                             <div
