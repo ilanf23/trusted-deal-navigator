@@ -1289,9 +1289,9 @@ Commercial Lending X`,
     },
   });
 
-  // Update lead core fields (name, company, etc.)
+  // Update lead core fields (name, company, email, phone, etc.)
   const updateLead = useMutation({
-    mutationFn: async (updates: { name?: string; company_name?: string | null }) => {
+    mutationFn: async (updates: { name?: string; company_name?: string | null; email?: string | null; phone?: string | null }) => {
       if (!lead) return;
       const { error } = await supabase.from('leads').update(updates).eq('id', lead.id);
       if (error) throw error;
@@ -1301,6 +1301,36 @@ Commercial Lending X`,
       queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
       onLeadUpdated?.();
       toast({ title: 'Lead updated' });
+    },
+  });
+
+  // Update phone in lead_phones table
+  const updatePhone = useMutation({
+    mutationFn: async ({ id, phone_number, phone_type }: { id: string; phone_number?: string; phone_type?: string }) => {
+      const updates: { phone_number?: string; phone_type?: string } = {};
+      if (phone_number !== undefined) updates.phone_number = phone_number;
+      if (phone_type !== undefined) updates.phone_type = phone_type;
+      const { error } = await supabase.from('lead_phones').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead?.id] });
+      toast({ title: 'Phone updated' });
+    },
+  });
+
+  // Update email in lead_emails table
+  const updateEmail = useMutation({
+    mutationFn: async ({ id, email, email_type }: { id: string; email?: string; email_type?: string }) => {
+      const updates: { email?: string; email_type?: string } = {};
+      if (email !== undefined) updates.email = email;
+      if (email_type !== undefined) updates.email_type = email_type;
+      const { error } = await supabase.from('lead_emails').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] });
+      toast({ title: 'Email updated' });
     },
   });
 
@@ -2621,17 +2651,37 @@ Commercial Lending X`,
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
                     {lead.phone && phones.length === 0 && (
-                      <div className="flex items-center justify-between py-1">
-                        <div>
-                          <p className="text-sm text-foreground">{formatPhoneNumber(lead.phone)}</p>
+                      <div className="flex items-center justify-between py-1 group">
+                        <div className="flex-1">
+                          <Input
+                            defaultValue={lead.phone}
+                            onBlur={(e) => {
+                              const newValue = e.target.value.trim();
+                              if (newValue !== lead.phone && newValue) {
+                                updateLead.mutate({ phone: newValue });
+                              }
+                            }}
+                            className="h-7 text-sm border-0 border-b border-transparent hover:border-border focus:border-blue-600 rounded-none px-0 focus-visible:ring-0"
+                            placeholder="Phone number"
+                          />
                           <p className="text-xs text-muted-foreground">Primary</p>
                         </div>
                       </div>
                     )}
                     {phones.map(p => (
                       <div key={p.id} className="flex items-center justify-between py-1 group">
-                        <div>
-                          <p className="text-sm text-foreground">{formatPhoneNumber(p.phone_number)}</p>
+                        <div className="flex-1">
+                          <Input
+                            defaultValue={p.phone_number}
+                            onBlur={(e) => {
+                              const newValue = e.target.value.trim();
+                              if (newValue !== p.phone_number && newValue) {
+                                updatePhone.mutate({ id: p.id, phone_number: newValue });
+                              }
+                            }}
+                            className="h-7 text-sm border-0 border-b border-transparent hover:border-border focus:border-blue-600 rounded-none px-0 focus-visible:ring-0"
+                            placeholder="Phone number"
+                          />
                           <p className="text-xs text-muted-foreground capitalize">{p.phone_type}</p>
                         </div>
                         <Button 
@@ -2692,17 +2742,37 @@ Commercial Lending X`,
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
                     {lead.email && emails.length === 0 && (
-                      <div className="flex items-center justify-between py-1">
-                        <div>
-                          <p className="text-sm text-foreground">{lead.email}</p>
+                      <div className="flex items-center justify-between py-1 group">
+                        <div className="flex-1">
+                          <Input
+                            defaultValue={lead.email}
+                            onBlur={(e) => {
+                              const newValue = e.target.value.trim();
+                              if (newValue !== lead.email && newValue) {
+                                updateLead.mutate({ email: newValue });
+                              }
+                            }}
+                            className="h-7 text-sm border-0 border-b border-transparent hover:border-border focus:border-blue-600 rounded-none px-0 focus-visible:ring-0"
+                            placeholder="Email address"
+                          />
                           <p className="text-xs text-muted-foreground">Primary</p>
                         </div>
                       </div>
                     )}
                     {emails.map(e => (
                       <div key={e.id} className="flex items-center justify-between py-1 group">
-                        <div>
-                          <p className="text-sm text-foreground">{e.email}</p>
+                        <div className="flex-1">
+                          <Input
+                            defaultValue={e.email}
+                            onBlur={(ev) => {
+                              const newValue = ev.target.value.trim();
+                              if (newValue !== e.email && newValue) {
+                                updateEmail.mutate({ id: e.id, email: newValue });
+                              }
+                            }}
+                            className="h-7 text-sm border-0 border-b border-transparent hover:border-border focus:border-blue-600 rounded-none px-0 focus-visible:ring-0"
+                            placeholder="Email address"
+                          />
                           <p className="text-xs text-muted-foreground capitalize">{e.email_type}</p>
                         </div>
                         <Button 
