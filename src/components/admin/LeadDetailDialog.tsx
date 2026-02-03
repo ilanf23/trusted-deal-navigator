@@ -1995,11 +1995,9 @@ Commercial Lending X`,
                                         <p className="text-xs text-slate-500">To: {msg.to}</p>
                                       </div>
                                     </div>
-                                    <ScrollArea className="max-h-[300px]">
-                                      <div className="text-sm whitespace-pre-wrap leading-relaxed pl-10 pr-2">
-                                        {msg.body}
-                                      </div>
-                                    </ScrollArea>
+                                    <div className="text-sm whitespace-pre-wrap leading-relaxed pl-10">
+                                      {msg.body}
+                                    </div>
                                   </div>
                                 );
                               })
