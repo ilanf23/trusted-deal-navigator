@@ -1,3 +1,5 @@
+export type TaskType = 'call' | 'email' | 'internal';
+
 export interface Task {
   id: string;
   title: string;
@@ -12,6 +14,7 @@ export interface Task {
   tags: string[] | null;
   lead_id: string | null;
   source: string | null;
+  task_type: TaskType | null;
   lead?: {
     id: string;
     name: string;
@@ -22,6 +25,12 @@ export interface Task {
   created_at: string;
   updated_at: string;
 }
+
+export const taskTypeConfig: Record<TaskType, { label: string; icon: string; color: string }> = {
+  call: { label: 'Call', icon: 'Phone', color: '#10b981' },
+  email: { label: 'Email', icon: 'Mail', color: '#3b82f6' },
+  internal: { label: 'Internal', icon: 'User', color: '#64748b' },
+};
 
 export type TaskSource = 'all' | 'manual' | 'gmail' | 'nudge' | 'lead';
 
