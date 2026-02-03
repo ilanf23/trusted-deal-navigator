@@ -460,6 +460,17 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   }, [lead, open]);
 
   // Queries
+  // Fetch the latest lead data to ensure we have current email
+  const { data: currentLead } = useQuery({
+    queryKey: ['lead-detail', lead?.id],
+    queryFn: async () => {
+      if (!lead) return null;
+      const { data } = await supabase.from('leads').select('*').eq('id', lead.id).maybeSingle();
+      return data;
+    },
+    enabled: !!lead && open,
+  });
+
   const { data: phones = [] } = useQuery({
     queryKey: ['lead-phones', lead?.id],
     queryFn: async () => {
@@ -624,14 +635,15 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: open,
   });
 
-  // Get all email addresses for this lead
+  // Get all email addresses for this lead (use currentLead for latest data)
   const leadEmailAddresses = useMemo(() => {
-    if (!lead) return [];
+    const leadData = currentLead || lead;
+    if (!leadData) return [];
     const allEmails: string[] = [];
-    if (lead.email) allEmails.push(lead.email.toLowerCase());
+    if (leadData.email) allEmails.push(leadData.email.toLowerCase());
     emails.forEach(e => allEmails.push(e.email.toLowerCase()));
     return [...new Set(allEmails)];
-  }, [lead, emails]);
+  }, [currentLead, lead, emails]);
 
   // Fetch emails from Gmail that match lead's email addresses
   const { data: gmailEmails = [], isLoading: gmailEmailsLoading } = useQuery({
