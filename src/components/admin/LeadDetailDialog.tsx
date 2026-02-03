@@ -667,6 +667,23 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   // Mock email threads for demo leads
   const mockEmailThreadsData: Record<string, any[]> = useMemo(() => ({
+    'ilan@fridmanventures.com': [{
+      id: 'thread-ilan-1',
+      thread_id: 'thread-ilan-1',
+      subject: 'RE: Tech Startup Financing Discussion',
+      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+      snippet: 'Thanks Evan, the SBA 7(a) program sounds like a great fit for what we need...',
+      from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
+      messageCount: 4,
+    }, {
+      id: 'thread-ilan-2',
+      thread_id: 'thread-ilan-2',
+      subject: 'Office Space Documents - 2847 Lake Shore Dr',
+      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+      snippet: 'Attached are the property documents you requested for the Lake Shore Drive location.',
+      from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
+      messageCount: 2,
+    }],
     'robert.martinez@capitalventures.com': [{
       id: 'thread-mock-1',
       thread_id: 'thread-mock-1',
@@ -761,6 +778,145 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
   // Mock thread messages for detailed view
   const mockThreadMessages: Record<string, Array<{ id: string; from: string; to: string; date: string; body: string; }>> = useMemo(() => ({
+    'thread-ilan-1': [
+      {
+        id: 'msg-ilan-1-1',
+        from: 'Evan <evan@commerciallendingx.com>',
+        to: 'ilan@fridmanventures.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+        body: `Hi Ilan,
+
+Great speaking with you earlier today! I'm excited about the opportunity to help Fridman Ventures secure financing for your tech startup expansion.
+
+Based on our conversation, here's what I'm thinking for the $850K you need:
+
+SBA 7(a) PROGRAM:
+- Loan amount: $850,000
+- Estimated rate: 7.5% (Prime + 2.75%)
+- Term: 10 years
+- Down payment: 10-15%
+
+This program is ideal for your situation because it offers longer terms and lower down payments compared to conventional options. The SBA guarantee also helps us secure better rates.
+
+To get started, I'll need:
+1. Last 2 years of business tax returns
+2. Year-to-date P&L statement
+3. Personal financial statement
+4. Business plan / expansion summary
+
+Let me know if you have any questions!
+
+Best,
+Evan
+Commercial Lending X`,
+      },
+      {
+        id: 'msg-ilan-1-2',
+        from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
+        to: 'evan@commerciallendingx.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+        body: `Evan,
+
+Thanks for the detailed breakdown! The SBA 7(a) program sounds like exactly what we need. The 10-year term would give us the runway we need to scale properly.
+
+Quick questions:
+1. How long does the approval process typically take?
+2. Can we use the funds for both the office space lease and hiring?
+3. What's the prepayment situation if we want to pay it off early?
+
+I'm gathering the documents you mentioned and should have everything to you by end of week.
+
+Thanks,
+Ilan`,
+      },
+      {
+        id: 'msg-ilan-1-3',
+        from: 'Evan <evan@commerciallendingx.com>',
+        to: 'ilan@fridmanventures.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+        body: `Ilan,
+
+Great questions! Here are the answers:
+
+1. TIMELINE: Typically 45-60 days from complete application to funding. With strong financials like yours, we can sometimes expedite.
+
+2. USE OF FUNDS: Yes! SBA 7(a) is very flexible. You can use it for:
+   - Working capital (hiring, operations)
+   - Leasehold improvements
+   - Equipment purchases
+   - Debt refinancing
+
+3. PREPAYMENT: There's a prepayment penalty only in the first 3 years (5%, 3%, 1% respectively). After year 3, no penalty.
+
+Looking forward to receiving your documents. Once I have everything, I'll submit to 2-3 lenders and get you competitive term sheets within a week.
+
+Talk soon,
+Evan`,
+      },
+      {
+        id: 'msg-ilan-1-4',
+        from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
+        to: 'evan@commerciallendingx.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+        body: `Thanks Evan, the SBA 7(a) program sounds like a great fit for what we need.
+
+I've attached all the documents you requested:
+- 2024 and 2023 tax returns
+- Current P&L through January 2026
+- My personal financial statement
+- Our 5-year business plan
+
+One thing to note: we had a dip in revenue in Q2 2024 due to losing a major client, but we've since recovered and Q4 was our strongest quarter ever.
+
+Let me know if you need anything else!
+
+Best,
+Ilan`,
+      },
+    ],
+    'thread-ilan-2': [
+      {
+        id: 'msg-ilan-2-1',
+        from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
+        to: 'evan@commerciallendingx.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+        body: `Hi Evan,
+
+As discussed, I'm sending over the property information for the office space at 2847 Lake Shore Drive.
+
+Key details:
+- 3,500 sq ft Class A office space
+- Currently vacant, ready for buildout
+- Asking rent: $42/sq ft annually
+- 5-year lease with 2 renewal options
+
+The landlord is motivated and may be flexible on TI allowance. This location would be perfect for our expansion - great access to public transit and near several tech companies we partner with.
+
+Let me know what you think!
+
+Ilan`,
+      },
+      {
+        id: 'msg-ilan-2-2',
+        from: 'Evan <evan@commerciallendingx.com>',
+        to: 'ilan@fridmanventures.com',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+        body: `Ilan,
+
+This looks like a solid location! Lake Shore Drive is definitely a prime area for tech companies.
+
+I've noted the property details for our loan application. The lease terms look reasonable, and if we can negotiate a higher TI allowance, that would reduce the amount you need to borrow for buildout.
+
+A few things that would help:
+1. Draft lease agreement (when available)
+2. Buildout cost estimates
+3. Timeline for when you'd need to take occupancy
+
+This all factors into our funding timeline. Keep me posted!
+
+Evan`,
+      },
+    ],
     'thread-mock-1': [
       {
         id: 'msg-1-1',
