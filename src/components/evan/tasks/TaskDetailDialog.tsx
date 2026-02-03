@@ -405,13 +405,13 @@ export const TaskDetailDialog = ({
                       {newTaskDueDate ? format(newTaskDueDate, 'PPP') : 'Select date'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 rounded-xl pointer-events-auto" align="start">
+                  <PopoverContent className="w-auto p-0 rounded-xl pointer-events-auto z-[200]" align="start">
                     <Calendar
                       mode="single"
                       selected={newTaskDueDate}
                       onSelect={setNewTaskDueDate}
                       initialFocus
-                      className="pointer-events-auto"
+                      className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
@@ -636,13 +636,13 @@ export const TaskDetailDialog = ({
                       {task!.due_date ? format(parseISO(task!.due_date), 'PPP') : 'Select date'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 rounded-xl pointer-events-auto" align="start">
+                  <PopoverContent className="w-auto p-0 rounded-xl pointer-events-auto z-[200]" align="start">
                     <Calendar
                       mode="single"
                       selected={task!.due_date ? parseISO(task!.due_date) : undefined}
                       onSelect={handleDateSelect}
                       initialFocus
-                      className="pointer-events-auto"
+                      className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
