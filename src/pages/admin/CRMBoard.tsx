@@ -481,22 +481,25 @@ const CRMBoard = () => {
                                       </TooltipContent>
                                     </Tooltip>
                                   )}
-                                  {lead.email && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          onClick={(e) => handleEmail(e, lead)}
-                                          className="inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full bg-[#0066FF]/10 hover:bg-[#0066FF]/20 transition-colors border border-[#0066FF]/30"
-                                        >
-                                          <Mail className="h-4 w-4 text-[#0066FF]" />
-                                          <span className="text-xs font-medium text-[#0066FF]">Email</span>
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <p>Email {lead.email}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        onClick={(e) => lead.email ? handleEmail(e, lead) : e.stopPropagation()}
+                                        disabled={!lead.email}
+                                        className={`inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded-full transition-colors border ${
+                                          lead.email 
+                                            ? 'bg-[#0066FF]/10 hover:bg-[#0066FF]/20 border-[#0066FF]/30'
+                                            : 'bg-muted/30 border-muted-foreground/10 opacity-50 cursor-not-allowed'
+                                        }`}
+                                      >
+                                        <Mail className={`h-4 w-4 ${lead.email ? 'text-[#0066FF]' : 'text-muted-foreground/50'}`} />
+                                        <span className={`text-xs font-medium ${lead.email ? 'text-[#0066FF]' : 'text-muted-foreground/50'}`}>Email</span>
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      <p>{lead.email ? `Email ${lead.email}` : 'No email on file'}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
                                   {!lead.phone && !lead.email && <span className="text-slate-300 text-xs">—</span>}
                                 </div>
                                 <div className="text-xs text-slate-600 truncate">

@@ -244,12 +244,12 @@ export const TaskWorkspace = () => {
         .single();
 
       if (error || !lead) {
-        toast.error('Could not load lead details');
+        toast.error('Contact not found');
         return;
       }
 
       if (!lead.email) {
-        toast.error('Lead has no email address');
+        toast.error('Contact has no email address');
         return;
       }
 
