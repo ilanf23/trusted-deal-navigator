@@ -1748,9 +1748,9 @@ Commercial Lending X`,
                 <div className="flex items-center gap-3 px-4 py-3 border-b bg-background">
                   <Sparkles className="w-4 h-4 text-blue-500" />
                   <Button 
-                    variant="outline" 
+                    variant="ghost" 
                     size="sm" 
-                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    className="text-blue-600 hover:bg-blue-500/10 hover:text-blue-600"
                     onClick={handleSummarize}
                     disabled={aiLoading !== null}
                   >
@@ -1762,9 +1762,9 @@ Commercial Lending X`,
                     Summarize
                   </Button>
                   <Button 
-                    variant="outline" 
+                    variant="ghost" 
                     size="sm" 
-                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    className="text-blue-600 hover:bg-blue-500/10 hover:text-blue-600"
                     onClick={() => setShowAskDialog(true)}
                     disabled={aiLoading !== null}
                   >
@@ -1772,9 +1772,9 @@ Commercial Lending X`,
                     Ask a question
                   </Button>
                   <Button 
-                    variant="outline" 
+                    variant="ghost" 
                     size="sm" 
-                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    className="text-blue-600 hover:bg-blue-500/10 hover:text-blue-600"
                     onClick={handleAutofill}
                     disabled={aiLoading !== null}
                   >
@@ -1786,7 +1786,7 @@ Commercial Lending X`,
                     Autofill columns
                   </Button>
                   <X 
-                    className="w-4 h-4 text-slate-400 ml-auto cursor-pointer hover:text-slate-600" 
+                    className="w-4 h-4 text-muted-foreground ml-auto cursor-pointer hover:text-foreground" 
                     onClick={() => setShowAiBar(false)}
                   />
                 </div>
