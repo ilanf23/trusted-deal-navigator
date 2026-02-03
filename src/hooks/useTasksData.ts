@@ -34,6 +34,7 @@ export const useTasksData = () => {
         tags: task.tags,
         lead_id: task.lead_id,
         source: task.source || 'manual',
+        task_type: task.task_type || 'internal',
       }).select('*, lead:leads(id, name, company_name, email, phone)').single();
       if (error) throw error;
       return data;
@@ -154,6 +155,7 @@ export const useTasksData = () => {
               lead_id: deletedTask.lead_id,
               source: deletedTask.source,
               is_completed: deletedTask.is_completed,
+              task_type: deletedTask.task_type,
             });
             if (error) throw error;
             queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });

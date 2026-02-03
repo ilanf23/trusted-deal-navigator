@@ -9,14 +9,16 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { BorrowerSearchSelect } from '@/components/evan/tasks/BorrowerSearchSelect';
-import { statusConfig, statusPickerOptions } from '@/components/evan/tasks/types';
+import { statusConfig, statusPickerOptions, TaskType, taskTypeConfig } from '@/components/evan/tasks/types';
 import { format } from 'date-fns';
 import { 
   CalendarIcon, 
   User, 
   Clock,
   Building2,
-  Star
+  Star,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -52,6 +54,7 @@ export const GmailTaskDialog = ({
   const [leadId, setLeadId] = useState<string | null>(initialLeadId);
   const [estimatedHours, setEstimatedHours] = useState<number | null>(null);
   const [groupName, setGroupName] = useState<string | null>(null);
+  const [taskType, setTaskType] = useState<TaskType>('email');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form when dialog opens with new values
@@ -66,6 +69,7 @@ export const GmailTaskDialog = ({
       setDueDate(undefined);
       setEstimatedHours(null);
       setGroupName(null);
+      setTaskType('email');
     }
   }, [open, initialTitle, initialDescription, initialLeadId]);
 
@@ -106,6 +110,7 @@ export const GmailTaskDialog = ({
     setLeadId(null);
     setEstimatedHours(null);
     setGroupName(null);
+    setTaskType('email');
     onClose();
   };
 
@@ -126,6 +131,7 @@ export const GmailTaskDialog = ({
         group_name: groupName,
         source: 'gmail',
         is_completed: status === 'done',
+        task_type: taskType,
       });
 
       if (error) throw error;
@@ -261,6 +267,43 @@ export const GmailTaskDialog = ({
               onValueChange={setLeadId}
               placeholder="Search borrowers..."
             />
+          </div>
+
+          {/* Task Type */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Task Type
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {(['call', 'email', 'internal'] as TaskType[]).map((type) => {
+                const config = taskTypeConfig[type];
+                const IconComponent = type === 'call' ? Phone : type === 'email' ? Mail : User;
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setTaskType(type)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                      taskType === type 
+                        ? 'ring-2 ring-offset-1 ring-offset-background'
+                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                    }`}
+                    style={taskType === type ? { 
+                      '--tw-ring-color': config.color,
+                      backgroundColor: config.color + '20',
+                      color: config.color
+                    } as React.CSSProperties : {}}
+                  >
+                    <IconComponent className="h-3.5 w-3.5" />
+                    {config.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {taskType === 'call' && 'Creates a shortcut to call the borrower'}
+              {taskType === 'email' && 'Creates a shortcut to email the borrower'}
+              {taskType === 'internal' && 'Internal task with no client communication'}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

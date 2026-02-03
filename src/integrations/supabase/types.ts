@@ -819,6 +819,7 @@ export type Database = {
           source: string | null
           status: string | null
           tags: string[] | null
+          task_type: string | null
           title: string
           updated_at: string
         }
@@ -836,6 +837,7 @@ export type Database = {
           source?: string | null
           status?: string | null
           tags?: string[] | null
+          task_type?: string | null
           title: string
           updated_at?: string
         }
@@ -853,6 +855,7 @@ export type Database = {
           source?: string | null
           status?: string | null
           tags?: string[] | null
+          task_type?: string | null
           title?: string
           updated_at?: string
         }

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Task, statusConfig, priorityConfig } from './types';
+import { Task, statusConfig, priorityConfig, taskTypeConfig } from './types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Plus, ArrowUpRight, Building2, Calendar, ExternalLink, Mail, Users, FileText, Phone } from 'lucide-react';
+import { Trash2, Plus, ArrowUpRight, Building2, Calendar, ExternalLink, Mail, Users, FileText, Phone, User } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -222,62 +222,83 @@ export const TaskTableView = ({
                 />
               </TableCell>
 
-              {/* Actions column - Email/Call based on contact data */}
+              {/* Actions column - Based on task_type */}
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-1">
-                  {/* Email Button - always visible, disabled if no email */}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (task.lead?.email) {
-                              navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`);
-                            }
-                          }}
-                          disabled={!task.lead?.email}
-                          className={`p-1.5 rounded-lg transition-all ${
-                            task.lead?.email 
-                              ? 'hover:bg-blue-500/10 text-blue-500 hover:text-blue-600'
-                              : 'text-muted-foreground/30 cursor-not-allowed'
-                          }`}
-                        >
-                          <Mail className="h-3.5 w-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs">
-                        {task.lead?.email ? `Email ${task.lead.name}` : task.lead ? 'No email on file' : 'No contact linked'}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  {/* Primary action based on task_type */}
+                  {task.task_type === 'call' && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (task.lead?.phone) {
+                                navigate(`/team/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
+                              }
+                            }}
+                            disabled={!task.lead?.phone}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                              task.lead?.phone 
+                                ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
+                                : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
+                            }`}
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                            Call
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          {task.lead?.phone ? `Call ${task.lead.name}` : task.lead ? 'No phone on file' : 'No contact linked'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   
-                  {/* Call Button - always visible, disabled if no phone */}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (task.lead?.phone) {
-                              navigate(`/team/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
-                            }
-                          }}
-                          disabled={!task.lead?.phone}
-                          className={`p-1.5 rounded-lg transition-all ${
-                            task.lead?.phone 
-                              ? 'hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600'
-                              : 'text-muted-foreground/30 cursor-not-allowed'
-                          }`}
-                        >
-                          <Phone className="h-3.5 w-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs">
-                        {task.lead?.phone ? `Call ${task.lead.name}` : task.lead ? 'No phone on file' : 'No contact linked'}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  {task.task_type === 'email' && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (task.lead?.email) {
+                                navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`);
+                              }
+                            }}
+                            disabled={!task.lead?.email}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                              task.lead?.email 
+                                ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
+                                : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
+                            }`}
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                            Email
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          {task.lead?.email ? `Email ${task.lead.name}` : task.lead ? 'No email on file' : 'No contact linked'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  
+                  {(task.task_type === 'internal' || !task.task_type) && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500">
+                            <User className="h-3.5 w-3.5" />
+                            Internal
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          Internal task - no client communication
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
               </TableCell>
 

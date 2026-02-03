@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { Task, statusConfig, statusPickerOptions } from './types';
+import { Task, statusConfig, statusPickerOptions, taskTypeConfig } from './types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Calendar, Clock, Mail, Phone } from 'lucide-react';
+import { Plus, Calendar, Clock, Mail, Phone, User } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface TaskKanbanViewProps {
@@ -79,59 +79,72 @@ export const TaskKanbanView = ({
                   {/* Task Title */}
                   <p className="text-xs md:text-sm font-medium mb-2 md:mb-3 line-clamp-2">{task.title}</p>
                   
-                  {/* Action Buttons - Email/Call */}
+                  {/* Action based on task_type */}
                   <div className="flex items-center gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (task.lead?.email) {
-                                navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`);
-                              }
-                            }}
-                            disabled={!task.lead?.email}
-                            className={`p-1.5 rounded-lg transition-all ${
-                              task.lead?.email 
-                                ? 'hover:bg-blue-500/10 text-blue-500 hover:text-blue-600'
-                                : 'text-muted-foreground/30 cursor-not-allowed'
-                            }`}
-                          >
-                            <Mail className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          {task.lead?.email ? `Email ${task.lead.name}` : task.lead ? 'No email on file' : 'No contact linked'}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    {task.task_type === 'call' && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (task.lead?.phone) {
+                                  navigate(`/team/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
+                                }
+                              }}
+                              disabled={!task.lead?.phone}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                                task.lead?.phone 
+                                  ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
+                                  : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
+                              }`}
+                            >
+                              <Phone className="h-3 w-3" />
+                              Call
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs">
+                            {task.lead?.phone ? `Call ${task.lead.name}` : 'No phone on file'}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                     
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (task.lead?.phone) {
-                                navigate(`/team/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
-                              }
-                            }}
-                            disabled={!task.lead?.phone}
-                            className={`p-1.5 rounded-lg transition-all ${
-                              task.lead?.phone 
-                                ? 'hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600'
-                                : 'text-muted-foreground/30 cursor-not-allowed'
-                            }`}
-                          >
-                            <Phone className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          {task.lead?.phone ? `Call ${task.lead.name}` : task.lead ? 'No phone on file' : 'No contact linked'}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    {task.task_type === 'email' && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (task.lead?.email) {
+                                  navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`);
+                                }
+                              }}
+                              disabled={!task.lead?.email}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+                                task.lead?.email 
+                                  ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
+                                  : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
+                              }`}
+                            >
+                              <Mail className="h-3 w-3" />
+                              Email
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs">
+                            {task.lead?.email ? `Email ${task.lead.name}` : 'No email on file'}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    
+                    {(task.task_type === 'internal' || !task.task_type) && (
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500">
+                        <User className="h-3 w-3" />
+                        Internal
+                      </span>
+                    )}
                   </div>
                   
                   {/* Meta Row */}

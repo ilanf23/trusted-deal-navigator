@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Task, TaskActivity, statusConfig, statusPickerOptions, priorityConfig } from './types';
+import { Task, TaskActivity, TaskType, statusConfig, statusPickerOptions, priorityConfig, taskTypeConfig } from './types';
 import { useTaskActivities } from '@/hooks/useTasksData';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -30,7 +30,8 @@ import {
   Mail,
   Users,
   FileText,
-  ExternalLink
+  ExternalLink,
+  Phone
 } from 'lucide-react';
 
 interface TaskDetailDialogProps {
@@ -69,6 +70,7 @@ export const TaskDetailDialog = ({
   const [newTaskLeadId, setNewTaskLeadId] = useState<string | null>(null);
   const [newTaskHours, setNewTaskHours] = useState<number | null>(null);
   const [newTaskPriority, setNewTaskPriority] = useState<string>('medium');
+  const [newTaskType, setNewTaskType] = useState<TaskType>('internal');
   
   const { data: activities = [] } = useTaskActivities(task?.id || null);
   
@@ -99,6 +101,7 @@ export const TaskDetailDialog = ({
       setNewTaskLeadId(null);
       setNewTaskHours(null);
       setNewTaskPriority('medium');
+      setNewTaskType('internal');
     }
     onClose();
   };
@@ -141,6 +144,7 @@ export const TaskDetailDialog = ({
       estimated_hours: newTaskHours || undefined,
       priority: newTaskPriority,
       source: 'manual',
+      task_type: newTaskType,
     });
   };
   
@@ -391,6 +395,43 @@ export const TaskDetailDialog = ({
                 onValueChange={setNewTaskLeadId}
                 placeholder="Search borrowers..."
               />
+            </div>
+
+            {/* Task Type */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Task Type
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(['call', 'email', 'internal'] as TaskType[]).map((type) => {
+                  const config = taskTypeConfig[type];
+                  const IconComponent = type === 'call' ? Phone : type === 'email' ? Mail : User;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setNewTaskType(type)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        newTaskType === type 
+                          ? 'ring-2 ring-offset-2 ring-offset-background'
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      }`}
+                      style={newTaskType === type ? { 
+                        '--tw-ring-color': config.color,
+                        backgroundColor: config.color + '20',
+                        color: config.color
+                      } as React.CSSProperties : {}}
+                    >
+                      <IconComponent className="h-4 w-4" />
+                      {config.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {newTaskType === 'call' && 'Creates a shortcut to call the borrower'}
+                {newTaskType === 'email' && 'Creates a shortcut to email the borrower'}
+                {newTaskType === 'internal' && 'Internal task with no client communication'}
+              </p>
             </div>
 
             {/* Due Date & Time */}
