@@ -1419,7 +1419,7 @@ Commercial Lending X`,
         {/* Main Content - Two Column Layout */}
         <div className="flex h-[calc(90vh-60px)]">
           {/* Left Panel - Activity Timeline */}
-          <div className="flex-1 flex flex-col border-r">
+          <div className="flex-1 flex flex-col border-r border-border">
             {/* Search Bar */}
             <div className="flex items-center gap-2 px-4 py-2 border-b bg-background">
               <div className="flex-1">
