@@ -417,26 +417,101 @@ export const TaskDetailDialog = ({
                 </Popover>
                 
                 {/* Optional Time */}
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="time"
-                    value={newTaskDueTime}
-                    onChange={(e) => setNewTaskDueTime(e.target.value)}
-                    className="w-[120px] h-9 rounded-lg"
-                    placeholder="Time (optional)"
-                  />
-                  {newTaskDueTime && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                      onClick={() => setNewTaskDueTime('')}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="justify-start h-9 rounded-lg font-normal min-w-[130px]"
                     >
-                      Clear
+                      <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                      {newTaskDueTime ? newTaskDueTime : <span className="text-muted-foreground">Add time</span>}
                     </Button>
-                  )}
-                </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-3 rounded-xl pointer-events-auto z-[200]" align="start">
+                    <div className="space-y-3">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Time</p>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={newTaskDueTime ? newTaskDueTime.split(':')[0] : ''}
+                          onChange={(e) => {
+                            const hour = e.target.value;
+                            const currentMinutes = newTaskDueTime ? newTaskDueTime.split(':')[1] : '00';
+                            if (hour) {
+                              setNewTaskDueTime(`${hour}:${currentMinutes}`);
+                            }
+                          }}
+                          className="h-9 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">Hour</option>
+                          {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
+                            <option key={hour} value={hour}>{hour}</option>
+                          ))}
+                        </select>
+                        <span className="text-lg font-medium">:</span>
+                        <select
+                          value={newTaskDueTime ? newTaskDueTime.split(':')[1] : ''}
+                          onChange={(e) => {
+                            const minutes = e.target.value;
+                            const currentHour = newTaskDueTime ? newTaskDueTime.split(':')[0] : '09';
+                            if (minutes) {
+                              setNewTaskDueTime(`${currentHour}:${minutes}`);
+                            }
+                          }}
+                          className="h-9 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">Min</option>
+                          {['00', '15', '30', '45'].map(min => (
+                            <option key={min} value={min}>{min}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex gap-2 pt-2 border-t">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => setNewTaskDueTime('')}
+                        >
+                          Clear
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs ml-auto"
+                          onClick={() => setNewTaskDueTime('09:00')}
+                        >
+                          9 AM
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => setNewTaskDueTime('12:00')}
+                        >
+                          12 PM
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => setNewTaskDueTime('17:00')}
+                        >
+                          5 PM
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {newTaskDueTime && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setNewTaskDueTime('')}
+                  >
+                    Clear
+                  </Button>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 Time is optional — leave blank for date-only due dates
@@ -649,26 +724,101 @@ export const TaskDetailDialog = ({
                 
                 {/* Optional Time */}
                 {task!.due_date && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="time"
-                      value={extractTimeFromDate(task!.due_date)}
-                      onChange={(e) => handleTimeChange(e.target.value)}
-                      className="w-[120px] h-9 rounded-lg"
-                      placeholder="Time"
-                    />
-                    {extractTimeFromDate(task!.due_date) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                        onClick={() => handleTimeChange('')}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="justify-start h-9 rounded-lg font-normal min-w-[130px]"
                       >
-                        Clear
+                        <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                        {extractTimeFromDate(task!.due_date) || <span className="text-muted-foreground">Add time</span>}
                       </Button>
-                    )}
-                  </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-3 rounded-xl pointer-events-auto z-[200]" align="start">
+                      <div className="space-y-3">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Time</p>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={extractTimeFromDate(task!.due_date)?.split(':')[0] || ''}
+                            onChange={(e) => {
+                              const hour = e.target.value;
+                              const currentMinutes = extractTimeFromDate(task!.due_date)?.split(':')[1] || '00';
+                              if (hour) {
+                                handleTimeChange(`${hour}:${currentMinutes}`);
+                              }
+                            }}
+                            className="h-9 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">Hour</option>
+                            {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
+                              <option key={hour} value={hour}>{hour}</option>
+                            ))}
+                          </select>
+                          <span className="text-lg font-medium">:</span>
+                          <select
+                            value={extractTimeFromDate(task!.due_date)?.split(':')[1] || ''}
+                            onChange={(e) => {
+                              const minutes = e.target.value;
+                              const currentHour = extractTimeFromDate(task!.due_date)?.split(':')[0] || '09';
+                              if (minutes) {
+                                handleTimeChange(`${currentHour}:${minutes}`);
+                              }
+                            }}
+                            className="h-9 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">Min</option>
+                            {['00', '15', '30', '45'].map(min => (
+                              <option key={min} value={min}>{min}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs"
+                            onClick={() => handleTimeChange('')}
+                          >
+                            Clear
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs ml-auto"
+                            onClick={() => handleTimeChange('09:00')}
+                          >
+                            9 AM
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs"
+                            onClick={() => handleTimeChange('12:00')}
+                          >
+                            12 PM
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs"
+                            onClick={() => handleTimeChange('17:00')}
+                          >
+                            5 PM
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {task!.due_date && extractTimeFromDate(task!.due_date) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => handleTimeChange('')}
+                  >
+                    Clear
+                  </Button>
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
