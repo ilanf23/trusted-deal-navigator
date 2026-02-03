@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Plus, ArrowUpRight, Building2, Calendar, ExternalLink, Mail, Users, FileText } from 'lucide-react';
+import { Trash2, Plus, ArrowUpRight, Building2, Calendar, ExternalLink, Mail, Users, FileText, Phone } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -188,7 +188,7 @@ export const TaskTableView = ({
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-muted-foreground/10">
             <TableHead className="w-8 md:w-10"></TableHead>
-            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground w-10">Go To</TableHead>
+            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground w-24">Actions</TableHead>
             <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Task Name</TableHead>
             <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell">Assigned To</TableHead>
             <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Related Customer</TableHead>
@@ -222,29 +222,63 @@ export const TaskTableView = ({
                 />
               </TableCell>
 
-              {/* Go To / Take Me There column */}
+              {/* Actions column - Email/Call based on contact data */}
               <TableCell onClick={(e) => e.stopPropagation()}>
-                {(() => {
-                  const navInfo = getNavigationInfo(task);
-                  if (!navInfo) return <span className="text-muted-foreground">—</span>;
-                  return (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={(e) => handleNavigate(e, task)}
-                            className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
-                          >
-                            {navInfo.icon}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="text-xs">
-                          {navInfo.label}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  );
-                })()}
+                <div className="flex items-center gap-1">
+                  {/* Email Button - always visible, disabled if no email */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (task.lead?.email) {
+                              navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`);
+                            }
+                          }}
+                          disabled={!task.lead?.email}
+                          className={`p-1.5 rounded-lg transition-all ${
+                            task.lead?.email 
+                              ? 'hover:bg-blue-500/10 text-blue-500 hover:text-blue-600'
+                              : 'text-muted-foreground/30 cursor-not-allowed'
+                          }`}
+                        >
+                          <Mail className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        {task.lead?.email ? `Email ${task.lead.name}` : task.lead ? 'No email on file' : 'No contact linked'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  {/* Call Button - always visible, disabled if no phone */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (task.lead?.phone) {
+                              navigate(`/team/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
+                            }
+                          }}
+                          disabled={!task.lead?.phone}
+                          className={`p-1.5 rounded-lg transition-all ${
+                            task.lead?.phone 
+                              ? 'hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600'
+                              : 'text-muted-foreground/30 cursor-not-allowed'
+                          }`}
+                        >
+                          <Phone className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        {task.lead?.phone ? `Call ${task.lead.name}` : task.lead ? 'No phone on file' : 'No contact linked'}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </TableCell>
 
               <TableCell>

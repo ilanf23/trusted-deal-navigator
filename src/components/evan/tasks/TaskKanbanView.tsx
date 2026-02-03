@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom';
 import { Task, statusConfig, statusPickerOptions } from './types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Calendar, Clock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Plus, Calendar, Clock, Mail, Phone } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface TaskKanbanViewProps {
@@ -16,6 +18,7 @@ export const TaskKanbanView = ({
   onAddTask,
   onOpenDetail,
 }: TaskKanbanViewProps) => {
+  const navigate = useNavigate();
   const columns = statusPickerOptions.map(status => [status, statusConfig[status]] as const);
 
   const getTasksByStatus = (status: string) => 
@@ -75,6 +78,61 @@ export const TaskKanbanView = ({
                 >
                   {/* Task Title */}
                   <p className="text-xs md:text-sm font-medium mb-2 md:mb-3 line-clamp-2">{task.title}</p>
+                  
+                  {/* Action Buttons - Email/Call */}
+                  <div className="flex items-center gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (task.lead?.email) {
+                                navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`);
+                              }
+                            }}
+                            disabled={!task.lead?.email}
+                            className={`p-1.5 rounded-lg transition-all ${
+                              task.lead?.email 
+                                ? 'hover:bg-blue-500/10 text-blue-500 hover:text-blue-600'
+                                : 'text-muted-foreground/30 cursor-not-allowed'
+                            }`}
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          {task.lead?.email ? `Email ${task.lead.name}` : task.lead ? 'No email on file' : 'No contact linked'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (task.lead?.phone) {
+                                navigate(`/team/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
+                              }
+                            }}
+                            disabled={!task.lead?.phone}
+                            className={`p-1.5 rounded-lg transition-all ${
+                              task.lead?.phone 
+                                ? 'hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-600'
+                                : 'text-muted-foreground/30 cursor-not-allowed'
+                            }`}
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          {task.lead?.phone ? `Call ${task.lead.name}` : task.lead ? 'No phone on file' : 'No contact linked'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   
                   {/* Meta Row */}
                   <div className="flex items-center justify-between">

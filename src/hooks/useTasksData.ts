@@ -13,7 +13,7 @@ export const useTasksData = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_tasks')
-        .select('*, lead:leads(id, name, company_name)')
+        .select('*, lead:leads(id, name, company_name, email, phone)')
         .order('due_date', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data as Task[];
@@ -34,7 +34,7 @@ export const useTasksData = () => {
         tags: task.tags,
         lead_id: task.lead_id,
         source: task.source || 'manual',
-      }).select('*, lead:leads(id, name, company_name)').single();
+      }).select('*, lead:leads(id, name, company_name, email, phone)').single();
       if (error) throw error;
       return data;
     },

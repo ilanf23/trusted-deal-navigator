@@ -16,6 +16,8 @@ export interface Task {
     id: string;
     name: string;
     company_name: string | null;
+    email: string | null;
+    phone: string | null;
   } | null;
   created_at: string;
   updated_at: string;
