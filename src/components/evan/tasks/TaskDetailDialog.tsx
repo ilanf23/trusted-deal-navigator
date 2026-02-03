@@ -429,43 +429,14 @@ export const TaskDetailDialog = ({
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-3 rounded-xl pointer-events-auto z-[200]" align="start">
                     <div className="space-y-3">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Time</p>
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={newTaskDueTime ? newTaskDueTime.split(':')[0] : ''}
-                          onChange={(e) => {
-                            const hour = e.target.value;
-                            const currentMinutes = newTaskDueTime ? newTaskDueTime.split(':')[1] : '00';
-                            if (hour) {
-                              setNewTaskDueTime(`${hour}:${currentMinutes}`);
-                            }
-                          }}
-                          className="h-9 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="">Hour</option>
-                          {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
-                            <option key={hour} value={hour}>{hour}</option>
-                          ))}
-                        </select>
-                        <span className="text-lg font-medium">:</span>
-                        <select
-                          value={newTaskDueTime ? newTaskDueTime.split(':')[1] : ''}
-                          onChange={(e) => {
-                            const minutes = e.target.value;
-                            const currentHour = newTaskDueTime ? newTaskDueTime.split(':')[0] : '09';
-                            if (minutes) {
-                              setNewTaskDueTime(`${currentHour}:${minutes}`);
-                            }
-                          }}
-                          className="h-9 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="">Min</option>
-                          {['00', '15', '30', '45'].map(min => (
-                            <option key={min} value={min}>{min}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex gap-2 pt-2 border-t">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Enter Time</p>
+                      <Input
+                        type="time"
+                        value={newTaskDueTime}
+                        onChange={(e) => setNewTaskDueTime(e.target.value)}
+                        className="h-10 rounded-lg text-center font-medium"
+                      />
+                      <div className="flex flex-wrap gap-2 pt-2 border-t">
                         <Button 
                           variant="ghost" 
                           size="sm" 
@@ -736,43 +707,14 @@ export const TaskDetailDialog = ({
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-3 rounded-xl pointer-events-auto z-[200]" align="start">
                       <div className="space-y-3">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Time</p>
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={extractTimeFromDate(task!.due_date)?.split(':')[0] || ''}
-                            onChange={(e) => {
-                              const hour = e.target.value;
-                              const currentMinutes = extractTimeFromDate(task!.due_date)?.split(':')[1] || '00';
-                              if (hour) {
-                                handleTimeChange(`${hour}:${currentMinutes}`);
-                              }
-                            }}
-                            className="h-9 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                          >
-                            <option value="">Hour</option>
-                            {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
-                              <option key={hour} value={hour}>{hour}</option>
-                            ))}
-                          </select>
-                          <span className="text-lg font-medium">:</span>
-                          <select
-                            value={extractTimeFromDate(task!.due_date)?.split(':')[1] || ''}
-                            onChange={(e) => {
-                              const minutes = e.target.value;
-                              const currentHour = extractTimeFromDate(task!.due_date)?.split(':')[0] || '09';
-                              if (minutes) {
-                                handleTimeChange(`${currentHour}:${minutes}`);
-                              }
-                            }}
-                            className="h-9 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                          >
-                            <option value="">Min</option>
-                            {['00', '15', '30', '45'].map(min => (
-                              <option key={min} value={min}>{min}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex gap-2 pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Enter Time</p>
+                        <Input
+                          type="time"
+                          value={extractTimeFromDate(task!.due_date) || ''}
+                          onChange={(e) => handleTimeChange(e.target.value)}
+                          className="h-10 rounded-lg text-center font-medium"
+                        />
+                        <div className="flex flex-wrap gap-2 pt-2 border-t">
                           <Button 
                             variant="ghost" 
                             size="sm" 
