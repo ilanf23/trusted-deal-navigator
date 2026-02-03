@@ -262,13 +262,18 @@ export const TaskTableView = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (task.lead?.email) {
-                                navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`);
+                              if (task.lead?.email || task.lead_id) {
+                                // Determine template based on task title
+                                const title = task.title?.toLowerCase() || '';
+                                const isFollowUp = title.includes('follow up') || title.includes('follow-up');
+                                const template = isFollowUp ? 'follow_up' : '';
+                                const templateParam = template ? `&template=${template}` : '';
+                                navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}${templateParam}`);
                               }
                             }}
-                            disabled={!task.lead?.email}
+                            disabled={!task.lead_id}
                             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                              task.lead?.email 
+                              task.lead_id 
                                 ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
                                 : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
                             }`}
@@ -278,7 +283,7 @@ export const TaskTableView = ({
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="text-xs">
-                          {task.lead?.email ? `Email ${task.lead.name}` : task.lead ? 'No email on file' : 'No contact linked'}
+                          {task.lead_id ? `Email ${task.lead?.name || 'contact'}` : 'No contact linked'}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
