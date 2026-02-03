@@ -35,7 +35,7 @@ const RecipientAutocomplete: React.FC<RecipientAutocompleteProps> = ({
 
   // Search for leads when input changes
   const searchLeads = useCallback(async (query: string) => {
-    if (!query || query.length < 2) {
+    if (!query || query.length < 1) {
       setSuggestions([]);
       return;
     }
@@ -45,12 +45,32 @@ const RecipientAutocomplete: React.FC<RecipientAutocompleteProps> = ({
       const { data, error } = await supabase
         .from('leads')
         .select('id, name, email, company_name')
-        .or(`name.ilike.%${query}%,email.ilike.%${query}%,company_name.ilike.%${query}%`)
+        .or(`name.ilike.${query}%,email.ilike.${query}%,company_name.ilike.${query}%`)
         .not('email', 'is', null)
-        .limit(8);
+        .order('name', { ascending: true })
+        .limit(10);
 
       if (error) throw error;
-      setSuggestions(data || []);
+      
+      // Sort results: prioritize exact prefix matches on name, then alphabetically
+      const sorted = (data || []).sort((a, b) => {
+        const queryLower = query.toLowerCase();
+        const aNameLower = a.name.toLowerCase();
+        const bNameLower = b.name.toLowerCase();
+        
+        // Check if name starts with query
+        const aStartsWithQuery = aNameLower.startsWith(queryLower);
+        const bStartsWithQuery = bNameLower.startsWith(queryLower);
+        
+        // Prioritize prefix matches on name
+        if (aStartsWithQuery && !bStartsWithQuery) return -1;
+        if (!aStartsWithQuery && bStartsWithQuery) return 1;
+        
+        // Then sort alphabetically by name
+        return aNameLower.localeCompare(bNameLower);
+      });
+      
+      setSuggestions(sorted);
     } catch (err) {
       console.error('Error searching leads:', err);
       setSuggestions([]);
