@@ -1625,7 +1625,23 @@ Commercial Lending X`,
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] p-0 gap-0 overflow-hidden">
+      <DialogContent 
+        className="max-w-6xl max-h-[90vh] p-0 gap-0 overflow-hidden"
+        onPointerDownOutside={(e) => {
+          // Prevent closing when clicking within lender dropdown or other popover content
+          const target = e.target as HTMLElement;
+          if (target.closest('[data-lender-dropdown]') || target.closest('[data-radix-popper-content-wrapper]')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          // Prevent closing when interacting with lender dropdown
+          const target = e.target as HTMLElement;
+          if (target.closest('[data-lender-dropdown]') || target.closest('[data-radix-popper-content-wrapper]')) {
+            e.preventDefault();
+          }
+        }}
+      >
 
         {/* Main Content - Two Column Layout */}
         <div className="flex h-[calc(90vh-60px)]">
@@ -2192,7 +2208,9 @@ Commercial Lending X`,
                                       />
                                       {lenderInputFocused && filteredLenderPrograms.length > 0 && (
                                         <div 
+                                          data-lender-dropdown
                                           className="absolute top-full left-0 right-0 mt-1 z-[9999] bg-background border border-border rounded-lg shadow-lg max-h-[480px] overflow-y-auto"
+                                          onMouseDown={(e) => e.preventDefault()}
                                         >
                                           {filteredLenderPrograms.map((lp) => (
                                             <button
@@ -2201,6 +2219,7 @@ Commercial Lending X`,
                                               className="w-full px-3 py-2.5 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
                                               onMouseDown={(e) => {
                                                 e.preventDefault();
+                                                e.stopPropagation();
                                                 setNewLenderName(lp.lender_name);
                                                 setNewLenderProgram(lp.program_name);
                                                 setLenderInputFocused(false);
