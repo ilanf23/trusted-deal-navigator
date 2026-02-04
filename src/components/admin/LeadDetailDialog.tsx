@@ -570,8 +570,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: open,
   });
 
-  // Query lender programs for autocomplete
-  const { data: lenderPrograms = [] } = useQuery({
+  // Query lender programs for autocomplete - fetch when dialog is open (cache for when needed)
+  const { data: lenderPrograms = [], isLoading: lenderProgramsLoading } = useQuery({
     queryKey: ['lender-programs-list'],
     queryFn: async () => {
       const { data } = await supabase
@@ -580,20 +580,21 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         .order('lender_name');
       return data || [];
     },
-    enabled: open && showAddLender,
+    enabled: open, // Fetch when dialog opens so data is ready
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   // Filter lender programs based on input
   const filteredLenderPrograms = useMemo(() => {
-    if (!newLenderName.trim()) return [];
+    if (!newLenderName.trim() || !lenderInputFocused) return [];
     const searchTerm = newLenderName.toLowerCase();
     return lenderPrograms
       .filter(lp => 
-        lp.lender_name.toLowerCase().includes(searchTerm) ||
-        lp.program_name.toLowerCase().includes(searchTerm)
+        lp.lender_name?.toLowerCase().includes(searchTerm) ||
+        lp.program_name?.toLowerCase().includes(searchTerm)
       )
       .slice(0, 10); // Show up to 10 suggestions
-  }, [lenderPrograms, newLenderName]);
+  }, [lenderPrograms, newLenderName, lenderInputFocused]);
 
   const { data: communications = [] } = useQuery({
     queryKey: ['lead-communications', lead?.id],
@@ -2206,29 +2207,41 @@ Commercial Lending X`,
                                         placeholder="Search lenders..."
                                         className="text-sm"
                                       />
-                                      {lenderInputFocused && filteredLenderPrograms.length > 0 && (
+                                      {lenderInputFocused && newLenderName.trim() && (
                                         <div 
                                           data-lender-dropdown
                                           className="absolute top-full left-0 right-0 mt-1 z-[9999] bg-background border border-border rounded-lg shadow-lg max-h-[480px] overflow-y-auto"
                                           onMouseDown={(e) => e.preventDefault()}
                                         >
-                                          {filteredLenderPrograms.map((lp) => (
-                                            <button
-                                              key={lp.id}
-                                              type="button"
-                                              className="w-full px-3 py-2.5 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setNewLenderName(lp.lender_name);
-                                                setNewLenderProgram(lp.program_name);
-                                                setLenderInputFocused(false);
-                                              }}
-                                            >
-                                              <p className="text-sm font-medium text-foreground">{lp.lender_name}</p>
-                                              <p className="text-xs text-muted-foreground">{lp.program_name} • {lp.program_type}</p>
-                                            </button>
-                                          ))}
+                                          {lenderProgramsLoading ? (
+                                            <div className="px-3 py-4 text-center">
+                                              <Loader2 className="w-4 h-4 animate-spin mx-auto text-muted-foreground" />
+                                              <p className="text-xs text-muted-foreground mt-1">Loading lenders...</p>
+                                            </div>
+                                          ) : filteredLenderPrograms.length > 0 ? (
+                                            filteredLenderPrograms.map((lp) => (
+                                              <button
+                                                key={lp.id}
+                                                type="button"
+                                                className="w-full px-3 py-2.5 text-left hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                                                onMouseDown={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  setNewLenderName(lp.lender_name);
+                                                  setNewLenderProgram(lp.program_name);
+                                                  setLenderInputFocused(false);
+                                                }}
+                                              >
+                                                <p className="text-sm font-medium text-foreground">{lp.lender_name}</p>
+                                                <p className="text-xs text-muted-foreground">{lp.program_name} • {lp.program_type}</p>
+                                              </button>
+                                            ))
+                                          ) : (
+                                            <div className="px-3 py-3 text-center">
+                                              <p className="text-sm text-muted-foreground">No lenders found for "{newLenderName}"</p>
+                                              <p className="text-xs text-muted-foreground mt-1">You can still add a custom entry</p>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                     </div>
