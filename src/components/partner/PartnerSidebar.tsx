@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/tooltip';
 
 const navItems = [
-  { title: 'Dashboard', path: '/partner', icon: LayoutDashboard },
+  { title: 'Dashboard', path: '/partner/dashboard', icon: LayoutDashboard },
   { title: 'My Referrals', path: '/partner/referrals', icon: Users },
   { title: 'Commissions', path: '/partner/commissions', icon: DollarSign },
   { title: 'Profile', path: '/partner/profile', icon: User },

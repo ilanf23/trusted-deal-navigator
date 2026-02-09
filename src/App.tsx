@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
@@ -171,7 +171,8 @@ const App = () => (
               <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
               <Route path="/admin/sheets-callback" element={<SheetsCallback />} />
               {/* Partner Portal Routes */}
-              <Route path="/partner" element={<PartnerRoute><PartnerDashboard /></PartnerRoute>} />
+              <Route path="/partner" element={<PartnerRoute><Navigate to="/partner/dashboard" replace /></PartnerRoute>} />
+              <Route path="/partner/dashboard" element={<PartnerRoute><PartnerDashboard /></PartnerRoute>} />
               <Route path="/partner/referrals" element={<PartnerRoute><PartnerReferrals /></PartnerRoute>} />
               <Route path="/partner/commissions" element={<PartnerRoute><PartnerCommissions /></PartnerRoute>} />
               <Route path="/partner/profile" element={<PartnerRoute><PartnerProfilePage /></PartnerRoute>} />
