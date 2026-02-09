@@ -155,10 +155,19 @@ const Questionnaire = () => {
     return Math.round((filledFields.length / allRequiredFields.length) * 100);
   }, [formData]);
 
+  const isGenericLink = token === 'new';
+
   useEffect(() => {
     const validateToken = async () => {
       if (!token) {
         setError('Invalid questionnaire link');
+        setLoading(false);
+        return;
+      }
+
+      // Generic link — no lead lookup needed, form creates lead on submit
+      if (token === 'new') {
+        setLead({ id: '', name: 'New Borrower', company_name: null, questionnaire_completed_at: null });
         setLoading(false);
         return;
       }
@@ -211,10 +220,31 @@ const Questionnaire = () => {
     setSubmitting(true);
 
     try {
+      let leadId = lead.id;
+
+      // For generic links, create a new lead first
+      if (isGenericLink) {
+        const { data: newLead, error: leadError } = await supabase
+          .from('leads')
+          .insert({
+            name: `${formData.first_name} ${formData.last_name}`.trim(),
+            email: formData.email || null,
+            phone: formData.phone || null,
+            company_name: formData.principal_name || null,
+            source: 'partner_referral',
+            questionnaire_completed_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+
+        if (leadError || !newLead) throw leadError || new Error('Failed to create lead');
+        leadId = newLead.id;
+      }
+
       const { error: insertError } = await supabase
         .from('lead_responses')
         .insert({
-          lead_id: lead.id,
+          lead_id: leadId,
           first_name: formData.first_name,
           last_name: formData.last_name,
           email: formData.email,
@@ -272,10 +302,12 @@ const Questionnaire = () => {
 
       if (insertError) throw insertError;
 
-      await supabase
-        .from('leads')
-        .update({ questionnaire_completed_at: new Date().toISOString() })
-        .eq('id', lead.id);
+      if (!isGenericLink) {
+        await supabase
+          .from('leads')
+          .update({ questionnaire_completed_at: new Date().toISOString() })
+          .eq('id', leadId);
+      }
 
       setSubmitted(true);
       toast({
