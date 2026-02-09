@@ -7,10 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, AlertCircle } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { z } from 'zod';
 import PublicLayout from '@/components/layout/PublicLayout';
+import { supabase } from '@/integrations/supabase/client';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -32,7 +34,7 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-
+  const [signupRole, setSignupRole] = useState<'client' | 'partner'>('client');
   // Redirect if already logged in
   const { userRole } = useAuth();
 
@@ -139,10 +141,23 @@ const Auth = () => {
         setError(error.message);
       }
     } else {
+      // If partner role selected, update user_roles after signup
+      if (signupRole === 'partner') {
+        // The handle_new_user trigger creates a 'client' role by default.
+        // We need to update it to 'partner' after the user is created.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await supabase
+            .from('user_roles')
+            .update({ role: 'partner' as any })
+            .eq('user_id', session.user.id);
+        }
+      }
       setSuccess('Account created successfully! You can now sign in.');
       setSignupEmail('');
       setSignupPassword('');
       setSignupConfirmPassword('');
+      setSignupRole('client');
     }
     
     setIsLoading(false);
@@ -240,6 +255,35 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4 mt-4">
+                <div className="space-y-3">
+                  <Label>I am signing up as</Label>
+                  <RadioGroup
+                    value={signupRole}
+                    onValueChange={(v) => setSignupRole(v as 'client' | 'partner')}
+                    className="grid grid-cols-2 gap-3"
+                  >
+                    <Label
+                      htmlFor="role-borrower"
+                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-3 cursor-pointer transition-colors ${
+                        signupRole === 'client' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
+                      }`}
+                    >
+                      <RadioGroupItem value="client" id="role-borrower" className="sr-only" />
+                      <span className="font-medium text-sm">Borrower</span>
+                      <span className="text-xs text-muted-foreground text-center">Looking for financing</span>
+                    </Label>
+                    <Label
+                      htmlFor="role-partner"
+                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-3 cursor-pointer transition-colors ${
+                        signupRole === 'partner' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
+                      }`}
+                    >
+                      <RadioGroupItem value="partner" id="role-partner" className="sr-only" />
+                      <span className="font-medium text-sm">Partner</span>
+                      <span className="text-xs text-muted-foreground text-center">Refer deals & earn</span>
+                    </Label>
+                  </RadioGroup>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
