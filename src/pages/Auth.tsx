@@ -175,20 +175,21 @@ const Auth = () => {
 
   return (
     <PublicLayout>
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 px-4">
+    <div className="min-h-screen relative bg-gradient-to-br from-primary/5 via-background to-accent/5 px-4">
+      {/* Top bar with logo and back button */}
+      <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+        <img src={logo} alt="Commercial Lending X" className="h-80 -mt-20 -ml-4" />
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => navigate('/')}
+        >
+          ← Back to Website
+        </Button>
+      </div>
+      <div className="min-h-screen flex items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center">
-            <img src={logo} alt="Commercial Lending X" className="h-80" />
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate('/')}
-            className="absolute top-4 left-4"
-          >
-            ← Back to Website
-          </Button>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
             Sign in to access your account
@@ -335,6 +336,7 @@ const Auth = () => {
           </Tabs>
         </CardContent>
       </Card>
+      </div>
     </div>
     </PublicLayout>
   );
