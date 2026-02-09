@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Users, CheckCircle, DollarSign, Clock, Send, Eye, Loader2, ArrowRight } from 'lucide-react';
+import { Users, CheckCircle, DollarSign, Clock, Send, Eye, Loader2, ArrowRight, Link2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -154,6 +155,18 @@ const PartnerDashboard = () => {
 
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const link = `${window.location.origin}/questionnaire/new`;
+              navigator.clipboard.writeText(link);
+              toast.success('Invite link copied to clipboard!');
+            }}
+            className="gap-2"
+          >
+            <Link2 className="h-4 w-4" />
+            Invite Borrower
+          </Button>
           <Button onClick={() => navigate('/partner/referrals')} className="gap-2">
             <Send className="h-4 w-4" />
             Submit New Referral
