@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import PartnerLayout from '@/components/partner/PartnerLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User } from 'lucide-react';
 
@@ -7,7 +7,7 @@ const PartnerProfile = () => {
   const { user } = useAuth();
 
   return (
-    <PartnerLayout>
+    <>
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">Profile</h1>
         <Card className="max-w-lg">
@@ -33,7 +33,7 @@ const PartnerProfile = () => {
           </CardContent>
         </Card>
       </div>
-    </PartnerLayout>
+    </>
   );
 };
 

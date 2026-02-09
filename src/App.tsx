@@ -64,7 +64,7 @@ import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
 import PortalMessages from "./pages/portal/Messages";
 import PortalProfile from "./pages/portal/Profile";
-import PartnerRoute from "./components/partner/PartnerRoute";
+import PartnerRouteLayout from "./components/partner/PartnerRouteLayout";
 import PartnerDashboard from "./pages/partner/Dashboard";
 import PartnerReferrals from "./pages/partner/Referrals";
 import PartnerCommissions from "./pages/partner/Commissions";
@@ -171,11 +171,13 @@ const App = () => (
               <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
               <Route path="/admin/sheets-callback" element={<SheetsCallback />} />
               {/* Partner Portal Routes */}
-              <Route path="/partner" element={<PartnerRoute><Navigate to="/partner/dashboard" replace /></PartnerRoute>} />
-              <Route path="/partner/dashboard" element={<PartnerRoute><PartnerDashboard /></PartnerRoute>} />
-              <Route path="/partner/referrals" element={<PartnerRoute><PartnerReferrals /></PartnerRoute>} />
-              <Route path="/partner/commissions" element={<PartnerRoute><PartnerCommissions /></PartnerRoute>} />
-              <Route path="/partner/profile" element={<PartnerRoute><PartnerProfilePage /></PartnerRoute>} />
+              <Route element={<PartnerRouteLayout />}>
+                <Route path="/partner" element={<Navigate to="/partner/dashboard" replace />} />
+                <Route path="/partner/dashboard" element={<PartnerDashboard />} />
+                <Route path="/partner/referrals" element={<PartnerReferrals />} />
+                <Route path="/partner/commissions" element={<PartnerCommissions />} />
+                <Route path="/partner/profile" element={<PartnerProfilePage />} />
+              </Route>
               {/* Client Portal Routes - /user/{name} for clients */}
               <Route path="/user" element={<ProtectedRoute clientOnly><PortalDashboard /></ProtectedRoute>} />
               <Route path="/user/contracts" element={<ProtectedRoute clientOnly><PortalContracts /></ProtectedRoute>} />

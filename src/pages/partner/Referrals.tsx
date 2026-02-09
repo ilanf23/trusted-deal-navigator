@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import PartnerLayout from '@/components/partner/PartnerLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -103,7 +103,7 @@ const PartnerReferrals = () => {
   };
 
   return (
-    <PartnerLayout>
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">My Referrals</h1>
@@ -228,7 +228,7 @@ const PartnerReferrals = () => {
           </CardContent>
         </Card>
       </div>
-    </PartnerLayout>
+    </>
   );
 };
 
