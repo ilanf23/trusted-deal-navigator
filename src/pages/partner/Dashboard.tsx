@@ -10,7 +10,7 @@ import { Users, CheckCircle, DollarSign, Clock, Send, Eye, Loader2, ArrowRight }
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
-const COMMISSION_GOAL = 50000;
+
 
 const statusConfig: Record<string, { color: string; dot: string; bg: string }> = {
   submitted: { color: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/40' },
@@ -108,8 +108,6 @@ const PartnerDashboard = () => {
     );
   }
 
-  const commissionProgress = COMMISSION_GOAL > 0 ? Math.min((stats.commissions / COMMISSION_GOAL) * 100, 100) : 0;
-
   return (
     <PartnerLayout>
       <div className="space-y-8">
@@ -119,23 +117,17 @@ const PartnerDashboard = () => {
           <p className="text-muted-foreground mt-1">Here's your referral overview</p>
         </div>
 
-        {/* Hero Card - Commissions Goal */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-r from-[#0066FF] to-[#0052cc] text-white">
-          <div className="absolute top-[-30px] right-[-30px] w-40 h-40 rounded-full bg-white/10" />
-          <div className="absolute bottom-[-50px] right-[80px] w-60 h-60 rounded-full bg-white/5" />
-          <CardContent className="relative z-10 p-6 md:p-8">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* Commission Summary */}
+        <Card className="border-0 bg-gradient-to-r from-[#0066FF] to-[#0052cc] text-white">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-white/80">Commission Earnings</p>
+                <p className="text-sm font-medium text-white/70">Total Commissions Earned</p>
                 <p className="text-3xl md:text-4xl font-bold mt-1">${stats.commissions.toLocaleString()}</p>
-                <p className="text-sm text-white/70 mt-1">of ${COMMISSION_GOAL.toLocaleString()} goal</p>
               </div>
-              <div className="w-full md:w-64">
-                <div className="flex justify-between text-sm text-white/80 mb-2">
-                  <span>Progress</span>
-                  <span>{commissionProgress.toFixed(0)}%</span>
-                </div>
-                <Progress value={commissionProgress} className="h-3 bg-white/20 [&>div]:bg-white" />
+              <div className="text-right border-l border-white/20 pl-8">
+                <p className="text-sm font-medium text-white/70">Funded Deals</p>
+                <p className="text-3xl font-semibold mt-1">{stats.funded}</p>
               </div>
             </div>
           </CardContent>
