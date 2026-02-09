@@ -64,6 +64,11 @@ import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
 import PortalMessages from "./pages/portal/Messages";
 import PortalProfile from "./pages/portal/Profile";
+import PartnerRoute from "./components/partner/PartnerRoute";
+import PartnerDashboard from "./pages/partner/Dashboard";
+import PartnerReferrals from "./pages/partner/Referrals";
+import PartnerCommissions from "./pages/partner/Commissions";
+import PartnerProfilePage from "./pages/partner/Profile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -165,6 +170,11 @@ const App = () => (
               <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
               <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
               <Route path="/admin/sheets-callback" element={<SheetsCallback />} />
+              {/* Partner Portal Routes */}
+              <Route path="/partner" element={<PartnerRoute><PartnerDashboard /></PartnerRoute>} />
+              <Route path="/partner/referrals" element={<PartnerRoute><PartnerReferrals /></PartnerRoute>} />
+              <Route path="/partner/commissions" element={<PartnerRoute><PartnerCommissions /></PartnerRoute>} />
+              <Route path="/partner/profile" element={<PartnerRoute><PartnerProfilePage /></PartnerRoute>} />
               {/* Client Portal Routes - /user/{name} for clients */}
               <Route path="/user" element={<ProtectedRoute clientOnly><PortalDashboard /></ProtectedRoute>} />
               <Route path="/user/contracts" element={<ProtectedRoute clientOnly><PortalContracts /></ProtectedRoute>} />
