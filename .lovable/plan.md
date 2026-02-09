@@ -1,51 +1,33 @@
 
 
-# Partner Dashboard Redesign
+# Commission Section Redesign
 
-## Overview
-Redesign the partner dashboard to match the professional, polished aesthetic of Evan's command center -- with a hero section, better stat cards, a pipeline summary, quick actions, and an improved referrals table.
+## Problem
+The current commission "hero card" with a progress bar toward a $50,000 goal feels gimmicky and unnecessary. Partners just need to see their earnings clearly.
 
 ## What Changes
 
-### 1. Welcome Header with Greeting
-- Dynamic time-of-day greeting ("Good morning!", "Happy Monday!", etc.)
-- Subtitle: "Here's your referral overview"
-- Clean layout matching Evan's header style
+Remove the goal tracker, progress bar, and decorative circles. Replace with a clean, professional commission summary card that shows:
 
-### 2. Hero Card -- Commissions Goal Tracker
-- Full-width gradient card (primary blue, matching Evan's annual goal card)
-- Shows total commissions earned vs a goal (or lifetime earnings if no goal)
-- Decorative background circles for visual depth
-- Progress bar showing commission trajectory
-
-### 3. Upgraded Stat Cards
-- 4-column grid with icon backgrounds (colored circle behind each icon)
-- Subtle trend indicators and better typography
-- Cards: Total Referrals, Active Referrals, Funded Deals, Total Commissions
-- Each card gets a colored icon container instead of a bare icon
-
-### 4. Quick Actions Row
-- "Submit New Referral" button linking to /partner/referrals
-- "View Commissions" button linking to /partner/commissions
-- Professional button styling with icons
-
-### 5. Two-Column Layout (below stats)
-- **Left column**: Recent Referrals table with better formatting -- avatar placeholder initials, status badges with dot indicators, loan type and amount shown
-- **Right column**: Referral Status Breakdown -- simple visual showing count per status (submitted, in review, approved, funded, declined) with colored bars/indicators
-
-### 6. Loading State
-- Centered spinner with "Loading dashboard..." text (matching Evan's pattern)
+- **Total Commissions Earned** as the primary large number
+- **Funded Deals count** as supporting context
+- A subtle gradient background kept for visual hierarchy, but toned down
 
 ## Technical Details
 
-### Files Modified
-- `src/pages/partner/Dashboard.tsx` -- Complete redesign of the dashboard component
+### File Modified
+- `src/pages/partner/Dashboard.tsx`
 
-### Approach
-- Use existing UI components (Card, Badge, Progress, Button)
-- Use Recharts for any mini-charts if needed (already installed)
-- Follow the same data-fetching pattern (Supabase queries + realtime subscription)
-- Use semantic Tailwind tokens (bg-card, text-foreground, border-border) for dark mode compatibility
-- Brand colors: Primary blue (#0066FF), accent orange (#FF8000), clean whites
-- Responsive grid: 1 col mobile, 2 col tablet, 4 col desktop for stats
+### Specific Changes
+
+1. **Remove** the `COMMISSION_GOAL` constant and `commissionProgress` calculation
+2. **Redesign** the hero card section:
+   - Keep the gradient card (`from-[#0066FF] to-[#0052cc]`) but remove the decorative circles
+   - Show commission earnings as a single prominent figure with a label
+   - Add funded deals count as a secondary stat beside it
+   - Remove the progress bar, goal text, and percentage display
+3. The card becomes a simple, elegant earnings banner -- two key numbers side by side with clean typography
+
+### Result
+A professional earnings summary that presents real data without artificial gamification.
 
