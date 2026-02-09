@@ -141,17 +141,31 @@ const Auth = () => {
         setError(error.message);
       }
     } else {
-      // If partner role selected, update user_roles after signup
+      // If partner role selected, wait for session then update role
       if (signupRole === 'partner') {
-        // The handle_new_user trigger creates a 'client' role by default.
-        // We need to update it to 'partner' after the user is created.
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await supabase
-            .from('user_roles')
-            .update({ role: 'partner' as any })
-            .eq('user_id', session.user.id);
-        }
+        // Listen for the session to become available after signup
+        const waitForSession = async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            await supabase
+              .from('user_roles')
+              .update({ role: 'partner' as any })
+              .eq('user_id', session.user.id);
+          }
+        };
+        
+        // Try immediately and also set up a listener
+        await waitForSession();
+        
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            await supabase
+              .from('user_roles')
+              .update({ role: 'partner' as any })
+              .eq('user_id', session.user.id);
+            subscription.unsubscribe();
+          }
+        });
       }
       setSuccess('Account created successfully! You can now sign in.');
       setSignupEmail('');
