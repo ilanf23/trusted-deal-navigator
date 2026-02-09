@@ -1,115 +1,164 @@
 
-# Professional Revenue Chart Redesign
 
-## Current Issues
-- Chart shows minimal information (just bars with no comparison)
-- No target/goal reference line for context
-- Limited insights beyond basic totals
-- No trend or performance indicators
-- Missing deal counts and conversion context
+# Partner Dashboard - Referral Submission, Tracking, and Commissions
 
-## Proposed Improvements
+## Overview
 
-### 1. Enhanced Chart with Target Reference
-- Add a target line showing the $125K monthly goal (derived from $1.5M / 12 months)
-- Include a cumulative revenue line to show YTD trajectory
-- Display bars that compare actual vs target visually
+Create a new "Partner" user role and dashboard at `/partner` where external partners can sign up, submit referrals (leads), track their referral status in real time as deals move through pipeline stages, and view earned commissions.
 
-### 2. Additional Data Points Per Month
-- Show number of deals closed per month alongside revenue
-- Calculate and display month-over-month growth percentage
-- Indicate which months exceeded target with a visual marker
+---
 
-### 3. Professional Statistics Footer
-The bottom stats section will include:
-- **Total YTD Revenue**: Current total with percentage toward annual goal
-- **Monthly Average**: Average revenue per active month
-- **Best Month**: Highest performing month name and amount
-- **Deals Closed**: Total deals with average deal size
-- **On-Track Indicator**: Whether current trajectory will hit the $1.5M goal
+## 1. Database Changes
 
-### 4. Visual Improvements
-- Reference line showing the $125K/month target
-- Color coding: bars meeting target in green/orange, below target in white/lighter shade
-- Improved tooltip showing revenue, deal count, and vs. target percentage
-- Add a small trend arrow next to each month showing growth/decline
+### New role: `partner`
 
-### Technical Implementation
+Add `'partner'` to the existing `app_role` enum so partners get their own role distinct from `admin` and `client`.
 
-**File to modify**: `src/pages/admin/EvansPage.tsx` (lines 494-556)
+### New tables
 
-**Changes**:
-1. Update the chart container to use a ComposedChart (allows mixing bars and lines)
-2. Add a ReferenceLine component at $125,000 with a dashed style
-3. Enhance `monthlyRevenueData` to include:
-   - `target: 125000` (already exists)
-   - `vsTarget: revenue / 125000 * 100` (percentage)
-   - `cumulative: running total`
-   - `growth: month-over-month % change`
-4. Create a custom tooltip showing:
-   - Month name
-   - Revenue (formatted)
-   - Deals closed count
-   - vs. Target percentage
-5. Replace the simple footer with a 4-column stats grid:
-   - YTD Total with goal %
-   - Monthly Avg with trend
-   - Best performing month
-   - Total deals / avg deal size
+#### `partner_referrals`
+Stores each referral a partner submits. Links to the `leads` table once the admin team processes it.
 
-**New imports needed**:
-- `ReferenceLine` from recharts
-- `ComposedChart` from recharts (if adding a line for cumulative)
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid (PK) | |
+| partner_id | uuid (NOT NULL) | The auth user ID of the partner |
+| lead_id | uuid (nullable, FK -> leads) | Linked once admin creates/matches a lead |
+| name | text | Referral contact name |
+| email | text | |
+| phone | text | |
+| company_name | text | |
+| loan_amount | numeric | |
+| loan_type | text | e.g. CRE, Business Acquisition, Working Capital |
+| property_address | text | |
+| urgency | text | e.g. Urgent, Standard, No Rush |
+| notes | text | |
+| status | text | `submitted`, `in_review`, `approved`, `declined`, `funded` |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
 
-**Updated data structure**:
-```typescript
-return {
-  month: monthLabel,
-  revenue,
-  target: 125000,
-  deals: monthlyFunded.length,
-  vsTarget: Math.round((revenue / 125000) * 100),
-  cumulative: runningTotal,
-  avgDealSize: monthlyFunded.length > 0 ? revenue / monthlyFunded.length : 0,
-};
+RLS: Partners can INSERT their own referrals and SELECT only their own rows. Admins get full access.
+
+#### `partner_referral_status_history`
+Logs every status change so partners see a timeline.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid (PK) | |
+| referral_id | uuid (FK -> partner_referrals) | |
+| old_status | text | |
+| new_status | text | |
+| changed_at | timestamptz | |
+| note | text | Optional message from admin |
+
+RLS: Partners can SELECT rows for their own referrals. Admins get full access.
+
+#### `partner_commissions`
+Tracks commissions earned on funded deals.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid (PK) | |
+| partner_id | uuid | |
+| referral_id | uuid (FK -> partner_referrals) | |
+| amount | numeric | Commission amount |
+| status | text | `pending`, `approved`, `paid` |
+| paid_at | timestamptz | |
+| created_at | timestamptz | |
+| notes | text | |
+
+RLS: Partners can SELECT their own. Admins get full access.
+
+### Database trigger
+
+A trigger on `partner_referrals` that auto-inserts into `partner_referral_status_history` whenever `status` changes, so the timeline is always accurate.
+
+### Realtime
+
+Enable realtime on `partner_referrals` and `partner_referral_status_history` so the partner dashboard updates live when admins change a referral's status.
+
+---
+
+## 2. Authentication and Routing
+
+### Auth changes
+
+- Add `'partner'` to the `app_role` enum.
+- Update `Auth.tsx` login redirect logic: if user has role `partner`, redirect to `/partner`.
+- Update `ProtectedRoute.tsx` to recognize partner role and prevent partners from accessing admin or client routes.
+
+### New route guard: `PartnerRoute`
+
+A simple component (similar to `ProtectedRoute`) that checks the user has the `partner` role and redirects otherwise.
+
+### New routes in `App.tsx`
+
+```
+/partner                -> Partner Dashboard
+/partner/referrals      -> Referral list + submission
+/partner/commissions    -> Commission tracker
+/partner/profile        -> Partner profile
 ```
 
-**Enhanced tooltip content**:
-```typescript
-formatter={(value, name, props) => {
-  const { payload } = props;
-  return [
-    `${formatCurrencyFull(value)}`,
-    `${payload.deals} deals`,
-    `${payload.vsTarget}% of target`
-  ];
-}}
-```
+---
 
-**Stats footer redesign** (replacing current simple layout):
-```tsx
-<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/10">
-  <div>
-    <p className="text-[10px] text-white/50 uppercase">YTD Revenue</p>
-    <p className="text-lg font-bold">{formatCurrency(ytdRevenue)}</p>
-    <p className="text-xs text-white/60">{Math.round(ytdRevenue/annualTarget*100)}% of goal</p>
-  </div>
-  <div>
-    <p className="text-[10px] text-white/50 uppercase">Monthly Avg</p>
-    <p className="text-lg font-bold">{formatCurrency(avgMonthly)}</p>
-    <p className="text-xs text-white/60">{activeMonths} active months</p>
-  </div>
-  <div>
-    <p className="text-[10px] text-white/50 uppercase">Best Month</p>
-    <p className="text-lg font-bold">{bestMonth.month}</p>
-    <p className="text-xs text-white/60">{formatCurrency(bestMonth.revenue)}</p>
-  </div>
-  <div>
-    <p className="text-[10px] text-white/50 uppercase">Deals Closed</p>
-    <p className="text-lg font-bold">{totalDeals}</p>
-    <p className="text-xs text-white/60">Avg: {formatCurrency(avgDealSize)}</p>
-  </div>
-</div>
-```
+## 3. Frontend Components
 
-This redesign transforms the chart from a simple revenue display into a comprehensive performance tracking tool that provides actionable context at a glance.
+### Partner Layout (`src/components/partner/PartnerLayout.tsx`)
+
+Sidebar navigation matching the existing portal style (dark sidebar with logo) with links to Dashboard, My Referrals, Commissions, and Profile.
+
+### Partner Dashboard (`src/pages/partner/Dashboard.tsx`)
+
+Summary cards:
+- Total Referrals submitted
+- Active Referrals (in review/approved)
+- Funded Deals
+- Total Commissions Earned
+
+Plus a "Recent Referrals" list showing latest 5 with status badges.
+
+### Referral Submission + List (`src/pages/partner/Referrals.tsx`)
+
+- A table/list of all submitted referrals with status badges (color-coded)
+- "New Referral" button opens a form dialog with fields:
+  - Contact Name, Email, Phone, Company Name
+  - Loan Amount, Loan Type (dropdown), Property Address
+  - Urgency (Urgent / Standard / No Rush)
+  - Notes
+- Clicking a referral row expands to show the **status timeline** (from `partner_referral_status_history`) so the partner sees every stage change with timestamps.
+
+### Commissions Page (`src/pages/partner/Commissions.tsx`)
+
+- Summary: Total Earned, Pending, Paid
+- Table listing each commission with referral name, amount, status, and date.
+
+### Partner Profile (`src/pages/partner/Profile.tsx`)
+
+Basic profile page showing the partner's email and account info.
+
+---
+
+## 4. Admin Side - Managing Partner Referrals
+
+On the admin side, partner referrals will appear with `source = 'partner_referral'` when converted to leads. Admins can update referral status from the existing CRM/lead detail dialog. When an admin changes the status on `partner_referrals`, the trigger logs it to the history table, and the partner sees it in real time.
+
+---
+
+## 5. File Summary
+
+| Action | File |
+|---|---|
+| Create | `src/components/partner/PartnerLayout.tsx` |
+| Create | `src/components/partner/PartnerSidebar.tsx` |
+| Create | `src/components/partner/PartnerRoute.tsx` |
+| Create | `src/pages/partner/Dashboard.tsx` |
+| Create | `src/pages/partner/Referrals.tsx` |
+| Create | `src/pages/partner/Commissions.tsx` |
+| Create | `src/pages/partner/Profile.tsx` |
+| Edit | `src/App.tsx` - add partner routes |
+| Edit | `src/pages/Auth.tsx` - add partner redirect |
+| Edit | `src/contexts/AuthContext.tsx` - recognize partner role |
+| Edit | `src/components/auth/ProtectedRoute.tsx` - block partners from admin/client |
+| Migration | Create tables, enum value, trigger, RLS policies, realtime |
+
