@@ -734,31 +734,35 @@ const Questionnaire = () => {
 
   // Handle section navigation with visited tracking
   const navigateToSection = (sectionKey: SectionKey) => {
-    setVisitedSections(prev => new Set([...prev, sectionKey]));
+    setVisitedSections(prev => new Set([...prev, activeSection, sectionKey]));
     setActiveSection(sectionKey);
   };
 
   const goToNextSection = () => {
     if (canGoNext) {
       const nextSection = SECTIONS[currentIndex + 1].key;
-      setVisitedSections(prev => new Set([...prev, nextSection]));
+      setVisitedSections(prev => new Set([...prev, activeSection, nextSection]));
       setActiveSection(nextSection);
     }
   };
 
   const goToPrevSection = () => {
     if (canGoPrev) {
+      setVisitedSections(prev => new Set([...prev, activeSection]));
       setActiveSection(SECTIONS[currentIndex - 1].key);
     }
   };
 
-  // Check if a section should show as complete (completed + moved past it)
+  // Show green checkmark only if: all required fields filled AND user has visited & left the section
   const isSectionConfirmedComplete = (sectionKey: SectionKey) => {
-    const sectionIndex = SECTIONS.findIndex(s => s.key === sectionKey);
-    const isComplete = sectionCompletion[sectionKey];
-    const hasMovedPast = currentIndex > sectionIndex || 
-      (visitedSections.has(SECTIONS[sectionIndex + 1]?.key) && sectionIndex < SECTIONS.length - 1);
-    return isComplete && hasMovedPast;
+    const section = SECTIONS.find(s => s.key === sectionKey);
+    if (!section) return false;
+    // Must have been visited
+    if (!visitedSections.has(sectionKey)) return false;
+    // Must not be the currently active section
+    if (activeSection === sectionKey) return false;
+    // Must have all required fields filled (sections with no required fields need at least a visit)
+    return sectionCompletion[sectionKey];
   };
 
   return (
