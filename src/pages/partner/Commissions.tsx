@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import PartnerLayout from '@/components/partner/PartnerLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -45,7 +45,7 @@ const PartnerCommissions = () => {
   };
 
   return (
-    <PartnerLayout>
+    <>
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">Commissions</h1>
 
@@ -104,7 +104,7 @@ const PartnerCommissions = () => {
           </CardContent>
         </Card>
       </div>
-    </PartnerLayout>
+    </>
   );
 };
 

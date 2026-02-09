@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import PartnerLayout from '@/components/partner/PartnerLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -100,17 +100,15 @@ const PartnerDashboard = () => {
 
   if (loading) {
     return (
-      <PartnerLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </PartnerLayout>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+      </div>
     );
   }
 
   return (
-    <PartnerLayout>
+    <>
       <div className="space-y-8">
         {/* Welcome Header */}
         <div>
@@ -257,7 +255,7 @@ const PartnerDashboard = () => {
           </Card>
         </div>
       </div>
-    </PartnerLayout>
+    </>
   );
 };
 
