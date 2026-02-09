@@ -1,164 +1,51 @@
 
 
-# Partner Dashboard - Referral Submission, Tracking, and Commissions
+# Partner Dashboard Redesign
 
 ## Overview
+Redesign the partner dashboard to match the professional, polished aesthetic of Evan's command center -- with a hero section, better stat cards, a pipeline summary, quick actions, and an improved referrals table.
 
-Create a new "Partner" user role and dashboard at `/partner` where external partners can sign up, submit referrals (leads), track their referral status in real time as deals move through pipeline stages, and view earned commissions.
+## What Changes
 
----
+### 1. Welcome Header with Greeting
+- Dynamic time-of-day greeting ("Good morning!", "Happy Monday!", etc.)
+- Subtitle: "Here's your referral overview"
+- Clean layout matching Evan's header style
 
-## 1. Database Changes
+### 2. Hero Card -- Commissions Goal Tracker
+- Full-width gradient card (primary blue, matching Evan's annual goal card)
+- Shows total commissions earned vs a goal (or lifetime earnings if no goal)
+- Decorative background circles for visual depth
+- Progress bar showing commission trajectory
 
-### New role: `partner`
+### 3. Upgraded Stat Cards
+- 4-column grid with icon backgrounds (colored circle behind each icon)
+- Subtle trend indicators and better typography
+- Cards: Total Referrals, Active Referrals, Funded Deals, Total Commissions
+- Each card gets a colored icon container instead of a bare icon
 
-Add `'partner'` to the existing `app_role` enum so partners get their own role distinct from `admin` and `client`.
+### 4. Quick Actions Row
+- "Submit New Referral" button linking to /partner/referrals
+- "View Commissions" button linking to /partner/commissions
+- Professional button styling with icons
 
-### New tables
+### 5. Two-Column Layout (below stats)
+- **Left column**: Recent Referrals table with better formatting -- avatar placeholder initials, status badges with dot indicators, loan type and amount shown
+- **Right column**: Referral Status Breakdown -- simple visual showing count per status (submitted, in review, approved, funded, declined) with colored bars/indicators
 
-#### `partner_referrals`
-Stores each referral a partner submits. Links to the `leads` table once the admin team processes it.
+### 6. Loading State
+- Centered spinner with "Loading dashboard..." text (matching Evan's pattern)
 
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid (PK) | |
-| partner_id | uuid (NOT NULL) | The auth user ID of the partner |
-| lead_id | uuid (nullable, FK -> leads) | Linked once admin creates/matches a lead |
-| name | text | Referral contact name |
-| email | text | |
-| phone | text | |
-| company_name | text | |
-| loan_amount | numeric | |
-| loan_type | text | e.g. CRE, Business Acquisition, Working Capital |
-| property_address | text | |
-| urgency | text | e.g. Urgent, Standard, No Rush |
-| notes | text | |
-| status | text | `submitted`, `in_review`, `approved`, `declined`, `funded` |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
+## Technical Details
 
-RLS: Partners can INSERT their own referrals and SELECT only their own rows. Admins get full access.
+### Files Modified
+- `src/pages/partner/Dashboard.tsx` -- Complete redesign of the dashboard component
 
-#### `partner_referral_status_history`
-Logs every status change so partners see a timeline.
-
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid (PK) | |
-| referral_id | uuid (FK -> partner_referrals) | |
-| old_status | text | |
-| new_status | text | |
-| changed_at | timestamptz | |
-| note | text | Optional message from admin |
-
-RLS: Partners can SELECT rows for their own referrals. Admins get full access.
-
-#### `partner_commissions`
-Tracks commissions earned on funded deals.
-
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid (PK) | |
-| partner_id | uuid | |
-| referral_id | uuid (FK -> partner_referrals) | |
-| amount | numeric | Commission amount |
-| status | text | `pending`, `approved`, `paid` |
-| paid_at | timestamptz | |
-| created_at | timestamptz | |
-| notes | text | |
-
-RLS: Partners can SELECT their own. Admins get full access.
-
-### Database trigger
-
-A trigger on `partner_referrals` that auto-inserts into `partner_referral_status_history` whenever `status` changes, so the timeline is always accurate.
-
-### Realtime
-
-Enable realtime on `partner_referrals` and `partner_referral_status_history` so the partner dashboard updates live when admins change a referral's status.
-
----
-
-## 2. Authentication and Routing
-
-### Auth changes
-
-- Add `'partner'` to the `app_role` enum.
-- Update `Auth.tsx` login redirect logic: if user has role `partner`, redirect to `/partner`.
-- Update `ProtectedRoute.tsx` to recognize partner role and prevent partners from accessing admin or client routes.
-
-### New route guard: `PartnerRoute`
-
-A simple component (similar to `ProtectedRoute`) that checks the user has the `partner` role and redirects otherwise.
-
-### New routes in `App.tsx`
-
-```
-/partner                -> Partner Dashboard
-/partner/referrals      -> Referral list + submission
-/partner/commissions    -> Commission tracker
-/partner/profile        -> Partner profile
-```
-
----
-
-## 3. Frontend Components
-
-### Partner Layout (`src/components/partner/PartnerLayout.tsx`)
-
-Sidebar navigation matching the existing portal style (dark sidebar with logo) with links to Dashboard, My Referrals, Commissions, and Profile.
-
-### Partner Dashboard (`src/pages/partner/Dashboard.tsx`)
-
-Summary cards:
-- Total Referrals submitted
-- Active Referrals (in review/approved)
-- Funded Deals
-- Total Commissions Earned
-
-Plus a "Recent Referrals" list showing latest 5 with status badges.
-
-### Referral Submission + List (`src/pages/partner/Referrals.tsx`)
-
-- A table/list of all submitted referrals with status badges (color-coded)
-- "New Referral" button opens a form dialog with fields:
-  - Contact Name, Email, Phone, Company Name
-  - Loan Amount, Loan Type (dropdown), Property Address
-  - Urgency (Urgent / Standard / No Rush)
-  - Notes
-- Clicking a referral row expands to show the **status timeline** (from `partner_referral_status_history`) so the partner sees every stage change with timestamps.
-
-### Commissions Page (`src/pages/partner/Commissions.tsx`)
-
-- Summary: Total Earned, Pending, Paid
-- Table listing each commission with referral name, amount, status, and date.
-
-### Partner Profile (`src/pages/partner/Profile.tsx`)
-
-Basic profile page showing the partner's email and account info.
-
----
-
-## 4. Admin Side - Managing Partner Referrals
-
-On the admin side, partner referrals will appear with `source = 'partner_referral'` when converted to leads. Admins can update referral status from the existing CRM/lead detail dialog. When an admin changes the status on `partner_referrals`, the trigger logs it to the history table, and the partner sees it in real time.
-
----
-
-## 5. File Summary
-
-| Action | File |
-|---|---|
-| Create | `src/components/partner/PartnerLayout.tsx` |
-| Create | `src/components/partner/PartnerSidebar.tsx` |
-| Create | `src/components/partner/PartnerRoute.tsx` |
-| Create | `src/pages/partner/Dashboard.tsx` |
-| Create | `src/pages/partner/Referrals.tsx` |
-| Create | `src/pages/partner/Commissions.tsx` |
-| Create | `src/pages/partner/Profile.tsx` |
-| Edit | `src/App.tsx` - add partner routes |
-| Edit | `src/pages/Auth.tsx` - add partner redirect |
-| Edit | `src/contexts/AuthContext.tsx` - recognize partner role |
-| Edit | `src/components/auth/ProtectedRoute.tsx` - block partners from admin/client |
-| Migration | Create tables, enum value, trigger, RLS policies, realtime |
+### Approach
+- Use existing UI components (Card, Badge, Progress, Button)
+- Use Recharts for any mini-charts if needed (already installed)
+- Follow the same data-fetching pattern (Supabase queries + realtime subscription)
+- Use semantic Tailwind tokens (bg-card, text-foreground, border-border) for dark mode compatibility
+- Brand colors: Primary blue (#0066FF), accent orange (#FF8000), clean whites
+- Responsive grid: 1 col mobile, 2 col tablet, 4 col desktop for stats
 
