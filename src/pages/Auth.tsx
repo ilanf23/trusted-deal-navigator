@@ -179,7 +179,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={logo} alt="Commercial Lending X" className="h-20" />
+            <img src={logo} alt="Commercial Lending X" className="h-80" />
           </div>
           <Button 
             variant="ghost" 
