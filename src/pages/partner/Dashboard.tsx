@@ -169,7 +169,7 @@ const PartnerDashboard = () => {
           </Button>
           <Button onClick={() => navigate('/partner/referrals')} className="gap-2">
             <Send className="h-4 w-4" />
-            Submit New Referral
+            Recommend Referral
           </Button>
           <Button variant="outline" onClick={() => navigate('/partner/commissions')} className="gap-2">
             <Eye className="h-4 w-4" />
