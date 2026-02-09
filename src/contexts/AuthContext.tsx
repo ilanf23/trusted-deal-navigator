@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const ADMIN_EMAIL = 'ilan@maverich.ai';
 
-type UserRole = 'admin' | 'client';
+type UserRole = 'admin' | 'client' | 'partner';
 interface AuthContextType {
   user: User | null;
   session: Session | null;

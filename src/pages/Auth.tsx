@@ -34,6 +34,8 @@ const Auth = () => {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
   // Redirect if already logged in
+  const { userRole } = useAuth();
+
   useEffect(() => {
     if (user && !authLoading) {
       const email = (user.email ?? '').toLowerCase();
@@ -57,6 +59,12 @@ const Auth = () => {
         return;
       }
 
+      // Redirect partners to partner dashboard
+      if (userRole === 'partner') {
+        navigate('/partner', { replace: true });
+        return;
+      }
+
       const from = location.state?.from?.pathname;
       if (from) {
         navigate(from, { replace: true });
@@ -66,7 +74,7 @@ const Auth = () => {
         navigate('/user', { replace: true });
       }
     }
-  }, [user, isAdmin, authLoading, navigate, location]);
+  }, [user, isAdmin, userRole, authLoading, navigate, location]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

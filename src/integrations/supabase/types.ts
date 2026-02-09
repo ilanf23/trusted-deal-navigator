@@ -2086,6 +2086,144 @@ export type Database = {
           },
         ]
       }
+      partner_commissions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          paid_at: string | null
+          partner_id: string
+          referral_id: string | null
+          status: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          partner_id: string
+          referral_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          partner_id?: string
+          referral_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_commissions_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "partner_referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_referral_status_history: {
+        Row: {
+          changed_at: string
+          id: string
+          new_status: string
+          note: string | null
+          old_status: string | null
+          referral_id: string
+        }
+        Insert: {
+          changed_at?: string
+          id?: string
+          new_status: string
+          note?: string | null
+          old_status?: string | null
+          referral_id: string
+        }
+        Update: {
+          changed_at?: string
+          id?: string
+          new_status?: string
+          note?: string | null
+          old_status?: string | null
+          referral_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_referral_status_history_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "partner_referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_referrals: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          lead_id: string | null
+          loan_amount: number | null
+          loan_type: string | null
+          name: string
+          notes: string | null
+          partner_id: string
+          phone: string | null
+          property_address: string | null
+          status: string
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          loan_amount?: number | null
+          loan_type?: string | null
+          name: string
+          notes?: string | null
+          partner_id: string
+          phone?: string | null
+          property_address?: string | null
+          status?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          lead_id?: string | null
+          loan_amount?: number | null
+          loan_type?: string | null
+          name?: string
+          notes?: string | null
+          partner_id?: string
+          phone?: string | null
+          property_address?: string | null
+          status?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_referrals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_column_values: {
         Row: {
           assigned_to_id: string | null
@@ -2782,7 +2920,7 @@ export type Database = {
       is_team_owner: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "client"
+      app_role: "admin" | "client" | "partner"
       contract_status:
         | "draft"
         | "sent"
@@ -2942,7 +3080,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "client"],
+      app_role: ["admin", "client", "partner"],
       contract_status: [
         "draft",
         "sent",

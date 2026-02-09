@@ -17,7 +17,7 @@ const TEAM_MEMBER_EMAILS: Record<string, string> = {
 };
 
 const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: ProtectedRouteProps) => {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin, userRole } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -34,9 +34,13 @@ const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: 
 
   const userEmail = (user.email ?? '').toLowerCase();
 
+  // Redirect partners away from admin and client routes
+  if (userRole === 'partner') {
+    return <Navigate to="/partner" replace />;
+  }
+
   // Check if user is a team member trying to access admin routes
   if (requireAdmin && TEAM_MEMBER_EMAILS[userEmail]) {
-    // Redirect team members to their own dashboard
     return <Navigate to={TEAM_MEMBER_EMAILS[userEmail]} replace />;
   }
 
