@@ -193,78 +193,7 @@ interface LeadLenderAssociation {
 
 // Lender data is now loaded from the lead_lender_programs database table via useQuery
 
-// ⚠️ MOCK DATA — Lead placeholder data (address, loan details) not yet in database
-const leadPlaceholderData: Record<string, {
-  address: string;
-  loanType: string;
-  loanAmount: string;
-  businessType: string;
-  propertyType: string;
-  urgency: string;
-  notes: string;
-}> = {
-  // Ilan Samuel Fridman
-  '6f00ff2c-4a3a-43af-9f68-88c99411fb59': {
-    address: '2847 Lake Shore Dr, Chicago, IL 60614',
-    loanType: 'SBA 7(a)',
-    loanAmount: '$850,000',
-    businessType: 'Tech Startup',
-    propertyType: 'Office Space',
-    urgency: 'High',
-    notes: 'Initial discovery call completed. Technical difficulties during first call - needs follow-up.',
-  },
-  // Sarah Rodriguez - Meridian Development Group
-  '7768d0c3-ca10-4955-bee0-2af42f0a061a': {
-    address: '1250 N Clark St, Chicago, IL 60610',
-    loanType: 'Bridge Loan',
-    loanAmount: '$3,200,000',
-    businessType: 'Real Estate Development',
-    propertyType: 'Multi-Family (24 units)',
-    urgency: 'Medium',
-    notes: 'Multi-family project in Lincoln Park. Needs bridge financing for 18 months until permanent financing.',
-  },
-  // James Patterson - Patterson Holdings LLC
-  'b6329460-e111-4f61-bf18-fc892dab614b': {
-    address: '445 Park Ave, New York, NY 10022',
-    loanType: 'SBA 504',
-    loanAmount: '$1,800,000',
-    businessType: 'Restaurant Franchise',
-    propertyType: 'Retail/Restaurant',
-    urgency: 'High',
-    notes: 'Expanding Chipotle franchise - 3 new locations in NYC metro. Strong financials, 10+ years experience.',
-  },
-  // Michael Chen - TechVest Capital
-  'e20d9ba8-18dd-4190-8f7b-c7081c8e1f2b': {
-    address: '580 California St, San Francisco, CA 94104',
-    loanType: 'Commercial Real Estate',
-    loanAmount: '$2,500,000',
-    businessType: 'Investment Firm',
-    propertyType: 'Class A Office',
-    urgency: 'Medium',
-    notes: 'Commercial property acquisition in Financial District. Pre-qualified, waiting on additional docs.',
-  },
-  // Emily Wang - Sunrise Healthcare Partners
-  '341f4f1c-fbdb-43b6-a25a-7f0e38a7237e': {
-    address: '9500 Gilman Dr, La Jolla, CA 92093',
-    loanType: 'Medical Practice Loan',
-    loanAmount: '$4,200,000',
-    businessType: 'Healthcare',
-    propertyType: 'Medical Office Building',
-    urgency: 'High',
-    notes: 'Acquiring existing MOB near UCSD. Deal in underwriting - strong cash flow, excellent credit.',
-  },
-};
-
-// Default placeholder for leads not in the mapping
-const defaultPlaceholder = {
-  address: '',
-  loanType: 'Conventional',
-  loanAmount: '',
-  businessType: '',
-  propertyType: '',
-  urgency: 'Medium',
-  notes: '',
-};
+// Lead placeholder data is now sourced from the lead_responses database table via useQuery
 
 interface LeadDetailDialogProps {
   lead: Lead | null;
@@ -285,11 +214,21 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [notesOpen, setNotesOpen] = useState(true);
   const [magicColumnsOpen, setMagicColumnsOpen] = useState(true);
 
-  // Get placeholder data for current lead
-  const getPlaceholderData = () => {
-    if (!lead) return defaultPlaceholder;
-    return leadPlaceholderData[lead.id] || defaultPlaceholder;
-  };
+  // Query lead_responses from database for placeholder/custom field data
+  const { data: leadResponseData } = useQuery({
+    queryKey: ['lead-response-data', lead?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lead_responses')
+        .select('loan_type, loan_amount, business_type, address_line_1, city, state, zip_code, collateral_description, purpose_of_loan, funding_amount')
+        .eq('lead_id', lead!.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!lead?.id && open,
+  });
 
   // Custom column values (local state for demo)
   const [customFields, setCustomFields] = useState({
@@ -391,14 +330,15 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   useEffect(() => {
     if (lead && open) {
       setActiveTab('all');
-      const placeholder = getPlaceholderData();
+      const addr = [leadResponseData?.address_line_1, leadResponseData?.city, leadResponseData?.state, leadResponseData?.zip_code].filter(Boolean).join(', ');
+      const amt = leadResponseData?.loan_amount ? `$${Number(leadResponseData.loan_amount).toLocaleString()}` : (leadResponseData?.funding_amount || '');
       setCustomFields({
-        address: placeholder.address,
-        loanType: placeholder.loanType,
-        loanAmount: placeholder.loanAmount,
-        businessType: placeholder.businessType,
-        propertyType: placeholder.propertyType,
-        urgency: placeholder.urgency === 'High',
+        address: addr,
+        loanType: leadResponseData?.loan_type || 'Conventional',
+        loanAmount: amt,
+        businessType: leadResponseData?.business_type || '',
+        propertyType: leadResponseData?.collateral_description || '',
+        urgency: false,
       });
       setContactInfo({
         knownAs: lead.known_as || '',
@@ -411,7 +351,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         about: lead.about || '',
         tags: lead.tags || [],
       });
-      setNotesContent(placeholder.notes || lead.notes || '');
+      setNotesContent(leadResponseData?.purpose_of_loan || lead.notes || '');
       setAiSummary(null);
       setAiAnswer(null);
       setShowAskDialog(false);
@@ -421,7 +361,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       setShowAddTag(false);
       setSelectedThreadId(null);
     }
-  }, [lead, open]);
+  }, [lead, open, leadResponseData]);
 
   // Queries
   // Fetch partner referral for this lead
@@ -684,394 +624,11 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!gmailConnection && leadEmailAddresses.length > 0 && open,
   });
 
-  // ⚠️ MOCK DATA — Hardcoded email threads for demo leads, not yet sourced from database
-  const mockEmailThreadsData: Record<string, any[]> = useMemo(() => ({
-    'ilan@fridmanventures.com': [{
-      id: 'thread-ilan-1',
-      thread_id: 'thread-ilan-1',
-      subject: 'RE: Tech Startup Financing Discussion',
-      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-      snippet: 'Thanks Evan, the SBA 7(a) program sounds like a great fit for what we need...',
-      from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
-      messageCount: 4,
-    }, {
-      id: 'thread-ilan-2',
-      thread_id: 'thread-ilan-2',
-      subject: 'Office Space Documents - 2847 Lake Shore Dr',
-      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-      snippet: 'Attached are the property documents you requested for the Lake Shore Drive location.',
-      from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
-      messageCount: 2,
-    }],
-    'robert.martinez@capitalventures.com': [{
-      id: 'thread-mock-1',
-      thread_id: 'thread-mock-1',
-      subject: 'RE: Loan Application Status Update',
-      last_message_date: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-      snippet: 'Great news on all fronts! I\'m excited to get this deal across the finish line for you...',
-      from: 'Evan <evan@commerciallendingx.com>',
-      messageCount: 5,
-    }],
-    'sarah.r@meridiangroup.com': [{
-      id: 'thread-mock-2',
-      thread_id: 'thread-mock-2',
-      subject: 'Documents for Property Appraisal',
-      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      snippet: 'Please find attached the property appraisal documents for the Meridian Plaza project.',
-      from: 'Sarah Richardson <sarah.r@meridiangroup.com>',
-      messageCount: 1,
-    }],
-    'mchen@techvest.com': [{
-      id: 'thread-mock-3',
-      thread_id: 'thread-mock-3',
-      subject: 'Urgent: Term Sheet Review Required',
-      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-      snippet: 'Evan, I need your input on the term sheet before our meeting tomorrow.',
-      from: 'Michael Chen <mchen@techvest.com>',
-      messageCount: 1,
-    }],
-    'dkim@seoulfoodgroup.com': [{
-      id: 'thread-mock-4',
-      thread_id: 'thread-mock-4',
-      subject: 'New Restaurant Location Financing',
-      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      snippet: 'Looking to expand Seoul Food Group with 3 new locations in the downtown area.',
-      from: 'David Kim <dkim@seoulfoodgroup.com>',
-      messageCount: 1,
-    }],
-    'lisa@pacificmedgroup.com': [{
-      id: 'thread-mock-5',
-      thread_id: 'thread-mock-5',
-      subject: 'Healthcare Facility Refinance Question',
-      last_message_date: '2026-01-10T11:45:00.000Z',
-      snippet: 'Our current loan matures in 6 months and we are exploring refinance options.',
-      from: 'Lisa Wong <lisa@pacificmedgroup.com>',
-      messageCount: 1,
-    }],
-    'twright@wrightmanufacturing.com': [{
-      id: 'thread-mock-6',
-      thread_id: 'thread-mock-6',
-      subject: 'Manufacturing Equipment Loan Application',
-      last_message_date: '2026-01-10T16:20:00.000Z',
-      snippet: 'Following up on our call about equipment financing. We need approximately $1.8M for new CNC machines.',
-      from: 'Thomas Wright <twright@wrightmanufacturing.com>',
-      messageCount: 1,
-    }],
-    'rachel@sunriseseniorliving.com': [{
-      id: 'thread-mock-7',
-      thread_id: 'thread-mock-7',
-      subject: 'Senior Living Facility Acquisition',
-      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(),
-      snippet: 'Great news - the seller accepted our offer! Now we need to move quickly on the financing.',
-      from: 'Rachel Adams <rachel@sunriseseniorliving.com>',
-      messageCount: 1,
-    }],
-    'sophia@luxestays.co': [{
-      id: 'thread-mock-8',
-      thread_id: 'thread-mock-8',
-      subject: 'Boutique Hotel Expansion Plans',
-      last_message_date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-      snippet: 'We are looking to add 40 more rooms to our property in Napa.',
-      from: 'Sophia Laurent <sophia@luxestays.co>',
-      messageCount: 1,
-    }],
-    'afoster@greenleafprops.com': [{
-      id: 'thread-mock-9',
-      thread_id: 'thread-mock-9',
-      subject: 'Commercial Property Portfolio Review',
-      last_message_date: '2026-01-10T14:30:00.000Z',
-      snippet: 'Can we schedule a call to review our portfolio? We have 5 properties that may need refinancing.',
-      from: 'Andrew Foster <afoster@greenleafprops.com>',
-      messageCount: 1,
-    }],
-    'ewang@sunrisehealthcare.com': [{
-      id: 'thread-mock-10',
-      thread_id: 'thread-mock-10',
-      subject: 'Healthcare Expansion Financing Inquiry',
-      last_message_date: '2026-01-10T09:15:00.000Z',
-      snippet: 'Sunrise Healthcare is planning to open a new urgent care center.',
-      from: 'Emily Wang <ewang@sunrisehealthcare.com>',
-      messageCount: 1,
-    }],
-  }), []);
+  // Email threads and messages are now sourced from the email_threads database table and Gmail API
 
-  // Mock thread messages for detailed view
-  const mockThreadMessages: Record<string, Array<{ id: string; from: string; to: string; date: string; body: string; }>> = useMemo(() => ({
-    'thread-ilan-1': [
-      {
-        id: 'msg-ilan-1-1',
-        from: 'Evan <evan@commerciallendingx.com>',
-        to: 'ilan@fridmanventures.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-        body: `Hi Ilan,
-
-Great speaking with you earlier today! I'm excited about the opportunity to help Fridman Ventures secure financing for your tech startup expansion.
-
-Based on our conversation, here's what I'm thinking for the $850K you need:
-
-SBA 7(a) PROGRAM:
-- Loan amount: $850,000
-- Estimated rate: 7.5% (Prime + 2.75%)
-- Term: 10 years
-- Down payment: 10-15%
-
-This program is ideal for your situation because it offers longer terms and lower down payments compared to conventional options. The SBA guarantee also helps us secure better rates.
-
-To get started, I'll need:
-1. Last 2 years of business tax returns
-2. Year-to-date P&L statement
-3. Personal financial statement
-4. Business plan / expansion summary
-
-Let me know if you have any questions!
-
-Best,
-Evan
-Commercial Lending X`,
-      },
-      {
-        id: 'msg-ilan-1-2',
-        from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
-        to: 'evan@commerciallendingx.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        body: `Evan,
-
-Thanks for the detailed breakdown! The SBA 7(a) program sounds like exactly what we need. The 10-year term would give us the runway we need to scale properly.
-
-Quick questions:
-1. How long does the approval process typically take?
-2. Can we use the funds for both the office space lease and hiring?
-3. What's the prepayment situation if we want to pay it off early?
-
-I'm gathering the documents you mentioned and should have everything to you by end of week.
-
-Thanks,
-Ilan`,
-      },
-      {
-        id: 'msg-ilan-1-3',
-        from: 'Evan <evan@commerciallendingx.com>',
-        to: 'ilan@fridmanventures.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        body: `Ilan,
-
-Great questions! Here are the answers:
-
-1. TIMELINE: Typically 45-60 days from complete application to funding. With strong financials like yours, we can sometimes expedite.
-
-2. USE OF FUNDS: Yes! SBA 7(a) is very flexible. You can use it for:
-   - Working capital (hiring, operations)
-   - Leasehold improvements
-   - Equipment purchases
-   - Debt refinancing
-
-3. PREPAYMENT: There's a prepayment penalty only in the first 3 years (5%, 3%, 1% respectively). After year 3, no penalty.
-
-Looking forward to receiving your documents. Once I have everything, I'll submit to 2-3 lenders and get you competitive term sheets within a week.
-
-Talk soon,
-Evan`,
-      },
-      {
-        id: 'msg-ilan-1-4',
-        from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
-        to: 'evan@commerciallendingx.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-        body: `Thanks Evan, the SBA 7(a) program sounds like a great fit for what we need.
-
-I've attached all the documents you requested:
-- 2024 and 2023 tax returns
-- Current P&L through January 2026
-- My personal financial statement
-- Our 5-year business plan
-
-One thing to note: we had a dip in revenue in Q2 2024 due to losing a major client, but we've since recovered and Q4 was our strongest quarter ever.
-
-Let me know if you need anything else!
-
-Best,
-Ilan`,
-      },
-    ],
-    'thread-ilan-2': [
-      {
-        id: 'msg-ilan-2-1',
-        from: 'Ilan Samuel Fridman <ilan@fridmanventures.com>',
-        to: 'evan@commerciallendingx.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-        body: `Hi Evan,
-
-As discussed, I'm sending over the property information for the office space at 2847 Lake Shore Drive.
-
-Key details:
-- 3,500 sq ft Class A office space
-- Currently vacant, ready for buildout
-- Asking rent: $42/sq ft annually
-- 5-year lease with 2 renewal options
-
-The landlord is motivated and may be flexible on TI allowance. This location would be perfect for our expansion - great access to public transit and near several tech companies we partner with.
-
-Let me know what you think!
-
-Ilan`,
-      },
-      {
-        id: 'msg-ilan-2-2',
-        from: 'Evan <evan@commerciallendingx.com>',
-        to: 'ilan@fridmanventures.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        body: `Ilan,
-
-This looks like a solid location! Lake Shore Drive is definitely a prime area for tech companies.
-
-I've noted the property details for our loan application. The lease terms look reasonable, and if we can negotiate a higher TI allowance, that would reduce the amount you need to borrow for buildout.
-
-A few things that would help:
-1. Draft lease agreement (when available)
-2. Buildout cost estimates
-3. Timeline for when you'd need to take occupancy
-
-This all factors into our funding timeline. Keep me posted!
-
-Evan`,
-      },
-    ],
-    'thread-mock-1': [
-      {
-        id: 'msg-1-1',
-        from: 'Evan <evan@commerciallendingx.com>',
-        to: 'robert.martinez@capitalventures.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-        body: `Hi Robert,
-
-Thank you for reaching out about financing for your acquisition. I'm excited to discuss the $2.5M loan opportunity for Capital Ventures.
-
-Based on our initial conversation, it sounds like you're looking to acquire a commercial property in the downtown district. Before we proceed, I wanted to gather some additional information to ensure we can structure the best possible deal for your needs.
-
-Could you please provide the following:
-
-1. Property address and current appraisal (if available)
-2. Your most recent 2 years of business tax returns
-3. Personal financial statement
-4. Executive summary of the acquisition opportunity
-
-Once I have these documents, I can start working with our lending partners to get you pre-qualified. Given current market conditions, we're seeing rates in the 7.25-7.75% range for deals of this size with strong borrower profiles.
-
-Best regards,
-Evan`,
-      },
-      {
-        id: 'msg-1-2',
-        from: 'Robert Martinez <robert.martinez@capitalventures.com>',
-        to: 'evan@commerciallendingx.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-        body: `Evan,
-
-Thanks for the quick response. Capital Ventures has been working on this acquisition for the past 6 months and we're finally in a position to move forward.
-
-I've attached the documents you requested:
-- Property appraisal (completed last month) showing a value of $3.2M
-- 2024 and 2023 business tax returns
-- My personal financial statement
-- A detailed executive summary of our expansion plans
-
-The property is located at 4500 Commerce Boulevard, which is in a prime commercial corridor. The building is currently 85% occupied with stable tenants.
-
-Our target closing date is March 15th, so we're on a somewhat tight timeline. Is that feasible from your perspective?
-
-Thanks,
-Robert Martinez
-CEO, Capital Ventures LLC`,
-      },
-      {
-        id: 'msg-1-3',
-        from: 'Evan <evan@commerciallendingx.com>',
-        to: 'robert.martinez@capitalventures.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
-        body: `Robert,
-
-Excellent - I've reviewed all the documents you sent and I'm impressed with the quality of this acquisition opportunity. The property fundamentals look strong and your business financials are well-organized.
-
-I spoke with three of our lending partners this morning and have some promising initial feedback:
-
-LENDER A (Regional Bank):
-- Rate: 7.35% fixed for 5 years
-- Amortization: 25 years
-- Timeline: 45 days to close
-
-LENDER B (Credit Union):
-- Rate: 7.15% fixed for 7 years
-- Timeline: 60 days to close
-
-Given your March 15th target, Lender A seems like the best fit. Thursday at 2 PM works for a call.
-
-Talk soon,
-Evan`,
-      },
-      {
-        id: 'msg-1-4',
-        from: 'Robert Martinez <robert.martinez@capitalventures.com>',
-        to: 'evan@commerciallendingx.com',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        body: `Evan,
-
-Great call yesterday! After discussing with my partners, we've decided to move forward with Lender A.
-
-The 7.35% rate with the 5-year fixed term aligns well with our business plan. A couple of follow-up items:
-
-1. Can you confirm if the renovation costs ($500K) can be included in the loan?
-2. Is there any flexibility on the prepayment penalty?
-
-Also, we have another acquisition opportunity in the pipeline - a retail strip center about 2 miles from this property ($1.8M). Once we close this first deal, I'd love to discuss that one as well.
-
-Thanks,
-Robert`,
-      },
-      {
-        id: 'msg-1-5',
-        from: 'Evan <evan@commerciallendingx.com>',
-        to: 'robert.martinez@capitalventures.com',
-        date: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-        body: `Robert,
-
-Great news on all fronts! I'm excited to get this deal across the finish line for you.
-
-Regarding your questions:
-
-1. RENOVATION FINANCING: Yes, Lender A can include the renovation costs. Total loan would be $3M with renovation portion held in escrow.
-
-2. PREPAYMENT: Best they can do is 3-2-1-0, meaning no penalty in year 4 or later.
-
-For the formal application, please send me:
-- Signed LOI or purchase agreement
-- Updated rent roll (dated within 30 days)
-- 3 months of property operating statements
-
-And definitely let's talk about the retail strip center! Send me the details when you're ready.
-
-Best,
-Evan
-Commercial Lending X`,
-      },
-    ],
-  }), []);
-
-  // Combine database threads with Gmail emails (or mock data)
+  // Combine database threads with Gmail emails
   const allEmailThreads = useMemo(() => {
-    // Group Gmail emails by thread
     const threadMap = new Map<string, any>();
-    
-    // First, add mock threads for matching lead emails
-    leadEmailAddresses.forEach(email => {
-      const mockThreads = mockEmailThreadsData[email];
-      if (mockThreads) {
-        mockThreads.forEach(thread => {
-          if (!threadMap.has(thread.thread_id)) {
-            threadMap.set(thread.thread_id, thread);
-          }
-        });
-      }
-    });
     
     gmailEmails.forEach((email: any) => {
       if (!threadMap.has(email.threadId)) {
@@ -1111,7 +668,7 @@ Commercial Lending X`,
     return Array.from(threadMap.values()).sort((a, b) => 
       new Date(b.last_message_date || 0).getTime() - new Date(a.last_message_date || 0).getTime()
     );
-  }, [gmailEmails, dbEmailThreads, leadEmailAddresses, mockEmailThreadsData]);
+  }, [gmailEmails, dbEmailThreads, leadEmailAddresses]);
 
   // Mutations
   const updateLeadStatus = useMutation({
@@ -2015,54 +1572,14 @@ Commercial Lending X`,
                         {/* Thread Messages */}
                         <ScrollArea className="h-[calc(90vh-280px)]">
                           <div className="p-4 space-y-4">
-                            {mockThreadMessages[selectedThreadId] ? (
-                              mockThreadMessages[selectedThreadId].map((msg, index) => {
-                                const isFromEvan = msg.from.toLowerCase().includes('evan');
-                                const senderName = msg.from.match(/^([^<]+)/)?.[1]?.trim() || msg.from.split('@')[0];
-                                return (
-                                  <div 
-                                    key={msg.id} 
-                                    className={cn(
-                                      "rounded-lg border p-3",
-                                      isFromEvan 
-                                        ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800" 
-                                        : "bg-background border-border"
-                                    )}
-                                  >
-                                    <div className="flex items-start gap-2 mb-2">
-                                      <Avatar className="w-8 h-8 border flex-shrink-0">
-                                        <AvatarFallback className={cn(
-                                          "text-xs font-semibold",
-                                          isFromEvan ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"
-                                        )}>
-                                          {senderName.charAt(0).toUpperCase()}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                          <p className="text-sm font-medium">{senderName}</p>
-                                          <p className="text-xs text-slate-400 flex-shrink-0">
-                                            {format(new Date(msg.date), 'MMM d, h:mm a')}
-                                          </p>
-                                        </div>
-                                        <p className="text-xs text-slate-500">To: {msg.to}</p>
-                                      </div>
-                                    </div>
-                                    <div className="text-sm whitespace-pre-wrap leading-relaxed pl-10">
-                                      {msg.body}
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              // Fallback for threads without detailed messages
-                              <div className="p-4 text-center text-slate-400">
-                                <Mail className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">
-                                  {allEmailThreads.find(t => t.thread_id === selectedThreadId)?.snippet || 'No message content available'}
-                                </p>
-                              </div>
-                            )}
+                            {/* Thread content from Gmail API or snippet fallback */}
+                            <div className="p-4 text-center text-slate-400">
+                              <Mail className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">
+                                {allEmailThreads.find(t => t.thread_id === selectedThreadId)?.snippet || 'No message content available'}
+                              </p>
+                              <p className="text-xs mt-2 text-muted-foreground">Connect Gmail to view full thread messages</p>
+                            </div>
                           </div>
                         </ScrollArea>
                       </div>

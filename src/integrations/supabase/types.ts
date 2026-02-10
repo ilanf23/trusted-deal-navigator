@@ -2875,6 +2875,53 @@ export type Database = {
         }
         Relationships: []
       }
+      team_funded_deals: {
+        Row: {
+          created_at: string
+          days_in_pipeline: number
+          fee_earned: number
+          funded_at: string
+          id: string
+          lead_id: string | null
+          loan_amount: number
+          notes: string | null
+          rep_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days_in_pipeline?: number
+          fee_earned?: number
+          funded_at?: string
+          id?: string
+          lead_id?: string | null
+          loan_amount?: number
+          notes?: string | null
+          rep_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days_in_pipeline?: number
+          fee_earned?: number
+          funded_at?: string
+          id?: string
+          lead_id?: string | null
+          loan_amount?: number
+          notes?: string | null
+          rep_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_funded_deals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           avatar_url: string | null
