@@ -162,7 +162,7 @@ const EvansEmailTemplates = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/team/evan/gmail')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/admin/evan/gmail')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>

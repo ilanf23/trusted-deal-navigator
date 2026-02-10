@@ -78,7 +78,7 @@ const getCanonicalOrigin = () => {
   return window.location.origin;
 };
 
-const getCalendarCallbackUrl = () => `${getCanonicalOrigin()}/admin/calendar-callback`;
+const getCalendarCallbackUrl = () => `${getCanonicalOrigin()}/superadmin/calendar-callback`;
 
 interface Appointment {
   id: string;

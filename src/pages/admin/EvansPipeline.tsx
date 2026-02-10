@@ -459,7 +459,7 @@ const EvansPipeline = () => {
     if (!pendingCallLead?.phone) return;
     setCallConfirmOpen(false);
     // Navigate to calls page with phone number pre-filled (don't auto-dial)
-    navigate(`/team/evan/calls?phone=${encodeURIComponent(pendingCallLead.phone)}&leadId=${pendingCallLead.id}`);
+    navigate(`/admin/evan/calls?phone=${encodeURIComponent(pendingCallLead.phone)}&leadId=${pendingCallLead.id}`);
     setPendingCallLead(null);
   };
 
@@ -1160,7 +1160,7 @@ const EvansPipeline = () => {
             )}
             <Button 
               variant="outline" 
-              onClick={() => navigate('/team/evan/leads')}
+              onClick={() => navigate('/admin/evan/leads')}
               className="h-8 md:h-9 px-2 md:px-4 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs md:text-sm"
             >
               <List className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-2" />

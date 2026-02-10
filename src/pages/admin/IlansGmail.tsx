@@ -50,9 +50,9 @@ const getGmailCallbackUrl = () => {
   const host = window.location.hostname;
   if (host.endsWith('.lovableproject.com')) {
     const id = host.replace('.lovableproject.com', '');
-    return `https://id-preview--${id}.lovable.app/admin/inbox/callback`;
+    return `https://id-preview--${id}.lovable.app/superadmin/inbox/callback`;
   }
-  return `${window.location.origin}/admin/inbox/callback`;
+  return `${window.location.origin}/superadmin/inbox/callback`;
 };
 
 interface Email {

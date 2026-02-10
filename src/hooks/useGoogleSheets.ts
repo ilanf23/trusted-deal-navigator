@@ -68,7 +68,7 @@ export const useGoogleSheets = (teamMemberName?: string) => {
 
       popup.document.write('<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><p>Connecting to Google Sheets...</p></body></html>');
 
-      const redirectUri = `${window.location.origin}/admin/sheets-callback`;
+      const redirectUri = `${window.location.origin}/superadmin/sheets-callback`;
 
       const response = await supabase.functions.invoke('google-sheets-auth', {
         body: { action: 'getAuthUrl', redirectUri, teamMemberName }

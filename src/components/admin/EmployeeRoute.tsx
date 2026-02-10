@@ -33,11 +33,11 @@ const EmployeeRoute = ({ children, employeeName }: EmployeeRouteProps) => {
   if (!canAccessDashboard(employeeName)) {
     // Redirect to their own dashboard
     // Ilan, Brad, Adam use /admin/ paths; other team members use /team/ paths
-    const adminUsers = ['ilan', 'brad', 'adam'];
-    const isAdminUser = adminUsers.includes(teamMember.name.toLowerCase());
-    const redirectPath = isAdminUser 
-      ? `/admin/${teamMember.name.toLowerCase()}`
-      : `/team/${teamMember.name.toLowerCase()}`;
+    const founderUsers = ['ilan', 'brad', 'adam'];
+    const isFounder = founderUsers.includes(teamMember.name.toLowerCase());
+    const redirectPath = isFounder 
+      ? `/superadmin/${teamMember.name.toLowerCase()}`
+      : `/admin/${teamMember.name.toLowerCase()}`;
     return <Navigate to={redirectPath} replace />;
   }
 

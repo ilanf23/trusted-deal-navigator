@@ -21,12 +21,12 @@ const SuperAdminDashboard = () => {
   // Redirect non-owner employees to their team dashboard
   useEffect(() => {
     if (!loading && teamMember && !isOwner) {
-      const adminUsers = ['ilan', 'brad', 'adam'];
+      const founderUsers = ['ilan', 'brad', 'adam'];
       const name = teamMember.name.toLowerCase();
-      if (adminUsers.includes(name)) {
-        navigate(`/admin/${name}`, { replace: true });
+      if (founderUsers.includes(name)) {
+        navigate(`/superadmin/${name}`, { replace: true });
       } else {
-        navigate(`/team/${name}`, { replace: true });
+        navigate(`/admin/${name}`, { replace: true });
       }
     }
   }, [loading, teamMember, isOwner, navigate]);
@@ -140,7 +140,7 @@ const SuperAdminDashboard = () => {
     avgDays: 53,
     closings: 2,
     conversion: 18,
-    url: '/admin/brad'
+    url: '/superadmin/brad'
   }, {
     name: 'Adam',
     role: 'Owner',
@@ -148,7 +148,7 @@ const SuperAdminDashboard = () => {
     avgDays: 48,
     closings: 3,
     conversion: 22,
-    url: '/admin/adam'
+    url: '/superadmin/adam'
   }, {
     name: 'Maura',
     role: 'Processor',

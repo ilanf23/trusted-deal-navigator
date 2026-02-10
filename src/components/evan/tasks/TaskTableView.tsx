@@ -61,8 +61,8 @@ export const TaskTableView = ({
     if (title.includes('closing') || title.includes('prepare closing')) {
       return { 
         path: hasLead 
-          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&template=closing&taskId=${task.id}`
-          : `/team/evan/gmail?compose=true&template=closing&taskId=${task.id}`,
+          ? `/admin/evan/gmail?compose=true&leadId=${task.lead_id}&template=closing&taskId=${task.id}`
+          : `/admin/evan/gmail?compose=true&template=closing&taskId=${task.id}`,
         label: 'Draft Closing Email', 
         icon: <FileText className="h-3.5 w-3.5" />,
         action: 'compose',
@@ -70,12 +70,11 @@ export const TaskTableView = ({
       };
     }
     
-    // Follow up / nudge tasks - opens email compose with follow-up template
     if (source === 'nudge' || title.includes('follow up') || title.includes('follow-up')) {
       return { 
         path: hasLead 
-          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&template=follow_up&taskId=${task.id}`
-          : `/team/evan/gmail?compose=true&template=follow_up&taskId=${task.id}`,
+          ? `/admin/evan/gmail?compose=true&leadId=${task.lead_id}&template=follow_up&taskId=${task.id}`
+          : `/admin/evan/gmail?compose=true&template=follow_up&taskId=${task.id}`,
         label: 'Draft Follow-up Email', 
         icon: <Mail className="h-3.5 w-3.5" />,
         action: 'compose',
@@ -83,32 +82,29 @@ export const TaskTableView = ({
       };
     }
     
-    // General email tasks - opens compose
     if (source === 'gmail' || title.includes('email') || title.includes('send')) {
       return { 
         path: hasLead 
-          ? `/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`
-          : `/team/evan/gmail?compose=true&taskId=${task.id}`,
+          ? `/admin/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`
+          : `/admin/evan/gmail?compose=true&taskId=${task.id}`,
         label: 'Compose Email', 
         icon: <Mail className="h-3.5 w-3.5" />,
         action: 'compose'
       };
     }
     
-    // Lead/CRM tasks - go to the lead in pipeline with lenders tab
     if (source === 'lead' || hasLead) {
       return { 
-        path: `/team/evan/pipeline?lead=${task.lead_id}&tab=lenders`, 
+        path: `/admin/evan/pipeline?lead=${task.lead_id}&tab=lenders`, 
         label: 'View in CRM', 
         icon: <Users className="h-3.5 w-3.5" />,
         action: 'view'
       };
     }
     
-    // Document tasks without lead context
     if (title.includes('document') || title.includes('doc') || title.includes('file')) {
       return { 
-        path: '/team/evan/pipeline', 
+        path: '/admin/evan/pipeline', 
         label: 'Go to Pipeline', 
         icon: <FileText className="h-3.5 w-3.5" />,
         action: 'view'
@@ -234,7 +230,7 @@ export const TaskTableView = ({
                             onClick={(e) => {
                               e.stopPropagation();
                               if (task.lead?.phone) {
-                                navigate(`/team/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
+                                navigate(`/admin/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
                               }
                             }}
                             disabled={!task.lead?.phone}
@@ -268,7 +264,7 @@ export const TaskTableView = ({
                                 const isFollowUp = title.includes('follow up') || title.includes('follow-up');
                                 const template = isFollowUp ? 'follow_up' : '';
                                 const templateParam = template ? `&template=${template}` : '';
-                                navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}${templateParam}`);
+                                navigate(`/admin/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}${templateParam}`);
                               }
                             }}
                             disabled={!task.lead_id}
