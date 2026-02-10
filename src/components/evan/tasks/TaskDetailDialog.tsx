@@ -184,8 +184,8 @@ export const TaskDetailDialog = ({
     if (title.includes('closing') || title.includes('prepare closing')) {
       return { 
         path: hasLead 
-          ? `/team/evan/gmail?compose=true&leadId=${taskData.lead_id}&template=closing`
-          : '/team/evan/gmail?compose=true&template=closing',
+          ? `/admin/evan/gmail?compose=true&leadId=${taskData.lead_id}&template=closing`
+          : '/admin/evan/gmail?compose=true&template=closing',
         label: 'Draft Closing Email', 
         icon: <FileText className="h-4 w-4" />,
         action: 'compose',
@@ -193,12 +193,11 @@ export const TaskDetailDialog = ({
       };
     }
     
-    // Follow up / nudge tasks - opens email compose with follow-up template
     if (source === 'nudge' || title.includes('follow up') || title.includes('follow-up')) {
       return { 
         path: hasLead 
-          ? `/team/evan/gmail?compose=true&leadId=${taskData.lead_id}&template=follow_up`
-          : '/team/evan/gmail?compose=true&template=follow_up',
+          ? `/admin/evan/gmail?compose=true&leadId=${taskData.lead_id}&template=follow_up`
+          : '/admin/evan/gmail?compose=true&template=follow_up',
         label: 'Draft Follow-up Email', 
         icon: <Mail className="h-4 w-4" />,
         action: 'compose',
@@ -206,32 +205,29 @@ export const TaskDetailDialog = ({
       };
     }
     
-    // General email tasks - opens compose
     if (source === 'gmail' || title.includes('email') || title.includes('send')) {
       return { 
         path: hasLead 
-          ? `/team/evan/gmail?compose=true&leadId=${taskData.lead_id}`
-          : '/team/evan/gmail?compose=true',
+          ? `/admin/evan/gmail?compose=true&leadId=${taskData.lead_id}`
+          : '/admin/evan/gmail?compose=true',
         label: 'Compose Email', 
         icon: <Mail className="h-4 w-4" />,
         action: 'compose'
       };
     }
     
-    // Lead/CRM tasks - go to the lead in pipeline with lenders tab
     if (source === 'lead' || hasLead) {
       return { 
-        path: `/team/evan/pipeline?lead=${taskData.lead_id}&tab=lenders`, 
+        path: `/admin/evan/pipeline?lead=${taskData.lead_id}&tab=lenders`, 
         label: 'View in CRM', 
         icon: <Users className="h-4 w-4" />,
         action: 'view'
       };
     }
     
-    // Document tasks without lead context
     if (title.includes('document') || title.includes('doc') || title.includes('file')) {
       return { 
-        path: '/team/evan/pipeline', 
+        path: '/admin/evan/pipeline', 
         label: 'Go to Pipeline', 
         icon: <FileText className="h-4 w-4" />,
         action: 'view'

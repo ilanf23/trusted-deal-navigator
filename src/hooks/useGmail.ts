@@ -80,7 +80,7 @@ export function useGmail() {
 
   const connect = useCallback(async () => {
     try {
-      const redirectUri = `${window.location.origin}/admin/inbox/callback`;
+      const redirectUri = `${window.location.origin}/superadmin/inbox/callback`;
       const data = await callGmailApi('get-oauth-url', undefined, { redirect_uri: redirectUri });
       
       // Full page redirect instead of popup

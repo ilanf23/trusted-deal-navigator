@@ -44,9 +44,9 @@ const Auth = () => {
 
       // Route team members (employees) to their specific dashboards
       const employeeRoutes: Record<string, string> = {
-        'evan@test.com': '/team/evan',
-        'maura@test.com': '/team/maura',
-        'wendy@test.com': '/team/wendy',
+        'evan@test.com': '/admin/evan',
+        'maura@test.com': '/admin/maura',
+        'wendy@test.com': '/admin/wendy',
       };
 
       // Check if user is a team member with a specific route
@@ -57,7 +57,7 @@ const Auth = () => {
 
       // Force this user to admin/ilan
       if (email === 'ilan@maverich.ai') {
-        navigate('/admin/ilan', { replace: true });
+        navigate('/superadmin/ilan', { replace: true });
         return;
       }
 
@@ -71,7 +71,7 @@ const Auth = () => {
       if (from) {
         navigate(from, { replace: true });
       } else if (isAdmin) {
-        navigate('/admin', { replace: true });
+        navigate('/superadmin', { replace: true });
       } else {
         navigate('/user', { replace: true });
       }

@@ -10,10 +10,10 @@ interface ProtectedRouteProps {
 
 // Team members who should NOT have admin access
 const TEAM_MEMBER_EMAILS: Record<string, string> = {
-  'evan@test.com': '/team/evan',
-  'evan@commerciallendingx.com': '/team/evan',
-  'maura@test.com': '/team/maura',
-  'wendy@test.com': '/team/wendy',
+  'evan@test.com': '/admin/evan',
+  'evan@commerciallendingx.com': '/admin/evan',
+  'maura@test.com': '/admin/maura',
+  'wendy@test.com': '/admin/wendy',
 };
 
 const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: ProtectedRouteProps) => {
@@ -46,7 +46,7 @@ const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: 
 
   // Redirect admins away from client portal
   if (clientOnly && isAdmin) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/superadmin" replace />;
   }
 
   if (requireAdmin && !isAdmin) {

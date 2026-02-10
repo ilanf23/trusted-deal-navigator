@@ -89,7 +89,7 @@ export const TaskKanbanView = ({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (task.lead?.phone) {
-                                  navigate(`/team/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
+                                  navigate(`/admin/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
                                 }
                               }}
                               disabled={!task.lead?.phone}
@@ -118,7 +118,7 @@ export const TaskKanbanView = ({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (task.lead?.email) {
-                                  navigate(`/team/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`);
+                                  navigate(`/admin/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`);
                                 }
                               }}
                               disabled={!task.lead?.email}

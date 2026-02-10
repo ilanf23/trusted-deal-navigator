@@ -87,80 +87,75 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
     // Check if user is Ilan first (developer with special dashboard)
     if (teamMember?.name.toLowerCase() === 'ilan') {
-      // Dashboard section for Ilan - developer overview
       sections.push({
         title: 'Dashboard',
         icon: LayoutDashboard,
         items: [
-          { title: 'Dev Dashboard', url: '/admin/ilan/dev', icon: Code2 },
-          { title: 'Gmail', url: '/admin/ilan/gmail', icon: Mail },
-          { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
-          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
-          { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
-          { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },
-          { title: 'Clients', url: '/admin/clients', icon: Users },
-          { title: 'Contracts', url: '/admin/contracts', icon: FileText },
-          { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
-          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
-          { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Bug },
-          { title: 'Tracking', url: '/admin/tracking', icon: Crosshair },
+          { title: 'Dev Dashboard', url: '/superadmin/ilan/dev', icon: Code2 },
+          { title: 'Gmail', url: '/superadmin/ilan/gmail', icon: Mail },
+          { title: 'CRM Board', url: '/superadmin/crm', icon: Kanban },
+          { title: 'Leads', url: '/superadmin/leads', icon: UserPlus },
+          { title: 'Rate Watch', url: '/superadmin/rate-watch', icon: TrendingDown },
+          { title: 'Lender Programs', url: '/superadmin/lender-programs', icon: Building2 },
+          { title: 'Clients', url: '/superadmin/clients', icon: Users },
+          { title: 'Contracts', url: '/superadmin/contracts', icon: FileText },
+          { title: 'Invoices', url: '/superadmin/invoices', icon: Receipt },
+          { title: 'Messages', url: '/superadmin/messages', icon: MessageSquare },
+          { title: 'Bug Testing', url: '/superadmin/ilan/bugs', icon: Bug },
+          { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
         ],
       });
 
-      // Marketing section for Ilan
       sections.push({
         title: 'Marketing',
         icon: BarChart3,
         items: [
-          { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
-          { title: 'Analytics', url: '/admin/marketing', icon: BarChart3 },
+          { title: 'Newsletter', url: '/superadmin/newsletter', icon: Newspaper },
+          { title: 'Analytics', url: '/superadmin/marketing', icon: BarChart3 },
         ],
       });
 
-      // Team section for Ilan
       sections.push({
         title: 'Team',
         icon: Users,
         items: [
-          { title: 'Team Performance', url: '/admin/ilan', icon: BarChart3 },
+          { title: 'Team Performance', url: '/superadmin/ilan', icon: BarChart3 },
           { 
             title: 'Evan', 
-            url: '/admin/ilan/team/evan', 
+            url: '/superadmin/ilan/team/evan', 
             icon: User,
             subItems: [
-              { title: 'Notes', url: '/admin/ilan/team/evan/notes', icon: FileText },
-              { title: 'Dev Notes', url: '/admin/ilan/team/evan/dev-notes', icon: Code2 },
-              { title: 'Bug Reports', url: '/admin/ilan/team/evan/bugs', icon: Bug },
+              { title: 'Notes', url: '/superadmin/ilan/team/evan/notes', icon: FileText },
+              { title: 'Dev Notes', url: '/superadmin/ilan/team/evan/dev-notes', icon: Code2 },
+              { title: 'Bug Reports', url: '/superadmin/ilan/team/evan/bugs', icon: Bug },
             ],
           },
         ],
       });
     } else if (isOwner) {
-      // Dashboard section - show to owners
       sections.push({
         title: 'Dashboard',
         icon: LayoutDashboard,
         items: [
-          { title: 'Overview', url: '/admin', icon: LayoutDashboard },
-          { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
-          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
-          { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
-          { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },
-          { title: 'Clients', url: '/admin/clients', icon: Users },
-          { title: 'Contracts', url: '/admin/contracts', icon: FileText },
-          { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
-          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
-          { title: 'Bug Reporting', url: '/admin/bug-reporting', icon: Bug },
-          { title: 'Tracking', url: '/admin/tracking', icon: Crosshair },
+          { title: 'Overview', url: '/superadmin', icon: LayoutDashboard },
+          { title: 'CRM Board', url: '/superadmin/crm', icon: Kanban },
+          { title: 'Leads', url: '/superadmin/leads', icon: UserPlus },
+          { title: 'Rate Watch', url: '/superadmin/rate-watch', icon: TrendingDown },
+          { title: 'Lender Programs', url: '/superadmin/lender-programs', icon: Building2 },
+          { title: 'Clients', url: '/superadmin/clients', icon: Users },
+          { title: 'Contracts', url: '/superadmin/contracts', icon: FileText },
+          { title: 'Invoices', url: '/superadmin/invoices', icon: Receipt },
+          { title: 'Messages', url: '/superadmin/messages', icon: MessageSquare },
+          { title: 'Bug Reporting', url: '/superadmin/bug-reporting', icon: Bug },
+          { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
         ],
       });
 
-      // Team section for owners
       sections.push({
         title: 'Team',
         icon: Users,
         items: [
-          { title: 'Team Performance', url: '/admin/team-performance', icon: BarChart3 },
+          { title: 'Team Performance', url: '/superadmin/team-performance', icon: BarChart3 },
         ],
       });
 
@@ -168,49 +163,45 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         title: 'Marketing',
         icon: BarChart3,
         items: [
-          { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
-          { title: 'Analytics', url: '/admin/marketing', icon: BarChart3 },
+          { title: 'Newsletter', url: '/superadmin/newsletter', icon: Newspaper },
+          { title: 'Analytics', url: '/superadmin/marketing', icon: BarChart3 },
         ],
       });
     } else if (teamMember) {
-      // For regular team members (employees), show their own dashboard and limited navigation
       const employeeName = teamMember.name;
-      const employeeUrl = `/team/${employeeName.toLowerCase()}`;
+      const employeeUrl = `/admin/${employeeName.toLowerCase()}`;
 
-      // Employee's Page - their personal dashboard (no dropdown)
       sections.push({
         title: `${employeeName}'s Page`,
         icon: User,
         items: [
           { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
-          { title: 'Scorecard', url: `/team/${employeeName.toLowerCase()}/scorecard`, icon: ClipboardList },
-          { title: "To Do's", url: `/team/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
-          { title: 'Calendar', url: `/team/${employeeName.toLowerCase()}/calendar`, icon: Calendar },
-          { title: 'Calls', url: `/team/${employeeName.toLowerCase()}/calls`, icon: Phone },
-          { title: 'LP', url: `/team/${employeeName.toLowerCase()}/lender-programs`, icon: Building2 },
-          { title: 'Gmail', url: `/team/${employeeName.toLowerCase()}/gmail`, icon: Mail },
+          { title: 'Scorecard', url: `/admin/${employeeName.toLowerCase()}/scorecard`, icon: ClipboardList },
+          { title: "To Do's", url: `/admin/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
+          { title: 'Calendar', url: `/admin/${employeeName.toLowerCase()}/calendar`, icon: Calendar },
+          { title: 'Calls', url: `/admin/${employeeName.toLowerCase()}/calls`, icon: Phone },
+          { title: 'LP', url: `/admin/${employeeName.toLowerCase()}/lender-programs`, icon: Building2 },
+          { title: 'Gmail', url: `/admin/${employeeName.toLowerCase()}/gmail`, icon: Mail },
         ],
         noCollapse: true,
       });
 
-      // Pipeline - direct link, no dropdown
       sections.push({
         title: 'Pipeline',
         icon: Kanban,
         items: [
-          { title: 'Pipeline', url: `/team/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+          { title: 'Pipeline', url: `/admin/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
         ],
         noCollapse: true,
       });
 
-      // Standalone pages below CRM
       sections.push({
         title: 'Tools',
         icon: TrendingDown,
         items: [
-          { title: 'Rate Watch', url: `/team/${employeeName.toLowerCase()}/rate-watch`, icon: TrendingDown },
-          { title: 'Messages', url: `/team/${employeeName.toLowerCase()}/messages`, icon: MessageSquare },
-          { title: 'Bug Reporting', url: `/team/${employeeName.toLowerCase()}/bug-reporting`, icon: Bug },
+          { title: 'Rate Watch', url: `/admin/${employeeName.toLowerCase()}/rate-watch`, icon: TrendingDown },
+          { title: 'Messages', url: `/admin/${employeeName.toLowerCase()}/messages`, icon: MessageSquare },
+          { title: 'Bug Reporting', url: `/admin/${employeeName.toLowerCase()}/bug-reporting`, icon: Bug },
         ],
         noCollapse: true,
       });
@@ -225,8 +216,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
     navSections.forEach((section) => {
       // Check if any item in the section matches the current route
       const hasActiveItem = section.items.some((item) => {
-        if (item.url === '/admin') {
-          return location.pathname === '/admin';
+        if (item.url === '/superadmin') {
+          return location.pathname === '/superadmin';
         }
         return location.pathname.startsWith(item.url);
       });
@@ -248,8 +239,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   };
 
   const isActive = (path: string) => {
-    // Exact match for base routes like /admin or /team/evan or /admin/ilan
-    if (path === '/admin' || path.match(/^\/team\/[^/]+$/) || path.match(/^\/admin\/[^/]+$/)) {
+    // Exact match for base routes like /superadmin or /admin/evan or /superadmin/ilan
+    if (path === '/superadmin' || path.match(/^\/admin\/[^/]+$/) || path.match(/^\/superadmin\/[^/]+$/)) {
       return location.pathname === path;
     }
     return location.pathname.startsWith(path);
@@ -262,15 +253,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
   // Determine home page based on user role
   const homeUrl = useMemo(() => {
-    if (!teamMember) return '/admin';
+    if (!teamMember) return '/superadmin';
     
-    // Ilan, Brad, Adam use /admin/ paths; other team members use /team/ paths
-    const adminUsers = ['ilan', 'brad', 'adam'];
-    const isAdminUser = adminUsers.includes(teamMember.name.toLowerCase());
+    const founderUsers = ['ilan', 'brad', 'adam'];
+    const isFounder = founderUsers.includes(teamMember.name.toLowerCase());
     
-    if (isOwner && !isAdminUser) return '/admin';
-    if (isAdminUser) return `/admin/${teamMember.name.toLowerCase()}`;
-    return `/team/${teamMember.name.toLowerCase()}`;
+    if (isFounder) return `/superadmin/${teamMember.name.toLowerCase()}`;
+    if (isOwner && !isFounder) return '/superadmin';
+    return `/admin/${teamMember.name.toLowerCase()}`;
   }, [isOwner, teamMember]);
 
   return (
