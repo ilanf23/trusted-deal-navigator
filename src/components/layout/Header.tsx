@@ -38,8 +38,8 @@ const Header = () => {
       <div className="w-full px-4">
         <div className="flex items-center justify-between h-14 md:h-16">
           {/* Logo - Left aligned */}
-          <Link to="/" className="flex items-start mt-[0.375rem]">
-            <img src={logo} alt="Commercial Lending X" className="h-40 md:h-60" />
+          <Link to="/" className="flex items-center justify-center mt-[0.375rem]">
+            <img src={logo} alt="Commercial Lending X" className="h-40 md:h-60 mx-auto" />
           </Link>
 
           {/* Desktop Navigation */}
