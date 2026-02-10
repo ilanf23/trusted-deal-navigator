@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, Target, Users, User } from 'lucide-react';
+import { TrendingUp, Target, Users, User, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import type { TimePeriod } from '@/pages/admin/EvansPage';
 
 interface RoadTo1Point5MProps {
@@ -8,29 +10,37 @@ interface RoadTo1Point5MProps {
   timePeriod?: TimePeriod;
 }
 
-// ⚠️ MOCK DATA — Hardcoded team deal/commission data, not yet sourced from database
-const mockTeamDeals = [
-  { rep: 'Evan', loanAmount: 850000, daysInPipeline: 12, fee: 17000 },
-  { rep: 'Evan', loanAmount: 425000, daysInPipeline: 8, fee: 8500 },
-  { rep: 'Evan', loanAmount: 1200000, daysInPipeline: 22, fee: 24000 },
-  { rep: 'Evan', loanAmount: 275000, daysInPipeline: 5, fee: 5500 },
-  { rep: 'Brad', loanAmount: 650000, daysInPipeline: 15, fee: 13000 },
-  { rep: 'Brad', loanAmount: 320000, daysInPipeline: 10, fee: 6400 },
-  { rep: 'Wendy', loanAmount: 890000, daysInPipeline: 18, fee: 17800 },
-  { rep: 'Wendy', loanAmount: 450000, daysInPipeline: 7, fee: 9000 },
-  { rep: 'Adam', loanAmount: 780000, daysInPipeline: 14, fee: 15600 },
-];
-
 export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MProps) => {
   const COMPANY_GOAL = 1500000; // $1.5M
 
+  const { data: teamDeals = [], isLoading } = useQuery({
+    queryKey: ['team-funded-deals', timePeriod],
+    queryFn: async () => {
+      const startDate = timePeriod === 'ytd'
+        ? new Date(new Date().getFullYear(), 0, 1).toISOString()
+        : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      
+      const { data } = await supabase
+        .from('team_funded_deals')
+        .select('rep_name, loan_amount, fee_earned, days_in_pipeline, funded_at')
+        .gte('funded_at', startDate)
+        .order('funded_at', { ascending: false });
+      return (data || []).map((d: any) => ({
+        rep: d.rep_name,
+        loanAmount: Number(d.loan_amount),
+        daysInPipeline: d.days_in_pipeline,
+        fee: Number(d.fee_earned),
+      }));
+    },
+  });
+
   // Calculate totals
-  const totalCompanyRevenue = mockTeamDeals.reduce((sum, deal) => sum + deal.fee, 0);
-  const evanDeals = mockTeamDeals.filter(d => d.rep === 'Evan');
+  const totalCompanyRevenue = teamDeals.reduce((sum, deal) => sum + deal.fee, 0);
+  const evanDeals = teamDeals.filter(d => d.rep === 'Evan');
   const evanRevenue = evanDeals.reduce((sum, deal) => sum + deal.fee, 0);
   
   const companyProgress = Math.min(100, (totalCompanyRevenue / COMPANY_GOAL) * 100);
-  const evanContribution = (evanRevenue / totalCompanyRevenue) * 100;
+  const evanContribution = totalCompanyRevenue > 0 ? (evanRevenue / totalCompanyRevenue) * 100 : 0;
   const evanProgressOfGoal = (evanRevenue / COMPANY_GOAL) * 100;
 
   const formatCurrency = (value: number) => {
@@ -40,6 +50,16 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
   };
 
   const remaining = Math.max(0, COMPANY_GOAL - totalCompanyRevenue);
+
+  if (isLoading) {
+    return (
+      <Card className="bg-gradient-to-br from-primary/5 via-background to-primary/10 border-primary/20">
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-gradient-to-br from-primary/5 via-background to-primary/10 border-primary/20">
@@ -70,12 +90,10 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
           
           {/* Stacked Progress showing Evan's contribution */}
           <div className="relative h-4 w-full rounded-full bg-muted overflow-hidden">
-            {/* Full company progress background */}
             <div 
               className="absolute left-0 top-0 h-full bg-primary/30 rounded-full transition-all duration-500"
               style={{ width: `${companyProgress}%` }}
             />
-            {/* Evan's contribution highlighted */}
             <div 
               className="absolute left-0 top-0 h-full bg-primary rounded-full transition-all duration-500"
               style={{ width: `${evanProgressOfGoal}%` }}
@@ -101,7 +119,7 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
               </div>
               <span className="font-medium">Evan's Contribution</span>
             </div>
-            <div className="flex items-center gap-1 text-green-600">
+            <div className="flex items-center gap-1 text-emerald-600">
               <TrendingUp className="h-4 w-4" />
               <span className="text-sm font-medium">{evanContribution.toFixed(1)}% of total</span>
             </div>
@@ -137,7 +155,7 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {mockTeamDeals.slice(0, 6).map((deal, idx) => (
+                {teamDeals.slice(0, 6).map((deal, idx) => (
                   <tr 
                     key={idx} 
                     className={deal.rep === 'Evan' ? 'bg-primary/5' : ''}
