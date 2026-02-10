@@ -17,7 +17,7 @@ import {
   PhoneCall, ChevronDown, ChevronUp, ChevronRight, Play, PhoneIncoming, PhoneOutgoing, 
   MessageSquare, History, Plus, Trash2, Globe, Linkedin, MapPin,
   Link2, Users, ListTodo, Tag, CheckCircle2, Circle, X, GripVertical,
-  Briefcase, FileSpreadsheet, MessagesSquare, Video, Sparkles, HelpCircle, Columns
+  Briefcase, FileSpreadsheet, MessagesSquare, Video, Sparkles, HelpCircle, Columns, Handshake
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -461,6 +461,29 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   }, [lead, open]);
 
   // Queries
+  // Fetch partner referral for this lead
+  const { data: partnerReferral } = useQuery({
+    queryKey: ['lead-partner-referral', lead?.id],
+    queryFn: async () => {
+      if (!lead) return null;
+      const { data: referral } = await supabase
+        .from('partner_referrals')
+        .select('id, partner_id, name')
+        .eq('lead_id', lead.id)
+        .limit(1)
+        .maybeSingle();
+      if (!referral) return null;
+      // Fetch partner profile for display name
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('contact_person, company_name')
+        .eq('user_id', referral.partner_id)
+        .maybeSingle();
+      return { ...referral, partnerName: profile?.contact_person, companyName: profile?.company_name };
+    },
+    enabled: !!lead?.id && open,
+  });
+
   // Fetch the latest lead data to ensure we have current email
   const { data: currentLead } = useQuery({
     queryKey: ['lead-detail', lead?.id],
@@ -2588,6 +2611,14 @@ Commercial Lending X`,
                 </Select>
               </div>
             </div>
+            {partnerReferral && (
+              <div className="px-4 py-2 border-b">
+                <Badge className="bg-indigo-500/15 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20">
+                  <Handshake className="w-3 h-3 mr-1" />
+                  Referred by {partnerReferral.partnerName || partnerReferral.name}
+                </Badge>
+              </div>
+            )}
 
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-2">

@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.evan-ai-assistant]
 verify_jwt = false
+
+[functions.seed-partners]
+verify_jwt = false
