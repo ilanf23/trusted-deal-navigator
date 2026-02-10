@@ -2612,11 +2612,15 @@ Commercial Lending X`,
               </div>
             </div>
             {partnerReferral && (
-              <div className="px-4 py-2 border-b">
-                <Badge className="bg-indigo-500/15 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20">
-                  <Handshake className="w-3 h-3 mr-1" />
-                  Referred by {partnerReferral.partnerName || partnerReferral.name}
-                </Badge>
+              <div className="px-4 py-3 border-b bg-indigo-500/10">
+                <div className="flex items-center gap-2">
+                  <Handshake className="w-4 h-4 text-indigo-400" />
+                  <span className="text-sm font-semibold text-indigo-300">Referred by</span>
+                  <span className="text-sm font-bold text-indigo-200">{partnerReferral.partnerName || partnerReferral.name}</span>
+                  {partnerReferral.companyName && (
+                    <span className="text-xs text-indigo-400/70">· {partnerReferral.companyName}</span>
+                  )}
+                </div>
               </div>
             )}
 
