@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Users, DollarSign, User, LogOut, Crosshair } from 'lucide-react';
+import { LayoutDashboard, Users, DollarSign, User, LogOut } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -17,7 +17,6 @@ import {
 const navItems = [
   { title: 'Dashboard', path: '/partner/dashboard', icon: LayoutDashboard },
   { title: 'My Referrals', path: '/partner/referrals', icon: Users },
-  { title: 'Tracking', path: '/partner/tracking', icon: Crosshair },
   { title: 'Commissions', path: '/partner/commissions', icon: DollarSign },
   { title: 'Profile', path: '/partner/profile', icon: User },
 ];
