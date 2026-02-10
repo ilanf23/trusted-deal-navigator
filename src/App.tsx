@@ -68,6 +68,7 @@ import PartnerRouteLayout from "./components/partner/PartnerRouteLayout";
 import PartnerDashboard from "./pages/partner/Dashboard";
 import PartnerReferrals from "./pages/partner/Referrals";
 import PartnerCommissions from "./pages/partner/Commissions";
+import PartnerTracking from "./pages/partner/Tracking";
 import PartnerProfilePage from "./pages/partner/Profile";
 
 const queryClient = new QueryClient({
@@ -175,6 +176,7 @@ const App = () => (
                 <Route path="/partner" element={<Navigate to="/partner/dashboard" replace />} />
                 <Route path="/partner/dashboard" element={<PartnerDashboard />} />
                 <Route path="/partner/referrals" element={<PartnerReferrals />} />
+                <Route path="/partner/tracking" element={<PartnerTracking />} />
                 <Route path="/partner/commissions" element={<PartnerCommissions />} />
                 <Route path="/partner/profile" element={<PartnerProfilePage />} />
               </Route>

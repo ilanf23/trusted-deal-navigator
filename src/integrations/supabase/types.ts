@@ -2224,6 +2224,53 @@ export type Database = {
           },
         ]
       }
+      partner_tracking: {
+        Row: {
+          created_at: string
+          id: string
+          internal_notes: string | null
+          last_contacted_at: string | null
+          next_follow_up: string | null
+          partner_id: string
+          priority: string
+          referral_id: string
+          tracking_status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          internal_notes?: string | null
+          last_contacted_at?: string | null
+          next_follow_up?: string | null
+          partner_id: string
+          priority?: string
+          referral_id: string
+          tracking_status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          internal_notes?: string | null
+          last_contacted_at?: string | null
+          next_follow_up?: string | null
+          partner_id?: string
+          priority?: string
+          referral_id?: string
+          tracking_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_tracking_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "partner_referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_column_values: {
         Row: {
           assigned_to_id: string | null
