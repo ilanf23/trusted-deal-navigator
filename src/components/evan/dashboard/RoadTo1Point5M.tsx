@@ -8,7 +8,7 @@ interface RoadTo1Point5MProps {
   timePeriod?: TimePeriod;
 }
 
-// Mock data for team deals
+// ⚠️ MOCK DATA — Hardcoded team deal/commission data, not yet sourced from database
 const mockTeamDeals = [
   { rep: 'Evan', loanAmount: 850000, daysInPipeline: 12, fee: 17000 },
   { rep: 'Evan', loanAmount: 425000, daysInPipeline: 8, fee: 8500 },

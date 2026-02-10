@@ -181,7 +181,7 @@ const stages = [
   { status: 'funded', title: 'Funded', color: '#059669' },
 ];
 
-// Mock lender associations for leads
+// Lender association type (data now sourced from lead_lender_programs DB table)
 interface LeadLenderAssociation {
   lenderName: string;
   programName: string;
@@ -191,46 +191,9 @@ interface LeadLenderAssociation {
   notes?: string;
 }
 
-const leadLenderMockData: Record<string, LeadLenderAssociation[]> = {
-  // Ilan Samuel Fridman
-  '6f00ff2c-4a3a-43af-9f68-88c99411fb59': [
-    { lenderName: 'First National Bank', programName: 'SBA 7(a) Standard', status: 'submitted', matchScore: 92, submittedAt: '2026-01-20' },
-    { lenderName: 'Pacific Capital Partners', programName: 'Tech Startup Lending', status: 'pending_review', matchScore: 88 },
-  ],
-  // Sarah Rodriguez - Meridian Development Group
-  '7768d0c3-ca10-4955-bee0-2af42f0a061a': [
-    { lenderName: 'Bridge Funding Corp', programName: 'Multi-Family Bridge', status: 'approved', matchScore: 95, submittedAt: '2026-01-15', notes: 'Approved at 7.25% for 18 months' },
-    { lenderName: 'Lincoln Park Credit Union', programName: 'Development Financing', status: 'submitted', matchScore: 87, submittedAt: '2026-01-18' },
-    { lenderName: 'Midwest Commercial Lenders', programName: 'Bridge to Perm', status: 'matched', matchScore: 82 },
-  ],
-  // James Patterson - Patterson Holdings LLC
-  'b6329460-e111-4f61-bf18-fc892dab614b': [
-    { lenderName: 'SBA Express Capital', programName: 'SBA 504 Franchise', status: 'approved', matchScore: 98, submittedAt: '2026-01-10', notes: 'Approved - closing scheduled Feb 15' },
-    { lenderName: 'Restaurant Finance Group', programName: 'QSR Expansion', status: 'declined', matchScore: 75, notes: 'Declined - requires 2+ years same location' },
-  ],
-  // Michael Chen - TechVest Capital
-  'e20d9ba8-18dd-4190-8f7b-c7081c8e1f2b': [
-    { lenderName: 'Commercial Real Estate Bank', programName: 'Class A Office Financing', status: 'submitted', matchScore: 90, submittedAt: '2026-01-22' },
-    { lenderName: 'Silicon Valley Bank', programName: 'Tech Company CRE', status: 'matched', matchScore: 94 },
-    { lenderName: 'Wells Fargo Commercial', programName: 'Investment Property', status: 'pending_review', matchScore: 86 },
-  ],
-  // Emily Wang - Sunrise Healthcare Partners
-  '341f4f1c-fbdb-43b6-a25a-7f0e38a7237e': [
-    { lenderName: 'Healthcare Finance Group', programName: 'Medical Office Building', status: 'approved', matchScore: 97, submittedAt: '2026-01-12', notes: 'Approved at 6.95% - exceptional terms' },
-    { lenderName: 'Bank of America Healthcare', programName: 'Healthcare Real Estate', status: 'submitted', matchScore: 91, submittedAt: '2026-01-14' },
-  ],
-};
+// Lender data is now loaded from the lead_lender_programs database table via useQuery
 
-// Default lenders for leads not in the mapping (generates based on lead data)
-const getDefaultLenders = (lead: Lead | null): LeadLenderAssociation[] => {
-  if (!lead) return [];
-  return [
-    { lenderName: 'First National Bank', programName: 'Conventional Commercial', status: 'matched', matchScore: 75 },
-    { lenderName: 'Community Credit Union', programName: 'Small Business Loan', status: 'matched', matchScore: 70 },
-  ];
-};
-
-// Placeholder data for Evan's CRM leads
+// ⚠️ MOCK DATA — Lead placeholder data (address, loan details) not yet in database
 const leadPlaceholderData: Record<string, {
   address: string;
   loanType: string;
@@ -593,6 +556,25 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: open,
   });
 
+  // Query lead's lender associations from database
+  const { data: dbLeadLenders = [] } = useQuery({
+    queryKey: ['lead-lender-associations', lead?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lead_lender_programs')
+        .select('id, status, notes, program_id, lender_programs!lead_lender_programs_program_id_fkey(lender_name, program_name)')
+        .eq('lead_id', lead!.id)
+        .order('created_at', { ascending: false });
+      return (data || []).map((item: any) => ({
+        lenderName: item.lender_programs?.lender_name || 'Unknown Lender',
+        programName: item.lender_programs?.program_name || 'Unknown Program',
+        status: (item.status === 'approved' ? 'approved' : item.status === 'submitted' ? 'submitted' : item.status === 'declined' ? 'declined' : item.status === 'pending' ? 'pending_review' : 'matched') as LeadLenderAssociation['status'],
+        notes: item.notes || undefined,
+      })) as LeadLenderAssociation[];
+    },
+    enabled: !!lead?.id && open,
+  });
+
   // Query lender programs for autocomplete - fetch when dialog is open (cache for when needed)
   const { data: lenderPrograms = [], isLoading: lenderProgramsLoading } = useQuery({
     queryKey: ['lender-programs-list'],
@@ -702,7 +684,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     enabled: !!gmailConnection && leadEmailAddresses.length > 0 && open,
   });
 
-  // Mock email threads for demo leads
+  // ⚠️ MOCK DATA — Hardcoded email threads for demo leads, not yet sourced from database
   const mockEmailThreadsData: Record<string, any[]> = useMemo(() => ({
     'ilan@fridmanventures.com': [{
       id: 'thread-ilan-1',
@@ -2133,7 +2115,7 @@ Commercial Lending X`,
                   {/* Lenders Tab */}
                   <TabsContent value="lenders" className="m-0">
                     {(() => {
-                      const baseLenders = lead ? (leadLenderMockData[lead.id] || getDefaultLenders(lead)) : [];
+                      const baseLenders = dbLeadLenders;
                       const allLenders = [...baseLenders, ...localLenders];
                       
                       const getStatusConfig = (status: LeadLenderAssociation['status']) => {
