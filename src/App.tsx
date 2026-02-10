@@ -68,7 +68,7 @@ import PartnerRouteLayout from "./components/partner/PartnerRouteLayout";
 import PartnerDashboard from "./pages/partner/Dashboard";
 import PartnerReferrals from "./pages/partner/Referrals";
 import PartnerCommissions from "./pages/partner/Commissions";
-import PartnerTracking from "./pages/partner/Tracking";
+import AdminTracking from "./pages/admin/Tracking";
 import PartnerProfilePage from "./pages/partner/Profile";
 
 const queryClient = new QueryClient({
@@ -121,6 +121,7 @@ const App = () => (
               <Route path="/admin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
               <Route path="/admin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
               <Route path="/admin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
+              <Route path="/admin/tracking" element={<ProtectedRoute requireAdmin><AdminTracking /></ProtectedRoute>} />
               
               {/* Evan Portal Routes - wrapped with EvanPortalWrapper for persistent call state */}
               {/* /user/evan routes */}
@@ -176,7 +177,7 @@ const App = () => (
                 <Route path="/partner" element={<Navigate to="/partner/dashboard" replace />} />
                 <Route path="/partner/dashboard" element={<PartnerDashboard />} />
                 <Route path="/partner/referrals" element={<PartnerReferrals />} />
-                <Route path="/partner/tracking" element={<PartnerTracking />} />
+                <Route path="/partner/tracking" element={<Navigate to="/partner/dashboard" replace />} />
                 <Route path="/partner/commissions" element={<PartnerCommissions />} />
                 <Route path="/partner/profile" element={<PartnerProfilePage />} />
               </Route>
