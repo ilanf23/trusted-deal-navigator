@@ -23,6 +23,7 @@ import {
   ClipboardList,
   Calendar,
   Plus,
+  Crosshair,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -102,6 +103,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
           { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Bug },
+          { title: 'Tracking', url: '/admin/tracking', icon: Crosshair },
         ],
       });
 
@@ -149,6 +151,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
           { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
           { title: 'Bug Reporting', url: '/admin/bug-reporting', icon: Bug },
+          { title: 'Tracking', url: '/admin/tracking', icon: Crosshair },
         ],
       });
 
