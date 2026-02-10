@@ -2614,11 +2614,11 @@ Commercial Lending X`,
             {partnerReferral && (
               <div className="px-4 py-3 border-b bg-indigo-600/20 border-indigo-500/30">
                 <div className="flex items-center gap-2">
-                  <Handshake className="w-4 h-4 text-indigo-300" />
-                  <span className="text-sm font-semibold text-white/90">Referred by</span>
-                  <span className="text-sm font-bold text-white">{partnerReferral.partnerName || partnerReferral.name}</span>
+                  <Handshake className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-semibold text-black">Referred by</span>
+                  <span className="text-sm font-bold text-black">{partnerReferral.partnerName || partnerReferral.name}</span>
                   {partnerReferral.companyName && (
-                    <span className="text-xs text-indigo-200/80">· {partnerReferral.companyName}</span>
+                    <span className="text-xs text-black/70">· {partnerReferral.companyName}</span>
                   )}
                 </div>
               </div>
