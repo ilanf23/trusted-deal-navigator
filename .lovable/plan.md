@@ -1,68 +1,72 @@
 
 
-# Partner Tracking System
+# Fake Partners + CRM Partner Tag
 
 ## Overview
-Build a tracking system that links each partner (user with partner role) to one or more referrals, with a dedicated "Tracking" page in the partner portal. This creates the foundation for later pipeline integration.
+Create 5 fake partners in the database, link each to 1-2 leads from the pipeline via `partner_referrals`, and show a partner name tag in the CRM lead detail popup.
 
-## Current State
-- `partner_referrals` table already links referrals to partners via `partner_id` (the user's auth ID)
-- `partner_commissions` and `partner_referral_status_history` tables exist
-- `profiles` table stores partner profile info (company, contact, etc.)
-- No dedicated "Tracking" page exists -- referrals are listed on the Referrals page but without a partner-centric tracking view
+## Part 1: Seed Data via Edge Function
 
-## What Will Be Built
+Since `partner_referrals.partner_id` references auth users, we need to create real auth users with the partner role. We'll create an edge function `seed-partners` that:
 
-### 1. New Database Table: `partner_tracking`
-A join/tracking table that explicitly links partners to referrals with additional tracking metadata useful for pipeline integration later.
+1. Creates 5 fake partner auth users (with confirmed emails)
+2. Updates their profiles with company/contact info
+3. Assigns them the `partner` role in `user_roles`
+4. Creates `partner_referrals` rows linking each partner to 1-2 random leads (using `lead_id`)
 
-```text
-partner_tracking
-- id (uuid, PK)
-- partner_id (uuid, NOT NULL)       -- the partner user
-- referral_id (uuid, NOT NULL)      -- linked referral
-- tracking_status (text, default 'active')  -- active, paused, closed
-- priority (text, default 'normal')         -- low, normal, high
-- internal_notes (text, nullable)           -- partner's private notes
-- last_contacted_at (timestamptz, nullable)
-- next_follow_up (date, nullable)
-- created_at (timestamptz, default now())
-- updated_at (timestamptz, default now())
+### Fake Partners
+| Name | Email | Company |
+|------|-------|---------|
+| Marcus Rivera | marcus.rivera@partnertest.com | Rivera Capital Advisors |
+| Sarah Kim | sarah.kim@partnertest.com | Kim & Associates Realty |
+| David Thornton | david.thornton@partnertest.com | Thornton Financial Group |
+| Angela Brooks | angela.brooks@partnertest.com | Brooks Commercial Lending |
+| Robert Chen | robert.chen@partnertest.com | Chen Pacific Ventures |
+
+Each will be linked to 1-2 leads randomly from the existing pipeline leads.
+
+### File to Create
+- `supabase/functions/seed-partners/index.ts`
+
+## Part 2: Partner Tag in CRM Popup
+
+In `src/components/admin/LeadDetailDialog.tsx`, add a query to check if the current lead has a `partner_referrals` record (where `lead_id = lead.id`). If found, display a colored badge/tag in the right sidebar header area (next to Stage and Assigned To) showing the referring partner's name.
+
+### Changes to `LeadDetailDialog.tsx`
+- Add a `useQuery` to fetch `partner_referrals` where `lead_id` matches, joining with `profiles` to get the partner name
+- In the right sidebar header (around line 2536), add a row showing a "Referred by: [Partner Name]" badge when a partner referral exists
+- Use a distinctive badge color (e.g., purple/indigo) to make it stand out
+
+### Technical Details
+
+Query pattern:
+```typescript
+const { data: partnerReferral } = useQuery({
+  queryKey: ['lead-partner-referral', lead?.id],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from('partner_referrals')
+      .select('id, partner_id, name, profiles!partner_referrals_partner_id_fkey(contact_person, company_name)')
+      .eq('lead_id', lead!.id)
+      .limit(1)
+      .maybeSingle();
+    return data;
+  },
+  enabled: !!lead?.id && open,
+});
 ```
 
-RLS policies:
-- Partners can SELECT, INSERT, UPDATE, DELETE their own records
-- Admins have full access
+If profiles join doesn't work (no FK), we'll do a two-step query: fetch the referral, then fetch the partner's profile by `user_id = partner_id`.
 
-### 2. New Page: `/partner/tracking`
-A dedicated tracking dashboard showing all linked referrals in a table/card view with:
-- Referral name, company, status, loan type, and amount
-- Tracking-specific fields: priority, next follow-up date, internal notes
-- Ability to link an existing referral to tracking
-- Inline editing of priority, follow-up date, and notes
-- Filter/sort by priority or follow-up date
+Badge display in the right sidebar header:
+```
+[Stage selector] [Assigned To selector]
+[Partner Badge: "Referred by Marcus Rivera"]  <-- new row
+```
 
-### 3. Sidebar Update
-Add a "Tracking" nav item (with a `Target` or `Crosshair` icon) to `PartnerSidebar.tsx` between "My Referrals" and "Commissions".
+### Files Modified
+- `src/components/admin/LeadDetailDialog.tsx` -- add partner referral query + badge display
 
-### 4. Route Registration
-Add `/partner/tracking` route inside the existing `PartnerRouteLayout` group in `App.tsx`.
-
-## Technical Details
-
-### Files to Create
-- `src/pages/partner/Tracking.tsx` -- Main tracking page component
-
-### Files to Modify
-- `src/components/partner/PartnerSidebar.tsx` -- Add nav item
-- `src/App.tsx` -- Add route
-
-### Database Migration
-- Create `partner_tracking` table with RLS policies
-- Enable realtime on the table for live updates
-
-### UI Components Used
-- Existing: Card, Badge, Button, Dialog, Input, Select, Table components
-- The tracking page will show a table of tracked referrals with inline-editable fields (priority dropdown, follow-up date picker, notes)
-- "Link Referral" dialog lets the partner pick from their unlinked referrals to add to tracking
+### Files Created
+- `supabase/functions/seed-partners/index.ts` -- one-time seed function
 
