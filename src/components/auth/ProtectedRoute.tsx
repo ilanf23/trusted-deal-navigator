@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -8,19 +9,12 @@ interface ProtectedRouteProps {
   clientOnly?: boolean;
 }
 
-// Team members who should NOT have admin access
-const TEAM_MEMBER_EMAILS: Record<string, string> = {
-  'evan@test.com': '/admin/evan',
-  'evan@commerciallendingx.com': '/admin/evan',
-  'maura@test.com': '/admin/maura',
-  'wendy@test.com': '/admin/wendy',
-};
-
 const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: ProtectedRouteProps) => {
   const { user, loading, isAdmin, userRole } = useAuth();
+  const { teamMember, loading: teamLoading } = useTeamMember();
   const location = useLocation();
 
-  if (loading) {
+  if (loading || teamLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -32,16 +26,15 @@ const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: 
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  const userEmail = (user.email ?? '').toLowerCase();
-
   // Redirect partners away from admin and client routes
   if (userRole === 'partner') {
     return <Navigate to="/partner" replace />;
   }
 
-  // Check if user is a team member trying to access admin routes
-  if (requireAdmin && TEAM_MEMBER_EMAILS[userEmail]) {
-    return <Navigate to={TEAM_MEMBER_EMAILS[userEmail]} replace />;
+  // If requireAdmin, redirect non-owner team members to their own dashboard
+  if (requireAdmin && teamMember && !teamMember.is_owner) {
+    const redirectPath = `/admin/${teamMember.name.toLowerCase()}`;
+    return <Navigate to={redirectPath} replace />;
   }
 
   // Redirect admins away from client portal
