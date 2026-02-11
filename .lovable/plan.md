@@ -1,72 +1,38 @@
 
 
-## Remove Hardcoded Admin Email -- Database-Driven Role System
+## Fix: Add Admin Authorization to `admin-update-user` Edge Function
 
-### What's Changing
+### Problem
+The endpoint accepts requests from any authenticated user. There is no server-side check that the caller is an admin. Any logged-in user could update any other user's email or password.
 
-Right now, admin access is partly determined by checking if a user's email is `ilan@maverich.ai` in the code. Similarly, employee routing (Evan, Maura, Wendy) uses hardcoded email lists. This is insecure and not scalable. We'll replace all of this with the existing `user_roles` table and `team_members` table, which already have the right data.
-
-### Current State (What Already Works)
-
-- A `user_roles` table exists with `admin`, `client`, `partner` roles -- and both Ilan and Evan already have `admin` rows
-- A `team_members` table exists with `is_owner`, `name`, and `user_id` -- already used by `EmployeeRoute`
-- `AuthContext` already fetches `userRole` from the database
-- The `has_role()` database function already powers all RLS policies
-
-The problem is just **3 files** that still have hardcoded email checks layered on top.
+### Solution
+Extract the caller's identity from the JWT, query the existing `user_roles` table to verify they have the `admin` role, and reject with 403 if they don't.
 
 ### Changes
 
-#### 1. `src/contexts/AuthContext.tsx`
-- Remove `const ADMIN_EMAIL = 'ilan@maverich.ai'`
-- Remove `const emailIsAdmin = ...` line
-- Change `isAdmin` to simply be `userRole === 'admin'`
-- No other changes needed -- the database fetch is already solid
+**File: `supabase/functions/admin-update-user/index.ts`**
 
-#### 2. `src/components/auth/ProtectedRoute.tsx`
-- Remove the `TEAM_MEMBER_EMAILS` constant
-- Remove the email-based team member redirect block
-- Instead, use the `team_members` table (via `useTeamMember` hook) to detect if the logged-in user is a non-owner team member trying to access admin routes, and redirect them to their own dashboard path
-- Keep the existing `requireAdmin`, `clientOnly`, and partner redirect logic (these already use `userRole` and `isAdmin` from the database)
+1. **Extract caller identity from JWT** -- Parse the `Authorization` header, decode the JWT to get the caller's `sub` (user ID). Since `verify_jwt` is not disabled for this function, the gateway already validates the token, so we just need to extract claims.
 
-#### 3. `src/pages/Auth.tsx`
-- Remove the hardcoded `employeeRoutes` map and `ilan@maverich.ai` check
-- After login, use the `team_members` table to determine redirect: if user is a team member, route to their dashboard; otherwise fall through to existing role-based routing
-- This will be done by importing and using `useTeamMember` (or a direct query) to look up the logged-in user's team member record
+2. **Query `user_roles` table for admin check** -- Using the service-role client (already created), query `user_roles` where `user_id = caller_id` and `role = 'admin'`. If no row exists, return 403.
 
-### What Won't Change
-- The `user_roles` table, `app_role` enum, and `has_role()` function -- all already correct
-- All RLS policies -- they already use `has_role()`, not email checks
-- `EmployeeRoute` component -- already uses `useTeamMember` hook, no hardcoded emails
-- Edge functions -- the one reference to `ilan@maverich.ai` in `call-to-lead-automation` is a notification recipient, not an auth check
+3. **Log unauthorized attempts** -- On 401/403, log the caller ID, target user ID, and timestamp to the console.
 
-### Security Notes
-- Frontend role checks remain UX-only; all data access is already enforced by RLS policies using `has_role()`
-- Adding new admins requires only inserting a row in `user_roles` -- no code changes needed
+4. **Return clear error codes** -- 401 if no valid JWT/user, 403 if not admin.
 
----
+### Technical Detail
 
-### Technical Details
+The function will add this block before the existing update logic:
 
-**AuthContext.tsx diff summary:**
-```
-- const ADMIN_EMAIL = 'ilan@maverich.ai';
-  ...
-- const emailIsAdmin = (user?.email ?? '').toLowerCase() === ADMIN_EMAIL;
-  ...
-- isAdmin: emailIsAdmin || userRole === 'admin',
-+ isAdmin: userRole === 'admin',
+```text
+1. Get Authorization header
+2. Create a user-context Supabase client to extract the caller
+3. Decode JWT claims to get caller user_id (sub)
+4. If no caller -> 401 Unauthorized
+5. Query user_roles table: SELECT 1 FROM user_roles WHERE user_id = caller AND role = 'admin'
+6. If no admin row -> 403 Forbidden (log: caller_id, target user_id, timestamp)
+7. Proceed with existing update logic
 ```
 
-**ProtectedRoute.tsx approach:**
-- Import `useTeamMember` hook
-- If `requireAdmin` and user is a team member but NOT an owner, redirect to `/admin/{name}` or `/superadmin/{name}` based on `is_owner`
-- Remove the static email map entirely
-
-**Auth.tsx approach:**
-- After login, query `team_members` via the existing RPC or hook
-- If user is a team member: redirect to `/superadmin/{name}` (owners) or `/admin/{name}` (employees)
-- If user is a partner: redirect to `/partner`
-- If user is admin (non-team-member): redirect to `/superadmin`
-- Otherwise: redirect to `/user`
+No database changes needed -- the `user_roles` table and `has_role()` function already exist. No config.toml changes needed -- JWT verification is already enabled for this function.
 
