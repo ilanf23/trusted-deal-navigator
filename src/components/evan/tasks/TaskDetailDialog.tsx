@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useEvanUIState } from '@/contexts/EvanUIStateContext';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Task, TaskActivity, TaskType, statusConfig, statusPickerOptions, priorityConfig, taskTypeConfig } from './types';
@@ -56,21 +57,39 @@ export const TaskDetailDialog = ({
   onComposeEmail,
 }: TaskDetailDialogProps) => {
   const navigate = useNavigate();
+  const { getPageState, setPageState } = useEvanUIState();
   const [newComment, setNewComment] = useState('');
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
   
-  // New task form state
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [newTaskStatus, setNewTaskStatus] = useState('todo');
-  const [newTaskAssignee, setNewTaskAssignee] = useState('Evan');
-  const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
-  const [newTaskDueTime, setNewTaskDueTime] = useState<string>('');
-  const [newTaskLeadId, setNewTaskLeadId] = useState<string | null>(null);
-  const [newTaskHours, setNewTaskHours] = useState<number | null>(null);
-  const [newTaskPriority, setNewTaskPriority] = useState<string>('medium');
-  const [newTaskType, setNewTaskType] = useState<TaskType>('internal');
+  // New task form state - restore from persisted context
+  const persistedForm = getPageState('newTaskForm', {
+    title: '', description: '', status: 'todo', assignee: 'Evan',
+    dueDate: undefined as string | undefined, dueTime: '', leadId: null as string | null,
+    hours: null as number | null, priority: 'medium', taskType: 'internal' as TaskType,
+  });
+
+  const [newTaskTitle, setNewTaskTitle] = useState(isNewTask ? persistedForm.title : '');
+  const [newTaskDescription, setNewTaskDescription] = useState(isNewTask ? persistedForm.description : '');
+  const [newTaskStatus, setNewTaskStatus] = useState(isNewTask ? persistedForm.status : 'todo');
+  const [newTaskAssignee, setNewTaskAssignee] = useState(isNewTask ? persistedForm.assignee : 'Evan');
+  const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(isNewTask && persistedForm.dueDate ? new Date(persistedForm.dueDate) : undefined);
+  const [newTaskDueTime, setNewTaskDueTime] = useState<string>(isNewTask ? persistedForm.dueTime : '');
+  const [newTaskLeadId, setNewTaskLeadId] = useState<string | null>(isNewTask ? persistedForm.leadId : null);
+  const [newTaskHours, setNewTaskHours] = useState<number | null>(isNewTask ? persistedForm.hours : null);
+  const [newTaskPriority, setNewTaskPriority] = useState<string>(isNewTask ? persistedForm.priority : 'medium');
+  const [newTaskType, setNewTaskType] = useState<TaskType>(isNewTask ? persistedForm.taskType : 'internal');
+
+  // Persist new task form state on every change
+  useEffect(() => {
+    if (isNewTask && open) {
+      setPageState('newTaskForm', {
+        title: newTaskTitle, description: newTaskDescription, status: newTaskStatus,
+        assignee: newTaskAssignee, dueDate: newTaskDueDate?.toISOString(), dueTime: newTaskDueTime,
+        leadId: newTaskLeadId, hours: newTaskHours, priority: newTaskPriority, taskType: newTaskType,
+      });
+    }
+  }, [isNewTask, open, newTaskTitle, newTaskDescription, newTaskStatus, newTaskAssignee, newTaskDueDate, newTaskDueTime, newTaskLeadId, newTaskHours, newTaskPriority, newTaskType, setPageState]);
   
   const { data: activities = [] } = useTaskActivities(task?.id || null);
   
@@ -145,6 +164,12 @@ export const TaskDetailDialog = ({
       priority: newTaskPriority,
       source: 'manual',
       task_type: newTaskType,
+    });
+    
+    // Clear persisted new task form
+    setPageState('newTaskForm', {
+      title: '', description: '', status: 'todo', assignee: 'Evan',
+      dueDate: undefined, dueTime: '', leadId: null, hours: null, priority: 'medium', taskType: 'internal',
     });
   };
   
