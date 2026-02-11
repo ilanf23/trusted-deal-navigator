@@ -350,13 +350,16 @@ const EvansPipeline = () => {
 
   // Save stages mutation
   const saveStagesMutation = useMutation({
+    onMutate: async (updatedStages: { id: string; name: string; color: string }[]) => {
+      // Snapshot previous stages BEFORE mutation runs
+      const previousStages = dbPipelineStages.map(s => ({ id: s.id, name: s.name, color: s.color, position: s.position }));
+      const updatedIds = new Set(updatedStages.map(s => s.id));
+      const deletedIds = dbPipelineStages.filter(s => !updatedIds.has(s.id)).map(s => s.id);
+      return { previousStages, deletedIds };
+    },
     mutationFn: async (updatedStages: { id: string; name: string; color: string }[]) => {
       if (!selectedPipelineId) throw new Error('No pipeline selected');
       
-      // Snapshot previous stages for undo
-      const previousStages = dbPipelineStages.map(s => ({ id: s.id, name: s.name, color: s.color, position: s.position }));
-      
-      // Get existing stage IDs from DB
       const existingIds = new Set(dbPipelineStages.map(s => s.id));
       
       for (let i = 0; i < updatedStages.length; i++) {
@@ -366,7 +369,7 @@ const EvansPipeline = () => {
             .from('pipeline_stages')
             .update({ name: stage.name, color: stage.color, position: i })
             .eq('id', stage.id);
-          if (error) throw error;
+          if (error) { console.error('Stage update error:', error); throw error; }
         } else {
           const { error } = await supabase
             .from('pipeline_stages')
@@ -377,7 +380,7 @@ const EvansPipeline = () => {
               position: i, 
               pipeline_id: selectedPipelineId 
             });
-          if (error) throw error;
+          if (error) { console.error('Stage insert error:', error); throw error; }
         }
       }
       
@@ -389,17 +392,15 @@ const EvansPipeline = () => {
           .from('pipeline_stages')
           .delete()
           .in('id', deletedIds);
-        if (error) throw error;
+        if (error) { console.error('Stage delete error:', error); throw error; }
       }
-
-      return { previousStages, deletedIds };
     },
-    onSuccess: (result) => {
+    onSuccess: (_data, _variables, context) => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-stages', selectedPipelineId] });
       toast.success('Pipeline stages updated');
 
-      if (result) {
-        const { previousStages, deletedIds } = result;
+      if (context) {
+        const { previousStages, deletedIds } = context;
         registerUndo({
           label: 'Pipeline stage changes',
           execute: async () => {
@@ -440,7 +441,7 @@ const EvansPipeline = () => {
         });
       }
     },
-    onError: () => toast.error('Failed to update stages'),
+    onError: (error) => { console.error('Save stages mutation failed:', error); toast.error('Failed to update stages'); },
   });
 
   const { data: evanTeamMember } = useQuery({
