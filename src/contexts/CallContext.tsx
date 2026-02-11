@@ -236,15 +236,34 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       device.on('error', (error) => {
         console.error('[CallContext] Twilio Device error:', error);
         setHealthStatus(prev => ({ ...prev, deviceReady: false }));
-        toast.error(`Call error: ${error.message}`);
         
-        // Try to re-register on error
-        setTimeout(() => {
-          if (deviceRef.current && deviceRef.current.state !== 'registered') {
-            console.log('[CallContext] Attempting to re-register device...');
-            deviceRef.current.register();
+        // Check if it's a token expiry error — refresh token silently instead of spamming toasts
+        const isTokenExpired = error.code === 20104 || 
+          error.message?.includes('expired') || 
+          error.message?.includes('AccessTokenExpired');
+        
+        if (isTokenExpired) {
+          console.log('[CallContext] Token expired, destroying device and fetching fresh token...');
+          // Destroy the stale device to stop the error loop
+          if (deviceRef.current) {
+            deviceRef.current.destroy();
+            deviceRef.current = null;
+            setTwilioDevice(null);
           }
-        }, 5000);
+          // Re-initialize with a fresh token after a short delay
+          setTimeout(() => {
+            initializeTwilioDevice();
+          }, 2000);
+        } else {
+          toast.error(`Call error: ${error.message}`);
+          // Try to re-register on non-token errors
+          setTimeout(() => {
+            if (deviceRef.current && deviceRef.current.state !== 'registered') {
+              console.log('[CallContext] Attempting to re-register device...');
+              deviceRef.current.register();
+            }
+          }, 5000);
+        }
       });
 
       device.on('incoming', (call) => {
