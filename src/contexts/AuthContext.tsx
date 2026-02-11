@@ -2,8 +2,6 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-const ADMIN_EMAIL = 'ilan@maverich.ai';
-
 type UserRole = 'admin' | 'client' | 'partner';
 interface AuthContextType {
   user: User | null;
@@ -132,17 +130,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Only consider fully loaded when both auth and role are resolved
   const isFullyLoaded = !loading && !roleLoading;
-  const emailIsAdmin = (user?.email ?? '').toLowerCase() === ADMIN_EMAIL;
 
   const value = {
     user,
     session,
-    loading: !isFullyLoaded, // Keep loading true until role is also loaded
+    loading: !isFullyLoaded,
     userRole,
     signIn,
     signUp,
     signOut,
-    isAdmin: emailIsAdmin || userRole === 'admin',
+    isAdmin: userRole === 'admin',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +21,8 @@ const passwordSchema = z.string().min(6, 'Password must be at least 6 characters
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin, signIn, signUp, loading: authLoading } = useAuth();
+  const { user, isAdmin, signIn, signUp, loading: authLoading, userRole } = useAuth();
+  const { teamMember, loading: teamLoading } = useTeamMember();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,29 +37,17 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [signupRole, setSignupRole] = useState<'client' | 'partner'>('client');
+
   // Redirect if already logged in
-  const { userRole } = useAuth();
-
   useEffect(() => {
-    if (user && !authLoading) {
-      const email = (user.email ?? '').toLowerCase();
-
-      // Route team members (employees) to their specific dashboards
-      const employeeRoutes: Record<string, string> = {
-        'evan@test.com': '/admin/evan',
-        'maura@test.com': '/admin/maura',
-        'wendy@test.com': '/admin/wendy',
-      };
-
-      // Check if user is a team member with a specific route
-      if (employeeRoutes[email]) {
-        navigate(employeeRoutes[email], { replace: true });
-        return;
-      }
-
-      // Force this user to admin/ilan
-      if (email === 'ilan@maverich.ai') {
-        navigate('/superadmin/ilan', { replace: true });
+    if (user && !authLoading && !teamLoading) {
+      // If user is a team member, route to their dashboard
+      if (teamMember) {
+        const name = teamMember.name.toLowerCase();
+        const redirectPath = teamMember.is_owner
+          ? `/superadmin/${name}`
+          : `/admin/${name}`;
+        navigate(redirectPath, { replace: true });
         return;
       }
 
@@ -76,7 +66,7 @@ const Auth = () => {
         navigate('/user', { replace: true });
       }
     }
-  }, [user, isAdmin, userRole, authLoading, navigate, location]);
+  }, [user, isAdmin, userRole, authLoading, teamLoading, teamMember, navigate, location]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,7 +133,6 @@ const Auth = () => {
     } else {
       // If partner role selected, wait for session then update role
       if (signupRole === 'partner') {
-        // Listen for the session to become available after signup
         const waitForSession = async () => {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
@@ -154,7 +143,6 @@ const Auth = () => {
           }
         };
         
-        // Try immediately and also set up a listener
         await waitForSession();
         
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
