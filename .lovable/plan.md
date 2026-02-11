@@ -1,38 +1,72 @@
 
 
-## Fix: Borrower Search Dropdown Scrolling
+## Remove Hardcoded Admin Email -- Database-Driven Role System
 
-### Problem
-The `cmdk` library dynamically sets an inline `--cmdk-list-height` CSS variable on `CommandList`, which overrides any `maxHeight` styling. This causes the scrollbar to flash briefly then disappear as the library recalculates height to fit all content.
+### What's Changing
 
-### Solution
-Replace the scrolling mechanism by wrapping the list content in a `ScrollArea` component (from Radix) inside the `CommandList`, and remove the height constraint from `CommandList` so `cmdk` doesn't fight with it.
+Right now, admin access is partly determined by checking if a user's email is `ilan@maverich.ai` in the code. Similarly, employee routing (Evan, Maura, Wendy) uses hardcoded email lists. This is insecure and not scalable. We'll replace all of this with the existing `user_roles` table and `team_members` table, which already have the right data.
+
+### Current State (What Already Works)
+
+- A `user_roles` table exists with `admin`, `client`, `partner` roles -- and both Ilan and Evan already have `admin` rows
+- A `team_members` table exists with `is_owner`, `name`, and `user_id` -- already used by `EmployeeRoute`
+- `AuthContext` already fetches `userRole` from the database
+- The `has_role()` database function already powers all RLS policies
+
+The problem is just **3 files** that still have hardcoded email checks layered on top.
 
 ### Changes
 
-**File: `src/components/evan/tasks/BorrowerSearchSelect.tsx`**
+#### 1. `src/contexts/AuthContext.tsx`
+- Remove `const ADMIN_EMAIL = 'ilan@maverich.ai'`
+- Remove `const emailIsAdmin = ...` line
+- Change `isAdmin` to simply be `userRole === 'admin'`
+- No other changes needed -- the database fetch is already solid
 
-1. Import `ScrollArea` from `@/components/ui/scroll-area`
-2. Remove the inline `style` from `CommandList`
-3. Wrap the `CommandEmpty` and `CommandGroup` inside a `ScrollArea` with a fixed `h-[200px]` class
-4. This gives us a native Radix scrollbar that `cmdk` cannot override
+#### 2. `src/components/auth/ProtectedRoute.tsx`
+- Remove the `TEAM_MEMBER_EMAILS` constant
+- Remove the email-based team member redirect block
+- Instead, use the `team_members` table (via `useTeamMember` hook) to detect if the logged-in user is a non-owner team member trying to access admin routes, and redirect them to their own dashboard path
+- Keep the existing `requireAdmin`, `clientOnly`, and partner redirect logic (these already use `userRole` and `isAdmin` from the database)
 
-The structure will change from:
+#### 3. `src/pages/Auth.tsx`
+- Remove the hardcoded `employeeRoutes` map and `ilan@maverich.ai` check
+- After login, use the `team_members` table to determine redirect: if user is a team member, route to their dashboard; otherwise fall through to existing role-based routing
+- This will be done by importing and using `useTeamMember` (or a direct query) to look up the logged-in user's team member record
+
+### What Won't Change
+- The `user_roles` table, `app_role` enum, and `has_role()` function -- all already correct
+- All RLS policies -- they already use `has_role()`, not email checks
+- `EmployeeRoute` component -- already uses `useTeamMember` hook, no hardcoded emails
+- Edge functions -- the one reference to `ilan@maverich.ai` in `call-to-lead-automation` is a notification recipient, not an auth check
+
+### Security Notes
+- Frontend role checks remain UX-only; all data access is already enforced by RLS policies using `has_role()`
+- Adding new admins requires only inserting a row in `user_roles` -- no code changes needed
+
+---
+
+### Technical Details
+
+**AuthContext.tsx diff summary:**
 ```
-CommandList (style maxHeight - gets overridden by cmdk)
-  CommandEmpty
-  CommandGroup
-    items...
+- const ADMIN_EMAIL = 'ilan@maverich.ai';
+  ...
+- const emailIsAdmin = (user?.email ?? '').toLowerCase() === ADMIN_EMAIL;
+  ...
+- isAdmin: emailIsAdmin || userRole === 'admin',
++ isAdmin: userRole === 'admin',
 ```
 
-To:
-```
-CommandList (no height constraint)
-  ScrollArea (h-[200px] - cmdk can't touch this)
-    CommandEmpty
-    CommandGroup
-      items...
-  /ScrollArea
-```
+**ProtectedRoute.tsx approach:**
+- Import `useTeamMember` hook
+- If `requireAdmin` and user is a team member but NOT an owner, redirect to `/admin/{name}` or `/superadmin/{name}` based on `is_owner`
+- Remove the static email map entirely
 
-This is a single-file change to `BorrowerSearchSelect.tsx`.
+**Auth.tsx approach:**
+- After login, query `team_members` via the existing RPC or hook
+- If user is a team member: redirect to `/superadmin/{name}` (owners) or `/admin/{name}` (employees)
+- If user is a partner: redirect to `/partner`
+- If user is admin (non-team-member): redirect to `/superadmin`
+- Otherwise: redirect to `/user`
+
