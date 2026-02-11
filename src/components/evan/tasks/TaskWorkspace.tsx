@@ -141,7 +141,10 @@ export const TaskWorkspace = () => {
   const filteredTasks = useMemo(() => {
     let result = tasks;
     
-    // Filter out hidden (completed) tasks
+    // Filter out completed tasks — they belong in the CompletedTasksSection only
+    result = result.filter(task => !task.is_completed && task.status !== 'done');
+    
+    // Filter out tasks hidden via fade-out animation (recently completed)
     result = result.filter(task => !hiddenTasks.has(task.id));
     
     // Filter by source (gmail includes nudge/follow-up tasks and tasks with follow-up keywords)
