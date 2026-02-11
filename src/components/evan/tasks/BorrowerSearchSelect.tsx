@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Check, ChevronsUpDown, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -66,52 +67,54 @@ export function BorrowerSearchSelect({
       <PopoverContent className="w-[300px] p-0 z-[200]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
         <Command className="bg-popover" shouldFilter={true}>
           <CommandInput placeholder="Search borrowers..." className="h-9" />
-            <CommandList style={{ maxHeight: '200px', overflowY: 'auto' }}>
-            <CommandEmpty>No borrowers found.</CommandEmpty>
-            <CommandGroup>
-              <CommandItem
-                value="none"
-                onSelect={() => {
-                  onValueChange(null);
-                  setOpen(false);
-                }}
-                className="cursor-pointer"
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    !value ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                <span className="text-muted-foreground">No borrower</span>
-              </CommandItem>
-              {leads.map((lead) => (
-                <CommandItem
-                  key={lead.id}
-                  value={`${lead.name} ${lead.company_name || ""}`}
-                  onSelect={() => {
-                    onValueChange(lead.id);
-                    setOpen(false);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === lead.id ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{lead.name}</span>
-                    {lead.company_name && (
-                      <span className="text-muted-foreground text-xs">({lead.company_name})</span>
-                    )}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
+            <CommandList>
+              <ScrollArea className="h-[200px]">
+                <CommandEmpty>No borrowers found.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    value="none"
+                    onSelect={() => {
+                      onValueChange(null);
+                      setOpen(false);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        !value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="text-muted-foreground">No borrower</span>
+                  </CommandItem>
+                  {leads.map((lead) => (
+                    <CommandItem
+                      key={lead.id}
+                      value={`${lead.name} ${lead.company_name || ""}`}
+                      onSelect={() => {
+                        onValueChange(lead.id);
+                        setOpen(false);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === lead.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{lead.name}</span>
+                        {lead.company_name && (
+                          <span className="text-muted-foreground text-xs">({lead.company_name})</span>
+                        )}
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </ScrollArea>
+            </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
