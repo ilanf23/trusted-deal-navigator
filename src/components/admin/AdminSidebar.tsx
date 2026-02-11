@@ -70,7 +70,8 @@ interface NavSection {
   icon: LucideIcon;
   items: NavItem[];
   noCollapse?: boolean;
-  navigateOnClick?: string; // If set, clicking the section header navigates to this URL
+  navigateOnClick?: string;
+  isLabel?: boolean; // Renders title as a non-interactive section heading
 }
 
 const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: AdminSidebarProps) => {
@@ -171,33 +172,48 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
       const employeeName = teamMember.name;
       const employeeUrl = `/admin/${employeeName.toLowerCase()}`;
 
+      // Top-level pages (no section heading, direct links)
       sections.push({
-        title: `${employeeName}'s Page`,
-        icon: User,
+        title: '',
+        icon: LayoutDashboard,
         items: [
           { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
           { title: 'Scorecard', url: `/admin/${employeeName.toLowerCase()}/scorecard`, icon: ClipboardList },
+        ],
+        noCollapse: true,
+      });
+
+      // Workspace section with heading
+      sections.push({
+        title: 'Workspace',
+        icon: ListTodo,
+        isLabel: true,
+        items: [
           { title: "To Do's", url: `/admin/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
           { title: 'Calendar', url: `/admin/${employeeName.toLowerCase()}/calendar`, icon: Calendar },
           { title: 'Calls', url: `/admin/${employeeName.toLowerCase()}/calls`, icon: Phone },
-          { title: 'LP', url: `/admin/${employeeName.toLowerCase()}/lender-programs`, icon: Building2 },
           { title: 'Gmail', url: `/admin/${employeeName.toLowerCase()}/gmail`, icon: Mail },
         ],
         noCollapse: true,
       });
 
+      // Pipeline section with heading
       sections.push({
         title: 'Pipeline',
         icon: Kanban,
+        isLabel: true,
         items: [
           { title: 'Pipeline', url: `/admin/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+          { title: 'Lender Programs', url: `/admin/${employeeName.toLowerCase()}/lender-programs`, icon: Building2 },
         ],
         noCollapse: true,
       });
 
+      // Tools section with heading
       sections.push({
         title: 'Tools',
         icon: TrendingDown,
+        isLabel: true,
         items: [
           { title: 'Rate Watch', url: `/admin/${employeeName.toLowerCase()}/rate-watch`, icon: TrendingDown },
           { title: 'Messages', url: `/admin/${employeeName.toLowerCase()}/messages`, icon: MessageSquare },
@@ -295,91 +311,98 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
       <SidebarContent className={`pt-3 space-y-0.5 ${isCollapsed ? 'px-1' : 'px-3'}`}>
         {navSections.map((section) => (
           section.noCollapse ? (
-            // Render direct links without collapsible wrapper - use Fragment to avoid extra div
-            section.items.map((item) => (
-              item.subItems && !isCollapsed ? (
-                // Render collapsible for items with subItems (only when expanded)
-                <Collapsible
-                  key={item.title}
-                  open={openSections[item.title]}
-                  onOpenChange={() => toggleSection(item.title)}
-                >
-                  <CollapsibleTrigger className="w-full">
-                    <div className={`
-                      flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px] tracking-tight
-                      ${openSections[item.title] 
-                        ? 'bg-white/10 text-white' 
-                        : 'text-white/90 hover:bg-white/5 hover:text-white'
-                      }
-                    `}>
-                      <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
-                      <span className="font-semibold flex-1 text-left">{item.title}</span>
-                      <ChevronDown 
-                        className={`w-3.5 h-3.5 transition-transform duration-150 opacity-60 ${
-                          openSections[item.title] ? '' : '-rotate-90'
-                        }`} 
-                      />
-                    </div>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
-                      {item.subItems.map((subItem) => (
-                        <Link
-                          key={subItem.title}
-                          to={subItem.url}
-                          className={`
-                            flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px] tracking-tight
-                            ${isActive(subItem.url) 
-                              ? 'bg-white/15 text-white' 
-                              : 'text-white/80 hover:bg-white/5 hover:text-white'
-                            }
-                          `}
-                        >
-                          <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.75} />
-                          <span className="font-semibold">{subItem.title}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              ) : isCollapsed ? (
-                // Collapsed state: show icon only with tooltip
-                <Tooltip key={item.title}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to={item.url}
-                      className={`
-                        flex items-center justify-center py-2 px-2 rounded-md transition-all duration-150
-                        ${isActive(item.url) 
-                          ? 'bg-white/15 text-white' 
+            <div key={section.title || 'top-links'} className={section.isLabel ? 'mt-5 first:mt-0' : ''}>
+              {/* Section heading label */}
+              {section.isLabel && section.title && !isCollapsed && (
+                <div className="px-3 pt-0.5 pb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#0066FF]/70">
+                    {section.title}
+                  </span>
+                </div>
+              )}
+              {section.items.map((item) => (
+                item.subItems && !isCollapsed ? (
+                  <Collapsible
+                    key={item.title}
+                    open={openSections[item.title]}
+                    onOpenChange={() => toggleSection(item.title)}
+                  >
+                    <CollapsibleTrigger className="w-full">
+                      <div className={`
+                        flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px] tracking-tight
+                        ${openSections[item.title] 
+                          ? 'bg-white/10 text-white' 
                           : 'text-white/90 hover:bg-white/5 hover:text-white'
                         }
-                      `}
-                    >
-                      <item.icon className="w-5 h-5 flex-shrink-0" strokeWidth={1.75} />
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
-                    {item.title}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <Link
-                  key={item.title}
-                  to={item.url}
-                  className={`
-                    flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 text-[13px] tracking-tight
-                    ${isActive(item.url) 
-                      ? 'bg-white/15 text-white' 
-                      : 'text-white/90 hover:bg-white/5 hover:text-white'
-                    }
-                  `}
-                >
-                  <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
-                  <span className="font-semibold">{item.title}</span>
-                </Link>
-              )
-            ))
+                      `}>
+                        <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
+                        <span className="font-semibold flex-1 text-left">{item.title}</span>
+                        <ChevronDown 
+                          className={`w-3.5 h-3.5 transition-transform duration-150 opacity-60 ${
+                            openSections[item.title] ? '' : '-rotate-90'
+                          }`} 
+                        />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
+                        {item.subItems.map((subItem) => (
+                          <Link
+                            key={subItem.title}
+                            to={subItem.url}
+                            className={`
+                              flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px] tracking-tight
+                              ${isActive(subItem.url) 
+                                ? 'bg-white/15 text-white' 
+                                : 'text-white/80 hover:bg-white/5 hover:text-white'
+                              }
+                            `}
+                          >
+                            <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.75} />
+                            <span className="font-semibold">{subItem.title}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : isCollapsed ? (
+                  <Tooltip key={item.title}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to={item.url}
+                        className={`
+                          flex items-center justify-center py-2 px-2 rounded-md transition-all duration-150
+                          ${isActive(item.url) 
+                            ? 'bg-[#0066FF]/20 text-[#0066FF]' 
+                            : 'text-white/90 hover:bg-white/5 hover:text-white'
+                          }
+                        `}
+                      >
+                        <item.icon className="w-5 h-5 flex-shrink-0" strokeWidth={1.75} />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
+                      {item.title}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Link
+                    key={item.title}
+                    to={item.url}
+                    className={`
+                      flex items-center gap-2.5 py-2 px-3 rounded-lg transition-all duration-150 text-[13px] tracking-tight
+                      ${isActive(item.url) 
+                        ? 'bg-[#0066FF]/15 text-[#0066FF] font-semibold' 
+                        : 'text-white/80 hover:bg-white/5 hover:text-white font-medium'
+                      }
+                    `}
+                  >
+                    <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
+                    <span>{item.title}</span>
+                  </Link>
+                )
+              ))}
+            </div>
           ) : isCollapsed ? (
             // Collapsed state for collapsible sections: show first item's icon with tooltip
             <Tooltip key={section.title}>
