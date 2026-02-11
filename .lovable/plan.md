@@ -1,109 +1,79 @@
 
-# URL Slug Restructure
 
-## Summary
-Reorganize all backend page URLs to follow a consistent permission-based structure:
-- **Evan, Maura, Wendy** (employees): `/admin/{name}/*`
-- **Brad, Adam, Ilan** (founders): `/superadmin/{name}/*`  
-- **Super Admin Dashboard + shared pages** (CRM, Leads, Clients, etc.): `/superadmin/*`
-- **Partner, Client**: unchanged (`/partner/*`, `/user/*`)
-- Keep `/team/evan/*` and `/user/evan/*` as legacy redirects
+# Fix: Persist UI State Across Evan Page Navigation
 
----
+## Problem
+When Evan navigates away from a page (e.g., clicks "Leads" in the sidebar while creating a task) and then returns, all local component state is lost -- open dialogs close, form inputs clear, filters reset. This happens because React unmounts the page component on route change, destroying all `useState` values.
 
-## Changes by File
+## Solution
+Create an `EvanUIStateContext` inside the existing `EvanPortalWrapper` (which already persists call and draft state across routes). This context will store critical UI state for each page so it survives navigation.
 
-### 1. `src/App.tsx` -- Route Definitions
-- Rename all `/admin/*` shared pages to `/superadmin/*` (e.g., `/superadmin/crm`, `/superadmin/leads`, `/superadmin/clients`)
-- Move Evan routes from `/user/evan/*` and `/team/evan/*` to `/admin/evan/*` (keep old paths as legacy)
-- Move Maura from `/team/maura` to `/admin/maura`
-- Move Wendy from `/team/wendy` to `/admin/wendy`
-- Move Brad from `/admin/brad` to `/superadmin/brad`
-- Move Adam from `/admin/adam` to `/superadmin/adam`
-- Move Ilan from `/admin/ilan/*` to `/superadmin/ilan/*`
-- Move callback routes: `/admin/inbox/callback` to `/superadmin/inbox/callback`, etc.
-- SuperAdminDashboard: `/admin` becomes `/superadmin`
+## What Gets Preserved
 
-### 2. `src/components/auth/ProtectedRoute.tsx`
-- Update `TEAM_MEMBER_EMAILS` mapping: Evan/Maura/Wendy now redirect to `/admin/{name}`
+**Tasks page:**
+- View mode (table/kanban/timeline)
+- Active filters (source, status, priority, search)
+- Open task detail dialog (selected task ID)
+- New task dialog open state and any in-progress form data
 
-### 3. `src/pages/Auth.tsx`
-- Update `employeeRoutes` mapping: all employees redirect to `/admin/{name}`
-- Ilan redirect from `/admin/ilan` to `/superadmin/ilan`
-- Default admin redirect from `/admin` to `/superadmin`
+**Dashboard page:**
+- Time period selections
+- Calculator inputs
 
-### 4. `src/components/admin/AdminSidebar.tsx`
-- **Ilan's nav**: all URLs change from `/admin/*` to `/superadmin/*` (e.g., `/superadmin/crm`, `/superadmin/ilan/dev`)
-- **Owner nav**: all URLs change from `/admin/*` to `/superadmin/*`
-- **Employee nav**: URLs change from `/team/{name}/*` to `/admin/{name}/*`
-- Update `homeUrl` logic: founders use `/superadmin/{name}`, employees use `/admin/{name}`
-- Update `isActive` path matching
+**Pipeline page:**
+- Collapsed/expanded stage sections
+- Selected lead detail dialog
 
-### 5. `src/components/admin/EmployeeRoute.tsx`
-- Update redirect logic: employees redirect to `/admin/{name}`, founders to `/superadmin/{name}`
+**Gmail page:**
+- Selected thread/folder state
 
-### 6. `src/pages/admin/SuperAdminDashboard.tsx`
-- Update redirect logic for non-owners: employees to `/admin/{name}`, founders to `/superadmin/{name}`
-- Update team member `url` references (e.g., Brad to `/superadmin/brad`, Evan to `/admin/evan`)
+## Technical Approach
 
-### 7. `src/pages/admin/EvansPipeline.tsx`
-- Update navigation links: `/team/evan/calls` to `/admin/evan/calls`, `/team/evan/leads` to `/admin/evan/leads`
+### 1. Create `src/contexts/EvanUIStateContext.tsx`
+A context that holds a simple state map keyed by page name. Each page stores/retrieves its own slice of state.
 
-### 8. `src/contexts/CallContext.tsx`
-- Update call auto-navigation paths from `/team/evan/calls` to `/admin/evan/calls`
-
-### 9. `src/components/evan/dashboard/NudgesWidget.tsx`
-- Update link from `/team/evan/gmail` to `/admin/evan/gmail`
-
-### 10. `src/components/evan/EvanCalendarWidget.tsx`
-- Update callback URL from `/admin/calendar-callback` to `/superadmin/calendar-callback`
-
-### 11. `src/hooks/useGmail.ts`
-- Update redirect URI from `/admin/inbox/callback` to `/superadmin/inbox/callback`
-
-### 12. `src/hooks/useGoogleSheets.ts`
-- Update redirect URI from `/admin/sheets-callback` to `/superadmin/sheets-callback`
-
-### 13. `src/pages/admin/IlansGmail.tsx`
-- Update callback URL from `/admin/inbox/callback` to `/superadmin/inbox/callback`
-
-### 14. Other files with hardcoded `/team/evan` links
-- Various dashboard widgets, task components, and evan-specific components will need link updates from `/team/evan/*` to `/admin/evan/*`
-
----
-
-## URL Mapping Summary
-
-```text
-OLD                              NEW
-----                             ----
-/admin                        -> /superadmin
-/admin/crm                    -> /superadmin/crm
-/admin/leads                  -> /superadmin/leads
-/admin/clients                -> /superadmin/clients
-/admin/contracts              -> /superadmin/contracts
-/admin/invoices               -> /superadmin/invoices
-/admin/messages               -> /superadmin/messages
-/admin/marketing              -> /superadmin/marketing
-/admin/newsletter             -> /superadmin/newsletter
-/admin/rate-watch             -> /superadmin/rate-watch
-/admin/lender-programs        -> /superadmin/lender-programs
-/admin/tracking               -> /superadmin/tracking
-/admin/bug-reporting          -> /superadmin/bug-reporting
-/admin/team-performance       -> /superadmin/team-performance
-/admin/inbox/callback         -> /superadmin/inbox/callback
-/admin/calendar-callback      -> /superadmin/calendar-callback
-/admin/sheets-callback        -> /superadmin/sheets-callback
-/admin/brad                   -> /superadmin/brad
-/admin/adam                   -> /superadmin/adam
-/admin/ilan                   -> /superadmin/ilan
-/admin/ilan/*                 -> /superadmin/ilan/*
-/team/evan/*                  -> /admin/evan/*  (keep /team/evan as legacy)
-/team/maura                   -> /admin/maura
-/team/wendy                   -> /admin/wendy
+```
+EvanUIState {
+  tasks: {
+    viewMode, searchTerm, sourceFilter, statusFilter,
+    priorityFilter, selectedTaskId, isNewTaskDialogOpen
+  },
+  dashboard: { timePeriod, chartPeriod },
+  pipeline: { collapsedSections, selectedLeadId },
+  ...
+}
 ```
 
-## No Changes
-- `/partner/*` routes (unchanged)
-- `/user/*` client portal routes (unchanged)
-- Public routes (unchanged)
+The context provides `getPageState(page)` and `setPageState(page, state)` helpers.
+
+### 2. Update `src/components/evan/EvanPortalWrapper.tsx`
+Wrap `<Outlet />` with the new `EvanUIStateProvider` alongside the existing `CallProvider` and `DraftProvider`.
+
+### 3. Update `src/components/evan/tasks/TaskWorkspace.tsx`
+Replace the ~10 `useState` calls for filters/view/dialogs with values from the context. On state change, write back to context so it persists.
+
+Key states to persist:
+- `viewMode`, `searchTerm`, `sourceFilter`, `statusFilter`, `priorityFilter`
+- `selectedTask` (stored as task ID, resolved from cached query data on return)
+- `isNewTaskDialogOpen`
+
+### 4. Update `src/pages/admin/EvansPage.tsx`
+Persist `timePeriod` and `chartPeriod` selections via the context.
+
+### 5. Update `src/pages/admin/EvansPipeline.tsx`
+Persist collapsed stage sections and selected lead dialog state.
+
+## Files Changed
+| File | Change |
+|------|--------|
+| `src/contexts/EvanUIStateContext.tsx` | **New** -- context for persistent UI state |
+| `src/components/evan/EvanPortalWrapper.tsx` | Add `EvanUIStateProvider` wrapper |
+| `src/components/evan/tasks/TaskWorkspace.tsx` | Read/write filter and dialog state from context |
+| `src/pages/admin/EvansPage.tsx` | Persist time period selections |
+| `src/pages/admin/EvansPipeline.tsx` | Persist collapsed sections |
+
+## Not Changed
+- Data fetching remains via React Query (already cached with 2-min staleTime)
+- Route structure unchanged
+- No database changes needed
+
