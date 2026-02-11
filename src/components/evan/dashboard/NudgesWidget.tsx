@@ -107,6 +107,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           assignee_name: 'Evan',
           group_name: 'To Do',
           source: 'nudge',
+          task_type: 'email',
           due_date: dueDate.toISOString(),
         });
 
