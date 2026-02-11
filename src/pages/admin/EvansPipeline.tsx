@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -96,6 +96,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { Checkbox } from '@/components/ui/checkbox';
 import { InlineEditableCell } from '@/components/admin/InlineEditableCell';
 import { useUndo } from '@/contexts/UndoContext';
+import { useEvanUIState } from '@/contexts/EvanUIStateContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -203,11 +204,22 @@ const EvansPipeline = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { teamMember, isOwner } = useTeamMember();
+  const { getPageState, setPageState } = useEvanUIState();
+  const persistedPipeline = getPageState('pipeline', { collapsedSections: {} as Record<LeadStatus, boolean>, selectedLeadId: null as string | null });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<string>('evan');
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
-  const [collapsedSections, setCollapsedSections] = useState<Record<LeadStatus, boolean>>({} as Record<LeadStatus, boolean>);
+  const [collapsedSections, setCollapsedSectionsLocal] = useState<Record<LeadStatus, boolean>>(persistedPipeline.collapsedSections as Record<LeadStatus, boolean>);
+
+  const setCollapsedSections = useCallback((updater: Record<LeadStatus, boolean> | ((prev: Record<LeadStatus, boolean>) => Record<LeadStatus, boolean>)) => {
+    setCollapsedSectionsLocal(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      setPageState('pipeline', { collapsedSections: next });
+      return next;
+    });
+  }, [setPageState]);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
   const [sharingModalOpen, setSharingModalOpen] = useState(false);
   const [stageManagerOpen, setStageManagerOpen] = useState(false);

@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
+import { useEvanUIState } from '@/contexts/EvanUIStateContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -71,10 +72,18 @@ const SOURCE_COLORS = [
 ];
 
 const EvansPage = () => {
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
-  const [chartPeriod, setChartPeriod] = useState<TimePeriod>('ytd');
-  const [calcLoanAmount, setCalcLoanAmount] = useState<string>('500000');
-  const [calcExtraDeals, setCalcExtraDeals] = useState<string>('0');
+  const { getPageState, setPageState } = useEvanUIState();
+  const persisted = getPageState('dashboard', { timePeriod: 'ytd' as TimePeriod, chartPeriod: 'ytd' as TimePeriod, calcLoanAmount: '500000', calcExtraDeals: '0' });
+
+  const [timePeriod, setTimePeriodLocal] = useState<TimePeriod>(persisted.timePeriod);
+  const [chartPeriod, setChartPeriodLocal] = useState<TimePeriod>(persisted.chartPeriod);
+  const [calcLoanAmount, setCalcLoanAmountLocal] = useState<string>(persisted.calcLoanAmount);
+  const [calcExtraDeals, setCalcExtraDealsLocal] = useState<string>(persisted.calcExtraDeals);
+
+  const setTimePeriod = useCallback((v: TimePeriod) => { setTimePeriodLocal(v); setPageState('dashboard', { timePeriod: v }); }, [setPageState]);
+  const setChartPeriod = useCallback((v: TimePeriod) => { setChartPeriodLocal(v); setPageState('dashboard', { chartPeriod: v }); }, [setPageState]);
+  const setCalcLoanAmount = useCallback((v: string) => { setCalcLoanAmountLocal(v); setPageState('dashboard', { calcLoanAmount: v }); }, [setPageState]);
+  const setCalcExtraDeals = useCallback((v: string) => { setCalcExtraDealsLocal(v); setPageState('dashboard', { calcExtraDeals: v }); }, [setPageState]);
 
   const now = new Date();
   const periodStart = timePeriod === 'ytd' ? startOfYear(now) : startOfMonth(now);
