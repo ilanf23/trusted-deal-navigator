@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTasksData } from '@/hooks/useTasksData';
 import { Task, ViewMode, TaskSource, sourceConfig, statusConfig, priorityConfig, statusPickerOptions } from './types';
@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGmail } from '@/hooks/useGmail';
 import { appendSignature } from '@/lib/email-signature';
 import { toast } from 'sonner';
+import { useEvanUIState } from '@/contexts/EvanUIStateContext';
 import { 
   LayoutGrid, 
   Table, 
@@ -36,18 +37,65 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 
+interface TasksPageState {
+  viewMode: ViewMode;
+  searchTerm: string;
+  sourceFilter: TaskSource;
+  statusFilter: string;
+  priorityFilter: string;
+  selectedTaskId: string | null;
+  isNewTaskDialogOpen: boolean;
+}
+
+const TASKS_DEFAULTS: TasksPageState = {
+  viewMode: 'table',
+  searchTerm: '',
+  sourceFilter: 'all',
+  statusFilter: 'all',
+  priorityFilter: 'all',
+  selectedTaskId: null,
+  isNewTaskDialogOpen: false,
+};
+
 export const TaskWorkspace = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { tasks, isLoading, addTask, updateTask, deleteTask, addComment } = useTasksData();
   const { sendMessage } = useGmail();
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<TaskSource>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const { getPageState, setPageState } = useEvanUIState();
+
+  // Initialize from persisted state
+  const persisted = getPageState('tasks', TASKS_DEFAULTS);
+
+  const [viewMode, setViewModeLocal] = useState<ViewMode>(persisted.viewMode);
+  const [searchTerm, setSearchTermLocal] = useState(persisted.searchTerm);
+  const [sourceFilter, setSourceFilterLocal] = useState<TaskSource>(persisted.sourceFilter);
+  const [statusFilter, setStatusFilterLocal] = useState<string>(persisted.statusFilter);
+  const [priorityFilter, setPriorityFilterLocal] = useState<string>(persisted.priorityFilter);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
+  const [isNewTaskDialogOpen, setIsNewTaskDialogOpenLocal] = useState(persisted.isNewTaskDialogOpen);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+
+  // Persist-aware setters
+  const setViewMode = useCallback((v: ViewMode) => { setViewModeLocal(v); setPageState('tasks', { viewMode: v }); }, [setPageState]);
+  const setSearchTerm = useCallback((v: string) => { setSearchTermLocal(v); setPageState('tasks', { searchTerm: v }); }, [setPageState]);
+  const setSourceFilter = useCallback((v: TaskSource) => { setSourceFilterLocal(v); setPageState('tasks', { sourceFilter: v }); }, [setPageState]);
+  const setStatusFilter = useCallback((v: string) => { setStatusFilterLocal(v); setPageState('tasks', { statusFilter: v }); }, [setPageState]);
+  const setPriorityFilter = useCallback((v: string) => { setPriorityFilterLocal(v); setPageState('tasks', { priorityFilter: v }); }, [setPageState]);
+  const setIsNewTaskDialogOpen = useCallback((v: boolean) => { setIsNewTaskDialogOpenLocal(v); setPageState('tasks', { isNewTaskDialogOpen: v }); }, [setPageState]);
+
+  // Restore selectedTask from persisted ID when tasks load
+  useEffect(() => {
+    if (persisted.selectedTaskId && tasks.length > 0 && !selectedTask) {
+      const found = tasks.find(t => t.id === persisted.selectedTaskId);
+      if (found) setSelectedTask(found);
+    }
+  }, [tasks, persisted.selectedTaskId]);
+
+  // Persist selected task ID
+  const handleSetSelectedTask = useCallback((task: Task | null) => {
+    setSelectedTask(task);
+    setPageState('tasks', { selectedTaskId: task?.id || null });
+  }, [setPageState]);
   
   // Compose dialog state
   const [composeOpen, setComposeOpen] = useState(false);
@@ -565,7 +613,7 @@ export const TaskWorkspace = () => {
               onUpdateTask={handleUpdateTask}
               onDeleteTask={handleDeleteTask}
               onAddTask={handleAddTask}
-              onOpenDetail={setSelectedTask}
+              onOpenDetail={handleSetSelectedTask}
               selectedTasks={selectedTasks}
               onToggleSelect={toggleTaskSelection}
               fadingTasks={fadingTasks}
@@ -577,7 +625,7 @@ export const TaskWorkspace = () => {
               tasks={tasks}
               onUpdateTask={handleUpdateTask}
               onDeleteTask={handleDeleteTask}
-              onOpenDetail={setSelectedTask}
+              onOpenDetail={handleSetSelectedTask}
             />
           </>
         )}
@@ -587,14 +635,14 @@ export const TaskWorkspace = () => {
             tasks={filteredTasks}
             onUpdateTask={handleUpdateTask}
             onAddTask={handleAddTask}
-            onOpenDetail={setSelectedTask}
+            onOpenDetail={handleSetSelectedTask}
           />
         )}
 
         {viewMode === 'timeline' && (
           <TaskTimelineView
             tasks={filteredTasks}
-            onOpenDetail={setSelectedTask}
+            onOpenDetail={handleSetSelectedTask}
           />
         )}
       </div>
@@ -603,7 +651,7 @@ export const TaskWorkspace = () => {
       <TaskDetailDialog
         task={selectedTask}
         open={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
+        onClose={() => handleSetSelectedTask(null)}
         onUpdateTask={handleUpdateTask}
         onAddComment={handleAddComment}
         onComposeEmail={handleComposeEmail}
