@@ -1,30 +1,38 @@
 
-# Fix: Undo Button Not Activating After Pipeline Stage Changes
 
-## Problem
-After saving stage changes (colors, names) in the Stage Manager, the undo button in the header remains grayed out/dormant instead of becoming active.
+## Fix: Borrower Search Dropdown Scrolling
 
-## Root Cause
-The `registerUndo` call is inside `onSuccess` of the mutation, but the mutation may be silently failing due to database access policies (the update succeeds with 0 rows affected without throwing an error), or there's a timing issue with query invalidation causing a re-render that interferes with the undo state registration.
+### Problem
+The `cmdk` library dynamically sets an inline `--cmdk-list-height` CSS variable on `CommandList`, which overrides any `maxHeight` styling. This causes the scrollbar to flash briefly then disappear as the library recalculates height to fit all content.
 
-## Solution
-Move the undo snapshot and registration logic to be more resilient:
+### Solution
+Replace the scrolling mechanism by wrapping the list content in a `ScrollArea` component (from Radix) inside the `CommandList`, and remove the height constraint from `CommandList` so `cmdk` doesn't fight with it.
 
-1. **Capture the snapshot before the mutation starts** using the `onMutate` callback (which runs synchronously before `mutationFn`), rather than inside `mutationFn` where it's subject to stale closure issues.
+### Changes
 
-2. **Use the mutation `context` pattern** from TanStack Query, which passes data from `onMutate` through to `onSuccess` and `onError` reliably.
+**File: `src/components/evan/tasks/BorrowerSearchSelect.tsx`**
 
-3. **Add error logging** to surface any silent failures so we can diagnose if the save itself isn't working.
+1. Import `ScrollArea` from `@/components/ui/scroll-area`
+2. Remove the inline `style` from `CommandList`
+3. Wrap the `CommandEmpty` and `CommandGroup` inside a `ScrollArea` with a fixed `h-[200px]` class
+4. This gives us a native Radix scrollbar that `cmdk` cannot override
 
-## Technical Changes
+The structure will change from:
+```
+CommandList (style maxHeight - gets overridden by cmdk)
+  CommandEmpty
+  CommandGroup
+    items...
+```
 
-### File: `src/pages/admin/EvansPipeline.tsx`
+To:
+```
+CommandList (no height constraint)
+  ScrollArea (h-[200px] - cmdk can't touch this)
+    CommandEmpty
+    CommandGroup
+      items...
+  /ScrollArea
+```
 
-Update the `saveStagesMutation` to use the proper TanStack Query `onMutate` -> `onSuccess` context pattern:
-
-- **`onMutate`**: Snapshot `dbPipelineStages` (previous state) and return it as context
-- **`mutationFn`**: Remove snapshot logic, just perform the database operations (update/insert/delete). Add `console.error` for any caught errors.
-- **`onSuccess`**: Receive the context from `onMutate` (which contains the previous stages snapshot), compute deleted IDs from the variables, and call `registerUndo` with the restore logic
-- Keep the undo `execute` function the same (re-insert deleted, restore previous values, delete newly-added)
-
-This ensures the snapshot is taken at the right moment and passed through TanStack Query's reliable context mechanism, avoiding any stale closure or timing issues.
+This is a single-file change to `BorrowerSearchSelect.tsx`.
