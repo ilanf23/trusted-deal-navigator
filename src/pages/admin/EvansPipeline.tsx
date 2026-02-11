@@ -353,20 +353,21 @@ const EvansPipeline = () => {
     mutationFn: async (updatedStages: { id: string; name: string; color: string }[]) => {
       if (!selectedPipelineId) throw new Error('No pipeline selected');
       
+      // Snapshot previous stages for undo
+      const previousStages = dbPipelineStages.map(s => ({ id: s.id, name: s.name, color: s.color, position: s.position }));
+      
       // Get existing stage IDs from DB
       const existingIds = new Set(dbPipelineStages.map(s => s.id));
       
       for (let i = 0; i < updatedStages.length; i++) {
         const stage = updatedStages[i];
         if (existingIds.has(stage.id)) {
-          // Update existing stage
           const { error } = await supabase
             .from('pipeline_stages')
             .update({ name: stage.name, color: stage.color, position: i })
             .eq('id', stage.id);
           if (error) throw error;
         } else {
-          // Insert new stage
           const { error } = await supabase
             .from('pipeline_stages')
             .insert({ 
@@ -390,10 +391,54 @@ const EvansPipeline = () => {
           .in('id', deletedIds);
         if (error) throw error;
       }
+
+      return { previousStages, deletedIds };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-stages', selectedPipelineId] });
       toast.success('Pipeline stages updated');
+
+      if (result) {
+        const { previousStages, deletedIds } = result;
+        registerUndo({
+          label: 'Pipeline stage changes',
+          execute: async () => {
+            if (!selectedPipelineId) return;
+            // Re-insert deleted stages
+            for (const id of deletedIds) {
+              const prev = previousStages.find(s => s.id === id);
+              if (prev) {
+                await supabase.from('pipeline_stages').insert({
+                  id: prev.id,
+                  name: prev.name,
+                  color: prev.color,
+                  position: prev.position,
+                  pipeline_id: selectedPipelineId,
+                });
+              }
+            }
+            // Restore previous values for existing stages
+            for (const prev of previousStages) {
+              await supabase
+                .from('pipeline_stages')
+                .update({ name: prev.name, color: prev.color, position: prev.position })
+                .eq('id', prev.id);
+            }
+            // Delete any newly-added stages that didn't exist before
+            const prevIds = new Set(previousStages.map(s => s.id));
+            const { data: currentStages } = await supabase
+              .from('pipeline_stages')
+              .select('id')
+              .eq('pipeline_id', selectedPipelineId);
+            const toDelete = (currentStages || []).filter(s => !prevIds.has(s.id)).map(s => s.id);
+            if (toDelete.length > 0) {
+              await supabase.from('pipeline_stages').delete().in('id', toDelete);
+            }
+            queryClient.invalidateQueries({ queryKey: ['pipeline-stages', selectedPipelineId] });
+            toast.success('Pipeline stage changes undone');
+          },
+        });
+      }
     },
     onError: () => toast.error('Failed to update stages'),
   });
