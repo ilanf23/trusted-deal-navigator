@@ -134,15 +134,29 @@ import { CSS } from '@dnd-kit/utilities';
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
-// Brand colors: Blue (#0066FF) for early stages, Orange (#FF8000) for later stages
-const stages: { status: LeadStatus; title: string; bgColor: string; borderColor: string; textColor: string; barColor: string; hexColor: string }[] = [
-  { status: 'discovery', title: 'Discovery', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#3385FF]', textColor: 'text-[#3385FF]', barColor: 'bg-[#0066FF]', hexColor: '#3385FF' },
-  { status: 'pre_qualification', title: 'Pre-Qualification', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#4D94FF]', textColor: 'text-[#4D94FF]', barColor: 'bg-[#1a75ff]', hexColor: '#4D94FF' },
-  { status: 'document_collection', title: 'Doc Collection', bgColor: 'bg-[#3385ff]/10', borderColor: 'border-[#66A3FF]', textColor: 'text-[#66A3FF]', barColor: 'bg-[#3385ff]', hexColor: '#66A3FF' },
-  { status: 'underwriting', title: 'Underwriting', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF9933]', textColor: 'text-[#FF9933]', barColor: 'bg-[#FF8000]', hexColor: '#FF9933' },
-  { status: 'approval', title: 'Approval', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#EB8F33]', textColor: 'text-[#EB8F33]', barColor: 'bg-[#e67300]', hexColor: '#EB8F33' },
-  { status: 'funded', title: 'Funded', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600', hexColor: '#059669' },
+// Status enum values in pipeline order
+const statusOrder: LeadStatus[] = ['discovery', 'pre_qualification', 'document_collection', 'underwriting', 'approval', 'funded'];
+
+// Default stage config (fallback when no DB stages loaded)
+const defaultStages: { status: LeadStatus; title: string; hexColor: string }[] = [
+  { status: 'discovery', title: 'Discovery', hexColor: '#0066FF' },
+  { status: 'pre_qualification', title: 'Pre-Qualification', hexColor: '#1a75ff' },
+  { status: 'document_collection', title: 'Doc Collection', hexColor: '#3385ff' },
+  { status: 'underwriting', title: 'Underwriting', hexColor: '#FF8000' },
+  { status: 'approval', title: 'Approval', hexColor: '#e67300' },
+  { status: 'funded', title: 'Funded', hexColor: '#10b981' },
 ];
+
+// Build full stage config from a hex color
+const buildStageFromHex = (status: LeadStatus, title: string, hexColor: string) => ({
+  status,
+  title,
+  bgColor: `bg-[${hexColor}]/10`,
+  borderColor: `border-[${hexColor}]`,
+  textColor: `text-[${hexColor}]`,
+  barColor: `bg-[${hexColor}]`,
+  hexColor,
+});
 
 // Lost stage for dead leads section
 const lostStage = { status: 'lost' as LeadStatus, title: 'Lost', bgColor: 'bg-red-500/10', borderColor: 'border-red-600', textColor: 'text-red-700', barColor: 'bg-red-600', hexColor: '#dc2626' };
@@ -295,6 +309,22 @@ const EvansPipeline = () => {
     },
   });
 
+  // Fetch pipeline stages from DB
+  const { data: dbPipelineStages = [] } = useQuery({
+    queryKey: ['pipeline-stages', selectedPipelineId],
+    queryFn: async () => {
+      if (!selectedPipelineId) return [];
+      const { data, error } = await supabase
+        .from('pipeline_stages')
+        .select('*')
+        .eq('pipeline_id', selectedPipelineId)
+        .order('position');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedPipelineId,
+  });
+
   // Auto-select the main pipeline or first available when pipelines load
   useEffect(() => {
     if (pipelines.length > 0 && !selectedPipelineId) {
@@ -304,7 +334,69 @@ const EvansPipeline = () => {
   }, [pipelines, selectedPipelineId]);
 
   const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
+
+  // Build stages from DB data (fall back to defaults)
+  const stages = useMemo(() => {
+    if (dbPipelineStages.length > 0) {
+      return dbPipelineStages.map((dbStage, index) => {
+        const status = statusOrder[index] || statusOrder[statusOrder.length - 1];
+        return buildStageFromHex(status, dbStage.name, dbStage.color || '#64748b');
+      });
+    }
+    return defaultStages.map(s => buildStageFromHex(s.status, s.title, s.hexColor));
+  }, [dbPipelineStages]);
+
   const pipelineName = selectedPipeline?.name || 'Main Pipeline';
+
+  // Save stages mutation
+  const saveStagesMutation = useMutation({
+    mutationFn: async (updatedStages: { id: string; name: string; color: string }[]) => {
+      if (!selectedPipelineId) throw new Error('No pipeline selected');
+      
+      // Get existing stage IDs from DB
+      const existingIds = new Set(dbPipelineStages.map(s => s.id));
+      
+      for (let i = 0; i < updatedStages.length; i++) {
+        const stage = updatedStages[i];
+        if (existingIds.has(stage.id)) {
+          // Update existing stage
+          const { error } = await supabase
+            .from('pipeline_stages')
+            .update({ name: stage.name, color: stage.color, position: i })
+            .eq('id', stage.id);
+          if (error) throw error;
+        } else {
+          // Insert new stage
+          const { error } = await supabase
+            .from('pipeline_stages')
+            .insert({ 
+              id: stage.id.startsWith('stage-') ? undefined : stage.id,
+              name: stage.name, 
+              color: stage.color, 
+              position: i, 
+              pipeline_id: selectedPipelineId 
+            });
+          if (error) throw error;
+        }
+      }
+      
+      // Delete stages that were removed
+      const updatedIds = new Set(updatedStages.map(s => s.id));
+      const deletedIds = dbPipelineStages.filter(s => !updatedIds.has(s.id)).map(s => s.id);
+      if (deletedIds.length > 0) {
+        const { error } = await supabase
+          .from('pipeline_stages')
+          .delete()
+          .in('id', deletedIds);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-stages', selectedPipelineId] });
+      toast.success('Pipeline stages updated');
+    },
+    onError: () => toast.error('Failed to update stages'),
+  });
 
   const { data: evanTeamMember } = useQuery({
     queryKey: ['evan-team-member'],
@@ -1919,7 +2011,10 @@ const EvansPipeline = () => {
       <StageManagerModal
         open={stageManagerOpen}
         onOpenChange={setStageManagerOpen}
-        stages={stages.map(s => ({ id: s.status, name: s.title, color: s.barColor.replace('bg-[', '').replace(']', '').replace('bg-emerald-600', '#10b981') }))}
+        stages={dbPipelineStages.length > 0 
+          ? dbPipelineStages.map(s => ({ id: s.id, name: s.name, color: s.color || '#64748b' }))
+          : stages.map(s => ({ id: s.status, name: s.title, color: s.hexColor }))
+        }
         pipelineName={pipelineName}
         onPipelineNameChange={(name) => {
           if (selectedPipelineId) {
@@ -1927,9 +2022,7 @@ const EvansPipeline = () => {
           }
         }}
         onSave={(updatedStages) => {
-          // For now, just show a toast - full persistence requires database migration
-          toast.success(`Saved ${updatedStages.length} stages`);
-          console.log('Updated stages:', updatedStages);
+          saveStagesMutation.mutate(updatedStages);
         }}
       />
 
