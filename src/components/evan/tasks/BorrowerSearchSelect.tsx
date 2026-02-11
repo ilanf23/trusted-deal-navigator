@@ -45,7 +45,7 @@ export function BorrowerSearchSelect({
     : null;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -63,8 +63,8 @@ export function BorrowerSearchSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0 z-50" align="start">
-        <Command className="bg-transparent">
+      <PopoverContent className="w-[300px] p-0 z-[200]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <Command className="bg-transparent" shouldFilter={true}>
           <CommandInput placeholder="Search borrowers..." className="h-9" />
           <CommandList className="max-h-[250px]">
             <CommandEmpty>No borrowers found.</CommandEmpty>
