@@ -66,7 +66,7 @@ export function BorrowerSearchSelect({
       <PopoverContent className="w-[300px] p-0 z-[200]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
         <Command className="bg-popover" shouldFilter={true}>
           <CommandInput placeholder="Search borrowers..." className="h-9" />
-            <CommandList className="max-h-[200px] overflow-y-auto overscroll-contain">
+            <CommandList style={{ maxHeight: '200px', overflowY: 'auto' }}>
             <CommandEmpty>No borrowers found.</CommandEmpty>
             <CommandGroup>
               <CommandItem
