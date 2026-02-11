@@ -1443,51 +1443,6 @@ const EvansPipeline = () => {
             </div>
           </div>
 
-          {/* Quick-Add Row - always visible below headers */}
-          <div 
-            className="grid border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-colors"
-            style={{ gridTemplateColumns: `${getGridTemplate()} 40px` }}
-          >
-            {getVisibleColumns().map((column) => {
-              const isUtilityCol = ['drag_handle', 'checkbox', 'avatar'].includes(column.id);
-              return (
-                <div 
-                  key={column.id}
-                  className={cn(
-                    "flex items-center h-10 border-r border-slate-200 dark:border-slate-700",
-                    isUtilityCol ? "justify-center px-1" : "px-3"
-                  )}
-                >
-                  {column.id === 'avatar' && (
-                    <div className="h-7 w-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                      <Plus className="h-3 w-3 text-slate-400" />
-                    </div>
-                  )}
-                  {column.id === 'name' && (
-                    <input
-                      type="text"
-                      value={newLeadName}
-                      onChange={(e) => setNewLeadName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newLeadName.trim()) {
-                          createLeadMutation.mutate({ name: newLeadName.trim(), status: 'discovery' });
-                          setNewLeadName('');
-                        }
-                        if (e.key === 'Escape') {
-                          setNewLeadName('');
-                          (e.target as HTMLInputElement).blur();
-                        }
-                      }}
-                      placeholder="+ Add new lead..."
-                      className="w-full bg-transparent border-none outline-none text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                    />
-                  )}
-                </div>
-              );
-            })}
-            <div className="h-10" />
-          </div>
-
           {/* Grouped Sections with Drag and Drop */}
           <DndContext
             sensors={sensors}
