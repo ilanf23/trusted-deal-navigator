@@ -1,63 +1,57 @@
 
 
-## Redesign: Company-Wide Revenue Hero Widget
+## Redesign: Company Revenue Hero Chart
 
 ### What's Changing
 
-The current blue gradient hero card on Evan's dashboard will be completely rebuilt as a much larger, visually striking company-wide revenue overview. It will pull from the `team_funded_deals` table (which has real data for Evan, Wendy, Brad, and Adam) instead of just Evan's leads.
+The current blue gradient hero card will be completely redesigned into a clean, white/light card layout with a much larger chart that includes both bar and line visualizations. The chart area will be significantly taller and the overall widget more prominent.
 
-### Design (inspired by your screenshot)
+### New Design
 
-The new widget will be a full-width hero section with:
+**Layout: Full-width white card with clean corporate aesthetic**
 
-**Left Side:**
-- "2026 REVENUE GOAL" header
-- Large revenue figure vs $1.5M goal
-- Motivational momentum message with remaining amount
+**Top Section:**
+- "2026 Revenue Goal" header with large revenue number and $1.5M target
+- Progress bar (using brand blue #0066FF)
+- MTD/YTD toggle tabs
+- Momentum/status message
 
-**Right Side:**
-- Cumulative revenue line chart (bigger, ~300px tall)
-- MTD/YTD toggle
-- Actual vs Trend legend
-- Monthly cumulative data points
+**Chart Area (450px tall -- significantly larger than current 300px):**
+- Light gray background with subtle grid lines
+- **Bars**: Individual monthly (YTD) or daily (MTD) revenue in brand blue
+- **Line**: Cumulative revenue as an orange accent line with dots
+- **Dashed reference line**: Goal pace / trend line
+- Clean dark axis labels on white background
+- Professional tooltip with white background and border
 
-**Bottom Stats Bar (spanning full width):**
-- YTD Revenue (with % of goal)
-- Monthly Avg (with active months count)
-- Best Month (with amount)
-- Deals Closed (with avg deal size)
+**Bottom Stats Bar:**
+- 4-column grid: YTD Revenue, Monthly Avg, Best Month, Deals Closed
+- Light card style with subtle borders instead of white-on-blue text
 
-**Key improvements:**
-- Data sourced from `team_funded_deals` (company-wide, all reps)
-- Much taller chart area (~300px vs current 220px)
-- Cleaner layout with proper visual hierarchy
-- Grouped monthly revenue from all reps, not just Evan
+### Visual Style
+- White card background with subtle border (matches corporate aesthetic)
+- Blue (#0066FF) for bars and primary elements
+- Orange (#FF8000) for the cumulative line (brand accent)
+- Dark text for readability
+- No gradient background -- clean and professional
 
 ### Technical Changes
 
-**1. Replace the `RoadTo1Point5M` component** (`src/components/evan/dashboard/RoadTo1Point5M.tsx`)
-- Complete rewrite as `CompanyRevenueHero`
-- Uses `team_funded_deals` table (already queried)
-- Builds monthly cumulative chart data from funded deals
-- Includes MTD/YTD toggle, line chart with area fill, trend line
-- Stats footer with YTD Revenue, Monthly Avg, Best Month, Deals Closed
-- Blue gradient background matching brand (#0066FF)
-- Uses recharts `ComposedChart` with `Area`, `Line`, `ReferenceLine`
+**File: `src/components/evan/dashboard/CompanyRevenueHero.tsx`**
 
-**2. Update EvansPage.tsx** (`src/pages/admin/EvansPage.tsx`)
-- Remove the inline hero card (lines 551-761, ~210 lines of inline chart code)
-- Import and use the new `CompanyRevenueHero` component instead
-- Pass `timePeriod` and `chartPeriod` + setters as props
-- Remove the now-unused `chartRevenueData` and `chartStats` memos (they'll move into the component)
-- This significantly cleans up the page file
+1. Replace the blue gradient card with a white bordered card
+2. Remove decorative background circles
+3. Increase chart height from 300px to 450px
+4. Add `Bar` component from recharts for individual period revenue
+5. Change `Line` color to orange (#FF8000) for cumulative
+6. Change `Area` gradient to light blue fill
+7. Switch tooltip to light theme (white bg, dark text, border)
+8. Update axis tick colors to dark/muted for light background
+9. Restyle the stats footer with bordered sections instead of opacity-based white text
+10. Restyle the momentum card and progress bar for light background
+11. Update all text colors from white/opacity to proper dark foreground colors
 
-### Data Flow
+**Data logic stays the same** -- same query, same calculations, just a visual overhaul.
 
-The component will:
-1. Query `team_funded_deals` with date filter based on YTD/MTD
-2. Group deals by month (YTD) or day (MTD) and calculate cumulative revenue
-3. Show total company revenue vs $1.5M goal
-4. Display a trend line from first data point to current total
-
-### No database changes needed -- `team_funded_deals` already has the right schema and data.
+### No other files change. No database changes needed.
 
