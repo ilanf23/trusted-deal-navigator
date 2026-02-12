@@ -175,11 +175,13 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       setIsInitializing(true);
       console.log('[CallContext] Initializing Twilio Device...');
       
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.access_token) {
-        console.log('[CallContext] Not authenticated, skipping Twilio initialization');
+      // Refresh the session to ensure we have a valid, non-expired token
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshed?.session?.access_token) {
+        console.log('[CallContext] Not authenticated or session refresh failed, skipping Twilio initialization');
         return null;
       }
+      const session = refreshed;
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-token`,
