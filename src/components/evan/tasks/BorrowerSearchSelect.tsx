@@ -1,21 +1,13 @@
 import * as React from "react";
 import { Check, ChevronsUpDown, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Search } from "lucide-react";
 
 interface Lead {
   id: string;
@@ -39,14 +31,25 @@ export function BorrowerSearchSelect({
   className,
 }: BorrowerSearchSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
 
   const selectedLead = leads.find((lead) => lead.id === value);
   const displayValue = selectedLead
     ? `${selectedLead.name}${selectedLead.company_name ? ` (${selectedLead.company_name})` : ""}`
     : null;
 
+  const filtered = React.useMemo(() => {
+    if (!search.trim()) return leads;
+    const q = search.toLowerCase();
+    return leads.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        (l.company_name && l.company_name.toLowerCase().includes(q))
+    );
+  }, [leads, search]);
+
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }} modal={false}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -65,57 +68,50 @@ export function BorrowerSearchSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0 z-[200]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <Command className="bg-popover" shouldFilter={true}>
-          <CommandInput placeholder="Search borrowers..." className="h-9" />
-            <CommandList className="max-h-none overflow-visible">
-              <CommandEmpty>No borrowers found.</CommandEmpty>
-              <ScrollArea className="h-[200px]">
-                <CommandGroup>
-                  <CommandItem
-                    value="none"
-                    onSelect={() => {
-                      onValueChange(null);
-                      setOpen(false);
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        !value ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <span className="text-muted-foreground">No borrower</span>
-                  </CommandItem>
-                  {leads.map((lead) => (
-                    <CommandItem
-                      key={lead.id}
-                      value={`${lead.name} ${lead.company_name || ""}`}
-                      onSelect={() => {
-                        onValueChange(lead.id);
-                        setOpen(false);
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === lead.id ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{lead.name}</span>
-                        {lead.company_name && (
-                          <span className="text-muted-foreground text-xs">({lead.company_name})</span>
-                        )}
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </ScrollArea>
-            </CommandList>
-        </Command>
+        {/* Sticky search input */}
+        <div className="flex items-center border-b px-3 bg-popover">
+          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search borrowers..."
+            className="flex h-9 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+            autoFocus={false}
+          />
+        </div>
+        {/* Scrollable list */}
+        <div className="max-h-[260px] overflow-y-auto overscroll-contain p-1">
+          {filtered.length === 0 && (
+            <div className="py-6 text-center text-sm text-muted-foreground">No borrowers found.</div>
+          )}
+          <div
+            role="option"
+            aria-selected={!value}
+            onClick={() => { onValueChange(null); setOpen(false); }}
+            className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+          >
+            <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+            <span className="text-muted-foreground">No borrower</span>
+          </div>
+          {filtered.map((lead) => (
+            <div
+              key={lead.id}
+              role="option"
+              aria-selected={value === lead.id}
+              onClick={() => { onValueChange(lead.id); setOpen(false); }}
+              className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+            >
+              <Check className={cn("mr-2 h-4 w-4", value === lead.id ? "opacity-100" : "opacity-0")} />
+              <div className="flex items-center gap-2">
+                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>{lead.name}</span>
+                {lead.company_name && (
+                  <span className="text-muted-foreground text-xs">({lead.company_name})</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </PopoverContent>
     </Popover>
   );
