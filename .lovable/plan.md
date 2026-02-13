@@ -1,23 +1,22 @@
 
 
-## Fix: Revenue Chart Responsive Layout for Smaller Screens
+## Fix: Borrower Dropdown Scroll Issue
 
-### Problems Identified
-1. The chart header row crams the title, MTD/YTD tabs, and 3 legend items into a single horizontal line -- overflows on smaller screens
-2. The chart height is fixed at 450px which is too tall for smaller viewports
-3. The Y-axis widths (55px each side) eat into chart space on narrow screens
-4. The top section uses `lg:flex-row` but the chart area itself has no responsive adjustments
+### Root Cause
 
-### Changes (single file)
+The `BorrowerSearchSelect` component has **two competing scroll containers**:
+1. `CommandList` (from cmdk) applies its own `max-h-[300px] overflow-y-auto` internally
+2. `ScrollArea` wraps content inside CommandList with `h-[200px]`
 
-**File: `src/components/evan/dashboard/CompanyRevenueHero.tsx`**
+These conflict with each other -- cmdk's internal height calculations override the CSS, causing the scrollable element to be removed from the DOM when the user tries to scroll (confirmed by session replay).
 
-1. **Chart header**: Stack title+tabs above the legend on small screens using `flex-col sm:flex-row` instead of a single row
-2. **Legend**: Hide on very small screens or wrap to a second line with `flex-wrap`
-3. **Chart height**: Change from fixed `h-[450px]` to responsive `h-[280px] md:h-[380px] lg:h-[450px]`
-4. **Y-axis widths**: Reduce from 55px to 45px on smaller screens (via responsive check or smaller default)
-5. **Chart margins**: Reduce left/right margins on small screens
-6. **Chart padding**: Reduce the `p-5` container padding to `p-3 md:p-5`
-7. **Bar size**: Reduce bar width for smaller viewports
+### Fix (single file: `src/components/evan/tasks/BorrowerSearchSelect.tsx`)
 
-### No database or other file changes needed.
+Following the established cmdk scrolling fix pattern already documented in this project:
+
+1. **Remove the `ScrollArea` wrapper** from inside `CommandList` -- it conflicts with cmdk internals
+2. **Override `CommandList` max-height** by passing a className like `max-h-[200px]` directly to `CommandList`, letting cmdk handle scrolling natively
+3. Move `CommandEmpty` outside the removed `ScrollArea` so it remains a direct child of `CommandList`
+
+This is a ~5-line change in the JSX structure only. No logic or data changes.
+
