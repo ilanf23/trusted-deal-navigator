@@ -41,8 +41,9 @@ export function BorrowerSearchSelect({
   const uniqueLeads = React.useMemo(() => {
     const seen = new Set<string>();
     return leads.filter((l) => {
-      if (seen.has(l.id)) return false;
-      seen.add(l.id);
+      const key = `${l.name}||${l.company_name ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
   }, [leads]);
