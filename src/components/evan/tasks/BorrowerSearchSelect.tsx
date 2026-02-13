@@ -38,15 +38,24 @@ export function BorrowerSearchSelect({
     ? `${selectedLead.name}${selectedLead.company_name ? ` (${selectedLead.company_name})` : ""}`
     : null;
 
+  const uniqueLeads = React.useMemo(() => {
+    const seen = new Set<string>();
+    return leads.filter((l) => {
+      if (seen.has(l.id)) return false;
+      seen.add(l.id);
+      return true;
+    });
+  }, [leads]);
+
   const filtered = React.useMemo(() => {
-    if (!search.trim()) return leads;
+    if (!search.trim()) return uniqueLeads;
     const q = search.toLowerCase();
-    return leads.filter(
+    return uniqueLeads.filter(
       (l) =>
         l.name.toLowerCase().includes(q) ||
         (l.company_name && l.company_name.toLowerCase().includes(q))
     );
-  }, [leads, search]);
+  }, [uniqueLeads, search]);
 
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }} modal={false}>
