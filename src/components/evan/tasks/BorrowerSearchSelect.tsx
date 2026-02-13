@@ -67,7 +67,7 @@ export function BorrowerSearchSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0 z-[200]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <PopoverContent className="w-[300px] p-0 z-[200] pointer-events-auto" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
         {/* Sticky search input */}
         <div className="flex items-center border-b px-3 bg-popover">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -80,7 +80,7 @@ export function BorrowerSearchSelect({
           />
         </div>
         {/* Scrollable list */}
-        <div className="max-h-[260px] overflow-y-auto overscroll-contain p-1">
+        <div className="max-h-[280px] overflow-y-auto overscroll-contain p-1" onWheel={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
           {filtered.length === 0 && (
             <div className="py-6 text-center text-sm text-muted-foreground">No borrowers found.</div>
           )}
