@@ -208,8 +208,8 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
           </div>
 
           {/* Right - Chart */}
-          <div className="flex-1 min-w-0 bg-muted/30 border border-border rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex-1 min-w-0 bg-muted/30 border border-border rounded-xl p-3 md:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="flex items-center gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   {chartPeriod === 'ytd' ? 'Revenue Breakdown' : 'Daily Revenue (MTD)'}
@@ -221,22 +221,22 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                   </TabsList>
                 </Tabs>
               </div>
-              <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-4 flex-wrap text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#0066FF' }} /> Revenue
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-4 h-[2px] rounded" style={{ backgroundColor: '#FF8000' }} /> Cumulative
                 </span>
-                <span className="flex items-center gap-1.5">
+                <span className="hidden sm:flex items-center gap-1.5">
                   <span className="w-4 h-[2px] border-t border-dashed" style={{ borderColor: 'rgba(0,102,255,0.4)' }} /> Trend
                 </span>
               </div>
             </div>
 
-            <div className="h-[450px]">
+            <div className="h-[280px] md:h-[380px] lg:h-[450px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 10, right: 20, bottom: 5, left: 10 }}>
+                <ComposedChart data={chartData} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
                   <defs>
                     <linearGradient id="heroAreaGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="rgba(255,128,0,0.15)" />
@@ -257,7 +257,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     tickLine={false}
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                     tickFormatter={(value) => (value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
-                    width={55}
+                    width={45}
                   />
                   <YAxis
                     yAxisId="right"
@@ -266,7 +266,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     tickLine={false}
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                     tickFormatter={(value) => (value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
-                    width={55}
+                    width={45}
                   />
                   <ReferenceLine
                     yAxisId="right"
@@ -319,7 +319,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     fill="#0066FF"
                     radius={[4, 4, 0, 0]}
                     opacity={0.85}
-                    barSize={chartPeriod === 'mtd' ? 12 : 28}
+                    barSize={chartPeriod === 'mtd' ? 8 : 20}
                   />
                   <Area
                     yAxisId="right"
