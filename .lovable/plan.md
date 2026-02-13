@@ -1,22 +1,41 @@
 
 
-## Fix: Borrower Dropdown Scroll Issue
+## Fix: Borrower Dropdown Scroll Inside Modal
 
 ### Root Cause
-
-The `BorrowerSearchSelect` component has **two competing scroll containers**:
-1. `CommandList` (from cmdk) applies its own `max-h-[300px] overflow-y-auto` internally
-2. `ScrollArea` wraps content inside CommandList with `h-[200px]`
-
-These conflict with each other -- cmdk's internal height calculations override the CSS, causing the scrollable element to be removed from the DOM when the user tries to scroll (confirmed by session replay).
+The `BorrowerSearchSelect` already renders in a portal (via Radix `PopoverPrimitive.Portal`) outside the modal DOM tree, and has `modal={false}` plus `z-[200]`. However, the Radix Dialog's overlay and focus management intercept `wheel` and `touchmove` events, preventing the dropdown's scrollable container from actually scrolling.
 
 ### Fix (single file: `src/components/evan/tasks/BorrowerSearchSelect.tsx`)
 
-Following the established cmdk scrolling fix pattern already documented in this project:
+Add explicit event propagation stops on the scrollable list container:
 
-1. **Remove the `ScrollArea` wrapper** from inside `CommandList` -- it conflicts with cmdk internals
-2. **Override `CommandList` max-height** by passing a className like `max-h-[200px]` directly to `CommandList`, letting cmdk handle scrolling natively
-3. Move `CommandEmpty` outside the removed `ScrollArea` so it remains a direct child of `CommandList`
+1. **Stop wheel event propagation** -- Add `onWheel={(e) => e.stopPropagation()}` to the scrollable `div` so the Dialog overlay cannot consume the scroll event
+2. **Stop touchmove propagation** -- Add `onTouchMove={(e) => e.stopPropagation()}` for mobile/trackpad support
+3. **Increase max-height** to `280px` per the spec (currently `260px`)
+4. **Add pointer-events-auto** to the `PopoverContent` as a safety measure to ensure the portal content receives all pointer interactions
 
-This is a ~5-line change in the JSX structure only. No logic or data changes.
+### Technical Details
 
+Changes to the scrollable container div (line 83):
+```
+Before:
+<div className="max-h-[260px] overflow-y-auto overscroll-contain p-1">
+
+After:
+<div
+  className="max-h-[280px] overflow-y-auto overscroll-contain p-1"
+  onWheel={(e) => e.stopPropagation()}
+  onTouchMove={(e) => e.stopPropagation()}
+>
+```
+
+Add `pointer-events-auto` to `PopoverContent` (line 70):
+```
+Before:
+<PopoverContent className="w-[300px] p-0 z-[200]" ...>
+
+After:
+<PopoverContent className="w-[300px] p-0 z-[200] pointer-events-auto" ...>
+```
+
+No database, backend, or other file changes needed.
