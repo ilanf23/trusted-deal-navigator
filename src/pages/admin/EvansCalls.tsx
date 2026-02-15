@@ -213,7 +213,7 @@ const EvansCalls = () => {
       if (error) throw error;
       return data as ActiveCall[];
     },
-    refetchInterval: 2000,
+    refetchInterval: 30000,
   });
 
   // Fetch call history from evan_communications

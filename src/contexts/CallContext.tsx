@@ -90,9 +90,22 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const deviceRef = useRef<Device | null>(null);
   const pendingCallsRef = useRef<ActiveCallData[]>([]);
+  const incomingCallRef = useRef<ActiveCallData | null>(null);
+  const isConnectedRef = useRef(false);
 
-  // Log frontend event for call tracing
-  const logCallEvent = useCallback(async (
+  // Keep refs in sync with state
+  useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
+  useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
+
+  // Log frontend event for call tracing — stable ref-based callback
+  const logCallEventRef = useRef<(
+    callSid: string, 
+    eventType: string, 
+    callFlowId?: string,
+    metadata?: Record<string, unknown>
+  ) => Promise<void>>();
+  
+  logCallEventRef.current = async (
     callSid: string, 
     eventType: string, 
     callFlowId?: string,
@@ -117,7 +130,16 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('[CallContext] Failed to log call event:', error);
     }
-  }, [healthStatus.socketConnected, location.pathname]);
+  };
+
+  const logCallEvent = useCallback(async (
+    callSid: string, 
+    eventType: string, 
+    callFlowId?: string,
+    metadata?: Record<string, unknown>
+  ) => {
+    return logCallEventRef.current?.(callSid, eventType, callFlowId, metadata);
+  }, []);
 
   // Acknowledge call receipt to database
   const acknowledgeCall = useCallback(async (call: ActiveCallData) => {
@@ -387,6 +409,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   }, [incomingCall, isConnected]);
 
   // Subscribe to realtime changes with robust handling
+  // Uses refs for mutable state so the effect is stable (only depends on isEvan)
   useEffect(() => {
     if (!isEvan) return;
     
@@ -402,26 +425,23 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       if (!error && data && data.length > 0) {
         console.log('[CallContext] Found ringing calls:', data.length);
         
-        if (!incomingCall && !isConnected) {
+        if (!incomingCallRef.current && !isConnectedRef.current) {
           const call = data[0] as ActiveCallData;
           
-          // Check if device is ready - if not, buffer the call
           if (deviceRef.current?.state !== 'registered') {
             console.log('[CallContext] Device not ready, buffering call:', call.call_sid);
             pendingCallsRef.current.push(call);
-            
-            // Try to initialize device
-            initializeTwilioDevice();
           } else {
             setIncomingCall(call);
-            acknowledgeCall(call);
+            logCallEventRef.current?.(call.call_sid, 'frontend_acknowledged', call.call_flow_id);
+            supabase.from('active_calls').update({ frontend_ack_at: new Date().toISOString() }).eq('id', call.id);
           }
         }
       }
     };
     
     fetchRingingCalls();
-    const pollInterval = setInterval(fetchRingingCalls, 2000); // Poll every 2s for faster response
+    const pollInterval = setInterval(fetchRingingCalls, 5000); // Reduced from 2s
     
     const channel = supabase
       .channel('active-calls-realtime-context')
@@ -441,21 +461,16 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
             
             if (call.status === 'ringing' && call.direction === 'inbound') {
               console.log('[CallContext] New ringing call detected:', call.call_sid);
+              logCallEventRef.current?.(call.call_sid, 'realtime_received', call.call_flow_id);
               
-              // Log that we received the realtime event
-              logCallEvent(call.call_sid, 'realtime_received', call.call_flow_id);
-              
-              // Check if device is ready
               if (deviceRef.current?.state !== 'registered') {
                 console.log('[CallContext] Device not ready for realtime call, buffering');
                 pendingCallsRef.current.push(call);
-                initializeTwilioDevice();
-              } else if (!incomingCall && !isConnected) {
+              } else if (!incomingCallRef.current && !isConnectedRef.current) {
                 setIncomingCall(call);
-                acknowledgeCall(call);
+                supabase.from('active_calls').update({ frontend_ack_at: new Date().toISOString() }).eq('id', call.id);
               }
-            } else if (incomingCall?.call_sid === call.call_sid && !isConnected) {
-              // Call status changed from ringing
+            } else if (incomingCallRef.current?.call_sid === call.call_sid && !isConnectedRef.current) {
               if (call.status !== 'ringing') {
                 console.log('[CallContext] Call no longer ringing:', call.status);
                 setIncomingCall(null);
@@ -465,12 +480,13 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
           
           if (payload.eventType === 'DELETE') {
             const call = payload.old as ActiveCallData;
-            if (incomingCall?.call_sid === call.call_sid && !isConnected) {
+            if (incomingCallRef.current?.call_sid === call.call_sid && !isConnectedRef.current) {
               setIncomingCall(null);
             }
           }
           
           queryClient.invalidateQueries({ queryKey: ['active-calls-ringing'] });
+          queryClient.invalidateQueries({ queryKey: ['evan-active-calls'] });
           queryClient.invalidateQueries({ queryKey: ['evan-communications'] });
         }
       )
@@ -487,7 +503,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, [isEvan, incomingCall, isConnected, queryClient, acknowledgeCall, logCallEvent, initializeTwilioDevice]);
+  }, [isEvan, queryClient]); // Stable deps only
 
   const answerCall = useCallback(async () => {
     if (!incomingCall) throw new Error('No incoming call');
