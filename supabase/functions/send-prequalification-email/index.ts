@@ -16,6 +16,8 @@ const generateToken = () => {
   return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
 };
 
+const ILAN_EMAIL = Deno.env.get("ILAN_EMAIL") || "ilan@maverich.ai";
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
