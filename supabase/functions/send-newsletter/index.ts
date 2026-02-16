@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const ILAN_EMAIL = Deno.env.get("ILAN_EMAIL") || "ilan@maverich.ai";
+const NEWSLETTER_FROM_EMAIL = Deno.env.get("NEWSLETTER_FROM_EMAIL") || "newsletter@maverich.ai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -201,13 +203,13 @@ serve(async (req: Request): Promise<Response> => {
             "Authorization": `Bearer ${RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: `${fromName} <newsletter@maverich.ai>`,
-            reply_to: "ilan@maverich.ai",
+            from: `${fromName} <${NEWSLETTER_FROM_EMAIL}>`,
+            reply_to: ILAN_EMAIL,
             to: [recipient.email],
             subject: subject,
             html: htmlContent,
             headers: {
-              "List-Unsubscribe": "<mailto:unsubscribe@maverich.ai>",
+              "List-Unsubscribe": `<mailto:${NEWSLETTER_FROM_EMAIL}>`,
               "X-Priority": "3",
               "X-Mailer": "Maverich Newsletter System",
             },

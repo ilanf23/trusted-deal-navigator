@@ -432,7 +432,9 @@ ${followUpEmailContent}`;
     }
 
     // Send to Adam and Brad via email
-    const recipients = ['adam@company.com', 'ilan@maverich.ai']; // Brad's email is ilan@maverich.ai
+    const ILAN_EMAIL = Deno.env.get("ILAN_EMAIL") || "ilan@maverich.ai";
+    const ADAM_EMAIL = Deno.env.get("ADAM_EMAIL") || "adam@company.com";
+    const recipients = [ADAM_EMAIL, ILAN_EMAIL];
 
     try {
       const emailResult = await resend.emails.send({
