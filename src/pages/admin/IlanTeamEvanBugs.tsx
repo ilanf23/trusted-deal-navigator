@@ -1,4 +1,5 @@
 import AdminLayout from '@/components/admin/AdminLayout';
+import { TEAM_EMAILS } from '@/constants/appConfig';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ const IlanTeamEvanBugs = () => {
       const { data, error } = await supabase
         .from('bug_reports')
         .select('*')
-        .eq('submitted_by_email', 'evan@test.com')
+        .eq('submitted_by_email', TEAM_EMAILS.EVAN)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
