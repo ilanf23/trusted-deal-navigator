@@ -92,6 +92,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   const pendingCallsRef = useRef<ActiveCallData[]>([]);
   const incomingCallRef = useRef<ActiveCallData | null>(null);
   const isConnectedRef = useRef(false);
+  const isReinitializingRef = useRef(false);
+  const lastErrorToastRef = useRef<number>(0);
 
   // Keep refs in sync with state
   useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
@@ -192,7 +194,13 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       console.log('[CallContext] Twilio Device already registered');
       return deviceRef.current;
     }
+
+    if (isReinitializingRef.current) {
+      console.log('[CallContext] Already reinitializing, skipping');
+      return deviceRef.current;
+    }
     
+    isReinitializingRef.current = true;
     try {
       setIsInitializing(true);
       console.log('[CallContext] Initializing Twilio Device...');
@@ -274,15 +282,22 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
             deviceRef.current = null;
             setTwilioDevice(null);
           }
-          // Re-initialize with a fresh token after a short delay
+          // Re-initialize with a fresh token after a short delay (guarded)
           setTimeout(() => {
-            initializeTwilioDevice();
+            if (!isReinitializingRef.current) {
+              initializeTwilioDevice();
+            }
           }, 2000);
         } else {
-          toast.error(`Call error: ${error.message}`);
-          // Try to re-register on non-token errors
+          // Throttle error toasts — at most once every 10 seconds
+          const now = Date.now();
+          if (now - lastErrorToastRef.current > 10000) {
+            lastErrorToastRef.current = now;
+            toast.error(`Call error: ${error.message}`);
+          }
+          // Try to re-register on non-token errors (only if unregistered)
           setTimeout(() => {
-            if (deviceRef.current && deviceRef.current.state !== 'registered') {
+            if (deviceRef.current && deviceRef.current.state === 'unregistered') {
               console.log('[CallContext] Attempting to re-register device...');
               deviceRef.current.register();
             }
@@ -341,6 +356,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       return null;
     } finally {
       setIsInitializing(false);
+      isReinitializingRef.current = false;
     }
   }, [isEvan, startCallTimer, handleCallEnd, incomingCall, isConnected, acknowledgeCall, logCallEvent]);
 
@@ -362,15 +378,15 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     
     const keepWarm = setInterval(() => {
       if (deviceRef.current) {
-        if (deviceRef.current.state !== 'registered') {
-          console.log('[CallContext] Device not registered, attempting to register...');
+        if (deviceRef.current.state === 'unregistered') {
+          console.log('[CallContext] Device unregistered, attempting to register...');
           deviceRef.current.register().catch(err => {
             console.error('[CallContext] Failed to re-register:', err);
           });
         } else {
           setHealthStatus(prev => ({ ...prev, lastHeartbeat: new Date() }));
         }
-      } else {
+      } else if (!isReinitializingRef.current) {
         console.log('[CallContext] No device, reinitializing...');
         initializeTwilioDevice();
       }
