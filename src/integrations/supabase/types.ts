@@ -428,6 +428,96 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_deals: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          days_in_stage: number
+          deal_name: string | null
+          id: string
+          owner_name: string | null
+          requested_amount: number
+          stage: string
+          weighted_fees: number
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          days_in_stage?: number
+          deal_name?: string | null
+          id?: string
+          owner_name?: string | null
+          requested_amount?: number
+          stage: string
+          weighted_fees?: number
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          days_in_stage?: number
+          deal_name?: string | null
+          id?: string
+          owner_name?: string | null
+          requested_amount?: number
+          stage?: string
+          weighted_fees?: number
+        }
+        Relationships: []
+      }
+      dashboard_referral_sources: {
+        Row: {
+          created_at: string
+          id: string
+          last_contact_days_ago: number
+          name: string
+          status: string
+          total_revenue: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_contact_days_ago?: number
+          name: string
+          status?: string
+          total_revenue?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_contact_days_ago?: number
+          name?: string
+          status?: string
+          total_revenue?: number
+        }
+        Relationships: []
+      }
+      dashboard_weekly_scorecard: {
+        Row: {
+          color_class: string | null
+          created_at: string
+          display_order: number
+          id: string
+          metric_label: string
+          metric_value: string
+        }
+        Insert: {
+          color_class?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          metric_label: string
+          metric_value: string
+        }
+        Update: {
+          color_class?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          metric_label?: string
+          metric_value?: string
+        }
+        Relationships: []
+      }
       email_metadata: {
         Row: {
           created_at: string
@@ -2839,6 +2929,42 @@ export type Database = {
           },
         ]
       }
+      revenue_targets: {
+        Row: {
+          created_at: string
+          current_amount: number
+          forecast_amount: number
+          forecast_confidence: number
+          id: string
+          pace_vs_plan: number
+          period_type: string
+          target_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_amount?: number
+          forecast_amount?: number
+          forecast_confidence?: number
+          id?: string
+          pace_vs_plan?: number
+          period_type: string
+          target_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_amount?: number
+          forecast_amount?: number
+          forecast_confidence?: number
+          id?: string
+          pace_vs_plan?: number
+          period_type?: string
+          target_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sheets_connections: {
         Row: {
           access_token: string
@@ -2987,7 +3113,47 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_pipeline_metrics: {
+        Row: {
+          deal_count: number | null
+          median_days: number | null
+          stage: string | null
+          total_requested: number | null
+          total_weighted_fees: number | null
+        }
+        Relationships: []
+      }
+      v_referral_analytics: {
+        Row: {
+          last_contact_days_ago: number | null
+          name: string | null
+          status: string | null
+          total_revenue: number | null
+        }
+        Insert: {
+          last_contact_days_ago?: number | null
+          name?: string | null
+          status?: string | null
+          total_revenue?: number | null
+        }
+        Update: {
+          last_contact_days_ago?: number | null
+          name?: string | null
+          status?: string | null
+          total_revenue?: number | null
+        }
+        Relationships: []
+      }
+      v_team_performance: {
+        Row: {
+          active_deals: number | null
+          avg_days: number | null
+          closings: number | null
+          conversion: number | null
+          name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_access_team_member: {
