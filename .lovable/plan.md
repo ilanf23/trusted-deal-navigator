@@ -1,67 +1,81 @@
 
 
-## Fix: Remove Hardcoded Email Addresses from Code
+## Fix: Call Error Toast Spam After Idle Session
 
-### Problem
+### Root Cause Analysis
 
-The email `ilan@maverich.ai` (and other team emails) are hardcoded in multiple files across the codebase. This makes maintenance difficult and exposes personal information directly in source code.
+After leaving the app idle for hours, three things collide:
 
-### Affected Files and Occurrences
+1. **The Twilio token expires** -- the device fires an `error` event (code 20104 or similar)
+2. **The keep-warm interval (every 30s)** sees the device is not `'registered'` and calls `device.register()` -- but doesn't check if the device is already in the `'registering'` state, causing the `InvalidStateError: Attempt to register when device is in state "registering"`
+3. **Every error triggers an unthrottled `toast.error()`** on line 282, so each failed re-register attempt produces a visible toast -- creating a flood of error popups every second
 
-| File | Hardcoded Values |
+The error handler for token expiry (lines 269-280) tries to destroy and re-init, but the keep-warm interval races against it, calling `register()` on a device that's mid-initialization.
+
+### Changes (single file: `src/contexts/CallContext.tsx`)
+
+#### 1. Add a `isReinitializingRef` guard
+
+Prevent concurrent initialization attempts from the keep-warm interval, token-expiry handler, and eager-init effect:
+
+```typescript
+const isReinitializingRef = useRef(false);
+```
+
+- Set `true` at start of `initializeTwilioDevice`, `false` at end (in `finally`)
+- Early-return if already `true`
+
+#### 2. Fix keep-warm interval to check for `'registering'` state
+
+Current code (line 365):
+```typescript
+if (deviceRef.current.state !== 'registered') {
+  deviceRef.current.register()
+```
+
+Change to:
+```typescript
+if (deviceRef.current.state === 'unregistered') {
+  deviceRef.current.register()
+```
+
+This skips re-registration when the device is already in `'registering'` or `'destroying'` states, preventing the `InvalidStateError`.
+
+#### 3. Throttle error toasts
+
+Add a `lastErrorToastRef` timestamp and only show an error toast if 10+ seconds have passed since the last one:
+
+```typescript
+const lastErrorToastRef = useRef<number>(0);
+
+// In error handler:
+const now = Date.now();
+if (now - lastErrorToastRef.current > 10000) {
+  lastErrorToastRef.current = now;
+  toast.error(`Call error: ${error.message}`);
+}
+```
+
+#### 4. Guard the token-expiry re-init path
+
+Before calling `initializeTwilioDevice()` in the token-expiry timeout (line 278-280), check `isReinitializingRef` to avoid racing with the keep-warm interval.
+
+#### 5. Add backoff to keep-warm when device is absent
+
+When `deviceRef.current` is null (line 373-375), the current code calls `initializeTwilioDevice()` every 30 seconds unconditionally. Add the `isReinitializingRef` guard here too.
+
+### Summary of Changes
+
+| Problem | Fix |
 |---|---|
-| `supabase/functions/send-prequalification-email/index.ts` | `ilan@maverich.ai` (from + bcc) |
-| `supabase/functions/send-newsletter/index.ts` | `ilan@maverich.ai` (reply_to), `newsletter@maverich.ai` (from), `unsubscribe@maverich.ai` (header) |
-| `supabase/functions/call-to-lead-automation/index.ts` | `ilan@maverich.ai`, `adam@company.com` (recipients) |
-| `src/pages/admin/IlanTeamEvanBugs.tsx` | `evan@test.com` (query filter) |
-| `src/pages/admin/BugReporting.tsx` | Display text "Ilan @maverick.AI" (cosmetic, not functional) |
-
-### Solution
-
-#### 1. Edge Functions: Use Secrets
-
-For the three edge functions, the emails should be stored as backend secrets and read via `Deno.env.get()`:
-
-- **`ILAN_EMAIL`** = `ilan@maverich.ai` -- used across all three edge functions
-- **`ADAM_EMAIL`** = `adam@company.com` -- used in call-to-lead-automation
-- **`NEWSLETTER_FROM_EMAIL`** = `newsletter@maverich.ai` -- used in send-newsletter
-
-Each edge function will read the secret at runtime:
-```typescript
-const ILAN_EMAIL = Deno.env.get("ILAN_EMAIL") || "ilan@maverich.ai";
-```
-
-#### 2. Frontend: Create a Constants File
-
-Create `src/lib/constants.ts` with team email constants for use in frontend components:
-
-```typescript
-export const TEAM_EMAILS = {
-  EVAN: "evan@test.com",
-} as const;
-```
-
-Then update `IlanTeamEvanBugs.tsx` to import from constants instead of hardcoding.
-
-#### 3. BugReporting.tsx -- No Change
-
-The references to "Ilan @maverick.AI" in `BugReporting.tsx` are display labels (not email addresses), so they don't need to be extracted.
-
-### Technical Steps
-
-1. Add three new secrets: `ILAN_EMAIL`, `ADAM_EMAIL`, `NEWSLETTER_FROM_EMAIL`
-2. Update `supabase/functions/send-prequalification-email/index.ts` to use `Deno.env.get("ILAN_EMAIL")`
-3. Update `supabase/functions/send-newsletter/index.ts` to use `Deno.env.get("ILAN_EMAIL")` and `Deno.env.get("NEWSLETTER_FROM_EMAIL")`
-4. Update `supabase/functions/call-to-lead-automation/index.ts` to use `Deno.env.get("ILAN_EMAIL")` and `Deno.env.get("ADAM_EMAIL")`
-5. Create `src/lib/constants.ts` with `TEAM_EMAILS`
-6. Update `src/pages/admin/IlanTeamEvanBugs.tsx` to import from constants
-7. Redeploy affected edge functions
+| `register()` called while already registering | Only call when state is `'unregistered'` |
+| Concurrent re-init from multiple paths | `isReinitializingRef` mutex guard |
+| Toast spam (every error = toast) | 10-second throttle via timestamp ref |
+| Token-expiry handler races with keep-warm | Both check the reinitializing guard |
 
 ### Files Modified
 
-- `supabase/functions/send-prequalification-email/index.ts`
-- `supabase/functions/send-newsletter/index.ts`
-- `supabase/functions/call-to-lead-automation/index.ts`
-- `src/pages/admin/IlanTeamEvanBugs.tsx`
-- `src/lib/constants.ts` (new)
+- `src/contexts/CallContext.tsx`
+
+No database, edge function, or other file changes needed.
 
