@@ -542,9 +542,10 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                       strokeWidth={1}
                       label={{
                         value: formatCurrency(val),
-                        position: 'right',
-                        fill: 'hsl(var(--muted-foreground))',
+                        position: 'insideTopRight',
+                        fill: '#9CA3AF',
                         fontSize: 9,
+                        offset: 8,
                       }}
                     />
                   ))}
