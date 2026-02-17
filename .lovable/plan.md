@@ -1,81 +1,115 @@
 
 
-## Fix: Call Error Toast Spam After Idle Session
+## Rate Limiting All Edge Functions
 
-### Root Cause Analysis
+### Architecture
 
-After leaving the app idle for hours, three things collide:
+A shared in-memory sliding-window rate limiter will be created and imported by every edge function. This is a v1 implementation that protects against burst abuse within each Deno isolate.
 
-1. **The Twilio token expires** -- the device fires an `error` event (code 20104 or similar)
-2. **The keep-warm interval (every 30s)** sees the device is not `'registered'` and calls `device.register()` -- but doesn't check if the device is already in the `'registering'` state, causing the `InvalidStateError: Attempt to register when device is in state "registering"`
-3. **Every error triggers an unthrottled `toast.error()`** on line 282, so each failed re-register attempt produces a visible toast -- creating a flood of error popups every second
+### Shared Module
 
-The error handler for token expiry (lines 269-280) tries to destroy and re-init, but the keep-warm interval races against it, calling `register()` on a device that's mid-initialization.
+Create `supabase/functions/_shared/rateLimit.ts`:
 
-### Changes (single file: `src/contexts/CallContext.tsx`)
+- Uses an in-memory `Map<string, { count: number; resetAt: number }>` per isolate
+- Sliding window: counts requests per IP within a time window
+- Auto-cleans expired entries every 60 seconds to prevent memory leaks
+- Returns `{ allowed: boolean; remaining: number }` so functions can add headers
+- Provides a pre-built 429 response helper
 
-#### 1. Add a `isReinitializingRef` guard
+### Rate Limit Tiers
 
-Prevent concurrent initialization attempts from the keep-warm interval, token-expiry handler, and eager-init effect:
+| Tier | Limit | Window | Applied To |
+|---|---|---|---|
+| Default | 60 req | 60s | Most endpoints |
+| Auth-sensitive | 5 req | 60s | `twilio-token`, `admin-update-user` |
+| AI endpoints | 10 req | 60s | `ai-email-chat`, `evan-ai-assistant`, `lead-ai-assistant`, `lender-program-assistant` |
+| Webhook (external) | 300 req | 60s | `twilio-inbound`, `twilio-call-status`, `twilio-transcription`, `twilio-voice`, `newsletter-track`, `newsletter-webhook` |
+| Seed/Admin | 3 req | 60s | `seed-test-data`, `seed-partners` |
 
-```typescript
-const isReinitializingRef = useRef(false);
+Webhook endpoints get a higher limit because they're called by Twilio/email infrastructure servers, not end users.
+
+### IP Extraction
+
+```text
+1. Check x-forwarded-for header (first IP in chain)
+2. Fallback to x-real-ip
+3. Fallback to "unknown"
 ```
 
-- Set `true` at start of `initializeTwilioDevice`, `false` at end (in `finally`)
-- Early-return if already `true`
+### 429 Response Format
 
-#### 2. Fix keep-warm interval to check for `'registering'` state
-
-Current code (line 365):
-```typescript
-if (deviceRef.current.state !== 'registered') {
-  deviceRef.current.register()
-```
-
-Change to:
-```typescript
-if (deviceRef.current.state === 'unregistered') {
-  deviceRef.current.register()
-```
-
-This skips re-registration when the device is already in `'registering'` or `'destroying'` states, preventing the `InvalidStateError`.
-
-#### 3. Throttle error toasts
-
-Add a `lastErrorToastRef` timestamp and only show an error toast if 10+ seconds have passed since the last one:
-
-```typescript
-const lastErrorToastRef = useRef<number>(0);
-
-// In error handler:
-const now = Date.now();
-if (now - lastErrorToastRef.current > 10000) {
-  lastErrorToastRef.current = now;
-  toast.error(`Call error: ${error.message}`);
+```json
+{
+  "error": "Too many requests. Please try again later."
 }
 ```
 
-#### 4. Guard the token-expiry re-init path
+Status code: 429, with `Retry-After` header.
 
-Before calling `initializeTwilioDevice()` in the token-expiry timeout (line 278-280), check `isReinitializingRef` to avoid racing with the keep-warm interval.
+### Implementation Pattern
 
-#### 5. Add backoff to keep-warm when device is absent
+Every edge function gets this added right after the OPTIONS/CORS check:
 
-When `deviceRef.current` is null (line 373-375), the current code calls `initializeTwilioDevice()` every 30 seconds unconditionally. Add the `isReinitializingRef` guard here too.
+```text
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
-### Summary of Changes
+// After OPTIONS check:
+const rateLimitResponse = enforceRateLimit(req, "function-name", 60, 60);
+if (rateLimitResponse) return rateLimitResponse;
 
-| Problem | Fix |
-|---|---|
-| `register()` called while already registering | Only call when state is `'unregistered'` |
-| Concurrent re-init from multiple paths | `isReinitializingRef` mutex guard |
-| Toast spam (every error = toast) | 10-second throttle via timestamp ref |
-| Token-expiry handler races with keep-warm | Both check the reinitializing guard |
+// ... existing business logic
+```
 
-### Files Modified
+### Violation Logging
 
-- `src/contexts/CallContext.tsx`
+All rate limit violations are logged to console with:
+- Function name
+- Client IP
+- Timestamp
+- Current count vs limit
 
-No database, edge function, or other file changes needed.
+This enables monitoring via the edge function logs.
 
+### Files to Create
+
+- `supabase/functions/_shared/rateLimit.ts`
+
+### Files to Modify (all 27 edge functions)
+
+1. `supabase/functions/admin-update-user/index.ts` (limit: 3/min)
+2. `supabase/functions/ai-email-chat/index.ts` (limit: 10/min)
+3. `supabase/functions/call-to-lead-automation/index.ts` (limit: 60/min)
+4. `supabase/functions/evan-ai-assistant/index.ts` (limit: 10/min)
+5. `supabase/functions/generate-lead-email/index.ts` (limit: 60/min)
+6. `supabase/functions/gmail-api/index.ts` (limit: 60/min)
+7. `supabase/functions/google-calendar-auth/index.ts` (limit: 60/min)
+8. `supabase/functions/google-calendar-sync/index.ts` (limit: 60/min)
+9. `supabase/functions/google-sheets-api/index.ts` (limit: 60/min)
+10. `supabase/functions/google-sheets-auth/index.ts` (limit: 60/min)
+11. `supabase/functions/lead-ai-assistant/index.ts` (limit: 10/min)
+12. `supabase/functions/lender-program-assistant/index.ts` (limit: 10/min)
+13. `supabase/functions/newsletter-track/index.ts` (limit: 300/min)
+14. `supabase/functions/newsletter-webhook/index.ts` (limit: 300/min)
+15. `supabase/functions/retry-call-transcription/index.ts` (limit: 60/min)
+16. `supabase/functions/seed-partners/index.ts` (limit: 3/min)
+17. `supabase/functions/seed-test-data/index.ts` (limit: 3/min)
+18. `supabase/functions/send-newsletter/index.ts` (limit: 60/min)
+19. `supabase/functions/send-prequalification-email/index.ts` (limit: 60/min)
+20. `supabase/functions/slack-notify/index.ts` (limit: 60/min)
+21. `supabase/functions/twilio-call-status/index.ts` (limit: 300/min)
+22. `supabase/functions/twilio-call/index.ts` (limit: 60/min)
+23. `supabase/functions/twilio-inbound/index.ts` (limit: 300/min)
+24. `supabase/functions/twilio-sms/index.ts` (limit: 60/min)
+25. `supabase/functions/twilio-token/index.ts` (limit: 5/min)
+26. `supabase/functions/twilio-transcription/index.ts` (limit: 300/min)
+27. `supabase/functions/twilio-voice/index.ts` (limit: 300/min)
+
+### Limitations (v1)
+
+- In-memory state resets on cold starts (acceptable for burst protection)
+- Not shared across multiple isolate instances (regional)
+- For persistent, cross-instance rate limiting, Upstash Redis can be added as a v2 upgrade
+
+### No Database Changes Required
+
+This implementation is purely in-memory and requires no new tables, migrations, or secrets.
