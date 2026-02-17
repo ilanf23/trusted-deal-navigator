@@ -12,7 +12,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = enforceRateLimit(req, "lender-program-assistant", 10, 60);
+  const rateLimitResponse = await enforceRateLimit(req, "lender-program-assistant", 10, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {

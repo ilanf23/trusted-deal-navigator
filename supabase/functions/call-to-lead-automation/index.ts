@@ -15,7 +15,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = enforceRateLimit(req, "call-to-lead-automation", 60, 60);
+  const rateLimitResponse = await enforceRateLimit(req, "call-to-lead-automation", 60, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {

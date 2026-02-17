@@ -13,7 +13,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = enforceRateLimit(req, "generate-lead-email", 60, 60);
+  const rateLimitResponse = await enforceRateLimit(req, "generate-lead-email", 60, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {

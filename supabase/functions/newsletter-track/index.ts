@@ -15,7 +15,7 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = enforceRateLimit(req, "newsletter-track", 300, 60);
+  const rateLimitResponse = await enforceRateLimit(req, "newsletter-track", 300, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {

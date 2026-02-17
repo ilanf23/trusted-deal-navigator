@@ -13,7 +13,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = enforceRateLimit(req, "lead-ai-assistant", 10, 60);
+  const rateLimitResponse = await enforceRateLimit(req, "lead-ai-assistant", 10, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {

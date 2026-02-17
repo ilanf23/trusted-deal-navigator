@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = enforceRateLimit(req, 'twilio-token', 5, 60);
+  const rateLimitResponse = await enforceRateLimit(req, 'twilio-token', 5, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
