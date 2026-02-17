@@ -38,407 +38,17 @@ import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { GmailSidebar, FolderType } from '@/components/admin/inbox/GmailSidebar';
 import { cn } from '@/lib/utils';
 import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
-import { sanitizeHtml } from '@/lib/sanitize';
+// Shared Gmail modules
+import { useGmailConnection } from '@/hooks/useGmailConnection';
+import { GmailEmail, ThreadMessage, extractSenderName, extractEmailAddress, toRenderableHtml } from '@/components/gmail/gmailHelpers';
+import {
+  mockExternalEmails,
+  mockThreadMessages,
+  evanEmailTemplates as emailTemplates,
+  findLeadForEmail as findLeadForEmailFn,
+  getNextStepSuggestion,
+} from '@/components/gmail/EvanGmailFeatures';
 
-// Import avatar images
-import robertMartinezAvatar from '@/assets/avatars/robert-martinez.jpg';
-import sarahRichardsonAvatar from '@/assets/avatars/sarah-richardson.jpg';
-import michaelChenAvatar from '@/assets/avatars/michael-chen.jpg';
-import davidKimAvatar from '@/assets/avatars/david-kim.jpg';
-import lisaWongAvatar from '@/assets/avatars/lisa-wong.jpg';
-import thomasWrightAvatar from '@/assets/avatars/thomas-wright.jpg';
-import rachelAdamsAvatar from '@/assets/avatars/rachel-adams.jpg';
-import sophiaLaurentAvatar from '@/assets/avatars/sophia-laurent.jpg';
-import andrewFosterAvatar from '@/assets/avatars/andrew-foster.jpg';
-import emilyWangAvatar from '@/assets/avatars/emily-wang.jpg';
-
-interface Email {
-  id: string;
-  threadId: string;
-  subject: string;
-  from: string;
-  to?: string;
-  cc?: string;
-  bcc?: string;
-  date: string;
-  snippet: string;
-  body?: string;
-  isRead: boolean;
-  senderPhoto?: string | null;
-}
-
-// Email templates
-interface EmailTemplate {
-  id: string;
-  name: string;
-  subject: string;
-  body: string;
-}
-
-const emailTemplates: EmailTemplate[] = [
-  {
-    id: 'template-1',
-    name: 'Initial Outreach',
-    subject: 'Commercial Lending Opportunity',
-    body: 'Hi, I wanted to reach out about financing options that could help grow your business.',
-  },
-  {
-    id: 'template-2',
-    name: 'Follow-Up',
-    subject: 'Following Up on Our Conversation',
-    body: 'Just checking in to see if you had any questions about the loan options we discussed.',
-  },
-  {
-    id: 'template-3',
-    name: 'Document Request',
-    subject: 'Documents Needed for Your Application',
-    body: 'To move forward with your application, please provide the following documents at your earliest convenience.',
-  },
-  {
-    id: 'template-4',
-    name: 'Rate Update',
-    subject: 'Great News - Rates Have Changed',
-    body: 'I wanted to let you know that rates have moved favorably and now might be a good time to revisit your financing.',
-  },
-  {
-    id: 'template-5',
-    name: 'Thank You',
-    subject: 'Thank You for Your Business',
-    body: 'Thank you for choosing us for your financing needs - please don\'t hesitate to reach out if you need anything.',
-  },
-];
-
-// Mock thread messages for Robert Martinez conversation
-interface ThreadMessage {
-  id: string;
-  from: string;
-  to: string;
-  date: string;
-  body: string;
-  senderPhoto?: string | null;
-}
-
-const mockThreadMessages: Record<string, ThreadMessage[]> = {
-  'thread-mock-1': [
-    {
-      id: 'msg-1-1',
-      from: 'Evan <evan@commerciallendingx.com>',
-      to: 'robert.martinez@capitalventures.com',
-      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 days ago
-      body: `Hi Robert,
-
-Thank you for reaching out about financing for your acquisition. I'm excited to discuss the $2.5M loan opportunity for Capital Ventures.
-
-Based on our initial conversation, it sounds like you're looking to acquire a commercial property in the downtown district. Before we proceed, I wanted to gather some additional information to ensure we can structure the best possible deal for your needs.
-
-Could you please provide the following:
-
-1. Property address and current appraisal (if available)
-2. Your most recent 2 years of business tax returns
-3. Personal financial statement
-4. Executive summary of the acquisition opportunity
-
-Once I have these documents, I can start working with our lending partners to get you pre-qualified. Given current market conditions, we're seeing rates in the 7.25-7.75% range for deals of this size with strong borrower profiles.
-
-I'm available for a call this week if you'd like to discuss the process in more detail. My calendar is open Tuesday and Thursday afternoons.
-
-Looking forward to working together on this.
-
-Best regards,
-Evan
-Commercial Lending X
-(555) 123-4567`,
-      senderPhoto: null,
-    },
-    {
-      id: 'msg-1-2',
-      from: 'Robert Martinez <robert.martinez@capitalventures.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), // 5 days ago
-      body: `Evan,
-
-Thanks for the quick response. Capital Ventures has been working on this acquisition for the past 6 months and we're finally in a position to move forward.
-
-I've attached the documents you requested:
-- Property appraisal (completed last month) showing a value of $3.2M
-- 2024 and 2023 business tax returns
-- My personal financial statement
-- A detailed executive summary of our expansion plans
-
-A few additional details about the deal:
-
-The property is located at 4500 Commerce Boulevard, which is in a prime commercial corridor. The building is currently 85% occupied with stable tenants, including a regional bank branch and a medical office that have both been there for 10+ years.
-
-We're planning to acquire the property and then invest an additional $500K in renovations to modernize the facade and upgrade the HVAC systems. This should allow us to increase rents by approximately 15% when current leases expire.
-
-Our target closing date is March 15th, so we're on a somewhat tight timeline. Is that feasible from your perspective?
-
-I'm free for a call Thursday at 2 PM if that works for you. Please let me know.
-
-Thanks,
-Robert Martinez
-CEO, Capital Ventures LLC
-(555) 987-6543`,
-      senderPhoto: robertMartinezAvatar,
-    },
-    {
-      id: 'msg-1-3',
-      from: 'Evan <evan@commerciallendingx.com>',
-      to: 'robert.martinez@capitalventures.com',
-      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(), // 4 days ago
-      body: `Robert,
-
-Excellent - I've reviewed all the documents you sent and I'm impressed with the quality of this acquisition opportunity. The property fundamentals look strong and your business financials are well-organized.
-
-A few initial observations:
-
-1. The 80% LTV you're targeting ($2.5M on a $3.2M property) is within our comfort zone for this asset class
-2. Your debt service coverage ratio looks healthy based on the current NOI
-3. The tenant mix with long-term occupants is exactly what lenders like to see
-
-I spoke with three of our lending partners this morning and have some promising initial feedback:
-
-LENDER A (Regional Bank):
-- Rate: 7.35% fixed for 5 years
-- Amortization: 25 years
-- Prepayment: 3-2-1 step-down
-- Timeline: 45 days to close
-
-LENDER B (Credit Union):
-- Rate: 7.15% fixed for 7 years
-- Amortization: 25 years
-- Prepayment: Yield maintenance for 3 years, then 1%
-- Timeline: 60 days to close
-
-LENDER C (Private Lender):
-- Rate: 8.25% fixed
-- Amortization: 30 years
-- Prepayment: None after 12 months
-- Timeline: 21 days to close
-
-Given your March 15th target, Lender A seems like the best fit - competitive rate with a realistic timeline. Lender B has a slightly better rate but the 60-day timeline cuts it close.
-
-Thursday at 2 PM works perfectly. I'll send a calendar invite. We can review these options in detail and discuss which structure works best for Capital Ventures.
-
-Talk soon,
-Evan`,
-      senderPhoto: null,
-    },
-    {
-      id: 'msg-1-4',
-      from: 'Robert Martinez <robert.martinez@capitalventures.com>',
-      to: 'evan@commerciallendingx.com',
-      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
-      body: `Evan,
-
-Great call yesterday! I really appreciated you walking me through all the options in detail. After discussing with my partners, we've decided to move forward with Lender A.
-
-The 7.35% rate with the 5-year fixed term aligns well with our business plan. We're planning to hold this property for at least 7-10 years, so we'll likely refinance when the fixed period ends anyway. The 45-day timeline also gives us a comfortable buffer before our target closing date.
-
-A couple of follow-up items from our discussion:
-
-1. You mentioned that Lender A might be able to include the renovation costs in the loan. Can you confirm if that's possible? We'd love to finance the full $3M ($2.5M acquisition + $500K renovation) if the numbers work.
-
-2. For the renovation draws, what documentation would we need to provide? We have a general contractor lined up but haven't finalized the scope of work yet.
-
-3. Is there any flexibility on the prepayment penalty? The 3-2-1 structure works, but if we could get it waived entirely after year 3, that would be ideal.
-
-Also, I wanted to mention that we have another acquisition opportunity in the pipeline - a retail strip center about 2 miles from this property. It's a smaller deal ($1.8M) but similar quality tenants. Once we close this first deal, I'd love to discuss financing options for that one as well.
-
-Let me know what you need from me to get the formal application submitted.
-
-Thanks,
-Robert`,
-      senderPhoto: robertMartinezAvatar,
-    },
-    {
-      id: 'msg-1-5',
-      from: 'Evan <evan@commerciallendingx.com>',
-      to: 'robert.martinez@capitalventures.com',
-      date: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-      body: `Robert,
-
-Great news on all fronts! I'm excited to get this deal across the finish line for you.
-
-Regarding your questions:
-
-1. RENOVATION FINANCING: Yes, Lender A can absolutely include the renovation costs. They offer a "purchase plus improvement" loan structure. The total loan would be $3M with the renovation portion held in escrow and released in draws as work is completed. This will require a detailed scope of work and contractor bids before closing, but it's very doable.
-
-2. RENOVATION DRAWS: You'll need to provide:
-   - Signed contractor agreement with detailed line-item budget
-   - Contractor's license and insurance certificates  
-   - Draw schedule (typically 3-4 draws for a project this size)
-   - Lender will do inspections before each draw release
-
-3. PREPAYMENT: I pushed back on this with my contact at Lender A. Best they can do is 3-2-1-0, meaning no penalty in year 4 or later. Given that you're planning to hold long-term, this should work well.
-
-For the formal application, please send me:
-- Signed LOI or purchase agreement for the property
-- Updated rent roll (dated within 30 days)
-- 3 months of property operating statements
-- Phase I environmental (if you have one; if not, lender can order)
-- Your operating agreement for Capital Ventures LLC
-
-Once I have these, I'll submit to Lender A and we should have an approval within 5-7 business days.
-
-And definitely let's talk about the retail strip center! Send me the details when you're ready - address, asking price, current occupancy, and rent roll. If the quality is similar to this deal, I'm confident we can get it done.
-
-Let me know if you have any questions. We're on track for a smooth closing!
-
-Best,
-Evan
-Commercial Lending X`,
-      senderPhoto: null,
-    },
-  ],
-};
-
-// Mock external emails using CRM lead email addresses
-const mockExternalEmails: Email[] = [
-  {
-    id: 'mock-1',
-    threadId: 'thread-mock-1',
-    subject: 'RE: Loan Application Status Update',
-    from: 'Robert Martinez <robert.martinez@capitalventures.com>',
-    to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    snippet: 'Hi Evan, Just following up on our conversation about the $2.5M acquisition loan. We have completed the due diligence...',
-    isRead: false,
-    senderPhoto: robertMartinezAvatar,
-  },
-  {
-    id: 'mock-2',
-    threadId: 'thread-mock-2',
-    subject: 'Documents for Property Appraisal',
-    from: 'Sarah Richardson <sarah.r@meridiangroup.com>',
-    to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    snippet: 'Please find attached the property appraisal documents for the Meridian Plaza project. Let me know if you need anything else.',
-    isRead: false,
-    senderPhoto: sarahRichardsonAvatar,
-  },
-  {
-    id: 'mock-3',
-    threadId: 'thread-mock-3',
-    subject: 'Urgent: Term Sheet Review Required',
-    from: 'Michael Chen <mchen@techvest.com>',
-    to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-    snippet: 'Evan, I need your input on the term sheet before our meeting tomorrow. The interest rate seems higher than discussed...',
-    isRead: false,
-    senderPhoto: michaelChenAvatar,
-  },
-  {
-    id: 'mock-4',
-    threadId: 'thread-mock-4',
-    subject: 'New Restaurant Location Financing',
-    from: 'David Kim <dkim@seoulfoodgroup.com>',
-    to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    snippet: 'Looking to expand Seoul Food Group with 3 new locations in the downtown area. Would love to discuss financing options...',
-    isRead: false,
-    senderPhoto: davidKimAvatar,
-  },
-  {
-    id: 'mock-5',
-    threadId: 'thread-mock-5',
-    subject: 'Healthcare Facility Refinance Question',
-    from: 'Lisa Wong <lisa@pacificmedgroup.com>',
-    to: 'evan@commerciallendingx.com',
-    date: '2026-01-10T11:45:00.000Z', // Jan 10
-    snippet: 'Our current loan matures in 6 months and we are exploring refinance options. The facility is valued at $8.2M...',
-    isRead: false,
-    senderPhoto: lisaWongAvatar,
-  },
-  {
-    id: 'mock-6',
-    threadId: 'thread-mock-6',
-    subject: 'Manufacturing Equipment Loan Application',
-    from: 'Thomas Wright <twright@wrightmanufacturing.com>',
-    to: 'evan@commerciallendingx.com',
-    date: '2026-01-10T16:20:00.000Z', // Jan 10
-    snippet: 'Following up on our call about equipment financing. We need approximately $1.8M for new CNC machines and automation...',
-    isRead: false,
-    senderPhoto: thomasWrightAvatar,
-  },
-  {
-    id: 'mock-7',
-    threadId: 'thread-mock-7',
-    subject: 'Senior Living Facility Acquisition',
-    from: 'Rachel Adams <rachel@sunriseseniorliving.com>',
-    to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(),
-    snippet: 'Great news - the seller accepted our offer! Now we need to move quickly on the financing. The purchase price is $12.5M...',
-    isRead: false,
-    senderPhoto: rachelAdamsAvatar,
-  },
-  {
-    id: 'mock-8',
-    threadId: 'thread-mock-8',
-    subject: 'Boutique Hotel Expansion Plans',
-    from: 'Sophia Laurent <sophia@luxestays.co>',
-    to: 'evan@commerciallendingx.com',
-    date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-    snippet: 'We are looking to add 40 more rooms to our property in Napa. I have attached our revenue projections and construction estimates...',
-    isRead: false,
-    senderPhoto: sophiaLaurentAvatar,
-  },
-  {
-    id: 'mock-9',
-    threadId: 'thread-mock-9',
-    subject: 'Commercial Property Portfolio Review',
-    from: 'Andrew Foster <afoster@greenleafprops.com>',
-    to: 'evan@commerciallendingx.com',
-    date: '2026-01-10T14:30:00.000Z', // Jan 10
-    snippet: 'Can we schedule a call to review our portfolio? We have 5 properties that may need refinancing before year end...',
-    isRead: false,
-    senderPhoto: andrewFosterAvatar,
-  },
-  {
-    id: 'mock-10',
-    threadId: 'thread-mock-10',
-    subject: 'Healthcare Expansion Financing Inquiry',
-    from: 'Emily Wang <ewang@sunrisehealthcare.com>',
-    to: 'evan@commerciallendingx.com',
-    date: '2026-01-10T09:15:00.000Z', // Jan 10
-    snippet: 'Sunrise Healthcare is planning to open a new urgent care center. We are looking at properties in the $3-4M range...',
-    isRead: false,
-    senderPhoto: emilyWangAvatar,
-  },
-];
-
-const extractSenderName = (from: string) => {
-  const match = from.match(/^([^<]+)/);
-  if (match) return match[1].trim().replace(/"/g, '');
-  return from.split('@')[0];
-};
-
-const extractEmailAddress = (from: string): string => {
-  const match = from.match(/<([^>]+)>/);
-  if (match) return match[1].toLowerCase();
-  if (from.includes('@')) return from.toLowerCase();
-  return '';
-};
-
-const looksLikeHtml = (value: string) => /<\/?[a-z][\s\S]*>/i.test(value);
-
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-// Sanitize email HTML using DOMPurify (battle-tested XSS prevention)
-const sanitizeEmailHtml = sanitizeHtml;
-
-const toRenderableHtml = (value: string) => {
-  const v = value ?? '';
-  if (!v.trim()) return '';
-  if (looksLikeHtml(v)) return sanitizeEmailHtml(v);
-  return escapeHtml(v).replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
-};
 
 const EvansGmail = () => {
   const navigate = useNavigate();
@@ -446,6 +56,24 @@ const EvansGmail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Shared Gmail connection & email data
+  const gmail = useGmailConnection({
+    userKey: 'evan',
+    callbackPrefix: 'admin',
+    maxResults: 50,
+    fetchPhotos: true,
+    returnPath: '/team/evan/gmail',
+  });
+  const { data: inboxData, isLoading: emailsLoading } = gmail.useEmails('in:inbox');
+  const { data: sentData, isLoading: sentEmailsLoading } = gmail.useEmails('in:sent');
+  const { data: draftsData, isLoading: draftsLoading, refetch: refetchDrafts } = gmail.useEmails('in:drafts');
+  const emails = (inboxData?.emails || []) as GmailEmail[];
+  const sentEmails = (sentData?.emails || []) as GmailEmail[];
+  const draftEmails = (draftsData?.emails || []) as GmailEmail[];
+  const gmailConnection = gmail.gmailConnection;
+  const connectionLoading = gmail.connectionLoading;
+
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showEmailAddress, setShowEmailAddress] = useState(false);
@@ -543,19 +171,6 @@ const EvansGmail = () => {
     });
   };
   
-  const { data: gmailConnection, isLoading: connectionLoading } = useQuery({
-    queryKey: ['evan-gmail-connection'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('gmail_connections')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
 
   // Fetch all leads for matching
   const { data: allLeads = [] } = useQuery({
@@ -748,112 +363,6 @@ const EvansGmail = () => {
     },
   });
 
-  // Fetch inbox emails
-  const { data: emails = [], isLoading: emailsLoading } = useQuery({
-    queryKey: ['evan-gmail-emails'],
-    queryFn: async () => {
-      // Refresh the session to get a valid token
-      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
-      if (sessionError || !session) {
-        console.error('Session refresh failed:', sessionError);
-        return [];
-      }
-
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=in:inbox&maxResults=50&fetchPhotos=true`,
-        { headers: { 'Authorization': `Bearer ${session.access_token}` } }
-      );
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch emails');
-
-      return (data?.messages || []).map((msg: any) => ({
-        id: msg.id,
-        threadId: msg.threadId,
-        subject: msg.subject || '(No Subject)',
-        from: msg.from || '',
-        to: msg.to || '',
-        date: msg.date || new Date().toISOString(),
-        snippet: msg.snippet || '',
-        body: msg.body || '',
-        isRead: !msg.isUnread,
-        senderPhoto: msg.senderPhoto || null,
-      })) as Email[];
-    },
-    enabled: !!gmailConnection,
-  });
-
-  // Fetch sent emails separately (only emails sent by Evan)
-  const { data: sentEmails = [], isLoading: sentEmailsLoading } = useQuery({
-    queryKey: ['evan-gmail-sent-emails'],
-    queryFn: async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
-      if (sessionError || !session) {
-        console.error('Session refresh failed:', sessionError);
-        return [];
-      }
-
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=in:sent&maxResults=50&fetchPhotos=true`,
-        { headers: { 'Authorization': `Bearer ${session.access_token}` } }
-      );
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch sent emails');
-
-      return (data?.messages || []).map((msg: any) => ({
-        id: msg.id,
-        threadId: msg.threadId,
-        subject: msg.subject || '(No Subject)',
-        from: msg.from || '',
-        to: msg.to || '',
-        cc: msg.cc || '',
-        bcc: msg.bcc || '',
-        date: msg.date || new Date().toISOString(),
-        snippet: msg.snippet || '',
-        body: msg.body || '',
-        isRead: !msg.isUnread,
-        senderPhoto: msg.senderPhoto || null,
-      })) as Email[];
-    },
-    enabled: !!gmailConnection,
-  });
-
-  // Fetch drafts from Gmail
-  const { data: draftEmails = [], isLoading: draftsLoading, refetch: refetchDrafts } = useQuery({
-    queryKey: ['evan-gmail-drafts'],
-    queryFn: async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
-      if (sessionError || !session) {
-        console.error('Session refresh failed:', sessionError);
-        return [];
-      }
-
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=in:drafts&maxResults=50&fetchPhotos=true`,
-        { headers: { 'Authorization': `Bearer ${session.access_token}` } }
-      );
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to fetch drafts');
-
-      return (data?.messages || []).map((msg: any) => ({
-        id: msg.id,
-        threadId: msg.threadId,
-        subject: msg.subject || '(No Subject)',
-        from: msg.from || '',
-        to: msg.to || '',
-        cc: msg.cc || '',
-        bcc: msg.bcc || '',
-        date: msg.date || new Date().toISOString(),
-        snippet: msg.snippet || '',
-        body: msg.body || '',
-        isRead: true, // Drafts are always "read"
-        senderPhoto: null,
-      })) as Email[];
-    },
-    enabled: !!gmailConnection,
-  });
 
   // If the URL explicitly targets a draft, open it in the compose popup and keep it open until user closes.
   useEffect(() => {
@@ -1103,64 +612,16 @@ const EvansGmail = () => {
     },
   });
 
-  // Find matching lead for an email
-  const findLeadForEmail = (email: Email) => {
-    const senderEmail = extractEmailAddress(email.from);
-    return allLeads.find(lead => {
-      if (lead.email?.toLowerCase() === senderEmail) return true;
-      if (lead.lead_emails?.some((e: any) => e.email?.toLowerCase() === senderEmail)) return true;
-      return false;
-    });
-  };
+  // Lead matching wrappers using shared helpers
+  const findLeadForEmail = (email: GmailEmail) => findLeadForEmailFn(email, allLeads);
 
-  // Generate next step suggestion based on stage and email context
-  const getNextStepSuggestion = (stageName: string | undefined, emailSnippet: string, lead: any): string => {
-    const snippet = emailSnippet.toLowerCase();
-    
-    // Check for specific keywords in the email
-    if (snippet.includes('document') || snippet.includes('appraisal') || snippet.includes('attached')) {
-      return 'Review attached documents and update deal status';
-    }
-    if (snippet.includes('question') || snippet.includes('clarif')) {
-      return 'Address borrower questions and provide clarification';
-    }
-    if (snippet.includes('urgent') || snippet.includes('asap')) {
-      return 'Prioritize response - time-sensitive request';
-    }
-    if (snippet.includes('term sheet') || snippet.includes('terms')) {
-      return 'Review and discuss term sheet with borrower';
-    }
-    if (snippet.includes('follow') || snippet.includes('status') || snippet.includes('update')) {
-      return 'Send status update and outline next milestones';
-    }
-    
-    // Stage-based default suggestions
-    switch (stageName) {
-      case 'Discovery':
-        return 'Schedule discovery call to understand borrower needs';
-      case 'Pre-Qualification':
-        return 'Gather preliminary financials for pre-qual assessment';
-      case 'Doc Collection':
-        return 'Request outstanding documents for underwriting package';
-      case 'Underwriting':
-        return 'Follow up with lender on underwriting status';
-      case 'Approval':
-        return 'Coordinate closing timeline and final conditions';
-      case 'Funded':
-        return 'Confirm funding details and send thank you note';
-      default:
-        return 'Review email and determine appropriate next action';
-    }
-  };
-
-  // Check if email is external (from CRM lead)
-  const isExternalEmail = (email: Email) => {
+  const isExternalEmail = (email: GmailEmail) => {
     const senderEmail = extractEmailAddress(email.from);
     return crmEmails.some(crmEmail => senderEmail === crmEmail.toLowerCase());
   };
 
 // Generate AI draft for moving deal forward - with persist-first pattern
-  const handleMoveForward = async (email: Email) => {
+  const handleMoveForward = async (email: GmailEmail) => {
     const lead = findLeadForEmail(email);
     if (!lead) {
       toast.error('Could not find matching lead');
@@ -1512,42 +973,11 @@ const EvansGmail = () => {
     }
   };
 
-  // Connect Gmail
-  const handleConnectGmail = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Please log in first');
-        return;
-      }
-
-      const redirectUri = `${window.location.origin}/admin/inbox/callback`;
-      const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=get-oauth-url`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ redirect_uri: redirectUri }),
-        }
-      );
-
-      const data = await response.json();
-      if (data?.url) {
-        localStorage.setItem('gmail_return_path', '/team/evan/gmail');
-        window.location.href = data.url;
-      } else {
-        toast.error('Failed to get OAuth URL');
-      }
-    } catch (error: any) {
-      toast.error('Failed to connect: ' + error.message);
-    }
-  };
+  // Connect Gmail - delegates to shared hook
+  const handleConnectGmail = () => gmail.connectGmail();
 
   // Handle reply to email thread
-  const handleReply = (email: Email) => {
+  const handleReply = (email: GmailEmail) => {
     // Extract sender email for reply
     const senderEmail = extractEmailAddress(email.from);
     
