@@ -1,60 +1,62 @@
 
 
-## Fix: Sidebar Resets on Navigation
+## Add "Users & Roles" Page to Ilan's Superadmin Portal
 
-### Root Cause
+### Overview
 
-Every superadmin route in `App.tsx` independently wraps its page in `<ProtectedRoute><Page /></ProtectedRoute>`. The `AdminLayout` is rendered inside each page component (or `ProtectedRoute`), so when you navigate between routes, React unmounts and remounts the entire layout -- including the sidebar. This destroys all sidebar state (open/closed sections, scroll position).
+A new page at `/superadmin/ilan/users-roles` that lists all users and their roles, allowing Ilan to upgrade/downgrade roles with a single button press after re-entering his own password for security confirmation.
 
-This is the same problem that was already solved for the Partner portal using `PartnerRouteLayout` (a persistent layout with nested `<Outlet />`).
+### How It Works
 
-### Solution
+1. Page loads a table of all users (from `profiles` joined with `user_roles`)
+2. Each row shows user email, current role(s), and action buttons to set role (admin / partner / client)
+3. Clicking a role-change button opens a confirmation dialog that requires Ilan to enter **his own account password**
+4. The password is verified by calling `supabase.auth.signInWithPassword()` with Ilan's email + entered password
+5. If verified, an edge function (`manage-user-role`) performs the actual role change using the service role key
+6. The edge function validates the caller is an admin (same pattern as `admin-update-user`)
 
-Create a persistent layout route for superadmin pages, following the same pattern as `PartnerRouteLayout`.
+### Available Roles
+
+The existing `app_role` enum supports: `admin`, `client`, `partner`. There is no `superadmin` enum value in the database, so roles will be limited to these three. If you want a `superadmin` level, we can add it to the enum in a follow-up.
 
 ### Changes
 
-**1. Create `src/components/admin/AdminRouteLayout.tsx`**
+**1. New edge function: `supabase/functions/manage-user-role/index.ts`**
+- Accepts `{ target_user_id, new_role }` in the request body
+- Validates caller JWT and confirms caller has `admin` role (via `user_roles` table using service role client)
+- Upserts the target user's role in `user_roles` (replaces existing role or inserts new one)
+- Returns success/failure
 
-A simple wrapper component that:
-- Renders `ProtectedRoute` with `requireAdmin`
-- Renders `AdminLayout` once (persistent across route changes)
-- Uses React Router's `<Outlet />` to render child routes
+**2. New page: `src/pages/admin/UsersAndRoles.tsx`**
+- Fetches all profiles + their roles using a single query
+- Displays a table with columns: Email, Current Role, Actions
+- Action buttons for each role (admin / partner / client) -- the current role is visually highlighted/disabled
+- Clicking a different role opens a dialog asking for the caller's password
+- On submit: calls `signInWithPassword` to verify, then calls the edge function
+- Shows success/error toast
 
-**2. Update `src/App.tsx`**
+**3. Update `src/components/admin/AdminSidebar.tsx`**
+- Add "Users & Roles" link right below "WOP" in Ilan's top-level section, using the `Users` icon (already imported)
 
-Convert all flat superadmin routes from:
-```
-<Route path="/superadmin" element={<ProtectedRoute requireAdmin><SuperAdminDashboard /></ProtectedRoute>} />
-<Route path="/superadmin/leads" element={<ProtectedRoute requireAdmin><AdminLeads /></ProtectedRoute>} />
-...
-```
+**4. Update `src/App.tsx`**
+- Add route `/superadmin/ilan/users-roles` inside the existing `AdminRouteLayout` block, wrapped with `EmployeeRoute employeeName="Ilan"`
 
-To nested routes under one persistent layout:
-```
-<Route element={<AdminRouteLayout />}>
-  <Route path="/superadmin" element={<SuperAdminDashboard />} />
-  <Route path="/superadmin/leads" element={<AdminLeads />} />
-  ...
-</Route>
-```
+**5. Database migration**
+- Add RLS policy on `user_roles` so admins can SELECT all rows (currently no SELECT policy exists for admins to list all roles)
 
-This ensures `AdminLayout` (and its sidebar) stays mounted when navigating between superadmin pages.
+### Security
 
-**3. Update page components that render AdminLayout themselves**
+- Password re-authentication happens client-side via Supabase Auth (`signInWithPassword`) before the edge function is called
+- The edge function independently verifies the caller is an admin via JWT + `user_roles` table lookup (same pattern as `admin-update-user`)
+- Role changes use the service role key server-side only
+- Rate limited (3 requests per 60 seconds, matching existing pattern)
 
-Any superadmin page that currently wraps its content in `<AdminLayout>` will need that wrapper removed, since the layout is now provided by the route layout. Each affected page file will be checked and the redundant `<AdminLayout>` wrapper stripped.
-
-### Files
+### Files Summary
 
 | Action | File |
 |--------|------|
-| Create | `src/components/admin/AdminRouteLayout.tsx` |
-| Edit   | `src/App.tsx` -- nest superadmin routes under layout route |
-| Edit   | All superadmin page components that wrap in `AdminLayout` -- remove the wrapper |
-
-### Why This Works
-
-- The sidebar component stays mounted across navigations, so `openSections` state, scroll position, and collapsed/expanded state all persist
-- Matches the proven pattern already used for Partner portal (`PartnerRouteLayout`)
-- No changes needed to the sidebar component itself
+| Create | `supabase/functions/manage-user-role/index.ts` |
+| Create | `src/pages/admin/UsersAndRoles.tsx` |
+| Edit | `src/components/admin/AdminSidebar.tsx` -- add link below WOP |
+| Edit | `src/App.tsx` -- add route |
+| Migration | Add admin SELECT policy on `user_roles` |
