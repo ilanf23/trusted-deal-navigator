@@ -9,6 +9,7 @@ import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import FloatingAIChat from "@/components/admin/FloatingAIChat";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import EmployeeRoute from "@/components/admin/EmployeeRoute";
+import AdminRouteLayout from "@/components/admin/AdminRouteLayout";
 import PublicLayout from "@/components/layout/PublicLayout";
 import EvanPortalWrapper from "@/components/evan/EvanPortalWrapper";
 import Index from "./pages/Index";
@@ -104,35 +105,37 @@ const App = () => (
               <Route path="/questionnaire/:token" element={<PublicLayout><Questionnaire /></PublicLayout>} />
               <Route path="/ratewatch/:token" element={<PublicLayout><RateWatchQuestionnaire /></PublicLayout>} />
 
-              {/* Super Admin Routes */}
-              <Route path="/superadmin" element={<ProtectedRoute requireAdmin><SuperAdminDashboard /></ProtectedRoute>} />
-              <Route path="/superadmin/team-performance" element={<ProtectedRoute requireAdmin><TeamPerformance /></ProtectedRoute>} />
-              <Route path="/superadmin/leads" element={<ProtectedRoute requireAdmin><AdminLeads /></ProtectedRoute>} />
-              <Route path="/superadmin/crm" element={<ProtectedRoute requireAdmin><EvansPipeline /></ProtectedRoute>} />
-              <Route path="/superadmin/clients" element={<ProtectedRoute requireAdmin><AdminClients /></ProtectedRoute>} />
-              <Route path="/superadmin/contracts" element={<ProtectedRoute requireAdmin><AdminContracts /></ProtectedRoute>} />
-              <Route path="/superadmin/invoices" element={<ProtectedRoute requireAdmin><AdminInvoices /></ProtectedRoute>} />
-              <Route path="/superadmin/messages" element={<ProtectedRoute requireAdmin><AdminMessages /></ProtectedRoute>} />
-              <Route path="/superadmin/bug-reporting" element={<ProtectedRoute requireAdmin><BugReporting /></ProtectedRoute>} />
-              <Route path="/superadmin/marketing" element={<ProtectedRoute requireAdmin><AdminMarketing /></ProtectedRoute>} />
-              <Route path="/superadmin/newsletter" element={<ProtectedRoute requireAdmin><AdminNewsletter /></ProtectedRoute>} />
-              <Route path="/superadmin/rate-watch" element={<ProtectedRoute requireAdmin><AdminRateWatch /></ProtectedRoute>} />
-              <Route path="/superadmin/lender-programs" element={<ProtectedRoute requireAdmin><LenderPrograms /></ProtectedRoute>} />
-              <Route path="/superadmin/tracking" element={<ProtectedRoute requireAdmin><AdminTracking /></ProtectedRoute>} />
-              <Route path="/superadmin/inbox/callback" element={<AdminInboxCallback />} />
-              <Route path="/superadmin/calendar-callback" element={<CalendarCallback />} />
-              <Route path="/superadmin/sheets-callback" element={<SheetsCallback />} />
+              {/* Super Admin Routes - persistent layout */}
+              <Route element={<AdminRouteLayout />}>
+                <Route path="/superadmin" element={<SuperAdminDashboard />} />
+                <Route path="/superadmin/team-performance" element={<TeamPerformance />} />
+                <Route path="/superadmin/leads" element={<AdminLeads />} />
+                <Route path="/superadmin/crm" element={<EvansPipeline />} />
+                <Route path="/superadmin/clients" element={<AdminClients />} />
+                <Route path="/superadmin/contracts" element={<AdminContracts />} />
+                <Route path="/superadmin/invoices" element={<AdminInvoices />} />
+                <Route path="/superadmin/messages" element={<AdminMessages />} />
+                <Route path="/superadmin/bug-reporting" element={<BugReporting />} />
+                <Route path="/superadmin/marketing" element={<AdminMarketing />} />
+                <Route path="/superadmin/newsletter" element={<AdminNewsletter />} />
+                <Route path="/superadmin/rate-watch" element={<AdminRateWatch />} />
+                <Route path="/superadmin/lender-programs" element={<LenderPrograms />} />
+                <Route path="/superadmin/tracking" element={<AdminTracking />} />
+                <Route path="/superadmin/inbox/callback" element={<AdminInboxCallback />} />
+                <Route path="/superadmin/calendar-callback" element={<CalendarCallback />} />
+                <Route path="/superadmin/sheets-callback" element={<SheetsCallback />} />
 
-              {/* Founder/Super Admin Personal Routes */}
-              <Route path="/superadmin/brad" element={<EmployeeRoute employeeName="Brad"><BradsPage /></EmployeeRoute>} />
-              <Route path="/superadmin/adam" element={<EmployeeRoute employeeName="Adam"><AdamsPage /></EmployeeRoute>} />
-              <Route path="/superadmin/ilan" element={<EmployeeRoute employeeName="Ilan"><TeamPerformance /></EmployeeRoute>} />
-              <Route path="/superadmin/ilan/dev" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
-              <Route path="/superadmin/ilan/bugs" element={<EmployeeRoute employeeName="Ilan"><BugTesting /></EmployeeRoute>} />
-              <Route path="/superadmin/ilan/gmail" element={<EmployeeRoute employeeName="Ilan"><IlansGmail /></EmployeeRoute>} />
-              <Route path="/superadmin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
-              <Route path="/superadmin/ilan/team/evan/dev-notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanDevNotes /></EmployeeRoute>} />
-              <Route path="/superadmin/ilan/team/evan/notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanNotes /></EmployeeRoute>} />
+                {/* Founder/Super Admin Personal Routes */}
+                <Route path="/superadmin/brad" element={<EmployeeRoute employeeName="Brad"><BradsPage /></EmployeeRoute>} />
+                <Route path="/superadmin/adam" element={<EmployeeRoute employeeName="Adam"><AdamsPage /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan" element={<EmployeeRoute employeeName="Ilan"><TeamPerformance /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan/dev" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan/bugs" element={<EmployeeRoute employeeName="Ilan"><BugTesting /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan/gmail" element={<EmployeeRoute employeeName="Ilan"><IlansGmail /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan/team/evan/dev-notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanDevNotes /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan/team/evan/notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanNotes /></EmployeeRoute>} />
+              </Route>
               
               {/* Employee Routes - Evan (wrapped with EvanPortalWrapper for persistent call state) */}
               <Route element={<EvanPortalWrapper />}>
@@ -158,8 +161,10 @@ const App = () => (
               </Route>
               
               {/* Other Employee Routes */}
-              <Route path="/admin/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
-              <Route path="/admin/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
+              <Route element={<AdminRouteLayout />}>
+                <Route path="/admin/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
+                <Route path="/admin/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
+              </Route>
 
               {/* Legacy redirects for old /admin/* shared pages */}
               <Route path="/admin" element={<Navigate to="/superadmin" replace />} />
