@@ -58,6 +58,7 @@ import BugReporting from "./pages/admin/BugReporting";
 import IlanTeamEvanBugs from "./pages/admin/IlanTeamEvanBugs";
 import IlanTeamEvanDevNotes from "./pages/admin/IlanTeamEvanDevNotes";
 import IlanTeamEvanNotes from "./pages/admin/IlanTeamEvanNotes";
+import UsersAndRoles from "./pages/admin/UsersAndRoles";
 import CalendarCallback from "./pages/admin/CalendarCallback";
 import SheetsCallback from "./pages/admin/SheetsCallback";
 import PortalDashboard from "./pages/portal/Dashboard";
@@ -135,6 +136,7 @@ const App = () => (
                 <Route path="/superadmin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/team/evan/dev-notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanDevNotes /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/team/evan/notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanNotes /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan/users-roles" element={<EmployeeRoute employeeName="Ilan"><UsersAndRoles /></EmployeeRoute>} />
               </Route>
               
               {/* Employee Routes - Evan (wrapped with EvanPortalWrapper for persistent call state) */}
