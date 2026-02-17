@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import gmailLogo from '@/assets/gmail-logo.png';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface PrefilledEmail {
   to: string;
@@ -353,7 +354,7 @@ const FloatingInbox = ({ isOpen, onClose, prefilledEmail, onPrefilledEmailHandle
               <div 
                 className="p-4 text-sm whitespace-pre-wrap"
                 dangerouslySetInnerHTML={{ 
-                  __html: selectedMessage.body.replace(/\n/g, '<br/>') 
+                  __html: sanitizeHtml(selectedMessage.body.replace(/\n/g, '<br/>'))
                 }}
               />
             </ScrollArea>

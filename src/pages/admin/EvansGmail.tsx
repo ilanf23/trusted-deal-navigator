@@ -38,6 +38,7 @@ import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { GmailSidebar, FolderType } from '@/components/admin/inbox/GmailSidebar';
 import { cn } from '@/lib/utils';
 import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 // Import avatar images
 import robertMartinezAvatar from '@/assets/avatars/robert-martinez.jpg';
@@ -429,23 +430,8 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-// Lightweight sanitization: strip scripts/iframes, inline event handlers,
-// and inline color styles so dark mode prose-invert can apply proper contrast.
-const sanitizeEmailHtml = (html: string) => {
-  if (!html) return '';
-  return html
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
-    .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
-    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
-    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
-    .replace(/href\s*=\s*"javascript:[^"]*"/gi, 'href="#"')
-    .replace(/href\s*=\s*'javascript:[^']*'/gi, "href='#'")
-    // Strip inline color styles so dark mode text colors work
-    .replace(/\bcolor\s*:\s*[^;}"']+;?/gi, '')
-    .replace(/\bbackground-color\s*:\s*[^;}"']+;?/gi, '')
-    .replace(/\bbackground\s*:\s*[^;}"']+;?/gi, '');
-};
+// Sanitize email HTML using DOMPurify (battle-tested XSS prevention)
+const sanitizeEmailHtml = sanitizeHtml;
 
 const toRenderableHtml = (value: string) => {
   const v = value ?? '';
