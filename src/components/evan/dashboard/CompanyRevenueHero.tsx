@@ -486,26 +486,23 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     yAxisId="left"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
                     tickFormatter={(value) => (value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
-                    width={48}
-                    domain={['auto', 'auto']}
-                    allowDecimals={false}
+                    width={52}
                     tickCount={5}
-                    label={{ value: '$/mo', angle: -90, position: 'insideLeft', offset: 0, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 9 } }}
+                    allowDecimals={false}
                   />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
                     tickFormatter={(value) => (value >= 1000000 ? `$${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
-                    width={52}
-                    domain={[0, 'auto']}
+                    width={56}
+                    tickCount={5}
                     allowDecimals={false}
-                    tickCount={6}
-                    label={{ value: 'Cumulative', angle: 90, position: 'insideRight', offset: 0, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 9 } }}
+                    padding={{ top: 12, bottom: 12 }}
                   />
 
                   {/* Goal Pace reference line (YTD only) */}
