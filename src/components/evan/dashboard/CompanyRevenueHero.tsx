@@ -132,12 +132,20 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
     const forecastBest = forecastTotal * 1.2;
     const forecastConservative = forecastTotal * 0.8;
 
-    // Health status
-    const elapsedFraction = (now.getMonth() + 1) / 12;
-    const expectedPace = COMPANY_GOAL * elapsedFraction;
-    const paceVariance = expectedPace > 0 ? Math.round(((totalRevenue - expectedPace) / expectedPace) * 100) : 0;
+    // Confidence level of reaching $1.5M goal
+    // Weighted blend: 40% forecast trajectory, 30% current pace, 20% pipeline strength, 10% growth momentum
+    const elapsedFraction = Math.max(0.01, (now.getMonth() + 1) / 12);
+    const annualizedPace = totalRevenue / elapsedFraction;
+    const paceScore = Math.min(1, annualizedPace / COMPANY_GOAL);
+    const forecastScore = Math.min(1, forecastTotal / COMPANY_GOAL);
+    const pipelineScore = Math.min(1, (totalRevenue + pipelineWeightedRevenue) / COMPANY_GOAL);
+    const growthMomentum = activeYtdMonths.length > 1
+      ? (activeYtdMonths[activeYtdMonths.length - 1].revenue > activeYtdMonths[Math.max(0, activeYtdMonths.length - 2)].revenue ? 1 : 0.5)
+      : 0.5;
+    const rawConfidence = (forecastScore * 0.4) + (paceScore * 0.3) + (pipelineScore * 0.2) + (growthMomentum * 0.1);
+    const confidenceLevel = Math.min(99, Math.max(1, Math.round(rawConfidence * 100)));
     const healthStatus: 'on-track' | 'at-risk' | 'below-target' =
-      paceVariance >= 0 ? 'on-track' : paceVariance >= -15 ? 'at-risk' : 'below-target';
+      confidenceLevel >= 65 ? 'on-track' : confidenceLevel >= 40 ? 'at-risk' : 'below-target';
 
     // Growth rate
     const growthRate = activeYtdMonths.length > 1
@@ -266,7 +274,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
         totalRevenue,
         goalProgress: Math.round((totalRevenue / COMPANY_GOAL) * 100),
         growthRate,
-        paceVariance,
+        confidenceLevel,
         healthStatus,
         forecastTotal,
         forecastBest,
@@ -290,9 +298,9 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
   const remaining = Math.max(0, COMPANY_GOAL - kpis.totalRevenue);
 
   const healthColors = {
-    'on-track': { bg: 'bg-emerald-500/10 dark:bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/20', icon: CheckCircle2, label: 'On Track' },
-    'at-risk': { bg: 'bg-amber-500/10 dark:bg-amber-500/15', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/20', icon: AlertTriangle, label: 'At Risk' },
-    'below-target': { bg: 'bg-red-500/10 dark:bg-red-500/15', text: 'text-red-600 dark:text-red-400', border: 'border-red-500/20', icon: TrendingDown, label: 'Below Target' },
+    'on-track': { bg: 'bg-emerald-500/10 dark:bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/20', icon: CheckCircle2, label: 'High Confidence' },
+    'at-risk': { bg: 'bg-amber-500/10 dark:bg-amber-500/15', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/20', icon: AlertTriangle, label: 'Moderate Confidence' },
+    'below-target': { bg: 'bg-red-500/10 dark:bg-red-500/15', text: 'text-red-600 dark:text-red-400', border: 'border-red-500/20', icon: TrendingDown, label: 'Low Confidence' },
   };
   const health = healthColors[kpis.healthStatus];
   const HealthIcon = health.icon;
@@ -318,7 +326,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
           <HealthIcon className={cn("h-4 w-4", health.text)} />
           <span className={cn("text-sm font-semibold", health.text)}>{health.label}</span>
           <span className="text-xs text-muted-foreground">
-            {kpis.paceVariance >= 0 ? '+' : ''}{kpis.paceVariance}% vs pace
+            {kpis.confidenceLevel}% confidence
           </span>
         </div>
         <div className="hidden sm:flex items-center gap-2">
@@ -334,7 +342,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
           {[
             { label: 'Growth Rate', value: `${kpis.growthRate >= 0 ? '+' : ''}${kpis.growthRate}%`, sub: 'Period trend', icon: kpis.growthRate >= 0 ? TrendingUp : TrendingDown, color: kpis.growthRate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500' },
             { label: 'Forecast Accuracy', value: `${kpis.forecastAccuracy}%`, sub: 'Actual vs projected', icon: Activity, color: 'text-purple-500' },
-            { label: 'Target Variance', value: `${kpis.paceVariance >= 0 ? '+' : ''}${kpis.paceVariance}%`, sub: 'vs pace', icon: Target, color: kpis.paceVariance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500' },
+            { label: 'Goal Confidence', value: `${kpis.confidenceLevel}%`, sub: 'Hitting $1.5M', icon: Target, color: kpis.confidenceLevel >= 65 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500' },
             { label: 'Revenue Gap', value: formatCurrency(kpis.revenueGap), sub: 'To $1.5M goal', icon: BarChart3, color: 'text-muted-foreground' },
             { label: 'Pipeline Value', value: formatCurrency(kpis.pipelineWeightedRevenue), sub: 'Weighted by stage', icon: Zap, color: 'text-amber-500' },
             { label: 'Best Case', value: formatCurrency(kpis.forecastBest), sub: 'Optimistic forecast', icon: DollarSign, color: 'text-primary' },
