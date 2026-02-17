@@ -1,28 +1,21 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rateLimit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface SendSMSRequest {
-  to: string;
-  message: string;
-  leadId?: string;
-}
-
-interface TwilioResponse {
-  sid: string;
-  status: string;
-  error_code?: number;
-  error_message?: string;
-}
+// ... keep existing code (SendSMSRequest, TwilioResponse interfaces)
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, 'twilio-sms', 60, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');

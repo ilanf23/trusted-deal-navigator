@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rateLimit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,132 +7,15 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')!;
-const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
-
-// Refresh access token if expired
-async function getValidAccessToken(connection: any, supabase: any): Promise<string | null> {
-  const now = new Date();
-  const expiry = new Date(connection.token_expiry);
-
-  // If token is still valid (with 5 min buffer), return it
-  if (expiry.getTime() - now.getTime() > 5 * 60 * 1000) {
-    return connection.access_token;
-  }
-
-  // Refresh the token
-  console.log('Refreshing access token...');
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: connection.refresh_token,
-      grant_type: 'refresh_token',
-    }),
-  });
-
-  const tokens = await response.json();
-
-  if (tokens.error) {
-    console.error('Token refresh error:', tokens);
-    return null;
-  }
-
-  // Update the stored token
-  const newExpiry = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
-  await supabase
-    .from('calendar_connections')
-    .update({
-      access_token: tokens.access_token,
-      token_expiry: newExpiry,
-    })
-    .eq('id', connection.id);
-
-  return tokens.access_token;
-}
-
-// Create or update a Google Calendar event
-async function syncToGoogle(accessToken: string, appointment: any, calendarId: string): Promise<string | null> {
-  const event = {
-    summary: appointment.title,
-    description: appointment.description || '',
-    start: {
-      dateTime: appointment.start_time,
-      timeZone: 'America/New_York',
-    },
-    end: {
-      dateTime: appointment.end_time || new Date(new Date(appointment.start_time).getTime() + 60 * 60 * 1000).toISOString(),
-      timeZone: 'America/New_York',
-    },
-  };
-
-  let response;
-  
-  if (appointment.google_event_id) {
-    // Update existing event
-    response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${appointment.google_event_id}`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(event),
-      }
-    );
-  } else {
-    // Create new event
-    response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(event),
-      }
-    );
-  }
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('Google Calendar API error:', error);
-    return null;
-  }
-
-  const result = await response.json();
-  return result.id;
-}
-
-// Fetch events from Google Calendar
-async function fetchFromGoogle(accessToken: string, calendarId: string, timeMin: string, timeMax: string): Promise<any[]> {
-  const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`);
-  url.searchParams.set('timeMin', timeMin);
-  url.searchParams.set('timeMax', timeMax);
-  url.searchParams.set('singleEvents', 'true');
-  url.searchParams.set('orderBy', 'startTime');
-
-  const response = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) {
-    console.error('Failed to fetch events:', await response.text());
-    return [];
-  }
-
-  const data = await response.json();
-  return data.items || [];
-}
+// ... keep existing code (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, getValidAccessToken, syncToGoogle, fetchFromGoogle)
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, 'google-calendar-sync', 60, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

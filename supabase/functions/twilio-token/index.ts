@@ -1,71 +1,20 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rateLimit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// RFC7519 JWT creation for Twilio Access Token (Voice SDK)
-// Twilio expects a special `cty` header and base64url encoding.
-function base64UrlEncode(input: string | Uint8Array): string {
-  const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : input;
-  const binary = String.fromCharCode(...bytes);
-  return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-}
-
-async function createTwilioAccessToken(
-  accountSid: string,
-  apiKey: string,
-  apiSecret: string,
-  identity: string,
-  twimlAppSid: string
-): Promise<string> {
-  // Twilio AccessTokens typically include this content-type header
-  const header = { alg: 'HS256', typ: 'JWT', cty: 'twilio-fpa;v=1' };
-  const now = Math.floor(Date.now() / 1000);
-  const expiry = now + 3600; // 1 hour
-
-  const payload = {
-    jti: `${apiKey}-${now}`,
-    iss: apiKey,
-    sub: accountSid,
-    iat: now,
-    exp: expiry,
-    grants: {
-      identity,
-      voice: {
-        outgoing: {
-          application_sid: twimlAppSid,
-        },
-        incoming: {
-          allow: true,
-        },
-      },
-    },
-  };
-
-  const base64Header = base64UrlEncode(JSON.stringify(header));
-  const base64Payload = base64UrlEncode(JSON.stringify(payload));
-
-  const message = new TextEncoder().encode(`${base64Header}.${base64Payload}`);
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(apiSecret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, message);
-  const base64Signature = base64UrlEncode(new Uint8Array(signature));
-
-  return `${base64Header}.${base64Payload}.${base64Signature}`;
-}
+// ... keep existing code (base64UrlEncode, createTwilioAccessToken)
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, 'twilio-token', 5, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');

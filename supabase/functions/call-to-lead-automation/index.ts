@@ -1,160 +1,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface RequestBody {
-  leadId: string;
-  communicationId: string;
-  leadName: string;
-  leadEmail: string | null;
-  leadPhone: string;
-  transcript: string | null;
-  callDirection: string;
-  callDate: string;
-}
-
-// Helper function to refresh Gmail access token
-async function refreshGmailAccessToken(refreshToken: string): Promise<string> {
-  const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')!;
-  const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
-
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to refresh Gmail token');
-  }
-
-  const tokens = await response.json();
-  return tokens.access_token;
-}
-
-// Helper function to get valid Gmail access token for Evan
-async function getEvanGmailAccessToken(supabase: any): Promise<{ accessToken: string; email: string } | null> {
-  // Get Evan's team member record to find his user_id
-  const { data: evanTeamMember } = await supabase
-    .from('team_members')
-    .select('user_id')
-    .ilike('name', '%evan%')
-    .single();
-
-  if (!evanTeamMember?.user_id) {
-    console.log("Evan's user_id not found in team_members");
-    return null;
-  }
-
-  // Get Evan's Gmail connection
-  const { data: connection, error } = await supabase
-    .from('gmail_connections')
-    .select('*')
-    .eq('user_id', evanTeamMember.user_id)
-    .single();
-
-  if (error || !connection) {
-    console.log("Evan's Gmail not connected");
-    return null;
-  }
-
-  // Check if token needs refresh
-  const tokenExpiry = new Date(connection.token_expiry);
-  const now = new Date();
-
-  if (tokenExpiry.getTime() - now.getTime() < 5 * 60 * 1000) {
-    console.log('Refreshing Evan\'s Gmail access token...');
-    try {
-      const newAccessToken = await refreshGmailAccessToken(connection.refresh_token);
-      const newExpiry = new Date(Date.now() + 3600 * 1000);
-
-      await supabase
-        .from('gmail_connections')
-        .update({
-          access_token: newAccessToken,
-          token_expiry: newExpiry.toISOString(),
-        })
-        .eq('user_id', evanTeamMember.user_id);
-
-      return { accessToken: newAccessToken, email: connection.email };
-    } catch (e) {
-      console.error('Failed to refresh token:', e);
-      return null;
-    }
-  }
-
-  return { accessToken: connection.access_token, email: connection.email };
-}
-
-// Helper function to create a Gmail draft
-async function createGmailDraft(
-  accessToken: string,
-  fromEmail: string,
-  to: string,
-  subject: string,
-  htmlBody: string
-): Promise<boolean> {
-  // Convert HTML to plain text for better compatibility
-  const plainBody = htmlBody
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .trim();
-
-  const email = [
-    `From: ${fromEmail}`,
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    'Content-Type: text/plain; charset=utf-8',
-    '',
-    plainBody,
-  ].join('\r\n');
-
-  const encodedEmail = btoa(unescape(encodeURIComponent(email)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-
-  const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message: { raw: encodedEmail },
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('Failed to create Gmail draft:', error);
-    return false;
-  }
-
-  const result = await response.json();
-  console.log('Gmail draft created:', result.id);
-  return true;
-}
+// ... keep existing code (interfaces and helper functions through line 153)
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, "call-to-lead-automation", 60, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

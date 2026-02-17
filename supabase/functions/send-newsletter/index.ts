@@ -1,58 +1,17 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const ILAN_EMAIL = Deno.env.get("ILAN_EMAIL") || "ilan@maverich.ai";
-const NEWSLETTER_FROM_EMAIL = Deno.env.get("NEWSLETTER_FROM_EMAIL") || "newsletter@maverich.ai";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-interface SendNewsletterRequest {
-  campaignId: string;
-  recipientIds: string[];
-  subject: string;
-  content: string;
-  fromName?: string;
-}
-
-interface Recipient {
-  id: string;
-  email: string;
-  name: string | null;
-}
-
-// Helper to wrap links for click tracking
-function wrapLinksForTracking(html: string, campaignId: string, subscriberId: string): string {
-  const trackingBaseUrl = `${SUPABASE_URL}/functions/v1/newsletter-track/click/${campaignId}/${subscriberId}`;
-  
-  // Match href attributes in anchor tags
-  return html.replace(
-    /href="(https?:\/\/[^"]+)"/g,
-    (match, url) => {
-      // Don't wrap unsubscribe links or tracking pixels
-      if (url.includes('unsubscribe') || url.includes('newsletter-track')) {
-        return match;
-      }
-      const encodedUrl = encodeURIComponent(url);
-      return `href="${trackingBaseUrl}?url=${encodedUrl}"`;
-    }
-  );
-}
-
-// Generate tracking pixel URL
-function getTrackingPixelUrl(campaignId: string, subscriberId: string): string {
-  return `${SUPABASE_URL}/functions/v1/newsletter-track/open/${campaignId}/${subscriberId}`;
-}
+// ... keep existing code (constants, corsHeaders, interfaces, helper functions)
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, "send-newsletter", 60, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     console.log("send-newsletter function invoked");
