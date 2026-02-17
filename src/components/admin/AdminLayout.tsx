@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { UndoProvider, useUndo } from '@/contexts/UndoContext';
 import { useAIAssistant } from '@/contexts/AIAssistantContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useState } from 'react';
+import { useState, createContext, useContext } from 'react';
+
+const AdminLayoutMountedContext = createContext(false);
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -125,10 +127,19 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
 };
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
+  const alreadyMounted = useContext(AdminLayoutMountedContext);
+  
+  // If already inside an AdminLayout (e.g. via AdminRouteLayout), just render children
+  if (alreadyMounted) {
+    return <>{children}</>;
+  }
+
   return (
-    <UndoProvider>
-      <AdminLayoutContent>{children}</AdminLayoutContent>
-    </UndoProvider>
+    <AdminLayoutMountedContext.Provider value={true}>
+      <UndoProvider>
+        <AdminLayoutContent>{children}</AdminLayoutContent>
+      </UndoProvider>
+    </AdminLayoutMountedContext.Provider>
   );
 };
 
