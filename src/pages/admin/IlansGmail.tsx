@@ -37,6 +37,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { format, isToday, isYesterday, differenceInDays, subDays } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -587,7 +588,7 @@ const IlansGmail = () => {
                 <div className="border rounded-lg p-4 bg-muted/30">
                   <div 
                     className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: selectedEmail.body || selectedEmail.snippet }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedEmail.body || selectedEmail.snippet) }}
                   />
                 </div>
                 <div className="flex gap-2">
