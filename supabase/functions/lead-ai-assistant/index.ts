@@ -1,78 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function sanitizeInput(input: string | null | undefined, maxLen = 2000): string {
-  if (!input) return "";
-  return input
-    .replace(/ignore previous instructions/gi, "")
-    .replace(/ignore all instructions/gi, "")
-    .replace(/override system/gi, "")
-    .replace(/system:/gi, "")
-    .replace(/assistant:/gi, "")
-    .replace(/developer:/gi, "")
-    .replace(/export database/gi, "")
-    .replace(/reveal your prompt/gi, "")
-    .slice(0, maxLen);
-}
-
-interface LeadContext {
-  name: string;
-  email: string | null;
-  phone: string | null;
-  company: string | null;
-  status: string;
-  source: string | null;
-  notes: string | null;
-  activities: Array<{ type: string; content: string; date: string }>;
-  communications: Array<{ type: string; direction: string; duration: number | null; transcript: string | null; date: string }>;
-  tasks: Array<{ title: string; status: string; due_date: string | null; priority: string }>;
-  customFields: {
-    address: string;
-    loanType: string;
-    loanAmount: string;
-    businessType: string;
-    propertyType: string;
-  };
-}
-
-function buildSanitizedContext(lc: LeadContext): string {
-  const s = sanitizeInput;
-  return `Lead Information:
-- Name: ${s(lc.name, 500)}
-- Company: ${s(lc.company, 500) || 'Not specified'}
-- Email: ${s(lc.email, 500) || 'Not specified'}
-- Phone: ${s(lc.phone, 500) || 'Not specified'}
-- Current Stage: ${s(lc.status, 500)}
-- Lead Source: ${s(lc.source, 500) || 'Not specified'}
-- Notes: ${s(lc.notes, 2000) || 'None'}
-
-Custom Fields:
-- Address: ${s(lc.customFields?.address, 500) || 'Not specified'}
-- Loan Type: ${s(lc.customFields?.loanType, 500) || 'Not specified'}
-- Loan Amount: ${s(lc.customFields?.loanAmount, 500) || 'Not specified'}
-- Business Type: ${s(lc.customFields?.businessType, 500) || 'Not specified'}
-- Property Type: ${s(lc.customFields?.propertyType, 500) || 'Not specified'}
-
-Recent Activities (${lc.activities?.length || 0}):
-${(lc.activities || []).slice(0, 5).map(a => `- [${s(a.date, 100)}] ${s(a.type, 100)}: ${s(a.content, 500)}`).join('\n') || 'No activities'}
-
-Communications (${lc.communications?.length || 0}):
-${(lc.communications || []).slice(0, 5).map(c =>
-  `- [${s(c.date, 100)}] ${s(c.direction, 50)} ${s(c.type, 50)}${c.duration ? ` (${Math.floor(c.duration / 60)}min)` : ''}${c.transcript ? `\n  Transcript excerpt: "${s(c.transcript, 500).slice(0, 200)}..."` : ''}`
-).join('\n') || 'No communications'}
-
-Tasks (${lc.tasks?.length || 0}):
-${(lc.tasks || []).slice(0, 5).map(t => `- [${s(t.status, 100)}] ${s(t.title, 200)} (${s(t.priority, 50)} priority)${t.due_date ? ` - Due: ${s(t.due_date, 100)}` : ''}`).join('\n') || 'No tasks'}`;
-}
+// ... keep existing code (sanitizeInput, LeadContext interface, buildSanitizedContext)
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, "lead-ai-assistant", 10, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const { action, leadContext, question } = await req.json() as {

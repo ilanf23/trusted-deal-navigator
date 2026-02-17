@@ -1,69 +1,22 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// 1x1 transparent GIF pixel
-const TRACKING_PIXEL = new Uint8Array([
-  0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 
-  0x80, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x21,
-  0xf9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00,
-  0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44,
-  0x01, 0x00, 0x3b
-]);
-
-// Known bot/scanner user agent patterns to filter out
-const BOT_PATTERNS = [
-  /googleimageproxy/i,
-  /yahoo.*slurp/i,
-  /bingpreview/i,
-  /outlook/i,
-  /microsoft office/i,
-  /ms-office/i,
-  /mozilla\/5\.0.*chrome\/4[0-5]\./i, // Very old Chrome versions (likely bots)
-  /barracuda/i,
-  /proofpoint/i,
-  /mimecast/i,
-  /fortiguard/i,
-  /symantec/i,
-  /mcafee/i,
-  /sophos/i,
-  /antivirus/i,
-  /security/i,
-  /scanner/i,
-  /bot/i,
-  /crawler/i,
-  /spider/i,
-  /fetch/i,
-];
-
-// Check if user agent looks like a bot/scanner
-function isLikelyBot(userAgent: string | null): boolean {
-  if (!userAgent) return true; // No user agent = suspicious
-  
-  for (const pattern of BOT_PATTERNS) {
-    if (pattern.test(userAgent)) {
-      return true;
-    }
-  }
-  
-  // Check for very old browser versions (likely scanners)
-  const chromeMatch = userAgent.match(/Chrome\/(\d+)/);
-  if (chromeMatch && parseInt(chromeMatch[1]) < 70) {
-    return true;
-  }
-  
-  return false;
-}
+// ... keep existing code (TRACKING_PIXEL, BOT_PATTERNS, isLikelyBot)
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, "newsletter-track", 300, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const url = new URL(req.url);

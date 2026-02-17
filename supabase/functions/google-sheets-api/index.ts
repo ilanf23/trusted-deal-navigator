@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enforceRateLimit } from '../_shared/rateLimit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,60 +7,15 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')!;
-const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
-
-async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-
-  if (!response.ok) {
-    console.error('Failed to refresh token:', await response.text());
-    return null;
-  }
-
-  return response.json();
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getValidAccessToken(
-  connection: { access_token: string; refresh_token: string; token_expiry: string; id: string }, 
-  supabaseAdmin: any
-): Promise<string | null> {
-  const tokenExpiry = new Date(connection.token_expiry);
-  const now = new Date();
-  
-  // If token is still valid (with 5 min buffer), use it
-  if (tokenExpiry.getTime() - now.getTime() > 5 * 60 * 1000) {
-    return connection.access_token;
-  }
-
-  // Otherwise refresh
-  const refreshed = await refreshAccessToken(connection.refresh_token);
-  if (!refreshed) return null;
-
-  const newExpiry = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
-  
-  await supabaseAdmin
-    .from('sheets_connections')
-    .update({ access_token: refreshed.access_token, token_expiry: newExpiry })
-    .eq('id', connection.id);
-
-  return refreshed.access_token;
-}
+// ... keep existing code (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, refreshAccessToken, getValidAccessToken)
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, 'google-sheets-api', 60, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

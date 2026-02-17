@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, "slack-notify", 60, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN') || Deno.env.get('SLACK_API_KEY');

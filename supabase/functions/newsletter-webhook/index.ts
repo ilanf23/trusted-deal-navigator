@@ -1,33 +1,22 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature",
 };
 
-// Resend webhook event types
-interface ResendWebhookEvent {
-  type: string;
-  created_at: string;
-  data: {
-    email_id: string;
-    from: string;
-    to: string[];
-    subject: string;
-    created_at: string;
-    click?: {
-      link: string;
-      timestamp: string;
-    };
-  };
-}
+// ... keep existing code (ResendWebhookEvent interface)
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, "newsletter-webhook", 300, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     console.log("newsletter-webhook: Received webhook event");

@@ -1,28 +1,22 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface SendEmailRequest {
-  leadId: string;
-}
-
-const generateToken = () => {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
-};
-
-const ILAN_EMAIL = Deno.env.get("ILAN_EMAIL") || "ilan@maverich.ai";
+// ... keep existing code (SendEmailRequest interface, generateToken, ILAN_EMAIL)
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const rateLimitResponse = enforceRateLimit(req, "send-prequalification-email", 60, 60);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const { leadId }: SendEmailRequest = await req.json();
