@@ -488,7 +488,11 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     tickLine={false}
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                     tickFormatter={(value) => (value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
-                    width={45}
+                    width={48}
+                    domain={['auto', 'auto']}
+                    allowDecimals={false}
+                    tickCount={5}
+                    label={{ value: '$/mo', angle: -90, position: 'insideLeft', offset: 0, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 9 } }}
                   />
                   <YAxis
                     yAxisId="right"
@@ -497,7 +501,11 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     tickLine={false}
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                     tickFormatter={(value) => (value >= 1000000 ? `$${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
-                    width={50}
+                    width={52}
+                    domain={[0, 'auto']}
+                    allowDecimals={false}
+                    tickCount={6}
+                    label={{ value: 'Cumulative', angle: 90, position: 'insideRight', offset: 0, style: { fill: 'hsl(var(--muted-foreground))', fontSize: 9 } }}
                   />
 
                   {/* Goal Pace reference line (YTD only) */}
