@@ -2718,6 +2718,30 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          function_name: string
+          id: string
+          ip_address: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          function_name: string
+          id?: string
+          ip_address: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          function_name?: string
+          id?: string
+          ip_address?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       rate_watch: {
         Row: {
           amortization: string | null
@@ -3160,6 +3184,20 @@ export type Database = {
         Args: { _team_member_name: string }
         Returns: boolean
       }
+      check_rate_limit: {
+        Args: {
+          p_func: string
+          p_ip: string
+          p_limit: number
+          p_window_secs: number
+        }
+        Returns: {
+          allowed: boolean
+          current_count: number
+          retry_after: number
+        }[]
+      }
+      cleanup_expired_rate_limits: { Args: never; Returns: undefined }
       get_current_team_member: {
         Args: never
         Returns: {

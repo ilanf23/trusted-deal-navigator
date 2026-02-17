@@ -11,7 +11,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = enforceRateLimit(req, "slack-notify", 60, 60);
+  const rateLimitResponse = await enforceRateLimit(req, "slack-notify", 60, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {

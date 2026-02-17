@@ -667,7 +667,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = enforceRateLimit(req, 'gmail-api', 60, 60);
+  const rateLimitResponse = await enforceRateLimit(req, 'gmail-api', 60, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {

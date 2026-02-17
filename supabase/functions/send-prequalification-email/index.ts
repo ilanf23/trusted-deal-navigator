@@ -15,7 +15,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = enforceRateLimit(req, "send-prequalification-email", 60, 60);
+  const rateLimitResponse = await enforceRateLimit(req, "send-prequalification-email", 60, 60);
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
