@@ -1,115 +1,226 @@
 
 
-## Rate Limiting All Edge Functions
+## Upgrade to Distributed Postgres-Backed Rate Limiting
 
-### Architecture
+### Why
 
-A shared in-memory sliding-window rate limiter will be created and imported by every edge function. This is a v1 implementation that protects against burst abuse within each Deno isolate.
+The current in-memory `Map`-based rate limiter resets on cold starts and is not shared across edge function isolates. Moving to a Postgres-backed store ensures all instances share the same counters and limits survive restarts.
 
-### Shared Module
+### Database Migration
 
-Create `supabase/functions/_shared/rateLimit.ts`:
-
-- Uses an in-memory `Map<string, { count: number; resetAt: number }>` per isolate
-- Sliding window: counts requests per IP within a time window
-- Auto-cleans expired entries every 60 seconds to prevent memory leaks
-- Returns `{ allowed: boolean; remaining: number }` so functions can add headers
-- Provides a pre-built 429 response helper
-
-### Rate Limit Tiers
-
-| Tier | Limit | Window | Applied To |
-|---|---|---|---|
-| Default | 60 req | 60s | Most endpoints |
-| Auth-sensitive | 5 req | 60s | `twilio-token`, `admin-update-user` |
-| AI endpoints | 10 req | 60s | `ai-email-chat`, `evan-ai-assistant`, `lead-ai-assistant`, `lender-program-assistant` |
-| Webhook (external) | 300 req | 60s | `twilio-inbound`, `twilio-call-status`, `twilio-transcription`, `twilio-voice`, `newsletter-track`, `newsletter-webhook` |
-| Seed/Admin | 3 req | 60s | `seed-test-data`, `seed-partners` |
-
-Webhook endpoints get a higher limit because they're called by Twilio/email infrastructure servers, not end users.
-
-### IP Extraction
+Create a `rate_limits` table with a unique constraint for atomic upserts:
 
 ```text
-1. Check x-forwarded-for header (first IP in chain)
-2. Fallback to x-real-ip
-3. Fallback to "unknown"
+CREATE TABLE public.rate_limits (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ip_address text NOT NULL,
+  function_name text NOT NULL,
+  request_count integer NOT NULL DEFAULT 1,
+  window_start timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (ip_address, function_name)
+);
+
+-- Disable RLS (service-role only access from edge functions)
+ALTER TABLE public.rate_limits ENABLE ROW LEVEL SECURITY;
+-- No policies = only service_role can access
+
+-- Index for fast lookups
+CREATE INDEX idx_rate_limits_lookup ON public.rate_limits (ip_address, function_name);
+
+-- Periodic cleanup: auto-delete expired windows (rows older than 5 minutes)
+CREATE OR REPLACE FUNCTION public.cleanup_expired_rate_limits()
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  DELETE FROM public.rate_limits
+  WHERE window_start < now() - interval '5 minutes';
+$$;
 ```
 
-### 429 Response Format
+### Atomic Rate Limit Function (Database-Level)
 
-```json
-{
-  "error": "Too many requests. Please try again later."
+A Postgres function that handles the check-and-increment atomically using `INSERT ... ON CONFLICT`:
+
+```text
+CREATE OR REPLACE FUNCTION public.check_rate_limit(
+  p_ip text,
+  p_func text,
+  p_limit int,
+  p_window_secs int
+)
+RETURNS TABLE(allowed boolean, current_count int, retry_after int)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  v_row rate_limits%ROWTYPE;
+  v_now timestamptz := now();
+  v_window interval := (p_window_secs || ' seconds')::interval;
+BEGIN
+  -- Upsert: insert new row or get existing
+  INSERT INTO rate_limits (ip_address, function_name, request_count, window_start)
+  VALUES (p_ip, p_func, 1, v_now)
+  ON CONFLICT (ip_address, function_name)
+  DO UPDATE SET
+    -- If window expired, reset; otherwise increment
+    request_count = CASE
+      WHEN rate_limits.window_start + v_window < v_now THEN 1
+      ELSE rate_limits.request_count + 1
+    END,
+    window_start = CASE
+      WHEN rate_limits.window_start + v_window < v_now THEN v_now
+      ELSE rate_limits.window_start
+    END
+  RETURNING * INTO v_row;
+
+  -- Check if over limit
+  IF v_row.request_count > p_limit THEN
+    RETURN QUERY SELECT
+      false,
+      v_row.request_count,
+      GREATEST(1, EXTRACT(EPOCH FROM (v_row.window_start + v_window - v_now))::int);
+  ELSE
+    RETURN QUERY SELECT true, v_row.request_count, 0;
+  END IF;
+END;
+$$;
+```
+
+This is a single atomic SQL operation -- no race conditions possible.
+
+### New `_shared/rateLimit.ts` (Full Replacement)
+
+Replaces the in-memory implementation entirely. Uses the service-role Supabase client to call the `check_rate_limit` RPC:
+
+```text
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+function getClientIp(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim();
+  const realIp = req.headers.get('x-real-ip');
+  if (realIp) return realIp.trim();
+  return 'unknown';
+}
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
+};
+
+export async function enforceRateLimit(
+  req: Request,
+  funcName: string,
+  limit: number,
+  windowSecs: number,
+): Promise<Response | null> {
+  const ip = getClientIp(req);
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const { data, error } = await supabase.rpc('check_rate_limit', {
+      p_ip: ip,
+      p_func: funcName,
+      p_limit: limit,
+      p_window_secs: windowSecs,
+    });
+
+    if (error) {
+      console.error('[RATE_LIMIT] DB error, allowing request:', error.message);
+      return null; // fail-open on DB errors
+    }
+
+    const result = data?.[0];
+    if (!result || result.allowed) {
+      return null;
+    }
+
+    console.warn(
+      `[RATE_LIMIT] ${funcName} | IP: ${ip} | ` +
+      `${result.current_count}/${limit} in ${windowSecs}s window | blocked`,
+    );
+
+    return new Response(
+      JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+      {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Retry-After': String(result.retry_after),
+        },
+      },
+    );
+  } catch (err) {
+    console.error('[RATE_LIMIT] Unexpected error, allowing request:', err);
+    return null; // fail-open
+  }
 }
 ```
 
-Status code: 429, with `Retry-After` header.
+Key design decisions:
+- **Fail-open**: If the database is unreachable, the request is allowed through. This prevents the rate limiter itself from becoming a DoS vector.
+- **Same signature change**: `enforceRateLimit` becomes `async` and returns `Promise<Response | null>`. Every call site already `await`s within an async handler, so adding `await` is the only caller change needed.
 
-### Implementation Pattern
+### Caller Change (All 27 Edge Functions)
 
-Every edge function gets this added right after the OPTIONS/CORS check:
+Every edge function changes from:
 
 ```text
-import { enforceRateLimit } from "../_shared/rateLimit.ts";
-
-// After OPTIONS check:
-const rateLimitResponse = enforceRateLimit(req, "function-name", 60, 60);
-if (rateLimitResponse) return rateLimitResponse;
-
-// ... existing business logic
+const rateLimitResponse = enforceRateLimit(req, "func-name", 60, 60);
 ```
 
-### Violation Logging
+to:
 
-All rate limit violations are logged to console with:
-- Function name
-- Client IP
-- Timestamp
-- Current count vs limit
+```text
+const rateLimitResponse = await enforceRateLimit(req, "func-name", 60, 60);
+```
 
-This enables monitoring via the edge function logs.
+Since all handlers are already `async`, this is a single-word addition per file. The import path, function name, and parameter order remain identical.
+
+### Cleanup Strategy
+
+Expired rows accumulate in the `rate_limits` table. Two cleanup approaches:
+
+1. **Inline**: The `check_rate_limit` function already resets expired windows on the next request from that IP+function pair.
+2. **Periodic**: A `pg_cron` job or manual call to `cleanup_expired_rate_limits()` removes stale rows. This can be set up later. For now the inline reset keeps the table small for active IPs.
 
 ### Files to Create
 
-- `supabase/functions/_shared/rateLimit.ts`
+- Database migration: `rate_limits` table, `check_rate_limit` function, `cleanup_expired_rate_limits` function
 
-### Files to Modify (all 27 edge functions)
+### Files to Modify
 
-1. `supabase/functions/admin-update-user/index.ts` (limit: 3/min)
-2. `supabase/functions/ai-email-chat/index.ts` (limit: 10/min)
-3. `supabase/functions/call-to-lead-automation/index.ts` (limit: 60/min)
-4. `supabase/functions/evan-ai-assistant/index.ts` (limit: 10/min)
-5. `supabase/functions/generate-lead-email/index.ts` (limit: 60/min)
-6. `supabase/functions/gmail-api/index.ts` (limit: 60/min)
-7. `supabase/functions/google-calendar-auth/index.ts` (limit: 60/min)
-8. `supabase/functions/google-calendar-sync/index.ts` (limit: 60/min)
-9. `supabase/functions/google-sheets-api/index.ts` (limit: 60/min)
-10. `supabase/functions/google-sheets-auth/index.ts` (limit: 60/min)
-11. `supabase/functions/lead-ai-assistant/index.ts` (limit: 10/min)
-12. `supabase/functions/lender-program-assistant/index.ts` (limit: 10/min)
-13. `supabase/functions/newsletter-track/index.ts` (limit: 300/min)
-14. `supabase/functions/newsletter-webhook/index.ts` (limit: 300/min)
-15. `supabase/functions/retry-call-transcription/index.ts` (limit: 60/min)
-16. `supabase/functions/seed-partners/index.ts` (limit: 3/min)
-17. `supabase/functions/seed-test-data/index.ts` (limit: 3/min)
-18. `supabase/functions/send-newsletter/index.ts` (limit: 60/min)
-19. `supabase/functions/send-prequalification-email/index.ts` (limit: 60/min)
-20. `supabase/functions/slack-notify/index.ts` (limit: 60/min)
-21. `supabase/functions/twilio-call-status/index.ts` (limit: 300/min)
-22. `supabase/functions/twilio-call/index.ts` (limit: 60/min)
-23. `supabase/functions/twilio-inbound/index.ts` (limit: 300/min)
-24. `supabase/functions/twilio-sms/index.ts` (limit: 60/min)
-25. `supabase/functions/twilio-token/index.ts` (limit: 5/min)
-26. `supabase/functions/twilio-transcription/index.ts` (limit: 300/min)
-27. `supabase/functions/twilio-voice/index.ts` (limit: 300/min)
+- `supabase/functions/_shared/rateLimit.ts` -- full rewrite (async, Postgres-backed)
+- All 27 `supabase/functions/*/index.ts` -- add `await` before `enforceRateLimit()`
 
-### Limitations (v1)
+### Rate Limit Tiers (Unchanged)
 
-- In-memory state resets on cold starts (acceptable for burst protection)
-- Not shared across multiple isolate instances (regional)
-- For persistent, cross-instance rate limiting, Upstash Redis can be added as a v2 upgrade
+| Tier | Limit | Window | Functions |
+|---|---|---|---|
+| Seed/Admin | 3/min | 60s | `seed-test-data`, `seed-partners`, `admin-update-user` |
+| Auth-sensitive | 5/min | 60s | `twilio-token` |
+| AI endpoints | 10/min | 60s | `ai-email-chat`, `evan-ai-assistant`, `lead-ai-assistant`, `lender-program-assistant` |
+| Standard | 60/min | 60s | All general-purpose functions |
+| Webhook | 300/min | 60s | Twilio webhooks, newsletter webhooks |
 
-### No Database Changes Required
+### Trade-offs
 
-This implementation is purely in-memory and requires no new tables, migrations, or secrets.
+| Aspect | In-Memory (v1) | Postgres (v2) |
+|---|---|---|
+| Shared state | No (per isolate) | Yes (all instances) |
+| Survives cold starts | No | Yes |
+| Latency per request | ~0ms | ~5-15ms (DB round-trip) |
+| Race conditions | Possible across isolates | None (atomic upsert) |
+| Failure mode | Silent reset | Fail-open (allow through) |
+
+The added latency is acceptable since it's a single indexed upsert query and occurs before the main business logic (which typically involves multiple DB calls or external API calls anyway).
+
