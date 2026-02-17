@@ -1,67 +1,177 @@
 
 
-## Upgrade the Existing Company Revenue Hero Chart
+# Gmail Refactor: Eliminate Duplication and Create Shared Architecture
 
-### Overview
+## Overview
 
-Enhance the existing `CompanyRevenueHero` component in-place with all the requested advanced features -- forecasting, interactive legend, health indicators, KPI badges, additional timeframes, and more -- rather than having a separate chart. Also remove the now-unnecessary `RevenueProjectionChart` component.
+EvansGmail.tsx (2,818 lines) and IlansGmail.tsx (711 lines) both implement Gmail inbox functionality but at vastly different levels of sophistication. This plan extracts all shared Gmail logic into reusable pieces while preserving Evan's advanced features (CRM integration, AI drafts, deal sidebar, task linking) and Ilan's simpler interface.
 
-### Changes
+## Current State Analysis
 
-**1. Rewrite `src/components/evan/dashboard/CompanyRevenueHero.tsx`**
+| Feature | EvansGmail | IlansGmail |
+|---------|-----------|-----------|
+| Layout wrapper | EvanLayout | AdminLayout |
+| Gmail connection check | Yes | Yes (duplicated) |
+| Email fetching (inbox/sent/drafts) | Yes | Yes (duplicated) |
+| Compose dialog | GmailComposeDialog (rich) | Basic Dialog (simple) |
+| Sidebar | GmailSidebar component | Inline buttons |
+| CRM lead matching | Yes | No |
+| Mock data / avatars | Yes | No |
+| "Move Forward" AI drafts | Yes | No |
+| Deal sidebar panel | Yes | No |
+| Inline reply box | Yes | No |
+| Task creation | Yes | No |
+| DraftContext persistence | Yes | No |
+| URL params deep-linking | Yes | No |
+| Pagination | Yes (50/page) | No |
+| Email templates | Yes | No |
+| Folder categories | 10 folders | 4 folders |
 
-Upgrade the existing component with:
+## Architecture After Refactor
 
-- **Multi-layered chart**: Keep the existing ComposedChart (Area + Bar + Line) and add a forecast dashed line with confidence interval shading (upper/lower bound Area fills)
-- **Forecasting**: Calculate projected revenue using linear trend from historical data + weighted pipeline value from `leads` table (same stage weights as the removed projection chart)
-- **Additional timeframes**: Add QTD tab alongside MTD/YTD; keep the same `TimePeriod` type but extend it
-- **Interactive legend**: Clickable legend items that toggle visibility of Revenue bars, Cumulative line, Forecast line, and Confidence band
-- **Health status bar**: Color-coded indicator (on-track = blue/green, at-risk = orange, below-target = red) based on pace vs goal
-- **KPI badges row**: Add a row of compact badges above the chart showing Growth Rate, Forecast Accuracy, Target Variance, and Revenue Gap
-- **Enhanced tooltip**: Add Growth %, Target Variance, and Avg Deal Size to the existing tooltip
-- **Goal pace reference line**: Keep existing dashed trend line but add a proper "Goal Pace" line showing where revenue should be to hit $1.5M
-- **Milestone markers**: ReferenceLine markers at 25%, 50%, 75% of annual goal on the cumulative axis
-- **Dark mode support**: All colors use CSS variables or have explicit dark mode variants
-- **Responsive**: Legend items hide on mobile, chart height adapts, KPI badges wrap
+### New File Structure
 
-**2. Update `src/pages/admin/EvansPage.tsx`**
+```text
+src/
+  hooks/
+    useGmailConnection.ts        -- NEW: shared connection, fetch, send logic
+  components/
+    gmail/
+      GmailInbox.tsx             -- NEW: shared inbox shell (<500 lines)
+      GmailConnectScreen.tsx     -- NEW: shared "connect your Gmail" screen
+      GmailReauthScreen.tsx      -- NEW: shared "session expired" screen
+      GmailEmailList.tsx         -- NEW: shared email list renderer
+      GmailEmailDetail.tsx       -- NEW: shared single-email view
+      EvanGmailFeatures.tsx      -- NEW: Evan-specific features (deal sidebar, Move Forward, mock data, CRM)
+  pages/admin/
+    EvansGmail.tsx               -- SIMPLIFIED: thin wrapper (~80 lines)
+    IlansGmail.tsx               -- SIMPLIFIED: thin wrapper (~40 lines)
+```
 
-- Remove the `RevenueProjectionChart` import and usage (line 52 and line 557)
-- Update the `TimePeriod` type export to include `'qtd'`
+### Step-by-step Plan
 
-**3. Delete `src/components/evan/dashboard/RevenueProjectionChart.tsx`**
+#### 1. Create `hooks/useGmailConnection.ts` -- Shared data hook
 
-- Remove the file entirely since its functionality is now merged into CompanyRevenueHero
+Extracts all duplicated Gmail API logic:
+- Gmail connection status query (`gmail_connections` table lookup)
+- Email list fetching (inbox, sent, drafts, starred -- parameterized by query)
+- Send email mutation
+- Connect Gmail (OAuth redirect)
+- Disconnect Gmail
+- Refresh / refetch helpers
+- Folder count queries
 
-### Stats Footer Enhancement
+Both files currently duplicate this exact pattern. The hook will accept a `userQueryPrefix` string (e.g., `'evan'` or `'ilan'`) to namespace React Query keys and avoid cache collisions.
 
-Expand the existing 4-stat footer to 6 stats:
-1. Revenue (existing)
-2. Avg per period (existing)
-3. Best period (existing)
-4. Deals Closed (existing)
-5. **Forecast** -- projected end-of-period revenue
-6. **Growth Rate** -- period-over-period growth %
+#### 2. Create `components/gmail/GmailConnectScreen.tsx` (~40 lines)
 
-### Data Flow
+Shared "Connect Your Gmail" and "Session Expired" screens. Both files have nearly identical versions. The component accepts:
+- `onConnect`: callback to trigger OAuth
+- `onDisconnect`: callback to remove connection
+- `isConnecting`: loading state
+- `variant`: `'connect'` or `'reauth'`
 
-The component will make two queries:
-1. `team_funded_deals` (existing) -- for actual revenue data
-2. `leads` with pipeline stages (new) -- for weighted forecast calculation
+#### 3. Create `components/gmail/GmailEmailList.tsx` (~120 lines)
 
-### Technical Details
+Shared email list rendering:
+- Displays list of emails with sender name, subject, snippet, date
+- Handles read/unread styling
+- Star indicator
+- Click to select
+- Accepts optional `renderEmailActions` prop for per-user customization (e.g., Evan's "Move Forward" button, stage badges)
 
-- Forecast calculation: Linear extrapolation from historical trend + weighted pipeline (discovery 10%, pre-qual 25%, docs 45%, underwriting 65%, approval 85%)
-- Confidence band: Best case (1.2x forecast) and conservative (0.8x forecast) rendered as a translucent Area
-- Legend state managed via `useState` object with boolean toggles per series
-- Health status derived from: `current_pace = totalRevenue / elapsed_fraction_of_period` vs target
-- All new features are additive -- the existing layout (left overview + right chart + footer) is preserved
+#### 4. Create `components/gmail/GmailEmailDetail.tsx` (~150 lines)
 
-### Files Summary
+Shared single-email detail view:
+- Back button, subject header
+- Reply / Reply All / Forward buttons
+- Thread message rendering (with sender avatars)
+- Accepts optional `sidePanel` prop for Evan's deal sidebar
+- Accepts optional `inlineReplySlot` for Evan's InlineReplyBox
 
-| Action | File |
-|--------|------|
-| Rewrite | `src/components/evan/dashboard/CompanyRevenueHero.tsx` |
-| Edit | `src/pages/admin/EvansPage.tsx` (remove RevenueProjectionChart, update TimePeriod) |
-| Delete | `src/components/evan/dashboard/RevenueProjectionChart.tsx` |
+#### 5. Create `components/gmail/GmailInbox.tsx` (~300 lines)
+
+The main shared inbox shell that composes everything:
+- Uses `useGmailConnection` hook
+- Renders `GmailConnectScreen` when not connected
+- Renders sidebar (uses existing `GmailSidebar` component for Evan, simplified version for Ilan)
+- Search bar, refresh button, pagination controls
+- Renders `GmailEmailList` or `GmailEmailDetail` based on selection state
+- Accepts a `config` prop for user-specific behavior:
+
+```typescript
+interface GmailInboxConfig {
+  userKey: string;              // 'evan' | 'ilan' -- for query key namespacing
+  Layout: React.ComponentType;  // EvanLayout | AdminLayout
+  sidebarType: 'full' | 'basic';
+  enableMockData?: boolean;
+  enableCrmIntegration?: boolean;
+  enableMoveForward?: boolean;
+  enableDealSidebar?: boolean;
+  enableInlineReply?: boolean;
+  enableTaskCreation?: boolean;
+  enableDraftContext?: boolean;
+  enableUrlParamsCompose?: boolean;
+  enablePagination?: boolean;
+  emailTemplates?: EmailTemplate[];
+  folders?: FolderType[];
+}
+```
+
+#### 6. Create `components/gmail/EvanGmailFeatures.tsx` (~350 lines)
+
+Houses Evan-specific logic that doesn't belong in shared components:
+- Mock external emails and thread messages (data)
+- CRM lead matching logic
+- "Move Forward" AI draft generation
+- Deal sidebar panel content
+- Next step suggestion generator
+- `outbound_emails` persistence
+- Task auto-completion on send
+
+This is injected into `GmailInbox` via render props / slots.
+
+#### 7. Simplify page files
+
+**EvansGmail.tsx** (~80 lines): Imports `GmailInbox` with Evan's config, wraps in `EvanLayout`, passes DraftContext and URL params handling.
+
+**IlansGmail.tsx** (~40 lines): Imports `GmailInbox` with Ilan's basic config, wraps in `AdminLayout`.
+
+#### 8. Update routing in App.tsx
+
+No route changes needed -- the routes already point to `EvansGmail` and `IlansGmail` which will still exist as thin wrappers. The components they render internally will change but the routes stay the same:
+- `/admin/evan/gmail` renders `EvansGmail` (thin wrapper)
+- `/superadmin/ilan/gmail` renders `IlansGmail` (thin wrapper)
+
+## What Gets Extracted (Duplication Eliminated)
+
+| Duplicated Logic | Moves To |
+|-----------------|----------|
+| Gmail connection query | `useGmailConnection.ts` |
+| Email list fetching | `useGmailConnection.ts` |
+| Send email mutation | `useGmailConnection.ts` |
+| OAuth connect flow | `useGmailConnection.ts` |
+| Disconnect flow | `useGmailConnection.ts` |
+| "Connect Gmail" screen | `GmailConnectScreen.tsx` |
+| "Session Expired" screen | `GmailConnectScreen.tsx` |
+| `extractSenderName` / `extractEmailAddress` helpers | `useGmailConnection.ts` |
+| `formatEmailDate` helper | `GmailEmailList.tsx` |
+| Email list UI (sender, subject, snippet, date) | `GmailEmailList.tsx` |
+| Email detail view (header, body, reply buttons) | `GmailEmailDetail.tsx` |
+| Search filtering | `GmailInbox.tsx` |
+| Sidebar + main content layout | `GmailInbox.tsx` |
+
+## What Stays User-Specific
+
+- **Evan only**: Mock data, CRM integration, Move Forward, deal sidebar, inline reply, task creation, DraftContext, URL params compose, email templates, outbound_emails tracking, 10 folder categories, pagination
+- **Ilan only**: Basic 4-folder sidebar, simple compose dialog
+
+## Validation Checklist
+
+- No functionality breaks: all Evan features preserved via config + EvanGmailFeatures
+- No code duplication: shared hook + shared components used by both
+- GmailInbox.tsx under 500 lines (target ~300)
+- Logic separated from UI (hook handles data, components handle rendering)
+- Existing routes unchanged
+- All existing Gmail features (compose, reply, forward, templates, CRM, AI drafts) still work
 
