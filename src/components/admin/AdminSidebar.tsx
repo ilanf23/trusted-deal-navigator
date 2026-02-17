@@ -88,37 +88,74 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
     // Check if user is Ilan first (developer with special dashboard)
     if (teamMember?.name.toLowerCase() === 'ilan') {
+      // Top-level pages (no section heading)
       sections.push({
-        title: 'Dashboard',
+        title: '',
         icon: LayoutDashboard,
         items: [
-          { title: 'Dev Dashboard', url: '/superadmin/ilan/dev', icon: Code2 },
+          { title: 'WOP', url: '/superadmin/ilan/dev', icon: Code2 },
+        ],
+        noCollapse: true,
+      });
+
+      // Workspace section
+      sections.push({
+        title: 'Workspace',
+        icon: Mail,
+        isLabel: true,
+        items: [
           { title: 'Gmail', url: '/superadmin/ilan/gmail', icon: Mail },
+          { title: 'Bug Testing', url: '/superadmin/ilan/bugs', icon: Bug },
+          { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
+        ],
+        noCollapse: true,
+      });
+
+      // Pipeline & CRM section
+      sections.push({
+        title: 'Pipeline',
+        icon: Kanban,
+        isLabel: true,
+        items: [
           { title: 'CRM Board', url: '/superadmin/crm', icon: Kanban },
           { title: 'Leads', url: '/superadmin/leads', icon: UserPlus },
-          { title: 'Rate Watch', url: '/superadmin/rate-watch', icon: TrendingDown },
           { title: 'Lender Programs', url: '/superadmin/lender-programs', icon: Building2 },
+          { title: 'Rate Watch', url: '/superadmin/rate-watch', icon: TrendingDown },
+        ],
+        noCollapse: true,
+      });
+
+      // Clients & Billing section
+      sections.push({
+        title: 'Clients & Billing',
+        icon: Users,
+        isLabel: true,
+        items: [
           { title: 'Clients', url: '/superadmin/clients', icon: Users },
           { title: 'Contracts', url: '/superadmin/contracts', icon: FileText },
           { title: 'Invoices', url: '/superadmin/invoices', icon: Receipt },
           { title: 'Messages', url: '/superadmin/messages', icon: MessageSquare },
-          { title: 'Bug Testing', url: '/superadmin/ilan/bugs', icon: Bug },
-          { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
         ],
+        noCollapse: true,
       });
 
+      // Marketing section
       sections.push({
         title: 'Marketing',
         icon: BarChart3,
+        isLabel: true,
         items: [
           { title: 'Newsletter', url: '/superadmin/newsletter', icon: Newspaper },
           { title: 'Analytics', url: '/superadmin/marketing', icon: BarChart3 },
         ],
+        noCollapse: true,
       });
 
+      // Team section
       sections.push({
         title: 'Team',
         icon: Users,
+        isLabel: true,
         items: [
           { title: 'Team Performance', url: '/superadmin/ilan', icon: BarChart3 },
           { 
@@ -132,6 +169,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
             ],
           },
         ],
+        noCollapse: true,
       });
     } else if (isOwner) {
       sections.push({
