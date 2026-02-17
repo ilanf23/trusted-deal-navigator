@@ -1,62 +1,67 @@
 
 
-## Add "Users & Roles" Page to Ilan's Superadmin Portal
+## Upgrade the Existing Company Revenue Hero Chart
 
 ### Overview
 
-A new page at `/superadmin/ilan/users-roles` that lists all users and their roles, allowing Ilan to upgrade/downgrade roles with a single button press after re-entering his own password for security confirmation.
-
-### How It Works
-
-1. Page loads a table of all users (from `profiles` joined with `user_roles`)
-2. Each row shows user email, current role(s), and action buttons to set role (admin / partner / client)
-3. Clicking a role-change button opens a confirmation dialog that requires Ilan to enter **his own account password**
-4. The password is verified by calling `supabase.auth.signInWithPassword()` with Ilan's email + entered password
-5. If verified, an edge function (`manage-user-role`) performs the actual role change using the service role key
-6. The edge function validates the caller is an admin (same pattern as `admin-update-user`)
-
-### Available Roles
-
-The existing `app_role` enum supports: `admin`, `client`, `partner`. There is no `superadmin` enum value in the database, so roles will be limited to these three. If you want a `superadmin` level, we can add it to the enum in a follow-up.
+Enhance the existing `CompanyRevenueHero` component in-place with all the requested advanced features -- forecasting, interactive legend, health indicators, KPI badges, additional timeframes, and more -- rather than having a separate chart. Also remove the now-unnecessary `RevenueProjectionChart` component.
 
 ### Changes
 
-**1. New edge function: `supabase/functions/manage-user-role/index.ts`**
-- Accepts `{ target_user_id, new_role }` in the request body
-- Validates caller JWT and confirms caller has `admin` role (via `user_roles` table using service role client)
-- Upserts the target user's role in `user_roles` (replaces existing role or inserts new one)
-- Returns success/failure
+**1. Rewrite `src/components/evan/dashboard/CompanyRevenueHero.tsx`**
 
-**2. New page: `src/pages/admin/UsersAndRoles.tsx`**
-- Fetches all profiles + their roles using a single query
-- Displays a table with columns: Email, Current Role, Actions
-- Action buttons for each role (admin / partner / client) -- the current role is visually highlighted/disabled
-- Clicking a different role opens a dialog asking for the caller's password
-- On submit: calls `signInWithPassword` to verify, then calls the edge function
-- Shows success/error toast
+Upgrade the existing component with:
 
-**3. Update `src/components/admin/AdminSidebar.tsx`**
-- Add "Users & Roles" link right below "WOP" in Ilan's top-level section, using the `Users` icon (already imported)
+- **Multi-layered chart**: Keep the existing ComposedChart (Area + Bar + Line) and add a forecast dashed line with confidence interval shading (upper/lower bound Area fills)
+- **Forecasting**: Calculate projected revenue using linear trend from historical data + weighted pipeline value from `leads` table (same stage weights as the removed projection chart)
+- **Additional timeframes**: Add QTD tab alongside MTD/YTD; keep the same `TimePeriod` type but extend it
+- **Interactive legend**: Clickable legend items that toggle visibility of Revenue bars, Cumulative line, Forecast line, and Confidence band
+- **Health status bar**: Color-coded indicator (on-track = blue/green, at-risk = orange, below-target = red) based on pace vs goal
+- **KPI badges row**: Add a row of compact badges above the chart showing Growth Rate, Forecast Accuracy, Target Variance, and Revenue Gap
+- **Enhanced tooltip**: Add Growth %, Target Variance, and Avg Deal Size to the existing tooltip
+- **Goal pace reference line**: Keep existing dashed trend line but add a proper "Goal Pace" line showing where revenue should be to hit $1.5M
+- **Milestone markers**: ReferenceLine markers at 25%, 50%, 75% of annual goal on the cumulative axis
+- **Dark mode support**: All colors use CSS variables or have explicit dark mode variants
+- **Responsive**: Legend items hide on mobile, chart height adapts, KPI badges wrap
 
-**4. Update `src/App.tsx`**
-- Add route `/superadmin/ilan/users-roles` inside the existing `AdminRouteLayout` block, wrapped with `EmployeeRoute employeeName="Ilan"`
+**2. Update `src/pages/admin/EvansPage.tsx`**
 
-**5. Database migration**
-- Add RLS policy on `user_roles` so admins can SELECT all rows (currently no SELECT policy exists for admins to list all roles)
+- Remove the `RevenueProjectionChart` import and usage (line 52 and line 557)
+- Update the `TimePeriod` type export to include `'qtd'`
 
-### Security
+**3. Delete `src/components/evan/dashboard/RevenueProjectionChart.tsx`**
 
-- Password re-authentication happens client-side via Supabase Auth (`signInWithPassword`) before the edge function is called
-- The edge function independently verifies the caller is an admin via JWT + `user_roles` table lookup (same pattern as `admin-update-user`)
-- Role changes use the service role key server-side only
-- Rate limited (3 requests per 60 seconds, matching existing pattern)
+- Remove the file entirely since its functionality is now merged into CompanyRevenueHero
+
+### Stats Footer Enhancement
+
+Expand the existing 4-stat footer to 6 stats:
+1. Revenue (existing)
+2. Avg per period (existing)
+3. Best period (existing)
+4. Deals Closed (existing)
+5. **Forecast** -- projected end-of-period revenue
+6. **Growth Rate** -- period-over-period growth %
+
+### Data Flow
+
+The component will make two queries:
+1. `team_funded_deals` (existing) -- for actual revenue data
+2. `leads` with pipeline stages (new) -- for weighted forecast calculation
+
+### Technical Details
+
+- Forecast calculation: Linear extrapolation from historical trend + weighted pipeline (discovery 10%, pre-qual 25%, docs 45%, underwriting 65%, approval 85%)
+- Confidence band: Best case (1.2x forecast) and conservative (0.8x forecast) rendered as a translucent Area
+- Legend state managed via `useState` object with boolean toggles per series
+- Health status derived from: `current_pace = totalRevenue / elapsed_fraction_of_period` vs target
+- All new features are additive -- the existing layout (left overview + right chart + footer) is preserved
 
 ### Files Summary
 
 | Action | File |
 |--------|------|
-| Create | `supabase/functions/manage-user-role/index.ts` |
-| Create | `src/pages/admin/UsersAndRoles.tsx` |
-| Edit | `src/components/admin/AdminSidebar.tsx` -- add link below WOP |
-| Edit | `src/App.tsx` -- add route |
-| Migration | Add admin SELECT policy on `user_roles` |
+| Rewrite | `src/components/evan/dashboard/CompanyRevenueHero.tsx` |
+| Edit | `src/pages/admin/EvansPage.tsx` (remove RevenueProjectionChart, update TimePeriod) |
+| Delete | `src/components/evan/dashboard/RevenueProjectionChart.tsx` |
+
