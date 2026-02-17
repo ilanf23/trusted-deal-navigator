@@ -49,9 +49,8 @@ import { Link } from 'react-router-dom';
 import { TopActions } from '@/components/evan/dashboard/TopActions';
 import { NudgesWidget } from '@/components/evan/dashboard/NudgesWidget';
 import { CompanyRevenueHero } from '@/components/evan/dashboard/CompanyRevenueHero';
-import { RevenueProjectionChart } from '@/components/evan/dashboard/RevenueProjectionChart';
 
-export type TimePeriod = 'mtd' | 'ytd';
+export type TimePeriod = 'mtd' | 'ytd' | 'qtd';
 
 // Brand-aligned chart colors - Blue (#0066FF) and Orange (#FF8000) palette
 const STAGE_COLORS: Record<string, string> = {
@@ -552,9 +551,6 @@ const EvansPage = () => {
 
         {/* Company-Wide Revenue Hero */}
         <CompanyRevenueHero chartPeriod={chartPeriod} setChartPeriod={setChartPeriod} />
-
-        {/* Revenue Projection Chart */}
-        <RevenueProjectionChart />
 
         {/* P&L Revenue Breakdown */}
         <Card className="border">

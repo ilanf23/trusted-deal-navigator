@@ -1,22 +1,22 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Target, Activity, TrendingUp, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Target, Activity, TrendingUp, TrendingDown, Loader2, DollarSign,
+  AlertTriangle, CheckCircle2, BarChart3, Zap,
+} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  ComposedChart,
-  Area,
-  Bar,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceLine,
-  ResponsiveContainer,
+  ComposedChart, Area, Bar, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ReferenceLine, ResponsiveContainer,
 } from 'recharts';
-import { startOfYear, startOfMonth, format, eachMonthOfInterval, eachDayOfInterval, endOfDay } from 'date-fns';
+import {
+  startOfYear, startOfMonth, startOfQuarter, format,
+  eachMonthOfInterval, eachDayOfInterval, endOfDay, addMonths,
+} from 'date-fns';
+import { cn } from '@/lib/utils';
 import type { TimePeriod } from '@/pages/admin/EvansPage';
 
 interface CompanyRevenueHeroProps {
@@ -24,18 +24,48 @@ interface CompanyRevenueHeroProps {
   setChartPeriod: (v: TimePeriod) => void;
 }
 
+const STAGE_WEIGHTS: Record<string, number> = {
+  discovery: 0.10,
+  pre_qualification: 0.25,
+  document_collection: 0.45,
+  underwriting: 0.65,
+  approval: 0.85,
+};
+
+const COLORS = {
+  revenue: '#0066FF',
+  cumulative: '#FF8000',
+  forecast: '#8B5CF6',
+  confidenceHigh: 'rgba(139,92,246,0.10)',
+  confidenceLow: 'rgba(139,92,246,0.03)',
+  onTrack: '#10B981',
+  atRisk: '#F59E0B',
+  belowTarget: '#EF4444',
+};
+
 export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyRevenueHeroProps) => {
   const COMPANY_GOAL = 1500000;
   const now = new Date();
 
+  const [visibleSeries, setVisibleSeries] = useState({
+    revenue: true,
+    cumulative: true,
+    forecast: true,
+    confidence: true,
+  });
+
+  const toggleSeries = useCallback((key: keyof typeof visibleSeries) => {
+    setVisibleSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  // Existing deals query
   const { data: teamDeals = [], isLoading } = useQuery({
-    queryKey: ['company-revenue-hero', chartPeriod],
+    queryKey: ['company-revenue-hero'],
     queryFn: async () => {
-      const startDate = startOfYear(now).toISOString();
       const { data } = await supabase
         .from('team_funded_deals')
         .select('rep_name, loan_amount, fee_earned, days_in_pipeline, funded_at')
-        .gte('funded_at', startDate)
+        .gte('funded_at', startOfYear(now).toISOString())
         .order('funded_at', { ascending: true });
       return (data || []).map((d: any) => ({
         rep: d.rep_name,
@@ -47,76 +77,206 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
     },
   });
 
-  const { chartData, stats } = useMemo(() => {
-    if (chartPeriod === 'ytd') {
-      const months = eachMonthOfInterval({ start: startOfYear(now), end: now });
-      let cumulative = 0;
+  // Pipeline deals for forecast
+  const { data: pipelineDeals = [] } = useQuery({
+    queryKey: ['company-revenue-hero-pipeline'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('leads')
+        .select('id, status, lead_responses(loan_amount)')
+        .neq('status', 'funded')
+        .neq('status', 'lost');
+      return (data || []).map((d: any) => ({
+        id: d.id,
+        status: d.status,
+        loanAmount: d.lead_responses?.[0]?.loan_amount || 0,
+      }));
+    },
+  });
 
-      const data = months.map((month) => {
-        const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-        const monthDeals = teamDeals.filter((d) => {
-          const date = new Date(d.fundedAt);
-          return date >= month && date <= monthEnd;
+  const { chartData, stats, kpis } = useMemo(() => {
+    const yearStart = startOfYear(now);
+    const monthStart = startOfMonth(now);
+    const quarterStart = startOfQuarter(now);
+
+    // Always compute YTD for overview stats
+    const ytdMonths = eachMonthOfInterval({ start: yearStart, end: now });
+    let ytdCumulative = 0;
+    const ytdData = ytdMonths.map((month) => {
+      const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+      const monthDeals = teamDeals.filter((d) => {
+        const date = new Date(d.fundedAt);
+        return date >= month && date <= monthEnd;
+      });
+      const revenue = monthDeals.reduce((s, d) => s + d.fee, 0);
+      ytdCumulative += revenue;
+      return { label: format(month, 'MMM'), revenue, cumulative: ytdCumulative, deals: monthDeals.length };
+    });
+
+    const totalRevenue = ytdCumulative;
+
+    // Pipeline weighted forecast
+    const pipelineWeightedRevenue = pipelineDeals.reduce((sum, d) => {
+      const weight = STAGE_WEIGHTS[d.status] || 0.1;
+      return sum + (d.loanAmount * 0.02 * weight);
+    }, 0);
+
+    // Average monthly revenue from active months
+    const activeYtdMonths = ytdData.filter(d => d.revenue > 0);
+    const avgMonthlyRevenue = activeYtdMonths.length > 0
+      ? activeYtdMonths.reduce((s, d) => s + d.revenue, 0) / activeYtdMonths.length
+      : 0;
+
+    const remainingMonths = 12 - (now.getMonth() + 1);
+    const forecastTotal = totalRevenue + pipelineWeightedRevenue + avgMonthlyRevenue * Math.max(0, remainingMonths - 2);
+    const forecastBest = forecastTotal * 1.2;
+    const forecastConservative = forecastTotal * 0.8;
+
+    // Health status
+    const elapsedFraction = (now.getMonth() + 1) / 12;
+    const expectedPace = COMPANY_GOAL * elapsedFraction;
+    const paceVariance = expectedPace > 0 ? Math.round(((totalRevenue - expectedPace) / expectedPace) * 100) : 0;
+    const healthStatus: 'on-track' | 'at-risk' | 'below-target' =
+      paceVariance >= 0 ? 'on-track' : paceVariance >= -15 ? 'at-risk' : 'below-target';
+
+    // Growth rate
+    const growthRate = activeYtdMonths.length > 1
+      ? Math.round(((activeYtdMonths[activeYtdMonths.length - 1].revenue - activeYtdMonths[0].revenue) / Math.max(1, activeYtdMonths[0].revenue)) * 100)
+      : 0;
+
+    // Build period-specific chart data
+    let data: any[] = [];
+    let periodStats: any = {};
+
+    if (chartPeriod === 'ytd') {
+      // Build forecast points for future months
+      const forecastPoints: any[] = [];
+      let fcCum = totalRevenue;
+      const futureMonths = eachMonthOfInterval({
+        start: addMonths(now, 1),
+        end: new Date(now.getFullYear(), 11, 31),
+      });
+      futureMonths.forEach((m) => {
+        fcCum += avgMonthlyRevenue;
+        forecastPoints.push({
+          label: format(m, 'MMM'),
+          forecastCumulative: fcCum,
+          confidenceHigh: fcCum * 1.15,
+          confidenceLow: fcCum * 0.75,
+          goalPace: (COMPANY_GOAL / 12) * (m.getMonth() + 1),
         });
-        const revenue = monthDeals.reduce((s, d) => s + d.fee, 0);
-        cumulative += revenue;
-        return { label: format(month, 'MMM'), revenue, cumulative, deals: monthDeals.length };
       });
 
-      const totalRevenue = cumulative;
-      const activeMonths = data.filter((d) => d.revenue > 0);
-      const avgPerMonth = activeMonths.length > 0 ? totalRevenue / activeMonths.length : 0;
-      const bestMonth = data.reduce((best, m) => (m.revenue > best.revenue ? m : best), { label: '-', revenue: 0 });
-      const totalDeals = teamDeals.length;
-      const avgDealSize = totalDeals > 0 ? totalRevenue / totalDeals : 0;
+      // Add goalPace to historical data
+      const historicalWithGoal = ytdData.map((d, i) => ({
+        ...d,
+        goalPace: (COMPANY_GOAL / 12) * (i + 1),
+      }));
 
-      return {
-        chartData: data,
-        stats: {
-          totalRevenue, goalProgress: Math.round((totalRevenue / COMPANY_GOAL) * 100),
-          avgPerPoint: avgPerMonth, activePoints: activeMonths.length,
-          bestLabel: bestMonth.label, bestValue: bestMonth.revenue,
-          totalDeals, avgDealSize, pointLabel: 'months',
-          avgLabel: 'Monthly Avg', bestPointLabel: 'Best Month', revenueLabel: 'YTD Revenue',
-        },
+      data = [...historicalWithGoal, ...forecastPoints];
+
+      const bestMonth = ytdData.reduce((best, m) => (m.revenue > best.revenue ? m : best), { label: '-', revenue: 0 });
+      periodStats = {
+        totalRevenue,
+        goalProgress: Math.round((totalRevenue / COMPANY_GOAL) * 100),
+        avgPerPoint: avgMonthlyRevenue,
+        activePoints: activeYtdMonths.length,
+        bestLabel: bestMonth.label,
+        bestValue: bestMonth.revenue,
+        totalDeals: teamDeals.length,
+        avgDealSize: teamDeals.length > 0 ? totalRevenue / teamDeals.length : 0,
+        pointLabel: 'months',
+        avgLabel: 'Monthly Avg',
+        bestPointLabel: 'Best Month',
+        revenueLabel: 'YTD Revenue',
       };
-    } else {
-      const monthStart = startOfMonth(now);
-      const days = eachDayOfInterval({ start: monthStart, end: now });
-      let cumulative = 0;
-      const mtdDeals = teamDeals.filter((d) => new Date(d.fundedAt) >= monthStart);
-
-      const data = days.map((day) => {
+    } else if (chartPeriod === 'qtd') {
+      const days = eachDayOfInterval({ start: quarterStart, end: now });
+      let cum = 0;
+      const qtdDeals = teamDeals.filter(d => new Date(d.fundedAt) >= quarterStart);
+      const dayData = days.map((day) => {
         const dayEnd = endOfDay(day);
-        const dayDeals = mtdDeals.filter((d) => {
+        const dayDeals = qtdDeals.filter(d => {
           const date = new Date(d.fundedAt);
           return date >= day && date <= dayEnd;
         });
         const revenue = dayDeals.reduce((s, d) => s + d.fee, 0);
-        cumulative += revenue;
-        return { label: format(day, 'd'), revenue, cumulative, deals: dayDeals.length };
+        cum += revenue;
+        return { label: format(day, 'MMM d'), revenue, cumulative: cum, deals: dayDeals.length };
       });
-
-      const totalRevenue = cumulative;
-      const activeDays = data.filter((d) => d.revenue > 0);
-      const avgPerDay = activeDays.length > 0 ? totalRevenue / activeDays.length : 0;
-      const bestDay = data.reduce((best, d) => (d.revenue > best.revenue ? d : best), { label: '-', revenue: 0 });
-      const totalDeals = mtdDeals.length;
-      const avgDealSize = totalDeals > 0 ? totalRevenue / totalDeals : 0;
+      data = dayData;
+      const quarterTarget = COMPANY_GOAL / 4;
+      const activeDays = dayData.filter(d => d.revenue > 0);
+      const avgPerDay = activeDays.length > 0 ? cum / activeDays.length : 0;
+      const bestDay = dayData.reduce((best, d) => (d.revenue > best.revenue ? d : best), { label: '-', revenue: 0 });
+      periodStats = {
+        totalRevenue: cum,
+        goalProgress: Math.round((cum / quarterTarget) * 100),
+        avgPerPoint: avgPerDay,
+        activePoints: activeDays.length,
+        bestLabel: bestDay.label,
+        bestValue: bestDay.revenue,
+        totalDeals: qtdDeals.length,
+        avgDealSize: qtdDeals.length > 0 ? cum / qtdDeals.length : 0,
+        pointLabel: 'days',
+        avgLabel: 'Daily Avg',
+        bestPointLabel: 'Best Day',
+        revenueLabel: 'QTD Revenue',
+      };
+    } else {
+      // MTD
+      const days = eachDayOfInterval({ start: monthStart, end: now });
+      let cum = 0;
+      const mtdDeals = teamDeals.filter(d => new Date(d.fundedAt) >= monthStart);
+      const dayData = days.map((day) => {
+        const dayEnd = endOfDay(day);
+        const dayDeals = mtdDeals.filter(d => {
+          const date = new Date(d.fundedAt);
+          return date >= day && date <= dayEnd;
+        });
+        const revenue = dayDeals.reduce((s, d) => s + d.fee, 0);
+        cum += revenue;
+        return { label: format(day, 'd'), revenue, cumulative: cum, deals: dayDeals.length };
+      });
+      data = dayData;
       const monthlyTarget = 125000;
-
-      return {
-        chartData: data,
-        stats: {
-          totalRevenue, goalProgress: Math.round((totalRevenue / monthlyTarget) * 100),
-          avgPerPoint: avgPerDay, activePoints: activeDays.length,
-          bestLabel: bestDay.label, bestValue: bestDay.revenue,
-          totalDeals, avgDealSize, pointLabel: 'days',
-          avgLabel: 'Daily Avg', bestPointLabel: 'Best Day', revenueLabel: 'MTD Revenue',
-        },
+      const activeDays = dayData.filter(d => d.revenue > 0);
+      const avgPerDay = activeDays.length > 0 ? cum / activeDays.length : 0;
+      const bestDay = dayData.reduce((best, d) => (d.revenue > best.revenue ? d : best), { label: '-', revenue: 0 });
+      periodStats = {
+        totalRevenue: cum,
+        goalProgress: Math.round((cum / monthlyTarget) * 100),
+        avgPerPoint: avgPerDay,
+        activePoints: activeDays.length,
+        bestLabel: bestDay.label,
+        bestValue: bestDay.revenue,
+        totalDeals: mtdDeals.length,
+        avgDealSize: mtdDeals.length > 0 ? cum / mtdDeals.length : 0,
+        pointLabel: 'days',
+        avgLabel: 'Daily Avg',
+        bestPointLabel: 'Best Day',
+        revenueLabel: 'MTD Revenue',
       };
     }
-  }, [teamDeals, chartPeriod, now]);
+
+    return {
+      chartData: data,
+      stats: periodStats,
+      kpis: {
+        totalRevenue,
+        goalProgress: Math.round((totalRevenue / COMPANY_GOAL) * 100),
+        growthRate,
+        paceVariance,
+        healthStatus,
+        forecastTotal,
+        forecastBest,
+        forecastConservative,
+        revenueGap: Math.max(0, COMPANY_GOAL - totalRevenue),
+        pipelineWeightedRevenue,
+        forecastAccuracy: forecastTotal > 0 ? Math.min(100, Math.round((totalRevenue / forecastTotal) * 100)) : 0,
+      },
+    };
+  }, [teamDeals, pipelineDeals, chartPeriod, now]);
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) return `$${(value / 1000000).toFixed(2)}M`;
@@ -127,7 +287,18 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
   const formatCurrencyFull = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
-  const remaining = Math.max(0, COMPANY_GOAL - stats.totalRevenue);
+  const remaining = Math.max(0, COMPANY_GOAL - kpis.totalRevenue);
+
+  const healthColors = {
+    'on-track': { bg: 'bg-emerald-500/10 dark:bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/20', icon: CheckCircle2, label: 'On Track' },
+    'at-risk': { bg: 'bg-amber-500/10 dark:bg-amber-500/15', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/20', icon: AlertTriangle, label: 'At Risk' },
+    'below-target': { bg: 'bg-red-500/10 dark:bg-red-500/15', text: 'text-red-600 dark:text-red-400', border: 'border-red-500/20', icon: TrendingDown, label: 'Below Target' },
+  };
+  const health = healthColors[kpis.healthStatus];
+  const HealthIcon = health.icon;
+
+  // Milestone markers for YTD cumulative axis
+  const milestoneValues = [COMPANY_GOAL * 0.25, COMPANY_GOAL * 0.5, COMPANY_GOAL * 0.75];
 
   if (isLoading) {
     return (
@@ -140,8 +311,45 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
   }
 
   return (
-    <Card className="border border-border bg-card shadow-sm">
+    <Card className="border border-border bg-card shadow-sm overflow-hidden">
+      {/* Health Status Bar */}
+      <div className={cn("px-4 md:px-6 py-2.5 flex items-center justify-between border-b", health.bg, health.border)}>
+        <div className="flex items-center gap-2">
+          <HealthIcon className={cn("h-4 w-4", health.text)} />
+          <span className={cn("text-sm font-semibold", health.text)}>{health.label}</span>
+          <span className="text-xs text-muted-foreground">
+            {kpis.paceVariance >= 0 ? '+' : ''}{kpis.paceVariance}% vs pace
+          </span>
+        </div>
+        <div className="hidden sm:flex items-center gap-2">
+          <Badge variant="outline" className={cn("text-xs", health.text, health.border)}>
+            Forecast: {formatCurrency(kpis.forecastTotal)}
+          </Badge>
+        </div>
+      </div>
+
       <CardContent className="p-6 md:p-8 lg:p-10">
+        {/* KPI Badges Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-6">
+          {[
+            { label: 'Growth Rate', value: `${kpis.growthRate >= 0 ? '+' : ''}${kpis.growthRate}%`, sub: 'Period trend', icon: kpis.growthRate >= 0 ? TrendingUp : TrendingDown, color: kpis.growthRate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500' },
+            { label: 'Forecast Accuracy', value: `${kpis.forecastAccuracy}%`, sub: 'Actual vs projected', icon: Activity, color: 'text-purple-500' },
+            { label: 'Target Variance', value: `${kpis.paceVariance >= 0 ? '+' : ''}${kpis.paceVariance}%`, sub: 'vs pace', icon: Target, color: kpis.paceVariance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500' },
+            { label: 'Revenue Gap', value: formatCurrency(kpis.revenueGap), sub: 'To $1.5M goal', icon: BarChart3, color: 'text-muted-foreground' },
+            { label: 'Pipeline Value', value: formatCurrency(kpis.pipelineWeightedRevenue), sub: 'Weighted by stage', icon: Zap, color: 'text-amber-500' },
+            { label: 'Best Case', value: formatCurrency(kpis.forecastBest), sub: 'Optimistic forecast', icon: DollarSign, color: 'text-primary' },
+          ].map((kpi) => (
+            <div key={kpi.label} className="p-2.5 rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <kpi.icon className={cn("h-3 w-3", kpi.color)} />
+                <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">{kpi.label}</span>
+              </div>
+              <p className="text-base font-bold text-foreground">{kpi.value}</p>
+              <p className="text-[10px] text-muted-foreground">{kpi.sub}</p>
+            </div>
+          ))}
+        </div>
+
         {/* Top section */}
         <div className="flex flex-col lg:flex-row lg:items-start gap-8 lg:gap-12">
           {/* Left - Revenue Overview */}
@@ -152,7 +360,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
               </p>
               <div className="flex items-baseline gap-3 mt-2">
                 <span className="text-5xl md:text-6xl font-extrabold tracking-tight text-foreground">
-                  {formatCurrency(stats.totalRevenue)}
+                  {formatCurrency(kpis.totalRevenue)}
                 </span>
                 <span className="text-2xl md:text-3xl font-light text-muted-foreground">/ $1.5M</span>
               </div>
@@ -162,18 +370,18 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                 <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(100, stats.goalProgress)}%`, backgroundColor: '#0066FF' }}
+                    style={{ width: `${Math.min(100, kpis.goalProgress)}%`, backgroundColor: COLORS.revenue }}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1.5">
-                  {stats.goalProgress}% of annual goal
+                  {kpis.goalProgress}% of annual goal
                 </p>
               </div>
             </div>
 
             {/* Momentum message */}
             <div className="bg-muted/50 border border-border rounded-xl p-4">
-              {stats.totalRevenue >= COMPANY_GOAL * 0.8 ? (
+              {kpis.totalRevenue >= COMPANY_GOAL * 0.8 ? (
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                     <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -183,7 +391,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     <p className="text-xs text-muted-foreground">Keep this momentum going</p>
                   </div>
                 </div>
-              ) : stats.totalRevenue >= COMPANY_GOAL * 0.5 ? (
+              ) : kpis.totalRevenue >= COMPANY_GOAL * 0.5 ? (
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
                     <Target className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -212,25 +420,44 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="flex items-center gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  {chartPeriod === 'ytd' ? 'Revenue Breakdown' : 'Daily Revenue (MTD)'}
+                  {chartPeriod === 'ytd' ? 'Revenue Breakdown' : chartPeriod === 'qtd' ? 'Quarter to Date' : 'Daily Revenue (MTD)'}
                 </p>
                 <Tabs value={chartPeriod} onValueChange={(v) => setChartPeriod(v as TimePeriod)}>
                   <TabsList className="h-7">
                     <TabsTrigger value="mtd" className="text-[10px] px-2.5 py-0.5 h-5">MTD</TabsTrigger>
+                    <TabsTrigger value="qtd" className="text-[10px] px-2.5 py-0.5 h-5">QTD</TabsTrigger>
                     <TabsTrigger value="ytd" className="text-[10px] px-2.5 py-0.5 h-5">YTD</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
-              <div className="flex items-center gap-4 flex-wrap text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#0066FF' }} /> Revenue
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-4 h-[2px] rounded" style={{ backgroundColor: '#FF8000' }} /> Cumulative
-                </span>
-                <span className="hidden sm:flex items-center gap-1.5">
-                  <span className="w-4 h-[2px] border-t border-dashed" style={{ borderColor: 'rgba(0,102,255,0.4)' }} /> Trend
-                </span>
+              {/* Interactive Legend */}
+              <div className="flex items-center gap-3 flex-wrap text-[10px] text-muted-foreground">
+                {[
+                  { key: 'revenue' as const, label: 'Revenue', color: COLORS.revenue, type: 'bar' },
+                  { key: 'cumulative' as const, label: 'Cumulative', color: COLORS.cumulative, type: 'line' },
+                  ...(chartPeriod === 'ytd' ? [
+                    { key: 'forecast' as const, label: 'Forecast', color: COLORS.forecast, type: 'line' },
+                    { key: 'confidence' as const, label: 'Confidence', color: COLORS.forecast, type: 'area' },
+                  ] : []),
+                ].map(({ key, label, color, type }) => (
+                  <button
+                    key={key}
+                    onClick={() => toggleSeries(key)}
+                    className={cn(
+                      "flex items-center gap-1.5 cursor-pointer transition-opacity",
+                      !visibleSeries[key] && "opacity-30"
+                    )}
+                  >
+                    {type === 'bar' ? (
+                      <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+                    ) : type === 'area' ? (
+                      <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: color, opacity: 0.3 }} />
+                    ) : (
+                      <span className="w-4 h-[2px] rounded" style={{ backgroundColor: color }} />
+                    )}
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -242,6 +469,10 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                       <stop offset="0%" stopColor="rgba(255,128,0,0.15)" />
                       <stop offset="100%" stopColor="rgba(255,128,0,0.02)" />
                     </linearGradient>
+                    <linearGradient id="forecastConfidence" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={COLORS.confidenceHigh} />
+                      <stop offset="100%" stopColor={COLORS.confidenceLow} />
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis
@@ -249,7 +480,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     axisLine={false}
                     tickLine={false}
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                    interval={chartPeriod === 'mtd' ? 2 : 0}
+                    interval={chartPeriod === 'mtd' ? 2 : chartPeriod === 'qtd' ? 6 : 0}
                   />
                   <YAxis
                     yAxisId="left"
@@ -265,28 +496,117 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     axisLine={false}
                     tickLine={false}
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                    tickFormatter={(value) => (value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
-                    width={45}
+                    tickFormatter={(value) => (value >= 1000000 ? `$${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
+                    width={50}
                   />
-                  <ReferenceLine
-                    yAxisId="right"
-                    segment={[
-                      { x: chartData[0]?.label, y: 0 },
-                      { x: chartData[chartData.length - 1]?.label, y: stats.totalRevenue },
-                    ]}
-                    stroke="rgba(0,102,255,0.35)"
-                    strokeDasharray="6 4"
-                    strokeWidth={1.5}
-                  />
+
+                  {/* Goal Pace reference line (YTD only) */}
+                  {chartPeriod === 'ytd' && (
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="goalPace"
+                      stroke="rgba(0,102,255,0.25)"
+                      strokeDasharray="6 4"
+                      strokeWidth={1.5}
+                      dot={false}
+                      activeDot={false}
+                      connectNulls
+                    />
+                  )}
+
+                  {/* Milestone markers (YTD only) */}
+                  {chartPeriod === 'ytd' && milestoneValues.map((val) => (
+                    <ReferenceLine
+                      key={val}
+                      yAxisId="right"
+                      y={val}
+                      stroke="hsl(var(--border))"
+                      strokeDasharray="3 3"
+                      strokeWidth={1}
+                      label={{
+                        value: formatCurrency(val),
+                        position: 'left',
+                        fill: 'hsl(var(--muted-foreground))',
+                        fontSize: 9,
+                      }}
+                    />
+                  ))}
+
+                  {/* Confidence band (YTD forecast) */}
+                  {chartPeriod === 'ytd' && visibleSeries.confidence && (
+                    <>
+                      <Area
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="confidenceHigh"
+                        stroke="transparent"
+                        fill="url(#forecastConfidence)"
+                        connectNulls
+                      />
+                      <Area
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="confidenceLow"
+                        stroke="transparent"
+                        fill="transparent"
+                        connectNulls
+                      />
+                    </>
+                  )}
+
+                  {/* Cumulative area fill */}
+                  {visibleSeries.cumulative && (
+                    <Area
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="cumulative"
+                      stroke="transparent"
+                      fill="url(#heroAreaGradient)"
+                    />
+                  )}
+
+                  {/* Revenue bars */}
+                  {visibleSeries.revenue && (
+                    <Bar
+                      yAxisId="left"
+                      dataKey="revenue"
+                      fill={COLORS.revenue}
+                      radius={[4, 4, 0, 0]}
+                      opacity={0.85}
+                      barSize={chartPeriod === 'ytd' ? 20 : 8}
+                    />
+                  )}
+
+                  {/* Cumulative line */}
+                  {visibleSeries.cumulative && (
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="cumulative"
+                      stroke={COLORS.cumulative}
+                      strokeWidth={2.5}
+                      dot={{ fill: COLORS.cumulative, strokeWidth: 0, r: 4 }}
+                      activeDot={{ r: 6, fill: COLORS.cumulative, stroke: 'rgba(255,128,0,0.3)', strokeWidth: 3 }}
+                    />
+                  )}
+
+                  {/* Forecast line (YTD only) */}
+                  {chartPeriod === 'ytd' && visibleSeries.forecast && (
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="forecastCumulative"
+                      stroke={COLORS.forecast}
+                      strokeWidth={2}
+                      strokeDasharray="8 4"
+                      dot={{ fill: COLORS.forecast, strokeWidth: 0, r: 3 }}
+                      activeDot={{ r: 5, fill: COLORS.forecast }}
+                      connectNulls
+                    />
+                  )}
+
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '10px',
-                      color: 'hsl(var(--foreground))',
-                      padding: '12px 16px',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                    }}
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         const d = payload[0].payload;
@@ -294,18 +614,36 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                           <div className="text-sm bg-card border border-border rounded-lg p-3 shadow-lg">
                             <p className="font-semibold text-foreground mb-2">{label}</p>
                             <div className="space-y-1.5">
-                              <p className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">Revenue:</span>
-                                <span className="font-semibold" style={{ color: '#0066FF' }}>{formatCurrencyFull(d.revenue)}</span>
-                              </p>
-                              <p className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">Cumulative:</span>
-                                <span className="font-semibold" style={{ color: '#FF8000' }}>{formatCurrencyFull(d.cumulative)}</span>
-                              </p>
-                              <p className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">Deals:</span>
-                                <span className="font-medium text-foreground">{d.deals}</span>
-                              </p>
+                              {d.revenue !== undefined && (
+                                <p className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">Revenue:</span>
+                                  <span className="font-semibold" style={{ color: COLORS.revenue }}>{formatCurrencyFull(d.revenue)}</span>
+                                </p>
+                              )}
+                              {d.cumulative !== undefined && (
+                                <p className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">Cumulative:</span>
+                                  <span className="font-semibold" style={{ color: COLORS.cumulative }}>{formatCurrencyFull(d.cumulative)}</span>
+                                </p>
+                              )}
+                              {d.forecastCumulative !== undefined && (
+                                <p className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">Forecast:</span>
+                                  <span className="font-semibold" style={{ color: COLORS.forecast }}>{formatCurrencyFull(d.forecastCumulative)}</span>
+                                </p>
+                              )}
+                              {d.deals !== undefined && (
+                                <p className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">Deals:</span>
+                                  <span className="font-medium text-foreground">{d.deals}</span>
+                                </p>
+                              )}
+                              {d.goalPace !== undefined && (
+                                <p className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">Goal Pace:</span>
+                                  <span className="font-medium text-muted-foreground">{formatCurrencyFull(d.goalPace)}</span>
+                                </p>
+                              )}
                             </div>
                           </div>
                         );
@@ -313,65 +651,45 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                       return null;
                     }}
                   />
-                  <Bar
-                    yAxisId="left"
-                    dataKey="revenue"
-                    fill="#0066FF"
-                    radius={[4, 4, 0, 0]}
-                    opacity={0.85}
-                    barSize={chartPeriod === 'mtd' ? 8 : 20}
-                  />
-                  <Area
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="cumulative"
-                    stroke="transparent"
-                    fill="url(#heroAreaGradient)"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="cumulative"
-                    stroke="#FF8000"
-                    strokeWidth={2.5}
-                    dot={{ fill: '#FF8000', strokeWidth: 0, r: 4 }}
-                    activeDot={{ r: 6, fill: '#FF8000', stroke: 'rgba(255,128,0,0.3)', strokeWidth: 3 }}
-                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* Stats Footer */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-border">
+        {/* Stats Footer - 6 stats */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-8 pt-6 border-t border-border">
           <div className="bg-muted/40 rounded-lg p-4">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
-              {stats.revenueLabel}
-            </p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">{stats.revenueLabel}</p>
             <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{formatCurrency(stats.totalRevenue)}</p>
             <p className="text-xs text-muted-foreground">{stats.goalProgress}% of goal</p>
           </div>
           <div className="bg-muted/40 rounded-lg p-4">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
-              {stats.avgLabel}
-            </p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">{stats.avgLabel}</p>
             <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{formatCurrency(stats.avgPerPoint)}</p>
             <p className="text-xs text-muted-foreground">{stats.activePoints} active {stats.pointLabel}</p>
           </div>
           <div className="bg-muted/40 rounded-lg p-4">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
-              {stats.bestPointLabel}
-            </p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">{stats.bestPointLabel}</p>
             <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{stats.bestLabel}</p>
             <p className="text-xs text-muted-foreground">{formatCurrency(stats.bestValue)}</p>
           </div>
           <div className="bg-muted/40 rounded-lg p-4">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
-              Deals Closed
-            </p>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">Deals Closed</p>
             <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{stats.totalDeals}</p>
             <p className="text-xs text-muted-foreground">Avg: {formatCurrency(stats.avgDealSize)}</p>
+          </div>
+          <div className="bg-muted/40 rounded-lg p-4">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">Forecast</p>
+            <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{formatCurrency(kpis.forecastTotal)}</p>
+            <p className="text-xs text-muted-foreground">End-of-year projected</p>
+          </div>
+          <div className="bg-muted/40 rounded-lg p-4">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">Growth Rate</p>
+            <p className={cn("text-xl md:text-2xl font-bold mt-1", kpis.growthRate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
+              {kpis.growthRate >= 0 ? '+' : ''}{kpis.growthRate}%
+            </p>
+            <p className="text-xs text-muted-foreground">Period trend</p>
           </div>
         </div>
       </CardContent>
