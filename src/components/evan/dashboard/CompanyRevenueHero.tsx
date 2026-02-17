@@ -416,28 +416,35 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
           </div>
 
           {/* Right - Chart */}
-          <div className="flex-1 min-w-0 bg-muted/30 border border-border rounded-xl p-3 md:p-5">
+          <div className="flex-1 min-w-0 bg-white dark:bg-card border border-[#E5E7EB] dark:border-border rounded-xl shadow-sm p-3 md:p-5" style={{ borderRadius: 12, fontFamily: 'Inter, sans-serif' }}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="flex items-center gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <p className="text-[13px] font-semibold" style={{ color: '#111827', fontFamily: 'Inter, sans-serif' }}>
                   {chartPeriod === 'ytd' ? 'Revenue Breakdown' : chartPeriod === 'qtd' ? 'Quarter to Date' : 'Daily Revenue (MTD)'}
                 </p>
                 <Tabs value={chartPeriod} onValueChange={(v) => setChartPeriod(v as TimePeriod)}>
-                  <TabsList className="h-7">
-                    <TabsTrigger value="mtd" className="text-[10px] px-2.5 py-0.5 h-5">MTD</TabsTrigger>
-                    <TabsTrigger value="qtd" className="text-[10px] px-2.5 py-0.5 h-5">QTD</TabsTrigger>
-                    <TabsTrigger value="ytd" className="text-[10px] px-2.5 py-0.5 h-5">YTD</TabsTrigger>
+                  <TabsList className="h-7 bg-transparent p-0 gap-1">
+                    {(['mtd', 'qtd', 'ytd'] as const).map((tab) => (
+                      <TabsTrigger
+                        key={tab}
+                        value={tab}
+                        className="text-[11px] px-3 py-0.5 h-5 rounded-full font-medium data-[state=active]:bg-[#1D4ED8] data-[state=active]:text-white data-[state=inactive]:bg-transparent data-[state=inactive]:text-[#6B7280] border-0 shadow-none"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
+                        {tab.toUpperCase()}
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
                 </Tabs>
               </div>
               {/* Interactive Legend */}
-              <div className="flex items-center gap-3 flex-wrap text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-3 flex-wrap" style={{ fontFamily: 'Inter, sans-serif' }}>
                 {[
-                  { key: 'revenue' as const, label: 'Revenue', color: COLORS.revenue, type: 'bar' },
-                  { key: 'cumulative' as const, label: 'Cumulative', color: COLORS.cumulative, type: 'line' },
+                  { key: 'revenue' as const, label: 'Revenue', color: '#3B82F6', type: 'bar' },
+                  { key: 'cumulative' as const, label: 'Cumulative', color: '#F97316', type: 'line' },
                   ...(chartPeriod === 'ytd' ? [
-                    { key: 'forecast' as const, label: 'Forecast', color: COLORS.forecast, type: 'line' },
-                    { key: 'confidence' as const, label: 'Confidence', color: COLORS.forecast, type: 'area' },
+                    { key: 'forecast' as const, label: 'Forecast', color: '#8B5CF6', type: 'line' },
+                    { key: 'confidence' as const, label: 'Confidence', color: '#8B5CF6', type: 'area' },
                   ] : []),
                 ].map(({ key, label, color, type }) => (
                   <button
@@ -449,13 +456,13 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     )}
                   >
                     {type === 'bar' ? (
-                      <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                     ) : type === 'area' ? (
-                      <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: color, opacity: 0.3 }} />
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color, opacity: 0.3 }} />
                     ) : (
-                      <span className="w-4 h-[2px] rounded" style={{ backgroundColor: color }} />
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                     )}
-                    {label}
+                    <span className="text-[11px] font-medium" style={{ color: '#374151' }}>{label}</span>
                   </button>
                 ))}
               </div>
@@ -466,27 +473,31 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                 <ComposedChart data={chartData} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
                   <defs>
                     <linearGradient id="heroAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(255,128,0,0.15)" />
-                      <stop offset="100%" stopColor="rgba(255,128,0,0.02)" />
+                      <stop offset="0%" stopColor="rgba(249,115,22,0.12)" />
+                      <stop offset="100%" stopColor="rgba(249,115,22,0.01)" />
                     </linearGradient>
                     <linearGradient id="forecastConfidence" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={COLORS.confidenceHigh} />
-                      <stop offset="100%" stopColor={COLORS.confidenceLow} />
+                      <stop offset="0%" stopColor="rgba(139,92,246,0.10)" />
+                      <stop offset="100%" stopColor="rgba(139,92,246,0.02)" />
+                    </linearGradient>
+                    <linearGradient id="revenueBarGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3B82F6" />
+                      <stop offset="100%" stopColor="#2563EB" />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <CartesianGrid stroke="#6B7280" strokeWidth={0.5} strokeOpacity={0.2} vertical={false} strokeDasharray="" />
                   <XAxis
                     dataKey="label"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Inter, sans-serif' }}
                     interval={chartPeriod === 'mtd' ? 2 : chartPeriod === 'qtd' ? 6 : 0}
                   />
                   <YAxis
                     yAxisId="left"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                    tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Inter, sans-serif' }}
                     tickFormatter={(value) => (value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
                     width={52}
                     tickCount={5}
@@ -497,7 +508,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     orientation="right"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                    tick={{ fill: '#9CA3AF', fontSize: 11, fontFamily: 'Inter, sans-serif' }}
                     tickFormatter={(value) => (value >= 1000000 ? `$${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`)}
                     width={56}
                     tickCount={5}
@@ -511,9 +522,9 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                       yAxisId="right"
                       type="monotone"
                       dataKey="goalPace"
-                      stroke="rgba(0,102,255,0.25)"
+                      stroke="#10B981"
                       strokeDasharray="6 4"
-                      strokeWidth={1.5}
+                      strokeWidth={1}
                       dot={false}
                       activeDot={false}
                       connectNulls
@@ -576,9 +587,9 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     <Bar
                       yAxisId="left"
                       dataKey="revenue"
-                      fill={COLORS.revenue}
+                      fill="url(#revenueBarGradient)"
                       radius={[4, 4, 0, 0]}
-                      opacity={0.85}
+                      opacity={0.9}
                       barSize={chartPeriod === 'ytd' ? 20 : 8}
                     />
                   )}
@@ -589,10 +600,10 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                       yAxisId="right"
                       type="monotone"
                       dataKey="cumulative"
-                      stroke={COLORS.cumulative}
-                      strokeWidth={2.5}
-                      dot={{ fill: COLORS.cumulative, strokeWidth: 0, r: 4 }}
-                      activeDot={{ r: 6, fill: COLORS.cumulative, stroke: 'rgba(255,128,0,0.3)', strokeWidth: 3 }}
+                      stroke="#F97316"
+                      strokeWidth={2}
+                      dot={{ fill: '#F97316', strokeWidth: 0, r: 3 }}
+                      activeDot={{ r: 5, fill: '#F97316', stroke: 'rgba(249,115,22,0.3)', strokeWidth: 3 }}
                     />
                   )}
 
@@ -602,11 +613,11 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                       yAxisId="right"
                       type="monotone"
                       dataKey="forecastCumulative"
-                      stroke={COLORS.forecast}
-                      strokeWidth={2}
+                      stroke="#8B5CF6"
+                      strokeWidth={1.5}
                       strokeDasharray="8 4"
-                      dot={{ fill: COLORS.forecast, strokeWidth: 0, r: 3 }}
-                      activeDot={{ r: 5, fill: COLORS.forecast }}
+                      dot={{ fill: '#8B5CF6', strokeWidth: 0, r: 2.5 }}
+                      activeDot={{ r: 4, fill: '#8B5CF6' }}
                       connectNulls
                     />
                   )}
