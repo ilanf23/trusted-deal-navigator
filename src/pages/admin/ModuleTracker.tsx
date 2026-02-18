@@ -238,12 +238,11 @@ export default function ModuleTracker() {
               {/* Search + portal filter */}
               <div className="flex gap-3 mb-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400 pointer-events-none" />
                   <Input
                     placeholder="Search modules..."
                     value={moduleSearch}
                     onChange={e => setModuleSearch(e.target.value)}
-                    className="pl-10 h-11 text-sm bg-white border border-gray-200 rounded-xl shadow-sm placeholder:text-gray-400 focus-visible:ring-indigo-300"
+                    className="h-11 text-sm bg-white border border-gray-200 rounded-xl shadow-sm placeholder:text-gray-400 focus-visible:ring-indigo-300"
                   />
                 </div>
                 <Select value={portalFilter} onValueChange={v => { setPortalFilter(v); setOpenRows(new Set()); }}>
