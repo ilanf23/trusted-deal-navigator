@@ -25,7 +25,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full admin-portal bg-background">
+      <div className="min-h-screen flex w-full admin-portal bg-background overflow-x-hidden">
         <AdminSidebar 
           onInboxToggle={() => setInboxOpen(!inboxOpen)} 
           inboxOpen={inboxOpen}
@@ -36,7 +36,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
         <main className="flex-1 flex flex-col min-h-screen w-full overflow-x-hidden">
           {/* Top Bar - responsive padding and layout */}
           <header className="h-14 md:h-16 flex items-center justify-between border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8">
-            <div className="flex items-center gap-2 md:gap-5 ml-0 md:ml-12">
+            <div className="flex items-center gap-2 md:gap-5">
               <SidebarTrigger className="w-10 h-10 md:w-11 md:h-11 rounded-xl hover:bg-muted transition-colors flex items-center justify-center group">
                 <Menu className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground group-hover:text-foreground" />
               </SidebarTrigger>
@@ -106,7 +106,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
           </header>
           
           {/* Main Content Area - responsive padding */}
-          <div className="flex-1 p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-auto">
+          <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-hidden">
             <div className="max-w-[1800px] mx-auto">
               {children}
             </div>
