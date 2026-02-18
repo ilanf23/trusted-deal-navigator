@@ -93,7 +93,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         title: '',
         icon: LayoutDashboard,
         items: [
-          { title: 'WOP', url: '/superadmin/ilan/dev', icon: Code2 },
+          { title: 'WOP', url: '/superadmin/ilan', icon: Code2 },
           { title: 'Users & Roles', url: '/superadmin/ilan/users-roles', icon: Users },
         ],
         noCollapse: true,
@@ -158,7 +158,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: Users,
         isLabel: true,
         items: [
-          { title: 'Team Performance', url: '/superadmin/ilan', icon: BarChart3 },
+          { title: 'Team Performance', url: '/superadmin/ilan/dev', icon: BarChart3 },
           { 
             title: 'Evan', 
             url: '/superadmin/ilan/team/evan', 
