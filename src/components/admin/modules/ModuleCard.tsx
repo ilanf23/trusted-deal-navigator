@@ -186,13 +186,15 @@ export default function ModuleCard({ module, features = [], onClick, showFeature
             )}
           </div>
 
-          {/* Status pill */}
-          <div className="flex items-center gap-1.5 flex-shrink-0 mt-1 bg-gray-100 px-2 py-0.5 rounded-full">
-            <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${statusDot}`} />
-            <span className="text-[11px] font-medium text-gray-500 whitespace-nowrap">
-              {STATUS_LABEL[module.status] ?? module.status}
-            </span>
-          </div>
+          {/* Status pill — hidden for 'planned' */}
+          {module.status !== 'planned' && (
+            <div className="flex items-center gap-1.5 flex-shrink-0 mt-1 bg-gray-100 px-2 py-0.5 rounded-full">
+              <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${statusDot}`} />
+              <span className="text-[11px] font-medium text-gray-500 whitespace-nowrap">
+                {STATUS_LABEL[module.status] ?? module.status}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Description */}
