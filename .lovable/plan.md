@@ -1,138 +1,50 @@
 
-# Module Tracker Page — Business Requirements & Development Management
+# Remove Priority Feature from Module Tracker
 
-## What This Page Does
+## What's Being Removed
 
-The Module Tracker is a product management tool for Ilan to define, track, and monitor the business requirements and development status of each feature/module in the platform. Think of it as an internal "feature spec + progress tracker" — combining a business requirements document (BRD) with a kanban-style development pipeline view.
+Priority fields and badges appear in 4 files across both modules and business requirements. This is a pure UI/form cleanup — no database migration needed (the `priority` column can stay in the DB, we just stop displaying or editing it in the UI).
 
----
+## Changes Per File
 
-## Proposed Page Structure
+### 1. `src/components/admin/modules/ModuleCard.tsx`
+- Remove the `PRIORITY_STYLES` constant (lines 25–30)
+- Remove `priority: string` from the `Module` interface (line 42)
+- Remove the priority `<Badge>` from the card header JSX (line 80–82)
 
-The page will have **three views** selectable via tabs:
+### 2. `src/components/admin/modules/ModuleDetailDialog.tsx`
+- Remove `priority: z.string()` from the zod schema (line 26)
+- Remove `priority: 'medium'` from `form.reset()` defaultValues (line 61)
+- Remove `priority: module.priority` from the `useEffect` reset (line 73)
+- Remove the Priority `<FormField>` block from the Details form (lines 179–191)
 
-### Tab 1 — Modules Board (default view)
-A card-based grid of all site modules/features. Each card shows:
-- Module name + icon
-- Business owner (who requested it)
-- Short description (the "why")
-- Status badge: `Planned | In Progress | In Review | Complete | On Hold`
-- Priority badge: `Critical | High | Medium | Low`
-- Progress bar (% of sub-tasks complete)
-- Quick link to open the module detail
+### 3. `src/components/admin/modules/RequirementsTable.tsx`
+- Remove `priority: string` from the `BusinessRequirement` interface (line 27)
+- Remove the `PRIORITY_STYLES` constant (lines 39–44)
+- Remove `priority: z.string()` from the zod schema (line 53)
+- Remove `priority: 'medium'` from `form` defaultValues (line 72)
+- Remove `priority` from `insertData` in `handleAdd` (line 97)
+- Remove the `Priority` `<TableHead>` column header (line 159)
+- Remove the priority `<Badge>` `<TableCell>` in each row (lines 182–185)
+- Update `colSpan={7}` on the empty state row to `colSpan={6}` (line 168)
+- Remove the Priority `<FormField>` block from the add dialog (lines 256–268)
 
-### Tab 2 — Requirements Table
-A sortable/filterable table of all business requirements, each row showing:
-- Requirement ID (e.g. `BR-001`)
-- Module it belongs to
-- Requirement description
-- Acceptance criteria
-- Status
-- Assigned developer
-- Created date
+### 4. `src/pages/admin/ModuleTracker.tsx`
+- Remove `priority: z.string()` from the zod schema (line 25)
+- Remove `priority: 'medium'` from `form` defaultValues (line 46)
+- Remove the Priority `<FormField>` block from the Add Module dialog (lines 220–232)
+- The grid of 4 items will now become 3 — adjust `grid-cols-2` to remain or collapse naturally
 
-### Tab 3 — Development Pipeline (Kanban)
-A Kanban board with columns:
-- `Backlog → Planned → In Progress → In Review → Done`
+## What This Does NOT Touch
+- No database migration — the `priority` column stays in the DB (existing seeded data remains intact, nothing breaks)
+- No route or sidebar changes
+- The `Module` interface still needs `priority` to avoid TypeScript errors since Supabase returns it — we'll keep it as optional (`priority?: string`) in the type definition so existing data doesn't break anything, we just won't render it
 
-Each card represents a module or sub-feature that can be dragged between columns (using `@dnd-kit/core` already installed).
+## Files to Change
 
----
-
-## Database Schema
-
-Three new tables:
-
-### `modules` table
-```
-id (uuid, pk)
-name (text)
-description (text)
-business_owner (text)
-priority (text: critical/high/medium/low)
-status (text: planned/in_progress/in_review/complete/on_hold)
-icon (text - lucide icon name)
-created_at (timestamptz)
-updated_at (timestamptz)
-```
-
-### `business_requirements` table
-```
-id (uuid, pk)
-module_id (uuid, fk → modules.id)
-requirement_id (text - e.g. BR-001)
-title (text)
-description (text)
-acceptance_criteria (text)
-status (text: draft/approved/implemented/verified)
-assigned_to (text)
-priority (text)
-created_at (timestamptz)
-updated_at (timestamptz)
-```
-
-### `module_tasks` table (sub-tasks for progress tracking)
-```
-id (uuid, pk)
-module_id (uuid, fk → modules.id)
-title (text)
-status (text: todo/in_progress/done)
-created_at (timestamptz)
-```
-
----
-
-## Files to Create / Modify
-
-| Action | File | Description |
-|--------|------|-------------|
-| **Create** | `src/pages/admin/ModuleTracker.tsx` | Main page with Tabs (Board / Requirements / Pipeline) |
-| **Create** | `src/components/admin/modules/ModuleCard.tsx` | Card component for the board view |
-| **Create** | `src/components/admin/modules/ModuleDetailDialog.tsx` | Dialog to view/edit a module's full details and requirements |
-| **Create** | `src/components/admin/modules/RequirementsTable.tsx` | Table view of all BRs |
-| **Create** | `src/components/admin/modules/ModulePipelineBoard.tsx` | Kanban drag-and-drop view |
-| **Modify** | `src/App.tsx` | Add route `/superadmin/ilan/module-tracker` |
-| **Modify** | `src/components/admin/AdminSidebar.tsx` | Add "Module Tracker" nav item under WOP section |
-| **Database** | Migration | Create `modules`, `business_requirements`, `module_tasks` tables with RLS |
-
----
-
-## Sidebar Change
-
-In `AdminSidebar.tsx`, the Ilan top-level section currently has:
-```tsx
-items: [
-  { title: 'WOP', url: '/superadmin/ilan', icon: Code2 },
-  { title: 'Users & Roles', url: '/superadmin/ilan/users-roles', icon: Users },
-]
-```
-
-It will become:
-```tsx
-items: [
-  { title: 'WOP', url: '/superadmin/ilan', icon: Code2 },
-  { title: 'Module Tracker', url: '/superadmin/ilan/module-tracker', icon: ClipboardList },
-  { title: 'Users & Roles', url: '/superadmin/ilan/users-roles', icon: Users },
-]
-```
-
----
-
-## Route Change
-
-In `App.tsx`, inside the `<AdminRouteLayout>` Ilan block:
-```tsx
-<Route path="/superadmin/ilan/module-tracker" element={<EmployeeRoute employeeName="Ilan"><ModuleTracker /></EmployeeRoute>} />
-```
-
----
-
-## UX & Styling Notes
-
-- Follows the existing admin page pattern: `<AdminLayout>` wrapper, card-based UI, shadcn components
-- Status badges use color-coded system consistent with the bug reporting pages
-- The Requirements Table uses the existing shadcn `Table` component pattern
-- The Kanban board uses `@dnd-kit/core` (already installed) for drag-and-drop
-- Page header includes summary stats: total modules, in-progress count, completion %, open requirements
-- "Add Module" and "Add Requirement" buttons open simple dialogs with forms using `react-hook-form` + `zod`
-- RLS policies: Ilan-only access (owner role gates the page via `EmployeeRoute` already)
+| File | Change |
+|------|--------|
+| `src/components/admin/modules/ModuleCard.tsx` | Remove `PRIORITY_STYLES`, `priority` from interface, priority badge from JSX |
+| `src/components/admin/modules/ModuleDetailDialog.tsx` | Remove priority from schema, defaultValues, reset, and form field |
+| `src/components/admin/modules/RequirementsTable.tsx` | Remove priority from interface, styles, schema, defaultValues, insert, table column, table cell, and form field |
+| `src/pages/admin/ModuleTracker.tsx` | Remove priority from schema, defaultValues, and Add Module form field |
