@@ -79,8 +79,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { teamMember, isOwner, loading: teamLoading } = useTeamMember();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === 'collapsed';
+  const closeMobileMenu = () => { if (isMobile) setOpenMobile(false); };
 
   // Build navigation sections based on user's role
   const navSections: NavSection[] = useMemo(() => {
@@ -389,6 +390,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                           <Link
                             key={subItem.title}
                             to={subItem.url}
+                            onClick={closeMobileMenu}
                             className={`
                               flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px] tracking-tight
                               ${isActive(subItem.url) 
@@ -409,6 +411,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     <TooltipTrigger asChild>
                       <Link
                         to={item.url}
+                        onClick={closeMobileMenu}
                         className={`
                           flex items-center justify-center py-2 px-2 rounded-md transition-all duration-150
                           ${isActive(item.url) 
@@ -428,6 +431,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   <Link
                     key={item.title}
                     to={item.url}
+                    onClick={closeMobileMenu}
                     className={`
                       flex items-center gap-2.5 py-2 px-3 rounded-lg transition-all duration-150 text-[13px] tracking-tight
                       ${isActive(item.url) 
@@ -527,6 +531,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                               <Link
                                 key={subItem.title}
                                 to={subItem.url}
+                                onClick={closeMobileMenu}
                                 className={`
                                   flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[11px] tracking-tight
                                   ${isActive(subItem.url) 
@@ -546,6 +551,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                       <Link
                         key={item.title}
                         to={item.url}
+                        onClick={closeMobileMenu}
                         className={`
                           flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12px] tracking-tight
                           ${isActive(item.url) 
