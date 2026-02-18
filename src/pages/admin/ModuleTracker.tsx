@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -44,7 +44,9 @@ export default function ModuleTracker() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [moduleSearch, setModuleSearch] = useState('');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [openRows, setOpenRows] = useState<Set<number>>(new Set());
+  const [colCount, setColCount] = useState(3);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<ModuleFormValues>({
     resolver: zodResolver(moduleSchema),
@@ -74,6 +76,32 @@ export default function ModuleTracker() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Detect actual column count from grid layout
+  useEffect(() => {
+    const gridEl = gridRef.current;
+    if (!gridEl) return;
+    const observer = new ResizeObserver(() => {
+      const firstChild = gridEl.firstElementChild as HTMLElement | null;
+      if (!firstChild) return;
+      const cols = Math.round(gridEl.offsetWidth / firstChild.offsetWidth);
+      setColCount(Math.max(1, cols));
+    });
+    observer.observe(gridEl);
+    return () => observer.disconnect();
+  }, []);
+
+  // Reset open rows when search changes
+  useEffect(() => { setOpenRows(new Set()); }, [moduleSearch]);
+
+  const toggleRow = (rowIdx: number) => {
+    setOpenRows(prev => {
+      const next = new Set(prev);
+      if (next.has(rowIdx)) next.delete(rowIdx);
+      else next.add(rowIdx);
+      return next;
+    });
+  };
 
   const handleAddModule = async (values: ModuleFormValues) => {
     setSaving(true);
@@ -238,8 +266,9 @@ export default function ModuleTracker() {
                     <p className="text-gray-400 text-sm">No modules match "{moduleSearch}".</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filtered.map(mod => {
+                  <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map((mod, index) => {
+                      const rowIndex = Math.floor(index / colCount);
                       const features: ModuleFeature[] = requirements
                         .filter(r => r.module_id === mod.id)
                         .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status }));
@@ -249,8 +278,8 @@ export default function ModuleTracker() {
                           module={mod}
                           features={features}
                           onClick={openDetail}
-                          showFeatures={showFeatures}
-                          onToggleFeatures={() => setShowFeatures(v => !v)}
+                          showFeatures={openRows.has(rowIndex)}
+                          onToggleFeatures={() => toggleRow(rowIndex)}
                         />
                       );
                     })}
