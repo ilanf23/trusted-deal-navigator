@@ -1,95 +1,138 @@
 
-# Fix Sidebar and Page Layout on Small/Mobile Views
+# Module Tracker Page — Business Requirements & Development Management
 
-## Problem Analysis
+## What This Page Does
 
-From the screenshot and code review, there are two overlapping issues on small/narrow viewports:
+The Module Tracker is a product management tool for Ilan to define, track, and monitor the business requirements and development status of each feature/module in the platform. Think of it as an internal "feature spec + progress tracker" — combining a business requirements document (BRD) with a kanban-style development pipeline view.
 
-### Issue 1 — Sidebar Sheet overlaps page content incorrectly on mobile
-The Shadcn `Sidebar` component correctly renders a `Sheet` on mobile (`isMobile` = true, i.e., viewport < 768px). However, the `AdminLayout` wraps everything in `<div className="min-h-screen flex w-full">` which does not account for the Sheet overlay correctly. On very small views (like in the Lovable editor preview pane, which is ~480px wide), the Sheet appears to expand ON TOP of the page without a proper backdrop close behavior — it looks "broken" because sidebar items and the page content are both partially visible simultaneously.
+---
 
-### Issue 2 — Header SidebarTrigger margin
-The header has `ml-0 md:ml-12` on the trigger container. On desktop, `ml-12` creates space for the collapsed icon sidebar (3.5rem wide). But at intermediate sizes (768px–900px), the sidebar IS visible but the 3rem margin pushes header content to overlap. On mobile, the trigger is fine but the sidebar Sheet takes full-screen width.
+## Proposed Page Structure
 
-### Issue 3 — Missing `overflow-x-hidden` on outer wrapper
-The outer `div` doesn't prevent horizontal overflow, which causes horizontal scrolling on small screens when content is wider than viewport.
+The page will have **three views** selectable via tabs:
 
-### Issue 4 — Sidebar Sheet auto-close on navigation
-On mobile, after tapping a nav link inside the Sheet sidebar, the Sheet stays open because `Link` navigation doesn't trigger the Sheet's `onOpenChange`. This makes it look "stuck".
+### Tab 1 — Modules Board (default view)
+A card-based grid of all site modules/features. Each card shows:
+- Module name + icon
+- Business owner (who requested it)
+- Short description (the "why")
+- Status badge: `Planned | In Progress | In Review | Complete | On Hold`
+- Priority badge: `Critical | High | Medium | Low`
+- Progress bar (% of sub-tasks complete)
+- Quick link to open the module detail
 
-## Root Cause in Code
+### Tab 2 — Requirements Table
+A sortable/filterable table of all business requirements, each row showing:
+- Requirement ID (e.g. `BR-001`)
+- Module it belongs to
+- Requirement description
+- Acceptance criteria
+- Status
+- Assigned developer
+- Created date
 
-In `AdminSidebar.tsx`, all nav links are plain `<Link>` components — they don't call `setOpenMobile(false)` from the `useSidebar()` hook when clicked on mobile. The Shadcn sidebar Sheet only closes when the user taps the backdrop or the trigger button.
+### Tab 3 — Development Pipeline (Kanban)
+A Kanban board with columns:
+- `Backlog → Planned → In Progress → In Review → Done`
 
-In `AdminLayout.tsx`:
-- Line 28: `<div className="min-h-screen flex w-full admin-portal bg-background">` — needs `overflow-x-hidden`
-- Line 36: `<main className="flex-1 flex flex-col min-h-screen w-full overflow-x-hidden">` — this is fine
-- Line 39: `<div className="flex items-center gap-2 md:gap-5 ml-0 md:ml-12">` — the `md:ml-12` pushes the trigger right on medium screens; since the sidebar is fixed-positioned and overlaps, this should be `md:ml-0` or removed entirely, as the `SidebarTrigger` itself handles placement
+Each card represents a module or sub-feature that can be dragged between columns (using `@dnd-kit/core` already installed).
 
-## Fix Plan
+---
 
-### 1. `src/components/admin/AdminSidebar.tsx` — Auto-close Sheet on mobile navigation
+## Database Schema
 
-Extract `setOpenMobile` from the `useSidebar()` hook and call it on every nav Link click when on mobile. This ensures tapping a link in the mobile Sheet automatically closes the sidebar.
+Three new tables:
 
-```tsx
-const { state, isMobile, setOpenMobile } = useSidebar();
-
-// In every Link:
-<Link
-  to={item.url}
-  onClick={() => isMobile && setOpenMobile(false)}
-  ...
->
+### `modules` table
+```
+id (uuid, pk)
+name (text)
+description (text)
+business_owner (text)
+priority (text: critical/high/medium/low)
+status (text: planned/in_progress/in_review/complete/on_hold)
+icon (text - lucide icon name)
+created_at (timestamptz)
+updated_at (timestamptz)
 ```
 
-This needs to be applied to:
-- All `noCollapse` section `<Link>` elements (lines ~389, ~428)
-- All collapsible section `<Link>` elements (lines ~546, ~527)
-- Sub-item `<Link>` elements
-
-### 2. `src/components/admin/AdminLayout.tsx` — Fix outer wrapper overflow and header margin
-
-**Change 1**: Add `overflow-x-hidden` to the outer flex wrapper to prevent horizontal scroll bleed on small screens.
-
-```tsx
-// Line 28 - BEFORE:
-<div className="min-h-screen flex w-full admin-portal bg-background">
-
-// AFTER:
-<div className="min-h-screen flex w-full admin-portal bg-background overflow-x-hidden">
+### `business_requirements` table
+```
+id (uuid, pk)
+module_id (uuid, fk → modules.id)
+requirement_id (text - e.g. BR-001)
+title (text)
+description (text)
+acceptance_criteria (text)
+status (text: draft/approved/implemented/verified)
+assigned_to (text)
+priority (text)
+created_at (timestamptz)
+updated_at (timestamptz)
 ```
 
-**Change 2**: Remove the `md:ml-12` from the header trigger container. The sidebar is fixed-positioned, so the header doesn't need a left margin to clear it. The `SidebarTrigger` should sit at the natural left edge of the header.
-
-```tsx
-// Line 39 - BEFORE:
-<div className="flex items-center gap-2 md:gap-5 ml-0 md:ml-12">
-
-// AFTER:
-<div className="flex items-center gap-2 md:gap-5">
+### `module_tasks` table (sub-tasks for progress tracking)
+```
+id (uuid, pk)
+module_id (uuid, fk → modules.id)
+title (text)
+status (text: todo/in_progress/done)
+created_at (timestamptz)
 ```
 
-**Change 3**: Ensure the main content area properly handles small screen padding:
+---
 
+## Files to Create / Modify
+
+| Action | File | Description |
+|--------|------|-------------|
+| **Create** | `src/pages/admin/ModuleTracker.tsx` | Main page with Tabs (Board / Requirements / Pipeline) |
+| **Create** | `src/components/admin/modules/ModuleCard.tsx` | Card component for the board view |
+| **Create** | `src/components/admin/modules/ModuleDetailDialog.tsx` | Dialog to view/edit a module's full details and requirements |
+| **Create** | `src/components/admin/modules/RequirementsTable.tsx` | Table view of all BRs |
+| **Create** | `src/components/admin/modules/ModulePipelineBoard.tsx` | Kanban drag-and-drop view |
+| **Modify** | `src/App.tsx` | Add route `/superadmin/ilan/module-tracker` |
+| **Modify** | `src/components/admin/AdminSidebar.tsx` | Add "Module Tracker" nav item under WOP section |
+| **Database** | Migration | Create `modules`, `business_requirements`, `module_tasks` tables with RLS |
+
+---
+
+## Sidebar Change
+
+In `AdminSidebar.tsx`, the Ilan top-level section currently has:
 ```tsx
-// Line 109 - BEFORE:
-<div className="flex-1 p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-auto">
-
-// AFTER:
-<div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-hidden">
+items: [
+  { title: 'WOP', url: '/superadmin/ilan', icon: Code2 },
+  { title: 'Users & Roles', url: '/superadmin/ilan/users-roles', icon: Users },
+]
 ```
 
-## Files to Change
+It will become:
+```tsx
+items: [
+  { title: 'WOP', url: '/superadmin/ilan', icon: Code2 },
+  { title: 'Module Tracker', url: '/superadmin/ilan/module-tracker', icon: ClipboardList },
+  { title: 'Users & Roles', url: '/superadmin/ilan/users-roles', icon: Users },
+]
+```
 
-| File | Change |
-|------|--------|
-| `src/components/admin/AdminLayout.tsx` | Add `overflow-x-hidden` to outer div, remove `md:ml-12` from header trigger container, change content padding to `p-3 sm:p-4` and `overflow-x-hidden` |
-| `src/components/admin/AdminSidebar.tsx` | Extract `isMobile` + `setOpenMobile` from `useSidebar()`, add `onClick={() => isMobile && setOpenMobile(false)}` to all nav `<Link>` elements |
+---
 
-## What This Fixes
+## Route Change
 
-- Tapping a sidebar link on mobile now automatically closes the Sheet overlay
-- No horizontal overflow/scrolling on small screens
-- Header trigger is properly positioned without the extra `md:ml-12` margin that caused misalignment in narrow views
-- Content padding is slightly reduced on very small screens (`p-3`) for better space usage
+In `App.tsx`, inside the `<AdminRouteLayout>` Ilan block:
+```tsx
+<Route path="/superadmin/ilan/module-tracker" element={<EmployeeRoute employeeName="Ilan"><ModuleTracker /></EmployeeRoute>} />
+```
+
+---
+
+## UX & Styling Notes
+
+- Follows the existing admin page pattern: `<AdminLayout>` wrapper, card-based UI, shadcn components
+- Status badges use color-coded system consistent with the bug reporting pages
+- The Requirements Table uses the existing shadcn `Table` component pattern
+- The Kanban board uses `@dnd-kit/core` (already installed) for drag-and-drop
+- Page header includes summary stats: total modules, in-progress count, completion %, open requirements
+- "Add Module" and "Add Requirement" buttons open simple dialogs with forms using `react-hook-form` + `zod`
+- RLS policies: Ilan-only access (owner role gates the page via `EmployeeRoute` already)
