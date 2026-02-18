@@ -110,14 +110,14 @@ export default function ModuleTracker() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Total Modules', value: totalModules },
-            { label: 'In Progress', value: inProgress },
-            { label: 'Complete', value: `${completePct}%` },
-            { label: 'Open Requirements', value: openReqs },
+            { label: 'Total Modules',      value: totalModules,        accent: 'border-blue-500',   num: 'text-blue-600 dark:text-blue-400' },
+            { label: 'In Progress',         value: inProgress,          accent: 'border-amber-500',  num: 'text-amber-600 dark:text-amber-400' },
+            { label: 'Complete',            value: `${completePct}%`,   accent: 'border-green-500',  num: 'text-green-600 dark:text-green-400' },
+            { label: 'Open Requirements',   value: openReqs,            accent: 'border-violet-500', num: 'text-violet-600 dark:text-violet-400' },
           ].map(stat => (
-            <div key={stat.label} className="bg-card border border-border/60 rounded-xl p-4">
-              <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+            <div key={stat.label} className={`bg-card border border-border/60 border-l-4 ${stat.accent} rounded-xl p-5`}>
+              <p className={`text-4xl font-bold tracking-tight leading-none mb-1.5 ${stat.num}`}>{stat.value}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{stat.label}</p>
             </div>
           ))}
         </div>
