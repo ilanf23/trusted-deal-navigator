@@ -10,7 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { Plus, LayoutGrid, Table2, Kanban, Search } from 'lucide-react';
+import {
+  Plus, LayoutGrid, TableProperties, GitBranch, Search,
+  Layers, Activity, CheckCircle, AlertCircle,
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ModuleCard, { type Module, type ModuleFeature } from '@/components/admin/modules/ModuleCard';
@@ -96,106 +99,167 @@ export default function ModuleTracker() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Module Tracker</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Business requirements and development pipeline</p>
+      {/* Page background + gradient hero */}
+      <div className="relative -m-6 min-h-screen bg-[#F8F8FA]">
+        {/* Top gradient overlay */}
+        <div
+          className="absolute inset-x-0 top-0 h-[200px] pointer-events-none z-0"
+          style={{ background: 'linear-gradient(to bottom, rgba(99,102,241,0.06), transparent)' }}
+        />
+
+        <div className="relative z-10 p-6 space-y-6">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="relative inline-block">
+                <h1 className="font-bold text-4xl tracking-tight text-gray-900">Module Tracker</h1>
+                {/* Gradient accent underline */}
+                <div
+                  className="absolute -bottom-1 left-0 right-0 h-[3px] rounded-full"
+                  style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
+                />
+              </div>
+              <p className="text-sm text-gray-500 font-medium mt-2">Business requirements and development pipeline</p>
+            </div>
+            <Button onClick={() => setAddModuleOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
+              <Plus className="h-4 w-4 mr-1.5" /> Add Module
+            </Button>
           </div>
-          <Button onClick={() => setAddModuleOpen(true)}>
-            <Plus className="h-4 w-4 mr-1.5" /> Add Module
-          </Button>
-        </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Total Modules',      value: totalModules,        accent: 'border-blue-500',   num: 'text-blue-600 dark:text-blue-400' },
-            { label: 'In Progress',         value: inProgress,          accent: 'border-amber-500',  num: 'text-amber-600 dark:text-amber-400' },
-            { label: 'Complete',            value: `${completePct}%`,   accent: 'border-green-500',  num: 'text-green-600 dark:text-green-400' },
-            { label: 'Open Requirements',   value: openReqs,            accent: 'border-violet-500', num: 'text-violet-600 dark:text-violet-400' },
-          ].map(stat => (
-            <div key={stat.label} className={`bg-card border border-border/60 border-l-4 ${stat.accent} rounded-xl p-5`}>
-              <p className={`text-4xl font-bold tracking-tight leading-none mb-1.5 ${stat.num}`}>{stat.value}</p>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="board">
-          <TabsList>
-            <TabsTrigger value="board" className="gap-1.5">
-              <LayoutGrid className="h-3.5 w-3.5" /> Modules Board
-            </TabsTrigger>
-            <TabsTrigger value="requirements" className="gap-1.5">
-              <Table2 className="h-3.5 w-3.5" /> Requirements
-            </TabsTrigger>
-            <TabsTrigger value="pipeline" className="gap-1.5">
-              <Kanban className="h-3.5 w-3.5" /> Dev Pipeline
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Board View */}
-          <TabsContent value="board" className="mt-4">
-            {/* Search */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder="Search modules…"
-                value={moduleSearch}
-                onChange={e => setModuleSearch(e.target.value)}
-                className="pl-9 h-10 text-sm bg-background"
-              />
-            </div>
-
-            {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-40 bg-muted/30 rounded-2xl animate-pulse" />
-                ))}
-              </div>
-            ) : modules.length === 0 ? (
-              <div className="text-center py-20 border border-dashed border-border/60 rounded-xl">
-                <p className="text-muted-foreground text-sm">No modules yet.</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => setAddModuleOpen(true)}>
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add your first module
-                </Button>
-              </div>
-            ) : (() => {
-              const filtered = modules.filter(m =>
-                !moduleSearch ||
-                m.name.toLowerCase().includes(moduleSearch.toLowerCase()) ||
-                (m.description ?? '').toLowerCase().includes(moduleSearch.toLowerCase())
-              );
-              return filtered.length === 0 ? (
-                <div className="text-center py-16 border border-dashed border-border/60 rounded-xl">
-                  <p className="text-muted-foreground text-sm">No modules match "{moduleSearch}".</p>
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              {
+                label: 'Total Modules',
+                value: totalModules,
+                leftBorder: 'border-l-indigo-500',
+                iconBg: 'bg-indigo-50',
+                iconColor: 'text-indigo-500',
+                Icon: Layers,
+              },
+              {
+                label: 'In Progress',
+                value: inProgress,
+                leftBorder: 'border-l-amber-500',
+                iconBg: 'bg-amber-50',
+                iconColor: 'text-amber-500',
+                Icon: Activity,
+              },
+              {
+                label: 'Complete',
+                value: `${completePct}%`,
+                leftBorder: 'border-l-emerald-500',
+                iconBg: 'bg-emerald-50',
+                iconColor: 'text-emerald-500',
+                Icon: CheckCircle,
+              },
+              {
+                label: 'Open Requirements',
+                value: openReqs,
+                leftBorder: 'border-l-rose-500',
+                iconBg: 'bg-rose-50',
+                iconColor: 'text-rose-500',
+                Icon: AlertCircle,
+              },
+            ].map(stat => (
+              <div
+                key={stat.label}
+                className={`bg-white rounded-2xl shadow-sm border-l-[3px] ${stat.leftBorder} px-5 py-4 flex items-start justify-between`}
+              >
+                <div>
+                  <p className="text-[38px] font-bold leading-none tracking-tight text-gray-900 mb-1">{stat.value}</p>
+                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">{stat.label}</p>
                 </div>
-              ) : (
+                <div className={`w-8 h-8 rounded-lg ${stat.iconBg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                  <stat.Icon className={`w-4 h-4 ${stat.iconColor}`} strokeWidth={1.8} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tabs — custom pill segmented control */}
+          <Tabs defaultValue="board">
+            <TabsList className="bg-gray-100 rounded-xl p-1 h-auto gap-0.5">
+              <TabsTrigger
+                value="board"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 data-[state=active]:font-semibold gap-1.5"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Modules Board
+              </TabsTrigger>
+              <TabsTrigger
+                value="requirements"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 data-[state=active]:font-semibold gap-1.5"
+              >
+                <TableProperties className="h-3.5 w-3.5" /> Requirements
+              </TabsTrigger>
+              <TabsTrigger
+                value="pipeline"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 data-[state=active]:font-semibold gap-1.5"
+              >
+                <GitBranch className="h-3.5 w-3.5" /> Dev Pipeline
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Board View */}
+            <TabsContent value="board" className="mt-4">
+              {/* Search */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400 pointer-events-none" />
+                <Input
+                  placeholder="Search modules..."
+                  value={moduleSearch}
+                  onChange={e => setModuleSearch(e.target.value)}
+                  className="pl-10 h-11 text-sm bg-white border border-gray-200 rounded-xl shadow-sm placeholder:text-gray-400 focus-visible:ring-indigo-300"
+                />
+              </div>
+
+              {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filtered.map(mod => {
-                    const features: ModuleFeature[] = requirements
-                      .filter(r => r.module_id === mod.id)
-                      .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status }));
-                    return <ModuleCard key={mod.id} module={mod} features={features} onClick={openDetail} />;
-                  })}
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="h-40 bg-white/60 rounded-2xl animate-pulse" />
+                  ))}
                 </div>
-              );
-            })()}
-          </TabsContent>
+              ) : modules.length === 0 ? (
+                <div className="text-center py-20 border border-dashed border-gray-200 rounded-2xl bg-white">
+                  <p className="text-gray-400 text-sm">No modules yet.</p>
+                  <Button variant="outline" size="sm" className="mt-3" onClick={() => setAddModuleOpen(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add your first module
+                  </Button>
+                </div>
+              ) : (() => {
+                const filtered = modules.filter(m =>
+                  !moduleSearch ||
+                  m.name.toLowerCase().includes(moduleSearch.toLowerCase()) ||
+                  (m.description ?? '').toLowerCase().includes(moduleSearch.toLowerCase())
+                );
+                return filtered.length === 0 ? (
+                  <div className="text-center py-16 border border-dashed border-gray-200 rounded-2xl bg-white">
+                    <p className="text-gray-400 text-sm">No modules match "{moduleSearch}".</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map(mod => {
+                      const features: ModuleFeature[] = requirements
+                        .filter(r => r.module_id === mod.id)
+                        .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status }));
+                      return <ModuleCard key={mod.id} module={mod} features={features} onClick={openDetail} />;
+                    })}
+                  </div>
+                );
+              })()}
+            </TabsContent>
 
-          {/* Requirements Table */}
-          <TabsContent value="requirements" className="mt-4">
-            <RequirementsTable requirements={requirements} modules={modules} onRefresh={fetchData} />
-          </TabsContent>
+            {/* Requirements Table */}
+            <TabsContent value="requirements" className="mt-4">
+              <RequirementsTable requirements={requirements} modules={modules} onRefresh={fetchData} />
+            </TabsContent>
 
-          {/* Dev Pipeline Kanban */}
-          <TabsContent value="pipeline" className="mt-4">
-            <ModulePipelineBoard modules={modules} onRefresh={fetchData} />
-          </TabsContent>
-        </Tabs>
+            {/* Dev Pipeline Kanban */}
+            <TabsContent value="pipeline" className="mt-4">
+              <ModulePipelineBoard modules={modules} onRefresh={fetchData} />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
 
       {/* Add Module Dialog */}
