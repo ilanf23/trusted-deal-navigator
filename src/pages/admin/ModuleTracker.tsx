@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { Plus, LayoutGrid, Table2, Kanban } from 'lucide-react';
+import { Plus, LayoutGrid, Table2, Kanban, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ModuleCard, { type Module, type ModuleFeature } from '@/components/admin/modules/ModuleCard';
@@ -40,6 +40,7 @@ export default function ModuleTracker() {
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [moduleSearch, setModuleSearch] = useState('');
 
   const form = useForm<ModuleFormValues>({
     resolver: zodResolver(moduleSchema),
@@ -138,6 +139,17 @@ export default function ModuleTracker() {
 
           {/* Board View */}
           <TabsContent value="board" className="mt-4">
+            {/* Search */}
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search modules…"
+                value={moduleSearch}
+                onChange={e => setModuleSearch(e.target.value)}
+                className="pl-9 h-10 text-sm bg-background"
+              />
+            </div>
+
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -151,16 +163,27 @@ export default function ModuleTracker() {
                   <Plus className="h-3.5 w-3.5 mr-1" /> Add your first module
                 </Button>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {modules.map(mod => {
-                  const features: ModuleFeature[] = requirements
-                    .filter(r => r.module_id === mod.id)
-                    .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status }));
-                  return <ModuleCard key={mod.id} module={mod} features={features} onClick={openDetail} />;
-                })}
-              </div>
-            )}
+            ) : (() => {
+              const filtered = modules.filter(m =>
+                !moduleSearch ||
+                m.name.toLowerCase().includes(moduleSearch.toLowerCase()) ||
+                (m.description ?? '').toLowerCase().includes(moduleSearch.toLowerCase())
+              );
+              return filtered.length === 0 ? (
+                <div className="text-center py-16 border border-dashed border-border/60 rounded-xl">
+                  <p className="text-muted-foreground text-sm">No modules match "{moduleSearch}".</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filtered.map(mod => {
+                    const features: ModuleFeature[] = requirements
+                      .filter(r => r.module_id === mod.id)
+                      .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status }));
+                    return <ModuleCard key={mod.id} module={mod} features={features} onClick={openDetail} />;
+                  })}
+                </div>
+              );
+            })()}
           </TabsContent>
 
           {/* Requirements Table */}
