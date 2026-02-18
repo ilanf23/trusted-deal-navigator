@@ -15,6 +15,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Module } from './ModuleCard';
 
+const PORTALS = ['evan', 'brad', 'adam', 'maura', 'wendy', 'shared', 'partner', 'client'];
+
+const PORTAL_STYLES: Record<string, string> = {
+  evan:    'bg-indigo-50 text-indigo-600',
+  brad:    'bg-blue-50 text-blue-600',
+  adam:    'bg-violet-50 text-violet-600',
+  maura:   'bg-pink-50 text-pink-600',
+  wendy:   'bg-rose-50 text-rose-600',
+  shared:  'bg-gray-100 text-gray-600',
+  partner: 'bg-emerald-50 text-emerald-600',
+  client:  'bg-amber-50 text-amber-600',
+};
+
 export interface BusinessRequirement {
   id: string;
   module_id?: string;
@@ -25,6 +38,7 @@ export interface BusinessRequirement {
   status: string;
   assigned_to?: string;
   priority: string;
+  portal?: string;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +65,7 @@ const brSchema = z.object({
   status: z.string(),
   assigned_to: z.string().optional(),
   priority: z.string(),
+  portal: z.string().default('evan'),
 });
 type BRFormValues = z.infer<typeof brSchema>;
 
@@ -64,12 +79,13 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [portalFilter, setPortalFilter] = useState('all');
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const form = useForm<BRFormValues>({
     resolver: zodResolver(brSchema),
-    defaultValues: { title: '', description: '', acceptance_criteria: '', status: 'draft', priority: 'medium', assigned_to: '' },
+    defaultValues: { title: '', description: '', acceptance_criteria: '', status: 'draft', priority: 'medium', assigned_to: '', portal: 'evan' },
   });
 
   const filtered = requirements.filter(r => {
@@ -78,7 +94,8 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
       r.requirement_id.toLowerCase().includes(search.toLowerCase()) ||
       (r.description ?? '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || r.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchPortal = portalFilter === 'all' || (r.portal ?? 'evan') === portalFilter;
+    return matchSearch && matchStatus && matchPortal;
   });
 
   const getNextReqId = () => {
@@ -98,6 +115,7 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
       assigned_to: values.assigned_to ?? null,
       requirement_id: getNextReqId(),
       module_id: values.module_id || null,
+      portal: values.portal ?? 'evan',
     };
     const { error } = await supabase.from('business_requirements').insert(insertData as any);
     setSaving(false);
@@ -143,6 +161,17 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
             <SelectItem value="verified">Verified</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={portalFilter} onValueChange={setPortalFilter}>
+          <SelectTrigger className="w-36 h-9 text-sm">
+            <SelectValue placeholder="Portal" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Portals</SelectItem>
+            {PORTALS.map(p => (
+              <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button size="sm" onClick={() => setAddOpen(true)}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Add Requirement
         </Button>
@@ -155,6 +184,7 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead className="w-24 text-xs font-semibold">ID</TableHead>
               <TableHead className="text-xs font-semibold">Title</TableHead>
+              <TableHead className="text-xs font-semibold">Portal</TableHead>
               <TableHead className="text-xs font-semibold">Module</TableHead>
               <TableHead className="text-xs font-semibold">Priority</TableHead>
               <TableHead className="text-xs font-semibold">Status</TableHead>
@@ -165,45 +195,55 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-10">
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-10">
                   No requirements found.
                 </TableCell>
               </TableRow>
-            ) : filtered.map(req => (
-              <TableRow key={req.id} className="text-sm">
-                <TableCell className="font-mono text-xs text-muted-foreground">{req.requirement_id}</TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium text-foreground text-sm">{req.title}</p>
-                    {req.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{req.description}</p>}
-                  </div>
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">{getModuleName(req.module_id)}</TableCell>
-                <TableCell>
-                  <Badge className={`text-[10px] px-1.5 py-0.5 border-0 ${PRIORITY_STYLES[req.priority]}`}>
-                    {req.priority}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Select value={req.status} onValueChange={val => updateStatus(req.id, val)}>
-                    <SelectTrigger className="h-6 w-28 text-[11px] border-0 p-0 bg-transparent">
-                      <Badge className={`text-[10px] px-1.5 py-0.5 border-0 cursor-pointer ${STATUS_STYLES[req.status]}`}>
-                        {req.status}
-                      </Badge>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {['draft','approved','implemented','verified'].map(s => (
-                        <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">{req.assigned_to || '—'}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {new Date(req.created_at).toLocaleDateString()}
-                </TableCell>
-              </TableRow>
-            ))}
+            ) : filtered.map(req => {
+              const portalKey = (req.portal ?? 'evan').toLowerCase();
+              const portalBadgeStyle = PORTAL_STYLES[portalKey] ?? PORTAL_STYLES.evan;
+              const portalLabel = portalKey.charAt(0).toUpperCase() + portalKey.slice(1);
+              return (
+                <TableRow key={req.id} className="text-sm">
+                  <TableCell className="font-mono text-xs text-muted-foreground">{req.requirement_id}</TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium text-foreground text-sm">{req.title}</p>
+                      {req.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{req.description}</p>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${portalBadgeStyle}`}>
+                      {portalLabel}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{getModuleName(req.module_id)}</TableCell>
+                  <TableCell>
+                    <Badge className={`text-[10px] px-1.5 py-0.5 border-0 ${PRIORITY_STYLES[req.priority]}`}>
+                      {req.priority}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Select value={req.status} onValueChange={val => updateStatus(req.id, val)}>
+                      <SelectTrigger className="h-6 w-28 text-[11px] border-0 p-0 bg-transparent">
+                        <Badge className={`text-[10px] px-1.5 py-0.5 border-0 cursor-pointer ${STATUS_STYLES[req.status]}`}>
+                          {req.status}
+                        </Badge>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['draft','approved','implemented','verified'].map(s => (
+                          <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{req.assigned_to || '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {new Date(req.created_at).toLocaleDateString()}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -230,6 +270,17 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
                       <FormControl><SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger></FormControl>
                       <SelectContent>
                         {modules.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="portal" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Portal</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {PORTALS.map(p => <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </FormItem>

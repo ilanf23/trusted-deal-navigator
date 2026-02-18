@@ -188,6 +188,7 @@ export type Database = {
           description: string | null
           id: string
           module_id: string | null
+          portal: string | null
           priority: string
           requirement_id: string
           status: string
@@ -201,6 +202,7 @@ export type Database = {
           description?: string | null
           id?: string
           module_id?: string | null
+          portal?: string | null
           priority?: string
           requirement_id: string
           status?: string
@@ -214,6 +216,7 @@ export type Database = {
           description?: string | null
           id?: string
           module_id?: string | null
+          portal?: string | null
           priority?: string
           requirement_id?: string
           status?: string
@@ -2029,6 +2032,7 @@ export type Database = {
           icon: string | null
           id: string
           name: string
+          portal: string | null
           priority: string
           status: string
           updated_at: string
@@ -2040,6 +2044,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name: string
+          portal?: string | null
           priority?: string
           status?: string
           updated_at?: string
@@ -2051,6 +2056,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name?: string
+          portal?: string | null
           priority?: string
           status?: string
           updated_at?: string
