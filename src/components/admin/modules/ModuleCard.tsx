@@ -50,6 +50,18 @@ const STATUS_LABEL: Record<string, string> = {
   complete: 'Complete', on_hold: 'On Hold',
 };
 
+// Portal badge colors
+const PORTAL_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
+  evan:    { bg: 'bg-indigo-50',  text: 'text-indigo-600',  dot: 'bg-indigo-400'  },
+  brad:    { bg: 'bg-blue-50',    text: 'text-blue-600',    dot: 'bg-blue-400'    },
+  adam:    { bg: 'bg-violet-50',  text: 'text-violet-600',  dot: 'bg-violet-400'  },
+  maura:   { bg: 'bg-pink-50',    text: 'text-pink-600',    dot: 'bg-pink-400'    },
+  wendy:   { bg: 'bg-rose-50',    text: 'text-rose-600',    dot: 'bg-rose-400'    },
+  shared:  { bg: 'bg-gray-100',   text: 'text-gray-600',    dot: 'bg-gray-400'    },
+  partner: { bg: 'bg-emerald-50', text: 'text-emerald-600', dot: 'bg-emerald-400' },
+  client:  { bg: 'bg-amber-50',   text: 'text-amber-600',   dot: 'bg-amber-400'   },
+};
+
 export interface Module {
   id: string;
   name: string;
@@ -58,6 +70,7 @@ export interface Module {
   priority: string;
   status: string;
   icon?: string;
+  portal?: string;
   created_at: string;
   updated_at: string;
   taskCount?: number;
@@ -131,6 +144,9 @@ export default function ModuleCard({ module, features = [], onClick, showFeature
   const IconComponent = ICON_MAP[iconKey] ?? Box;
   const iconGradient = ICON_GRADIENT[iconKey] ?? 'from-indigo-500 to-indigo-600';
   const statusDot = STATUS_DOT_COLOR[module.status] ?? STATUS_DOT_COLOR.planned;
+  const portalKey = (module.portal ?? 'evan').toLowerCase();
+  const portalStyle = PORTAL_STYLES[portalKey] ?? PORTAL_STYLES.evan;
+  const portalLabel = portalKey.charAt(0).toUpperCase() + portalKey.slice(1);
 
   // Owner initial
   const ownerInitial = module.business_owner ? module.business_owner.charAt(0).toUpperCase() : 'I';
@@ -186,15 +202,24 @@ export default function ModuleCard({ module, features = [], onClick, showFeature
             )}
           </div>
 
-          {/* Status pill — hidden for 'planned' */}
-          {module.status !== 'planned' && (
-            <div className="flex items-center gap-1.5 flex-shrink-0 mt-1 bg-gray-100 px-2 py-0.5 rounded-full">
-              <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${statusDot}`} />
-              <span className="text-[11px] font-medium text-gray-500 whitespace-nowrap">
-                {STATUS_LABEL[module.status] ?? module.status}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0 mt-0.5">
+            {/* Portal badge */}
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${portalStyle.bg}`}>
+              <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${portalStyle.dot}`} />
+              <span className={`text-[10px] font-semibold whitespace-nowrap ${portalStyle.text}`}>
+                {portalLabel}
               </span>
             </div>
-          )}
+            {/* Status pill — hidden for 'planned' */}
+            {module.status !== 'planned' && (
+              <div className="flex items-center gap-1.5 bg-gray-100 px-2 py-0.5 rounded-full">
+                <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${statusDot}`} />
+                <span className="text-[11px] font-medium text-gray-500 whitespace-nowrap">
+                  {STATUS_LABEL[module.status] ?? module.status}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Description */}

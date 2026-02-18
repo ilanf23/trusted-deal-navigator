@@ -21,6 +21,8 @@ import ModuleDetailDialog from '@/components/admin/modules/ModuleDetailDialog';
 import RequirementsTable, { type BusinessRequirement } from '@/components/admin/modules/RequirementsTable';
 import ModulePipelineBoard from '@/components/admin/modules/ModulePipelineBoard';
 
+const PORTALS = ['evan', 'brad', 'adam', 'maura', 'wendy', 'shared', 'partner', 'client'];
+
 const moduleSchema = z.object({
   name: z.string().min(1, 'Name required'),
   description: z.string().optional(),
@@ -28,6 +30,7 @@ const moduleSchema = z.object({
   priority: z.string(),
   status: z.string(),
   icon: z.string().optional(),
+  portal: z.string().default('evan'),
 });
 type ModuleFormValues = z.infer<typeof moduleSchema>;
 
@@ -44,13 +47,14 @@ export default function ModuleTracker() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [moduleSearch, setModuleSearch] = useState('');
+  const [portalFilter, setPortalFilter] = useState('all');
   const [openRows, setOpenRows] = useState<Set<number>>(new Set());
   const [colCount, setColCount] = useState(3);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<ModuleFormValues>({
     resolver: zodResolver(moduleSchema),
-    defaultValues: { name: '', description: '', business_owner: '', priority: 'medium', status: 'planned', icon: 'Box' },
+    defaultValues: { name: '', description: '', business_owner: '', priority: 'medium', status: 'planned', icon: 'Box', portal: 'evan' },
   });
 
   const fetchData = useCallback(async () => {
@@ -231,15 +235,26 @@ export default function ModuleTracker() {
 
             {/* Board View */}
             <TabsContent value="board" className="mt-4">
-              {/* Search */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400 pointer-events-none" />
-                <Input
-                  placeholder="Search modules..."
-                  value={moduleSearch}
-                  onChange={e => setModuleSearch(e.target.value)}
-                  className="pl-10 h-11 text-sm bg-white border border-gray-200 rounded-xl shadow-sm placeholder:text-gray-400 focus-visible:ring-indigo-300"
-                />
+              {/* Search + portal filter */}
+              <div className="flex gap-3 mb-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-400 pointer-events-none" />
+                  <Input
+                    placeholder="Search modules..."
+                    value={moduleSearch}
+                    onChange={e => setModuleSearch(e.target.value)}
+                    className="pl-10 h-11 text-sm bg-white border border-gray-200 rounded-xl shadow-sm placeholder:text-gray-400 focus-visible:ring-indigo-300"
+                  />
+                </div>
+                <Select value={portalFilter} onValueChange={v => { setPortalFilter(v); setOpenRows(new Set()); }}>
+                  <SelectTrigger className="w-40 h-11 text-sm bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <SelectValue placeholder="All Portals" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Portals</SelectItem>
+                    {PORTALS.map(p => <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
 
               {loading ? (
@@ -256,14 +271,16 @@ export default function ModuleTracker() {
                   </Button>
                 </div>
               ) : (() => {
-                const filtered = modules.filter(m =>
-                  !moduleSearch ||
-                  m.name.toLowerCase().includes(moduleSearch.toLowerCase()) ||
-                  (m.description ?? '').toLowerCase().includes(moduleSearch.toLowerCase())
-                );
+                const filtered = modules.filter(m => {
+                  const matchSearch = !moduleSearch ||
+                    m.name.toLowerCase().includes(moduleSearch.toLowerCase()) ||
+                    (m.description ?? '').toLowerCase().includes(moduleSearch.toLowerCase());
+                  const matchPortal = portalFilter === 'all' || (m.portal ?? 'evan') === portalFilter;
+                  return matchSearch && matchPortal;
+                });
                 return filtered.length === 0 ? (
                   <div className="text-center py-16 border border-dashed border-gray-200 rounded-2xl bg-white">
-                    <p className="text-gray-400 text-sm">No modules match "{moduleSearch}".</p>
+                    <p className="text-gray-400 text-sm">No modules match your filters.</p>
                   </div>
                 ) : (
                   <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -320,6 +337,17 @@ export default function ModuleTracker() {
                   <FormItem>
                     <FormLabel>Business Owner</FormLabel>
                     <FormControl><Input {...field} placeholder="e.g. Ilan" /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="portal" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Portal</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {PORTALS.map(p => <SelectItem key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="icon" render={({ field }) => (
