@@ -1,50 +1,91 @@
 
-# Remove Priority Feature from Module Tracker
+# Seed CLX Operating System Business Requirements
 
-## What's Being Removed
+## Overview
 
-Priority fields and badges appear in 4 files across both modules and business requirements. This is a pure UI/form cleanup — no database migration needed (the `priority` column can stay in the DB, we just stop displaying or editing it in the UI).
+The `modules` and `business_requirements` tables are currently empty. This plan inserts all the data from the provided BRD document in a single SQL migration — no frontend changes needed. The existing Module Tracker page will automatically display everything once the data is seeded.
 
-## Changes Per File
+## Data Structure
 
-### 1. `src/components/admin/modules/ModuleCard.tsx`
-- Remove the `PRIORITY_STYLES` constant (lines 25–30)
-- Remove `priority: string` from the `Module` interface (line 42)
-- Remove the priority `<Badge>` from the card header JSX (line 80–82)
+### Modules to Create (11 modules)
 
-### 2. `src/components/admin/modules/ModuleDetailDialog.tsx`
-- Remove `priority: z.string()` from the zod schema (line 26)
-- Remove `priority: 'medium'` from `form.reset()` defaultValues (line 61)
-- Remove `priority: module.priority` from the `useEffect` reset (line 73)
-- Remove the Priority `<FormField>` block from the Details form (lines 179–191)
+The BRD has a hierarchy: sections → pages → requirements. I'll create one module per named page/section:
 
-### 3. `src/components/admin/modules/RequirementsTable.tsx`
-- Remove `priority: string` from the `BusinessRequirement` interface (line 27)
-- Remove the `PRIORITY_STYLES` constant (lines 39–44)
-- Remove `priority: z.string()` from the zod schema (line 53)
-- Remove `priority: 'medium'` from `form` defaultValues (line 72)
-- Remove `priority` from `insertData` in `handleAdd` (line 97)
-- Remove the `Priority` `<TableHead>` column header (line 159)
-- Remove the priority `<Badge>` `<TableCell>` in each row (lines 182–185)
-- Update `colSpan={7}` on the empty state row to `colSpan={6}` (line 168)
-- Remove the Priority `<FormField>` block from the add dialog (lines 256–268)
+| # | Module Name | Icon | Status |
+|---|-------------|------|--------|
+| 1 | Core OS Rules | Shield | planned |
+| 2 | Dashboard | LayoutDashboard | planned |
+| 3 | Scorecard | BarChart3 | planned |
+| 4 | To Do's | CheckSquare | planned |
+| 5 | Calendar | Calendar | planned |
+| 6 | Calls | Phone | planned |
+| 7 | Gmail | Mail | planned |
+| 8 | Pipeline | Kanban | planned |
+| 9 | Rate Watch / LP / Messages | MessageSquare | planned |
+| 10 | AI Assistant | Zap | planned |
+| 11 | System Integrity | Database | planned |
 
-### 4. `src/pages/admin/ModuleTracker.tsx`
-- Remove `priority: z.string()` from the zod schema (line 25)
-- Remove `priority: 'medium'` from `form` defaultValues (line 46)
-- Remove the Priority `<FormField>` block from the Add Module dialog (lines 220–232)
-- The grid of 4 items will now become 3 — adjust `grid-cols-2` to remain or collapse naturally
+### Requirements to Create (17 BRs)
 
-## What This Does NOT Touch
-- No database migration — the `priority` column stays in the DB (existing seeded data remains intact, nothing breaks)
-- No route or sidebar changes
-- The `Module` interface still needs `priority` to avoid TypeScript errors since Supabase returns it — we'll keep it as optional (`priority?: string`) in the type definition so existing data doesn't break anything, we just won't render it
+All 17 BRs will be inserted with full descriptions and acceptance criteria pulled from the document:
+
+| BR ID | Module | Title |
+|-------|--------|-------|
+| BR-001 | Core OS Rules | No Work Without Ownership |
+| BR-002 | Core OS Rules | No Deal Without Next Action |
+| BR-003 | Core OS Rules | No Silent Failure |
+| BR-004 | Core OS Rules | No Memory Dependency |
+| BR-005 | Dashboard | Show Business Reality |
+| BR-006 | Scorecard | Leading Indicators Only |
+| BR-007 | To Do's | Task = Commitment |
+| BR-008 | Calendar | Deal-Centric Time |
+| BR-009 | Calls | First Ring Reliability |
+| BR-010 | Gmail | Email = Work Unit |
+| BR-011 | Gmail | No Broken Navigation |
+| BR-012 | Pipeline | Pipeline = Truth Source |
+| BR-013 | Rate Watch / LP / Messages | Context First |
+| BR-014 | AI Assistant | AI Is Operator, Not Writer |
+| BR-015 | System Integrity | One Source of Truth |
+| BR-016 | System Integrity | Real-Time Enforcement |
+| BR-017 | System Integrity | No Cosmetic Features |
+
+## SQL Approach
+
+Using a CTE (`WITH`) to insert modules first and capture their generated UUIDs, then insert all BRs in the same statement by joining on module name. This guarantees foreign key integrity without needing hardcoded UUIDs.
+
+```sql
+WITH inserted_modules AS (
+  INSERT INTO public.modules (name, description, business_owner, status, icon)
+  VALUES
+    ('Core OS Rules', 'Non-negotiable global OS rules...', 'Ilan', 'planned', 'Shield'),
+    ('Dashboard', '...', 'Ilan', 'planned', 'LayoutDashboard'),
+    ...
+  RETURNING id, name
+)
+INSERT INTO public.business_requirements 
+  (module_id, requirement_id, title, description, acceptance_criteria, status, priority)
+SELECT m.id, 'BR-001', 'No Work Without Ownership', 
+  'Every object (deal, task, email, call) must have an assigned owner...', 
+  'All deals, tasks, emails, and calls display an assigned owner. System alerts when owner is missing.',
+  'approved', 'medium'
+FROM inserted_modules m WHERE m.name = 'Core OS Rules'
+UNION ALL
+SELECT m.id, 'BR-002', ...
+...
+```
+
+## What You'll See After
+
+**Modules Board tab**: 11 module cards appear with correct icons and "planned" status.
+
+**Requirements tab**: All 17 BRs listed in order (BR-001 through BR-017), each linked to its parent module, filterable and searchable immediately. Descriptions will match the BRD text exactly.
+
+**Dev Pipeline tab**: All 11 modules appear in the "Planned" Kanban column, ready to be dragged to "In Progress" as work begins.
 
 ## Files to Change
 
-| File | Change |
-|------|--------|
-| `src/components/admin/modules/ModuleCard.tsx` | Remove `PRIORITY_STYLES`, `priority` from interface, priority badge from JSX |
-| `src/components/admin/modules/ModuleDetailDialog.tsx` | Remove priority from schema, defaultValues, reset, and form field |
-| `src/components/admin/modules/RequirementsTable.tsx` | Remove priority from interface, styles, schema, defaultValues, insert, table column, table cell, and form field |
-| `src/pages/admin/ModuleTracker.tsx` | Remove priority from schema, defaultValues, and Add Module form field |
+| Action | File |
+|--------|------|
+| **Create** | `supabase/migrations/[timestamp]_seed_clx_requirements.sql` |
+
+No frontend changes required — existing components already read and display this data.
