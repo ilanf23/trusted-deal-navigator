@@ -1,61 +1,95 @@
 
-# Fix Ilan's Landing Page and Navigation Slug
+# Fix Sidebar and Page Layout on Small/Mobile Views
 
-## Problem Summary
+## Problem Analysis
 
-When Ilan logs in, he is routed to `/superadmin/ilan` which currently renders the `TeamPerformance` page. Two issues need fixing:
+From the screenshot and code review, there are two overlapping issues on small/narrow viewports:
 
-1. **Wrong landing page** - `/superadmin/ilan` renders `<TeamPerformance />` instead of `<IlansPage />` (the WOP Developer Dashboard)
-2. **Incorrect sidebar links** - In `AdminSidebar.tsx`, the "WOP" nav item points to `/superadmin/ilan/dev` and the "Team Performance" item points to `/superadmin/ilan` — these are swapped from what they should be
+### Issue 1 — Sidebar Sheet overlaps page content incorrectly on mobile
+The Shadcn `Sidebar` component correctly renders a `Sheet` on mobile (`isMobile` = true, i.e., viewport < 768px). However, the `AdminLayout` wraps everything in `<div className="min-h-screen flex w-full">` which does not account for the Sheet overlay correctly. On very small views (like in the Lovable editor preview pane, which is ~480px wide), the Sheet appears to expand ON TOP of the page without a proper backdrop close behavior — it looks "broken" because sidebar items and the page content are both partially visible simultaneously.
 
-## Root Cause
+### Issue 2 — Header SidebarTrigger margin
+The header has `ml-0 md:ml-12` on the trigger container. On desktop, `ml-12` creates space for the collapsed icon sidebar (3.5rem wide). But at intermediate sizes (768px–900px), the sidebar IS visible but the 3rem margin pushes header content to overlap. On mobile, the trigger is fine but the sidebar Sheet takes full-screen width.
 
-In `src/App.tsx` line 132:
-```tsx
-// CURRENT (wrong)
-<Route path="/superadmin/ilan" element={<EmployeeRoute employeeName="Ilan"><TeamPerformance /></EmployeeRoute>} />
-<Route path="/superadmin/ilan/dev" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
-```
+### Issue 3 — Missing `overflow-x-hidden` on outer wrapper
+The outer `div` doesn't prevent horizontal overflow, which causes horizontal scrolling on small screens when content is wider than viewport.
 
-And in `src/components/admin/AdminSidebar.tsx` lines 96 and 161:
-```tsx
-// CURRENT (wrong)
-{ title: 'WOP', url: '/superadmin/ilan/dev', icon: Code2 },   // Should be /superadmin/ilan
-{ title: 'Team Performance', url: '/superadmin/ilan', icon: BarChart3 }, // Should be /superadmin/team-performance
-```
+### Issue 4 — Sidebar Sheet auto-close on navigation
+On mobile, after tapping a nav link inside the Sheet sidebar, the Sheet stays open because `Link` navigation doesn't trigger the Sheet's `onOpenChange`. This makes it look "stuck".
+
+## Root Cause in Code
+
+In `AdminSidebar.tsx`, all nav links are plain `<Link>` components — they don't call `setOpenMobile(false)` from the `useSidebar()` hook when clicked on mobile. The Shadcn sidebar Sheet only closes when the user taps the backdrop or the trigger button.
+
+In `AdminLayout.tsx`:
+- Line 28: `<div className="min-h-screen flex w-full admin-portal bg-background">` — needs `overflow-x-hidden`
+- Line 36: `<main className="flex-1 flex flex-col min-h-screen w-full overflow-x-hidden">` — this is fine
+- Line 39: `<div className="flex items-center gap-2 md:gap-5 ml-0 md:ml-12">` — the `md:ml-12` pushes the trigger right on medium screens; since the sidebar is fixed-positioned and overlaps, this should be `md:ml-0` or removed entirely, as the `SidebarTrigger` itself handles placement
 
 ## Fix Plan
 
-### 1. `src/App.tsx` — Swap the route components
+### 1. `src/components/admin/AdminSidebar.tsx` — Auto-close Sheet on mobile navigation
+
+Extract `setOpenMobile` from the `useSidebar()` hook and call it on every nav Link click when on mobile. This ensures tapping a link in the mobile Sheet automatically closes the sidebar.
 
 ```tsx
-// AFTER (correct)
-<Route path="/superadmin/ilan" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
-<Route path="/superadmin/ilan/dev" element={<EmployeeRoute employeeName="Ilan"><TeamPerformance /></EmployeeRoute>} />
+const { state, isMobile, setOpenMobile } = useSidebar();
+
+// In every Link:
+<Link
+  to={item.url}
+  onClick={() => isMobile && setOpenMobile(false)}
+  ...
+>
 ```
 
-This ensures that when Ilan logs in and is redirected to `/superadmin/ilan`, he lands on the WOP Developer Dashboard.
+This needs to be applied to:
+- All `noCollapse` section `<Link>` elements (lines ~389, ~428)
+- All collapsible section `<Link>` elements (lines ~546, ~527)
+- Sub-item `<Link>` elements
 
-### 2. `src/components/admin/AdminSidebar.tsx` — Fix the two sidebar URLs
+### 2. `src/components/admin/AdminLayout.tsx` — Fix outer wrapper overflow and header margin
+
+**Change 1**: Add `overflow-x-hidden` to the outer flex wrapper to prevent horizontal scroll bleed on small screens.
 
 ```tsx
-// AFTER (correct)
-{ title: 'WOP', url: '/superadmin/ilan', icon: Code2 },
-{ title: 'Team Performance', url: '/superadmin/ilan/dev', icon: BarChart3 },
+// Line 28 - BEFORE:
+<div className="min-h-screen flex w-full admin-portal bg-background">
+
+// AFTER:
+<div className="min-h-screen flex w-full admin-portal bg-background overflow-x-hidden">
 ```
 
-This makes the "WOP" sidebar link go to the root `/superadmin/ilan` (which now renders IlansPage), and "Team Performance" goes to `/superadmin/ilan/dev`.
+**Change 2**: Remove the `md:ml-12` from the header trigger container. The sidebar is fixed-positioned, so the header doesn't need a left margin to clear it. The `SidebarTrigger` should sit at the natural left edge of the header.
+
+```tsx
+// Line 39 - BEFORE:
+<div className="flex items-center gap-2 md:gap-5 ml-0 md:ml-12">
+
+// AFTER:
+<div className="flex items-center gap-2 md:gap-5">
+```
+
+**Change 3**: Ensure the main content area properly handles small screen padding:
+
+```tsx
+// Line 109 - BEFORE:
+<div className="flex-1 p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-auto">
+
+// AFTER:
+<div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-hidden">
+```
 
 ## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/App.tsx` | Swap `IlansPage` and `TeamPerformance` on the `/superadmin/ilan` and `/superadmin/ilan/dev` routes |
-| `src/components/admin/AdminSidebar.tsx` | Update WOP URL to `/superadmin/ilan` and Team Performance URL to `/superadmin/ilan/dev` |
+| `src/components/admin/AdminLayout.tsx` | Add `overflow-x-hidden` to outer div, remove `md:ml-12` from header trigger container, change content padding to `p-3 sm:p-4` and `overflow-x-hidden` |
+| `src/components/admin/AdminSidebar.tsx` | Extract `isMobile` + `setOpenMobile` from `useSidebar()`, add `onClick={() => isMobile && setOpenMobile(false)}` to all nav `<Link>` elements |
 
-## Technical Notes
+## What This Fixes
 
-- No new routes, pages, or components are needed — this is purely a URL/component mapping fix
-- The `Auth.tsx` redirect logic already correctly sends Ilan to `/superadmin/ilan` based on `teamMember.is_owner` check — no changes needed there
-- The `/superadmin/ilan/dev` slug makes logical sense as a secondary developer tools page (Team Performance from Ilan's perspective is a secondary tool, not his home)
-- All other `/superadmin/ilan/*` sub-routes (gmail, bugs, team, users-roles) remain unchanged
+- Tapping a sidebar link on mobile now automatically closes the Sheet overlay
+- No horizontal overflow/scrolling on small screens
+- Header trigger is properly positioned without the extra `md:ml-12` margin that caused misalignment in narrow views
+- Content padding is slightly reduced on very small screens (`p-3`) for better space usage
