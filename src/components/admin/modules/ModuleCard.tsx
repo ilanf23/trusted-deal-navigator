@@ -94,10 +94,11 @@ interface ModuleCardProps {
   module: Module;
   features?: ModuleFeature[];
   onClick: (module: Module) => void;
+  showFeatures?: boolean;
+  onToggleFeatures?: () => void;
 }
 
-export default function ModuleCard({ module, features = [], onClick }: ModuleCardProps) {
-  const [showFeatures, setShowFeatures] = useState(false);
+export default function ModuleCard({ module, features = [], onClick, showFeatures = false, onToggleFeatures }: ModuleCardProps) {
   const [checked, setChecked] = useState<Set<string>>(() =>
     loadChecked(module.id, features.map(f => f.id))
   );
@@ -230,7 +231,7 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
             {/* Minimal text toggle */}
             <button
               className="flex items-center gap-1 text-[12px] text-indigo-500 font-medium hover:text-indigo-700 transition-colors"
-              onClick={e => { e.stopPropagation(); setShowFeatures(v => !v); }}
+              onClick={e => { e.stopPropagation(); onToggleFeatures?.(); }}
             >
               <span>{showFeatures ? 'Hide features' : 'Show features'}</span>
               <ChevronDown

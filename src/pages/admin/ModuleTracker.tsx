@@ -44,6 +44,7 @@ export default function ModuleTracker() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [moduleSearch, setModuleSearch] = useState('');
+  const [showFeatures, setShowFeatures] = useState(false);
 
   const form = useForm<ModuleFormValues>({
     resolver: zodResolver(moduleSchema),
@@ -242,7 +243,16 @@ export default function ModuleTracker() {
                       const features: ModuleFeature[] = requirements
                         .filter(r => r.module_id === mod.id)
                         .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status }));
-                      return <ModuleCard key={mod.id} module={mod} features={features} onClick={openDetail} />;
+                      return (
+                        <ModuleCard
+                          key={mod.id}
+                          module={mod}
+                          features={features}
+                          onClick={openDetail}
+                          showFeatures={showFeatures}
+                          onToggleFeatures={() => setShowFeatures(v => !v)}
+                        />
+                      );
                     })}
                   </div>
                 );
