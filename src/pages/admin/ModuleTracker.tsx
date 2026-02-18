@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 import { Plus, LayoutGrid, Table2, Kanban } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import ModuleCard, { type Module } from '@/components/admin/modules/ModuleCard';
+import ModuleCard, { type Module, type ModuleFeature } from '@/components/admin/modules/ModuleCard';
 import ModuleDetailDialog from '@/components/admin/modules/ModuleDetailDialog';
 import RequirementsTable, { type BusinessRequirement } from '@/components/admin/modules/RequirementsTable';
 import ModulePipelineBoard from '@/components/admin/modules/ModulePipelineBoard';
@@ -139,9 +139,9 @@ export default function ModuleTracker() {
           {/* Board View */}
           <TabsContent value="board" className="mt-4">
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-40 bg-muted/30 rounded-xl animate-pulse" />
+                  <div key={i} className="h-40 bg-muted/30 rounded-2xl animate-pulse" />
                 ))}
               </div>
             ) : modules.length === 0 ? (
@@ -152,10 +152,13 @@ export default function ModuleTracker() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {modules.map(mod => (
-                  <ModuleCard key={mod.id} module={mod} onClick={openDetail} />
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {modules.map(mod => {
+                  const features: ModuleFeature[] = requirements
+                    .filter(r => r.module_id === mod.id)
+                    .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status }));
+                  return <ModuleCard key={mod.id} module={mod} features={features} onClick={openDetail} />;
+                })}
               </div>
             )}
           </TabsContent>
