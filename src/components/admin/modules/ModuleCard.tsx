@@ -11,11 +11,37 @@ const ICON_MAP: Record<string, LucideIcon> = {
   ClipboardList, Bug, Calendar, MessageSquare, TrendingUp,
 };
 
-const STATUS_DOT: Record<string, string> = {
-  planned:     'bg-slate-400',
+// Gradient per icon — white icon on gradient bg
+const ICON_GRADIENT: Record<string, string> = {
+  Box:             'from-indigo-500 to-indigo-600',
+  LayoutDashboard: 'from-blue-500 to-blue-600',
+  BarChart3:       'from-violet-500 to-violet-600',
+  ClipboardList:   'from-emerald-500 to-emerald-600',
+  Mail:            'from-sky-500 to-sky-600',
+  Phone:           'from-green-500 to-green-600',
+  FileText:        'from-orange-500 to-orange-600',
+  Users:           'from-pink-500 to-pink-600',
+  Kanban:          'from-purple-500 to-purple-600',
+  Settings:        'from-slate-500 to-slate-600',
+  Shield:          'from-red-500 to-red-600',
+  Bell:            'from-yellow-500 to-yellow-600',
+  Star:            'from-amber-500 to-amber-600',
+  Zap:             'from-lime-500 to-lime-600',
+  Globe:           'from-teal-500 to-teal-600',
+  Database:        'from-cyan-500 to-cyan-600',
+  Bug:             'from-rose-500 to-rose-600',
+  Calendar:        'from-fuchsia-500 to-fuchsia-600',
+  MessageSquare:   'from-blue-400 to-blue-500',
+  TrendingUp:      'from-emerald-400 to-emerald-500',
+  Search:          'from-indigo-400 to-indigo-500',
+};
+
+// Status dot color for pill
+const STATUS_DOT_COLOR: Record<string, string> = {
+  planned:     'bg-gray-400',
   in_progress: 'bg-blue-500',
   in_review:   'bg-amber-500',
-  complete:    'bg-green-500',
+  complete:    'bg-emerald-500',
   on_hold:     'bg-red-400',
 };
 
@@ -75,7 +101,6 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
   const [checked, setChecked] = useState<Set<string>>(() =>
     loadChecked(module.id, features.map(f => f.id))
   );
-  // Animated progress bar width
   const [barWidth, setBarWidth] = useState(0);
   const hasAnimated = useRef(false);
 
@@ -83,7 +108,6 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
     setChecked(loadChecked(module.id, features.map(f => f.id)));
   }, [module.id, features.length]);
 
-  // Animate bar from 0 → completion on mount
   useEffect(() => {
     if (hasAnimated.current) return;
     hasAnimated.current = true;
@@ -91,11 +115,10 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
       const checkedNow = loadChecked(module.id, features.map(f => f.id));
       const pct = features.length > 0 ? Math.round(checkedNow.size / features.length * 100) : 0;
       setBarWidth(pct);
-    }, 80); // slight delay so animation is visible
+    }, 80);
     return () => clearTimeout(timer);
   }, []);
 
-  // Keep bar in sync with checkbox changes
   const checkedCount = features.filter(f => checked.has(f.id)).length;
   const featureProgress = features.length > 0 ? Math.round(checkedCount / features.length * 100) : 0;
 
@@ -103,8 +126,13 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
     setBarWidth(featureProgress);
   }, [featureProgress]);
 
-  const IconComponent = ICON_MAP[module.icon || 'Box'] ?? Box;
-  const statusDot = STATUS_DOT[module.status] ?? STATUS_DOT.planned;
+  const iconKey = module.icon || 'Box';
+  const IconComponent = ICON_MAP[iconKey] ?? Box;
+  const iconGradient = ICON_GRADIENT[iconKey] ?? 'from-indigo-500 to-indigo-600';
+  const statusDot = STATUS_DOT_COLOR[module.status] ?? STATUS_DOT_COLOR.planned;
+
+  // Owner initial
+  const ownerInitial = module.business_owner ? module.business_owner.charAt(0).toUpperCase() : 'I';
 
   const toggleFeature = (e: React.MouseEvent, featureId: string) => {
     e.stopPropagation();
@@ -119,11 +147,10 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
 
   return (
     <div
-      className="rounded-2xl border border-border/60 bg-card cursor-pointer overflow-hidden"
-      style={{ transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
+      className="rounded-2xl border border-gray-100 bg-white shadow-sm cursor-pointer overflow-hidden transition-all duration-200"
       onMouseEnter={e => {
-        e.currentTarget.style.transform = 'translateY(-3px)';
-        e.currentTarget.style.boxShadow = '0 16px 40px -10px rgba(0,0,0,0.18)';
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 8px 24px -6px rgba(0,0,0,0.12)';
       }}
       onMouseLeave={e => {
         e.currentTarget.style.transform = 'translateY(0)';
@@ -131,26 +158,37 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
       }}
       onClick={() => onClick(module)}
     >
-      {/* Top accent bar */}
-      <div className={`h-0.5 w-full ${statusDot}`} />
-
       <div className="p-5">
-        {/* Header */}
+        {/* Header row */}
         <div className="flex items-start gap-3 mb-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <IconComponent className="w-[18px] h-[18px] text-primary" strokeWidth={1.6} />
+          {/* Gradient icon */}
+          <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${iconGradient} flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm`}>
+            <IconComponent className="w-[17px] h-[17px] text-white" strokeWidth={1.8} />
           </div>
+
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground leading-snug" style={{ fontSize: '17px' }}>
+            <h3 className="font-semibold text-gray-900 leading-snug text-[15px]">
               {module.name}
             </h3>
+            {/* Business owner with avatar */}
             {module.business_owner && (
-              <p className="text-xs text-muted-foreground mt-0.5">{module.business_owner}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {/* Tiny avatar */}
+                <div
+                  className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-white flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', fontSize: '9px', fontWeight: 700 }}
+                >
+                  {ownerInitial}
+                </div>
+                <p className="text-xs text-gray-400 font-medium">{module.business_owner}</p>
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
-            <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`} />
-            <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+
+          {/* Status pill */}
+          <div className="flex items-center gap-1.5 flex-shrink-0 mt-1 bg-gray-100 px-2 py-0.5 rounded-full">
+            <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${statusDot}`} />
+            <span className="text-[11px] font-medium text-gray-500 whitespace-nowrap">
               {STATUS_LABEL[module.status] ?? module.status}
             </span>
           </div>
@@ -158,7 +196,7 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
 
         {/* Description */}
         {module.description && (
-          <p className="leading-relaxed mb-4" style={{ fontSize: '14px', color: '#6B7280' }}>
+          <p className="text-[13px] text-gray-500 leading-relaxed mb-4">
             {module.description}
           </p>
         )}
@@ -180,7 +218,7 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
                 }}
               />
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
+            <p className="text-[11px] text-gray-400 font-medium mt-1">
               {checkedCount}/{features.length} features · {featureProgress}%
             </p>
           </div>
@@ -189,15 +227,14 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
         {/* Features section */}
         {features.length > 0 && (
           <div onClick={e => e.stopPropagation()}>
-            {/* Pill toggle button */}
+            {/* Minimal text toggle */}
             <button
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-background hover:bg-muted/60 transition-colors"
-              style={{ fontSize: '14px', color: '#374151' }}
+              className="flex items-center gap-1 text-[12px] text-indigo-500 font-medium hover:text-indigo-700 transition-colors"
               onClick={e => { e.stopPropagation(); setShowFeatures(v => !v); }}
             >
-              <span className="font-medium">{showFeatures ? 'Hide features' : 'Show features'}</span>
+              <span>{showFeatures ? 'Hide features' : 'Show features'}</span>
               <ChevronDown
-                className="w-3.5 h-3.5 text-muted-foreground"
+                className="w-3.5 h-3.5"
                 style={{
                   transition: 'transform 0.2s ease',
                   transform: showFeatures ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -207,44 +244,46 @@ export default function ModuleCard({ module, features = [], onClick }: ModuleCar
 
             {/* Feature list */}
             {showFeatures && (
-              <ul className="mt-3 space-y-2">
-                {features.map(f => {
+              <ul className="mt-2">
+                {features.map((f, i) => {
                   const isChecked = checked.has(f.id);
+                  const isLast = i === features.length - 1;
                   return (
                     <li
                       key={f.id}
-                      className="flex items-start gap-2.5 cursor-pointer group/item"
+                      className={`flex items-center gap-3 py-2 cursor-pointer group/item ${!isLast ? 'border-b border-gray-50' : ''}`}
                       onClick={e => toggleFeature(e, f.id)}
                     >
                       {/* Custom checkbox */}
                       <div
-                        className={`mt-0.5 w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-all duration-150 ${
+                        className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-all duration-150 ${
                           isChecked
-                            ? 'bg-primary border-primary'
-                            : 'border-border group-hover/item:border-primary/60 bg-background'
+                            ? 'bg-indigo-500 border-indigo-500'
+                            : 'border-gray-200 group-hover/item:border-indigo-300 bg-white'
                         }`}
                       >
                         {isChecked && (
-                          <svg className="w-2.5 h-2.5 text-primary-foreground" viewBox="0 0 10 10" fill="none">
+                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
                             <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         )}
                       </div>
-                      <div className="flex items-start gap-1.5 flex-1 min-w-0">
-                        <span className="text-[10.5px] font-mono text-muted-foreground/50 mt-px w-12 flex-shrink-0">
-                          {f.requirement_id}
-                        </span>
-                        <span
-                          className="leading-snug transition-all duration-150"
-                          style={{
-                            fontSize: '13px',
-                            color: isChecked ? '#9CA3AF' : '#374151',
-                            textDecoration: isChecked ? 'line-through' : 'none',
-                          }}
-                        >
-                          {f.title}
-                        </span>
-                      </div>
+
+                      {/* Req ID badge */}
+                      <span className="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-1.5 py-0.5 rounded font-mono flex-shrink-0">
+                        {f.requirement_id}
+                      </span>
+
+                      {/* Feature title */}
+                      <span
+                        className="text-[13px] leading-snug transition-all duration-150 flex-1 min-w-0"
+                        style={{
+                          color: isChecked ? '#9CA3AF' : '#374151',
+                          textDecoration: isChecked ? 'line-through' : 'none',
+                        }}
+                      >
+                        {f.title}
+                      </span>
                     </li>
                   );
                 })}
