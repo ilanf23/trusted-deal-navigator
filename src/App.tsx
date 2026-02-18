@@ -46,6 +46,7 @@ import EvansEmailTemplates from "./pages/admin/EvansEmailTemplates";
 import EvansCalendar from "./pages/admin/EvansCalendar";
 import EvansScorecard from "./pages/admin/EvansScorecard";
 import DevNotes from "./pages/admin/DevNotes";
+import ModuleTracker from "./pages/admin/ModuleTracker";
 import MaurasPage from "./pages/admin/MaurasPage";
 import WendysPage from "./pages/admin/WendysPage";
 import BradsPage from "./pages/admin/BradsPage";
@@ -136,6 +137,7 @@ const App = () => (
                 <Route path="/superadmin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/team/evan/dev-notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanDevNotes /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/team/evan/notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanNotes /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan/module-tracker" element={<EmployeeRoute employeeName="Ilan"><ModuleTracker /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/users-roles" element={<EmployeeRoute employeeName="Ilan"><UsersAndRoles /></EmployeeRoute>} />
               </Route>
               
