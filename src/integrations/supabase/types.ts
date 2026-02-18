@@ -180,6 +180,56 @@ export type Database = {
         }
         Relationships: []
       }
+      business_requirements: {
+        Row: {
+          acceptance_criteria: string | null
+          assigned_to: string | null
+          created_at: string
+          description: string | null
+          id: string
+          module_id: string | null
+          priority: string
+          requirement_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          acceptance_criteria?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          module_id?: string | null
+          priority?: string
+          requirement_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          acceptance_criteria?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          module_id?: string | null
+          priority?: string
+          requirement_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_requirements_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_connections: {
         Row: {
           access_token: string
@@ -1938,6 +1988,74 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      module_tasks: {
+        Row: {
+          created_at: string
+          id: string
+          module_id: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          module_id?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          module_id?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_tasks_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modules: {
+        Row: {
+          business_owner: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          priority: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          business_owner?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          priority?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          business_owner?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          priority?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       newsletter_campaign_events: {
         Row: {

@@ -95,6 +95,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: LayoutDashboard,
         items: [
           { title: 'WOP', url: '/superadmin/ilan', icon: Code2 },
+          { title: 'Module Tracker', url: '/superadmin/ilan/module-tracker', icon: ClipboardList },
           { title: 'Users & Roles', url: '/superadmin/ilan/users-roles', icon: Users },
         ],
         noCollapse: true,
