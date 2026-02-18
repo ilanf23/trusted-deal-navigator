@@ -129,8 +129,8 @@ const App = () => (
                 {/* Founder/Super Admin Personal Routes */}
                 <Route path="/superadmin/brad" element={<EmployeeRoute employeeName="Brad"><BradsPage /></EmployeeRoute>} />
                 <Route path="/superadmin/adam" element={<EmployeeRoute employeeName="Adam"><AdamsPage /></EmployeeRoute>} />
-                <Route path="/superadmin/ilan" element={<EmployeeRoute employeeName="Ilan"><TeamPerformance /></EmployeeRoute>} />
-                <Route path="/superadmin/ilan/dev" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
+                <Route path="/superadmin/ilan/dev" element={<EmployeeRoute employeeName="Ilan"><TeamPerformance /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/bugs" element={<EmployeeRoute employeeName="Ilan"><BugTesting /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/gmail" element={<EmployeeRoute employeeName="Ilan"><IlansGmail /></EmployeeRoute>} />
                 <Route path="/superadmin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
