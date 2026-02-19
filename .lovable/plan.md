@@ -1,41 +1,61 @@
 
-## Row-Based Feature Toggle for Module Cards
 
-### Current Behavior
-A single `showFeatures` boolean in `ModuleTracker` controls ALL cards simultaneously. Clicking "Show features" on any card expands every module.
+# Fix: Stop Portal Pages from Refreshing Every ~10 Seconds
 
-### Goal
-Only cards in the **same visual row** should expand together when one is clicked.
+## Problem
 
-### Solution
+Every time the authentication token refreshes (which Supabase does automatically in the background), the entire page unmounts and remounts. Here's the chain of events:
 
-The grid is `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`. The key insight is: instead of one global toggle, track a **Set of open row indices** (`openRows: Set<number>`). Each card receives its row index based on its position in the filtered array and the current column count.
+1. Supabase fires an `onAuthStateChange` event (e.g., `TOKEN_REFRESHED`)
+2. `AuthContext` sets `roleLoading = true`, which makes `loading = true`
+3. `ProtectedRoute` and `EmployeeRoute` both check `loading` -- when it's `true`, they render a spinner instead of the page content
+4. This **unmounts** the entire page (destroying all local state, scroll position, open dialogs, etc.)
+5. A moment later, the role finishes loading, `loading` becomes `false`, and the page remounts from scratch
 
-Since CSS grid column count changes with breakpoints, the cleanest approach that avoids complex ResizeObserver logic is to:
+This creates the "page refresh" effect you're experiencing.
 
-1. Replace `showFeatures: boolean` with `showFeatures: boolean` per-row by computing `rowIndex = Math.floor(cardIndex / colCount)`.
-2. Track a `Set<number>` of open row indices in `ModuleTracker`.
-3. Pass `showFeatures={openRows.has(rowIndex)}` and `onToggleFeatures={() => toggleRow(rowIndex)}` to each card.
-4. For column count, use a `useRef` on the grid container and a `ResizeObserver` to detect the actual rendered column count dynamically (avoids hardcoding breakpoints).
+## Solution
 
-### Technical Implementation
+Skip the role re-fetch on token refresh events. The user's role doesn't change when a token refreshes -- it only matters on initial sign-in. We'll update `AuthContext` to:
 
-**`src/pages/admin/ModuleTracker.tsx`**
-- Remove `const [showFeatures, setShowFeatures] = useState(false)`.
-- Add `const [openRows, setOpenRows] = useState<Set<number>>(new Set())`.
-- Add `const [colCount, setColCount] = useState(3)` with a `useRef` on the grid `<div>`.
-- Add a `useEffect` with `ResizeObserver` on the grid ref to compute actual columns:
-  ```ts
-  const cols = Math.round(gridEl.offsetWidth / (gridEl.firstElementChild?.offsetWidth ?? 1));
-  setColCount(Math.max(1, cols));
-  ```
-- Add `toggleRow(rowIdx: number)` — toggles presence in `openRows`.
-- In the map, compute `rowIndex = Math.floor(index / colCount)` and pass as props.
-- Reset `openRows` when search changes (so hidden cards don't stay "open").
+- Only set `roleLoading(true)` during the initial session load
+- On `TOKEN_REFRESHED` and other non-sign-in events, update the session/user silently **without** re-fetching the role or flashing a loading state
+- Cache the role once it's known and only re-fetch on actual sign-in/sign-out events
 
-**`src/components/admin/modules/ModuleCard.tsx`**
-- No interface changes needed — `showFeatures` and `onToggleFeatures` props already exist.
+## Technical Details
 
-### Edge Cases
-- If filtered results change (search), reset `openRows` to avoid stale row associations.
-- The ResizeObserver approach handles mobile (1 col), tablet (2 col), and desktop (3 col) correctly without hardcoded breakpoints.
+**File: `src/contexts/AuthContext.tsx`**
+
+Update the `onAuthStateChange` handler to check the event type:
+
+```tsx
+supabase.auth.onAuthStateChange((event, session) => {
+  setSession(session);
+  setUser(session?.user ?? null);
+
+  // Only re-fetch role on actual sign-in, not token refreshes
+  if (event === 'SIGNED_IN' && !userRole) {
+    setRoleLoading(true);
+    setTimeout(async () => {
+      const role = await fetchUserRole(session!.user.id);
+      setUserRole(role);
+      setRoleLoading(false);
+      setLoading(false);
+    }, 0);
+  } else if (event === 'SIGNED_OUT') {
+    setUserRole(null);
+    setRoleLoading(false);
+    setLoading(false);
+  } else if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+    // Don't re-fetch role, just update session silently
+    if (!session?.user) {
+      setUserRole(null);
+    }
+    setRoleLoading(false);
+    setLoading(false);
+  }
+});
+```
+
+This is a single-file change that will eliminate the periodic page refreshes entirely while keeping authentication working correctly.
+
