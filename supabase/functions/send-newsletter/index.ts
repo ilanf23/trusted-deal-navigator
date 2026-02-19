@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { ILAN_EMAIL } from "../_shared/constants.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 // ... keep existing code (constants, corsHeaders, interfaces, helper functions)
