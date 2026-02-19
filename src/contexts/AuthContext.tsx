@@ -54,11 +54,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    let initialLoadHandled = false;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+
+        if (event === 'INITIAL_SESSION') {
+          // Don't handle loading here — let getSession().then() below handle the initial load
+          // to avoid a race condition where loading=false before the role is fetched
+          return;
+        }
 
         // Only re-fetch role on actual sign-in, not token refreshes
         if (event === 'SIGNED_IN' && !userRole) {
@@ -73,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserRole(null);
           setRoleLoading(false);
           setLoading(false);
-        } else if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        } else if (event === 'TOKEN_REFRESHED') {
           // Don't re-fetch role, just update session silently
           if (!session?.user) {
             setUserRole(null);
@@ -86,6 +94,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (initialLoadHandled) return;
+      initialLoadHandled = true;
+
       setSession(session);
       setUser(session?.user ?? null);
 
