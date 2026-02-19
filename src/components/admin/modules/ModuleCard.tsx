@@ -4,6 +4,7 @@ import { ChevronDown,
   Settings, Shield, Bell, Search, Star, Zap, Globe, Database,
   ClipboardList, Bug, Calendar, MessageSquare, TrendingUp, type LucideIcon
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Box, LayoutDashboard, Mail, Phone, FileText, Users, Kanban, BarChart3,
@@ -11,7 +12,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
   ClipboardList, Bug, Calendar, MessageSquare, TrendingUp,
 };
 
-// Gradient per icon — white icon on gradient bg
 const ICON_GRADIENT: Record<string, string> = {
   Box:             'from-indigo-500 to-indigo-600',
   LayoutDashboard: 'from-blue-500 to-blue-600',
@@ -36,7 +36,6 @@ const ICON_GRADIENT: Record<string, string> = {
   Search:          'from-indigo-400 to-indigo-500',
 };
 
-// Status dot color for pill
 const STATUS_DOT_COLOR: Record<string, string> = {
   planned:     'bg-gray-400',
   in_progress: 'bg-blue-500',
@@ -50,7 +49,6 @@ const STATUS_LABEL: Record<string, string> = {
   complete: 'Complete', on_hold: 'On Hold',
 };
 
-// Portal badge colors
 const PORTAL_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
   evan:    { bg: 'bg-indigo-50',  text: 'text-indigo-600',  dot: 'bg-indigo-400'  },
   brad:    { bg: 'bg-blue-50',    text: 'text-blue-600',    dot: 'bg-blue-400'    },
@@ -84,57 +82,44 @@ export interface ModuleFeature {
   status: string;
 }
 
-function getStorageKey(moduleId: string) {
-  return `module-checked-${moduleId}`;
-}
-
-function loadChecked(moduleId: string, featureIds: string[]): Set<string> {
-  try {
-    const raw = localStorage.getItem(getStorageKey(moduleId));
-    if (!raw) return new Set();
-    const parsed: string[] = JSON.parse(raw);
-    return new Set(parsed.filter(id => featureIds.includes(id)));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveChecked(moduleId: string, checked: Set<string>) {
-  localStorage.setItem(getStorageKey(moduleId), JSON.stringify([...checked]));
-}
-
 interface ModuleCardProps {
   module: Module;
   features?: ModuleFeature[];
   onClick: (module: Module) => void;
   showFeatures?: boolean;
   onToggleFeatures?: () => void;
+  onFeatureStatusChange?: (featureId: string, newStatus: string) => void;
 }
 
-export default function ModuleCard({ module, features = [], onClick, showFeatures = false, onToggleFeatures }: ModuleCardProps) {
-  const [checked, setChecked] = useState<Set<string>>(() =>
-    loadChecked(module.id, features.map(f => f.id))
+export default function ModuleCard({
+  module,
+  features = [],
+  onClick,
+  showFeatures = false,
+  onToggleFeatures,
+  onFeatureStatusChange,
+}: ModuleCardProps) {
+  const [localStatuses, setLocalStatuses] = useState<Record<string, string>>(() =>
+    Object.fromEntries(features.map(f => [f.id, f.status]))
   );
   const [barWidth, setBarWidth] = useState(0);
   const hasAnimated = useRef(false);
 
+  // Sync when features prop changes (e.g. after refetch)
   useEffect(() => {
-    setChecked(loadChecked(module.id, features.map(f => f.id)));
-  }, [module.id, features.length]);
+    setLocalStatuses(Object.fromEntries(features.map(f => [f.id, f.status])));
+  }, [features.length, features.map(f => f.status).join(',')]);
 
+  const completedCount = features.filter(f => (localStatuses[f.id] ?? f.status) === 'verified').length;
+  const featureProgress = features.length > 0 ? Math.round(completedCount / features.length * 100) : 0;
+
+  // Animate bar on mount
   useEffect(() => {
     if (hasAnimated.current) return;
     hasAnimated.current = true;
-    const timer = setTimeout(() => {
-      const checkedNow = loadChecked(module.id, features.map(f => f.id));
-      const pct = features.length > 0 ? Math.round(checkedNow.size / features.length * 100) : 0;
-      setBarWidth(pct);
-    }, 80);
+    const timer = setTimeout(() => setBarWidth(featureProgress), 80);
     return () => clearTimeout(timer);
   }, []);
-
-  const checkedCount = features.filter(f => checked.has(f.id)).length;
-  const featureProgress = features.length > 0 ? Math.round(checkedCount / features.length * 100) : 0;
 
   useEffect(() => {
     setBarWidth(featureProgress);
@@ -147,19 +132,28 @@ export default function ModuleCard({ module, features = [], onClick, showFeature
   const portalKey = (module.portal ?? 'evan').toLowerCase();
   const portalStyle = PORTAL_STYLES[portalKey] ?? PORTAL_STYLES.evan;
   const portalLabel = portalKey.charAt(0).toUpperCase() + portalKey.slice(1);
-
-  // Owner initial
   const ownerInitial = module.business_owner ? module.business_owner.charAt(0).toUpperCase() : 'I';
 
-  const toggleFeature = (e: React.MouseEvent, featureId: string) => {
+  const toggleFeature = async (e: React.MouseEvent, feature: ModuleFeature) => {
     e.stopPropagation();
-    setChecked(prev => {
-      const next = new Set(prev);
-      if (next.has(featureId)) next.delete(featureId);
-      else next.add(featureId);
-      saveChecked(module.id, next);
-      return next;
-    });
+    const currentStatus = localStatuses[feature.id] ?? feature.status;
+    const newStatus = currentStatus === 'verified' ? 'draft' : 'verified';
+
+    // Optimistic update
+    setLocalStatuses(prev => ({ ...prev, [feature.id]: newStatus }));
+
+    const { error } = await supabase
+      .from('business_requirements')
+      .update({ status: newStatus })
+      .eq('id', feature.id);
+
+    if (error) {
+      // Revert on error
+      setLocalStatuses(prev => ({ ...prev, [feature.id]: currentStatus }));
+      return;
+    }
+
+    onFeatureStatusChange?.(feature.id, newStatus);
   };
 
   return (
@@ -187,10 +181,8 @@ export default function ModuleCard({ module, features = [], onClick, showFeature
             <h3 className="font-semibold text-gray-900 leading-snug text-[15px]">
               {module.name}
             </h3>
-            {/* Business owner with avatar */}
             {module.business_owner && (
               <div className="flex items-center gap-1.5 mt-0.5">
-                {/* Tiny avatar */}
                 <div
                   className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-white flex-shrink-0"
                   style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', fontSize: '9px', fontWeight: 700 }}
@@ -240,22 +232,30 @@ export default function ModuleCard({ module, features = [], onClick, showFeature
                 style={{
                   height: '100%',
                   width: `${barWidth}%`,
-                  backgroundColor: '#007AFF',
+                  background: featureProgress === 100
+                    ? 'linear-gradient(90deg, #10b981, #059669)'
+                    : '#6366f1',
                   borderRadius: '9999px',
                   transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               />
             </div>
-            <p className="text-[11px] text-gray-400 font-medium mt-1">
-              {checkedCount}/{features.length} features · {featureProgress}%
-            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[11px] text-gray-400 font-medium">
+                {completedCount}/{features.length} built · {featureProgress}%
+              </p>
+              {featureProgress === 100 && (
+                <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                  ✓ Complete
+                </span>
+              )}
+            </div>
           </div>
         )}
 
         {/* Features section */}
         {features.length > 0 && (
           <div onClick={e => e.stopPropagation()}>
-            {/* Minimal text toggle */}
             <button
               className="flex items-center gap-1 text-[12px] text-indigo-500 font-medium hover:text-indigo-700 transition-colors"
               onClick={e => { e.stopPropagation(); onToggleFeatures?.(); }}
@@ -270,27 +270,27 @@ export default function ModuleCard({ module, features = [], onClick, showFeature
               />
             </button>
 
-            {/* Feature list */}
             {showFeatures && (
               <ul className="mt-2">
                 {features.map((f, i) => {
-                  const isChecked = checked.has(f.id);
+                  const currentStatus = localStatuses[f.id] ?? f.status;
+                  const isComplete = currentStatus === 'verified';
                   const isLast = i === features.length - 1;
                   return (
                     <li
                       key={f.id}
                       className={`flex items-center gap-3 py-2 cursor-pointer group/item ${!isLast ? 'border-b border-gray-50' : ''}`}
-                      onClick={e => toggleFeature(e, f.id)}
+                      onClick={e => toggleFeature(e, f)}
                     >
                       {/* Custom checkbox */}
                       <div
                         className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-all duration-150 ${
-                          isChecked
-                            ? 'bg-indigo-500 border-indigo-500'
+                          isComplete
+                            ? 'bg-emerald-500 border-emerald-500'
                             : 'border-gray-200 group-hover/item:border-indigo-300 bg-white'
                         }`}
                       >
-                        {isChecked && (
+                        {isComplete && (
                           <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
                             <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
@@ -306,12 +306,19 @@ export default function ModuleCard({ module, features = [], onClick, showFeature
                       <span
                         className="text-[13px] leading-snug transition-all duration-150 flex-1 min-w-0"
                         style={{
-                          color: isChecked ? '#9CA3AF' : '#374151',
-                          textDecoration: isChecked ? 'line-through' : 'none',
+                          color: isComplete ? '#9CA3AF' : '#374151',
+                          textDecoration: isComplete ? 'line-through' : 'none',
                         }}
                       >
                         {f.title}
                       </span>
+
+                      {/* Verified badge */}
+                      {isComplete && (
+                        <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
+                          Built ✓
+                        </span>
+                      )}
                     </li>
                   );
                 })}

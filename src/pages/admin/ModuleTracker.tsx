@@ -123,12 +123,19 @@ export default function ModuleTracker() {
     setDetailOpen(true);
   };
 
+  // Optimistically update requirement status in local state (no full refetch needed)
+  const handleFeatureStatusChange = (featureId: string, newStatus: string) => {
+    setRequirements(prev =>
+      prev.map(r => r.id === featureId ? { ...r, status: newStatus } : r)
+    );
+  };
+
   // Summary stats
   const totalModules = modules.length;
   const inProgress = modules.filter(m => m.status === 'in_progress').length;
   const complete = modules.filter(m => m.status === 'complete').length;
   const completePct = totalModules > 0 ? Math.round(complete / totalModules * 100) : 0;
-  const openReqs = requirements.filter(r => r.status === 'draft' || r.status === 'approved').length;
+  const openReqs = requirements.filter(r => r.status !== 'verified').length;
 
   return (
     <AdminLayout>
@@ -296,6 +303,7 @@ export default function ModuleTracker() {
                           onClick={openDetail}
                           showFeatures={openRows.has(rowIndex)}
                           onToggleFeatures={() => toggleRow(rowIndex)}
+                          onFeatureStatusChange={handleFeatureStatusChange}
                         />
                       );
                     })}
