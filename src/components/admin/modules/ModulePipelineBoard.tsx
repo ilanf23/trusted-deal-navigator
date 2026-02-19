@@ -11,11 +11,11 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Module } from './ModuleCard';
 
 const COLUMNS = [
-  { id: 'planned',     label: 'Backlog / Planned',  color: 'bg-slate-100 dark:bg-slate-800/60' },
-  { id: 'in_progress', label: 'In Progress',         color: 'bg-blue-50 dark:bg-blue-900/20' },
-  { id: 'in_review',   label: 'In Review',           color: 'bg-amber-50 dark:bg-amber-900/20' },
-  { id: 'complete',    label: 'Done',                color: 'bg-green-50 dark:bg-green-900/20' },
-  { id: 'on_hold',     label: 'On Hold',             color: 'bg-red-50 dark:bg-red-900/20' },
+  { id: 'planned',     label: 'Backlog / Planned',  color: 'bg-slate-100 dark:bg-slate-800/50' },
+  { id: 'in_progress', label: 'In Progress',         color: 'bg-blue-50 dark:bg-blue-900/30' },
+  { id: 'in_review',   label: 'In Review',           color: 'bg-amber-50 dark:bg-amber-900/30' },
+  { id: 'complete',    label: 'Done',                color: 'bg-green-50 dark:bg-green-900/30' },
+  { id: 'on_hold',     label: 'On Hold',             color: 'bg-red-50 dark:bg-red-900/30' },
 ];
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -28,7 +28,7 @@ function KanbanCard({ module, isDragging }: { module: Module; isDragging?: boole
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card className="p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow">
+      <Card className="p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card">
         <div className="flex items-start justify-between gap-1.5 mb-1.5">
           <p className="text-sm font-semibold text-foreground leading-tight">{module.name}</p>
           <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${PRIORITY_DOT[module.priority] ?? 'bg-slate-400'}`} title={module.priority} />
@@ -106,7 +106,7 @@ export default function ModulePipelineBoard({ modules, onRefresh }: ModulePipeli
               className={`flex-shrink-0 w-56 rounded-xl ${col.color} p-3 flex flex-col gap-2`}
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-foreground/70 uppercase tracking-wide">{col.label}</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">{col.label}</span>
                 <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{colModules.length}</Badge>
               </div>
               <SortableContext items={colModules.map(m => m.id)} strategy={verticalListSortingStrategy}>
@@ -115,7 +115,7 @@ export default function ModulePipelineBoard({ modules, onRefresh }: ModulePipeli
                     <KanbanCard key={mod.id} module={mod} isDragging={activeModule?.id === mod.id} />
                   ))}
                   {colModules.length === 0 && (
-                    <div className="border-2 border-dashed border-border/40 rounded-lg h-16 flex items-center justify-center">
+                    <div className="border-2 border-dashed border-border/50 rounded-lg h-16 flex items-center justify-center">
                       <p className="text-[11px] text-muted-foreground/60">Drop here</p>
                     </div>
                   )}
