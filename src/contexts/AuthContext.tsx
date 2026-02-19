@@ -60,17 +60,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Defer role fetching with setTimeout to avoid deadlock
-        if (session?.user) {
+        // Only re-fetch role on actual sign-in, not token refreshes
+        if (event === 'SIGNED_IN' && !userRole) {
           setRoleLoading(true);
           setTimeout(async () => {
-            const role = await fetchUserRole(session.user.id);
+            const role = await fetchUserRole(session!.user.id);
             setUserRole(role);
             setRoleLoading(false);
             setLoading(false);
           }, 0);
-        } else {
+        } else if (event === 'SIGNED_OUT') {
           setUserRole(null);
+          setRoleLoading(false);
+          setLoading(false);
+        } else if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+          // Don't re-fetch role, just update session silently
+          if (!session?.user) {
+            setUserRole(null);
+          }
           setRoleLoading(false);
           setLoading(false);
         }
