@@ -18,14 +18,14 @@ import type { Module } from './ModuleCard';
 const PORTALS = ['evan', 'brad', 'adam', 'maura', 'wendy', 'shared', 'partner', 'client'];
 
 const PORTAL_STYLES: Record<string, string> = {
-  evan:    'bg-indigo-50 text-indigo-600',
-  brad:    'bg-blue-50 text-blue-600',
-  adam:    'bg-violet-50 text-violet-600',
-  maura:   'bg-pink-50 text-pink-600',
-  wendy:   'bg-rose-50 text-rose-600',
-  shared:  'bg-gray-100 text-gray-600',
-  partner: 'bg-emerald-50 text-emerald-600',
-  client:  'bg-amber-50 text-amber-600',
+  evan:    'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
+  brad:    'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+  adam:    'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400',
+  maura:   'bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400',
+  wendy:   'bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400',
+  shared:  'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
+  partner: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+  client:  'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
 };
 
 export interface BusinessRequirement {
@@ -44,10 +44,10 @@ export interface BusinessRequirement {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  draft:       'bg-slate-100 text-slate-700',
-  approved:    'bg-blue-100 text-blue-700',
-  implemented: 'bg-amber-100 text-amber-700',
-  verified:    'bg-emerald-100 text-emerald-700',
+  draft:       'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  approved:    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  implemented: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  verified:    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
 };
 
 const PRIORITY_STYLES: Record<string, string> = {

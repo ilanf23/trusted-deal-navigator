@@ -50,14 +50,14 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const PORTAL_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
-  evan:    { bg: 'bg-indigo-50',  text: 'text-indigo-600',  dot: 'bg-indigo-400'  },
-  brad:    { bg: 'bg-blue-50',    text: 'text-blue-600',    dot: 'bg-blue-400'    },
-  adam:    { bg: 'bg-violet-50',  text: 'text-violet-600',  dot: 'bg-violet-400'  },
-  maura:   { bg: 'bg-pink-50',    text: 'text-pink-600',    dot: 'bg-pink-400'    },
-  wendy:   { bg: 'bg-rose-50',    text: 'text-rose-600',    dot: 'bg-rose-400'    },
-  shared:  { bg: 'bg-gray-100',   text: 'text-gray-600',    dot: 'bg-gray-400'    },
-  partner: { bg: 'bg-emerald-50', text: 'text-emerald-600', dot: 'bg-emerald-400' },
-  client:  { bg: 'bg-amber-50',   text: 'text-amber-600',   dot: 'bg-amber-400'   },
+  evan:    { bg: 'bg-indigo-50 dark:bg-indigo-900/30',  text: 'text-indigo-600 dark:text-indigo-400',  dot: 'bg-indigo-400'  },
+  brad:    { bg: 'bg-blue-50 dark:bg-blue-900/30',    text: 'text-blue-600 dark:text-blue-400',    dot: 'bg-blue-400'    },
+  adam:    { bg: 'bg-violet-50 dark:bg-violet-900/30',  text: 'text-violet-600 dark:text-violet-400',  dot: 'bg-violet-400'  },
+  maura:   { bg: 'bg-pink-50 dark:bg-pink-900/30',    text: 'text-pink-600 dark:text-pink-400',    dot: 'bg-pink-400'    },
+  wendy:   { bg: 'bg-rose-50 dark:bg-rose-900/30',    text: 'text-rose-600 dark:text-rose-400',    dot: 'bg-rose-400'    },
+  shared:  { bg: 'bg-gray-100 dark:bg-gray-800',   text: 'text-gray-600 dark:text-gray-400',    dot: 'bg-gray-400'    },
+  partner: { bg: 'bg-emerald-50 dark:bg-emerald-900/30', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-400' },
+  client:  { bg: 'bg-amber-50 dark:bg-amber-900/30',   text: 'text-amber-600 dark:text-amber-400',   dot: 'bg-amber-400'   },
 };
 
 export interface Module {
@@ -158,7 +158,7 @@ export default function ModuleCard({
 
   return (
     <div
-      className="rounded-2xl border border-gray-100 bg-white shadow-sm cursor-pointer overflow-hidden transition-all duration-200"
+      className="rounded-2xl border border-border bg-card shadow-sm cursor-pointer overflow-hidden transition-all duration-200"
       onMouseEnter={e => {
         e.currentTarget.style.transform = 'translateY(-2px)';
         e.currentTarget.style.boxShadow = '0 8px 24px -6px rgba(0,0,0,0.12)';
@@ -178,7 +178,7 @@ export default function ModuleCard({
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 leading-snug text-[15px]">
+            <h3 className="font-semibold text-foreground leading-snug text-[15px]">
               {module.name}
             </h3>
             {module.business_owner && (
@@ -189,7 +189,7 @@ export default function ModuleCard({
                 >
                   {ownerInitial}
                 </div>
-                <p className="text-xs text-gray-400 font-medium">{module.business_owner}</p>
+                <p className="text-xs text-muted-foreground font-medium">{module.business_owner}</p>
               </div>
             )}
           </div>
@@ -204,9 +204,9 @@ export default function ModuleCard({
             </div>
             {/* Status pill — hidden for 'planned' */}
             {module.status !== 'planned' && (
-              <div className="flex items-center gap-1.5 bg-gray-100 px-2 py-0.5 rounded-full">
+              <div className="flex items-center gap-1.5 bg-muted px-2 py-0.5 rounded-full">
                 <span className={`w-[5px] h-[5px] rounded-full flex-shrink-0 ${statusDot}`} />
-                <span className="text-[11px] font-medium text-gray-500 whitespace-nowrap">
+                <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
                   {STATUS_LABEL[module.status] ?? module.status}
                 </span>
               </div>
@@ -216,7 +216,7 @@ export default function ModuleCard({
 
         {/* Description */}
         {module.description && (
-          <p className="text-[13px] text-gray-500 leading-relaxed mb-4">
+          <p className="text-[13px] text-muted-foreground leading-relaxed mb-4">
             {module.description}
           </p>
         )}
@@ -225,8 +225,8 @@ export default function ModuleCard({
         {features.length > 0 && (
           <div className="mb-4">
             <div
-              className="w-full rounded-full overflow-hidden"
-              style={{ height: '6px', backgroundColor: '#F3F4F6' }}
+              className="w-full rounded-full overflow-hidden bg-muted"
+              style={{ height: '6px' }}
             >
               <div
                 style={{
@@ -241,11 +241,11 @@ export default function ModuleCard({
               />
             </div>
             <div className="flex items-center justify-between mt-1">
-              <p className="text-[11px] text-gray-400 font-medium">
+              <p className="text-[11px] text-muted-foreground font-medium">
                 {completedCount}/{features.length} built · {featureProgress}%
               </p>
               {featureProgress === 100 && (
-                <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full">
                   ✓ Complete
                 </span>
               )}
@@ -257,7 +257,7 @@ export default function ModuleCard({
         {features.length > 0 && (
           <div onClick={e => e.stopPropagation()}>
             <button
-              className="flex items-center gap-1 text-[12px] text-indigo-500 font-medium hover:text-indigo-700 transition-colors"
+              className="flex items-center gap-1 text-[12px] text-indigo-500 dark:text-indigo-400 font-medium hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
               onClick={e => { e.stopPropagation(); onToggleFeatures?.(); }}
             >
               <span>{showFeatures ? 'Hide features' : 'Show features'}</span>
@@ -279,7 +279,7 @@ export default function ModuleCard({
                   return (
                     <li
                       key={f.id}
-                      className={`flex items-center gap-3 py-2 cursor-pointer group/item ${!isLast ? 'border-b border-gray-50' : ''}`}
+                      className={`flex items-center gap-3 py-2 cursor-pointer group/item ${!isLast ? 'border-b border-border/30' : ''}`}
                       onClick={e => toggleFeature(e, f)}
                     >
                       {/* Custom checkbox */}
@@ -287,7 +287,7 @@ export default function ModuleCard({
                         className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-all duration-150 ${
                           isComplete
                             ? 'bg-emerald-500 border-emerald-500'
-                            : 'border-gray-200 group-hover/item:border-indigo-300 bg-white'
+                            : 'border-border group-hover/item:border-indigo-300 bg-card'
                         }`}
                       >
                         {isComplete && (
@@ -298,24 +298,22 @@ export default function ModuleCard({
                       </div>
 
                       {/* Req ID badge */}
-                      <span className="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-1.5 py-0.5 rounded font-mono flex-shrink-0">
+                      <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-1.5 py-0.5 rounded font-mono flex-shrink-0">
                         {f.requirement_id}
                       </span>
 
                       {/* Feature title */}
                       <span
-                        className="text-[13px] leading-snug transition-all duration-150 flex-1 min-w-0"
-                        style={{
-                          color: isComplete ? '#9CA3AF' : '#374151',
-                          textDecoration: isComplete ? 'line-through' : 'none',
-                        }}
+                        className={`text-[13px] leading-snug transition-all duration-150 flex-1 min-w-0 ${
+                          isComplete ? 'text-muted-foreground line-through' : 'text-foreground'
+                        }`}
                       >
                         {f.title}
                       </span>
 
                       {/* Verified badge */}
                       {isComplete && (
-                        <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
+                        <span className="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
                           Built ✓
                         </span>
                       )}

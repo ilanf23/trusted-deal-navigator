@@ -140,7 +140,7 @@ export default function ModuleTracker() {
   return (
     <AdminLayout>
       {/* Page background + gradient hero */}
-      <div className="relative -m-6 min-h-screen bg-[#F8F8FA]">
+      <div className="relative -m-6 min-h-screen bg-background">
         {/* Top gradient overlay */}
         <div
           className="absolute inset-x-0 top-0 h-[200px] pointer-events-none z-0"
@@ -152,14 +152,14 @@ export default function ModuleTracker() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="relative inline-block">
-                <h1 className="font-bold text-4xl tracking-tight text-gray-900">Module Tracker</h1>
+                <h1 className="font-bold text-4xl tracking-tight text-foreground">Module Tracker</h1>
                 {/* Gradient accent underline */}
                 <div
                   className="absolute -bottom-1 left-0 right-0 h-[3px] rounded-full"
                   style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
                 />
               </div>
-              <p className="text-sm text-gray-500 font-medium mt-2">Business requirements and development pipeline</p>
+              <p className="text-sm text-muted-foreground font-medium mt-2">Business requirements and development pipeline</p>
             </div>
             <Button onClick={() => setAddModuleOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
               <Plus className="h-4 w-4 mr-1.5" /> Add Module
@@ -173,7 +173,7 @@ export default function ModuleTracker() {
                 label: 'Total Modules',
                 value: totalModules,
                 leftBorder: 'border-l-indigo-500',
-                iconBg: 'bg-indigo-50',
+                iconBg: 'bg-indigo-50 dark:bg-indigo-900/30',
                 iconColor: 'text-indigo-500',
                 Icon: Layers,
               },
@@ -181,7 +181,7 @@ export default function ModuleTracker() {
                 label: 'In Progress',
                 value: inProgress,
                 leftBorder: 'border-l-amber-500',
-                iconBg: 'bg-amber-50',
+                iconBg: 'bg-amber-50 dark:bg-amber-900/30',
                 iconColor: 'text-amber-500',
                 Icon: Activity,
               },
@@ -189,7 +189,7 @@ export default function ModuleTracker() {
                 label: 'Complete',
                 value: `${completePct}%`,
                 leftBorder: 'border-l-emerald-500',
-                iconBg: 'bg-emerald-50',
+                iconBg: 'bg-emerald-50 dark:bg-emerald-900/30',
                 iconColor: 'text-emerald-500',
                 Icon: CheckCircle,
               },
@@ -197,18 +197,18 @@ export default function ModuleTracker() {
                 label: 'Open Requirements',
                 value: openReqs,
                 leftBorder: 'border-l-rose-500',
-                iconBg: 'bg-rose-50',
+                iconBg: 'bg-rose-50 dark:bg-rose-900/30',
                 iconColor: 'text-rose-500',
                 Icon: AlertCircle,
               },
             ].map(stat => (
               <div
                 key={stat.label}
-                className={`bg-white rounded-2xl shadow-sm border-l-[3px] ${stat.leftBorder} px-5 py-4 flex items-start justify-between`}
+                className={`bg-card rounded-2xl shadow-sm border-l-[3px] ${stat.leftBorder} px-5 py-4 flex items-start justify-between`}
               >
                 <div>
-                  <p className="text-[38px] font-bold leading-none tracking-tight text-gray-900 mb-1">{stat.value}</p>
-                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">{stat.label}</p>
+                  <p className="text-[38px] font-bold leading-none tracking-tight text-foreground mb-1">{stat.value}</p>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">{stat.label}</p>
                 </div>
                 <div className={`w-8 h-8 rounded-lg ${stat.iconBg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
                   <stat.Icon className={`w-4 h-4 ${stat.iconColor}`} strokeWidth={1.8} />
@@ -219,22 +219,22 @@ export default function ModuleTracker() {
 
           {/* Tabs — custom pill segmented control */}
           <Tabs defaultValue="board">
-            <TabsList className="bg-gray-100 rounded-xl p-1 h-auto gap-0.5">
+            <TabsList className="bg-muted rounded-xl p-1 h-auto gap-0.5">
               <TabsTrigger
                 value="board"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 data-[state=active]:font-semibold gap-1.5"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 data-[state=active]:font-semibold gap-1.5"
               >
                 <LayoutGrid className="h-3.5 w-3.5" /> Modules Board
               </TabsTrigger>
               <TabsTrigger
                 value="requirements"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 data-[state=active]:font-semibold gap-1.5"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 data-[state=active]:font-semibold gap-1.5"
               >
                 <TableProperties className="h-3.5 w-3.5" /> Requirements
               </TabsTrigger>
               <TabsTrigger
                 value="pipeline"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 data-[state=active]:font-semibold gap-1.5"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 data-[state=active]:font-semibold gap-1.5"
               >
                 <GitBranch className="h-3.5 w-3.5" /> Dev Pipeline
               </TabsTrigger>
@@ -249,11 +249,11 @@ export default function ModuleTracker() {
                     placeholder="Search modules..."
                     value={moduleSearch}
                     onChange={e => setModuleSearch(e.target.value)}
-                    className="h-11 text-sm bg-white border border-gray-200 rounded-xl shadow-sm placeholder:text-gray-400 focus-visible:ring-indigo-300"
+                    className="h-11 text-sm bg-card border border-border rounded-xl shadow-sm placeholder:text-muted-foreground focus-visible:ring-indigo-300"
                   />
                 </div>
                 <Select value={portalFilter} onValueChange={v => { setPortalFilter(v); setOpenRows(new Set()); }}>
-                  <SelectTrigger className="w-40 h-11 text-sm bg-white border border-gray-200 rounded-xl shadow-sm">
+                  <SelectTrigger className="w-40 h-11 text-sm bg-card border border-border rounded-xl shadow-sm">
                     <SelectValue placeholder="All Portals" />
                   </SelectTrigger>
                   <SelectContent>
@@ -266,12 +266,12 @@ export default function ModuleTracker() {
               {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="h-40 bg-white/60 rounded-2xl animate-pulse" />
+                    <div key={i} className="h-40 bg-card/60 rounded-2xl animate-pulse" />
                   ))}
                 </div>
               ) : modules.length === 0 ? (
-                <div className="text-center py-20 border border-dashed border-gray-200 rounded-2xl bg-white">
-                  <p className="text-gray-400 text-sm">No modules yet.</p>
+                <div className="text-center py-20 border border-dashed border-border rounded-2xl bg-card">
+                  <p className="text-muted-foreground text-sm">No modules yet.</p>
                   <Button variant="outline" size="sm" className="mt-3" onClick={() => setAddModuleOpen(true)}>
                     <Plus className="h-3.5 w-3.5 mr-1" /> Add your first module
                   </Button>
@@ -285,8 +285,8 @@ export default function ModuleTracker() {
                   return matchSearch && matchPortal;
                 });
                 return filtered.length === 0 ? (
-                  <div className="text-center py-16 border border-dashed border-gray-200 rounded-2xl bg-white">
-                    <p className="text-gray-400 text-sm">No modules match your filters.</p>
+                  <div className="text-center py-16 border border-dashed border-border rounded-2xl bg-card">
+                    <p className="text-muted-foreground text-sm">No modules match your filters.</p>
                   </div>
                 ) : (
                   <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
