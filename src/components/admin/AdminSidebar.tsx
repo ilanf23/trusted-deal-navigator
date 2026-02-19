@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -79,9 +79,30 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { teamMember, isOwner, loading: teamLoading } = useTeamMember();
-  const { state, isMobile, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile, openMobile } = useSidebar();
   const isCollapsed = state === 'collapsed';
-  const closeMobileMenu = () => { if (isMobile) setOpenMobile(false); };
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const savedScrollTop = useRef(0);
+
+  const closeMobileMenu = useCallback(() => {
+    if (isMobile) {
+      if (scrollRef.current) {
+        savedScrollTop.current = scrollRef.current.scrollTop;
+      }
+      setOpenMobile(false);
+    }
+  }, [isMobile, setOpenMobile]);
+
+  // Restore scroll position when mobile sheet reopens
+  useEffect(() => {
+    if (openMobile && savedScrollTop.current > 0) {
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = savedScrollTop.current;
+        }
+      });
+    }
+  }, [openMobile]);
 
   // Build navigation sections based on user's role
   const navSections: NavSection[] = useMemo(() => {
@@ -349,7 +370,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         {!isCollapsed && <div className="h-px bg-white/15 -mt-8" />}
       </SidebarHeader>
       
-      <SidebarContent className={`pt-3 space-y-0.5 ${isCollapsed ? 'px-1' : 'px-3'}`}>
+      <SidebarContent ref={scrollRef} className={`pt-3 space-y-0.5 ${isCollapsed ? 'px-1' : 'px-3'}`}>
         {navSections.map((section) => (
           section.noCollapse ? (
             <div key={section.title || 'top-links'} className={section.isLabel ? 'mt-5 first:mt-0' : ''}>
