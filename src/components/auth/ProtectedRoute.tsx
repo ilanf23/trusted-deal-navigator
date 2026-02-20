@@ -43,7 +43,7 @@ const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: 
   }
 
   if (requireAdmin && !isAdmin) {
-    return <Navigate to="/portal" replace />;
+    return <Navigate to="/user" replace />;
   }
 
   return <>{children}</>;
