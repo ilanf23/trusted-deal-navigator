@@ -1387,12 +1387,12 @@ const EvansPipeline = () => {
                     <div 
                       className={cn(
                         "absolute inset-0 flex items-center justify-center transition-all group-hover:brightness-110",
-                        stage.barColor,
                         isFirst && "rounded-l-md",
                         isLast && "rounded-r-md"
                       )}
                       style={{
-                        clipPath: isLast 
+                        backgroundColor: stage.hexColor,
+                        clipPath: isLast
                           ? 'polygon(0 0, calc(100% - 0px) 0, 100% 50%, calc(100% - 0px) 100%, 0 100%, 12px 50%)'
                           : isFirst
                             ? 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 0 50%)'
