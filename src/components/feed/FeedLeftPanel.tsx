@@ -12,10 +12,10 @@ interface FeedLeftPanelProps {
 }
 
 const TEAM_MEMBERS = [
-  { initial: 'E', name: 'Evan', color: 'bg-blue-100 text-blue-700' },
-  { initial: 'B', name: 'Brad', color: 'bg-orange-100 text-orange-700' },
-  { initial: 'M', name: 'Maura', color: 'bg-pink-100 text-pink-700' },
-  { initial: 'W', name: 'Wendy', color: 'bg-green-100 text-green-700' },
+  { initial: 'E', name: 'Evan', color: 'bg-[#EDE9F6] text-[#5B21B6]' },
+  { initial: 'B', name: 'Brad', color: 'bg-[#EDE9F6] text-[#5B21B6]' },
+  { initial: 'M', name: 'Maura', color: 'bg-[#EDE9F6] text-[#5B21B6]' },
+  { initial: 'W', name: 'Wendy', color: 'bg-[#EDE9F6] text-[#5B21B6]' },
 ];
 
 const FeedLeftPanel = ({

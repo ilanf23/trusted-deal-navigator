@@ -517,12 +517,16 @@
   }
 
   /* Full-bleed pages: remove padding and max-width from AdminLayout wrappers */
-  .admin-portal main > div:has(> [data-full-bleed]) {
+  .admin-portal main > div:has([data-full-bleed]) {
     padding: 0 !important;
     overflow: visible !important;
   }
-  .admin-portal main > div > div:has(> [data-full-bleed]) {
+  .admin-portal main > div > div:has([data-full-bleed]) {
     max-width: none !important;
+  }
+  /* Hide AdminLayout header when full-bleed page is active */
+  .admin-portal main:has([data-full-bleed]) > header {
+    display: none !important;
   }
 
   /* Metric Cards */

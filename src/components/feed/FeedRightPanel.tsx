@@ -93,7 +93,7 @@ const FeedRightPanel = () => {
             <button className="text-xs text-[#5B21B6] font-medium hover:underline">View all</button>
           </div>
           <p className="text-[11px] text-[#6B7280] mb-3 leading-relaxed">
-            Once added, all the conversations with them will be visible and auto-tracked in Copper
+            Once added, all the conversations with them will be visible and auto-tracked in CLX
           </p>
 
           {visiblePeople.map((person) => (
@@ -127,7 +127,7 @@ const FeedRightPanel = () => {
         <div className="bg-white rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] border border-[#E5E7EB] p-4">
           <h3 className="text-sm font-bold text-[#111827] mb-1">Invite Team Members</h3>
           <p className="text-[11px] text-[#6B7280] mb-3">
-            Add team members to collaborate with them on Copper
+            Add team members to collaborate with them on CLX
           </p>
           <div className="flex items-center gap-2 py-2 border-t border-[#F3F4F6]">
             <div className="w-9 h-9 rounded-full bg-[#DBEAFE] flex items-center justify-center text-xs font-bold text-[#1D4ED8] flex-shrink-0">
