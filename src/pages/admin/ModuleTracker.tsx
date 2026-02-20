@@ -295,7 +295,7 @@ export default function ModuleTracker() {
                       const rowIndex = Math.floor(index / colCount);
                       const features: ModuleFeature[] = requirements
                         .filter(r => r.module_id === mod.id)
-                        .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status, is_built: (r as any).is_built ?? false }));
+                        .map(r => ({ id: r.id, title: r.title, description: r.description || undefined, requirement_id: r.requirement_id, status: r.status, is_built: (r as any).is_built ?? false }));
                       return (
                         <ModuleCard
                           key={mod.id}

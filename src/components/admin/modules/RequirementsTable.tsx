@@ -235,7 +235,12 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
                   <TableCell>
                     <div>
                       <p className="font-medium text-foreground text-sm">{req.title}</p>
-                      {req.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{req.description}</p>}
+                      {req.description && <p className="text-xs text-muted-foreground mt-0.5">{req.description}</p>}
+                      {req.acceptance_criteria && (
+                        <p className="text-[11px] text-muted-foreground/70 mt-1 italic">
+                          <span className="font-medium not-italic text-muted-foreground">AC:</span> {req.acceptance_criteria}
+                        </p>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
