@@ -11,14 +11,21 @@ type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
+  initial_review: { label: 'Initial Review', color: 'bg-blue-500' },
+  moving_to_underwriting: { label: 'Moving to UW', color: 'bg-cyan-500' },
+  onboarding: { label: 'Onboarding', color: 'bg-amber-500' },
+  underwriting: { label: 'Underwriting', color: 'bg-orange-500' },
+  ready_for_wu_approval: { label: 'Ready for Approval', color: 'bg-purple-500' },
+  pre_approval_issued: { label: 'Pre-Approval Issued', color: 'bg-violet-500' },
+  won: { label: 'Won', color: 'bg-green-500' },
+  lost: { label: 'Lost', color: 'bg-red-500' },
+  // Legacy values (kept for backward compat)
   discovery: { label: 'Discovery', color: 'bg-slate-500' },
   questionnaire: { label: 'Questionnaire', color: 'bg-indigo-500' },
-  pre_qualification: { label: 'Pre-Qual', color: 'bg-blue-500' },
+  pre_qualification: { label: 'Pre-Qual', color: 'bg-blue-400' },
   document_collection: { label: 'Docs', color: 'bg-yellow-500' },
-  underwriting: { label: 'Underwriting', color: 'bg-orange-500' },
-  approval: { label: 'Approval', color: 'bg-purple-500' },
-  funded: { label: 'Funded', color: 'bg-green-500' },
-  lost: { label: 'Lost', color: 'bg-red-500' },
+  approval: { label: 'Approval', color: 'bg-purple-400' },
+  funded: { label: 'Funded', color: 'bg-green-400' },
 };
 
 export const EvanLeadsWidget = () => {

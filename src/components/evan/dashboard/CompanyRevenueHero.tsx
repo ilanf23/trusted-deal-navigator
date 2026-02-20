@@ -84,6 +84,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
       const { data } = await supabase
         .from('leads')
         .select('id, status, lead_responses(loan_amount)')
+        .neq('status', 'won')
         .neq('status', 'funded')
         .neq('status', 'lost');
       return (data || []).map((d: any) => ({

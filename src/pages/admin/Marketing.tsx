@@ -17,14 +17,21 @@ type LeadStatus = Database['public']['Enums']['lead_status'];
 const COLORS = ['hsl(217, 71%, 22%)', 'hsl(32, 95%, 44%)', 'hsl(187, 71%, 35%)', 'hsl(215, 16%, 47%)', 'hsl(142, 71%, 35%)', 'hsl(0, 84%, 60%)'];
 
 const statusColors: Record<LeadStatus, string> = {
-  discovery: 'bg-blue-100 text-blue-800',
-  questionnaire: 'bg-indigo-100 text-indigo-800',
-  pre_qualification: 'bg-cyan-100 text-cyan-800',
-  document_collection: 'bg-yellow-100 text-yellow-800',
+  initial_review: 'bg-blue-100 text-blue-800',
+  moving_to_underwriting: 'bg-cyan-100 text-cyan-800',
+  onboarding: 'bg-amber-100 text-amber-800',
   underwriting: 'bg-orange-100 text-orange-800',
-  approval: 'bg-green-100 text-green-800',
-  funded: 'bg-purple-100 text-purple-800',
+  ready_for_wu_approval: 'bg-purple-100 text-purple-800',
+  pre_approval_issued: 'bg-violet-100 text-violet-800',
+  won: 'bg-green-100 text-green-800',
   lost: 'bg-red-100 text-red-800',
+  // Legacy values
+  discovery: 'bg-blue-50 text-blue-700',
+  questionnaire: 'bg-indigo-100 text-indigo-800',
+  pre_qualification: 'bg-cyan-50 text-cyan-700',
+  document_collection: 'bg-yellow-100 text-yellow-800',
+  approval: 'bg-green-50 text-green-700',
+  funded: 'bg-purple-100 text-purple-800',
 };
 
 const AdminMarketing = () => {

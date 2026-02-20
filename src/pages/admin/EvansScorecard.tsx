@@ -273,11 +273,11 @@ const EvansScorecard = () => {
 
     // Leads by status
     const activeLeads = allLeads.filter(
-      (lead) => !['funded', 'lost'].includes(lead.status)
+      (lead) => !['funded', 'won', 'lost'].includes(lead.status)
     );
     const closedWon = allLeads.filter((lead) => {
       const updatedAt = new Date(lead.updated_at);
-      return lead.status === 'funded' && updatedAt >= periodStart && updatedAt <= periodEnd;
+      return (lead.status === 'won' || lead.status === 'funded') && updatedAt >= periodStart && updatedAt <= periodEnd;
     });
     const closedLost = allLeads.filter((lead) => {
       const updatedAt = new Date(lead.updated_at);

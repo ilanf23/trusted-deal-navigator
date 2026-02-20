@@ -40,12 +40,13 @@ interface MoveBoxesModalProps {
 
 // Main pipeline stages (matching EvansPipeline.tsx)
 const stages: { status: LeadStatus; title: string; color: string }[] = [
-  { status: 'discovery', title: 'Discovery', color: '#0066FF' },
-  { status: 'pre_qualification', title: 'Pre-Qual', color: '#1a75ff' },
-  { status: 'document_collection', title: 'Doc Collection', color: '#3385ff' },
+  { status: 'initial_review', title: 'Initial Review', color: '#0066FF' },
+  { status: 'moving_to_underwriting', title: 'Moving to UW', color: '#0891b2' },
+  { status: 'onboarding', title: 'Onboarding', color: '#d97706' },
   { status: 'underwriting', title: 'Underwriting', color: '#FF8000' },
-  { status: 'approval', title: 'Approval', color: '#e67300' },
-  { status: 'funded', title: 'Funded', color: '#059669' },
+  { status: 'ready_for_wu_approval', title: 'Ready for Approval', color: '#7c3aed' },
+  { status: 'pre_approval_issued', title: 'Pre-Approval Issued', color: '#8b5cf6' },
+  { status: 'won', title: 'Won', color: '#059669' },
 ];
 
 // Preset colors for new pipelines
@@ -173,9 +174,9 @@ const MoveBoxesModal = ({
     mutationFn: async ({ leadIds, targetStage }: { leadIds: string[]; targetStage: LeadStatus }) => {
       const updates: { status: LeadStatus; qualified_at?: string; converted_at?: string } = { status: targetStage };
       
-      if (targetStage === 'pre_qualification') {
+      if (targetStage === 'moving_to_underwriting' || targetStage === 'pre_qualification') {
         updates.qualified_at = new Date().toISOString();
-      } else if (targetStage === 'funded') {
+      } else if (targetStage === 'won' || targetStage === 'funded') {
         updates.converted_at = new Date().toISOString();
       }
 

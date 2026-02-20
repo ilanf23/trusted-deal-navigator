@@ -22,6 +22,7 @@ export const HotDeals = ({ evanId }: HotDealsProps) => {
         .from('leads')
         .select('*, lead_responses(*)')
         .eq('assigned_to', evanId)
+        .neq('status', 'won')
         .neq('status', 'funded');
 
       if (!leads) return null;
@@ -37,18 +38,18 @@ export const HotDeals = ({ evanId }: HotDealsProps) => {
         const daysInStage = differenceInDays(today, new Date(lead.updated_at));
         const loanAmount = (lead as any).lead_responses?.[0]?.loan_amount || 0;
 
-        // Close to closing (approval stage)
-        if (lead.status === 'approval') {
+        // Close to closing (ready for approval or pre-approval issued)
+        if (lead.status === 'ready_for_wu_approval' || lead.status === 'pre_approval_issued' || lead.status === 'approval') {
           categorizedDeals.closeToClosing.push({ ...lead, daysInStage, loanAmount });
         }
 
-        // Stuck too long (7+ days in same stage, not discovery)
-        if (daysInStage >= 7 && lead.status !== 'discovery') {
+        // Stuck too long (7+ days in same stage, not initial_review/discovery)
+        if (daysInStage >= 7 && lead.status !== 'initial_review' && lead.status !== 'discovery') {
           categorizedDeals.stuckTooLong.push({ ...lead, daysInStage, loanAmount });
         }
 
-        // Missing docs (in doc collection without responses)
-        if (lead.status === 'document_collection' && !(lead as any).lead_responses?.length) {
+        // Missing docs (in onboarding without responses)
+        if ((lead.status === 'onboarding' || lead.status === 'document_collection') && !(lead as any).lead_responses?.length) {
           categorizedDeals.missingDocs.push({ ...lead, daysInStage, loanAmount });
         }
 

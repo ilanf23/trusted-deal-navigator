@@ -574,6 +574,97 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_milestones: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+          lead_id: string
+          milestone_name: string
+          notes: string | null
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          lead_id: string
+          milestone_name: string
+          notes?: string | null
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string
+          milestone_name?: string
+          notes?: string | null
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_milestones_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_waiting_on: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          lead_id: string
+          owner: string
+          resolved_at: string | null
+          resolved_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id: string
+          owner: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string
+          owner?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_waiting_on_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_metadata: {
         Row: {
           created_at: string
@@ -1737,12 +1828,15 @@ export type Database = {
         Row: {
           about: string | null
           assigned_to: string | null
+          client_other_lenders: boolean
+          cohort_year: number | null
           company_name: string | null
           contact_type: string | null
           converted_at: string | null
           converted_to_client_id: string | null
           created_at: string
           email: string | null
+          flagged_for_weekly: boolean
           id: string
           initial_nudge_created_at: string | null
           known_as: string | null
@@ -1766,18 +1860,22 @@ export type Database = {
           title: string | null
           twitter: string | null
           updated_at: string
+          uw_number: string | null
           waiting_on: string | null
           website: string | null
         }
         Insert: {
           about?: string | null
           assigned_to?: string | null
+          client_other_lenders?: boolean
+          cohort_year?: number | null
           company_name?: string | null
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
           email?: string | null
+          flagged_for_weekly?: boolean
           id?: string
           initial_nudge_created_at?: string | null
           known_as?: string | null
@@ -1801,18 +1899,22 @@ export type Database = {
           title?: string | null
           twitter?: string | null
           updated_at?: string
+          uw_number?: string | null
           waiting_on?: string | null
           website?: string | null
         }
         Update: {
           about?: string | null
           assigned_to?: string | null
+          client_other_lenders?: boolean
+          cohort_year?: number | null
           company_name?: string | null
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
           email?: string | null
+          flagged_for_weekly?: boolean
           id?: string
           initial_nudge_created_at?: string | null
           known_as?: string | null
@@ -1836,6 +1938,7 @@ export type Database = {
           title?: string | null
           twitter?: string | null
           updated_at?: string
+          uw_number?: string | null
           waiting_on?: string | null
           website?: string | null
         }
@@ -3369,6 +3472,12 @@ export type Database = {
         | "approval"
         | "funded"
         | "lost"
+        | "initial_review"
+        | "moving_to_underwriting"
+        | "onboarding"
+        | "ready_for_wu_approval"
+        | "pre_approval_issued"
+        | "won"
       pipeline_column_type:
         | "free_form"
         | "date"
@@ -3531,6 +3640,12 @@ export const Constants = {
         "approval",
         "funded",
         "lost",
+        "initial_review",
+        "moving_to_underwriting",
+        "onboarding",
+        "ready_for_wu_approval",
+        "pre_approval_issued",
+        "won",
       ],
       pipeline_column_type: [
         "free_form",

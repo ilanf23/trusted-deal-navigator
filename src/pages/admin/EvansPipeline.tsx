@@ -135,16 +135,17 @@ type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 // Status enum values in pipeline order
-const statusOrder: LeadStatus[] = ['discovery', 'pre_qualification', 'document_collection', 'underwriting', 'approval', 'funded'];
+const statusOrder: LeadStatus[] = ['initial_review', 'moving_to_underwriting', 'onboarding', 'underwriting', 'ready_for_wu_approval', 'pre_approval_issued', 'won'];
 
 // Default stage config (fallback when no DB stages loaded)
 const defaultStages: { status: LeadStatus; title: string; hexColor: string }[] = [
-  { status: 'discovery', title: 'Discovery', hexColor: '#0066FF' },
-  { status: 'pre_qualification', title: 'Pre-Qualification', hexColor: '#1a75ff' },
-  { status: 'document_collection', title: 'Doc Collection', hexColor: '#3385ff' },
+  { status: 'initial_review', title: 'Initial Review', hexColor: '#0066FF' },
+  { status: 'moving_to_underwriting', title: 'Moving to UW', hexColor: '#0891b2' },
+  { status: 'onboarding', title: 'Onboarding', hexColor: '#d97706' },
   { status: 'underwriting', title: 'Underwriting', hexColor: '#FF8000' },
-  { status: 'approval', title: 'Approval', hexColor: '#e67300' },
-  { status: 'funded', title: 'Funded', hexColor: '#10b981' },
+  { status: 'ready_for_wu_approval', title: 'Ready for Approval', hexColor: '#7c3aed' },
+  { status: 'pre_approval_issued', title: 'Pre-Approval Issued', hexColor: '#8b5cf6' },
+  { status: 'won', title: 'Won', hexColor: '#10b981' },
 ];
 
 // Build full stage config from a hex color
@@ -797,9 +798,9 @@ const EvansPipeline = () => {
     mutationFn: async ({ id, status, previousStatus, leadName, skipUndo }: { id: string; status: LeadStatus; previousStatus: LeadStatus; leadName?: string; skipUndo?: boolean }) => {
       if (!canEdit) throw new Error('Not authorized to update this lead');
       const updates: Partial<Lead> = { status };
-      if (status === 'pre_qualification') {
+      if (status === 'moving_to_underwriting' || status === 'pre_qualification') {
         updates.qualified_at = new Date().toISOString();
-      } else if (status === 'funded') {
+      } else if (status === 'won' || status === 'funded') {
         updates.converted_at = new Date().toISOString();
       }
       const { error } = await supabase.from('leads').update(updates).eq('id', id);
@@ -823,7 +824,7 @@ const EvansPipeline = () => {
         });
       }
 
-      if (previousStatus === 'discovery' && status === 'pre_qualification') {
+      if ((previousStatus === 'discovery' || previousStatus === 'initial_review') && (status === 'pre_qualification' || status === 'moving_to_underwriting')) {
         try {
           const { error: emailError } = await supabase.functions.invoke('send-prequalification-email', {
             body: { leadId: id },
@@ -843,7 +844,7 @@ const EvansPipeline = () => {
       queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
-      if (!(variables.previousStatus === 'discovery' && variables.status === 'pre_qualification')) {
+      if (!((variables.previousStatus === 'discovery' || variables.previousStatus === 'initial_review') && (variables.status === 'pre_qualification' || variables.status === 'moving_to_underwriting'))) {
         if (variables.skipUndo) {
           toast.success('Undo successful');
         } else {
@@ -1042,9 +1043,9 @@ const EvansPipeline = () => {
       lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
     
-    // Handle won leads filter - show only funded leads
+    // Handle won leads filter - show only won/funded leads
     if (ownerFilter === 'won') {
-      return matchesSearch && matchesSource && lead.status === 'funded';
+      return matchesSearch && matchesSource && (lead.status === 'won' || lead.status === 'funded');
     }
     
     // Handle finished leads filter - show only lost leads

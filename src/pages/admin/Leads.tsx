@@ -27,14 +27,21 @@ interface LeadWithOwner extends Lead {
 }
 
 const statusConfig: Record<LeadStatus, { label: string; color: string; bg: string }> = {
-  discovery: { label: 'Discovery', color: 'text-blue-600', bg: 'bg-blue-50' },
-  questionnaire: { label: 'Questionnaire', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  pre_qualification: { label: 'Pre-Qual', color: 'text-cyan-600', bg: 'bg-cyan-50' },
-  document_collection: { label: 'Documents', color: 'text-amber-600', bg: 'bg-amber-50' },
+  initial_review: { label: 'Initial Review', color: 'text-blue-600', bg: 'bg-blue-50' },
+  moving_to_underwriting: { label: 'Moving to UW', color: 'text-cyan-600', bg: 'bg-cyan-50' },
+  onboarding: { label: 'Onboarding', color: 'text-amber-600', bg: 'bg-amber-50' },
   underwriting: { label: 'Underwriting', color: 'text-orange-600', bg: 'bg-orange-50' },
-  approval: { label: 'Approved', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  funded: { label: 'Funded', color: 'text-violet-600', bg: 'bg-violet-50' },
+  ready_for_wu_approval: { label: 'Ready for Approval', color: 'text-purple-600', bg: 'bg-purple-50' },
+  pre_approval_issued: { label: 'Pre-Approval Issued', color: 'text-violet-600', bg: 'bg-violet-50' },
+  won: { label: 'Won', color: 'text-emerald-600', bg: 'bg-emerald-50' },
   lost: { label: 'Lost', color: 'text-red-600', bg: 'bg-red-50' },
+  // Legacy values
+  discovery: { label: 'Discovery', color: 'text-blue-500', bg: 'bg-blue-50' },
+  questionnaire: { label: 'Questionnaire', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  pre_qualification: { label: 'Pre-Qual', color: 'text-cyan-500', bg: 'bg-cyan-50' },
+  document_collection: { label: 'Documents', color: 'text-amber-500', bg: 'bg-amber-50' },
+  approval: { label: 'Approved', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+  funded: { label: 'Funded', color: 'text-violet-500', bg: 'bg-violet-50' },
 };
 
 const AdminLeads = () => {

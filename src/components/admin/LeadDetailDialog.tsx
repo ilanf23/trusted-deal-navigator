@@ -173,12 +173,13 @@ interface Communication {
 }
 
 const stages = [
-  { status: 'discovery', title: 'Discovery', color: '#0066FF' },
-  { status: 'pre_qualification', title: 'Pre-Qual', color: '#1a75ff' },
-  { status: 'document_collection', title: 'Doc Collection', color: '#3385ff' },
+  { status: 'initial_review', title: 'Initial Review', color: '#0066FF' },
+  { status: 'moving_to_underwriting', title: 'Moving to UW', color: '#0891b2' },
+  { status: 'onboarding', title: 'Onboarding', color: '#d97706' },
   { status: 'underwriting', title: 'Underwriting', color: '#FF8000' },
-  { status: 'approval', title: 'Approval', color: '#e67300' },
-  { status: 'funded', title: 'Funded', color: '#059669' },
+  { status: 'ready_for_wu_approval', title: 'Ready for Approval', color: '#7c3aed' },
+  { status: 'pre_approval_issued', title: 'Pre-Approval Issued', color: '#8b5cf6' },
+  { status: 'won', title: 'Won', color: '#059669' },
 ];
 
 // Lender association type (data now sourced from lead_lender_programs DB table)

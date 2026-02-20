@@ -29,10 +29,16 @@ interface NudgesWidgetProps {
 }
 
 const STATUS_LABELS: Record<string, string> = {
+  initial_review: 'Initial Review',
+  moving_to_underwriting: 'Moving to UW',
+  onboarding: 'Onboarding',
+  underwriting: 'UW',
+  ready_for_wu_approval: 'Ready for Approval',
+  pre_approval_issued: 'Pre-Approval',
+  // Legacy
   discovery: 'Discovery',
   pre_qualification: 'Pre-Qual',
   document_collection: 'Docs',
-  underwriting: 'UW',
   approval: 'Approval',
 };
 
@@ -62,6 +68,7 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
       const { data: leads, error } = await supabase
         .from('leads')
         .select('id, name, email, phone, company_name, status, last_activity_at, created_at, initial_nudge_created_at')
+        .neq('status', 'won')
         .neq('status', 'funded')
         .not('email', 'is', null)
         .is('initial_nudge_created_at', null) // Only leads that have NEVER been nudged
