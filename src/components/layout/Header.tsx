@@ -36,19 +36,19 @@ const Header = () => {
   }];
   return <header className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
       <div className="w-full px-4">
-        <div className="flex items-center justify-between h-14 md:h-16">
+        <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo - Left aligned */}
-          <Link to="/" className="flex items-center justify-center">
-            <img src={logo} alt="Commercial Lending X" className="h-10 md:h-12 w-auto" />
+          <Link to="/" className="flex-shrink-0 flex items-center">
+            <img src={logo} alt="Commercial Lending X" className="h-20 md:h-28 w-auto" />
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-2">
+          <nav className="hidden lg:flex items-center gap-0.5">
             {navItems.map(item => item.submenu ? <DropdownMenu key={item.label}>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-1 px-5 py-3 text-lg font-medium text-foreground/70 hover:text-foreground transition-colors whitespace-nowrap">
+                    <button className="flex items-center gap-0.5 px-3 py-2 text-sm font-medium text-foreground/70 hover:text-foreground transition-colors whitespace-nowrap">
                       {item.label}
-                      <ChevronDown className="w-5 h-5" />
+                      <ChevronDown className="w-4 h-4" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="center" className="w-56">
@@ -58,7 +58,7 @@ const Header = () => {
                         </Link>
                       </DropdownMenuItem>)}
                   </DropdownMenuContent>
-                </DropdownMenu> : <Link key={item.href} to={item.href} className={`px-5 py-3 text-lg font-medium transition-colors whitespace-nowrap ${isActive(item.href) ? "text-primary" : "text-foreground/70 hover:text-foreground"}`}>
+                </DropdownMenu> : <Link key={item.href} to={item.href} className={`px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${isActive(item.href) ? "text-primary" : "text-foreground/70 hover:text-foreground"}`}>
                   {item.label}
                 </Link>)}
           </nav>
