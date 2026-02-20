@@ -5,6 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Kanban } from 'lucide-react';
+import EvanLayout from '@/components/evan/EvanLayout';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -152,81 +153,85 @@ const Pipeline = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <EvanLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </EvanLayout>
     );
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-        <div className="flex items-center gap-2">
-          <Kanban className="w-5 h-5 text-muted-foreground" />
-          <h1 className="text-xl font-bold text-foreground">Pipeline</h1>
-          <Badge variant="secondary" className="ml-2">
-            {filteredLeads.length} deals
-          </Badge>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search leads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 w-[200px]"
-            />
+    <EvanLayout>
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+          <div className="flex items-center gap-2">
+            <Kanban className="w-5 h-5 text-muted-foreground" />
+            <h1 className="text-xl font-bold text-foreground">Pipeline</h1>
+            <Badge variant="secondary" className="ml-2">
+              {filteredLeads.length} deals
+            </Badge>
           </div>
-          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Owner" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Owners</SelectItem>
-              {teamMembers.map((tm) => (
-                <SelectItem key={tm.id} value={tm.name.toLowerCase()}>
-                  {tm.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
-      {/* Kanban Board */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4 flex-1 min-h-0">
-          {statusOrder.map((status) => {
-            const config = stageConfig[status];
-            return (
-              <KanbanColumn
-                key={status}
-                status={status}
-                leads={leadsByStatus[status] || []}
-                title={config.title}
-                color={config.color}
-                touchpoints={touchpoints}
-                onLeadClick={(lead) => setDetailDialogLead(lead)}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search leads..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 w-[200px]"
               />
-            );
-          })}
+            </div>
+            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Owner" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Owners</SelectItem>
+                {teamMembers.map((tm) => (
+                  <SelectItem key={tm.id} value={tm.name.toLowerCase()}>
+                    {tm.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </DndContext>
 
-      {/* Lead Detail Dialog */}
-      {detailDialogLead && (
-        <LeadDetailDialog
-          lead={detailDialogLead}
-          open={!!detailDialogLead}
-          onOpenChange={(open) => {
-            if (!open) setDetailDialogLead(null);
-          }}
-        />
-      )}
-    </div>
+        {/* Kanban Board */}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <div className="flex gap-4 overflow-x-auto pb-4 flex-1 min-h-0">
+            {statusOrder.map((status) => {
+              const config = stageConfig[status];
+              return (
+                <KanbanColumn
+                  key={status}
+                  status={status}
+                  leads={leadsByStatus[status] || []}
+                  title={config.title}
+                  color={config.color}
+                  touchpoints={touchpoints}
+                  onLeadClick={(lead) => setDetailDialogLead(lead)}
+                />
+              );
+            })}
+          </div>
+        </DndContext>
+
+        {/* Lead Detail Dialog */}
+        {detailDialogLead && (
+          <LeadDetailDialog
+            lead={detailDialogLead}
+            open={!!detailDialogLead}
+            onOpenChange={(open) => {
+              if (!open) setDetailDialogLead(null);
+            }}
+          />
+        )}
+      </div>
+    </EvanLayout>
   );
 };
 
