@@ -1196,9 +1196,10 @@ const EvansPipeline = () => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Pipeline Title */}
+              {/* Pipeline Test Title */}
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-slate-400" />
+                <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">Test</Badge>
                 {selectedPipeline && (
                   <div 
                     className="w-2 h-2 rounded-full flex-shrink-0" 
