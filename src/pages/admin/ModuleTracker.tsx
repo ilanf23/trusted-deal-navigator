@@ -123,10 +123,11 @@ export default function ModuleTracker() {
     setDetailOpen(true);
   };
 
-  // Optimistically update requirement status in local state (no full refetch needed)
+  // Optimistically update is_built in local state (no full refetch needed)
   const handleFeatureStatusChange = (featureId: string, newStatus: string) => {
+    const isBuilt = newStatus === 'built';
     setRequirements(prev =>
-      prev.map(r => r.id === featureId ? { ...r, status: newStatus } : r)
+      prev.map(r => r.id === featureId ? { ...r, is_built: isBuilt } as BusinessRequirement : r)
     );
   };
 
@@ -294,7 +295,7 @@ export default function ModuleTracker() {
                       const rowIndex = Math.floor(index / colCount);
                       const features: ModuleFeature[] = requirements
                         .filter(r => r.module_id === mod.id)
-                        .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status }));
+                        .map(r => ({ id: r.id, title: r.title, requirement_id: r.requirement_id, status: r.status, is_built: (r as any).is_built ?? false }));
                       return (
                         <ModuleCard
                           key={mod.id}

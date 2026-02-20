@@ -187,6 +187,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_built: boolean
           module_id: string | null
           portal: string | null
           priority: string
@@ -201,6 +202,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_built?: boolean
           module_id?: string | null
           portal?: string | null
           priority?: string
@@ -215,6 +217,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_built?: boolean
           module_id?: string | null
           portal?: string | null
           priority?: string
