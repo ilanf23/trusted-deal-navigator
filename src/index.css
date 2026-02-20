@@ -516,6 +516,15 @@
     background: hsl(var(--muted-foreground) / 0.15);
   }
 
+  /* Full-bleed pages: remove padding and max-width from AdminLayout wrappers */
+  .admin-portal main > div:has(> [data-full-bleed]) {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .admin-portal main > div > div:has(> [data-full-bleed]) {
+    max-width: none !important;
+  }
+
   /* Metric Cards */
   .metric-card {
     background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.3) 100%);
