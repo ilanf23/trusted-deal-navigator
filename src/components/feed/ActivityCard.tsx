@@ -98,7 +98,7 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
                   <ChevronDown className="w-3 h-3" />
                 </span>
               )}
-              {isPrivate !== undefined && (
+              {activity.isPrivate !== undefined && (
                 <Lock className="w-3.5 h-3.5 text-[#9CA3AF] ml-1" />
               )}
               <span className="text-[#9CA3AF] text-xs ml-1">| {activity.time}</span>
