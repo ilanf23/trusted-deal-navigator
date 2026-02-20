@@ -400,9 +400,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     open={openSections[item.title]}
                     onOpenChange={() => toggleSection(item.title)}
                   >
-                    <CollapsibleTrigger className="w-full">
-                      <div className={`
-                        flex items-center gap-2.5 py-2 px-3 rounded-lg transition-all duration-150 cursor-pointer text-[13px] tracking-tight
+                    <CollapsibleTrigger asChild>
+                      <button className={`
+                        w-full flex items-center gap-2.5 py-2 px-3 rounded-lg transition-all duration-150 cursor-pointer text-[13px] tracking-tight border-0 bg-transparent
                         ${openSections[item.title] 
                           ? 'bg-white/10 text-white' 
                           : 'text-white/90 hover:bg-white/5 hover:text-white'
@@ -415,7 +415,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                             openSections[item.title] ? '' : '-rotate-90'
                           }`} 
                         />
-                      </div>
+                      </button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
