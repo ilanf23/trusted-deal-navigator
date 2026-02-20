@@ -78,6 +78,7 @@ export interface Module {
 export interface ModuleFeature {
   id: string;
   title: string;
+  description?: string;
   requirement_id: string;
   status: string;
   is_built: boolean;
@@ -298,18 +299,27 @@ export default function ModuleCard({
                       </div>
 
                       {/* Req ID badge */}
-                      <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-1.5 py-0.5 rounded font-mono flex-shrink-0">
+                      <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-1.5 py-0.5 rounded font-mono flex-shrink-0 self-start mt-0.5">
                         {f.requirement_id}
                       </span>
 
-                      {/* Feature title */}
-                      <span
-                        className={`text-[13px] leading-snug transition-all duration-150 flex-1 min-w-0 ${
-                          isComplete ? 'text-muted-foreground line-through' : 'text-foreground'
-                        }`}
-                      >
-                        {f.title}
-                      </span>
+                      {/* Feature title + description */}
+                      <div className="flex-1 min-w-0">
+                        <span
+                          className={`text-[13px] leading-snug transition-all duration-150 ${
+                            isComplete ? 'text-muted-foreground line-through' : 'text-foreground'
+                          }`}
+                        >
+                          {f.title}
+                        </span>
+                        {f.description && (
+                          <p className={`text-[11px] leading-relaxed mt-0.5 ${
+                            isComplete ? 'text-muted-foreground/60' : 'text-muted-foreground'
+                          }`}>
+                            {f.description}
+                          </p>
+                        )}
+                      </div>
 
                       {/* Verified badge */}
                       {isComplete && (
