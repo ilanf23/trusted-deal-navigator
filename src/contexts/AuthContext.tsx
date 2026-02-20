@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -30,6 +30,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [roleLoading, setRoleLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+
+  // Ref to track role across closures — eliminates stale closure bugs
+  const roleRef = useRef<UserRole | null>(null);
+
   const fetchUserRole = async (userId: string): Promise<UserRole | null> => {
     try {
       const { data, error } = await supabase
@@ -53,6 +57,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const setRoleAndRef = (role: UserRole | null) => {
+    roleRef.current = role;
+    setUserRole(role);
+  };
+
   useEffect(() => {
     let initialLoadHandled = false;
 
@@ -64,28 +73,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (event === 'INITIAL_SESSION') {
           // Don't handle loading here — let getSession().then() below handle the initial load
-          // to avoid a race condition where loading=false before the role is fetched
           return;
         }
 
-        // Only re-fetch role on actual sign-in, not token refreshes
-        if (event === 'SIGNED_IN' && !userRole) {
+        // Only re-fetch role on actual sign-in AND only if we don't already have a role
+        if (event === 'SIGNED_IN' && roleRef.current === null) {
           setRoleLoading(true);
-          setTimeout(async () => {
+          Promise.resolve().then(async () => {
             const role = await fetchUserRole(session!.user.id);
-            setUserRole(role);
+            setRoleAndRef(role);
             setRoleLoading(false);
             setLoading(false);
-          }, 0);
+          });
         } else if (event === 'SIGNED_OUT') {
-          setUserRole(null);
+          setRoleAndRef(null);
           setRoleLoading(false);
           setLoading(false);
         } else if (event === 'TOKEN_REFRESHED') {
-          // Don't re-fetch role, just update session silently
-          if (!session?.user) {
-            setUserRole(null);
-          }
+          // Silently update session — never clear the existing role
+          // Only flip loading off if it was still true (e.g. edge case)
+          setRoleLoading(false);
+          setLoading(false);
+        } else if (event === 'SIGNED_IN' && roleRef.current !== null) {
+          // Role already known — just make sure loading is false
           setRoleLoading(false);
           setLoading(false);
         }
@@ -103,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session?.user) {
         setRoleLoading(true);
         fetchUserRole(session.user.id).then((role) => {
-          setUserRole(role);
+          setRoleAndRef(role);
           setRoleLoading(false);
           setLoading(false);
         });
@@ -141,7 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
-    setUserRole(null);
+    setRoleAndRef(null);
     setRoleLoading(false);
     setLoading(false);
   };
