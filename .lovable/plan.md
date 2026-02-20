@@ -1,29 +1,65 @@
 
 
-## Fix Pipeline Dropdown Alignment in Admin Sidebar
+## Fix Feed Page Being Cut Off
 
-### Problem
+### Root Cause
 
-The Pipeline dropdown item in the employee sidebar has slight visual misalignment compared to regular (non-dropdown) sidebar items. The icon, text, and chevron arrow are not on the same visual level as other items like "Lender Programs."
+The Feed page is nested inside AdminLayout's content area which applies:
+1. Responsive padding (`p-3` up to `xl:p-10`)
+2. A `max-w-[1800px] mx-auto` inner wrapper
+3. `overflow-x-hidden` on the padding container -- this clips the negative horizontal margins
 
-### Changes
+The current negative margin approach gets clipped by `overflow-x-hidden`, causing the left, right, and top edges to be cut off.
 
-**File: `src/components/admin/AdminSidebar.tsx`** (lines 403-418)
+### Solution
 
-Update the `CollapsibleTrigger` and its inner `div` to match the exact styling of regular sidebar items:
+Instead of fighting the parent layout with negative margins, use a two-part approach:
 
-1. Change `rounded-md` to `rounded-lg` on the inner div (to match regular items at line 469)
-2. Change the always-applied `font-semibold` on the text span to conditionally apply it (matching the regular item pattern: `font-semibold` when active, `font-medium` otherwise)
-3. Ensure the `CollapsibleTrigger` itself does not add extra spacing by keeping `className="w-full"` and no additional padding
+1. **On the outer padding wrapper**: Apply a special CSS utility that removes padding and max-width constraints when the Feed page is active. Since we cannot conditionally change AdminLayout from inside a child, we will instead use a **CSS approach with `calc()` and `position: relative`** to break out of the container.
 
-These are small CSS class adjustments -- no structural or logic changes needed.
+2. **Specifically**: Change the PipelineFeed container to use:
+   - `w-[calc(100%+var(--px)*2)]` with a negative left margin to break out of padding
+   - Remove the `max-w-none` since the real issue is the parent's `max-w-[1800px]`
+   - Use inline styles to dynamically calculate breakout widths matching each breakpoint's padding
 
-### Before vs After
+**Simpler alternative (recommended)**: Modify AdminLayout to accept an optional `fullBleed` prop or use a CSS class on the content wrapper that children can override. However, since AdminLayout is shared and we don't want to change its API, the cleanest fix is:
 
-| Property | Dropdown (current) | Regular item | Dropdown (fixed) |
-|----------|-------------------|--------------|-------------------|
-| Border radius | `rounded-md` | `rounded-lg` | `rounded-lg` |
-| Font weight | Always `font-semibold` | Conditional | Conditional |
-| Padding | `py-2 px-3` | `py-2 px-3` | Same (no change) |
-| Gap | `gap-2.5` | `gap-2.5` | Same (no change) |
+**Use a style override on the PipelineFeed wrapper:**
+- Apply `margin: -12px` (matching `p-3`) through responsive breakpoints via inline style
+- Set `width: calc(100% + 24px)` (double the padding) at each breakpoint
+- Set `height: calc(100% + 24px)` to also break out vertically
+- Override max-width on the parent using a ref or CSS selector
+
+Actually, the most reliable approach: **Add a `[data-full-bleed]` attribute** to PipelineFeed's container and use a global CSS rule to remove the parent constraints.
+
+### Implementation (File Changes)
+
+**File: `src/index.css`**
+Add a global CSS rule that targets the AdminLayout content wrappers when a `[data-full-bleed]` child is present:
+
+```css
+/* Full-bleed pages: remove padding and max-width from AdminLayout wrappers */
+.admin-portal main > div:has(> [data-full-bleed]) {
+  padding: 0 !important;
+  overflow: visible !important;
+}
+.admin-portal main > div > div:has(> [data-full-bleed]) {
+  max-width: none !important;
+}
+```
+
+**File: `src/pages/admin/PipelineFeed.tsx`**
+- Add `data-full-bleed` attribute to the outer container
+- Remove all negative margin hacks (`-m-3`, `-m-4`, etc.)
+- Use simple `h-[calc(100vh-3.5rem-1px)]` for full height
+- The container will now naturally fill the space without being clipped
+
+### Technical Details
+
+| Aspect | Current (Broken) | Fixed |
+|--------|------------------|-------|
+| Horizontal fit | Negative margins clipped by `overflow-x-hidden` | CSS `:has()` removes parent padding |
+| Max-width | `max-w-none` on child (ineffective) | Parent `max-w-[1800px]` overridden via CSS |
+| Vertical fit | `h-[calc(100vh-3.5rem-1px)]` | Same, no change needed |
+| Approach | Fighting parent layout | Cooperating with parent layout via CSS cascade |
 
