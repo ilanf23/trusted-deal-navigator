@@ -402,14 +402,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   >
                     <CollapsibleTrigger className="w-full">
                       <div className={`
-                        flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13px] tracking-tight
+                        flex items-center gap-2.5 py-2 px-3 rounded-lg transition-all duration-150 cursor-pointer text-[13px] tracking-tight
                         ${openSections[item.title] 
                           ? 'bg-white/10 text-white' 
                           : 'text-white/90 hover:bg-white/5 hover:text-white'
                         }
                       `}>
                         <item.icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} />
-                        <span className="font-semibold flex-1 text-left">{item.title}</span>
+                        <span className={`${openSections[item.title] ? 'font-semibold' : 'font-medium'} flex-1 text-left`}>{item.title}</span>
                         <ChevronDown 
                           className={`w-3.5 h-3.5 transition-transform duration-150 opacity-60 ${
                             openSections[item.title] ? '' : '-rotate-90'
