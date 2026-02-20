@@ -100,12 +100,13 @@ interface Template {
 
 const LEAD_STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
-  { value: 'discovery', label: 'Discovery' },
-  { value: 'pre_qualification', label: 'Pre-Qualification' },
-  { value: 'document_collection', label: 'Document Collection' },
+  { value: 'initial_review', label: 'Initial Review' },
+  { value: 'moving_to_underwriting', label: 'Moving to UW' },
+  { value: 'onboarding', label: 'Onboarding' },
   { value: 'underwriting', label: 'Underwriting' },
-  { value: 'approval', label: 'Approval' },
-  { value: 'funded', label: 'Funded' },
+  { value: 'ready_for_wu_approval', label: 'Ready for Approval' },
+  { value: 'pre_approval_issued', label: 'Pre-Approval Issued' },
+  { value: 'won', label: 'Won' },
 ];
 
 const Newsletter = () => {

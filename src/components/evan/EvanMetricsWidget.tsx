@@ -43,7 +43,7 @@ export const EvanMetricsWidget = () => {
       const monthSMS = monthlyComms?.filter(c => c.communication_type === 'sms').length || 0;
       const weekTotal = weeklyComms?.length || 0;
       const totalLeads = leads?.length || 0;
-      const fundedLeads = leads?.filter(l => l.status === 'funded').length || 0;
+      const fundedLeads = leads?.filter(l => l.status === 'won' || l.status === 'funded').length || 0;
       const tasksCompleted = completedTasks?.length || 0;
 
       return {

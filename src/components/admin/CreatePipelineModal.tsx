@@ -47,12 +47,13 @@ const templates: PipelineTemplate[] = [
     icon: Kanban,
     color: '#0066FF',
     stages: [
-      { name: 'Discovery', color: '#0066FF' },
-      { name: 'Pre-Qualification', color: '#1a75ff' },
-      { name: 'Doc Collection', color: '#3385ff' },
+      { name: 'Initial Review', color: '#0066FF' },
+      { name: 'Moving to UW', color: '#0891b2' },
+      { name: 'Onboarding', color: '#d97706' },
       { name: 'Underwriting', color: '#FF8000' },
-      { name: 'Approval', color: '#e67300' },
-      { name: 'Funded', color: '#10b981' },
+      { name: 'Ready for Approval', color: '#7c3aed' },
+      { name: 'Pre-Approval Issued', color: '#8b5cf6' },
+      { name: 'Won', color: '#10b981' },
     ],
   },
   {

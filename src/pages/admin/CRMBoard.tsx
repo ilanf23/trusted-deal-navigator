@@ -27,12 +27,13 @@ interface LeadWithOwner extends Lead {
 
 // Brand colors: Blue (#0066FF) for early stages, Orange (#FF8000) for later stages
 const stages: { status: LeadStatus; title: string; bgColor: string; borderColor: string; textColor: string; barColor: string }[] = [
-  { status: 'discovery', title: 'Discovery', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#0066FF]' },
-  { status: 'pre_qualification', title: 'Pre-Qual', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#1a75ff]' },
-  { status: 'document_collection', title: 'Doc Collection', bgColor: 'bg-[#3385ff]/10', borderColor: 'border-[#3385ff]', textColor: 'text-[#3385ff]', barColor: 'bg-[#3385ff]' },
+  { status: 'initial_review', title: 'Initial Review', bgColor: 'bg-[#0066FF]/10', borderColor: 'border-[#0066FF]', textColor: 'text-[#0066FF]', barColor: 'bg-[#0066FF]' },
+  { status: 'moving_to_underwriting', title: 'Moving to UW', bgColor: 'bg-[#0891b2]/10', borderColor: 'border-[#0891b2]', textColor: 'text-[#0891b2]', barColor: 'bg-[#0891b2]' },
+  { status: 'onboarding', title: 'Onboarding', bgColor: 'bg-[#d97706]/10', borderColor: 'border-[#d97706]', textColor: 'text-[#d97706]', barColor: 'bg-[#d97706]' },
   { status: 'underwriting', title: 'Underwriting', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#FF8000]' },
-  { status: 'approval', title: 'Approval', bgColor: 'bg-[#FF8000]/10', borderColor: 'border-[#FF8000]', textColor: 'text-[#FF8000]', barColor: 'bg-[#e67300]' },
-  { status: 'funded', title: 'Funded', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600' },
+  { status: 'ready_for_wu_approval', title: 'Ready for Approval', bgColor: 'bg-[#7c3aed]/10', borderColor: 'border-[#7c3aed]', textColor: 'text-[#7c3aed]', barColor: 'bg-[#7c3aed]' },
+  { status: 'pre_approval_issued', title: 'Pre-Approval Issued', bgColor: 'bg-[#8b5cf6]/10', borderColor: 'border-[#8b5cf6]', textColor: 'text-[#8b5cf6]', barColor: 'bg-[#8b5cf6]' },
+  { status: 'won', title: 'Won', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-600', textColor: 'text-emerald-700', barColor: 'bg-emerald-600' },
 ];
 
 const CRMBoard = () => {

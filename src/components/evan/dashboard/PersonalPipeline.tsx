@@ -11,12 +11,13 @@ interface PersonalPipelineProps {
 }
 
 const stageConfig = [
-  { status: 'discovery', label: 'Discovery' },
-  { status: 'pre_qualification', label: 'Pre-Qual' },
-  { status: 'document_collection', label: 'Docs' },
+  { status: 'initial_review', label: 'Initial Review' },
+  { status: 'moving_to_underwriting', label: 'Moving to UW' },
+  { status: 'onboarding', label: 'Onboarding' },
   { status: 'underwriting', label: 'UW' },
-  { status: 'approval', label: 'Approval' },
-  { status: 'funded', label: 'Funded' },
+  { status: 'ready_for_wu_approval', label: 'Ready for Approval' },
+  { status: 'pre_approval_issued', label: 'Pre-Approval' },
+  { status: 'won', label: 'Won' },
 ];
 
 export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
@@ -58,10 +59,10 @@ export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
         };
       });
 
-      const totalDeals = leads.filter(l => l.status !== 'funded').length;
-      const totalValue = stageData.reduce((sum, s) => s.status !== 'funded' ? sum + s.amount : sum, 0);
+      const totalDeals = leads.filter(l => l.status !== 'won' && l.status !== 'funded').length;
+      const totalValue = stageData.reduce((sum, s) => s.status !== 'won' && s.status !== 'funded' ? sum + s.amount : sum, 0);
       const totalWeightedFees = stageData.reduce((sum, s) => {
-        if (s.status === 'funded') return sum;
+        if (s.status === 'won' || s.status === 'funded') return sum;
         const weight = stageConfig.findIndex(c => c.status === s.status) / (stageConfig.length - 1);
         return sum + (s.fees * weight);
       }, 0);

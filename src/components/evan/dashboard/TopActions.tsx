@@ -166,7 +166,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
       let impact = '';
 
       // Status-based actions
-      if (lead.status === 'approval') {
+      if (lead.status === 'ready_for_wu_approval' || lead.status === 'pre_approval_issued' || lead.status === 'approval') {
         if (daysSinceUpdate > 2) {
           action = 'Push for final approval signature';
           actionType = 'close';
@@ -190,7 +190,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
           blockerSeverity = 3;
           impact = 'Keeps deal moving forward';
         }
-      } else if (lead.status === 'document_collection') {
+      } else if (lead.status === 'onboarding' || lead.status === 'document_collection') {
         if (daysSinceUpdate > 3) {
           action = 'Request missing documents';
           actionType = 'document';
@@ -202,7 +202,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
           blockerSeverity = 3;
           impact = 'Accelerates doc collection';
         }
-      } else if (lead.status === 'pre_qualification') {
+      } else if (lead.status === 'moving_to_underwriting' || lead.status === 'pre_qualification') {
         if (hoursSinceContact > 72) {
           action = 'Re-engage with qualification call';
           actionType = 'call';
@@ -212,9 +212,9 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
           action = 'Send pre-qualification summary';
           actionType = 'email';
           blockerSeverity = 2;
-          impact = 'Moves to document collection';
+          impact = 'Moves to onboarding';
         }
-      } else if (lead.status === 'discovery') {
+      } else if (lead.status === 'initial_review' || lead.status === 'discovery') {
         if (hoursSinceContact > 24 && hoursSinceContact < 72) {
           action = 'Schedule discovery call';
           actionType = 'call';
