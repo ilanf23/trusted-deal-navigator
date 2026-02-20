@@ -24,6 +24,7 @@ import {
   Calendar,
   Plus,
   Crosshair,
+  Rss,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -272,7 +273,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
             url: `/admin/${employeeName.toLowerCase()}/pipeline`, 
             icon: Kanban,
             subItems: [
-              { title: 'Feed', url: `/admin/${employeeName.toLowerCase()}/pipeline/feed`, icon: Kanban },
+              { title: 'Feed', url: `/admin/${employeeName.toLowerCase()}/pipeline/feed`, icon: Rss },
               { title: 'Pipeline', url: `/admin/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
               { title: 'Contacts', url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts`, icon: Users },
             ],
