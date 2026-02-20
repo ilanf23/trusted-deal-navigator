@@ -267,7 +267,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: Kanban,
         isLabel: true,
         items: [
-          { title: 'Pipeline', url: `/admin/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+          { 
+            title: 'Pipeline', 
+            url: `/admin/${employeeName.toLowerCase()}/pipeline`, 
+            icon: Kanban,
+            subItems: [
+              { title: 'Feed', url: `/admin/${employeeName.toLowerCase()}/pipeline/feed`, icon: Kanban },
+              { title: 'Pipeline', url: `/admin/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+              { title: 'Contacts', url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts`, icon: Users },
+            ],
+          },
           { title: 'Lender Programs', url: `/admin/${employeeName.toLowerCase()}/lender-programs`, icon: Building2 },
         ],
         noCollapse: true,
