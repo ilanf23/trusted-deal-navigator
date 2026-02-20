@@ -16,7 +16,7 @@ export const useTeamMember = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: teamMember, isLoading: loading } = useQuery({
+  const { data: teamMember, isLoading, isFetched } = useQuery({
     queryKey: ['team-member', user?.id],
     queryFn: async () => {
       if (!user) return null;
@@ -47,6 +47,7 @@ export const useTeamMember = () => {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
+  const loading = isLoading || (!!user && !isFetched);
   const isOwner = teamMember?.is_owner ?? false;
   const canAccessDashboard = (employeeName: string) => {
     if (!teamMember) return false;
