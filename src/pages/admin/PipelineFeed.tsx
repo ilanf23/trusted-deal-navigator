@@ -57,7 +57,7 @@ const PipelineFeed = () => {
   }, [selectedTeamMember, selectedFilters, searchQuery]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-0px)] -m-6 md:-m-8">
+    <div className="flex flex-col h-[calc(100vh-3.5rem-1px)] -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10 max-w-none">
       {/* Top bar */}
       <div className="h-14 bg-white border-b border-[#E5E7EB] flex items-center px-6 gap-4 flex-shrink-0">
         <h1 className="text-xl font-bold text-[#111827] mr-4">Feed</h1>
