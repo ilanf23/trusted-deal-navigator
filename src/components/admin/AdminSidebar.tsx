@@ -141,6 +141,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: Kanban,
         isLabel: true,
         items: [
+          { title: 'Pipeline', url: '/superadmin/pipeline', icon: Kanban },
+          { title: 'Pipeline Test', url: '/superadmin/pipeline-test', icon: Kanban },
           { title: 'CRM Board', url: '/superadmin/crm', icon: Kanban },
           { title: 'Leads', url: '/superadmin/leads', icon: UserPlus },
           { title: 'Lender Programs', url: '/superadmin/lender-programs', icon: Building2 },
