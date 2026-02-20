@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +42,7 @@ export interface BusinessRequirement {
   portal?: string;
   created_at: string;
   updated_at: string;
+  is_built?: boolean;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -79,6 +81,7 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [builtFilter, setBuiltFilter] = useState('all');
   const [portalFilter, setPortalFilter] = useState('all');
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -95,8 +98,14 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
       (r.description ?? '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || r.status === statusFilter;
     const matchPortal = portalFilter === 'all' || (r.portal ?? 'evan') === portalFilter;
-    return matchSearch && matchStatus && matchPortal;
+    const matchBuilt = builtFilter === 'all' || (builtFilter === 'built' ? r.is_built : !r.is_built);
+    return matchSearch && matchStatus && matchPortal && matchBuilt;
   });
+
+  const toggleBuilt = async (id: string, currentBuilt: boolean) => {
+    await supabase.from('business_requirements').update({ is_built: !currentBuilt } as any).eq('id', id);
+    onRefresh();
+  };
 
   const getNextReqId = () => {
     const nums = requirements.map(r => parseInt(r.requirement_id.replace('BR-', ''), 10)).filter(n => !isNaN(n));
@@ -161,6 +170,16 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
             <SelectItem value="verified">✓ Built / Complete</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={builtFilter} onValueChange={setBuiltFilter}>
+          <SelectTrigger className="w-32 h-9 text-sm">
+            <SelectValue placeholder="Built?" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="built">✓ Built</SelectItem>
+            <SelectItem value="not_built">Not Built</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={portalFilter} onValueChange={setPortalFilter}>
           <SelectTrigger className="w-36 h-9 text-sm">
             <SelectValue placeholder="Portal" />
@@ -182,6 +201,7 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="w-16 text-xs font-semibold text-center">Built</TableHead>
               <TableHead className="w-24 text-xs font-semibold">ID</TableHead>
               <TableHead className="text-xs font-semibold">Title</TableHead>
               <TableHead className="text-xs font-semibold">Portal</TableHead>
@@ -195,7 +215,7 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-10">
+                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-10">
                   No requirements found.
                 </TableCell>
               </TableRow>
@@ -205,6 +225,12 @@ export default function RequirementsTable({ requirements, modules, onRefresh }: 
               const portalLabel = portalKey.charAt(0).toUpperCase() + portalKey.slice(1);
               return (
                 <TableRow key={req.id} className="text-sm">
+                  <TableCell className="text-center">
+                    <Checkbox
+                      checked={req.is_built ?? false}
+                      onCheckedChange={() => toggleBuilt(req.id, req.is_built ?? false)}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{req.requirement_id}</TableCell>
                   <TableCell>
                     <div>

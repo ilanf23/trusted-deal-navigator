@@ -80,6 +80,7 @@ export interface ModuleFeature {
   title: string;
   requirement_id: string;
   status: string;
+  is_built: boolean;
 }
 
 interface ModuleCardProps {
@@ -99,18 +100,18 @@ export default function ModuleCard({
   onToggleFeatures,
   onFeatureStatusChange,
 }: ModuleCardProps) {
-  const [localStatuses, setLocalStatuses] = useState<Record<string, string>>(() =>
-    Object.fromEntries(features.map(f => [f.id, f.status]))
+  const [localBuilt, setLocalBuilt] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(features.map(f => [f.id, f.is_built]))
   );
   const [barWidth, setBarWidth] = useState(0);
   const hasAnimated = useRef(false);
 
   // Sync when features prop changes (e.g. after refetch)
   useEffect(() => {
-    setLocalStatuses(Object.fromEntries(features.map(f => [f.id, f.status])));
-  }, [features.length, features.map(f => f.status).join(',')]);
+    setLocalBuilt(Object.fromEntries(features.map(f => [f.id, f.is_built])));
+  }, [features.length, features.map(f => `${f.id}:${f.is_built}`).join(',')]);
 
-  const completedCount = features.filter(f => (localStatuses[f.id] ?? f.status) === 'verified').length;
+  const completedCount = features.filter(f => localBuilt[f.id] ?? f.is_built).length;
   const featureProgress = features.length > 0 ? Math.round(completedCount / features.length * 100) : 0;
 
   // Animate bar on mount
@@ -136,24 +137,24 @@ export default function ModuleCard({
 
   const toggleFeature = async (e: React.MouseEvent, feature: ModuleFeature) => {
     e.stopPropagation();
-    const currentStatus = localStatuses[feature.id] ?? feature.status;
-    const newStatus = currentStatus === 'verified' ? 'draft' : 'verified';
+    const currentBuilt = localBuilt[feature.id] ?? feature.is_built;
+    const newBuilt = !currentBuilt;
 
     // Optimistic update
-    setLocalStatuses(prev => ({ ...prev, [feature.id]: newStatus }));
+    setLocalBuilt(prev => ({ ...prev, [feature.id]: newBuilt }));
 
     const { error } = await supabase
       .from('business_requirements')
-      .update({ status: newStatus })
+      .update({ is_built: newBuilt } as any)
       .eq('id', feature.id);
 
     if (error) {
       // Revert on error
-      setLocalStatuses(prev => ({ ...prev, [feature.id]: currentStatus }));
+      setLocalBuilt(prev => ({ ...prev, [feature.id]: currentBuilt }));
       return;
     }
 
-    onFeatureStatusChange?.(feature.id, newStatus);
+    onFeatureStatusChange?.(feature.id, newBuilt ? 'built' : 'unbuilt');
   };
 
   return (
@@ -273,8 +274,7 @@ export default function ModuleCard({
             {showFeatures && (
               <ul className="mt-2">
                 {features.map((f, i) => {
-                  const currentStatus = localStatuses[f.id] ?? f.status;
-                  const isComplete = currentStatus === 'verified';
+                  const isComplete = localBuilt[f.id] ?? f.is_built;
                   const isLast = i === features.length - 1;
                   return (
                     <li

@@ -250,10 +250,25 @@ export default function ModuleDetailDialog({ module, open, onOpenChange, onSave 
             ) : requirements.map(req => (
               <div key={req.id} className="border border-border/60 rounded-lg p-3 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono text-muted-foreground">{req.requirement_id}</span>
-                  <Badge variant="outline" className="text-[10px]">{req.status}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={(req as any).is_built ?? false}
+                      onCheckedChange={async () => {
+                        const newBuilt = !((req as any).is_built ?? false);
+                        await supabase.from('business_requirements').update({ is_built: newBuilt } as any).eq('id', req.id);
+                        setRequirements(prev => prev.map(r => r.id === req.id ? { ...r, is_built: newBuilt } as any : r));
+                      }}
+                    />
+                    <span className="text-xs font-mono text-muted-foreground">{req.requirement_id}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {(req as any).is_built && (
+                      <Badge className="text-[9px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-0">Built ✓</Badge>
+                    )}
+                    <Badge variant="outline" className="text-[10px]">{req.status}</Badge>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-foreground">{req.title}</p>
+                <p className={`text-sm font-medium ${(req as any).is_built ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{req.title}</p>
                 {req.description && <p className="text-xs text-muted-foreground">{req.description}</p>}
                 {req.acceptance_criteria && (
                   <>
