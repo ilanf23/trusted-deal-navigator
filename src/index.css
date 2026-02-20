@@ -524,10 +524,7 @@
   .admin-portal main > div > div:has([data-full-bleed]) {
     max-width: none !important;
   }
-  /* Hide AdminLayout header when full-bleed page is active */
-  .admin-portal main:has([data-full-bleed]) > header {
-    display: none !important;
-  }
+  /* Keep AdminLayout header visible on full-bleed pages */
 
   /* Metric Cards */
   .metric-card {

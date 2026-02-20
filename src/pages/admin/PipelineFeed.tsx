@@ -57,7 +57,7 @@ const PipelineFeed = () => {
   }, [selectedTeamMember, selectedFilters, searchQuery]);
 
   return (
-    <div data-full-bleed className="flex flex-col h-screen w-full">
+    <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full">
       {/* Top bar */}
       <div className="h-14 bg-white border-b border-[#E5E7EB] flex items-center px-6 gap-4 flex-shrink-0">
         <h1 className="text-xl font-bold text-[#111827] mr-4">Feed</h1>
