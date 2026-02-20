@@ -1,38 +1,62 @@
 
 
-## Fix: Page Refresh Redirects Users to Homepage
+## Rename Current Pipeline to "Pipeline Test" and Create New Pipeline Page
 
-### Root Cause
+### Overview
 
-There is a one-render race condition in `useTeamMember`. When auth finishes loading and `user` transitions from `null` to a valid user, React Query's `enabled: !!user` flips to `true` -- but the fetch hasn't started yet. During that single render frame:
+The current pipeline page (`EvansPipeline.tsx`) will be renamed to "Pipeline Test" and hidden from the employee (admin) sidebar. A brand-new, clean "Pipeline" page will be created to replace it in the admin view and will also appear in the superadmin sidebar above "Pipeline Test."
 
-- `isLoading` = `false` (React Query hasn't begun fetching)
-- `teamMember` = `null` (no data yet)
+### Changes
 
-`EmployeeRoute` interprets this as "user is not a team member" and redirects to `/user`, which then bounces the admin user elsewhere. This cascade ultimately lands the user on the homepage or login page.
+#### 1. Create new Pipeline page: `src/pages/admin/Pipeline.tsx`
 
-### The Fix (1 file)
+A new page component that serves as the replacement pipeline view for employees. It will:
+- Use `EvanLayout` (same as the current pipeline page)
+- Fetch leads from the database grouped by pipeline stage
+- Use a clean kanban-style board layout
+- Follow existing patterns from `EvansPipeline.tsx` but start fresh as a simpler, cleaner implementation
 
-**`src/hooks/useTeamMember.ts`** -- Change the `loading` return value to account for the gap between auth resolving and the team member query actually fetching:
+#### 2. Update `src/pages/admin/EvansPipeline.tsx`
 
-```text
-Current:
-  const loading = isLoading
+- Rename the page title/header displayed in the UI from "Pipeline" to "Pipeline Test"
+- No other functional changes -- it stays as-is for testing purposes
 
-Proposed:
-  const loading = isLoading || (!!user && !isFetched)
-```
+#### 3. Update `src/components/admin/AdminSidebar.tsx`
 
-By destructuring `isFetched` from `useQuery` and including it in the loading calculation, we ensure that `loading` remains `true` until the query has actually completed at least once. This closes the one-render gap entirely.
+**Employee sidebar (Evan and other employees, lines ~262-271):**
+- Change the Pipeline item to point to the new page: `{ title: 'Pipeline', url: '/admin/{name}/pipeline', icon: Kanban }`
+- This replaces the current link; "Pipeline Test" is NOT shown here
 
-### Why This Works
+**Superadmin sidebar (Ilan, lines ~138-150):**
+- Add "Pipeline" linking to `/superadmin/pipeline` (new route) above the existing CRM Board
+- Add "Pipeline Test" linking to `/superadmin/crm` (existing `EvansPipeline` route) or a new `/superadmin/pipeline-test` route below "Pipeline"
 
-- `isFetched` is `false` until React Query has completed the first fetch
-- When `user` exists but the query hasn't run yet, `!!user && !isFetched` is `true`, keeping `loading = true`
-- Both `ProtectedRoute` and `EmployeeRoute` consume `useTeamMember().loading`, so both are protected by this single fix
-- After the query completes (even if `teamMember` is `null` for non-team-members), `isFetched` becomes `true` and loading correctly resolves to `false`
+#### 4. Update `src/App.tsx` routes
 
-### Technical Detail
+- Add new route `/superadmin/pipeline` rendering the new `Pipeline` page inside `AdminRouteLayout`
+- Add new route `/superadmin/pipeline-test` rendering `EvansPipeline` (the old pipeline, now called "Pipeline Test")
+- Change `/admin/evan/pipeline` to render the new `Pipeline` page instead of `EvansPipeline`
 
-No other files need changes. The `ProtectedRoute` and `EmployeeRoute` already correctly gate on `teamLoading` -- the only problem was that `teamLoading` briefly reported `false` before the query had a chance to start.
+### Technical Details
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/Pipeline.tsx` | New file -- clean pipeline page with DB-driven kanban board |
+| `src/pages/admin/EvansPipeline.tsx` | Rename displayed title to "Pipeline Test" |
+| `src/components/admin/AdminSidebar.tsx` | Employee sidebar: link to new Pipeline page. Superadmin sidebar: add "Pipeline" above "Pipeline Test" |
+| `src/App.tsx` | Add routes for `/superadmin/pipeline`, `/superadmin/pipeline-test`; update `/admin/evan/pipeline` to use new page |
+
+### Sidebar Result
+
+**Employee (Evan) sidebar -- Pipeline section:**
+- Pipeline (links to new page)
+- Lender Programs
+
+**Superadmin (Ilan) sidebar -- Pipeline section:**
+- Pipeline (new page)
+- Pipeline Test (old EvansPipeline)
+- CRM Board
+- Leads
+- Lender Programs
+- Rate Watch
 
