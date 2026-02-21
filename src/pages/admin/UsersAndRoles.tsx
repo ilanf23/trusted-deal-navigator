@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   Users,
   UserCog,
-  Search,
   MoreHorizontal,
   ChevronUp,
   ChevronDown,
@@ -326,7 +325,6 @@ const UsersAndRoles = () => {
         </Tabs>
 
         <div className="relative flex-1 sm:max-w-xs ml-auto">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search by email or role…"
             value={searchQuery}
@@ -334,7 +332,7 @@ const UsersAndRoles = () => {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="pl-8 h-9 text-sm"
+            className="h-9 text-sm"
           />
         </div>
       </div>

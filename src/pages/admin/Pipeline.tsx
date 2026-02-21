@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Kanban } from 'lucide-react';
+import { Kanban } from 'lucide-react';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -176,12 +176,11 @@ const Pipeline = () => {
 
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search leads..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 w-[200px]"
+                className="w-[200px]"
               />
             </div>
             <Select value={ownerFilter} onValueChange={setOwnerFilter}>

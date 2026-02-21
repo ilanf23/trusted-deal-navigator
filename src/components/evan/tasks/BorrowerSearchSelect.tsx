@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Search } from "lucide-react";
+
 
 interface Lead {
   id: string;
@@ -80,7 +80,6 @@ export function BorrowerSearchSelect({
       <PopoverContent className="w-[300px] p-0 z-[200] pointer-events-auto" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
         {/* Sticky search input */}
         <div className="flex items-center border-b px-3 bg-popover">
-          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
