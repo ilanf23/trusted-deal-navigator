@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Search, Plus, Bell } from 'lucide-react';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import EvanLayout from '@/components/evan/EvanLayout';
 import FeedLeftPanel from '@/components/feed/FeedLeftPanel';
 import FeedCenter from '@/components/feed/FeedCenter';
 import FeedRightPanel from '@/components/feed/FeedRightPanel';
@@ -57,48 +58,50 @@ const PipelineFeed = () => {
   }, [selectedTeamMember, selectedFilters, searchQuery]);
 
   return (
-    <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full">
-      {/* Top bar */}
-      <div className="h-14 bg-card border-b border-border flex items-center px-6 gap-4 flex-shrink-0">
-        <h1 className="text-xl font-bold text-foreground mr-4">Feed</h1>
-        <div className="flex-1 flex justify-center">
-          <div className="relative w-full max-w-[500px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search by name, email, domain or phone number"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 pl-10 pr-4 bg-muted rounded-full text-sm outline-none border-0 placeholder:text-muted-foreground text-foreground focus:ring-2 focus:ring-primary/20"
-            />
+    <EvanLayout>
+      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full">
+        {/* Top bar */}
+        <div className="h-14 bg-card border-b border-border flex items-center px-6 gap-4 flex-shrink-0">
+          <h1 className="text-xl font-bold text-foreground mr-4">Feed</h1>
+          <div className="flex-1 flex justify-center">
+            <div className="relative w-full max-w-[500px]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by name, email, domain or phone number"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-9 pl-10 pr-4 bg-muted rounded-full text-sm outline-none border-0 placeholder:text-muted-foreground text-foreground focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">
+              <Plus className="w-5 h-5" />
+            </button>
+            <button className="relative w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">
+              <Bell className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 min-w-[20px] h-[18px] bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                99+
+              </span>
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">
-            <Plus className="w-5 h-5" />
-          </button>
-          <button className="relative w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">
-            <Bell className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 min-w-[20px] h-[18px] bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-              99+
-            </span>
-          </button>
+
+        {/* 3-column layout */}
+        <div className="flex flex-1 min-h-0">
+          <FeedLeftPanel
+            userName={userName}
+            selectedTeamMember={selectedTeamMember}
+            onTeamMemberSelect={setSelectedTeamMember}
+            selectedFilters={selectedFilters}
+            onFilterChange={setSelectedFilters}
+          />
+          <FeedCenter activities={filteredActivities} />
+          <FeedRightPanel />
         </div>
       </div>
-
-      {/* 3-column layout */}
-      <div className="flex flex-1 min-h-0">
-        <FeedLeftPanel
-          userName={userName}
-          selectedTeamMember={selectedTeamMember}
-          onTeamMemberSelect={setSelectedTeamMember}
-          selectedFilters={selectedFilters}
-          onFilterChange={setSelectedFilters}
-        />
-        <FeedCenter activities={filteredActivities} />
-        <FeedRightPanel />
-      </div>
-    </div>
+    </EvanLayout>
   );
 };
 
