@@ -2,20 +2,19 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { FEED_ACTIVITY_FILTERS } from '@/hooks/useFeedData';
 
+interface TeamMember {
+  id: string;
+  name: string;
+}
+
 interface FeedLeftPanelProps {
   userName: string;
   selectedTeamMember: string | null;
   onTeamMemberSelect: (member: string | null) => void;
   selectedFilters: string[];
   onFilterChange: (filters: string[]) => void;
+  teamMembers: TeamMember[];
 }
-
-const TEAM_MEMBERS = [
-  { initial: 'E', name: 'Evan', color: 'bg-[#EDE9F6] text-[#5B21B6]' },
-  { initial: 'B', name: 'Brad', color: 'bg-[#EDE9F6] text-[#5B21B6]' },
-  { initial: 'M', name: 'Maura', color: 'bg-[#EDE9F6] text-[#5B21B6]' },
-  { initial: 'W', name: 'Wendy', color: 'bg-[#EDE9F6] text-[#5B21B6]' },
-];
 
 const FeedLeftPanel = ({
   userName,
@@ -23,6 +22,7 @@ const FeedLeftPanel = ({
   onTeamMemberSelect,
   selectedFilters,
   onFilterChange,
+  teamMembers,
 }: FeedLeftPanelProps) => {
   const [filterSearch, setFilterSearch] = useState('');
   const isAllSelected = selectedFilters.length === 0;
@@ -57,20 +57,20 @@ const FeedLeftPanel = ({
       </div>
 
       {/* Team avatars */}
-      <div className="px-4 pb-3 flex gap-2">
-        {TEAM_MEMBERS.map((member) => (
+      <div className="px-4 pb-3 flex gap-2 flex-wrap">
+        {teamMembers.map((member) => (
           <button
-            key={member.name}
+            key={member.id}
             onClick={() =>
               onTeamMemberSelect(selectedTeamMember === member.name ? null : member.name)
             }
             className={cn(
               'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all',
-              member.color,
+              'bg-[#EDE9F6] text-[#5B21B6]',
               selectedTeamMember === member.name && 'ring-2 ring-[#5B21B6] ring-offset-1'
             )}
           >
-            {member.initial}
+            {member.name.charAt(0).toUpperCase()}
           </button>
         ))}
       </div>

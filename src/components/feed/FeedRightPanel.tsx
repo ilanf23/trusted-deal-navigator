@@ -2,16 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { CheckSquare, TrendingUp, Clock } from 'lucide-react';
-
-const STAGE_LABELS: Record<string, string> = {
-  initial_review: 'Initial Review',
-  moving_to_underwriting: 'Moving to UW',
-  onboarding: 'Onboarding',
-  underwriting: 'Underwriting',
-  ready_for_wu_approval: 'Ready for WU Approval',
-  pre_approval_issued: 'Pre-Approval Issued',
-  won: 'Won',
-};
+import { STAGE_LABELS } from '@/constants/appConfig';
 
 const FeedRightPanel = () => {
   // Upcoming tasks
