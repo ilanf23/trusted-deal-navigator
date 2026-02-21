@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
+import { STAGE_LABELS } from '@/constants/appConfig';
 
 export type FeedActivityType = 'lead_created' | 'lead_updated' | 'note' | 'call' | 'email' | 'sms' | 'task_created' | 'stage_change';
 
@@ -18,16 +19,6 @@ export interface FeedActivity {
   stage?: string;
   direction?: string;
 }
-
-const STAGE_LABELS: Record<string, string> = {
-  initial_review: 'Initial Review',
-  moving_to_underwriting: 'Moving to UW',
-  onboarding: 'Onboarding',
-  underwriting: 'Underwriting',
-  ready_for_wu_approval: 'Ready for WU Approval',
-  pre_approval_issued: 'Pre-Approval Issued',
-  won: 'Won',
-};
 
 const formatTime = (dateStr: string): string => {
   const date = new Date(dateStr);

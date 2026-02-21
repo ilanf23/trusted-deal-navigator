@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Plus, Bell } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
 import FeedLeftPanel from '@/components/feed/FeedLeftPanel';
 import FeedCenter from '@/components/feed/FeedCenter';
@@ -12,6 +14,18 @@ const PipelineFeed = () => {
   const { teamMember } = useTeamMember();
   const userName = teamMember?.name || 'User';
   const { data: activities = [], isLoading } = useFeedData();
+
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['feed-team-members'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [selectedTeamMember, setSelectedTeamMember] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
@@ -94,6 +108,7 @@ const PipelineFeed = () => {
             onTeamMemberSelect={setSelectedTeamMember}
             selectedFilters={selectedFilters}
             onFilterChange={setSelectedFilters}
+            teamMembers={teamMembers}
           />
           <FeedCenter activities={filteredActivities} isLoading={isLoading} />
           <FeedRightPanel />
