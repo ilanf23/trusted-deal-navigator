@@ -1,21 +1,36 @@
 
 
-## Fix Logo Readability on Small Screens
+## Add Admin Sidebar to Feed Page
 
 ### Problem
-The header logo uses extremely large height classes (`h-40` = 160px, `md:h-60` = 240px) inside a header that is only `h-14` (56px) / `h-16` (64px) tall. The logo overflows its container and on smaller viewports it gets compressed and becomes unreadable, as shown in the screenshot.
+The Feed page (`PipelineFeed`) is missing the `EvanLayout` wrapper that all other Evan portal pages use (like Dashboard, Tasks, Pipeline, etc.). Without it, the global admin sidebar with navigation to all portal pages never renders -- only the Feed's own filter panel (`FeedLeftPanel`) is visible.
 
 ### Solution
-Constrain the logo to reasonable sizes that fit within the header while remaining readable at all breakpoints:
+Wrap `PipelineFeed` content with the `EvanLayout` component, matching the pattern used by every other Evan page.
 
-### File Change: `src/components/layout/Header.tsx`
+### File Change: `src/pages/admin/PipelineFeed.tsx`
 
-**Line 42** -- Change the logo `img` classes:
+1. Import `EvanLayout` from `@/components/evan/EvanLayout`
+2. Wrap the entire return JSX with `<EvanLayout>...</EvanLayout>`
 
-- **From:** `className="h-40 md:h-60 mx-auto"`
-- **To:** `className="h-10 md:h-12 w-auto"`
+This is a one-line import and a two-line wrapper addition. The admin sidebar (with Dashboard, Pipeline, Tasks, Gmail, etc.) will then be accessible via the hamburger menu in the top header bar, just like on every other Evan portal page.
 
-This sets the logo to 40px on mobile and 48px on desktop -- fitting comfortably inside the 56px/64px header while staying crisp and readable. The `w-auto` ensures the aspect ratio is preserved.
+### Technical Details
 
-Also remove the `mt-[0.375rem]` on the parent `Link` since it was compensating for the oversized image -- the logo will now naturally center within the flex container.
+The pattern matches exactly what other Evan pages do:
+
+```text
+EvansTasks:     EvanLayout > content
+EvansPage:      EvanLayout > content
+EvansPipeline:  EvanLayout > content
+PipelineFeed:   (nothing) > content    <-- broken
+```
+
+After the fix:
+
+```text
+PipelineFeed:   EvanLayout > content   <-- fixed
+```
+
+`EvanLayout` delegates to `AdminLayout`, which provides the `SidebarProvider`, `AdminSidebar`, header bar with sidebar trigger, dark mode toggle, and undo button.
 
