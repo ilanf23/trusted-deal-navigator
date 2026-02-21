@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ACTIVITY_FILTERS } from './feedMockData';
+import { FEED_ACTIVITY_FILTERS } from '@/hooks/useFeedData';
 
 interface FeedLeftPanelProps {
   userName: string;
@@ -27,7 +27,7 @@ const FeedLeftPanel = ({
   const [filterSearch, setFilterSearch] = useState('');
   const isAllSelected = selectedFilters.length === 0;
 
-  const filteredActivityFilters = ACTIVITY_FILTERS.filter((f) =>
+  const filteredActivityFilters = FEED_ACTIVITY_FILTERS.filter((f) =>
     f.toLowerCase().includes(filterSearch.toLowerCase())
   );
 
@@ -51,7 +51,7 @@ const FeedLeftPanel = ({
           Welcome to your Feed, {userName} 👋
         </h2>
         <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-          Your relationships, your activities, the heartbeat of your business. All in one place.
+          Your pipeline activity, communications, and deal updates — all in one place.
         </p>
         <div className="h-px bg-border mt-4" />
       </div>
