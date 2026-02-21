@@ -1,61 +1,72 @@
 
 
-## Dark Mode for Feed Page
+## Remove Hardcoded Data from Feed Page
 
 ### Problem
-All four feed components (`FeedLeftPanel`, `FeedCenter`, `FeedRightPanel`, `ActivityCard`) use hardcoded light-mode hex colors (e.g., `bg-white`, `text-[#111827]`, `border-[#E5E7EB]`, `bg-[#F5F5F7]`). These do not respond to the dark mode theme toggle already available in the admin header.
+Two pieces of hardcoded business data exist on the Feed page:
 
-### Solution
-Replace all hardcoded color values with semantic Tailwind tokens (`bg-card`, `text-foreground`, `border-border`, `bg-muted`, `text-muted-foreground`, etc.) that automatically adapt to the active theme. This matches the pattern already used across the rest of the admin portal.
-
-### Files to Change
-
-**1. `src/components/feed/FeedLeftPanel.tsx`**
-- `bg-white` -> `bg-card`
-- `border-[#E5E7EB]` -> `border-border`
-- `text-[#111827]` -> `text-foreground`
-- `text-[#6B7280]` -> `text-muted-foreground`
-- `bg-[#F5F5F7]` -> `bg-muted`
-- `text-[#9CA3AF]` -> `text-muted-foreground/60`
-- `bg-[#EDEAF6]` / `text-[#3B1F8C]` (active filter) -> `bg-primary/10 text-primary`
-- `hover:bg-[#F5F5F7]` -> `hover:bg-muted`
-- Team avatar colors kept as-is (purple brand color, acceptable hardcoded UI config)
-
-**2. `src/components/feed/FeedCenter.tsx`**
-- `bg-[#F5F5F7]` -> `bg-muted/50`
-- `bg-white` (tab bar) -> `bg-card`
-- `border-[#E5E7EB]` -> `border-border`
-- `text-[#111827]` -> `text-foreground`
-- `text-[#6B7280]` -> `text-muted-foreground`
-- `text-[#374151]` -> `text-foreground`
-
-**3. `src/components/feed/FeedRightPanel.tsx`**
-- All `bg-white` -> `bg-card`
-- `border-[#E5E7EB]` -> `border-border`
-- `text-[#111827]` -> `text-foreground`
-- `text-[#6B7280]` -> `text-muted-foreground`
-- `text-[#9CA3AF]` -> `text-muted-foreground/60`
-- `text-[#374151]` -> `text-foreground`
-- `bg-[#E5E7EB]` (avatar placeholder) -> `bg-muted`
-- `border-[#F3F4F6]` -> `border-border`
-- `hover:bg-[#F9FAFB]` -> `hover:bg-muted`
-- `border-[#111827]` (button borders) -> `border-foreground`
-- Card shadows: add `dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)]` variant
-
-**4. `src/components/feed/ActivityCard.tsx`**
-- `bg-white` -> `bg-card`
-- `shadow-[0_1px_4px_rgba(0,0,0,0.08)]` -> add dark variant
-- `text-[#111827]` -> `text-foreground`
-- `text-[#6B7280]` -> `text-muted-foreground`
-- `text-[#9CA3AF]` -> `text-muted-foreground/60`
-- `text-[#374151]` -> `text-foreground`
-- `bg-[#F3F4F6]` (attachment chips, thread badge) -> `bg-muted`
-- `border-[#E5E7EB]` -> `border-border`
-- `hover:bg-[#F3F4F6]` -> `hover:bg-muted`
-- Avatar colors (blue-600, amber-600, etc.) stay as-is -- they are brand/UI config
+1. **Team members** in `FeedLeftPanel.tsx` -- a static array of 4 names (Evan, Brad, Maura, Wendy), where "Brad" does not even exist in the `team_members` database table
+2. **Stage labels** duplicated in both `useFeedData.ts` and `FeedRightPanel.tsx` -- an incomplete map that only covers 7 of 14 pipeline stages in the `lead_status` enum
 
 ### What stays the same
-- Brand accent colors (purple `#5B21B6`, `#2D1B4E` buttons) remain hardcoded -- these are intentional brand colors
-- Avatar background colors remain hardcoded -- UI configuration
-- The `PipelineFeed.tsx` page wrapper (already converted to semantic tokens in a prior change)
+- `FEED_ACTIVITY_FILTERS` (Note, Call, Email, SMS, Task, New Lead) -- these are UI configuration mapping to known activity types, not business data
+- `avatarColors` in `ActivityCard.tsx` -- UI color config for initials, not business data
+- Type icons, badge colors, and type labels -- UI presentation config
 
+### Changes
+
+**1. `src/components/feed/FeedLeftPanel.tsx`**
+- Remove the hardcoded `TEAM_MEMBERS` array
+- Accept a new `teamMembers` prop (fetched from DB by the parent)
+- Render team avatar buttons dynamically from the prop
+- Each member shows first initial, uses the same purple brand styling
+
+**2. `src/pages/admin/PipelineFeed.tsx`**
+- Add a `useQuery` call to fetch `team_members` from the database (`id, name`)
+- Pass the fetched list to `FeedLeftPanel` as `teamMembers` prop
+
+**3. `src/constants/appConfig.ts`**
+- Add a single shared `STAGE_LABELS` constant covering all 14 `lead_status` enum values:
+  - discovery, questionnaire, pre_qualification, document_collection, underwriting, approval, funded, lost, initial_review, moving_to_underwriting, onboarding, ready_for_wu_approval, pre_approval_issued, won
+
+**4. `src/hooks/useFeedData.ts`**
+- Remove the local `STAGE_LABELS` constant
+- Import the shared one from `appConfig.ts`
+
+**5. `src/components/feed/FeedRightPanel.tsx`**
+- Remove the local `STAGE_LABELS` constant
+- Import the shared one from `appConfig.ts`
+
+### Technical Details
+
+New prop interface for FeedLeftPanel:
+```text
+teamMembers: { id: string; name: string }[]
+```
+
+New constant in appConfig.ts:
+```text
+STAGE_LABELS = {
+  discovery -> "Discovery"
+  questionnaire -> "Questionnaire"
+  pre_qualification -> "Pre-Qualification"
+  document_collection -> "Document Collection"
+  underwriting -> "Underwriting"
+  approval -> "Approval"
+  funded -> "Funded"
+  lost -> "Lost"
+  initial_review -> "Initial Review"
+  moving_to_underwriting -> "Moving to UW"
+  onboarding -> "Onboarding"
+  ready_for_wu_approval -> "Ready for WU Approval"
+  pre_approval_issued -> "Pre-Approval Issued"
+  won -> "Won"
+}
+```
+
+Database query in PipelineFeed:
+```text
+supabase.from('team_members').select('id, name').order('name')
+```
+
+Files changed: 5 files, no new tables or migrations needed.
