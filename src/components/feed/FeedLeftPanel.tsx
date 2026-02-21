@@ -45,16 +45,16 @@ const FeedLeftPanel = ({
   };
 
   return (
-    <div className="w-[220px] min-w-[220px] bg-white border-r border-[#E5E7EB] flex flex-col h-full overflow-hidden">
+    <div className="w-[220px] min-w-[220px] bg-card border-r border-border flex flex-col h-full overflow-hidden">
       {/* Welcome header */}
       <div className="px-4 pt-5 pb-3">
-        <h2 className="text-lg font-bold text-[#111827] leading-tight">
+        <h2 className="text-lg font-bold text-foreground leading-tight">
           Welcome to your Feed, {userName} 👋
         </h2>
-        <p className="text-xs text-[#6B7280] mt-2 leading-relaxed">
+        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
           Your relationships, your activities, the heartbeat of your business. All in one place.
         </p>
-        <div className="h-px bg-[#E5E7EB] mt-4" />
+        <div className="h-px bg-border mt-4" />
       </div>
 
       {/* Team avatars */}
@@ -79,13 +79,13 @@ const FeedLeftPanel = ({
       {/* Search filters */}
       <div className="px-4 pb-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#6B7280]" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search Filters"
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
-            className="w-full h-8 pl-8 pr-3 text-xs bg-[#F5F5F7] rounded-md border-0 outline-none focus:ring-1 focus:ring-[#5B21B6]/30 placeholder:text-[#9CA3AF]"
+            className="w-full h-8 pl-8 pr-3 text-xs bg-muted rounded-md border-0 outline-none focus:ring-1 focus:ring-[#5B21B6]/30 placeholder:text-muted-foreground/60 text-foreground"
           />
         </div>
       </div>
@@ -98,8 +98,8 @@ const FeedLeftPanel = ({
           className={cn(
             'w-full text-left px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
             isAllSelected
-              ? 'bg-[#EDEAF6] text-[#3B1F8C] font-bold'
-              : 'text-[#111827] hover:bg-[#F5F5F7]'
+              ? 'bg-primary/10 text-primary font-bold'
+              : 'text-foreground hover:bg-muted'
           )}
         >
           All
@@ -108,13 +108,13 @@ const FeedLeftPanel = ({
         {filteredActivityFilters.map((filter, idx) => (
           <label
             key={`${filter}-${idx}`}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-[#111827] hover:bg-[#F5F5F7] cursor-pointer"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-foreground hover:bg-muted cursor-pointer"
           >
             <input
               type="checkbox"
               checked={selectedFilters.includes(filter)}
               onChange={() => handleFilterToggle(filter)}
-              className="w-3.5 h-3.5 rounded border-[#D1D5DB] text-[#5B21B6] focus:ring-[#5B21B6]/30"
+              className="w-3.5 h-3.5 rounded border-border text-[#5B21B6] focus:ring-[#5B21B6]/30"
             />
             <span className="text-xs">{filter}</span>
           </label>
@@ -122,8 +122,8 @@ const FeedLeftPanel = ({
       </div>
 
       {/* Footer link */}
-      <div className="px-4 py-3 border-t border-[#E5E7EB]">
-        <button className="text-[11px] text-[#6B7280] hover:text-[#5B21B6] flex items-center gap-1">
+      <div className="px-4 py-3 border-t border-border">
+        <button className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1">
           Email Visibility Settings
           <span className="text-[10px]">↗</span>
         </button>

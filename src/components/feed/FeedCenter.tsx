@@ -19,17 +19,17 @@ const FeedCenter = ({ activities }: FeedCenterProps) => {
   }, []);
 
   return (
-    <div className="flex-1 min-w-0 bg-[#F5F5F7] flex flex-col h-full relative">
+    <div className="flex-1 min-w-0 bg-muted/50 flex flex-col h-full relative">
       {/* Tab bar */}
-      <div className="bg-white border-b border-[#E5E7EB] px-6">
+      <div className="bg-card border-b border-border px-6">
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab('following')}
             className={cn(
               'py-3 text-sm font-medium border-b-[3px] transition-colors',
               activeTab === 'following'
-                ? 'border-[#5B21B6] text-[#111827]'
-                : 'border-transparent text-[#6B7280] hover:text-[#374151]'
+                ? 'border-[#5B21B6] text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
           >
             Following
@@ -39,8 +39,8 @@ const FeedCenter = ({ activities }: FeedCenterProps) => {
             className={cn(
               'py-3 text-sm font-medium border-b-[3px] transition-colors',
               activeTab === 'all'
-                ? 'border-[#5B21B6] text-[#111827]'
-                : 'border-transparent text-[#6B7280] hover:text-[#374151]'
+                ? 'border-[#5B21B6] text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
           >
             All
@@ -66,7 +66,7 @@ const FeedCenter = ({ activities }: FeedCenterProps) => {
       {/* Feed content */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4">
         {/* Date header */}
-        <div className="text-xs text-[#6B7280] font-medium uppercase tracking-wide mb-4">
+        <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-4">
           Today
         </div>
 
