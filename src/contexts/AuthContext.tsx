@@ -34,6 +34,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Ref to track role across closures — eliminates stale closure bugs
   const roleRef = useRef<UserRole | null>(null);
 
+  // Ref to distinguish user-initiated sign-outs from server-triggered ones
+  const signOutIntentRef = useRef(false);
+
   const fetchUserRole = async (userId: string): Promise<UserRole | null> => {
     try {
       const { data, error } = await supabase
@@ -86,9 +89,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setLoading(false);
           });
         } else if (event === 'SIGNED_OUT') {
-          setRoleAndRef(null);
-          setRoleLoading(false);
-          setLoading(false);
+          // Only clear state if the user explicitly called signOut()
+          if (signOutIntentRef.current) {
+            setUser(null);
+            setSession(null);
+            setRoleAndRef(null);
+            setRoleLoading(false);
+            setLoading(false);
+            signOutIntentRef.current = false;
+          } else {
+            // Background token refresh failure — do NOT clear state
+            console.warn('AuthContext: Ignoring server-triggered SIGNED_OUT (likely a failed token refresh). Session state preserved.');
+            // Attempt silent recovery from localStorage
+            supabase.auth.getSession().then(({ data: { session: recoveredSession } }) => {
+              if (recoveredSession) {
+                setSession(recoveredSession);
+                setUser(recoveredSession.user);
+              }
+            });
+          }
         } else if (event === 'TOKEN_REFRESHED') {
           // Silently update session — never clear the existing role
           // Only flip loading off if it was still true (e.g. edge case)
@@ -123,7 +142,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Visibility change listener — attempt gentle session recovery when tab regains focus
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && roleRef.current !== null) {
+        supabase.auth.getSession().then(({ data: { session: freshSession } }) => {
+          if (freshSession) {
+            setSession(freshSession);
+            setUser(freshSession.user);
+          }
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -148,12 +184,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
+    signOutIntentRef.current = true;
     await supabase.auth.signOut();
+    // Fallback cleanup in case the listener doesn't fire
     setUser(null);
     setSession(null);
     setRoleAndRef(null);
     setRoleLoading(false);
     setLoading(false);
+    signOutIntentRef.current = false;
   };
 
   // Only consider fully loaded when both auth and role are resolved
