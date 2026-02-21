@@ -55,7 +55,7 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
 
   return (
     <div
-      className="bg-white rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] mb-3 relative group"
+      className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] mb-3 relative group"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -78,8 +78,8 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
           {/* Header */}
           {isEmailOrInvite ? (
             <div className="flex items-center gap-1.5 flex-wrap text-sm">
-              <span className="font-semibold text-[#111827]">{activity.senderName}</span>
-              <span className="text-[#6B7280]">to</span>
+              <span className="font-semibold text-foreground">{activity.senderName}</span>
+              <span className="text-muted-foreground">to</span>
               <div className="flex items-center gap-1">
                 <div
                   className={cn(
@@ -89,24 +89,24 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
                 >
                   {activity.recipientInitial}
                 </div>
-                <span className="font-medium text-[#111827]">{activity.recipientName}</span>
+                <span className="font-medium text-foreground">{activity.recipientName}</span>
               </div>
               {activity.threadCount && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#F3F4F6] rounded-full text-[11px] text-[#6B7280] ml-1">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded-full text-[11px] text-muted-foreground ml-1">
                   {activity.threadCount}
                   <span className="w-1.5 h-1.5 rounded-full bg-[#5B21B6]" />
                   <ChevronDown className="w-3 h-3" />
                 </span>
               )}
               {activity.isPrivate !== undefined && (
-                <Lock className="w-3.5 h-3.5 text-[#9CA3AF] ml-1" />
+                <Lock className="w-3.5 h-3.5 text-muted-foreground/60 ml-1" />
               )}
-              <span className="text-[#9CA3AF] text-xs ml-1">| {activity.time}</span>
+              <span className="text-muted-foreground/60 text-xs ml-1">| {activity.time}</span>
             </div>
           ) : (
             <div className="text-sm">
-              <span className="font-semibold text-[#111827]">{activity.senderName}</span>
-              <span className="text-[#6B7280]">
+              <span className="font-semibold text-foreground">{activity.senderName}</span>
+              <span className="text-muted-foreground">
                 {activity.type === 'phone_call'
                   ? ' logged a Phone Call to the Person '
                   : ' logged a Note to '}
@@ -120,9 +120,9 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
                 >
                   {activity.recipientInitial}
                 </span>
-                <span className="font-medium text-[#111827]">{activity.recipientName}</span>
+                <span className="font-medium text-foreground">{activity.recipientName}</span>
               </span>
-              <div className="text-xs text-[#9CA3AF] mt-0.5">{activity.time}</div>
+              <div className="text-xs text-muted-foreground/60 mt-0.5">{activity.time}</div>
             </div>
           )}
 
@@ -130,11 +130,11 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
           <div className="mt-1.5 text-sm">
             {activity.subject && (
               <>
-                <span className="font-semibold text-[#111827]">{activity.subject}</span>
-                <span className="text-[#6B7280]"> — </span>
+                <span className="font-semibold text-foreground">{activity.subject}</span>
+                <span className="text-muted-foreground"> — </span>
               </>
             )}
-            <span className="text-[#6B7280]">{activity.preview}</span>
+            <span className="text-muted-foreground">{activity.preview}</span>
           </div>
 
           {/* Attachments */}
@@ -143,15 +143,15 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
               {activity.attachments.map((att, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#F3F4F6] rounded-full text-xs text-[#374151]"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-muted rounded-full text-xs text-foreground"
                 >
-                  <Paperclip className="w-3 h-3 text-[#6B7280]" />
+                  <Paperclip className="w-3 h-3 text-muted-foreground" />
                   {att.name}
-                  <ChevronDown className="w-3 h-3 text-[#9CA3AF]" />
+                  <ChevronDown className="w-3 h-3 text-muted-foreground/60" />
                 </span>
               ))}
               {activity.overflowAttachments && activity.overflowAttachments > 0 && (
-                <span className="inline-flex items-center px-2.5 py-1 bg-[#F3F4F6] rounded-full text-xs text-[#374151]">
+                <span className="inline-flex items-center px-2.5 py-1 bg-muted rounded-full text-xs text-foreground">
                   +{activity.overflowAttachments}
                 </span>
               )}
@@ -159,23 +159,23 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
           )}
 
           {/* Footer actions */}
-          <div className="flex items-center gap-4 mt-3 text-[#9CA3AF]">
+          <div className="flex items-center gap-4 mt-3 text-muted-foreground/60">
             {isEmailOrInvite && (
               <button
                 onClick={() => setIsPrivate(!isPrivate)}
-                className="flex items-center gap-1 text-xs hover:text-[#6B7280] transition-colors"
+                className="flex items-center gap-1 text-xs hover:text-muted-foreground transition-colors"
               >
                 {isPrivate ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
               </button>
             )}
-            <button className="flex items-center gap-1 text-xs hover:text-[#6B7280] transition-colors">
+            <button className="flex items-center gap-1 text-xs hover:text-muted-foreground transition-colors">
               <Smile className="w-3.5 h-3.5" />
             </button>
-            <button className="flex items-center gap-1 text-xs hover:text-[#6B7280] transition-colors">
+            <button className="flex items-center gap-1 text-xs hover:text-muted-foreground transition-colors">
               <MessageSquarePlus className="w-3.5 h-3.5" />
             </button>
             {activity.showReplyAll && (
-              <button className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#374151] border border-[#E5E7EB] rounded-full px-3 py-1 transition-colors">
+              <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-full px-3 py-1 transition-colors">
                 <Reply className="w-3.5 h-3.5" />
                 Reply All
               </button>
@@ -187,13 +187,13 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
       {/* Hover controls */}
       {hovered && (
         <div className="absolute top-3 right-3 flex items-center gap-1">
-          <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#F3F4F6] text-[#9CA3AF] hover:text-[#6B7280]">
+          <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground">
             <Maximize2 className="w-4 h-4" />
           </button>
-          <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#F3F4F6] text-[#9CA3AF] hover:text-[#6B7280]">
+          <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground">
             <Link2 className="w-4 h-4" />
           </button>
-          <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#F3F4F6] text-[#9CA3AF] hover:text-[#6B7280]">
+          <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground">
             <MoreHorizontal className="w-4 h-4" />
           </button>
         </div>
