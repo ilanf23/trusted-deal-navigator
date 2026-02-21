@@ -1,149 +1,169 @@
-import { useState } from 'react';
-import { X, Linkedin } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { SUGGESTED_PEOPLE } from './feedMockData';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { CheckSquare, TrendingUp, Clock } from 'lucide-react';
+
+const STAGE_LABELS: Record<string, string> = {
+  initial_review: 'Initial Review',
+  moving_to_underwriting: 'Moving to UW',
+  onboarding: 'Onboarding',
+  underwriting: 'Underwriting',
+  ready_for_wu_approval: 'Ready for WU Approval',
+  pre_approval_issued: 'Pre-Approval Issued',
+  won: 'Won',
+};
 
 const FeedRightPanel = () => {
-  const [showTaskCard, setShowTaskCard] = useState(true);
-  const [showMeetingCard, setShowMeetingCard] = useState(true);
-  const [dismissedPeople, setDismissedPeople] = useState<string[]>([]);
+  // Upcoming tasks
+  const { data: upcomingTasks } = useQuery({
+    queryKey: ['feed-upcoming-tasks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evan_tasks')
+        .select('id, title, due_date, assignee_name, priority, status')
+        .eq('is_completed', false)
+        .order('due_date', { ascending: true, nullsFirst: false })
+        .limit(5);
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const visiblePeople = SUGGESTED_PEOPLE.filter((p) => !dismissedPeople.includes(p.name));
+  // Pipeline stage counts
+  const { data: stageCounts } = useQuery({
+    queryKey: ['feed-stage-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('status');
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const lead of data || []) {
+        counts[lead.status] = (counts[lead.status] || 0) + 1;
+      }
+      return counts;
+    },
+  });
+
+  // Recent leads
+  const { data: recentLeads } = useQuery({
+    queryKey: ['feed-recent-leads'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, name, company_name, status, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const today = format(new Date(), 'EEEE, MMMM do');
 
   return (
     <div className="w-[300px] min-w-[300px] bg-card border-l border-border h-full overflow-y-auto">
       <div className="p-4">
         {/* Date */}
-        <div className="text-right text-sm text-muted-foreground mb-4">Friday, February 20th</div>
+        <div className="text-right text-sm text-muted-foreground mb-4">{today}</div>
 
-        {/* Keep things moving */}
+        {/* Pipeline Snapshot */}
         <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-medium mb-3">
-          Keep things moving
+          Pipeline Snapshot
+        </div>
+        <div className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] border border-border p-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">Active Deals</h3>
+          </div>
+          {stageCounts && Object.keys(stageCounts).length > 0 ? (
+            <div className="space-y-2">
+              {Object.entries(stageCounts)
+                .filter(([stage]) => stage !== 'won')
+                .map(([stage, count]) => (
+                  <div key={stage} className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{STAGE_LABELS[stage] || stage}</span>
+                    <span className="font-semibold text-foreground">{count}</span>
+                  </div>
+                ))}
+              {stageCounts['won'] && (
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-border">
+                  <span className="text-green-600 font-medium">Won</span>
+                  <span className="font-semibold text-green-600">{stageCounts['won']}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No active deals</p>
+          )}
         </div>
 
-        {/* Task Due Card */}
-        {showTaskCard && (
-          <div className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] border border-border p-4 mb-3 relative">
-            <button
-              onClick={() => setShowTaskCard(false)}
-              className="absolute top-3 right-3 text-muted-foreground/60 hover:text-muted-foreground"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <div className="flex gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[#5B21B6] flex items-center justify-center flex-shrink-0">
-                <div className="w-4 h-4 border-2 border-white rounded-sm" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-foreground">You have a task due in 3 days!</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  "<span className="font-bold">F/U w/Client</span>" is due in{' '}
-                  <span className="font-bold">3 days</span>!
-                </p>
-              </div>
-            </div>
-            <button className="w-full mt-3 py-2 text-xs font-bold text-foreground border border-foreground rounded-lg hover:bg-muted transition-colors">
-              GET ON IT
-            </button>
+        {/* Upcoming Tasks */}
+        <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-medium mb-3">
+          Upcoming Tasks
+        </div>
+        <div className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] border border-border p-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckSquare className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">Tasks</h3>
           </div>
-        )}
-
-        {/* Upcoming Meeting Card */}
-        {showMeetingCard && (
-          <div className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] border border-border p-4 mb-3 relative">
-            <button
-              onClick={() => setShowMeetingCard(false)}
-              className="absolute top-3 right-3 text-muted-foreground/60 hover:text-muted-foreground"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <div className="flex gap-3 mb-3">
-              <div className="relative flex-shrink-0">
-                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground">
-                  MC
+          {upcomingTasks && upcomingTasks.length > 0 ? (
+            <div className="space-y-2.5">
+              {upcomingTasks.map((task) => (
+                <div key={task.id} className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground font-medium truncate">{task.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {task.due_date && (
+                        <span className="text-[11px] text-muted-foreground">
+                          {format(new Date(task.due_date), 'MMM d')}
+                        </span>
+                      )}
+                      {task.assignee_name && (
+                        <span className="text-[11px] text-muted-foreground/60">{task.assignee_name}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
-                  <span className="text-[8px] text-white">📅</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">Upcoming Meeting</p>
-                <p className="text-xs text-muted-foreground">with Maura +2 more</p>
-              </div>
+              ))}
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              You have a meeting on <span className="font-bold">Monday</span> at{' '}
-              <span className="font-bold">2:30pm EST</span>. Prepare for your meeting now.
-            </p>
-            <button className="w-full mt-3 py-2 text-xs font-bold text-foreground border border-foreground rounded-lg hover:bg-muted transition-colors">
-              PREPARE
-            </button>
-          </div>
-        )}
-
-        {/* Suggestions */}
-        <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-medium mt-6 mb-3">
-          Suggestions
+          ) : (
+            <p className="text-xs text-muted-foreground">No upcoming tasks</p>
+          )}
         </div>
 
-        {/* Add Suggested People */}
-        <div className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] border border-border p-4 mb-3">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-bold text-foreground">Add Suggested People</h3>
-            <button className="text-xs text-[#5B21B6] font-medium hover:underline">View all</button>
-          </div>
-          <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
-            Once added, all the conversations with them will be visible and auto-tracked in CLX
-          </p>
-
-          {visiblePeople.map((person) => (
-            <div key={person.name} className="flex items-center gap-2 py-2 border-t border-border">
-              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground flex-shrink-0">
-                {person.initial}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs font-semibold text-foreground truncate">{person.name}</span>
-                  {person.hasLinkedin && (
-                    <Linkedin className="w-3.5 h-3.5 text-[#0A66C2] flex-shrink-0" />
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground truncate">{person.email}</p>
-              </div>
-              <button
-                onClick={() => setDismissedPeople([...dismissedPeople, person.name])}
-                className="text-muted-foreground/60 hover:text-muted-foreground flex-shrink-0"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-              <button className="px-3 py-1 bg-[#2D1B4E] text-white text-xs font-bold rounded-lg hover:bg-[#3D2B5E] transition-colors flex-shrink-0">
-                Add
-              </button>
-            </div>
-          ))}
+        {/* Recent Leads */}
+        <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-medium mb-3">
+          Recent Leads
         </div>
-
-        {/* Invite Team Members */}
         <div className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] border border-border p-4">
-          <h3 className="text-sm font-bold text-foreground mb-1">Invite Team Members</h3>
-          <p className="text-[11px] text-muted-foreground mb-3">
-            Add team members to collaborate with them on CLX
-          </p>
-          <div className="flex items-center gap-2 py-2 border-t border-border">
-            <div className="w-9 h-9 rounded-full bg-[#DBEAFE] flex items-center justify-center text-xs font-bold text-[#1D4ED8] flex-shrink-0">
-              A
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-xs font-semibold text-foreground">Adam Foster</span>
-              <p className="text-[11px] text-muted-foreground truncate">adam@commerciallendingx.com</p>
-            </div>
-            <button className="text-muted-foreground/60 hover:text-muted-foreground flex-shrink-0">
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <button className="px-3 py-1 bg-[#2D1B4E] text-white text-xs font-bold rounded-lg hover:bg-[#3D2B5E] transition-colors flex-shrink-0">
-              Add
-            </button>
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">New Leads</h3>
           </div>
+          {recentLeads && recentLeads.length > 0 ? (
+            <div className="space-y-2.5">
+              {recentLeads.map((lead) => (
+                <div key={lead.id} className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-foreground flex-shrink-0">
+                    {lead.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground font-medium truncate">{lead.name}</p>
+                    {lead.company_name && (
+                      <p className="text-[11px] text-muted-foreground truncate">{lead.company_name}</p>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">
+                    {STAGE_LABELS[lead.status] || lead.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No recent leads</p>
+          )}
         </div>
       </div>
     </div>

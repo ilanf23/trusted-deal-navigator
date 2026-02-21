@@ -5,36 +5,38 @@ import EvanLayout from '@/components/evan/EvanLayout';
 import FeedLeftPanel from '@/components/feed/FeedLeftPanel';
 import FeedCenter from '@/components/feed/FeedCenter';
 import FeedRightPanel from '@/components/feed/FeedRightPanel';
-import { FEED_MOCK_DATA } from '@/components/feed/feedMockData';
-import type { ActivityItem } from '@/components/feed/feedMockData';
+import { useFeedData } from '@/hooks/useFeedData';
+import type { FeedActivity, FeedActivityType } from '@/hooks/useFeedData';
 
 const PipelineFeed = () => {
   const { teamMember } = useTeamMember();
   const userName = teamMember?.name || 'User';
+  const { data: activities = [], isLoading } = useFeedData();
 
   const [selectedTeamMember, setSelectedTeamMember] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredActivities = useMemo(() => {
-    let result = FEED_MOCK_DATA;
+    let result = activities;
 
     // Filter by team member
     if (selectedTeamMember) {
       result = result.filter(
         (a) =>
-          a.senderName.toLowerCase().includes(selectedTeamMember.toLowerCase()) ||
-          a.recipientName.toLowerCase().includes(selectedTeamMember.toLowerCase())
+          a.actorName.toLowerCase().includes(selectedTeamMember.toLowerCase())
       );
     }
 
     // Filter by activity type
     if (selectedFilters.length > 0) {
-      const typeMap: Record<string, string[]> = {
-        Email: ['email_sent', 'email_received'],
-        'Phone Call': ['phone_call'],
+      const typeMap: Record<string, FeedActivityType[]> = {
         Note: ['note'],
-        Meeting: ['calendar_invite'],
+        Call: ['call'],
+        Email: ['email'],
+        SMS: ['sms'],
+        Task: ['task_created'],
+        'New Lead': ['lead_created'],
       };
       const allowedTypes = selectedFilters.flatMap((f) => typeMap[f] || []);
       if (allowedTypes.length > 0) {
@@ -47,15 +49,15 @@ const PipelineFeed = () => {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (a) =>
-          a.senderName.toLowerCase().includes(q) ||
-          a.recipientName.toLowerCase().includes(q) ||
-          (a.subject?.toLowerCase().includes(q)) ||
-          a.preview.toLowerCase().includes(q)
+          a.actorName.toLowerCase().includes(q) ||
+          a.leadName.toLowerCase().includes(q) ||
+          (a.leadCompany?.toLowerCase().includes(q)) ||
+          a.content.toLowerCase().includes(q)
       );
     }
 
     return result;
-  }, [selectedTeamMember, selectedFilters, searchQuery]);
+  }, [activities, selectedTeamMember, selectedFilters, searchQuery]);
 
   return (
     <EvanLayout>
@@ -67,7 +69,7 @@ const PipelineFeed = () => {
             <div className="relative w-full max-w-[500px]">
               <input
                 type="text"
-                placeholder="Search by name, email, domain or phone number"
+                placeholder="Search by name, company, or keyword"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-9 pl-4 pr-4 bg-muted rounded-full text-sm outline-none border-0 placeholder:text-muted-foreground text-foreground focus:ring-2 focus:ring-primary/20"
@@ -80,9 +82,6 @@ const PipelineFeed = () => {
             </button>
             <button className="relative w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">
               <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 min-w-[20px] h-[18px] bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                99+
-              </span>
             </button>
           </div>
         </div>
@@ -96,7 +95,7 @@ const PipelineFeed = () => {
             selectedFilters={selectedFilters}
             onFilterChange={setSelectedFilters}
           />
-          <FeedCenter activities={filteredActivities} />
+          <FeedCenter activities={filteredActivities} isLoading={isLoading} />
           <FeedRightPanel />
         </div>
       </div>
