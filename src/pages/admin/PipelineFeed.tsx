@@ -61,7 +61,7 @@ const PipelineFeed = () => {
     <EvanLayout>
       <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full">
         {/* Top bar */}
-        <div className="h-14 bg-card border-b border-border flex items-center px-6 gap-4 flex-shrink-0">
+        <div className="h-14 bg-white dark:bg-card border-b border-border flex items-center px-6 gap-4 flex-shrink-0">
           <h1 className="text-xl font-bold text-foreground mr-4">Feed</h1>
           <div className="flex-1 flex justify-center">
             <div className="relative w-full max-w-[500px]">
