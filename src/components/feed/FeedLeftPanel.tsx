@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACTIVITY_FILTERS } from './feedMockData';
 
@@ -79,13 +78,12 @@ const FeedLeftPanel = ({
       {/* Search filters */}
       <div className="px-4 pb-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search Filters"
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
-            className="w-full h-8 pl-8 pr-3 text-xs bg-muted rounded-md border-0 outline-none focus:ring-1 focus:ring-[#5B21B6]/30 placeholder:text-muted-foreground/60 text-foreground"
+            className="w-full h-8 pl-3 pr-3 text-xs bg-muted rounded-md border-0 outline-none focus:ring-1 focus:ring-[#5B21B6]/30 placeholder:text-muted-foreground/60 text-foreground"
           />
         </div>
       </div>

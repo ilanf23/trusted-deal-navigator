@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Filter, ArrowUpDown, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { Filter, ArrowUpDown, RefreshCw, Loader2 } from 'lucide-react';
 
 interface InboxHeaderProps {
   title: string;
@@ -112,12 +112,11 @@ export function InboxHeader({
       
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <Input
           placeholder="Search deals..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9 h-9 text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+          className="h-9 text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
         />
       </div>
     </div>

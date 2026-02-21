@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Plus, Bell } from 'lucide-react';
+import { Plus, Bell } from 'lucide-react';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import EvanLayout from '@/components/evan/EvanLayout';
 import FeedLeftPanel from '@/components/feed/FeedLeftPanel';
@@ -65,13 +65,12 @@ const PipelineFeed = () => {
           <h1 className="text-xl font-bold text-foreground mr-4">Feed</h1>
           <div className="flex-1 flex justify-center">
             <div className="relative w-full max-w-[500px]">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search by name, email, domain or phone number"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-9 pl-10 pr-4 bg-muted rounded-full text-sm outline-none border-0 placeholder:text-muted-foreground text-foreground focus:ring-2 focus:ring-primary/20"
+                className="w-full h-9 pl-4 pr-4 bg-muted rounded-full text-sm outline-none border-0 placeholder:text-muted-foreground text-foreground focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </div>
