@@ -21,7 +21,7 @@ const FeedCenter = ({ activities }: FeedCenterProps) => {
   return (
     <div className="flex-1 min-w-0 bg-muted/50 flex flex-col h-full relative">
       {/* Tab bar */}
-      <div className="bg-card border-b border-border px-6">
+      <div className="bg-white dark:bg-card border-b border-border px-6">
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab('following')}
