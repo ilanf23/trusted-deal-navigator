@@ -70,7 +70,6 @@ function buildInboundTwiML(opts: InboundTwiMLOptions): string {
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<Response>',
-    `  <Say>${escapeXml(holdMessage)}</Say>`,
     `  <Dial timeout="${dialTimeoutSeconds}"${statusAttr}>`,
     `    ${clientTags}`,
     '  </Dial>',
