@@ -95,9 +95,7 @@ function buildInboundTwiML(opts: InboundTwiMLOptions): string {
     `    ${clientTags}`,
     numberTag ? `    ${numberTag}` : '',
     '  </Dial>',
-    '  <Say voice="alice">Sorry, no one is available to take your call right now. Please leave a message after the beep and we will call you back as soon as possible.</Say>',
-    '  <Record maxLength="120" transcribe="true" playBeep="true" />',
-    '  <Say voice="alice">Thank you for your message. Goodbye.</Say>',
+    '  <Record maxLength="120" playBeep="true" />',
     '</Response>',
   ].filter(Boolean).join('\n');
 }
