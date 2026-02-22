@@ -1,72 +1,73 @@
 
 
-## Fix: Inbound Call Routing with Fallback -- No More Instant Hangups
+## Fix Inbound Calls: Device Registration + Popup Display
 
-### Root Cause
+### Root Cause (Two Issues)
 
-The current TwiML dials only a Twilio **Client** identity (`evan-admin`). If Evan's browser-based phone isn't registered (he's not logged in, device lost connection, tab closed, etc.), Twilio sees "no endpoint available" and the `<Dial>` completes **instantly** (0-2 seconds). The call then falls through to the `<Say>Sorry, no one is available...` and hangs up.
+**Issue 1 - Device not registered when call arrives**: The Twilio Device registers with identity `clx-admin`, but the `<Dial>` in TwiML also targets `clx-admin`. If the browser device isn't registered at the exact moment Twilio tries to deliver the call, the Dial completes in 0-2 seconds and falls through to the "no one is available" voice. Database evidence: all recent calls show 2-5 second durations and `frontend_ack_at: null`.
 
-Database evidence: recent calls show `created_at` to `ended_at` gaps of only 2 seconds -- confirming the Dial isn't actually ringing anything.
+**Issue 2 - Popup never shows**: Even if the SDK `incoming` event fires, the `device.on('incoming')` handler only sets `activeCall` (the raw SDK Call object). The popup component checks `incomingCall` (populated from the database via realtime subscription). These are two separate state values, and the popup won't show without `incomingCall` being set. There's a race condition where the SDK event and the DB realtime event need to both arrive.
 
-### Fix Summary
+### Changes
 
-1. **Add a backup phone number** inside the `<Dial>` alongside the Client identity. Twilio will ring **both simultaneously** -- if the browser client isn't registered, the physical phone still rings for the full timeout.
-2. **Increase ring timeout** from 30 to 45 seconds to give more time to answer.
-3. **Improve voicemail fallback** -- if neither answers after 45 seconds, play a professional message and record voicemail (this part already exists but never triggers because the Dial completes instantly).
-4. **Add a new environment variable** `TWILIO_FALLBACK_NUMBER` for the backup phone number to ring.
-5. **Add enhanced structured logging** for call outcomes (answered vs voicemail vs failed) per the compliance requirements.
+**File: `src/contexts/CallContext.tsx`**
 
-### What Changes
+1. In the `device.on('incoming')` handler (around line 310), after setting `activeCall`, also create a synthetic `incomingCall` from the SDK Call parameters (From number, CallSid). This ensures the popup shows immediately when the SDK delivers the call, without waiting for the database realtime subscription.
+
+2. Add detailed logging for device registration state changes so we can confirm the device reaches `registered` state.
+
+3. The `initializeTwilioDevice` useCallback has `incomingCall` and `isConnected` in its closure (used inside the `registered` event handler for pending calls). This means the callback gets recreated when these values change, which can cause unnecessary re-initialization. Fix: use refs consistently for these values (already partially done with `incomingCallRef` and `isConnectedRef`).
+
+**File: `src/components/evan/IncomingCallPopup.tsx`**
+
+4. No changes needed -- the popup already checks `incomingCall` and `activeCall`, and once Issue 2 is fixed (setting `incomingCall` from SDK), the popup will appear.
 
 **File: `supabase/functions/twilio-inbound/index.ts`**
 
-- Add `TWILIO_FALLBACK_NUMBER` env var reading
-- Modify `buildInboundTwiML` to include both `<Client>` and `<Number>` tags inside `<Dial>` -- Twilio rings them simultaneously
-- Increase default timeout to 45 seconds
-- Add `callerId` attribute on `<Dial>` so the backup phone shows the company number
-- Add structured logging for the routing decision (which endpoints were dialed, whether fallback number was configured)
-- Add Slack alert if a call goes to voicemail (no one answered)
-
-**New secret: `TWILIO_FALLBACK_NUMBER`**
-
-You'll need to provide a backup phone number (e.g., Evan's cell phone) that will ring alongside the browser client.
-
-### Call Flow After Fix
-
-```text
-Caller dials (904) 587-0026
-        |
-        v
-twilio-inbound webhook returns TwiML
-        |
-        v
-<Dial timeout="45">
-  <Client>evan-admin</Client>      <-- browser phone
-  <Number>+1XXXXXXXXXX</Number>    <-- backup cell phone
-</Dial>
-  (rings BOTH for up to 45 seconds)
-        |
-        v
-If answered --> call connected, recorded
-If no answer after 45s --> voicemail fallback
-  <Say>Sorry, no one is available... leave a message</Say>
-  <Record maxLength="120" />
-  <Say>Thank you. Goodbye.</Say>
-```
-
-### No Scenario Ends in Immediate Hangup
-
-- Client registered + answers --> connected
-- Client registered + no answer, backup answers --> connected
-- Client not registered, backup answers --> connected
-- Neither answers after 45s --> voicemail recorded
-- Function error --> Twilio uses its own fallback (no `<Reject>` or `<Hangup>` in any code path)
+5. Remove the `<Say>` AI voice fallback. Replace the voicemail flow with a simple extended ring -- increase timeout further and let the call ring until the caller hangs up, or keep a minimal voicemail without the AI voice message. Based on user preference ("there shouldn't be an AI voice"), the `<Say>` tags will be removed entirely, leaving only `<Record>` with a beep for voicemail if no one answers.
 
 ### Technical Details
 
-- The `<Dial>` verb with both `<Client>` and `<Number>` children rings all endpoints simultaneously (Twilio's fork-dial behavior)
-- `record="record-from-answer-dual"` captures both sides once answered
-- `statusCallback` continues to fire events for logging
-- The `TWILIO_PHONE_NUMBER` env var (already set) is used as `callerId` on the backup number leg
-- No frontend changes required
+The key fix in `device.on('incoming')`:
+
+```typescript
+device.on('incoming', (call) => {
+  setActiveCall(call);
+  
+  // Create synthetic incomingCall immediately from SDK params
+  // so the popup shows without waiting for DB realtime
+  const fromNumber = call.parameters.From || 'Unknown';
+  const callSid = call.parameters.CallSid || '';
+  
+  if (!incomingCallRef.current && !isConnectedRef.current) {
+    const syntheticCall: ActiveCallData = {
+      id: callSid, // temporary ID
+      call_sid: callSid,
+      from_number: fromNumber,
+      to_number: '',
+      status: 'ringing',
+      direction: 'inbound',
+      lead_id: null,
+      created_at: new Date().toISOString(),
+      leads: null,
+    };
+    setIncomingCall(syntheticCall);
+  }
+  
+  // ... existing call event handlers
+});
+```
+
+And in `twilio-inbound/index.ts`, the TwiML becomes:
+
+```xml
+<Response>
+  <Dial timeout="45" callerId="+19045870026" statusCallback="...">
+    <Client>clx-admin</Client>
+  </Dial>
+  <Record maxLength="120" playBeep="true" />
+</Response>
+```
+
+No AI voice. If no one answers after 45 seconds, the caller hears a beep and can leave a message, or they can hang up.
 
