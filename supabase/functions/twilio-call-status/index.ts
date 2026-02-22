@@ -7,7 +7,71 @@ const corsHeaders = {
   'Content-Type': 'application/xml',
 };
 
-// ... keep existing code (okTwiML, addSpeakerLabels, transcribeAudio)
+/** Return a minimal valid TwiML so Twilio never falls back to its default voice. */
+function okTwiML(): string {
+  return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+}
+
+/**
+ * Prefix each line of a transcript with speaker labels based on call direction.
+ * For outbound calls Evan speaks first; for inbound the caller speaks first.
+ */
+function addSpeakerLabels(text: string, direction: string): string {
+  if (!text) return text;
+  const lines = text.split('\n').filter((l) => l.trim().length > 0);
+  const isOutbound = direction === 'outbound';
+  return lines
+    .map((line, i) => {
+      const speaker = (i % 2 === 0) === isOutbound ? 'Evan' : 'Caller';
+      return `${speaker}: ${line.trim()}`;
+    })
+    .join('\n');
+}
+
+/**
+ * Download an MP3 recording from Twilio and transcribe it via OpenAI Whisper.
+ * Returns the labelled transcript string or null on any failure.
+ */
+async function transcribeAudio(mp3Url: string, direction: string): Promise<string | null> {
+  const openaiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openaiKey) {
+    console.error('OPENAI_API_KEY not set – skipping transcription');
+    return null;
+  }
+
+  try {
+    // Download the recording
+    const audioResp = await fetch(mp3Url);
+    if (!audioResp.ok) {
+      console.error(`Failed to download recording: ${audioResp.status}`);
+      return null;
+    }
+    const audioBlob = await audioResp.blob();
+
+    // Send to Whisper
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'recording.mp3');
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'text');
+
+    const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${openaiKey}` },
+      body: formData,
+    });
+
+    if (!whisperResp.ok) {
+      console.error(`Whisper API error: ${whisperResp.status}`);
+      return null;
+    }
+
+    const rawText = await whisperResp.text();
+    return addSpeakerLabels(rawText.trim(), direction);
+  } catch (err) {
+    console.error('Transcription failed:', err);
+    return null;
+  }
+}
 
 // This endpoint handles call status updates AND recording status callbacks from Twilio
 Deno.serve(async (req) => {
