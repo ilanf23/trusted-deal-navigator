@@ -7,6 +7,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import FloatingAIChat from "@/components/admin/FloatingAIChat";
+import { CallProvider } from "@/contexts/CallContext";
+import { IncomingCallPopup } from "@/components/evan/IncomingCallPopup";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import EmployeeRoute from "@/components/admin/EmployeeRoute";
 import AdminRouteLayout from "@/components/admin/AdminRouteLayout";
@@ -96,6 +98,7 @@ const App = () => (
             <FloatingAIChat />
 
             <BrowserRouter>
+              <CallProvider>
               <Routes>
               <Route path="/" element={<PublicLayout><Index /></PublicLayout>} />
               <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
@@ -195,6 +198,8 @@ const App = () => (
               <Route path="/user/profile" element={<ProtectedRoute clientOnly><PortalProfile /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
               </Routes>
+              <IncomingCallPopup />
+              </CallProvider>
             </BrowserRouter>
           </AIAssistantProvider>
         </TooltipProvider>
