@@ -251,23 +251,26 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       });
 
       device.on('registered', () => {
-        console.log('[CallContext] Twilio Device registered and ready');
+        console.log('[CallContext] ✅ Twilio Device REGISTERED — device.state:', device.state, '— identity:', identity);
         setHealthStatus(prev => ({ ...prev, deviceReady: true, lastHeartbeat: new Date() }));
-        // Silently ready — no toast
         
-        // Process any pending calls
+        // Process any pending calls using refs (not stale closure values)
         if (pendingCallsRef.current.length > 0) {
           console.log('[CallContext] Processing pending calls:', pendingCallsRef.current.length);
           const pendingCall = pendingCallsRef.current.shift();
-          if (pendingCall && !incomingCall && !isConnected) {
+          if (pendingCall && !incomingCallRef.current && !isConnectedRef.current) {
             setIncomingCall(pendingCall);
             acknowledgeCall(pendingCall);
           }
         }
       });
 
+      device.on('registering', () => {
+        console.log('[CallContext] 🔄 Twilio Device REGISTERING...');
+      });
+
       device.on('unregistered', () => {
-        console.log('[CallContext] Twilio Device unregistered');
+        console.log('[CallContext] ⚠️ Twilio Device UNREGISTERED — device.state:', device.state);
         setHealthStatus(prev => ({ ...prev, deviceReady: false }));
       });
 
@@ -308,14 +311,31 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       });
 
       device.on('incoming', (call) => {
-        console.log('[CallContext] Incoming call via Twilio SDK:', call.parameters);
+        const fromNumber = call.parameters.From || 'Unknown';
+        const callSid = call.parameters.CallSid || '';
+        console.log('[CallContext] Incoming call via Twilio SDK — CallSid:', callSid, 'From:', fromNumber);
         setActiveCall(call);
         
-        const fromNumber = call.parameters.From || 'Unknown';
-        console.log('[CallContext] Call from:', fromNumber);
+        // Create synthetic incomingCall immediately from SDK params
+        // so the popup shows without waiting for DB realtime subscription
+        if (!incomingCallRef.current && !isConnectedRef.current) {
+          const syntheticCall: ActiveCallData = {
+            id: callSid,
+            call_sid: callSid,
+            from_number: fromNumber,
+            to_number: '',
+            status: 'ringing',
+            direction: 'inbound',
+            lead_id: null,
+            created_at: new Date().toISOString(),
+            leads: null,
+          };
+          console.log('[CallContext] Setting synthetic incomingCall for immediate popup display');
+          setIncomingCall(syntheticCall);
+        }
         
         // Log SDK event
-        logCallEvent(call.parameters.CallSid || 'unknown', 'sdk_incoming_received', undefined, {
+        logCallEvent(callSid || 'unknown', 'sdk_incoming_received', undefined, {
           from: fromNumber,
           call_parameters: call.parameters,
         });
@@ -324,24 +344,24 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
           console.log('[CallContext] Call accepted');
           setIsConnected(true);
           startCallTimer();
-          logCallEvent(call.parameters.CallSid || 'unknown', 'call_accepted');
+          logCallEvent(callSid || 'unknown', 'call_accepted');
         });
         
         call.on('disconnect', () => {
           console.log('[CallContext] Call disconnected');
-          logCallEvent(call.parameters.CallSid || 'unknown', 'call_disconnected');
+          logCallEvent(callSid || 'unknown', 'call_disconnected');
           handleCallEnd();
         });
         
         call.on('cancel', () => {
           console.log('[CallContext] Call cancelled');
-          logCallEvent(call.parameters.CallSid || 'unknown', 'call_cancelled');
+          logCallEvent(callSid || 'unknown', 'call_cancelled');
           handleCallEnd();
         });
         
         call.on('reject', () => {
           console.log('[CallContext] Call rejected');
-          logCallEvent(call.parameters.CallSid || 'unknown', 'call_rejected');
+          logCallEvent(callSid || 'unknown', 'call_rejected');
           handleCallEnd();
         });
       });
@@ -360,7 +380,9 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       setIsInitializing(false);
       isReinitializingRef.current = false;
     }
-  }, [isEvan, startCallTimer, handleCallEnd, incomingCall, isConnected, acknowledgeCall, logCallEvent]);
+  // Note: incomingCall and isConnected removed from deps — we use refs instead
+  // to prevent device re-initialization when call state changes
+  }, [isEvan, startCallTimer, handleCallEnd, acknowledgeCall, logCallEvent]);
 
   // EAGER initialization - initialize as soon as Evan is detected
   useEffect(() => {
