@@ -1,10 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Phone, PhoneOff, User, Mic, MicOff, Volume2, AlertTriangle, PhoneOutgoing } from 'lucide-react';
+import { Phone, PhoneOff, User, Mic, MicOff, Volume2, PhoneOutgoing } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCall } from '@/contexts/CallContext';
-import { CallHealthIndicator } from './CallHealthIndicator';
+
 
 /**
  * Floating popup that displays incoming/active/outbound call UI.
@@ -71,7 +71,7 @@ export const IncomingCallPopup = () => {
   const showPopup = isEvan && (isInboundCall || isOutboundCall || isConnected);
   
   // Show warning if call system is not healthy
-  const showHealthWarning = isEvan && !healthStatus.deviceReady && !incomingCall && !isConnected && !outboundCall;
+  
 
   // Get display info based on call type
   const getCallDisplayInfo = () => {
@@ -215,23 +215,6 @@ export const IncomingCallPopup = () => {
               )}
             </CardContent>
           </Card>
-        </motion.div>
-      )}
-      
-      {/* Health warning when system is offline - small toast-style at bottom right */}
-      {showHealthWarning && (
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-4 right-4 z-[9998]"
-        >
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg border border-amber-500/30 bg-background/95 backdrop-blur-sm">
-            <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-            <span className="text-xs text-muted-foreground">Syncing call system...</span>
-            <CallHealthIndicator />
-          </div>
         </motion.div>
       )}
     </AnimatePresence>

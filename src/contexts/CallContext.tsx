@@ -247,7 +247,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       device.on('registered', () => {
         console.log('[CallContext] Twilio Device registered and ready');
         setHealthStatus(prev => ({ ...prev, deviceReady: true, lastHeartbeat: new Date() }));
-        toast.success('Phone ready to receive calls');
+        // Silently ready — no toast
         
         // Process any pending calls
         if (pendingCallsRef.current.length > 0) {
@@ -289,12 +289,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
             }
           }, 2000);
         } else {
-          // Throttle error toasts — at most once every 10 seconds
-          const now = Date.now();
-          if (now - lastErrorToastRef.current > 10000) {
-            lastErrorToastRef.current = now;
-            toast.error(`Call error: ${error.message}`);
-          }
+          // Log only — no user-facing toast
+          console.warn('[CallContext] Non-token error:', error.message);
           // Try to re-register on non-token errors (only if unregistered)
           setTimeout(() => {
             if (deviceRef.current && deviceRef.current.state === 'unregistered') {
