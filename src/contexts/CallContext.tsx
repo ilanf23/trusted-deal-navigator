@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Device, Call } from '@twilio/voice-sdk';
-import { useTeamMember } from '@/hooks/useTeamMember';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ActiveCallData {
   id: string;
@@ -64,12 +64,18 @@ export const useCall = () => {
 };
 
 export const CallProvider = ({ children }: { children: ReactNode }) => {
-  const { teamMember } = useTeamMember();
+  const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
   
-  const isEvan = teamMember?.name?.toLowerCase() === 'evan';
+  // Use stable role-based check instead of fragile name comparison.
+  // Any authenticated admin can initialize the Twilio Device.
+  // The twilio-token edge function enforces server-side authorization.
+  const isCallEnabled = isAdmin && !!user;
+  
+  // Keep isEvan in the context type for backward compat, mapped to isCallEnabled
+  const isEvan = isCallEnabled;
   
   const [incomingCall, setIncomingCall] = useState<ActiveCallData | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
