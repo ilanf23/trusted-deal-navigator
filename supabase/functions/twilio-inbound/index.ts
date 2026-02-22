@@ -252,6 +252,47 @@ Deno.serve(async (req) => {
       } catch (err) {
         console.error('Failed to send inbound monitoring alert:', err);
       }
+      // Insert into active_calls so the frontend can detect the inbound call via realtime
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        if (supabaseUrl && supabaseKey && callSid) {
+          const sb = createClient(supabaseUrl, supabaseKey);
+
+          // Try to match the caller to a lead by phone number
+          let leadId: string | null = null;
+          if (fromNumber) {
+            const normalized = fromNumber.replace(/\D/g, '').slice(-10);
+            const { data: phoneMatch } = await sb
+              .from('lead_phones')
+              .select('lead_id')
+              .ilike('phone_number', `%${normalized}`)
+              .limit(1)
+              .maybeSingle();
+            if (phoneMatch) {
+              leadId = phoneMatch.lead_id;
+            }
+          }
+
+          const { error: insertErr } = await sb.from('active_calls').insert({
+            call_sid: callSid,
+            from_number: fromNumber,
+            to_number: toNumber,
+            direction: 'inbound',
+            status: 'ringing',
+            lead_id: leadId,
+            call_flow_id: callFlowId,
+            webhook_timestamp: webhookTimestamp,
+          });
+          if (insertErr) {
+            console.error('Failed to insert active_call:', insertErr);
+          } else {
+            console.log('Inserted active_call for inbound call:', callSid);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to insert active_call:', err);
+      }
     })()
   );
 
