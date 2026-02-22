@@ -6,7 +6,69 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ... keep existing code (base64UrlEncode, createTwilioAccessToken)
+function base64UrlEncode(data: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < data.length; i++) {
+    binary += String.fromCharCode(data[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlEncodeString(str: string): string {
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function createTwilioAccessToken(
+  accountSid: string,
+  apiKeySid: string,
+  apiKeySecret: string,
+  identity: string,
+  twimlAppSid: string
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const expiry = now + 3600; // 1 hour
+
+  const header = {
+    typ: 'JWT',
+    alg: 'HS256',
+    cty: 'twilio-fpa;v=1',
+  };
+
+  const voiceGrant: Record<string, unknown> = {
+    outgoing: { application_sid: twimlAppSid },
+    incoming: { allow: true },
+  };
+
+  const payload = {
+    jti: `${apiKeySid}-${now}`,
+    iss: apiKeySid,
+    sub: accountSid,
+    nbf: now,
+    exp: expiry,
+    grants: {
+      identity: identity,
+      voice: voiceGrant,
+    },
+  };
+
+  const encodedHeader = base64UrlEncodeString(JSON.stringify(header));
+  const encodedPayload = base64UrlEncodeString(JSON.stringify(payload));
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(apiKeySecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signingInput));
+  const encodedSignature = base64UrlEncode(new Uint8Array(signature));
+
+  return `${signingInput}.${encodedSignature}`;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -47,7 +109,6 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    // Verify user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
@@ -56,7 +117,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create client with user's auth header for JWT validation
     const supabaseAnon = createClient(
       supabaseUrl,
       supabaseAnonKey,
@@ -76,10 +136,8 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub as string;
     
-    // Create admin client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check admin role
     const { data: roleData } = await supabase
       .from('user_roles')
       .select('role')
@@ -94,7 +152,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Restrict Twilio receiving to Evan only (privacy + routing correctness)
     const { data: teamMember } = await supabase
       .from('team_members')
       .select('name')
@@ -109,7 +166,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use a single stable identity so inbound <Dial><Client> can always ring Evan.
     const identity = 'evan-admin';
     
     console.log('Creating access token for identity:', identity, 'with TwiML App:', twimlAppSid);
@@ -134,9 +190,8 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error generating Twilio token:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
