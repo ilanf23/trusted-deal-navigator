@@ -152,21 +152,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { data: teamMember } = await supabase
-      .from('team_members')
-      .select('name')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
-
-    if (!teamMember?.name || teamMember.name.toLowerCase() !== 'evan') {
-      return new Response(
-        JSON.stringify({ error: 'Evan access required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const identity = 'evan-admin';
+    // Use a stable, well-known identity for Twilio Client registration.
+    // This must match the <Client> identity dialed in twilio-inbound.
+    const identity = 'clx-admin';
+    
+    console.log('[twilio-token] Authorized admin user:', userId, 'identity:', identity);
     
     console.log('Creating access token for identity:', identity, 'with TwiML App:', twimlAppSid);
     

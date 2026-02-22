@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
   const fallbackNumber = Deno.env.get('TWILIO_FALLBACK_NUMBER') || '';
   const callerId = Deno.env.get('TWILIO_PHONE_NUMBER') || '';
 
-  const resolvedClients = clientIdentities.length ? clientIdentities : ['evan-admin'];
+  const resolvedClients = clientIdentities.length ? clientIdentities : ['clx-admin'];
   const dialTimeoutSeconds = 45;
 
   const routingDecision: RoutingDecision = {
