@@ -531,7 +531,7 @@ const EvansCalls = () => {
           </div>
           <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border text-sm text-muted-foreground">
             <Phone className="h-3.5 w-3.5" />
-            <span className="font-medium">{formatPhoneNumber(import.meta.env.VITE_TWILIO_PHONE_NUMBER || '(929) 505-2483')}</span>
+            <span className="font-medium">{formatPhoneNumber(import.meta.env.VITE_TWILIO_PHONE_NUMBER || '(904) 587-0026')}</span>
           </div>
         </div>
 
