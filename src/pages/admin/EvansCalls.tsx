@@ -529,6 +529,10 @@ const EvansCalls = () => {
             <h1 className="text-2xl font-bold">Calls</h1>
             <p className="text-sm text-muted-foreground">Incoming call management & lender programs</p>
           </div>
+          <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border text-sm text-muted-foreground">
+            <Phone className="h-3.5 w-3.5" />
+            <span className="font-medium">{formatPhoneNumber(import.meta.env.VITE_TWILIO_PHONE_NUMBER || '(929) 505-2483')}</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
