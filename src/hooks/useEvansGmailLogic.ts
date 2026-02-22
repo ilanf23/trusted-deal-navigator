@@ -21,7 +21,17 @@ import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
 
 const EMAILS_PER_PAGE = 50;
 
-export function useEvansGmailLogic() {
+export interface CRMGmailConfig {
+  userKey: string;
+  callbackPrefix: 'admin' | 'superadmin';
+  returnPath?: string;
+}
+
+export function useEvansGmailLogic(config?: CRMGmailConfig) {
+  const userKey = config?.userKey ?? 'evan';
+  const callbackPrefix = config?.callbackPrefix ?? 'admin';
+  const returnPath = config?.returnPath ?? '/team/evan/gmail';
+
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,11 +40,11 @@ export function useEvansGmailLogic() {
 
   // Shared Gmail connection & email data
   const gmail = useGmailConnection({
-    userKey: 'evan',
-    callbackPrefix: 'admin',
+    userKey,
+    callbackPrefix,
     maxResults: 50,
     fetchPhotos: true,
-    returnPath: '/team/evan/gmail',
+    returnPath,
   });
   const { data: inboxData, isLoading: emailsLoading } = gmail.useEmails('in:inbox');
   const { data: sentData, isLoading: sentEmailsLoading } = gmail.useEmails('in:sent');
