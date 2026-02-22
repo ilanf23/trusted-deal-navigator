@@ -107,7 +107,6 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -117,26 +116,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabaseAnon = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: authError } = await supabaseAnon.auth.getClaims(token);
-    
-    if (authError || !claimsData?.claims) {
-      console.error('Auth error:', authError);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error('[twilio-token] Auth error:', authError?.message);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claimsData.claims.sub as string;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const userId = user.id;
+    console.log('[twilio-token] Authenticated user:', userId, 'email:', user.email);
 
     const { data: roleData } = await supabase
       .from('user_roles')
