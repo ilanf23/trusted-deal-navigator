@@ -1,72 +1,53 @@
 
+## Fix Broken Edge Functions and Call System Sync
 
-## Remove Hardcoded Data from Feed Page
+### Root Cause
+Three edge functions had their helper functions deleted and replaced with `// ... keep existing code` comments. This causes `ReferenceError` crashes at runtime:
 
-### Problem
-Two pieces of hardcoded business data exist on the Feed page:
+- **`twilio-inbound/index.ts`** (line 11): Missing `waitUntil`, `escapeXml`, `parseCsvEnv`, `buildInboundTwiML`, `getSlackConfig`, `sendSlackAlert`, `ProviderBoundaryLog` type, `persistProviderBoundaryLog`, `maybeAlertInboundRoutingBroken`, `generateFlowId`
+- **`twilio-call-status/index.ts`** (line 10): Missing `okTwiML`, `addSpeakerLabels`, `transcribeAudio`
 
-1. **Team members** in `FeedLeftPanel.tsx` -- a static array of 4 names (Evan, Brad, Maura, Wendy), where "Brad" does not even exist in the `team_members` database table
-2. **Stage labels** duplicated in both `useFeedData.ts` and `FeedRightPanel.tsx` -- an incomplete map that only covers 7 of 14 pipeline stages in the `lead_status` enum
+### Plan
 
-### What stays the same
-- `FEED_ACTIVITY_FILTERS` (Note, Call, Email, SMS, Task, New Lead) -- these are UI configuration mapping to known activity types, not business data
-- `avatarColors` in `ActivityCard.tsx` -- UI color config for initials, not business data
-- Type icons, badge colors, and type labels -- UI presentation config
+**1. Restore `twilio-call-status/index.ts` helper functions**
 
-### Changes
+Add back the three missing functions before the `Deno.serve()` handler:
 
-**1. `src/components/feed/FeedLeftPanel.tsx`**
-- Remove the hardcoded `TEAM_MEMBERS` array
-- Accept a new `teamMembers` prop (fetched from DB by the parent)
-- Render team avatar buttons dynamically from the prop
-- Each member shows first initial, uses the same purple brand styling
+- `okTwiML()` -- returns a minimal valid TwiML `<Response/>` so Twilio always gets a proper reply
+- `addSpeakerLabels(text, direction)` -- formats raw transcript with "Evan:" / "Caller:" speaker labels based on call direction
+- `transcribeAudio(url, direction)` -- calls the OpenAI Whisper API (`/v1/audio/transcriptions`) to transcribe an MP3 recording URL, then applies speaker labels; returns null on failure so the flow continues gracefully
 
-**2. `src/pages/admin/PipelineFeed.tsx`**
-- Add a `useQuery` call to fetch `team_members` from the database (`id, name`)
-- Pass the fetched list to `FeedLeftPanel` as `teamMembers` prop
+**2. Restore `twilio-inbound/index.ts` helper functions**
 
-**3. `src/constants/appConfig.ts`**
-- Add a single shared `STAGE_LABELS` constant covering all 14 `lead_status` enum values:
-  - discovery, questionnaire, pre_qualification, document_collection, underwriting, approval, funded, lost, initial_review, moving_to_underwriting, onboarding, ready_for_wu_approval, pre_approval_issued, won
+Add back all missing functions and types before the `Deno.serve()` handler:
 
-**4. `src/hooks/useFeedData.ts`**
-- Remove the local `STAGE_LABELS` constant
-- Import the shared one from `appConfig.ts`
+- `waitUntil(promise)` -- fire-and-forget pattern for background work (DB writes, alerts) that must not block the TwiML response
+- `escapeXml(str)` -- escapes `<>&'"` characters for safe embedding in TwiML XML
+- `parseCsvEnv(key)` -- reads a comma-separated env var into a string array (used for client identities)
+- `buildInboundTwiML(options)` -- generates TwiML XML that plays a hold message then dials all configured Twilio Client identities with status callbacks
+- `getSlackConfig()` -- reads Slack env vars (token, channel) for alerting
+- `sendSlackAlert(config, message)` -- posts a message to the configured Slack channel via the Slack Web API
+- `ProviderBoundaryLog` interface -- TypeScript type for the structured boundary log
+- `persistProviderBoundaryLog(log)` -- inserts a boundary log row into `call_events` table for debugging/monitoring
+- `maybeAlertInboundRoutingBroken(log)` -- checks if the TwiML response looks malformed/empty and sends a Slack alert if so
+- `generateFlowId()` -- returns a `crypto.randomUUID()` for correlating all events in a single call flow
 
-**5. `src/components/feed/FeedRightPanel.tsx`**
-- Remove the local `STAGE_LABELS` constant
-- Import the shared one from `appConfig.ts`
+**3. Deploy both edge functions**
 
-### Technical Details
+Deploy `twilio-call-status` and `twilio-inbound` to replace the broken versions.
 
-New prop interface for FeedLeftPanel:
+### What this fixes
+- Inbound calls will no longer crash the webhook, so Twilio will stop returning 500 errors
+- Call status callbacks will properly update `active_calls` and `evan_communications` tables
+- The "Syncing call system..." banner should clear once the device successfully registers (assuming the TwiML App Voice URL is correctly configured in Twilio Console)
+
+### Reminder about TwiML App Voice URL
+The device registration depends on the TwiML App (SID `AP5129...029e`) having its Voice Request URL set to:
 ```text
-teamMembers: { id: string; name: string }[]
+https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/twilio-voice
 ```
+This is a Twilio Console setting that cannot be changed from code. If the URL is wrong, the device will register but outbound calls will get 3100 errors.
 
-New constant in appConfig.ts:
-```text
-STAGE_LABELS = {
-  discovery -> "Discovery"
-  questionnaire -> "Questionnaire"
-  pre_qualification -> "Pre-Qualification"
-  document_collection -> "Document Collection"
-  underwriting -> "Underwriting"
-  approval -> "Approval"
-  funded -> "Funded"
-  lost -> "Lost"
-  initial_review -> "Initial Review"
-  moving_to_underwriting -> "Moving to UW"
-  onboarding -> "Onboarding"
-  ready_for_wu_approval -> "Ready for WU Approval"
-  pre_approval_issued -> "Pre-Approval Issued"
-  won -> "Won"
-}
-```
-
-Database query in PipelineFeed:
-```text
-supabase.from('team_members').select('id, name').order('name')
-```
-
-Files changed: 5 files, no new tables or migrations needed.
+### Files changed
+- `supabase/functions/twilio-call-status/index.ts` -- restore 3 helper functions
+- `supabase/functions/twilio-inbound/index.ts` -- restore 10 helper functions/types
