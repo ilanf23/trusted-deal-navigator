@@ -1,70 +1,163 @@
 
 
-## Fix Twilio WebSocket Timeout (31000 / 53001)
+## Refactor: Decompose EvansGmail.tsx (2248 lines) into Reusable Modules
 
-### Audit Results
+### Current State
 
-**Identity consistency: PASS** -- `clx-admin` is used everywhere:
-- `twilio-token/index.ts` line 157: `const identity = 'clx-admin'`
-- `twilio-inbound/index.ts` line 260: `['clx-admin']` (default)
-- `CallContext.tsx`: no identity filtering, accepts whatever the token returns
-- No remaining references to `evan-admin` anywhere in the codebase
+| File | Lines | Status |
+|------|-------|--------|
+| `src/pages/admin/EvansGmail.tsx` | 2,248 | Monolithic -- needs decomposition |
+| `src/pages/admin/IlansGmail.tsx` | 99 | Already clean -- uses shared `GmailInbox` |
+| `src/components/gmail/GmailInbox.tsx` | 287 | Shared shell -- used by Ilan only |
 
-**No name-based gating: PASS** -- `CallContext.tsx` uses `isAdmin && !!user`, not name checks
+### Why EvansGmail Can't Simply Become `<GmailInbox userId="evan" />`
 
-### Root Cause: `auth.getClaims()` Failing Silently
+After a full audit, EvansGmail contains **1,800+ lines of Evan-specific CRM logic** that does not exist in the shared GmailInbox:
 
-The `twilio-token` edge function uses `supabaseAnon.auth.getClaims(token)` (line 127) to validate the JWT. This method is known to return `null` in Supabase edge functions despite receiving a valid JWT (documented in multiple community reports). When it fails:
+- AI "Move Forward" draft generation with `outbound_emails` persistence
+- CRM lead matching and deal sidebar (contacts, phones, emails, pipeline stage editing)
+- URL-param compose handling with `DraftContext` for cross-page navigation
+- Inline reply with local thread state and task auto-completion
+- Mock external emails mixed into real inbox
+- 7-day follow-up filtering and CRM category folders
+- Pagination with page controls
+- Email templates view
+- Task creation dialog from email context
+- Lead/pipeline mutations from the sidebar
 
-1. Token function returns 401 "Unauthorized"
-2. Frontend gets no Twilio access token
-3. `new Device(token)` never runs
-4. Device never reaches `registered` state
-5. Inbound calls to `clx-admin` find no registered device
-6. Twilio gives up after 0-2 seconds, falls through to voicemail
+Forcing all of this through render props on `GmailInbox` would make the config object larger than the current file. Instead, we decompose EvansGmail into focused modules.
 
-### Fix
+### Refactor Strategy
 
-**File: `supabase/functions/twilio-token/index.ts`**
-
-Replace the fragile `getClaims` auth pattern with the proven `getUser` pattern used successfully throughout the codebase:
-
-- Remove the `supabaseAnon` client creation (lines 120-124)
-- Remove the `getClaims` call (lines 126-135)
-- Replace with: create a service-role client, call `supabase.auth.getUser(token)` which reliably validates the JWT and returns the user object
-- Extract `userId` from `user.id` instead of `claims.sub`
-- Keep the admin role check via `user_roles` table (unchanged)
-- Add logging to confirm: user ID, email, identity issued, token generation success
-
-The rest of the function (token generation, identity, response) stays identical.
-
-### Technical Detail
+**Extract 4 files, reduce EvansGmail to ~150 lines.**
 
 ```text
-BEFORE (broken):
-  supabaseAnon = createClient(url, anonKey, { headers: { Authorization } })
-  getClaims(token) --> returns null in edge functions --> 401
+BEFORE:
+  EvansGmail.tsx (2,248 lines) -- everything in one file
 
-AFTER (reliable):
-  supabase = createClient(url, serviceRoleKey)
-  getUser(token) --> returns user object --> userId = user.id
+AFTER:
+  EvansGmail.tsx              (~150 lines)  -- thin wrapper, imports + JSX orchestration
+  useEvansGmailLogic.ts       (~500 lines)  -- all state, queries, mutations, handlers
+  EvansGmailEmailList.tsx     (~250 lines)  -- email list rows with CRM badges
+  EvansGmailEmailDetail.tsx   (~600 lines)  -- email detail view with thread, inline reply, deal sidebar
+  EvansGmailDealSidebar.tsx   (~350 lines)  -- lead info panel (contacts, phones, emails, stage)
 ```
 
-### What Does NOT Change
+### File-by-File Plan
 
-- Identity string: stays `clx-admin`
-- Inbound routing (`twilio-inbound`): already correct, no changes
-- Frontend `CallContext.tsx`: already correct, no changes
-- Outbound calling (`twilio-voice`): unaffected
-- Admin role verification: still queries `user_roles` table
-- Token generation logic (JWT signing): unchanged
-- Rate limiting: unchanged
+**1. `src/hooks/useEvansGmailLogic.ts` (NEW -- ~500 lines)**
 
-### Expected Outcome
+Extracts ALL business logic from EvansGmail:
+- All `useState` declarations (selectedEmailId, activeFolder, searchQuery, compose state, etc.)
+- All `useQuery` calls (allLeads, crmEmails, pipelineStages)
+- All `useMutation` calls (updateLeadMutation, updateStageMutation)
+- `useGmailConnection` initialization
+- `useDraft` context consumption
+- URL-param compose `useEffect` handlers
+- `handleMoveForward`, `handleSendEmail`, `handleReply`, `handleConnectGmail`
+- `handleSelectEmail`, `handleMarkUnread`
+- `filteredEmails`, `paginatedEmails`, `folderCounts` memos
+- `findLeadForEmail`, `isExternalEmail` wrappers
+- Inline reply send handler
+- Returns all state + handlers as a typed object
 
-- Token function returns 200 with valid Twilio access token
-- Frontend Device registers successfully (console: "Twilio Device REGISTERED")
-- Inbound calls ring for full 45-second timeout
-- Popup appears immediately via synthetic SDK event
-- No more WebSocket 31000/53001 errors
+**2. `src/components/evan/gmail/EvansGmailEmailList.tsx` (NEW -- ~250 lines)**
+
+Extracts the email list rendering (currently lines 2017-2189):
+- Email row with avatar, sender name, subject, snippet
+- CRM badges (pipeline stage, loan amount, last touch, stage age)
+- "Move Forward" button on external emails
+- Next step suggestion text
+- Star toggle, dropdown menu (mark unread, add task)
+- Read/unread styling
+- Accepts props: emails, handlers, state from the hook
+
+**3. `src/components/evan/gmail/EvansGmailEmailDetail.tsx` (NEW -- ~600 lines)**
+
+Extracts the full email detail view (currently lines 1184-1981):
+- Thread message rendering (mock threads + local replies)
+- Single email fallback rendering
+- Reply/Reply All/Forward action bar
+- "Add Task" and "Show Lead Info" buttons
+- Inline reply box integration
+- Reply All bottom bar
+- Accepts the deal sidebar as a slot/child
+
+**4. `src/components/evan/gmail/EvansGmailDealSidebar.tsx` (NEW -- ~350 lines)**
+
+Extracts the deal/lead sidebar panel (currently lines 1650-1981):
+- Lead name, company, pipeline stage selector
+- Priority and contact type selectors
+- Contacts list
+- Phone numbers list
+- Email addresses list
+- "Move Forward" action button
+- Notes section
+- Accepts lead data + mutation handlers as props
+
+**5. `src/pages/admin/EvansGmail.tsx` (MODIFIED -- reduced to ~150 lines)**
+
+Becomes a thin orchestrator:
+```tsx
+const EvansGmail = () => {
+  const logic = useEvansGmailLogic();
+
+  if (logic.connectionLoading) return <EvanLayout>...</EvanLayout>;
+  if (!logic.gmailConnection) return <EvanLayout>...</EvanLayout>;
+
+  return (
+    <EvanLayout>
+      {logic.isGeneratingEmail && <GeneratingOverlay />}
+      <div className="flex h-[calc(100vh-100px)] ...">
+        <GmailSidebar ... />
+        <div className="flex-1 flex flex-col">
+          <EvansGmailToolbar ... />
+          {logic.selectedEmail ? (
+            <EvansGmailEmailDetail ... />
+          ) : logic.activeFolder === 'templates' ? (
+            <EvansGmailTemplates ... />
+          ) : (
+            <EvansGmailEmailList ... />
+          )}
+        </div>
+      </div>
+      <GmailComposeDialog ... />
+      <LeadDetailDialog ... />
+      <GmailTaskDialog ... />
+    </EvanLayout>
+  );
+};
+```
+
+**6. `src/pages/admin/IlansGmail.tsx` -- NO CHANGES**
+
+Already 99 lines and uses the shared `GmailInbox`. No modification needed.
+
+**7. `src/components/gmail/GmailInbox.tsx` -- NO CHANGES**
+
+Stays as the lightweight shared shell for simple Gmail views.
+
+### What This Preserves (Zero Functional Changes)
+
+- All Supabase queries remain identical (same tables, same selects, same filters)
+- All mutations remain identical (leads, pipeline_leads, evan_tasks, lead_tasks, outbound_emails)
+- All Gmail API calls remain identical (same edge function, same payloads)
+- URL-param compose handling stays identical (DraftContext integration)
+- Inline reply with local thread state stays identical
+- Mock emails mixed into inbox stays identical
+- All event handlers and side effects stay identical
+- Component tree hierarchy stays identical (EvanLayout wraps everything)
+- Routing stays identical (no route changes)
+
+### Summary
+
+| Metric | Before | After |
+|--------|--------|-------|
+| EvansGmail.tsx | 2,248 lines | ~150 lines |
+| IlansGmail.tsx | 99 lines | 99 lines (unchanged) |
+| Total new files | 0 | 4 |
+| Duplicated Gmail logic | ~0 (different implementations) | ~0 |
+| Functional changes | -- | Zero |
+| API/query changes | -- | Zero |
+| Route changes | -- | Zero |
 
