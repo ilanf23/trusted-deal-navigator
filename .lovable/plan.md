@@ -1,21 +1,18 @@
 
 
-## Update Evan Portal Phone Number
+## Fix: Redeploy Inbound Call Handler
 
-The hardcoded fallback phone number in the Calls page header is `(929) 505-2483` but the actual number used is `(904) 587-0026`.
+### Problem
+When someone calls Evan's phone number, they hear "the application doesn't work, goodbye" because the `twilio-inbound` edge function is still running a stale version that crashes with `ReferenceError: generateFlowId is not defined`.
 
-### Change
+The code in the repository is already correct (the previous fix added all helper functions), but the deployment didn't propagate. The function needs to be redeployed.
 
-**File:** `src/pages/admin/EvansCalls.tsx` (line 534)
+### Action
+Redeploy both Twilio webhook functions:
+- `twilio-inbound` -- handles incoming calls (this is the one crashing)
+- `twilio-call-status` -- handles call status callbacks (also had the same issue)
 
-Update the fallback value from `'(929) 505-2483'` to `'(904) 587-0026'`:
+No code changes needed -- just a redeployment of the existing corrected files.
 
-```tsx
-// Before
-<span className="font-medium">{formatPhoneNumber(import.meta.env.VITE_TWILIO_PHONE_NUMBER || '(929) 505-2483')}</span>
-
-// After
-<span className="font-medium">{formatPhoneNumber(import.meta.env.VITE_TWILIO_PHONE_NUMBER || '(904) 587-0026')}</span>
-```
-
-This is a one-line change to correct the displayed phone number.
+### Expected Result
+After redeployment, inbound callers will hear "Please hold while we connect your call" and be routed to Evan's browser-based phone client instead of getting the error message.
