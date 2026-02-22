@@ -15,6 +15,13 @@ serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
+    // PAUSED: Slack notifications temporarily disabled until platform is actively in use
+    console.log('Slack notifications are currently paused. Skipping message send.');
+    return new Response(JSON.stringify({ success: true, paused: true, message: 'Slack notifications are currently paused' }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
     const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN') || Deno.env.get('SLACK_API_KEY');
     if (!SLACK_BOT_TOKEN) {
       throw new Error('SLACK_BOT_TOKEN is not configured');
