@@ -46,7 +46,6 @@ function generateFlowId(): string {
 // ---------------------------------------------------------------------------
 
 interface InboundTwiMLOptions {
-  holdMessage: string;
   dialTimeoutSeconds: number;
   statusCallbackUrl?: string;
   clientIdentities: string[];
@@ -57,14 +56,16 @@ interface InboundTwiMLOptions {
  * Twilio Client identities with optional status callbacks.
  */
 function buildInboundTwiML(opts: InboundTwiMLOptions): string {
-  const { holdMessage, dialTimeoutSeconds, statusCallbackUrl, clientIdentities } = opts;
+  const { dialTimeoutSeconds, statusCallbackUrl, clientIdentities } = opts;
 
   const clientTags = clientIdentities
     .map((id) => `<Client>${escapeXml(id)}</Client>`)
     .join('');
 
+  // Use statusCallback for event tracking only — do NOT use action, which would
+  // replace the call flow with whatever twilio-call-status returns (empty TwiML → hangup).
   const statusAttr = statusCallbackUrl
-    ? ` action="${escapeXml(statusCallbackUrl)}" statusCallback="${escapeXml(statusCallbackUrl)}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST" record="record-from-answer-dual"`
+    ? ` statusCallback="${escapeXml(statusCallbackUrl)}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST" record="record-from-answer-dual"`
     : '';
 
   return [
@@ -73,6 +74,9 @@ function buildInboundTwiML(opts: InboundTwiMLOptions): string {
     `  <Dial timeout="${dialTimeoutSeconds}"${statusAttr}>`,
     `    ${clientTags}`,
     '  </Dial>',
+    '  <Say>Sorry, no one is available to take your call right now. Please try again later or leave a message after the beep.</Say>',
+    '  <Record maxLength="120" transcribe="true" playBeep="true" />',
+    '  <Say>Thank you. Goodbye.</Say>',
     '</Response>',
   ].join('\n');
 }
@@ -206,7 +210,6 @@ Deno.serve(async (req) => {
   const clientIdentities = parseCsvEnv('TWILIO_INBOUND_CLIENT_IDENTITIES');
 
   const twiml = buildInboundTwiML({
-    holdMessage: 'Please hold while we connect your call.',
     dialTimeoutSeconds: 30,
     statusCallbackUrl,
     clientIdentities: clientIdentities.length ? clientIdentities : ['evan-admin'],
