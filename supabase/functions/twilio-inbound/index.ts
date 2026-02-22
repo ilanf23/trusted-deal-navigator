@@ -49,36 +49,57 @@ interface InboundTwiMLOptions {
   dialTimeoutSeconds: number;
   statusCallbackUrl?: string;
   clientIdentities: string[];
+  callerId?: string;
+  fallbackNumber?: string;
 }
 
 /**
- * Build TwiML that plays a hold message, then dials all configured
- * Twilio Client identities with optional status callbacks.
+ * Build TwiML that dials all configured Twilio Client identities (and optionally
+ * a fallback phone number) simultaneously. If no one answers within the timeout,
+ * the caller is prompted to leave a voicemail.
+ *
+ * Key design decisions:
+ * - NO <Reject> or <Hangup> anywhere — every path ends with voicemail or answered call.
+ * - statusCallback is used for event tracking only (NOT action, which would replace the flow).
+ * - Both <Client> and <Number> inside a single <Dial> = Twilio fork-dials them simultaneously.
  */
 function buildInboundTwiML(opts: InboundTwiMLOptions): string {
-  const { dialTimeoutSeconds, statusCallbackUrl, clientIdentities } = opts;
+  const { dialTimeoutSeconds, statusCallbackUrl, clientIdentities, callerId, fallbackNumber } = opts;
 
   const clientTags = clientIdentities
     .map((id) => `<Client>${escapeXml(id)}</Client>`)
     .join('');
 
-  // Use statusCallback for event tracking only — do NOT use action, which would
-  // replace the call flow with whatever twilio-call-status returns (empty TwiML → hangup).
+  // If a fallback phone number is configured, include it so Twilio rings it
+  // simultaneously with the browser client(s). This ensures the call rings even
+  // if no browser client is registered.
+  const numberTag = fallbackNumber
+    ? `<Number>${escapeXml(fallbackNumber)}</Number>`
+    : '';
+
+  // statusCallback for event tracking — do NOT use action (would replace flow with
+  // whatever twilio-call-status returns, causing hangup if it returns empty TwiML).
   const statusAttr = statusCallbackUrl
     ? ` statusCallback="${escapeXml(statusCallbackUrl)}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST" record="record-from-answer-dual"`
+    : '';
+
+  // callerId ensures the backup phone shows the company number, not a random Twilio number
+  const callerIdAttr = callerId
+    ? ` callerId="${escapeXml(callerId)}"`
     : '';
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<Response>',
-    `  <Dial timeout="${dialTimeoutSeconds}"${statusAttr}>`,
+    `  <Dial timeout="${dialTimeoutSeconds}"${callerIdAttr}${statusAttr}>`,
     `    ${clientTags}`,
+    numberTag ? `    ${numberTag}` : '',
     '  </Dial>',
-    '  <Say>Sorry, no one is available to take your call right now. Please try again later or leave a message after the beep.</Say>',
+    '  <Say voice="alice">Sorry, no one is available to take your call right now. Please leave a message after the beep and we will call you back as soon as possible.</Say>',
     '  <Record maxLength="120" transcribe="true" playBeep="true" />',
-    '  <Say>Thank you. Goodbye.</Say>',
+    '  <Say voice="alice">Thank you for your message. Goodbye.</Say>',
     '</Response>',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -130,6 +151,14 @@ interface ProviderBoundaryLog {
   responseBody: string;
   webhookTimestamp: string;
   rawParams?: Record<string, string>;
+  routingDecision?: RoutingDecision;
+}
+
+interface RoutingDecision {
+  clientIdentities: string[];
+  fallbackNumber: string | null;
+  dialTimeoutSeconds: number;
+  hasFallback: boolean;
 }
 
 async function persistProviderBoundaryLog(log: ProviderBoundaryLog): Promise<void> {
@@ -151,6 +180,7 @@ async function persistProviderBoundaryLog(log: ProviderBoundaryLog): Promise<voi
       response_time_ms: Math.round(log.responseTimeMs),
       response_body: log.responseBody,
       raw_params: log.rawParams,
+      routing_decision: log.routingDecision,
     },
   });
 }
@@ -168,6 +198,24 @@ async function maybeAlertInboundRoutingBroken(log: ProviderBoundaryLog): Promise
       `CallSid: ${log.callSid}\nFrom: ${log.fromNumber}\nTo: ${log.toNumber}\n` +
       `HTTP ${log.httpStatus} in ${Math.round(log.responseTimeMs)}ms\n` +
       `Response body does not contain <Dial>:\n\`\`\`${log.responseBody.slice(0, 500)}\`\`\``
+  );
+}
+
+async function maybeAlertVoicemail(log: ProviderBoundaryLog): Promise<void> {
+  // This is a preemptive alert — we know that if no one answers, the caller gets
+  // voicemail. The actual voicemail detection happens via statusCallback events,
+  // but we alert here if there's no fallback number configured (higher risk of missed calls).
+  if (log.routingDecision?.hasFallback) return;
+
+  const slack = getSlackConfig();
+  if (!slack) return;
+
+  await sendSlackAlert(
+    slack,
+    `📞 *Inbound call with NO fallback number configured*\n` +
+      `CallSid: ${log.callSid}\nFrom: ${log.fromNumber}\nTo: ${log.toNumber}\n` +
+      `If browser client is offline, this call will go to voicemail.\n` +
+      `Consider setting TWILIO_FALLBACK_NUMBER for backup routing.`
   );
 }
 
@@ -208,11 +256,35 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const statusCallbackUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/twilio-call-status` : undefined;
   const clientIdentities = parseCsvEnv('TWILIO_INBOUND_CLIENT_IDENTITIES');
+  const fallbackNumber = Deno.env.get('TWILIO_FALLBACK_NUMBER') || '';
+  const callerId = Deno.env.get('TWILIO_PHONE_NUMBER') || '';
+
+  const resolvedClients = clientIdentities.length ? clientIdentities : ['evan-admin'];
+  const dialTimeoutSeconds = 45;
+
+  const routingDecision: RoutingDecision = {
+    clientIdentities: resolvedClients,
+    fallbackNumber: fallbackNumber || null,
+    dialTimeoutSeconds,
+    hasFallback: !!fallbackNumber,
+  };
+
+  console.log(
+    '[INBOUND_ROUTING]',
+    JSON.stringify({
+      call_sid: callSid,
+      from: fromNumber,
+      to: toNumber,
+      routing: routingDecision,
+    })
+  );
 
   const twiml = buildInboundTwiML({
-    dialTimeoutSeconds: 30,
+    dialTimeoutSeconds,
     statusCallbackUrl,
-    clientIdentities: clientIdentities.length ? clientIdentities : ['evan-admin'],
+    clientIdentities: resolvedClients,
+    callerId: callerId || undefined,
+    fallbackNumber: fallbackNumber || undefined,
   });
 
   const responseTimeMs = performance.now() - startedAt;
@@ -240,6 +312,7 @@ Deno.serve(async (req) => {
     responseBody: twiml,
     webhookTimestamp,
     rawParams,
+    routingDecision,
   };
 
   waitUntil(
@@ -253,6 +326,11 @@ Deno.serve(async (req) => {
         await maybeAlertInboundRoutingBroken(boundary);
       } catch (err) {
         console.error('Failed to send inbound monitoring alert:', err);
+      }
+      try {
+        await maybeAlertVoicemail(boundary);
+      } catch (err) {
+        console.error('Failed to send voicemail risk alert:', err);
       }
       // Insert into active_calls so the frontend can detect the inbound call via realtime
       try {
