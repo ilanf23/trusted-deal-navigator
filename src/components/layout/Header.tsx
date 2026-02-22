@@ -108,7 +108,7 @@ const Header = () => {
                 className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Client Login
+                Login
               </Link>
               <div className="pt-4 px-4">
                 <Button 
