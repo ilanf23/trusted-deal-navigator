@@ -66,9 +66,16 @@ const FeedCenter = ({ activities, isLoading }: FeedCenterProps) => {
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-muted-foreground text-sm">No activities found</p>
-            <p className="text-muted-foreground/60 text-xs mt-1">Activity from your pipeline will appear here</p>
+          <div className="flex flex-col items-center justify-center py-20 text-center px-8">
+            <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center mb-5">
+              <ArrowUp className="w-7 h-7 text-muted-foreground/50 rotate-180" />
+            </div>
+            <p className="text-foreground font-semibold text-lg mb-1">
+              No "{activeTab === 'comms' ? 'Communications' : activeTab === 'notes' ? 'Notes & Leads' : 'All Activity'}" activities to show in the last 30 days
+            </p>
+            <p className="text-muted-foreground text-sm max-w-md">
+              When there's activity matching this filter, it will appear here automatically.
+            </p>
           </div>
         ) : (
           groups.map((group) => (
