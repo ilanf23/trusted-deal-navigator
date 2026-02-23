@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
 import { STAGE_LABELS } from '@/constants/appConfig';
 
-export type FeedActivityType = 'lead_created' | 'lead_updated' | 'note' | 'call' | 'email' | 'sms' | 'task_created' | 'stage_change';
+export type FeedActivityType = 'lead_updated' | 'note' | 'call' | 'email' | 'sms' | 'task_created' | 'stage_change';
 
 export interface FeedActivity {
   id: string;
@@ -93,20 +93,6 @@ export const useFeedData = () => {
           });
         }
 
-        // Lead created activity
-        activities.push({
-          id: `lead-created-${lead.id}`,
-          type: 'lead_created',
-          actorName: assigneeName,
-          actorInitial: assigneeName.charAt(0).toUpperCase(),
-          leadName: lead.name,
-          leadCompany: lead.company_name,
-          leadId: lead.id,
-          content: `New lead added${lead.source ? ` from ${lead.source}` : ''}`,
-          time: formatTime(lead.created_at),
-          rawDate: new Date(lead.created_at),
-          stage: STAGE_LABELS[lead.status] || lead.status,
-        });
       }
 
       // Add communications
@@ -164,5 +150,4 @@ export const FEED_ACTIVITY_FILTERS = [
   'Email',
   'SMS',
   'Task',
-  'New Lead',
 ];

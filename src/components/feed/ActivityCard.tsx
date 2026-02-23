@@ -32,8 +32,7 @@ const getTypeIcon = (type: FeedActivity['type']) => {
       return <MessageSquare className="w-2.5 h-2.5 text-white" />;
     case 'note':
       return <StickyNote className="w-2.5 h-2.5 text-white" />;
-    case 'lead_created':
-      return <UserPlus className="w-2.5 h-2.5 text-white" />;
+    case 'stage_change':
     case 'task_created':
       return <CheckSquare className="w-2.5 h-2.5 text-white" />;
     default:
@@ -47,7 +46,7 @@ const getTypeBadgeColor = (type: FeedActivity['type']) => {
     case 'email': return 'bg-red-500';
     case 'sms': return 'bg-green-500';
     case 'note': return 'bg-amber-500';
-    case 'lead_created': return 'bg-blue-500';
+    case 'stage_change': return 'bg-blue-500';
     case 'task_created': return 'bg-teal-500';
     default: return 'bg-gray-500';
   }
@@ -59,7 +58,7 @@ const getTypeLabel = (type: FeedActivity['type']) => {
     case 'email': return 'Email';
     case 'sms': return 'SMS';
     case 'note': return 'Note';
-    case 'lead_created': return 'New Lead';
+    case 'lead_updated': return 'Lead Updated';
     case 'task_created': return 'Task Created';
     case 'stage_change': return 'Stage Change';
     default: return 'Activity';
