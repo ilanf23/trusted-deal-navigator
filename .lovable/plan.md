@@ -1,43 +1,54 @@
 
 
-## Change: Only Run Rating Automation When "Generate Transcript" Is Pressed
+## Fix: Answer Call Button Stuck on "Connecting..."
 
-### Current Flow
-1. Call ends -- recording is saved, transcription happens automatically in `twilio-call-status`
-2. Evan clicks "Add as Lead" on a call -- lead is created in the database
-3. A confirmation dialog appears asking "Run automation?" -- if confirmed, `call-to-lead-automation` fires (AI rating, task creation, Gmail draft, Resend email to Adam/Ilan, database notification)
+### Root Cause
 
-The Slack alerts in `twilio-inbound` are operational routing alerts (not related to call ratings) and will remain unchanged.
+The `answerCall` function (lines 556-672 of `CallContext.tsx`) has a **blocking gate** that prevents the REST API redirect from ever executing:
 
-### Desired Flow
-1. Call ends -- recording is saved (no automatic transcription or automation)
-2. Evan clicks "Add as Lead" -- lead is created, but NO automation dialog appears
-3. Evan clicks "Generate Transcript" on a call that has a recording -- transcript is generated AND THEN the rating automation runs (AI rating, task, Gmail draft, email notification, Slack)
+```
+answerCall() 
+  -> activeCall is null (SDK never fired 'incoming')
+  -> get device ref
+  -> WAIT for device.state === 'registered'   <-- BLOCKS HERE (10s timeout)
+  -> throw "Device registration timed out"    <-- NEVER REACHES REST API
+```
 
-### Changes
+The call_events table confirms this: 4 consecutive `answer_attempted` events all show `device_ready: false`, and the `twilio-connect-call` edge function has zero logs -- it was never called.
 
-**1. `src/pages/admin/EvansCalls.tsx`**
+### Fix
 
-- Remove the automation confirmation dialog trigger from `addLeadMutation.onSuccess` -- stop calling `setPendingAutomationData(...)` and `setAutomationConfirmOpen(true)` after creating a lead
-- Move the automation trigger into `handleGenerateTranscript` -- after transcript is successfully generated, check if the call has a linked `lead_id`. If it does, automatically invoke `call-to-lead-automation` with the fresh transcript
-- Keep the automation confirmation dialog UI but wire it to fire after transcript generation instead
+**File: `src/contexts/CallContext.tsx`** -- Restructure `answerCall` (lines 556-672):
 
-**2. `supabase/functions/twilio-call-status/index.ts`**
+1. **Remove the device registration gate** (lines 580-595). Don't block on device registration before calling the REST API.
 
-- Remove the automatic `transcribeAudio` call inside the `recordingStatus === 'completed'` handler -- still save the `recording_url` and `recording_sid`, but skip the Whisper transcription step
-- This ensures transcription only happens when Evan explicitly clicks "Generate Transcript"
+2. **Call `twilio-connect-call` immediately** when there's no SDK `activeCall`. The edge function redirects the live Twilio call to re-dial `<Client>clx-admin</Client>`.
 
-### Technical Details
+3. **Start device initialization in parallel** (non-blocking). While the REST API is redirecting the call, kick off device registration so it's hopefully ready by the time the redirected call arrives.
 
-In `EvansCalls.tsx`, the updated `handleGenerateTranscript` will:
-1. Call `retry-call-transcription` (existing behavior)
-2. On success, look up the call's `lead_id` from the refreshed call history
-3. If a lead is linked, populate `pendingAutomationData` and show the automation confirmation dialog
-4. If no lead is linked, just show a success toast for the transcript
+4. **Keep the 15-second polling wait** for the SDK to pick up the redirected call (lines 624-657), but also attempt device registration during that window.
 
-In `twilio-call-status`, the recording handler will be simplified to:
-1. Save `recording_url`, `recording_sid`, `duration_seconds` to `evan_communications`
-2. Skip the `transcribeAudio()` call entirely
-3. The transcript field stays `null` until the user clicks "Generate Transcript"
+5. **Improve error messaging**: If the 15s timeout fires, show a clearer message ("Could not connect. Please try answering again or refresh the page.")
 
-No changes needed to `call-to-lead-automation` edge function or `twilio-inbound` (the Slack alerts there are operational, not rating-related).
+### Updated answerCall Flow
+
+```
+answerCall()
+  -> request mic permission
+  -> if activeCall exists: accept directly (no change)
+  -> else:
+      1. Fire-and-forget: initializeTwilioDevice() (non-blocking)
+      2. Immediately call twilio-connect-call REST API
+      3. Poll device.calls for 15s waiting for SDK incoming event
+      4. If found: accept the call
+      5. If timeout: throw clear error
+```
+
+### Changes Summary
+
+| File | Change |
+|------|--------|
+| `src/contexts/CallContext.tsx` | Remove device registration wait gate from `answerCall`; call REST API immediately; init device in parallel |
+
+No edge function changes needed -- `twilio-connect-call` is correct, it just was never being reached.
+
