@@ -363,18 +363,6 @@ const EvansCalls = () => {
       
       toast.success(`Lead "${lead.name}" added to Evan's pipeline`);
       
-      // Store data for potential automation and show confirmation dialog
-      setPendingAutomationData({
-        leadId: lead.id,
-        leadName: lead.name,
-        leadEmail: lead.email,
-        leadPhone: lead.phone,
-        communicationId: variables.communicationId,
-        transcript: transcript,
-        direction: direction,
-        callDate: callDate,
-      });
-      
       queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
       queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
       setAddLeadDialogOpen(false);
@@ -382,9 +370,6 @@ const EvansCalls = () => {
       setNewLeadName('');
       setNewLeadEmail('');
       setNewLeadCompany('');
-      
-      // Show automation confirmation dialog
-      setAutomationConfirmOpen(true);
     },
     onError: (error: any) => {
       toast.error('Failed to create lead: ' + error.message);
@@ -436,6 +421,35 @@ const EvansCalls = () => {
         setTranscriptError('Failed to generate transcript. Please try again later.');
       } else if (data?.error) {
         setTranscriptError(data.error);
+      } else {
+        // Transcript generated successfully — check if this call has a linked lead
+        await queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
+        
+        // Re-fetch the updated call to get fresh data
+        const { data: updatedComm } = await supabase
+          .from('evan_communications')
+          .select('id, lead_id, transcript, direction, created_at, phone_number, leads(name, email, phone)')
+          .eq('id', call.id)
+          .single();
+        
+        if (updatedComm?.lead_id && updatedComm.leads) {
+          const leadData = updatedComm.leads as unknown as { name: string; email: string | null; phone: string | null };
+          const callDate = format(new Date(updatedComm.created_at), 'MMM d, yyyy h:mm a');
+          setPendingAutomationData({
+            leadId: updatedComm.lead_id,
+            leadName: leadData.name,
+            leadEmail: leadData.email,
+            leadPhone: leadData.phone || updatedComm.phone_number,
+            communicationId: updatedComm.id,
+            transcript: updatedComm.transcript || data?.transcript || null,
+            direction: updatedComm.direction,
+            callDate: callDate,
+          });
+          setAutomationConfirmOpen(true);
+        } else {
+          toast.success('Transcript generated successfully');
+        }
+        return;
       }
       await queryClient.invalidateQueries({ queryKey: ['evan-call-history'] });
     } catch {
