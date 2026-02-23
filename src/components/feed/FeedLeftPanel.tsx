@@ -58,7 +58,7 @@ const FeedLeftPanel = ({
 
       {/* Team avatars */}
       <div className="px-4 pb-3 flex flex-wrap">
-        {teamMembers.map((member, idx) => (
+        {teamMembers.filter(m => m.name.toLowerCase() !== 'adam').map((member, idx) => (
           <button
             key={member.id}
             onClick={() =>
