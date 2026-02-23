@@ -1,84 +1,79 @@
 
 
-## Remove Hardcoded Data from BradsPage.tsx
+## Remove Hardcoded Data from AdamsPage.tsx
 
 ### What's Hardcoded Today
 
-BradsPage has **5 hardcoded data blocks** (lines 10-38, 207-234):
+AdamsPage has **4 hardcoded data blocks** (lines 10-39):
 
-1. **`metrics`** -- active deals, avg days, closings, conversion, pipeline value, projected fees
-2. **`highValueDeals`** -- 5 static deal rows
-3. **`upcomingMeetings`** -- 4 static meeting entries
-4. **`referralPartners`** -- 3 static partner rows
-5. **Monthly Goals** -- 3 hardcoded progress bars with static values
+1. **`metrics`** -- active deals, avg days, closings, conversion, lender relationships count, pending term sheets count
+2. **`lenderActivity`** -- 5 static lender rows with deal counts, avg rate, status
+3. **`termSheetsPending`** -- 4 static term sheet rows with client, lender, amount, status
+4. **`operationalMetrics`** -- 4 static progress bars with value/target/progress
 
-### Existing Database Tables That Already Have Brad's Data
+### Existing Database Sources
 
-| Data Block | Source Table/View | Brad's Data Exists? |
+| Data Block | Source | Data Exists? |
 |---|---|---|
-| Metrics (active deals, conversion, etc.) | `v_team_performance` | Yes -- `{active_deals: 9, closings: 3, conversion: 25}` |
-| Pipeline value / projected fees | `dashboard_deals` (aggregate) | Yes -- 9 deals with amounts |
-| High-value deals | `dashboard_deals WHERE owner_name = 'Brad'` | Yes -- real deal data |
-| Upcoming meetings | `evan_appointments WHERE team_member_name = 'brad'` | Empty -- needs to be populated |
-| Referral partners | `dashboard_referral_sources` | Yes -- shared table |
-| Monthly goals | No table exists | Needs new table |
+| Metrics (active deals, conversion) | `v_team_performance` WHERE name = 'Adam' | Yes -- `{active_deals: 7, closings: 3, conversion: 30}` |
+| Lender relationships count | `lender_programs` (COUNT DISTINCT lender_name) | Yes -- 883 programs |
+| Pending term sheets count | `dashboard_deals` WHERE owner = 'Adam' AND stage is pre-close | Yes -- derivable |
+| Lender activity | `dashboard_deals` aggregated by lender + `lender_programs` | Partially -- deals exist but no lender column on `dashboard_deals` |
+| Term sheets pending | `dashboard_deals` WHERE stage is underwriting/negotiation | Yes -- real deal data |
+| Operational metrics | No table exists | Needs `team_monthly_goals` (already created for Brad) |
 
 ### Plan
 
-#### Step 1: Create `team_monthly_goals` Table (Migration)
+#### Step 1: Seed Adam's Operational Goals into `team_monthly_goals`
 
-New table for the monthly goals section:
+The table already exists from Brad's migration. Insert Adam's 4 operational metrics as goals:
 
-```sql
-CREATE TABLE team_monthly_goals (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  team_member_name text NOT NULL,
-  goal_label text NOT NULL,
-  current_value integer NOT NULL DEFAULT 0,
-  target_value integer NOT NULL DEFAULT 1,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+- "Avg Days to Term Sheet" -- current: 14, target: 12
+- "Lender Response Rate" -- current: 78, target: 85
+- "Term Sheet Acceptance" -- current: 65, target: 70
+- "Closing Efficiency" -- current: 28, target: 30
 
-ALTER TABLE team_monthly_goals ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage team monthly goals"
-  ON team_monthly_goals FOR ALL
-  USING (has_role(auth.uid(), 'admin'));
+These become editable from the database going forward.
+
+#### Step 2: Create `src/hooks/useAdamsDashboard.ts`
+
+Follows the same pattern as `useBradsDashboard.ts`. Queries:
+
+- **`v_team_performance`** filtered to Adam -- provides active_deals, avg_days, closings, conversion
+- **`lender_programs`** COUNT of distinct lender_name -- provides lender relationships count
+- **`dashboard_deals`** filtered to `owner_name = 'Adam'` with pre-close stages -- provides pending term sheets count + term sheet table rows
+- **`dashboard_deals`** filtered to `owner_name = 'Adam'` grouped by stage -- provides lender activity approximation (since Adam's deals map to lender relationships)
+- **`team_monthly_goals`** filtered to `team_member_name = 'Adam'` -- provides operational metrics with progress bars
+
+Returns the same variable structure the JSX currently consumes:
+
+```
+{
+  metrics: { activeDeals, avgDaysPerDeal, closingsLast30d, conversionRate, lenderRelationships, pendingTermSheets },
+  lenderActivity: [{ lender, activeDeals, avgRate, status }],
+  termSheetsPending: [{ client, lender, amount, status }],
+  operationalMetrics: [{ metric, value, target, progress }],
+  isLoading
+}
 ```
 
-Seed Brad's 3 goals into the table.
+For **lender activity**, since `dashboard_deals` doesn't have a lender column, we'll derive this from `lender_programs` -- aggregating distinct lenders by `call_status` (Active/Needs Attention/Dormant) with deal counts derived from `last_contact` recency.
 
-#### Step 2: Create `useBradsDashboard` Hook
+For **term sheets pending**, we'll use `dashboard_deals` where Adam is owner and stage matches underwriting/negotiation stages (pre-close), showing deal_name as client, stage as status, and requested_amount as amount.
 
-New file: `src/hooks/useBradsDashboard.ts`
+#### Step 3: Update AdamsPage.tsx
 
-Queries:
-- `v_team_performance` filtered to Brad -- provides active_deals, avg_days, closings, conversion
-- `dashboard_deals` filtered to `owner_name = 'Brad'`, ordered by `requested_amount DESC`, limit 10 -- provides high-value deals with real stage, amount, fees, days
-- Aggregate `dashboard_deals` for Brad -- pipeline value (sum of requested_amount) and projected fees (sum of weighted_fees)
-- `evan_appointments` filtered to `team_member_name = 'brad'` and `start_time >= now()` -- upcoming meetings
-- `dashboard_referral_sources` ordered by `total_revenue DESC`, limit 5 -- top referral partners
-- `team_monthly_goals` filtered to `team_member_name = 'Brad'` -- monthly goals
-
-Returns the same variable structure the JSX currently consumes.
-
-#### Step 3: Update BradsPage.tsx
-
-- Remove all hardcoded data (lines 10-38)
-- Import and call `useBradsDashboard()`
-- Add loading skeleton when `isLoading`
-- Replace static monthly goals section with data-driven loop
-- Keep all UI layout, styling, component hierarchy, and formatting logic identical
+- Remove all hardcoded data (lines 10-39)
+- Import and call `useAdamsDashboard()`
+- Add loading skeleton state (same pattern as BradsPage)
+- Keep all UI layout, styling, `getStatusColor`, and component hierarchy identical
+- Map over hook data instead of static arrays
 
 ### What Does NOT Change
 
 - UI layout, card grid, table structure, progress bars
-- Component imports (AdminLayout, Card, Badge, Table, etc.)
-- Styling classes and color logic (`getProbabilityColor`)
+- Component imports (AdminLayout, Card, Badge, Table, Progress)
+- Styling classes and `getStatusColor` function
 - Routing
 - No other files modified
-
-### Technical Details
-
-The hook will format numbers the same way the current hardcoded values display them (e.g., `$15.2M`, `$152K`) so the JSX remains unchanged. The `evan_appointments` table already supports `team_member_name` for multi-user filtering.
 
