@@ -57,8 +57,8 @@ const FeedLeftPanel = ({
       </div>
 
       {/* Team avatars */}
-      <div className="px-4 pb-3 flex gap-2 flex-wrap">
-        {teamMembers.map((member) => (
+      <div className="px-4 pb-3 flex flex-wrap">
+        {teamMembers.map((member, idx) => (
           <button
             key={member.id}
             onClick={() =>
@@ -67,10 +67,12 @@ const FeedLeftPanel = ({
             className={cn(
               'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all',
               'bg-muted/60 text-[#1e1b4b]',
+              idx > 0 && '-ml-2',
               selectedTeamMember === member.name
-                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background bg-muted'
+                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background bg-muted z-10'
                 : 'hover:bg-muted'
             )}
+            style={{ zIndex: selectedTeamMember === member.name ? 10 : teamMembers.length - idx }}
           >
             {member.name.charAt(0).toUpperCase()}
           </button>
