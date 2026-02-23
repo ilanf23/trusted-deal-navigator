@@ -95,7 +95,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const deviceRef = useRef<Device | null>(null);
-  const pendingCallsRef = useRef<ActiveCallData[]>([]);
+  // pendingCallsRef removed — calls are shown immediately regardless of device state
   const incomingCallRef = useRef<ActiveCallData | null>(null);
   const isConnectedRef = useRef(false);
   const isReinitializingRef = useRef(false);
@@ -254,15 +254,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         console.log('[CallContext] ✅ Twilio Device REGISTERED — device.state:', device.state, '— identity:', identity);
         setHealthStatus(prev => ({ ...prev, deviceReady: true, lastHeartbeat: new Date() }));
         
-        // Process any pending calls using refs (not stale closure values)
-        if (pendingCallsRef.current.length > 0) {
-          console.log('[CallContext] Processing pending calls:', pendingCallsRef.current.length);
-          const pendingCall = pendingCallsRef.current.shift();
-          if (pendingCall && !incomingCallRef.current && !isConnectedRef.current) {
-            setIncomingCall(pendingCall);
-            acknowledgeCall(pendingCall);
-          }
-        }
+        // Device is now ready — no pending call processing needed
+        // Calls are shown immediately via realtime/polling regardless of device state
       });
 
       device.on('registering', () => {
@@ -489,14 +482,10 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         if (freshCalls.length > 0 && !incomingCallRef.current && !isConnectedRef.current) {
           const call = freshCalls[0] as ActiveCallData;
           
-          if (deviceRef.current?.state !== 'registered') {
-            console.log('[CallContext] Device not ready, buffering call:', call.call_sid);
-            pendingCallsRef.current.push(call);
-          } else {
-            setIncomingCall(call);
-            logCallEventRef.current?.(call.call_sid, 'frontend_acknowledged', call.call_flow_id);
-            supabase.from('active_calls').update({ frontend_ack_at: new Date().toISOString() }).eq('id', call.id);
-          }
+          // Always show popup immediately — Answer button stays disabled until SDK delivers activeCall
+          setIncomingCall(call);
+          logCallEventRef.current?.(call.call_sid, 'frontend_acknowledged', call.call_flow_id);
+          supabase.from('active_calls').update({ frontend_ack_at: new Date().toISOString() }).eq('id', call.id);
         }
       }
     };
@@ -524,10 +513,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
               console.log('[CallContext] New ringing call detected:', call.call_sid);
               logCallEventRef.current?.(call.call_sid, 'realtime_received', call.call_flow_id);
               
-              if (deviceRef.current?.state !== 'registered') {
-                console.log('[CallContext] Device not ready for realtime call, buffering');
-                pendingCallsRef.current.push(call);
-              } else if (!incomingCallRef.current && !isConnectedRef.current) {
+              // Always show popup immediately regardless of device registration
+              if (!incomingCallRef.current && !isConnectedRef.current) {
                 setIncomingCall(call);
                 supabase.from('active_calls').update({ frontend_ack_at: new Date().toISOString() }).eq('id', call.id);
               }
