@@ -3,35 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { FileCheck, Clock, TrendingUp, CheckCircle2, AlertCircle, Phone, Mail } from 'lucide-react';
+import { useWendysDashboard } from '@/hooks/useWendysDashboard';
 
 const WendysPage = () => {
-  // Wendy's specific metrics (Processor role - focuses on client communication)
-  const metrics = {
-    activeDeals: 10,
-    avgDaysPerDeal: 46,
-    closingsLast30d: 5,
-    conversionRate: 33,
-    callsToday: 18,
-    emailsSent: 24,
-  };
-
-  const clientFollowUps = [
-    { client: 'Apex Real Estate', lastContact: '2 days ago', nextAction: 'Follow up on bank statements', priority: 'High', dealStage: 'Document Collection' },
-    { client: 'Pinnacle Holdings', lastContact: '1 day ago', nextAction: 'Schedule closing call', priority: 'High', dealStage: 'Path to Close' },
-    { client: 'Riverfront Properties', lastContact: '3 days ago', nextAction: 'Request updated financials', priority: 'Medium', dealStage: 'Underwriting' },
-    { client: 'Sunrise Ventures', lastContact: 'Today', nextAction: 'Send term sheet', priority: 'High', dealStage: 'Lender Management' },
-    { client: 'Golden Gate LLC', lastContact: '4 days ago', nextAction: 'Check on appraisal status', priority: 'Medium', dealStage: 'Document Collection' },
-    { client: 'Pacific Coast Group', lastContact: '1 week ago', nextAction: 'Re-engage client', priority: 'Low', dealStage: 'Initial Consult' },
-  ];
-
-  const communicationLog = [
-    { type: 'Call', client: 'Apex Real Estate', summary: 'Discussed missing documents', duration: '12 min', time: '9:30 AM' },
-    { type: 'Email', client: 'Pinnacle Holdings', summary: 'Sent closing checklist', duration: '-', time: '10:15 AM' },
-    { type: 'Call', client: 'Sunrise Ventures', summary: 'Term sheet review', duration: '25 min', time: '11:00 AM' },
-    { type: 'Email', client: 'Riverfront Properties', summary: 'Requested P&L statement', duration: '-', time: '11:45 AM' },
-    { type: 'Call', client: 'Golden Gate LLC', summary: 'Appraisal update', duration: '8 min', time: '2:00 PM' },
-  ];
+  const {
+    metrics,
+    clientFollowUps,
+    communicationLog,
+    dailyTargets,
+    isLoading,
+  } = useWendysDashboard();
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -41,6 +24,34 @@ const WendysPage = () => {
       default: return 'bg-gray-500';
     }
   };
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold">Wendy's Dashboard</h1>
+            <p className="text-muted-foreground">Client communication and deal progression tracking</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="pt-4">
+                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="h-8 w-16" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="lg:col-span-2"><CardContent className="pt-6"><Skeleton className="h-48 w-full" /></CardContent></Card>
+            <Card><CardContent className="pt-6"><Skeleton className="h-48 w-full" /></CardContent></Card>
+          </div>
+          <Card><CardContent className="pt-6"><Skeleton className="h-24 w-full" /></CardContent></Card>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -123,32 +134,36 @@ const WendysPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Last Contact</TableHead>
-                    <TableHead>Next Action</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Stage</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clientFollowUps.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{item.client}</TableCell>
-                      <TableCell>{item.lastContact}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{item.nextAction}</TableCell>
-                      <TableCell>
-                        <Badge className={getPriorityColor(item.priority)}>{item.priority}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{item.dealStage}</Badge>
-                      </TableCell>
+              {clientFollowUps.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No active follow-ups.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Last Contact</TableHead>
+                      <TableHead>Next Action</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Stage</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {clientFollowUps.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{item.client}</TableCell>
+                        <TableCell>{item.lastContact}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{item.nextAction}</TableCell>
+                        <TableCell>
+                          <Badge className={getPriorityColor(item.priority)}>{item.priority}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{item.dealStage}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
 
@@ -161,27 +176,31 @@ const WendysPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {communicationLog.map((log, index) => (
-                  <div key={index} className="flex flex-col gap-1 p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {log.type === 'Call' ? (
-                          <Phone className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Mail className="h-4 w-4 text-blue-600" />
-                        )}
-                        <span className="font-medium text-sm">{log.client}</span>
+              {communicationLog.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No communications logged today.</p>
+              ) : (
+                <div className="space-y-3">
+                  {communicationLog.map((log, index) => (
+                    <div key={index} className="flex flex-col gap-1 p-3 bg-muted/30 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {log.type === 'Call' ? (
+                            <Phone className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Mail className="h-4 w-4 text-blue-600" />
+                          )}
+                          <span className="font-medium text-sm">{log.client}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{log.time}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">{log.time}</span>
+                      <div className="text-sm text-muted-foreground">{log.summary}</div>
+                      {log.duration !== '-' && (
+                        <div className="text-xs text-muted-foreground">Duration: {log.duration}</div>
+                      )}
                     </div>
-                    <div className="text-sm text-muted-foreground">{log.summary}</div>
-                    {log.duration !== '-' && (
-                      <div className="text-xs text-muted-foreground">Duration: {log.duration}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -192,29 +211,21 @@ const WendysPage = () => {
             <CardTitle>Today's Targets</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Client Calls</span>
-                  <span>18 / 20 target</span>
-                </div>
-                <Progress value={90} className="h-2" />
+            {dailyTargets.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No targets configured.</p>
+            ) : (
+              <div className="space-y-4">
+                {dailyTargets.map((target, index) => (
+                  <div key={index}>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>{target.label}</span>
+                      <span>{target.current} / {target.target} target</span>
+                    </div>
+                    <Progress value={target.progress} className="h-2" />
+                  </div>
+                ))}
               </div>
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Follow-up Emails</span>
-                  <span>24 / 25 target</span>
-                </div>
-                <Progress value={96} className="h-2" />
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Deal Progressions</span>
-                  <span>3 / 5 target</span>
-                </div>
-                <Progress value={60} className="h-2" />
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
