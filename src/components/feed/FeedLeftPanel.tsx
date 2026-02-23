@@ -123,13 +123,6 @@ const FeedLeftPanel = ({
         ))}
       </div>
 
-      {/* Footer link */}
-      <div className="px-4 py-3 border-t border-border">
-        <button className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1">
-          Email Visibility Settings
-          <span className="text-[10px]">↗</span>
-        </button>
-      </div>
     </div>
   );
 };
