@@ -333,6 +333,11 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
     if (path === '/superadmin' || path.match(/^\/admin\/[^/]+$/) || path.match(/^\/superadmin\/[^/]+$/)) {
       return location.pathname === path;
     }
+    // For pipeline sub-items, use exact match to avoid multiple highlights
+    // e.g. /admin/evan/pipeline should not match /admin/evan/pipeline/feed
+    if (path.match(/\/pipeline$/)) {
+      return location.pathname === path;
+    }
     return location.pathname.startsWith(path);
   };
 
