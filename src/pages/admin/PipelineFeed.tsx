@@ -45,6 +45,7 @@ const PipelineFeed = () => {
     // Filter by activity type
     if (selectedFilters.length > 0) {
       const typeMap: Record<string, FeedActivityType[]> = {
+        'New Lead': ['lead_created'],
         Note: ['note'],
         Call: ['call'],
         Email: ['email'],
