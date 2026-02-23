@@ -1,57 +1,55 @@
 
 
-## Seed Realistic Activity Data into the Feed
+## Redesign FeedRightPanel to Match Copper CRM Reference
 
-### Problem
-The Feed page (`/admin/evan/pipeline/feed`) already pulls from real database tables via the `useFeedData` hook, but the existing data is thin:
-- `evan_communications`: 63 records, but most have `lead_id = NULL` and generic content like "Incoming call - completed"
-- `lead_activities`: 0 records (empty)
-- `evan_tasks`: 63 records, but many lack lead associations
+### Changes to `src/components/feed/FeedRightPanel.tsx`
 
-The feed appears sparse and doesn't showcase the Copper CRM-style activity stream properly.
+**1. Add date header at top**
+- Display current date formatted as "Sunday, February 22nd" using `date-fns` `format(new Date(), 'EEEE, MMMM do')`.
+- Right-aligned, subtle text styling.
 
-### What We'll Do
+**2. Restyle "Keep things moving" section**
+- Remove the `AlertCircle` icon from the section header; use plain gray label text ("Keep things moving").
+- Redesign each task card to be a white card (`bg-card`) with rounded corners and light border:
+  - Add an **X dismiss button** (top-right corner) using the `X` icon from lucide-react. Dismiss hides the card locally via state (no DB change).
+  - Add a **large dark icon** on the left (~48px, dark rounded square with a monitor/checkbox icon inside).
+  - Bold title: "You have a task due in N day(s)!"
+  - Subtitle with task name in quotes and due label.
+  - Assignee initials badge (small circle).
+  - Add a **"GET ON IT" button** -- outlined border, centered at bottom. Clicking navigates to the task.
 
-Seed ~40 realistic, time-staggered activity records into `evan_communications` that reference actual leads in the database. These will include emails, calls, and SMS messages with realistic commercial lending content, spread across the last 3 days so the feed's Today/Yesterday/Earlier grouping looks natural.
+**3. Restyle "Upcoming Meetings" section**
+- Remove `CalendarClock` icon from section header (meetings are nested under "Keep things moving" visually in the reference -- but we'll keep them as a distinct group for clarity).
+- Redesign each meeting card:
+  - Add **X dismiss button** top-right.
+  - Use **larger avatar circle** (~48px) with initials and a small calendar badge overlay (a small Google Calendar-style colored circle icon at bottom-right of the avatar).
+  - Bold title: "Upcoming Meeting".
+  - Subtitle: "with [Name] +N more".
+  - Body text with **bold** keywords for day/time: "You have a meeting **tomorrow** at **2:30pm EST**."
+  - Add a **"PREPARE" button** -- outlined, centered at bottom. Clicking navigates to calendar.
 
-All records will reference real `lead_id` values from the 39 existing leads, and use team member names that match the existing team (Evan, Brad, Wendy, Maura, Adam).
+**4. Update "Suggestions" section**
+- Remove `UserPlus` icon from header.
+- Add a subtle separator line above the section.
+- Move "View all" to be next to "Add Suggested People" header row (already done).
+- Make the "+" icon always visible (remove `opacity-0 group-hover:opacity-100`).
 
-#### Step 1: Insert Realistic Communications
+**5. Update "Team Members" section to "Invite Team Members"**
+- Rename header to "Invite Team Members".
+- Remove `Users` icon from header.
+- Add a subtitle: "Add team members to collaborate with them on CLX".
 
-Insert ~30 `evan_communications` records with:
-- **Emails** (inbound/outbound): Subject lines and previews about term sheets, document requests, lender updates, financial reviews
-- **Calls** (inbound/outbound): Call summaries discussing deal progress, lender feedback, client check-ins
-- **SMS**: Quick follow-up messages about scheduling calls, document reminders
-
-Each record will:
-- Reference a real `lead_id` from the existing leads table
-- Have a realistic `content` field (1-2 sentences of commercial lending context)
-- Be timestamped across the last 3 days (today, yesterday, earlier)
-- Alternate between `inbound` and `outbound` direction
-
-#### Step 2: Insert Realistic Tasks
-
-Insert ~10 `evan_tasks` records with lead associations:
-- "Send term sheet to [Lead Name]"
-- "Follow up on document collection for [Company]"
-- "Schedule lender call for [Deal]"
-
-Each linked to a real `lead_id`.
-
-### No Code Changes Needed
-
-The `useFeedData` hook and `FeedCenter`/`ActivityCard` components already handle this data correctly. Once the database has rich data, the feed will populate automatically with:
-- Proper actor names (derived from team member assignments)
-- Lead names and companies
-- Type badges (Email, Call, SMS, Task, Note)
-- Today/Yesterday/Earlier grouping
-- Content previews
-
-The old `feedMockData.ts` file (which is no longer imported by the feed page) can be left as-is since it's unused.
+**6. General card styling**
+- Cards use `bg-card` (white in light mode) instead of `bg-muted/50`.
+- More padding inside cards (~p-4).
+- Dismiss state managed via local `useState` (array of dismissed IDs).
 
 ### Technical Details
 
-- All inserts go to existing tables with existing RLS policies (admin-only)
-- No schema changes required
-- No new files or hooks needed
-- The `useFeedData` hook's 30-second refetch interval will pick up new data automatically
+- **File modified**: `src/components/feed/FeedRightPanel.tsx`
+- **New imports**: `X`, `Monitor` (or `SquareCheck`) from lucide-react; `useState` from react
+- **Dismiss state**: `const [dismissedIds, setDismissedIds] = useState<string[]>([])` -- filter out dismissed items from render
+- **Bold time formatting**: Split the meeting time string to wrap day/time in `<span className="font-bold">` tags
+- **No hardcoded data** -- all content remains database-driven
+- **Component stays under 300 lines** -- may extract a `DismissableCard` wrapper if needed
+
