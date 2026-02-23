@@ -231,8 +231,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const rateLimitResponse = await enforceRateLimit(req, 'twilio-inbound', 300, 60);
-  if (rateLimitResponse) return rateLimitResponse;
+  // Rate limit in background — don't block TwiML response for Twilio webhooks
+  waitUntil(
+    enforceRateLimit(req, 'twilio-inbound', 300, 60).then((resp) => {
+      if (resp) console.warn('[twilio-inbound] Rate limit would have blocked:', resp.status);
+    })
+  );
 
   let callSid = '';
   let fromNumber = '';

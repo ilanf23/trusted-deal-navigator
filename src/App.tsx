@@ -9,6 +9,7 @@ import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import FloatingAIChat from "@/components/admin/FloatingAIChat";
 import { CallProvider } from "@/contexts/CallContext";
 import { IncomingCallPopup } from "@/components/evan/IncomingCallPopup";
+import { useEdgeFunctionWarmup } from "@/hooks/useEdgeFunctionWarmup";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import EmployeeRoute from "@/components/admin/EmployeeRoute";
 import AdminRouteLayout from "@/components/admin/AdminRouteLayout";
@@ -87,10 +88,16 @@ const queryClient = new QueryClient({
   },
 });
 
+const AppWarmup = () => {
+  useEdgeFunctionWarmup();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <AuthProvider>
+        <AppWarmup />
         <TooltipProvider>
           <Toaster />
           <Sonner />
