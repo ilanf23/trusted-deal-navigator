@@ -65,12 +65,12 @@ const FeedLeftPanel = ({
               onTeamMemberSelect(selectedTeamMember === member.name ? null : member.name)
             }
             className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all',
+              'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all border-2',
               'bg-muted/60 text-[#1e1b4b]',
               idx > 0 && '-ml-2',
               selectedTeamMember === member.name
-                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background bg-muted z-10'
-                : 'hover:bg-muted'
+                ? 'border-primary bg-muted z-10'
+                : 'border-transparent hover:bg-muted'
             )}
             style={{ zIndex: selectedTeamMember === member.name ? 10 : teamMembers.length - idx }}
           >
