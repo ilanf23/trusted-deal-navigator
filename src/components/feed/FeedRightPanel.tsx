@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { AlertCircle, CalendarClock, UserPlus, Users, ChevronRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 const avatarColors = [
   'bg-sky-600', 'bg-blue-600', 'bg-pink-600', 'bg-emerald-600',
@@ -54,6 +56,10 @@ const formatMeetingTime = (startTime: string): string => {
 };
 
 const FeedRightPanel = () => {
+  const navigate = useNavigate();
+  const { teamMember } = useTeamMember();
+  const basePath = teamMember ? `/admin/${teamMember.name.toLowerCase()}` : '/admin/evan';
+
   // Tasks due soon (incomplete with due dates)
   const { data: dueTasks = [] } = useQuery({
     queryKey: ['feed-right-due-tasks'],
@@ -145,6 +151,7 @@ const FeedRightPanel = () => {
                 return (
                   <div
                     key={task.id}
+                    onClick={() => navigate(`${basePath}/tasks?taskId=${task.id}`)}
                     className="bg-muted/50 rounded-lg p-3 border border-border hover:border-primary/30 transition-colors cursor-pointer"
                   >
                     <p className="text-xs text-muted-foreground">
@@ -190,6 +197,7 @@ const FeedRightPanel = () => {
                 return (
                   <div
                     key={meeting.id}
+                    onClick={() => navigate(`${basePath}/calendar`)}
                     className="bg-muted/50 rounded-lg p-3 border border-border hover:border-primary/30 transition-colors cursor-pointer"
                   >
                     <div className="flex items-start gap-2">
