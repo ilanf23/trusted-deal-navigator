@@ -571,37 +571,22 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       // SDK didn't deliver the call — use REST API to redirect the call to our browser client
       console.log('[CallContext] No SDK activeCall — using REST API to redirect call', incomingCall.call_sid);
 
-      // Ensure device is initialized so it can receive the re-routed call
-      const device = deviceRef.current ?? (await initializeTwilioDevice());
-      if (!device) {
-        throw new Error('Phone is not ready yet. Please refresh the page and try again.');
-      }
+      // 1. Fire-and-forget: kick off device initialization in parallel (non-blocking)
+      //    so it's hopefully ready by the time the redirected call arrives
+      const deviceInitPromise = initializeTwilioDevice().catch(err => {
+        console.error('[CallContext] Parallel device init failed:', err);
+        return null;
+      });
 
-      // Wait briefly for device to register if it just initialized
-      if (device.state !== 'registered') {
-        console.log('[CallContext] Waiting for device registration...');
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('Device registration timed out')), 10000);
-          const checkRegistered = () => {
-            if (device.state === 'registered') {
-              clearTimeout(timeout);
-              resolve();
-            }
-          };
-          device.on('registered', () => { clearTimeout(timeout); resolve(); });
-          // Check immediately in case already registered
-          checkRegistered();
-        });
-      }
-
-      // Get fresh session token for the edge function call
+      // 2. Get fresh session token for the edge function call
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) {
         throw new Error('Not authenticated');
       }
 
-      // Call the edge function to redirect the live call to our browser client
+      // 3. Immediately call twilio-connect-call REST API — no device registration gate
+      console.log('[CallContext] Calling twilio-connect-call immediately (no registration wait)');
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-connect-call`,
         {
@@ -619,16 +604,22 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(err.error || 'Failed to connect call');
       }
 
-      // Wait for SDK to fire the incoming event (the redirect triggers a new dial to clx-admin)
+      // 4. Wait for device init to complete (best effort) then poll for SDK incoming event
+      const device = await deviceInitPromise ?? deviceRef.current;
+      if (!device) {
+        throw new Error('Could not connect. Please refresh the page and try again.');
+      }
+
       console.log('[CallContext] Call redirected, waiting for SDK incoming event...');
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
-          reject(new Error('Call connection timed out. The caller may have hung up.'));
+          reject(new Error('Could not connect. Please try answering again or refresh the page.'));
         }, 15000);
 
         const checkActive = setInterval(() => {
-          // activeCall state won't be visible here, but device.calls will have it
-          const calls = Array.from(device.calls?.values?.() || []);
+          // Check device.calls for the redirected call arriving via SDK
+          const currentDevice = deviceRef.current;
+          const calls = Array.from(currentDevice?.calls?.values?.() || []);
           if (calls.length > 0) {
             const sdkCall = calls[0];
             clearTimeout(timeout);
