@@ -65,9 +65,11 @@ const FeedLeftPanel = ({
               onTeamMemberSelect(selectedTeamMember === member.name ? null : member.name)
             }
             className={cn(
-              'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all',
-              'bg-[#EDE9F6] text-[#5B21B6]',
-              selectedTeamMember === member.name && 'ring-2 ring-[#5B21B6] ring-offset-1'
+              'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all',
+              'bg-muted/60 text-[#1e1b4b]',
+              selectedTeamMember === member.name
+                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background bg-muted'
+                : 'hover:bg-muted'
             )}
           >
             {member.name.charAt(0).toUpperCase()}
