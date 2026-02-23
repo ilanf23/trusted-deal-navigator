@@ -1,75 +1,57 @@
 
 
-## Remove Hardcoded Data from WendysPage.tsx
+## Seed Realistic Activity Data into the Feed
 
-### What's Hardcoded Today
+### Problem
+The Feed page (`/admin/evan/pipeline/feed`) already pulls from real database tables via the `useFeedData` hook, but the existing data is thin:
+- `evan_communications`: 63 records, but most have `lead_id = NULL` and generic content like "Incoming call - completed"
+- `lead_activities`: 0 records (empty)
+- `evan_tasks`: 63 records, but many lack lead associations
 
-WendysPage has **4 hardcoded data blocks** (lines 10-34):
+The feed appears sparse and doesn't showcase the Copper CRM-style activity stream properly.
 
-1. **`metrics`** -- activeDeals (10), avgDaysPerDeal (46), closingsLast30d (5), conversionRate (33), callsToday (18), emailsSent (24)
-2. **`clientFollowUps`** -- 6 static rows with client, lastContact, nextAction, priority, dealStage
-3. **`communicationLog`** -- 5 static entries with type, client, summary, duration, time
-4. **Today's Targets** -- 3 hardcoded progress bars (Client Calls 18/20, Follow-up Emails 24/25, Deal Progressions 3/5)
+### What We'll Do
 
-### Existing Database Sources
+Seed ~40 realistic, time-staggered activity records into `evan_communications` that reference actual leads in the database. These will include emails, calls, and SMS messages with realistic commercial lending content, spread across the last 3 days so the feed's Today/Yesterday/Earlier grouping looks natural.
 
-| Data Block | Source | Data Exists? |
-|---|---|---|
-| Metrics (active deals, avg days, closings, conversion) | `v_team_performance` WHERE name = 'Wendy' | Yes -- `{active_deals: 5, avg_days: 10, closings: 2, conversion: 29}` |
-| Calls today / emails sent | No call/email log table | Not trackable -- will derive from deal counts |
-| Client follow-ups | `dashboard_deals` WHERE owner = 'Wendy' | Yes -- 5 active deals with stage and days_in_stage |
-| Communication log | No activity log table | Not available -- will show empty state |
-| Today's Targets | `team_monthly_goals` WHERE team_member_name = 'Wendy' | Empty -- needs seeding |
+All records will reference real `lead_id` values from the 39 existing leads, and use team member names that match the existing team (Evan, Brad, Wendy, Maura, Adam).
 
-### Plan
+#### Step 1: Insert Realistic Communications
 
-#### Step 1: Seed Wendy's Goals into `team_monthly_goals`
+Insert ~30 `evan_communications` records with:
+- **Emails** (inbound/outbound): Subject lines and previews about term sheets, document requests, lender updates, financial reviews
+- **Calls** (inbound/outbound): Call summaries discussing deal progress, lender feedback, client check-ins
+- **SMS**: Quick follow-up messages about scheduling calls, document reminders
 
-The table already exists. Insert Wendy's 3 daily target goals:
+Each record will:
+- Reference a real `lead_id` from the existing leads table
+- Have a realistic `content` field (1-2 sentences of commercial lending context)
+- Be timestamped across the last 3 days (today, yesterday, earlier)
+- Alternate between `inbound` and `outbound` direction
 
-- "Client Calls" -- current: 18, target: 20
-- "Follow-up Emails" -- current: 24, target: 25
-- "Deal Progressions" -- current: 3, target: 5
+#### Step 2: Insert Realistic Tasks
 
-#### Step 2: Create `src/hooks/useWendysDashboard.ts`
+Insert ~10 `evan_tasks` records with lead associations:
+- "Send term sheet to [Lead Name]"
+- "Follow up on document collection for [Company]"
+- "Schedule lender call for [Deal]"
 
-Same pattern as the other dashboard hooks. Queries:
+Each linked to a real `lead_id`.
 
-- **`v_team_performance`** filtered to Wendy -- provides active_deals, avg_days, closings, conversion
-- **`dashboard_deals`** filtered to `owner_name = 'Wendy'` -- provides client follow-ups table (deal_name as client, stage as dealStage, days_in_stage drives priority and "last contact" text, next_action derived from stage)
-- **`team_monthly_goals`** filtered to `team_member_name = 'Wendy'` -- provides Today's Targets progress bars
+### No Code Changes Needed
 
-For **callsToday** and **emailsSent**, since no call/email log tables exist, these will be derived: callsToday = count of active deals, emailsSent = count of deals in mid/late stages. This avoids fake data.
+The `useFeedData` hook and `FeedCenter`/`ActivityCard` components already handle this data correctly. Once the database has rich data, the feed will populate automatically with:
+- Proper actor names (derived from team member assignments)
+- Lead names and companies
+- Type badges (Email, Call, SMS, Task, Note)
+- Today/Yesterday/Earlier grouping
+- Content previews
 
-For **client follow-ups**, each deal maps to: client = deal_name, dealStage = stage, priority = High if days_in_stage > 10, Medium if > 5, Low otherwise, lastContact = relative text from days_in_stage, nextAction = stage-appropriate action text.
+The old `feedMockData.ts` file (which is no longer imported by the feed page) can be left as-is since it's unused.
 
-For **communication log**, no activity log table exists -- returns empty array with empty state fallback.
+### Technical Details
 
-Returns:
-```
-{
-  metrics: { activeDeals, avgDaysPerDeal, closingsLast30d, conversionRate, callsToday, emailsSent },
-  clientFollowUps: [{ client, lastContact, nextAction, priority, dealStage }],
-  communicationLog: [],
-  dailyTargets: [{ label, current, target, progress }],
-  isLoading
-}
-```
-
-#### Step 3: Update WendysPage.tsx
-
-- Remove all hardcoded data (lines 10-34)
-- Import and call `useWendysDashboard()`
-- Add loading skeleton state (same pattern as MaurasPage/BradsPage)
-- Replace static Today's Targets section with data-driven loop from `dailyTargets`
-- Client Follow-ups and Communication Log map over hook data with empty state fallbacks
-- Keep all UI layout, styling, `getPriorityColor`, icons, and component hierarchy identical
-
-### What Does NOT Change
-
-- UI layout, card grid, table structure, progress bars
-- Component imports (AdminLayout, Card, Badge, Table, Progress, Phone, Mail icons)
-- Styling classes and `getPriorityColor` function
-- Routing
-- No other files modified
-
+- All inserts go to existing tables with existing RLS policies (admin-only)
+- No schema changes required
+- No new files or hooks needed
+- The `useFeedData` hook's 30-second refetch interval will pick up new data automatically
