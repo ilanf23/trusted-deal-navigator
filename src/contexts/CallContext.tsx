@@ -556,15 +556,6 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   const answerCall = useCallback(async () => {
     if (!incomingCall) throw new Error('No incoming call');
 
-    const device = deviceRef.current ?? (await initializeTwilioDevice());
-    if (!device) {
-      throw new Error('Phone is not ready yet. Please refresh the page and try again.');
-    }
-
-    if (!activeCall) {
-      throw new Error('Still connecting the call… please wait 1–2 seconds and press Answer again.');
-    }
-
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
@@ -572,8 +563,99 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     }
 
     await logCallEvent(incomingCall.call_sid, 'answer_attempted', incomingCall.call_flow_id);
-    
-    activeCall.accept();
+
+    // If SDK already has the call object, accept directly
+    if (activeCall) {
+      activeCall.accept();
+    } else {
+      // SDK didn't deliver the call — use REST API to redirect the call to our browser client
+      console.log('[CallContext] No SDK activeCall — using REST API to redirect call', incomingCall.call_sid);
+
+      // Ensure device is initialized so it can receive the re-routed call
+      const device = deviceRef.current ?? (await initializeTwilioDevice());
+      if (!device) {
+        throw new Error('Phone is not ready yet. Please refresh the page and try again.');
+      }
+
+      // Wait briefly for device to register if it just initialized
+      if (device.state !== 'registered') {
+        console.log('[CallContext] Waiting for device registration...');
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Device registration timed out')), 10000);
+          const checkRegistered = () => {
+            if (device.state === 'registered') {
+              clearTimeout(timeout);
+              resolve();
+            }
+          };
+          device.on('registered', () => { clearTimeout(timeout); resolve(); });
+          // Check immediately in case already registered
+          checkRegistered();
+        });
+      }
+
+      // Get fresh session token for the edge function call
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call the edge function to redirect the live call to our browser client
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-connect-call`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ callSid: incomingCall.call_sid }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.error || 'Failed to connect call');
+      }
+
+      // Wait for SDK to fire the incoming event (the redirect triggers a new dial to clx-admin)
+      console.log('[CallContext] Call redirected, waiting for SDK incoming event...');
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Call connection timed out. The caller may have hung up.'));
+        }, 15000);
+
+        const checkActive = setInterval(() => {
+          // activeCall state won't be visible here, but device.calls will have it
+          const calls = Array.from(device.calls?.values?.() || []);
+          if (calls.length > 0) {
+            const sdkCall = calls[0];
+            clearTimeout(timeout);
+            clearInterval(checkActive);
+            setActiveCall(sdkCall);
+
+            sdkCall.accept();
+
+            sdkCall.on('accept', () => {
+              setIsConnected(true);
+              startCallTimer();
+              logCallEvent(incomingCall.call_sid, 'call_accepted');
+            });
+            sdkCall.on('disconnect', () => {
+              logCallEvent(incomingCall.call_sid, 'call_disconnected');
+              handleCallEnd();
+            });
+            sdkCall.on('cancel', () => {
+              logCallEvent(incomingCall.call_sid, 'call_cancelled');
+              handleCallEnd();
+            });
+
+            resolve();
+          }
+        }, 200);
+      });
+    }
 
     const { error } = await supabase
       .from('active_calls')
@@ -587,7 +669,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     
     await logCallEvent(incomingCall.call_sid, 'call_answered', incomingCall.call_flow_id);
     toast.success('Call connected!');
-  }, [incomingCall, activeCall, initializeTwilioDevice, logCallEvent]);
+  }, [incomingCall, activeCall, initializeTwilioDevice, logCallEvent, startCallTimer, handleCallEnd]);
 
   const hangupCall = useCallback(async () => {
     if (activeCall) {

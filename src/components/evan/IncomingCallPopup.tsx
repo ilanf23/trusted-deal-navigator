@@ -206,10 +206,10 @@ export const IncomingCallPopup = () => {
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700"
                     onClick={() => answerMutation.mutate()}
-                    disabled={answerMutation.isPending || isInitializing || !activeCall}
+                    disabled={answerMutation.isPending}
                   >
                     <Phone className="h-4 w-4 mr-2" />
-                    {isInitializing ? 'Connecting...' : !activeCall ? 'Waiting...' : 'Answer'}
+                    {answerMutation.isPending ? 'Connecting...' : 'Answer'}
                   </Button>
                 </div>
               )}

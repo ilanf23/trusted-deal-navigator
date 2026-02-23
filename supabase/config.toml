@@ -36,6 +36,9 @@ verify_jwt = false
 [functions.twilio-call]
 verify_jwt = false
 
+[functions.twilio-connect-call]
+verify_jwt = false
+
 [functions.twilio-inbound]
 verify_jwt = false
 
