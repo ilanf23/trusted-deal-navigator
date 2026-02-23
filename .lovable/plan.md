@@ -1,43 +1,81 @@
 
 
-## Fix: Show Incoming Call Popup Even When Twilio Device Isn't Ready
+## Fix: Incoming Call Answer Button Disabled ("Waiting...")
 
 ### Root Cause
-The `call_events` logs confirm the frontend **did** receive the inbound call via realtime subscription (`event_type: realtime_received`, `socket_connected: true`). However, the Twilio Device was not registered (`device_ready: false`), so the code buffered the call instead of displaying the popup.
 
-The problematic pattern appears in two places in `CallContext.tsx`:
+There are **two linked problems**:
+
+1. **Caller hears beep then silence**: The TwiML dials `<Client>clx-admin</Client>` with a 45-second timeout. If the Twilio Device in the browser is not registered at that exact moment, Twilio cannot reach it. The Dial times out and falls through to `<Record playBeep="true" />`, which is the beep the caller hears.
+
+2. **Answer button is faded/disabled**: The popup now appears via database realtime (our last fix), but the Answer button is disabled because it requires `activeCall` -- a Twilio SDK `Call` object that only exists when the SDK fires its `incoming` event. Since the Device isn't registered when Twilio tries to connect, the SDK never fires `incoming`, so `activeCall` stays `null`, and the button stays permanently disabled showing "Waiting...".
 
 ```text
-// Realtime handler (line ~527-533):
-if (device not registered) {
-  buffer the call    <-- BUG: hides the popup
-} else {
-  show the popup
-}
-
-// Polling handler (line ~492-494):
-if (device not registered) {
-  buffer the call    <-- BUG: hides the popup
-}
+Caller dials --> Twilio webhook --> TwiML: Dial <Client>clx-admin</Client>
+                                              |
+                                              v
+                                    Is browser Device registered?
+                                    NO --> 45s timeout --> <Record> beep
+                                    YES --> SDK fires 'incoming' --> activeCall set --> Answer works
 ```
 
-The popup never appears because the Twilio Device WebSocket fails to connect (likely due to iframe restrictions in the preview environment), and buffered calls just sit in memory forever.
+The browser Device fails to register reliably in the preview iframe environment, creating a deadlock: popup shows but can never be answered.
 
-### Fix
+### Solution
 
-**`src/contexts/CallContext.tsx`** -- 3 changes:
+Create a server-side "answer" mechanism using the **Twilio REST API** so the browser can answer calls without depending on the SDK `incoming` event.
 
-1. **Realtime handler (line ~527-533)**: Always set `incomingCall` state to show the popup, regardless of device registration. Remove the buffering branch.
+**1. New edge function: `supabase/functions/twilio-connect-call/index.ts`**
 
-2. **Polling / initial fetch (line ~492-499)**: Same change -- always set `incomingCall` instead of buffering when device isn't ready.
+When the user clicks "Answer" and there is no SDK `activeCall`, this function:
+- Takes the `callSid` from the request
+- Uses the Twilio REST API to update the live call with new TwiML that redirects it to a `<Dial><Client>clx-admin</Client></Dial>` (re-attempting the browser connection)
+- Uses `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` (both already configured as secrets)
+- Follows all edge function standards (CORS, rate limiting, auth verification, generic error responses)
 
-3. **Remove `pendingCallsRef` entirely**: Since we no longer buffer calls, the pending calls ref and the "process pending calls on device registered" logic (lines ~258-264) are no longer needed.
+This effectively "re-rings" the browser client, giving the SDK another chance to fire the `incoming` event now that the Device has had time to register.
 
-The `IncomingCallPopup` already handles the "device not ready" case gracefully -- the Answer button shows "Waiting..." and is disabled when `activeCall` is null. Once the Twilio SDK delivers the `incoming` event (setting `activeCall`), the button becomes active.
+**2. Update `src/contexts/CallContext.tsx` -- `answerCall` function**
 
-### Result
-- The popup will appear immediately when a call is detected via realtime or polling
-- The Answer button remains disabled until the Twilio SDK is ready (existing behavior)
-- If the SDK never connects, the user still sees the call and can decline it
-- No changes to edge functions or database needed
+Current flow:
+```text
+answerCall() --> if no activeCall --> throw error ("Still connecting...")
+```
+
+New flow:
+```text
+answerCall() --> if no activeCall:
+  1. Ensure Device is registered (initialize if needed)
+  2. Call twilio-connect-call edge function to redirect the call back to browser
+  3. Wait briefly for SDK 'incoming' event to fire (setting activeCall)
+  4. Accept the call via SDK
+```
+
+**3. Update `src/components/evan/IncomingCallPopup.tsx`**
+
+- Remove `!activeCall` from the `disabled` condition on the Answer button
+- Change the button text: show "Answer" always (instead of "Waiting...")
+- The `answerCall` mutation will handle the connecting logic internally
+
+### Files to Create/Modify
+
+| File | Action |
+|------|--------|
+| `supabase/functions/twilio-connect-call/index.ts` | **Create** -- new edge function using Twilio REST API |
+| `src/contexts/CallContext.tsx` | **Modify** -- update `answerCall` to use REST API fallback when no SDK `activeCall` |
+| `src/components/evan/IncomingCallPopup.tsx` | **Modify** -- enable Answer button regardless of `activeCall` state |
+
+### Technical Details
+
+The `twilio-connect-call` edge function will use the Twilio REST API:
+
+```text
+POST https://api.twilio.com/2010-04-01/Accounts/{SID}/Calls/{CallSid}.json
+  Url = {supabaseUrl}/functions/v1/twilio-voice?To=client:clx-admin
+  Method = POST
+```
+
+This redirects the in-progress call to new TwiML that re-dials the browser client. The existing `twilio-voice` function can be extended to handle `client:` prefixed destinations, or the connect function can return TwiML directly.
+
+All required secrets (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`) are already configured.
 
