@@ -1,25 +1,38 @@
 
 
-## Restore "New Lead" Filter (Keep UI, No Data)
+## Pull Real Profile Images into Feed Activity Cards & Right Panel
 
-### What Changed
-The last edit removed both the "New Lead" activity data **and** the filter. You want to keep the filter button visible but just not fetch any lead_created data from the database.
+### Problem
+All avatars in the feed are colored circles with initials. The user wants real profile photos pulled from:
+1. **Team members** -- `avatar_url` from the `team_members` table (Evan and Ilan already have uploaded avatars)
+2. **Right panel** -- same `avatar_url` for team member circles in "Invite Team Members" and "Suggestions" sections
 
 ### Changes
 
-**`src/hooks/useFeedData.ts`**
-- Add `'lead_created'` back to the `FeedActivityType` union type
-- Add `'New Lead'` back to the `FEED_ACTIVITY_FILTERS` array
-- Do NOT re-add the database fetching logic (keep it removed)
+**1. `src/hooks/useFeedData.ts`**
+- Expand the `team_members` query to also fetch `avatar_url`
+- Add `actorAvatarUrl: string | null` field to the `FeedActivity` interface
+- Populate `actorAvatarUrl` from the team member map when building each activity item (notes, communications, tasks)
 
-**`src/pages/admin/PipelineFeed.tsx`**
-- Add `'New Lead': ['lead_created']` back to the `typeMap` object in the filter logic
+**2. `src/components/feed/ActivityCard.tsx`**
+- Import the `Avatar`, `AvatarImage`, `AvatarFallback` components from `src/components/ui/avatar.tsx`
+- When `activity.actorAvatarUrl` exists, render the real image inside the avatar circle
+- Fall back to the current initial-based colored circle when no image is available
 
-**`src/components/feed/ActivityCard.tsx`**
-- Restore the `lead_created` cases in the icon, badge color, and label switch statements
+**3. `src/components/feed/FeedRightPanel.tsx`**
+- Expand the `team_members` query to also select `avatar_url`
+- In the "Invite Team Members" section, render `Avatar`/`AvatarImage`/`AvatarFallback` using `avatar_url` when available
+- Keep initial fallback for members without an avatar
 
-**`src/components/feed/FeedCenter.tsx`**
-- Add `a.type === 'lead_created'` back to the "notes" tab filter
+**4. `src/components/feed/FeedLeftPanel.tsx`**
+- Accept `avatar_url` in the `TeamMember` interface prop
+- Render real avatar images in the overlapping team avatar row when available
+- Fall back to initial circles when no image exists
 
-This way the filter appears in the UI but shows the empty state since no `lead_created` activities are ever pushed into the array.
+**5. `src/pages/admin/PipelineFeed.tsx`**
+- Update the `team_members` query to also select `avatar_url` so it passes through to `FeedLeftPanel`
 
+### Technical Details
+- Uses the existing `Avatar`, `AvatarImage`, `AvatarFallback` shadcn/ui components
+- Only team members with uploaded avatars (currently Evan and Ilan) will show real photos; others keep the colored initial fallback
+- No new database tables or columns needed -- `avatar_url` already exists on `team_members`
