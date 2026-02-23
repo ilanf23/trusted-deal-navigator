@@ -3344,6 +3344,36 @@ export type Database = {
         }
         Relationships: []
       }
+      team_monthly_goals: {
+        Row: {
+          created_at: string | null
+          current_value: number
+          goal_label: string
+          id: string
+          target_value: number
+          team_member_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_value?: number
+          goal_label: string
+          id?: string
+          target_value?: number
+          team_member_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_value?: number
+          goal_label?: string
+          id?: string
+          target_value?: number
+          team_member_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
