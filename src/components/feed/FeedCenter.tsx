@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { ArrowUp, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ActivityCard from './ActivityCard';
+import feedEmptyState from '@/assets/feed-empty-state.png';
 import type { FeedActivity } from '@/hooks/useFeedData';
 
 interface FeedCenterProps {
@@ -66,16 +67,18 @@ const FeedCenter = ({ activities, isLoading }: FeedCenterProps) => {
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center px-8">
-            <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center mb-5">
-              <ArrowUp className="w-7 h-7 text-muted-foreground/50 rotate-180" />
-            </div>
+          <div className="flex flex-col items-center justify-center py-10 text-center px-8">
             <p className="text-foreground font-semibold text-lg mb-1">
               No "{activeTab === 'comms' ? 'Communications' : activeTab === 'notes' ? 'Notes & Leads' : 'All Activity'}" activities to show in the last 30 days
             </p>
-            <p className="text-muted-foreground text-sm max-w-md">
+            <p className="text-muted-foreground text-sm max-w-md mb-6">
               When there's activity matching this filter, it will appear here automatically.
             </p>
+            <img
+              src={feedEmptyState}
+              alt="No activities illustration"
+              className="w-full max-w-xl mx-auto"
+            />
           </div>
         ) : (
           groups.map((group) => (
