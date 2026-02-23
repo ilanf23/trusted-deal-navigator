@@ -119,23 +119,11 @@ Deno.serve(async (req) => {
       return new Response(okTwiML(), { status: 200, headers: corsHeaders });
     }
 
-    // Handle recording completed callback - update the communication with the recording URL and transcription
+    // Handle recording completed callback - save recording URL (no automatic transcription)
     if (recordingStatus === 'completed' && recordingUrl) {
-      console.log(`Recording completed for CallSid=${callSid}, processing...`);
+      console.log(`Recording completed for CallSid=${callSid}, saving recording info...`);
       
       const mp3Url = `${recordingUrl}.mp3`;
-      
-      // Get call direction from active_calls
-      const { data: activeCallForDir } = await supabase
-        .from('active_calls')
-        .select('direction')
-        .eq('call_sid', callSid)
-        .maybeSingle();
-      
-      const callDirection = activeCallForDir?.direction || 'inbound';
-      
-      // Transcribe the audio with speaker labels
-      const transcript = await transcribeAudio(mp3Url, callDirection);
       
       // Find the communication by call_sid
       const { data: comm, error: findError } = await supabase
@@ -164,7 +152,6 @@ Deno.serve(async (req) => {
               recording_url: mp3Url,
               recording_sid: recordingSid,
               duration_seconds: parseInt(recordingDuration) || null,
-              transcript: transcript,
               call_sid: callSid,
             })
             .eq('id', recentComm.id);
@@ -172,33 +159,23 @@ Deno.serve(async (req) => {
           if (updateError) {
             console.error('Error updating communication with recording:', updateError);
           } else {
-            console.log(
-              transcript
-                ? `Recording and transcript added to communication ${recentComm.id}`
-                : `Recording saved for communication ${recentComm.id} (transcript unavailable)`
-            );
+            console.log(`Recording saved for communication ${recentComm.id}`);
           }
         }
       } else if (comm) {
-        // Update with recording URL and transcript
         const { error: updateError } = await supabase
           .from('evan_communications')
           .update({
             recording_url: mp3Url,
             recording_sid: recordingSid,
             duration_seconds: parseInt(recordingDuration) || null,
-            transcript: transcript,
           })
           .eq('id', comm.id);
 
         if (updateError) {
           console.error('Error updating communication with recording:', updateError);
         } else {
-          console.log(
-            transcript
-              ? `Recording and transcript added to communication ${comm.id}`
-              : `Recording saved for communication ${comm.id} (transcript unavailable)`
-          );
+          console.log(`Recording saved for communication ${comm.id}`);
         }
       }
 
