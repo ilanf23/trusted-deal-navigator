@@ -66,7 +66,7 @@ const FeedLeftPanel = ({
             }
             className={cn(
               'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all border-2',
-              'bg-muted/60 text-[#1e1b4b]',
+              'bg-muted/60 text-foreground',
               idx > 0 && '-ml-2',
               selectedTeamMember === member.name
                 ? 'border-primary bg-muted z-10'
