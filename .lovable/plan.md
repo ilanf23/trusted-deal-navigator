@@ -1,81 +1,43 @@
 
 
-## Fix: Incoming Call Answer Button Disabled ("Waiting...")
+## Change: Only Run Rating Automation When "Generate Transcript" Is Pressed
 
-### Root Cause
+### Current Flow
+1. Call ends -- recording is saved, transcription happens automatically in `twilio-call-status`
+2. Evan clicks "Add as Lead" on a call -- lead is created in the database
+3. A confirmation dialog appears asking "Run automation?" -- if confirmed, `call-to-lead-automation` fires (AI rating, task creation, Gmail draft, Resend email to Adam/Ilan, database notification)
 
-There are **two linked problems**:
+The Slack alerts in `twilio-inbound` are operational routing alerts (not related to call ratings) and will remain unchanged.
 
-1. **Caller hears beep then silence**: The TwiML dials `<Client>clx-admin</Client>` with a 45-second timeout. If the Twilio Device in the browser is not registered at that exact moment, Twilio cannot reach it. The Dial times out and falls through to `<Record playBeep="true" />`, which is the beep the caller hears.
+### Desired Flow
+1. Call ends -- recording is saved (no automatic transcription or automation)
+2. Evan clicks "Add as Lead" -- lead is created, but NO automation dialog appears
+3. Evan clicks "Generate Transcript" on a call that has a recording -- transcript is generated AND THEN the rating automation runs (AI rating, task, Gmail draft, email notification, Slack)
 
-2. **Answer button is faded/disabled**: The popup now appears via database realtime (our last fix), but the Answer button is disabled because it requires `activeCall` -- a Twilio SDK `Call` object that only exists when the SDK fires its `incoming` event. Since the Device isn't registered when Twilio tries to connect, the SDK never fires `incoming`, so `activeCall` stays `null`, and the button stays permanently disabled showing "Waiting...".
+### Changes
 
-```text
-Caller dials --> Twilio webhook --> TwiML: Dial <Client>clx-admin</Client>
-                                              |
-                                              v
-                                    Is browser Device registered?
-                                    NO --> 45s timeout --> <Record> beep
-                                    YES --> SDK fires 'incoming' --> activeCall set --> Answer works
-```
+**1. `src/pages/admin/EvansCalls.tsx`**
 
-The browser Device fails to register reliably in the preview iframe environment, creating a deadlock: popup shows but can never be answered.
+- Remove the automation confirmation dialog trigger from `addLeadMutation.onSuccess` -- stop calling `setPendingAutomationData(...)` and `setAutomationConfirmOpen(true)` after creating a lead
+- Move the automation trigger into `handleGenerateTranscript` -- after transcript is successfully generated, check if the call has a linked `lead_id`. If it does, automatically invoke `call-to-lead-automation` with the fresh transcript
+- Keep the automation confirmation dialog UI but wire it to fire after transcript generation instead
 
-### Solution
+**2. `supabase/functions/twilio-call-status/index.ts`**
 
-Create a server-side "answer" mechanism using the **Twilio REST API** so the browser can answer calls without depending on the SDK `incoming` event.
-
-**1. New edge function: `supabase/functions/twilio-connect-call/index.ts`**
-
-When the user clicks "Answer" and there is no SDK `activeCall`, this function:
-- Takes the `callSid` from the request
-- Uses the Twilio REST API to update the live call with new TwiML that redirects it to a `<Dial><Client>clx-admin</Client></Dial>` (re-attempting the browser connection)
-- Uses `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` (both already configured as secrets)
-- Follows all edge function standards (CORS, rate limiting, auth verification, generic error responses)
-
-This effectively "re-rings" the browser client, giving the SDK another chance to fire the `incoming` event now that the Device has had time to register.
-
-**2. Update `src/contexts/CallContext.tsx` -- `answerCall` function**
-
-Current flow:
-```text
-answerCall() --> if no activeCall --> throw error ("Still connecting...")
-```
-
-New flow:
-```text
-answerCall() --> if no activeCall:
-  1. Ensure Device is registered (initialize if needed)
-  2. Call twilio-connect-call edge function to redirect the call back to browser
-  3. Wait briefly for SDK 'incoming' event to fire (setting activeCall)
-  4. Accept the call via SDK
-```
-
-**3. Update `src/components/evan/IncomingCallPopup.tsx`**
-
-- Remove `!activeCall` from the `disabled` condition on the Answer button
-- Change the button text: show "Answer" always (instead of "Waiting...")
-- The `answerCall` mutation will handle the connecting logic internally
-
-### Files to Create/Modify
-
-| File | Action |
-|------|--------|
-| `supabase/functions/twilio-connect-call/index.ts` | **Create** -- new edge function using Twilio REST API |
-| `src/contexts/CallContext.tsx` | **Modify** -- update `answerCall` to use REST API fallback when no SDK `activeCall` |
-| `src/components/evan/IncomingCallPopup.tsx` | **Modify** -- enable Answer button regardless of `activeCall` state |
+- Remove the automatic `transcribeAudio` call inside the `recordingStatus === 'completed'` handler -- still save the `recording_url` and `recording_sid`, but skip the Whisper transcription step
+- This ensures transcription only happens when Evan explicitly clicks "Generate Transcript"
 
 ### Technical Details
 
-The `twilio-connect-call` edge function will use the Twilio REST API:
+In `EvansCalls.tsx`, the updated `handleGenerateTranscript` will:
+1. Call `retry-call-transcription` (existing behavior)
+2. On success, look up the call's `lead_id` from the refreshed call history
+3. If a lead is linked, populate `pendingAutomationData` and show the automation confirmation dialog
+4. If no lead is linked, just show a success toast for the transcript
 
-```text
-POST https://api.twilio.com/2010-04-01/Accounts/{SID}/Calls/{CallSid}.json
-  Url = {supabaseUrl}/functions/v1/twilio-voice?To=client:clx-admin
-  Method = POST
-```
+In `twilio-call-status`, the recording handler will be simplified to:
+1. Save `recording_url`, `recording_sid`, `duration_seconds` to `evan_communications`
+2. Skip the `transcribeAudio()` call entirely
+3. The transcript field stays `null` until the user clicks "Generate Transcript"
 
-This redirects the in-progress call to new TwiML that re-dials the browser client. The existing `twilio-voice` function can be extended to handle `client:` prefixed destinations, or the connect function can return TwiML directly.
-
-All required secrets (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`) are already configured.
-
+No changes needed to `call-to-lead-automation` edge function or `twilio-inbound` (the Slack alerts there are operational, not rating-related).
