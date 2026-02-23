@@ -274,7 +274,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
             icon: Kanban,
             subItems: [
               { title: 'Feed', url: `/admin/${employeeName.toLowerCase()}/pipeline/feed`, icon: Rss },
-              { title: 'Pipeline', url: `/admin/${employeeName.toLowerCase()}/pipeline`, icon: Kanban },
+              { 
+                title: 'Pipeline', 
+                url: `/admin/${employeeName.toLowerCase()}/pipeline`, 
+                icon: Kanban,
+                subItems: [
+                  { title: 'Underwriting', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=underwriting`, icon: Kanban },
+                  { title: 'Lender Management', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=lender-management`, icon: Kanban },
+                  { title: 'Potential', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=potential`, icon: Kanban },
+                ],
+              },
               { title: 'Contacts', url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts`, icon: Users },
             ],
           },
@@ -567,21 +576,68 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                         <CollapsibleContent>
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
                             {item.subItems.map((subItem) => (
-                              <Link
-                                key={subItem.title}
-                                to={subItem.url}
-                                onClick={closeMobileMenu}
-                                className={`
-                                  flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[11px] tracking-tight
-                                  ${isActive(subItem.url) 
-                                    ? 'bg-white/15 text-white' 
-                                    : 'text-white/75 hover:bg-white/5 hover:text-white'
-                                  }
-                                `}
-                              >
-                                <subItem.icon className="w-3 h-3 flex-shrink-0" strokeWidth={1.75} />
-                                <span className="font-semibold">{subItem.title}</span>
-                              </Link>
+                              subItem.subItems ? (
+                                <Collapsible
+                                  key={subItem.title}
+                                  open={openSections[`sub-${subItem.title}`]}
+                                  onOpenChange={() => toggleSection(`sub-${subItem.title}`)}
+                                >
+                                  <CollapsibleTrigger className="w-full">
+                                    <div className={`
+                                      flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 cursor-pointer text-[11px] tracking-tight
+                                      ${openSections[`sub-${subItem.title}`]
+                                        ? 'bg-white/10 text-white'
+                                        : 'text-white/75 hover:bg-white/5 hover:text-white'
+                                      }
+                                    `}>
+                                      <subItem.icon className="w-3 h-3 flex-shrink-0" strokeWidth={1.75} />
+                                      <span className="font-semibold flex-1 text-left">{subItem.title}</span>
+                                      <ChevronDown
+                                        className={`w-2.5 h-2.5 transition-transform duration-150 opacity-60 ${
+                                          openSections[`sub-${subItem.title}`] ? '' : '-rotate-90'
+                                        }`}
+                                      />
+                                    </div>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <div className="ml-2.5 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
+                                      {subItem.subItems.map((deepItem) => (
+                                        <Link
+                                          key={deepItem.title}
+                                          to={deepItem.url}
+                                          onClick={closeMobileMenu}
+                                          className={`
+                                            flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[10px] tracking-tight
+                                            ${isActive(deepItem.url)
+                                              ? 'bg-white/15 text-white'
+                                              : 'text-white/65 hover:bg-white/5 hover:text-white'
+                                            }
+                                          `}
+                                        >
+                                          <deepItem.icon className="w-2.5 h-2.5 flex-shrink-0" strokeWidth={1.75} />
+                                          <span className="font-semibold">{deepItem.title}</span>
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              ) : (
+                                <Link
+                                  key={subItem.title}
+                                  to={subItem.url}
+                                  onClick={closeMobileMenu}
+                                  className={`
+                                    flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[11px] tracking-tight
+                                    ${isActive(subItem.url) 
+                                      ? 'bg-white/15 text-white' 
+                                      : 'text-white/75 hover:bg-white/5 hover:text-white'
+                                    }
+                                  `}
+                                >
+                                  <subItem.icon className="w-3 h-3 flex-shrink-0" strokeWidth={1.75} />
+                                  <span className="font-semibold">{subItem.title}</span>
+                                </Link>
+                              )
                             ))}
                           </div>
                         </CollapsibleContent>
