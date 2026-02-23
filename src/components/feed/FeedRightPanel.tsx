@@ -160,7 +160,7 @@ const FeedRightPanel = () => {
                     </p>
                     <p className={cn(
                       'text-sm font-medium mt-0.5 truncate',
-                      dueInfo.urgent ? 'text-destructive' : 'text-foreground'
+                      dueInfo.urgent ? 'text-white font-semibold' : 'text-foreground'
                     )}>
                       "{task.title}" is {dueInfo.text}!
                     </p>
