@@ -50,7 +50,6 @@ const PipelineFeed = () => {
         Email: ['email'],
         SMS: ['sms'],
         Task: ['task_created'],
-        'New Lead': ['lead_created'],
       };
       const allowedTypes = selectedFilters.flatMap((f) => typeMap[f] || []);
       if (allowedTypes.length > 0) {
