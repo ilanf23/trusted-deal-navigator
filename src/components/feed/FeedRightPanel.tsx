@@ -1,161 +1,297 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
-import { CheckSquare, TrendingUp, Clock } from 'lucide-react';
-import { STAGE_LABELS } from '@/constants/appConfig';
+import { format, formatDistanceToNow, isToday, isTomorrow, differenceInDays } from 'date-fns';
+import { AlertCircle, CalendarClock, UserPlus, Users, ChevronRight, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const avatarColors = [
+  'bg-sky-600', 'bg-blue-600', 'bg-pink-600', 'bg-emerald-600',
+  'bg-violet-600', 'bg-teal-600', 'bg-rose-600', 'bg-indigo-600',
+  'bg-amber-600', 'bg-cyan-600',
+];
+
+const getColorFromName = (name: string) => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+};
+
+const getInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+};
+
+const formatDueLabel = (dueDate: string): { text: string; urgent: boolean } => {
+  const due = new Date(dueDate);
+  const now = new Date();
+  const days = differenceInDays(due, now);
+
+  if (days < 0) return { text: `overdue by ${Math.abs(days)} day${Math.abs(days) > 1 ? 's' : ''}`, urgent: true };
+  if (days === 0) return { text: 'due today', urgent: true };
+  if (days === 1) return { text: 'due in 1 day', urgent: true };
+  if (days <= 3) return { text: `due in ${days} days`, urgent: false };
+  return { text: `due ${format(due, 'MMM d')}`, urgent: false };
+};
+
+const formatMeetingTime = (startTime: string): string => {
+  const date = new Date(startTime);
+  const now = new Date();
+
+  if (isToday(date)) {
+    return `today at ${format(date, 'h:mm a')} EST`;
+  }
+  if (isTomorrow(date)) {
+    return `tomorrow at ${format(date, 'h:mm a')} EST`;
+  }
+  const days = differenceInDays(date, now);
+  if (days <= 6) {
+    return `on ${format(date, 'EEEE')} at ${format(date, 'h:mm a')} EST`;
+  }
+  return `on ${format(date, 'MMM d')} at ${format(date, 'h:mm a')} EST`;
+};
 
 const FeedRightPanel = () => {
-  // Upcoming tasks
-  const { data: upcomingTasks } = useQuery({
-    queryKey: ['feed-upcoming-tasks'],
+  // Tasks due soon (incomplete with due dates)
+  const { data: dueTasks = [] } = useQuery({
+    queryKey: ['feed-right-due-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_tasks')
-        .select('id, title, due_date, assignee_name, priority, status')
+        .select('id, title, due_date, assignee_name, lead_id, priority')
         .eq('is_completed', false)
-        .order('due_date', { ascending: true, nullsFirst: false })
+        .not('due_date', 'is', null)
+        .order('due_date', { ascending: true })
         .limit(5);
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
-  // Pipeline stage counts
-  const { data: stageCounts } = useQuery({
-    queryKey: ['feed-stage-counts'],
+  // Upcoming appointments
+  const { data: upcomingMeetings = [] } = useQuery({
+    queryKey: ['feed-right-meetings'],
+    queryFn: async () => {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('evan_appointments')
+        .select('id, title, start_time, end_time, team_member_name, description')
+        .gte('start_time', now)
+        .order('start_time', { ascending: true })
+        .limit(3);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Suggested people (leads with email, most recently active)
+  const { data: suggestedPeople = [] } = useQuery({
+    queryKey: ['feed-right-suggestions'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('status');
-      if (error) throw error;
-      const counts: Record<string, number> = {};
-      for (const lead of data || []) {
-        counts[lead.status] = (counts[lead.status] || 0) + 1;
-      }
-      return counts;
-    },
-  });
-
-  // Recent leads
-  const { data: recentLeads } = useQuery({
-    queryKey: ['feed-recent-leads'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('id, name, company_name, status, created_at')
-        .order('created_at', { ascending: false })
+        .select('id, name, email, company_name')
+        .not('email', 'is', null)
+        .order('updated_at', { ascending: false })
         .limit(5);
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
-  const today = format(new Date(), 'EEEE, MMMM do');
+  // Team members
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['feed-right-team'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id, name, email')
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const parseMeetingAttendees = (title: string): { primary: string; others: string[] } => {
+    // Titles like "Evan/Wendy" or "CLX Team TouchPoint"
+    const parts = title.split('/').map(s => s.trim());
+    if (parts.length > 1) {
+      return { primary: parts[0], others: parts.slice(1) };
+    }
+    // "CLX Team TouchPoint" → show as team meeting with all members
+    if (title.toLowerCase().includes('team')) {
+      const others = teamMembers.filter(m => m.name.toLowerCase() !== 'evan').map(m => m.name);
+      return { primary: 'Team', others };
+    }
+    return { primary: title, others: [] };
+  };
 
   return (
-    <div className="w-[300px] min-w-[300px] bg-card border-l border-border h-full overflow-y-auto">
-      <div className="p-4">
-        {/* Date */}
-        <div className="text-right text-sm text-muted-foreground mb-4">{today}</div>
+    <div className="w-[300px] min-w-[300px] bg-card border-l border-border h-full overflow-y-auto hidden lg:block">
+      <div className="p-4 space-y-5">
 
-        {/* Pipeline Snapshot */}
-        <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-medium mb-3">
-          Pipeline Snapshot
-        </div>
-        <div className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] border border-border p-4 mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-bold text-foreground">Active Deals</h3>
-          </div>
-          {stageCounts && Object.keys(stageCounts).length > 0 ? (
+        {/* ─── Keep Things Moving ─── */}
+        {dueTasks.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <AlertCircle className="w-4 h-4 text-amber-500" />
+              <h3 className="text-sm font-bold text-foreground">Keep things moving</h3>
+            </div>
             <div className="space-y-2">
-              {Object.entries(stageCounts)
-                .filter(([stage]) => stage !== 'won')
-                .map(([stage, count]) => (
-                  <div key={stage} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{STAGE_LABELS[stage] || stage}</span>
-                    <span className="font-semibold text-foreground">{count}</span>
-                  </div>
-                ))}
-              {stageCounts['won'] && (
-                <div className="flex items-center justify-between text-xs pt-2 border-t border-border">
-                  <span className="text-green-600 font-medium">Won</span>
-                  <span className="font-semibold text-green-600">{stageCounts['won']}</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">No active deals</p>
-          )}
-        </div>
-
-        {/* Upcoming Tasks */}
-        <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-medium mb-3">
-          Upcoming Tasks
-        </div>
-        <div className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] border border-border p-4 mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <CheckSquare className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-bold text-foreground">Tasks</h3>
-          </div>
-          {upcomingTasks && upcomingTasks.length > 0 ? (
-            <div className="space-y-2.5">
-              {upcomingTasks.map((task) => (
-                <div key={task.id} className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-foreground font-medium truncate">{task.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {task.due_date && (
-                        <span className="text-[11px] text-muted-foreground">
-                          {format(new Date(task.due_date), 'MMM d')}
-                        </span>
-                      )}
-                      {task.assignee_name && (
-                        <span className="text-[11px] text-muted-foreground/60">{task.assignee_name}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">No upcoming tasks</p>
-          )}
-        </div>
-
-        {/* Recent Leads */}
-        <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-medium mb-3">
-          Recent Leads
-        </div>
-        <div className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] border border-border p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-bold text-foreground">New Leads</h3>
-          </div>
-          {recentLeads && recentLeads.length > 0 ? (
-            <div className="space-y-2.5">
-              {recentLeads.map((lead) => (
-                <div key={lead.id} className="flex items-start gap-2">
-                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-foreground flex-shrink-0">
-                    {lead.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-foreground font-medium truncate">{lead.name}</p>
-                    {lead.company_name && (
-                      <p className="text-[11px] text-muted-foreground truncate">{lead.company_name}</p>
+              {dueTasks.map((task) => {
+                const dueInfo = formatDueLabel(task.due_date!);
+                return (
+                  <div
+                    key={task.id}
+                    className="bg-muted/50 rounded-lg p-3 border border-border hover:border-primary/30 transition-colors cursor-pointer"
+                  >
+                    <p className="text-xs text-muted-foreground">
+                      You have a task {dueInfo.text}!
+                    </p>
+                    <p className={cn(
+                      'text-sm font-medium mt-0.5 truncate',
+                      dueInfo.urgent ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
+                    )}>
+                      "{task.title}" is {dueInfo.text}!
+                    </p>
+                    {task.assignee_name && (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <div className={cn(
+                          'w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold',
+                          getColorFromName(task.assignee_name)
+                        )}>
+                          {task.assignee_name.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">
-                    {STAGE_LABELS[lead.status] || lead.status}
-                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Upcoming Meetings ─── */}
+        {upcomingMeetings.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarClock className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">Upcoming Meetings</h3>
+            </div>
+            <div className="space-y-2">
+              {upcomingMeetings.map((meeting) => {
+                const attendees = parseMeetingAttendees(meeting.title);
+                const othersText = attendees.others.length > 0
+                  ? `with ${attendees.others[0]}${attendees.others.length > 1 ? ` +${attendees.others.length - 1} more` : ''}`
+                  : '';
+
+                return (
+                  <div
+                    key={meeting.id}
+                    className="bg-muted/50 rounded-lg p-3 border border-border hover:border-primary/30 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className={cn(
+                        'w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mt-0.5',
+                        getColorFromName(attendees.primary)
+                      )}>
+                        {attendees.primary.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">Upcoming Meeting</p>
+                        {othersText && (
+                          <p className="text-xs text-muted-foreground">{othersText}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          You have a meeting {formatMeetingTime(meeting.start_time)}. Prepare for your meeting now.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Suggestions ─── */}
+        {suggestedPeople.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Suggestions</h3>
+              </div>
+              <button className="text-xs text-primary hover:text-primary/80 font-medium">View all</button>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg border border-border p-3 mb-2">
+              <p className="text-xs font-semibold text-foreground mb-1">Add Suggested People</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Once added, all the conversations with them will be visible and auto-tracked in your CRM
+              </p>
+            </div>
+
+            <div className="space-y-0.5">
+              {suggestedPeople.map((person) => (
+                <div
+                  key={person.id}
+                  className="flex items-center gap-2.5 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                >
+                  <div className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0',
+                    getColorFromName(person.name)
+                  )}>
+                    {getInitials(person.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {person.name}
+                      {person.company_name && (
+                        <span className="text-muted-foreground font-normal"> at {person.company_name}</span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate">{person.email}</p>
+                  </div>
+                  <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">No recent leads</p>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* ─── Invite Team Members ─── */}
+        {teamMembers.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Users className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">Team Members</h3>
+            </div>
+
+            <div className="space-y-0.5">
+              {teamMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center gap-2.5 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                >
+                  <div className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0',
+                    getColorFromName(member.name)
+                  )}>
+                    {getInitials(member.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{member.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{member.email}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
