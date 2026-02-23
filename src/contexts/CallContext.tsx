@@ -463,10 +463,31 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         .order('created_at', { ascending: false });
       
       if (!error && data && data.length > 0) {
-        console.log('[CallContext] Found ringing calls:', data.length);
-        
-        if (!incomingCallRef.current && !isConnectedRef.current) {
-          const call = data[0] as ActiveCallData;
+        const now = Date.now();
+        const STALE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+
+        // Auto-complete stale ringing calls that were never answered
+        const staleCalls = data.filter(
+          (c) => now - new Date(c.created_at).getTime() > STALE_THRESHOLD_MS
+        );
+        if (staleCalls.length > 0) {
+          console.log('[CallContext] Cleaning up', staleCalls.length, 'stale ringing call(s)');
+          for (const stale of staleCalls) {
+            supabase
+              .from('active_calls')
+              .update({ status: 'completed', ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+              .eq('id', stale.id)
+              .then(({ error: e }) => { if (e) console.error('[CallContext] Failed to clean stale call:', e); });
+          }
+        }
+
+        // Only consider fresh calls
+        const freshCalls = data.filter(
+          (c) => now - new Date(c.created_at).getTime() <= STALE_THRESHOLD_MS
+        );
+
+        if (freshCalls.length > 0 && !incomingCallRef.current && !isConnectedRef.current) {
+          const call = freshCalls[0] as ActiveCallData;
           
           if (deviceRef.current?.state !== 'registered') {
             console.log('[CallContext] Device not ready, buffering call:', call.call_sid);
