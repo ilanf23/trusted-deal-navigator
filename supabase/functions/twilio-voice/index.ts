@@ -37,6 +37,19 @@ Deno.serve(async (req) => {
       return new Response(twiml, { headers: corsHeaders });
     }
 
+    // Handle client: prefix for browser-to-browser connections
+    if (toNumber.startsWith('client:')) {
+      const clientIdentity = toNumber.replace('client:', '');
+      console.log(`Dialing Twilio Client: ${clientIdentity}`);
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial callerId="${twilioPhoneNumber}" timeout="30">
+    <Client>${clientIdentity}</Client>
+  </Dial>
+</Response>`;
+      return new Response(twiml, { headers: corsHeaders });
+    }
+
     // Format phone number
     let formattedPhone = toNumber.replace(/\D/g, '');
     if (formattedPhone.length === 10) {
