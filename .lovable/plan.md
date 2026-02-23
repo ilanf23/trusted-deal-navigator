@@ -1,163 +1,84 @@
 
 
-## Refactor: Decompose EvansGmail.tsx (2248 lines) into Reusable Modules
+## Remove Hardcoded Data from BradsPage.tsx
 
-### Current State
+### What's Hardcoded Today
 
-| File | Lines | Status |
-|------|-------|--------|
-| `src/pages/admin/EvansGmail.tsx` | 2,248 | Monolithic -- needs decomposition |
-| `src/pages/admin/IlansGmail.tsx` | 99 | Already clean -- uses shared `GmailInbox` |
-| `src/components/gmail/GmailInbox.tsx` | 287 | Shared shell -- used by Ilan only |
+BradsPage has **5 hardcoded data blocks** (lines 10-38, 207-234):
 
-### Why EvansGmail Can't Simply Become `<GmailInbox userId="evan" />`
+1. **`metrics`** -- active deals, avg days, closings, conversion, pipeline value, projected fees
+2. **`highValueDeals`** -- 5 static deal rows
+3. **`upcomingMeetings`** -- 4 static meeting entries
+4. **`referralPartners`** -- 3 static partner rows
+5. **Monthly Goals** -- 3 hardcoded progress bars with static values
 
-After a full audit, EvansGmail contains **1,800+ lines of Evan-specific CRM logic** that does not exist in the shared GmailInbox:
+### Existing Database Tables That Already Have Brad's Data
 
-- AI "Move Forward" draft generation with `outbound_emails` persistence
-- CRM lead matching and deal sidebar (contacts, phones, emails, pipeline stage editing)
-- URL-param compose handling with `DraftContext` for cross-page navigation
-- Inline reply with local thread state and task auto-completion
-- Mock external emails mixed into real inbox
-- 7-day follow-up filtering and CRM category folders
-- Pagination with page controls
-- Email templates view
-- Task creation dialog from email context
-- Lead/pipeline mutations from the sidebar
+| Data Block | Source Table/View | Brad's Data Exists? |
+|---|---|---|
+| Metrics (active deals, conversion, etc.) | `v_team_performance` | Yes -- `{active_deals: 9, closings: 3, conversion: 25}` |
+| Pipeline value / projected fees | `dashboard_deals` (aggregate) | Yes -- 9 deals with amounts |
+| High-value deals | `dashboard_deals WHERE owner_name = 'Brad'` | Yes -- real deal data |
+| Upcoming meetings | `evan_appointments WHERE team_member_name = 'brad'` | Empty -- needs to be populated |
+| Referral partners | `dashboard_referral_sources` | Yes -- shared table |
+| Monthly goals | No table exists | Needs new table |
 
-Forcing all of this through render props on `GmailInbox` would make the config object larger than the current file. Instead, we decompose EvansGmail into focused modules.
+### Plan
 
-### Refactor Strategy
+#### Step 1: Create `team_monthly_goals` Table (Migration)
 
-**Extract 4 files, reduce EvansGmail to ~150 lines.**
+New table for the monthly goals section:
 
-```text
-BEFORE:
-  EvansGmail.tsx (2,248 lines) -- everything in one file
+```sql
+CREATE TABLE team_monthly_goals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_member_name text NOT NULL,
+  goal_label text NOT NULL,
+  current_value integer NOT NULL DEFAULT 0,
+  target_value integer NOT NULL DEFAULT 1,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
 
-AFTER:
-  EvansGmail.tsx              (~150 lines)  -- thin wrapper, imports + JSX orchestration
-  useEvansGmailLogic.ts       (~500 lines)  -- all state, queries, mutations, handlers
-  EvansGmailEmailList.tsx     (~250 lines)  -- email list rows with CRM badges
-  EvansGmailEmailDetail.tsx   (~600 lines)  -- email detail view with thread, inline reply, deal sidebar
-  EvansGmailDealSidebar.tsx   (~350 lines)  -- lead info panel (contacts, phones, emails, stage)
+ALTER TABLE team_monthly_goals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage team monthly goals"
+  ON team_monthly_goals FOR ALL
+  USING (has_role(auth.uid(), 'admin'));
 ```
 
-### File-by-File Plan
+Seed Brad's 3 goals into the table.
 
-**1. `src/hooks/useEvansGmailLogic.ts` (NEW -- ~500 lines)**
+#### Step 2: Create `useBradsDashboard` Hook
 
-Extracts ALL business logic from EvansGmail:
-- All `useState` declarations (selectedEmailId, activeFolder, searchQuery, compose state, etc.)
-- All `useQuery` calls (allLeads, crmEmails, pipelineStages)
-- All `useMutation` calls (updateLeadMutation, updateStageMutation)
-- `useGmailConnection` initialization
-- `useDraft` context consumption
-- URL-param compose `useEffect` handlers
-- `handleMoveForward`, `handleSendEmail`, `handleReply`, `handleConnectGmail`
-- `handleSelectEmail`, `handleMarkUnread`
-- `filteredEmails`, `paginatedEmails`, `folderCounts` memos
-- `findLeadForEmail`, `isExternalEmail` wrappers
-- Inline reply send handler
-- Returns all state + handlers as a typed object
+New file: `src/hooks/useBradsDashboard.ts`
 
-**2. `src/components/evan/gmail/EvansGmailEmailList.tsx` (NEW -- ~250 lines)**
+Queries:
+- `v_team_performance` filtered to Brad -- provides active_deals, avg_days, closings, conversion
+- `dashboard_deals` filtered to `owner_name = 'Brad'`, ordered by `requested_amount DESC`, limit 10 -- provides high-value deals with real stage, amount, fees, days
+- Aggregate `dashboard_deals` for Brad -- pipeline value (sum of requested_amount) and projected fees (sum of weighted_fees)
+- `evan_appointments` filtered to `team_member_name = 'brad'` and `start_time >= now()` -- upcoming meetings
+- `dashboard_referral_sources` ordered by `total_revenue DESC`, limit 5 -- top referral partners
+- `team_monthly_goals` filtered to `team_member_name = 'Brad'` -- monthly goals
 
-Extracts the email list rendering (currently lines 2017-2189):
-- Email row with avatar, sender name, subject, snippet
-- CRM badges (pipeline stage, loan amount, last touch, stage age)
-- "Move Forward" button on external emails
-- Next step suggestion text
-- Star toggle, dropdown menu (mark unread, add task)
-- Read/unread styling
-- Accepts props: emails, handlers, state from the hook
+Returns the same variable structure the JSX currently consumes.
 
-**3. `src/components/evan/gmail/EvansGmailEmailDetail.tsx` (NEW -- ~600 lines)**
+#### Step 3: Update BradsPage.tsx
 
-Extracts the full email detail view (currently lines 1184-1981):
-- Thread message rendering (mock threads + local replies)
-- Single email fallback rendering
-- Reply/Reply All/Forward action bar
-- "Add Task" and "Show Lead Info" buttons
-- Inline reply box integration
-- Reply All bottom bar
-- Accepts the deal sidebar as a slot/child
+- Remove all hardcoded data (lines 10-38)
+- Import and call `useBradsDashboard()`
+- Add loading skeleton when `isLoading`
+- Replace static monthly goals section with data-driven loop
+- Keep all UI layout, styling, component hierarchy, and formatting logic identical
 
-**4. `src/components/evan/gmail/EvansGmailDealSidebar.tsx` (NEW -- ~350 lines)**
+### What Does NOT Change
 
-Extracts the deal/lead sidebar panel (currently lines 1650-1981):
-- Lead name, company, pipeline stage selector
-- Priority and contact type selectors
-- Contacts list
-- Phone numbers list
-- Email addresses list
-- "Move Forward" action button
-- Notes section
-- Accepts lead data + mutation handlers as props
+- UI layout, card grid, table structure, progress bars
+- Component imports (AdminLayout, Card, Badge, Table, etc.)
+- Styling classes and color logic (`getProbabilityColor`)
+- Routing
+- No other files modified
 
-**5. `src/pages/admin/EvansGmail.tsx` (MODIFIED -- reduced to ~150 lines)**
+### Technical Details
 
-Becomes a thin orchestrator:
-```tsx
-const EvansGmail = () => {
-  const logic = useEvansGmailLogic();
-
-  if (logic.connectionLoading) return <EvanLayout>...</EvanLayout>;
-  if (!logic.gmailConnection) return <EvanLayout>...</EvanLayout>;
-
-  return (
-    <EvanLayout>
-      {logic.isGeneratingEmail && <GeneratingOverlay />}
-      <div className="flex h-[calc(100vh-100px)] ...">
-        <GmailSidebar ... />
-        <div className="flex-1 flex flex-col">
-          <EvansGmailToolbar ... />
-          {logic.selectedEmail ? (
-            <EvansGmailEmailDetail ... />
-          ) : logic.activeFolder === 'templates' ? (
-            <EvansGmailTemplates ... />
-          ) : (
-            <EvansGmailEmailList ... />
-          )}
-        </div>
-      </div>
-      <GmailComposeDialog ... />
-      <LeadDetailDialog ... />
-      <GmailTaskDialog ... />
-    </EvanLayout>
-  );
-};
-```
-
-**6. `src/pages/admin/IlansGmail.tsx` -- NO CHANGES**
-
-Already 99 lines and uses the shared `GmailInbox`. No modification needed.
-
-**7. `src/components/gmail/GmailInbox.tsx` -- NO CHANGES**
-
-Stays as the lightweight shared shell for simple Gmail views.
-
-### What This Preserves (Zero Functional Changes)
-
-- All Supabase queries remain identical (same tables, same selects, same filters)
-- All mutations remain identical (leads, pipeline_leads, evan_tasks, lead_tasks, outbound_emails)
-- All Gmail API calls remain identical (same edge function, same payloads)
-- URL-param compose handling stays identical (DraftContext integration)
-- Inline reply with local thread state stays identical
-- Mock emails mixed into inbox stays identical
-- All event handlers and side effects stay identical
-- Component tree hierarchy stays identical (EvanLayout wraps everything)
-- Routing stays identical (no route changes)
-
-### Summary
-
-| Metric | Before | After |
-|--------|--------|-------|
-| EvansGmail.tsx | 2,248 lines | ~150 lines |
-| IlansGmail.tsx | 99 lines | 99 lines (unchanged) |
-| Total new files | 0 | 4 |
-| Duplicated Gmail logic | ~0 (different implementations) | ~0 |
-| Functional changes | -- | Zero |
-| API/query changes | -- | Zero |
-| Route changes | -- | Zero |
+The hook will format numbers the same way the current hardcoded values display them (e.g., `$15.2M`, `$152K`) so the JSX remains unchanged. The `evan_appointments` table already supports `team_member_name` for multi-user filtering.
 
