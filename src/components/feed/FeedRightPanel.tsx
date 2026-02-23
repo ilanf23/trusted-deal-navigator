@@ -84,9 +84,10 @@ const FeedRightPanel = () => {
       const { data, error } = await supabase
         .from('evan_appointments')
         .select('id, title, start_time, end_time, team_member_name, description')
+        .eq('team_member_name', 'evan')
         .gte('start_time', now)
         .order('start_time', { ascending: true })
-        .limit(3);
+        .limit(5);
       if (error) throw error;
       return data || [];
     },
