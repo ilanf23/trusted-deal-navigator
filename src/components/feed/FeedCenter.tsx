@@ -37,20 +37,23 @@ const FeedCenter = ({ activities, isLoading }: FeedCenterProps) => {
   return (
     <div className="flex-1 min-w-0 bg-muted/50 flex flex-col h-full relative">
       {/* Tab bar */}
-      <div className="bg-white dark:bg-card border-b border-border px-6">
-        <div className="flex gap-8">
+      <div className="bg-white dark:bg-card border-b border-border px-4">
+        <div className="flex">
           {(['all', 'notes', 'comms'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                'py-3 text-sm font-medium border-b-[3px] transition-colors capitalize',
+                'relative px-4 py-3.5 text-[15px] font-semibold transition-colors',
                 activeTab === tab
-                  ? 'border-[#5B21B6] text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {tab === 'comms' ? 'Communications' : tab === 'all' ? 'All Activity' : 'Notes & Leads'}
+              {activeTab === tab && (
+                <span className="absolute bottom-0 left-2 right-2 h-[3px] rounded-full bg-[#5B21B6]" />
+              )}
             </button>
           ))}
         </div>
