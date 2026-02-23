@@ -3,34 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileCheck, Clock, TrendingUp, CheckCircle2, AlertCircle, Users } from 'lucide-react';
+import { FileCheck, Clock, TrendingUp, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useMaurasDashboard } from '@/hooks/useMaurasDashboard';
 
 const MaurasPage = () => {
-  // Maura's specific metrics (Processor role - focuses on document processing)
-  const metrics = {
-    activeDeals: 6,
-    avgDaysPerDeal: 36,
-    closingsLast30d: 5,
-    conversionRate: 45,
-    docsProcessedToday: 12,
-    pendingReview: 8,
-  };
-
-  const processingQueue = [
-    { client: 'Johnson Holdings', type: 'Financial Statements', status: 'In Review', priority: 'High', daysInQueue: 1 },
-    { client: 'Metro Properties LLC', type: 'Tax Returns', status: 'Pending', priority: 'Medium', daysInQueue: 2 },
-    { client: 'Coastal Investments', type: 'Appraisal Report', status: 'In Review', priority: 'High', daysInQueue: 1 },
-    { client: 'Summit Enterprises', type: 'Personal Financial Statement', status: 'Pending', priority: 'Low', daysInQueue: 3 },
-    { client: 'Harbor View Group', type: 'Operating Agreement', status: 'Complete', priority: 'Medium', daysInQueue: 0 },
-    { client: 'Valley Commercial', type: 'Rent Roll', status: 'In Review', priority: 'High', daysInQueue: 1 },
-  ];
-
-  const recentActivity = [
-    { action: 'Completed review', client: 'ABC Properties', document: 'Loan Application', time: '10 min ago' },
-    { action: 'Requested revision', client: 'XYZ Holdings', document: 'Bank Statements', time: '25 min ago' },
-    { action: 'Approved package', client: 'Delta Corp', document: 'Full Package', time: '1 hour ago' },
-    { action: 'Started review', client: 'Omega LLC', document: 'Title Report', time: '2 hours ago' },
-  ];
+  const {
+    metrics,
+    processingQueue,
+    recentActivity,
+    dailyProgress,
+    isLoading,
+  } = useMaurasDashboard();
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -49,6 +33,43 @@ const MaurasPage = () => {
       default: return 'bg-gray-500';
     }
   };
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold">Maura's Dashboard</h1>
+            <p className="text-muted-foreground">Document processing and loan package management</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="pt-4">
+                  <Skeleton className="h-4 w-24 mb-2" />
+                  <Skeleton className="h-8 w-12" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="lg:col-span-2">
+              <CardHeader><Skeleton className="h-6 w-48" /></CardHeader>
+              <CardContent><Skeleton className="h-48 w-full" /></CardContent>
+            </Card>
+            <Card>
+              <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
+              <CardContent><Skeleton className="h-48 w-full" /></CardContent>
+            </Card>
+          </div>
+          <Card>
+            <CardHeader><Skeleton className="h-6 w-36" /></CardHeader>
+            <CardContent><Skeleton className="h-24 w-full" /></CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -131,34 +152,38 @@ const MaurasPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Document Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead className="text-right">Days</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {processingQueue.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{item.client}</TableCell>
-                      <TableCell>{item.type}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={`border-0 ${getPriorityColor(item.priority)} text-white`}>
-                          {item.priority}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{item.daysInQueue}</TableCell>
+              {processingQueue.length === 0 ? (
+                <p className="text-muted-foreground text-sm text-center py-8">No items in the processing queue.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Document Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead className="text-right">Days</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {processingQueue.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{item.client}</TableCell>
+                        <TableCell>{item.type}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`border-0 ${getPriorityColor(item.priority)} text-white`}>
+                            {item.priority}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{item.daysInQueue}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
 
@@ -171,15 +196,19 @@ const MaurasPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
-                  <div key={index} className="flex flex-col gap-1 p-3 bg-muted/30 rounded-lg">
-                    <div className="font-medium text-sm">{activity.action}</div>
-                    <div className="text-sm text-muted-foreground">{activity.client} - {activity.document}</div>
-                    <div className="text-xs text-muted-foreground">{activity.time}</div>
-                  </div>
-                ))}
-              </div>
+              {recentActivity.length === 0 ? (
+                <p className="text-muted-foreground text-sm text-center py-8">No recent activity.</p>
+              ) : (
+                <div className="space-y-4">
+                  {recentActivity.map((activity, index) => (
+                    <div key={index} className="flex flex-col gap-1 p-3 bg-muted/30 rounded-lg">
+                      <div className="font-medium text-sm">{activity.action}</div>
+                      <div className="text-sm text-muted-foreground">{activity.client} - {activity.document}</div>
+                      <div className="text-xs text-muted-foreground">{activity.time}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -190,29 +219,21 @@ const MaurasPage = () => {
             <CardTitle>Today's Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Documents Processed</span>
-                  <span>12 / 15 target</span>
-                </div>
-                <Progress value={80} className="h-2" />
+            {dailyProgress.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-4">No progress goals configured.</p>
+            ) : (
+              <div className="space-y-4">
+                {dailyProgress.map((goal, index) => (
+                  <div key={index}>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>{goal.label}</span>
+                      <span>{goal.current} / {goal.target} target</span>
+                    </div>
+                    <Progress value={goal.progress} className="h-2" />
+                  </div>
+                ))}
               </div>
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Packages Completed</span>
-                  <span>3 / 4 target</span>
-                </div>
-                <Progress value={75} className="h-2" />
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Review Queue Cleared</span>
-                  <span>60%</span>
-                </div>
-                <Progress value={60} className="h-2" />
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
