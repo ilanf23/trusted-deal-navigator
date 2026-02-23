@@ -1,38 +1,43 @@
 
 
-## Pull Real Profile Images into Feed Activity Cards & Right Panel
+## Fix: Show Incoming Call Popup Even When Twilio Device Isn't Ready
 
-### Problem
-All avatars in the feed are colored circles with initials. The user wants real profile photos pulled from:
-1. **Team members** -- `avatar_url` from the `team_members` table (Evan and Ilan already have uploaded avatars)
-2. **Right panel** -- same `avatar_url` for team member circles in "Invite Team Members" and "Suggestions" sections
+### Root Cause
+The `call_events` logs confirm the frontend **did** receive the inbound call via realtime subscription (`event_type: realtime_received`, `socket_connected: true`). However, the Twilio Device was not registered (`device_ready: false`), so the code buffered the call instead of displaying the popup.
 
-### Changes
+The problematic pattern appears in two places in `CallContext.tsx`:
 
-**1. `src/hooks/useFeedData.ts`**
-- Expand the `team_members` query to also fetch `avatar_url`
-- Add `actorAvatarUrl: string | null` field to the `FeedActivity` interface
-- Populate `actorAvatarUrl` from the team member map when building each activity item (notes, communications, tasks)
+```text
+// Realtime handler (line ~527-533):
+if (device not registered) {
+  buffer the call    <-- BUG: hides the popup
+} else {
+  show the popup
+}
 
-**2. `src/components/feed/ActivityCard.tsx`**
-- Import the `Avatar`, `AvatarImage`, `AvatarFallback` components from `src/components/ui/avatar.tsx`
-- When `activity.actorAvatarUrl` exists, render the real image inside the avatar circle
-- Fall back to the current initial-based colored circle when no image is available
+// Polling handler (line ~492-494):
+if (device not registered) {
+  buffer the call    <-- BUG: hides the popup
+}
+```
 
-**3. `src/components/feed/FeedRightPanel.tsx`**
-- Expand the `team_members` query to also select `avatar_url`
-- In the "Invite Team Members" section, render `Avatar`/`AvatarImage`/`AvatarFallback` using `avatar_url` when available
-- Keep initial fallback for members without an avatar
+The popup never appears because the Twilio Device WebSocket fails to connect (likely due to iframe restrictions in the preview environment), and buffered calls just sit in memory forever.
 
-**4. `src/components/feed/FeedLeftPanel.tsx`**
-- Accept `avatar_url` in the `TeamMember` interface prop
-- Render real avatar images in the overlapping team avatar row when available
-- Fall back to initial circles when no image exists
+### Fix
 
-**5. `src/pages/admin/PipelineFeed.tsx`**
-- Update the `team_members` query to also select `avatar_url` so it passes through to `FeedLeftPanel`
+**`src/contexts/CallContext.tsx`** -- 3 changes:
 
-### Technical Details
-- Uses the existing `Avatar`, `AvatarImage`, `AvatarFallback` shadcn/ui components
-- Only team members with uploaded avatars (currently Evan and Ilan) will show real photos; others keep the colored initial fallback
-- No new database tables or columns needed -- `avatar_url` already exists on `team_members`
+1. **Realtime handler (line ~527-533)**: Always set `incomingCall` state to show the popup, regardless of device registration. Remove the buffering branch.
+
+2. **Polling / initial fetch (line ~492-499)**: Same change -- always set `incomingCall` instead of buffering when device isn't ready.
+
+3. **Remove `pendingCallsRef` entirely**: Since we no longer buffer calls, the pending calls ref and the "process pending calls on device registered" logic (lines ~258-264) are no longer needed.
+
+The `IncomingCallPopup` already handles the "device not ready" case gracefully -- the Answer button shows "Waiting..." and is disabled when `activeCall` is null. Once the Twilio SDK delivers the `incoming` event (setting `activeCall`), the button becomes active.
+
+### Result
+- The popup will appear immediately when a call is detected via realtime or polling
+- The Answer button remains disabled until the Twilio SDK is ready (existing behavior)
+- If the SDK never connects, the user still sees the call and can decline it
+- No changes to edge functions or database needed
+
