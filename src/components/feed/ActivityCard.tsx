@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Phone, Mail, MessageSquare, StickyNote, UserPlus, CheckSquare, Maximize2, MoreHorizontal } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { FeedActivity } from '@/hooks/useFeedData';
 
@@ -81,14 +82,19 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
       <div className="flex gap-3 p-4">
         {/* Left avatar */}
         <div className="relative flex-shrink-0">
-          <div
-            className={cn(
-              'w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm',
-              getAvatarColor(activity.actorInitial)
+          <Avatar className="w-11 h-11">
+            {activity.actorAvatarUrl && (
+              <AvatarImage src={activity.actorAvatarUrl} alt={activity.actorName} />
             )}
-          >
-            {activity.actorInitial}
-          </div>
+            <AvatarFallback
+              className={cn(
+                'text-white font-bold text-sm',
+                getAvatarColor(activity.actorInitial)
+              )}
+            >
+              {activity.actorInitial}
+            </AvatarFallback>
+          </Avatar>
           <div className={cn(
             'absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center',
             getTypeBadgeColor(activity.type)

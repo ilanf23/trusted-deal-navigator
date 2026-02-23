@@ -10,6 +10,7 @@ export interface FeedActivity {
   type: FeedActivityType;
   actorName: string;
   actorInitial: string;
+  actorAvatarUrl: string | null;
   leadName: string;
   leadCompany: string | null;
   leadId: string | null;
@@ -51,9 +52,10 @@ export const useFeedData = () => {
       // Fetch team members for name mapping
       const { data: teamMembers } = await supabase
         .from('team_members')
-        .select('id, name');
+        .select('id, name, avatar_url');
 
-      const teamMap = new Map((teamMembers || []).map(tm => [tm.id, tm.name]));
+      const teamMap = new Map((teamMembers || []).map(tm => [tm.id, { name: tm.name, avatarUrl: tm.avatar_url }]));
+      const teamNameMap = new Map((teamMembers || []).map(tm => [tm.name.toLowerCase(), tm.avatar_url]));
 
       // Fetch recent communications
       const { data: comms } = await supabase
@@ -74,7 +76,9 @@ export const useFeedData = () => {
 
       // Add lead activities
       for (const lead of (leads || [])) {
-        const assigneeName = lead.assigned_to ? teamMap.get(lead.assigned_to) || 'Team' : 'Team';
+        const assigneeInfo = lead.assigned_to ? teamMap.get(lead.assigned_to) : null;
+        const assigneeName = assigneeInfo?.name || 'Team';
+        const assigneeAvatar = assigneeInfo?.avatarUrl || null;
 
         // Lead with notes = note activity
         if (lead.notes) {
@@ -83,6 +87,7 @@ export const useFeedData = () => {
             type: 'note',
             actorName: assigneeName,
             actorInitial: assigneeName.charAt(0).toUpperCase(),
+            actorAvatarUrl: assigneeAvatar,
             leadName: lead.name,
             leadCompany: lead.company_name,
             leadId: lead.id,
@@ -103,11 +108,13 @@ export const useFeedData = () => {
         if (commType === 'call') type = 'call';
         else if (commType === 'sms') type = 'sms';
 
+        const commActorName = comm.direction === 'outbound' ? 'Evan' : (leadInfo?.name || 'Unknown');
         activities.push({
           id: `comm-${comm.id}`,
           type,
-          actorName: comm.direction === 'outbound' ? 'Evan' : (leadInfo?.name || 'Unknown'),
-          actorInitial: comm.direction === 'outbound' ? 'E' : (leadInfo?.name?.charAt(0)?.toUpperCase() || '?'),
+          actorName: commActorName,
+          actorInitial: commActorName.charAt(0).toUpperCase(),
+          actorAvatarUrl: comm.direction === 'outbound' ? (teamNameMap.get('evan') || null) : null,
           leadName: leadInfo?.name || 'Unknown Contact',
           leadCompany: leadInfo?.company || null,
           leadId: comm.lead_id,
@@ -121,11 +128,13 @@ export const useFeedData = () => {
       // Add tasks
       for (const task of (tasks || [])) {
         const leadInfo = task.lead_id ? leadMap.get(task.lead_id) : null;
+        const taskActorName = task.assignee_name || 'Team';
         activities.push({
           id: `task-${task.id}`,
           type: 'task_created',
-          actorName: task.assignee_name || 'Team',
-          actorInitial: (task.assignee_name || 'T').charAt(0).toUpperCase(),
+          actorName: taskActorName,
+          actorInitial: taskActorName.charAt(0).toUpperCase(),
+          actorAvatarUrl: teamNameMap.get(taskActorName.toLowerCase()) || null,
           leadName: leadInfo?.name || 'General',
           leadCompany: leadInfo?.company || null,
           leadId: task.lead_id,

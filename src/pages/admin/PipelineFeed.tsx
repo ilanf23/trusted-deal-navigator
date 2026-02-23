@@ -20,7 +20,7 @@ const PipelineFeed = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('team_members')
-        .select('id, name')
+        .select('id, name, avatar_url')
         .order('name');
       if (error) throw error;
       return data;
