@@ -6,6 +6,7 @@ import { format, differenceInDays, isToday, isTomorrow } from 'date-fns';
 import { X, SquareCheckBig, Calendar, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 const avatarColors = [
   'bg-sky-600', 'bg-blue-600', 'bg-pink-600', 'bg-emerald-600',
@@ -111,7 +112,7 @@ const FeedRightPanel = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('team_members')
-        .select('id, name, email')
+        .select('id, name, email, avatar_url')
         .order('name');
       if (error) throw error;
       return data || [];
@@ -246,9 +247,11 @@ const FeedRightPanel = () => {
             <div className="space-y-0.5">
               {suggestedPeople.map((person) => (
                 <div key={person.id} className="flex items-center gap-2.5 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group">
-                  <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0', getColorFromName(person.name))}>
-                    {getInitials(person.name)}
-                  </div>
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    <AvatarFallback className={cn('text-white text-[11px] font-bold', getColorFromName(person.name))}>
+                      {getInitials(person.name)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
                       {person.name}
@@ -275,9 +278,14 @@ const FeedRightPanel = () => {
             <div className="space-y-0.5">
               {teamMembers.map((member) => (
                 <div key={member.id} className="flex items-center gap-2.5 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                  <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0', getColorFromName(member.name))}>
-                    {getInitials(member.name)}
-                  </div>
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    {member.avatar_url && (
+                      <AvatarImage src={member.avatar_url} alt={member.name} />
+                    )}
+                    <AvatarFallback className={cn('text-white text-[11px] font-bold', getColorFromName(member.name))}>
+                      {getInitials(member.name)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">{member.name}</p>
                     <p className="text-[11px] text-muted-foreground truncate">{member.email}</p>

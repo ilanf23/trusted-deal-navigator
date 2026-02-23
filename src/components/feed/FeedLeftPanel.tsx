@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { FEED_ACTIVITY_FILTERS } from '@/hooks/useFeedData';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface TeamMember {
   id: string;
   name: string;
+  avatar_url?: string | null;
 }
 
 interface FeedLeftPanelProps {
@@ -65,16 +67,22 @@ const FeedLeftPanel = ({
               onTeamMemberSelect(selectedTeamMember === member.name ? null : member.name)
             }
             className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all border-2',
-              'bg-muted/60 text-foreground',
+              'rounded-full transition-all border-2',
               idx > 0 && '-ml-2',
               selectedTeamMember === member.name
-                ? 'border-primary bg-muted z-10'
-                : 'border-transparent hover:bg-muted'
+                ? 'border-primary z-10'
+                : 'border-transparent hover:border-muted'
             )}
             style={{ zIndex: selectedTeamMember === member.name ? 10 : teamMembers.length - idx }}
           >
-            {member.name.charAt(0).toUpperCase()}
+            <Avatar className="w-10 h-10">
+              {member.avatar_url && (
+                <AvatarImage src={member.avatar_url} alt={member.name} />
+              )}
+              <AvatarFallback className="bg-muted/60 text-foreground text-sm font-semibold">
+                {member.name.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
           </button>
         ))}
       </div>
