@@ -143,7 +143,7 @@ const FeedRightPanel = () => {
         {dueTasks.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <AlertCircle className="w-4 h-4 text-amber-500" />
+              <AlertCircle className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-bold text-foreground">Keep things moving</h3>
             </div>
             <div className="space-y-2">
@@ -160,7 +160,7 @@ const FeedRightPanel = () => {
                     </p>
                     <p className={cn(
                       'text-sm font-medium mt-0.5 truncate',
-                      dueInfo.urgent ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
+                      dueInfo.urgent ? 'text-destructive' : 'text-foreground'
                     )}>
                       "{task.title}" is {dueInfo.text}!
                     </p>
