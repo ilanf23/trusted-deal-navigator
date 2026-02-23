@@ -14,7 +14,7 @@ const FeedCenter = ({ activities, isLoading }: FeedCenterProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = activities.filter((a) => {
-    if (activeTab === 'notes') return a.type === 'note';
+    if (activeTab === 'notes') return a.type === 'note' || a.type === 'lead_created';
     if (activeTab === 'comms') return a.type === 'call' || a.type === 'email' || a.type === 'sms';
     return true;
   });

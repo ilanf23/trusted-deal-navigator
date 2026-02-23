@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
 import { STAGE_LABELS } from '@/constants/appConfig';
 
-export type FeedActivityType = 'lead_updated' | 'note' | 'call' | 'email' | 'sms' | 'task_created' | 'stage_change';
+export type FeedActivityType = 'lead_created' | 'lead_updated' | 'note' | 'call' | 'email' | 'sms' | 'task_created' | 'stage_change';
 
 export interface FeedActivity {
   id: string;
@@ -145,6 +145,7 @@ export const useFeedData = () => {
 };
 
 export const FEED_ACTIVITY_FILTERS = [
+  'New Lead',
   'Note',
   'Call',
   'Email',
