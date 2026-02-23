@@ -108,6 +108,21 @@ export const TaskWorkspace = () => {
   
   // Track if we've already handled the URL params to prevent loops
   const handledNewTaskRef = useRef(false);
+  const handledTaskIdRef = useRef<string | null>(null);
+
+  // Handle taskId URL param to auto-open a specific task
+  useEffect(() => {
+    const taskId = searchParams.get('taskId');
+    if (taskId && tasks.length > 0 && handledTaskIdRef.current !== taskId) {
+      const found = tasks.find(t => t.id === taskId);
+      if (found) {
+        handledTaskIdRef.current = taskId;
+        handleSetSelectedTask(found);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, tasks, handleSetSelectedTask, setSearchParams]);
+
   // Handle URL params for creating new task from Gmail
   useEffect(() => {
     const newTask = searchParams.get('newTask');
