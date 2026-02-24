@@ -1,54 +1,46 @@
 
 
-## Fix: Answer Call Button Stuck on "Connecting..."
+## Fix: Settings Panel Toggle Cutoff + UI/UX Polish
 
-### Root Cause
+### Problem
+1. The Columns sub-panel inside the Settings panel has tight right padding (`0 20px 0 4px`), causing toggle switches to be clipped or feel cramped at the right edge.
+2. The overall Settings panel UI can be polished for better spacing, visual hierarchy, and interaction feedback.
 
-The `answerCall` function (lines 556-672 of `CallContext.tsx`) has a **blocking gate** that prevents the REST API redirect from ever executing:
+### Changes
 
-```
-answerCall() 
-  -> activeCall is null (SDK never fired 'incoming')
-  -> get device ref
-  -> WAIT for device.state === 'registered'   <-- BLOCKS HERE (10s timeout)
-  -> throw "Device registration timed out"    <-- NEVER REACHES REST API
-```
+**File: `src/pages/admin/UnderwritingPipeline.tsx`**
 
-The call_events table confirms this: 4 consecutive `answer_attempted` events all show `device_ready: false`, and the `twilio-connect-call` edge function has zero logs -- it was never called.
+#### 1. Fix toggle cutoff in Columns sub-panel (line 838)
+Change the column row padding from `'0 20px 0 4px'` to `'0 24px 0 12px'` — more breathing room on both sides so the drag handle and toggle switch are fully visible.
 
-### Fix
+#### 2. Increase left padding on drag handle area (line 841-843)
+Add `paddingLeft: '8px'` to ensure the grip icon doesn't sit flush against the panel edge.
 
-**File: `src/contexts/CallContext.tsx`** -- Restructure `answerCall` (lines 556-672):
+#### 3. Polish the Columns sub-panel header (line 814)
+Increase header padding from `'20px 20px 16px'` to `'20px 24px 16px'` for consistent horizontal padding.
 
-1. **Remove the device registration gate** (lines 580-595). Don't block on device registration before calling the REST API.
+#### 4. Polish the search input area (line 825)
+Update padding from `'12px 20px'` to `'12px 24px'` for alignment consistency.
 
-2. **Call `twilio-connect-call` immediately** when there's no SDK `activeCall`. The edge function redirects the live Twilio call to re-dial `<Client>clx-admin</Client>`.
+#### 5. Improve toggle row hover states (lines 832-850)
+Add a subtle hover background (`#F8F8FB`) to each column toggle row for better interaction feedback. Currently the rows have no hover state.
 
-3. **Start device initialization in parallel** (non-blocking). While the REST API is redirecting the call, kick off device registration so it's hopefully ready by the time the redirected call arrives.
+#### 6. Improve main settings panel padding consistency (line 855)
+Update the main settings header and content padding from `'20px'` to `'20px 24px'` for consistency with the columns sub-panel.
 
-4. **Keep the 15-second polling wait** for the SDK to pick up the redirected call (lines 624-657), but also attempt device registration during that window.
+### Summary of Padding Changes
 
-5. **Improve error messaging**: If the 15s timeout fires, show a clearer message ("Could not connect. Please try answering again or refresh the page.")
+| Element | Before | After |
+|---------|--------|-------|
+| Column rows padding | `0 20px 0 4px` | `0 24px 0 12px` |
+| Column sub-panel header | `20px 20px 16px` | `20px 24px 16px` |
+| Search input container | `12px 20px` | `12px 24px` |
+| Main settings header | `20px 20px 16px` | `20px 24px 16px` |
+| Main settings content | `20px` | `20px 24px` |
 
-### Updated answerCall Flow
-
-```
-answerCall()
-  -> request mic permission
-  -> if activeCall exists: accept directly (no change)
-  -> else:
-      1. Fire-and-forget: initializeTwilioDevice() (non-blocking)
-      2. Immediately call twilio-connect-call REST API
-      3. Poll device.calls for 15s waiting for SDK incoming event
-      4. If found: accept the call
-      5. If timeout: throw clear error
-```
-
-### Changes Summary
-
-| File | Change |
-|------|--------|
-| `src/contexts/CallContext.tsx` | Remove device registration wait gate from `answerCall`; call REST API immediately; init device in parallel |
-
-No edge function changes needed -- `twilio-connect-call` is correct, it just was never being reached.
+### Visual Result
+- Toggle switches will be fully visible with comfortable spacing from the right edge
+- Drag handles will have proper left margin
+- Consistent 24px horizontal padding throughout both panels
+- Hover feedback on column rows for better interactivity
 
