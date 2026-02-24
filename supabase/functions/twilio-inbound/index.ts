@@ -100,122 +100,6 @@ function buildInboundTwiML(opts: InboundTwiMLOptions): string {
   ].filter(Boolean).join('\n');
 }
 
-// ---------------------------------------------------------------------------
-// Slack alerting
-// ---------------------------------------------------------------------------
-
-interface SlackConfig {
-  token: string;
-  channel: string;
-}
-
-function getSlackConfig(): SlackConfig | null {
-  const token = Deno.env.get('SLACK_BOT_TOKEN') || Deno.env.get('SLACK_API_KEY') || '';
-  const channel = Deno.env.get('SLACK_CHANNEL_ID') || '';
-  if (!token || !channel) return null;
-  return { token, channel };
-}
-
-async function sendSlackAlert(config: SlackConfig, message: string): Promise<void> {
-  try {
-    const resp = await fetch('https://slack.com/api/chat.postMessage', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ channel: config.channel, text: message }),
-    });
-    if (!resp.ok) {
-      console.error('Slack alert failed:', resp.status, await resp.text());
-    }
-  } catch (err) {
-    console.error('Slack alert error:', err);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Provider boundary logging
-// ---------------------------------------------------------------------------
-
-interface ProviderBoundaryLog {
-  callFlowId: string;
-  callSid: string;
-  fromNumber: string;
-  toNumber: string;
-  webhookUrl: string;
-  httpStatus: number;
-  responseTimeMs: number;
-  responseBody: string;
-  webhookTimestamp: string;
-  rawParams?: Record<string, string>;
-  routingDecision?: RoutingDecision;
-}
-
-interface RoutingDecision {
-  clientIdentities: string[];
-  fallbackNumber: string | null;
-  dialTimeoutSeconds: number;
-  hasFallback: boolean;
-}
-
-async function persistProviderBoundaryLog(log: ProviderBoundaryLog): Promise<void> {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!supabaseUrl || !supabaseKey) return;
-
-  const supabase = createClient(supabaseUrl, supabaseKey);
-
-  await supabase.from('call_events').insert({
-    call_flow_id: log.callFlowId,
-    call_sid: log.callSid,
-    event_type: 'provider_boundary_inbound',
-    from_number: log.fromNumber,
-    to_number: log.toNumber,
-    metadata: {
-      webhook_url: log.webhookUrl,
-      http_status: log.httpStatus,
-      response_time_ms: Math.round(log.responseTimeMs),
-      response_body: log.responseBody,
-      raw_params: log.rawParams,
-      routing_decision: log.routingDecision,
-    },
-  });
-}
-
-async function maybeAlertInboundRoutingBroken(log: ProviderBoundaryLog): Promise<void> {
-  // Alert if the response body is empty or doesn't contain a <Dial> tag
-  if (log.responseBody && log.responseBody.includes('<Dial')) return;
-
-  const slack = getSlackConfig();
-  if (!slack) return;
-
-  await sendSlackAlert(
-    slack,
-    `🚨 *Inbound routing may be broken!*\n` +
-      `CallSid: ${log.callSid}\nFrom: ${log.fromNumber}\nTo: ${log.toNumber}\n` +
-      `HTTP ${log.httpStatus} in ${Math.round(log.responseTimeMs)}ms\n` +
-      `Response body does not contain <Dial>:\n\`\`\`${log.responseBody.slice(0, 500)}\`\`\``
-  );
-}
-
-async function maybeAlertVoicemail(log: ProviderBoundaryLog): Promise<void> {
-  // This is a preemptive alert — we know that if no one answers, the caller gets
-  // voicemail. The actual voicemail detection happens via statusCallback events,
-  // but we alert here if there's no fallback number configured (higher risk of missed calls).
-  if (log.routingDecision?.hasFallback) return;
-
-  const slack = getSlackConfig();
-  if (!slack) return;
-
-  await sendSlackAlert(
-    slack,
-    `📞 *Inbound call with NO fallback number configured*\n` +
-      `CallSid: ${log.callSid}\nFrom: ${log.fromNumber}\nTo: ${log.toNumber}\n` +
-      `If browser client is offline, this call will go to voicemail.\n` +
-      `Consider setting TWILIO_FALLBACK_NUMBER for backup routing.`
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Inbound call handler:
@@ -323,16 +207,6 @@ Deno.serve(async (req) => {
         await persistProviderBoundaryLog(boundary);
       } catch (err) {
         console.error('Failed to persist provider boundary log:', err);
-      }
-      try {
-        await maybeAlertInboundRoutingBroken(boundary);
-      } catch (err) {
-        console.error('Failed to send inbound monitoring alert:', err);
-      }
-      try {
-        await maybeAlertVoicemail(boundary);
-      } catch (err) {
-        console.error('Failed to send voicemail risk alert:', err);
       }
       // Insert into active_calls so the frontend can detect the inbound call via realtime
       try {
