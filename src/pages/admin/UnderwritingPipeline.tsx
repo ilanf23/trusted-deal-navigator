@@ -1,19 +1,23 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { STAGE_LABELS } from '@/constants/appConfig';
 import EvanLayout from '@/components/evan/EvanLayout';
 import {
   DollarSign, Building2, User, CheckCircle2, Hash, Calendar, Tag,
   LayoutList, LayoutGrid, ArrowUpDown, Filter, Search, Plus,
   Bookmark, ChevronDown, ChevronLeft, ChevronRight, X, ExternalLink,
   MoreVertical, Info, Maximize2, Copy, MoreHorizontal,
-  Zap, Target, GripVertical,
+  Zap, Target, GripVertical, Loader2,
 } from 'lucide-react';
+import { differenceInDays, format } from 'date-fns';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Status = 'Lost' | 'Open';
 
 interface OpportunityRow {
-  id: number;
+  id: string;
   opportunity: string;
   company: string | null;
   companyInitial: string;
@@ -30,52 +34,109 @@ interface OpportunityRow {
   inactiveDays: number | null;
   tags: string[];
   extraTags: number;
+  dbStatus: string; // raw DB status for board grouping
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const SAMPLE_ROWS: OpportunityRow[] = [
-  { id: 1, opportunity: 'Charity Hospital - Bridge Ln for Redevelopment Project', company: 'Bank Resources, Inc.', companyInitial: 'B', companyColor: '#8B2635', contact: 'Byron Richardson', value: '$220,000.00', ownedBy: 'Wendy', status: 'Lost', stage: 'Ready for WU Approval', daysInStage: 900, stageUpdated: '9/7/2023', lastContacted: '10/7/2025', interactions: 1066, inactiveDays: 139, tags: ['cash flow completed'], extraTags: 1 },
-  { id: 2, opportunity: 'Homewood Suites Lansing - Purchase Hotel & PIP', company: null, companyInitial: '', companyColor: '', contact: 'Eric Cardona', value: null, ownedBy: 'Wendy', status: 'Lost', stage: 'Maura Underwriting', daysInStage: 1159, stageUpdated: '12/22/2022', lastContacted: '1/29/2025', interactions: 155, inactiveDays: 390, tags: ['cash flow started'], extraTags: 1 },
-  { id: 3, opportunity: 'Frederick McDonald - Business & RE Acquisition', company: 'Horizons Capital Partners', companyInitial: 'H', companyColor: '#7B5EA7', contact: 'Frederick McDonald', value: null, ownedBy: 'Maura', status: 'Lost', stage: 'UW Paused', daysInStage: 895, stageUpdated: '9/12/2023', lastContacted: '11/18/2025', interactions: null, inactiveDays: null, tags: ['cash flow started'], extraTags: 0 },
-  { id: 4, opportunity: 'Paresh Patel - Oswego Cricket Stadium', company: null, companyInitial: '', companyColor: '', contact: 'Paresh Patel', value: null, ownedBy: 'Wendy', status: 'Lost', stage: 'Waiting on Client to Move Forward', daysInStage: 762, stageUpdated: '1/23/2024', lastContacted: '5/8/2024', interactions: 510, inactiveDays: 656, tags: ['cash flow completed'], extraTags: 0 },
-  { id: 5, opportunity: 'Thomas Askew, Jr. / Indiana Crumbl - purchase 5 franchise locations', company: null, companyInitial: '', companyColor: '', contact: 'Thomas Askew, Jr.', value: null, ownedBy: 'Brad', status: 'Lost', stage: 'Review Kill / Keep', daysInStage: 209, stageUpdated: '7/29/2025', lastContacted: '2/20/2026', interactions: 255, inactiveDays: null, tags: ['cash flow completed'], extraTags: 0 },
-  { id: 6, opportunity: 'Paul Leongas - Construction to End Loan Mixed-Use Bldg Chicago', company: 'Axisdevelopmentgroup', companyInitial: 'A', companyColor: '#B5651D', contact: 'Paul Leongas', value: null, ownedBy: 'Maura', status: 'Lost', stage: 'Maura Underwriting', daysInStage: 994, stageUpdated: '6/5/2023', lastContacted: '11/24/2025', interactions: 490, inactiveDays: null, tags: ['cash flow started'], extraTags: 0 },
-  { id: 7, opportunity: 'Curuba Ventures - Borgzinner, Inc. Business Acq.', company: 'Curuba Ventures', companyInitial: 'C', companyColor: '#2E8B7A', contact: 'Luis Felipe Jaramillo', value: null, ownedBy: 'Wendy', status: 'Lost', stage: 'Ready for WU Approval', daysInStage: null, stageUpdated: '11/17/2025', lastContacted: '2/17/2026', interactions: 272, inactiveDays: null, tags: ['cash flow completed'], extraTags: 0 },
-  { id: 8, opportunity: 'David Grillo / Rick Patri Purchase Midwest Medical Pharmacy', company: 'Stillwater Property Group', companyInitial: 'S', companyColor: '#2E5DA8', contact: 'David Grillo', value: null, ownedBy: 'Wendy', status: 'Lost', stage: 'Ready for WU Approval', daysInStage: 178, stageUpdated: '8/29/2025', lastContacted: '2/23/2026', interactions: 237, inactiveDays: null, tags: ['pre-approval letter issued'], extraTags: 0 },
-  { id: 9, opportunity: 'Radhika Alla - PCSA SBA 7A Bus. Acq. / Pari Passu', company: null, companyInitial: '', companyColor: '', contact: 'Radhika Alla', value: null, ownedBy: 'Maura', status: 'Lost', stage: 'Review Kill / Keep', daysInStage: 103, stageUpdated: '11/12/2025', lastContacted: '1/6/2026', interactions: null, inactiveDays: null, tags: ['cash flow completed'], extraTags: 0 },
-  { id: 10, opportunity: 'Michael Habib - Nationwide / Best Choice Bus Acq. Project Sky', company: 'Probus Equity', companyInitial: 'P', companyColor: '#6B4FBB', contact: 'Michael Habib', value: null, ownedBy: 'Brad', status: 'Open', stage: 'Ready for WU Approval', daysInStage: null, stageUpdated: '12/26/2025', lastContacted: '12/23/2025', interactions: null, inactiveDays: null, tags: ['cash flow completed'], extraTags: 0 },
-  { id: 11, opportunity: 'Brock Vandervliet - CS Cabinetry, Inc. SBA 7A Bus. Acq.', company: null, companyInitial: '', companyColor: '', contact: 'Brock Vandervliet', value: null, ownedBy: 'Brad', status: 'Lost', stage: 'Ready for WU Approval', daysInStage: 102, stageUpdated: '11/13/2025', lastContacted: '11/19/2025', interactions: 161, inactiveDays: null, tags: ['cash flow completed'], extraTags: 0 },
-  { id: 12, opportunity: 'Brennan - 2025 Refinance Arena Lanes', company: 'Blue Bird Lanes', companyInitial: 'B', companyColor: '#C9930A', contact: 'John Brennan', value: null, ownedBy: 'Brad', status: 'Lost', stage: 'Ready for WU Approval', daysInStage: 284, stageUpdated: '5/15/2025', lastContacted: '5/12/2025', interactions: 327, inactiveDays: 287, tags: ['cash flow completed'], extraTags: 0 },
-  { id: 13, opportunity: 'Charles Stephens - Design Concrete of Nevada SBA 7A Bus. Acq.', company: 'Hanover Gate Capital', companyInitial: 'H', companyColor: '#8B2635', contact: 'Matt Gallery', value: null, ownedBy: 'Maura', status: 'Lost', stage: 'UW Paused', daysInStage: 585, stageUpdated: '7/18/2024', lastContacted: '7/15/2024', interactions: 119, inactiveDays: 588, tags: ['cash flow started'], extraTags: 0 },
-  { id: 14, opportunity: 'Kirk Johnson - SBA 7A Business Acquisition', company: 'New Health Investment Group', companyInitial: 'N', companyColor: '#1A3A6B', contact: 'Kirk Johnson', value: null, ownedBy: 'Maura', status: 'Lost', stage: 'UW Paused', daysInStage: 756, stageUpdated: '1/29/2024', lastContacted: '4/5/2024', interactions: 154, inactiveDays: 690, tags: ['cash flow started'], extraTags: 0 },
-  { id: 15, opportunity: 'Lake Forest Ice Arena - SBA 7A Build out on $7.3MM project', company: 'Virgil James', companyInitial: 'V', companyColor: '#2E7B8B', contact: 'Thomas Economou', value: null, ownedBy: 'Brad', status: 'Lost', stage: 'Ready for WU Approval', daysInStage: 1924, stageUpdated: '11/17/2020', lastContacted: '9/19/2024', interactions: 362, inactiveDays: 523, tags: ['cash flow completed'], extraTags: 0 },
-  { id: 16, opportunity: 'Sebastion Arnold / John Godbout - Eulo & Smith Law Firm SBA 7A Bus. Acq.', company: 'Concorde Equity Partners', companyInitial: 'C', companyColor: '#2E5DA8', contact: 'Sebastien Arnold', value: null, ownedBy: 'Wendy', status: 'Lost', stage: 'Maura Underwriting', daysInStage: 509, stageUpdated: '10/2/2024', lastContacted: '2/12/2025', interactions: null, inactiveDays: 377, tags: ['cash flow started'], extraTags: 0 },
+const COMPANY_COLORS = [
+  '#8B2635', '#7B5EA7', '#2E8B7A', '#B5651D', '#2E5DA8', '#C9930A',
+  '#1A3A6B', '#6B4FBB', '#2E7B8B', '#D35400', '#27AE60', '#8E44AD',
 ];
 
-const SAVED_FILTERS = [
-  'My Open Opportunities',
-  'Open Opportunities',
-  "Opportunities I'm Following",
-  'Won Opportunities',
-  'Brad Incoming Opportunities $10,000 & Up',
-  'Deals for Initial Review',
-  'Deals Moving Towards Underwriting',
-  'OnBoarding 2024 - Opp. into UW Pipeline',
-  'OnBoarding 2025 - Opp. into UW Pipeline',
-  'OnBoarding 2026 - Opp. into UW Pipeline',
-  'Pre-Approval Letters Issued',
-  "Write Up's Pending Approval",
+function getCompanyColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return COMPANY_COLORS[Math.abs(hash) % COMPANY_COLORS.length];
+}
+
+const UW_STATUSES = [
+  'initial_review',
+  'moving_to_underwriting',
+  'underwriting',
+  'ready_for_wu_approval',
+  'onboarding',
 ];
 
-const BOARD_STAGES = [
-  { key: 'review', name: 'Review Kill / Keep', count: 166, value: '$180,701.00', rows: SAMPLE_ROWS.filter(r => r.stage === 'Review Kill / Keep') },
-  { key: 'initial', name: 'Initial Review', count: 69, value: '$0', rows: [] as OpportunityRow[] },
-  { key: 'waiting', name: 'Waiting on Client to Move Forward', count: 45, value: '$81,200.00', rows: SAMPLE_ROWS.filter(r => r.stage === 'Waiting on Client to Move Forward') },
-  { key: 'maura', name: 'Maura Underwriting', count: 38, value: '$540,000.00', rows: SAMPLE_ROWS.filter(r => r.stage === 'Maura Underwriting') },
-  { key: 'ready', name: 'Ready for WU Approval', count: 210, value: '$1,100,000.00', rows: SAMPLE_ROWS.filter(r => r.stage === 'Ready for WU Approval') },
-  { key: 'paused', name: 'UW Paused', count: 89, value: '$220,000.00', rows: SAMPLE_ROWS.filter(r => r.stage === 'UW Paused') },
+// Board stages mapped from DB statuses
+const BOARD_STAGE_DEFS = [
+  { key: 'initial_review', name: 'Initial Review' },
+  { key: 'moving_to_underwriting', name: 'Moving to UW' },
+  { key: 'underwriting', name: 'Underwriting' },
+  { key: 'onboarding', name: 'Onboarding' },
+  { key: 'ready_for_wu_approval', name: 'Ready for WU Approval' },
 ];
+
+function useUnderwritingLeads() {
+  return useQuery({
+    queryKey: ['underwriting-pipeline-leads'],
+    queryFn: async () => {
+      const { data: leads, error } = await supabase
+        .from('leads')
+        .select(`
+          id, name, company_name, status, source, tags,
+          last_activity_at, updated_at, created_at,
+          assigned_to, uw_number, flagged_for_weekly
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch team members for owner names
+      const { data: teamMembers } = await supabase
+        .from('team_members')
+        .select('id, name');
+
+      const teamMap = new Map((teamMembers || []).map(tm => [tm.id, tm.name]));
+
+      // Fetch primary contacts for all leads
+      const leadIds = (leads || []).map(l => l.id);
+      const { data: contacts } = await supabase
+        .from('lead_contacts')
+        .select('lead_id, name')
+        .in('lead_id', leadIds)
+        .eq('is_primary', true);
+
+      const contactMap = new Map((contacts || []).map(c => [c.lead_id, c.name]));
+
+      const now = new Date();
+
+      return (leads || []).map((lead): OpportunityRow => {
+        const companyName = lead.company_name || null;
+        const ownerName = lead.assigned_to ? (teamMap.get(lead.assigned_to) || '–') : '–';
+        const stageLabel = STAGE_LABELS[lead.status] || lead.status;
+        const updatedAt = new Date(lead.updated_at);
+        const daysInStage = differenceInDays(now, updatedAt);
+        const lastActivity = lead.last_activity_at ? new Date(lead.last_activity_at) : null;
+        const inactiveDays = lastActivity ? differenceInDays(now, lastActivity) : null;
+        const tags = (lead.tags as string[]) || [];
+
+        return {
+          id: lead.id,
+          opportunity: lead.name,
+          company: companyName,
+          companyInitial: companyName ? companyName.charAt(0).toUpperCase() : '',
+          companyColor: companyName ? getCompanyColor(companyName) : '',
+          contact: contactMap.get(lead.id) || null,
+          value: null,
+          ownedBy: ownerName,
+          status: lead.status === 'lost' ? 'Lost' : 'Open',
+          stage: stageLabel,
+          daysInStage,
+          stageUpdated: format(updatedAt, 'M/d/yyyy'),
+          lastContacted: lastActivity ? format(lastActivity, 'M/d/yyyy') : null,
+          interactions: null,
+          inactiveDays,
+          tags: tags.slice(0, 2),
+          extraTags: Math.max(0, tags.length - 2),
+          dbStatus: lead.status,
+        };
+      });
+    },
+  });
+}
 
 const COLUMN_DEFS = [
   { key: 'opportunity', label: 'Opportunity', icon: DollarSign, sortable: true, width: 280 },
@@ -216,8 +277,8 @@ const FilterItem = ({ name }: { name: string }) => {
 
 interface ListViewProps {
   rows: OpportunityRow[];
-  hoveredRow: number | null;
-  setHoveredRow: (id: number | null) => void;
+  hoveredRow: string | null;
+  setHoveredRow: (id: string | null) => void;
   onRowClick: (row: OpportunityRow) => void;
 }
 
@@ -275,9 +336,11 @@ const ListView = ({ rows, hoveredRow, setHoveredRow, onRowClick }: ListViewProps
             onClick={() => onRowClick(row)}
           />
         ))}
-        <div style={{ padding: '12px 16px', fontSize: '13px', fontStyle: 'italic', color: '#999', textAlign: 'center' }}>
-          And 12 items after
-        </div>
+        {rows.length === 0 && (
+          <div style={{ padding: '24px 16px', fontSize: '13px', color: '#999', textAlign: 'center' }}>
+            No leads found
+          </div>
+        )}
       </div>
     </div>
   );
@@ -533,46 +596,54 @@ const DataRow = ({ row, hovered, onMouseEnter, onMouseLeave, onClick }: DataRowP
 
 // ─── Board View ───────────────────────────────────────────────────────────────
 
-const BoardView = () => (
-  <div style={{ flex: 1, overflowX: 'auto', paddingBottom: '16px' }}>
-    <div style={{ display: 'flex', gap: '16px', minWidth: 'max-content' }}>
-      {BOARD_STAGES.map(stage => (
-        <div key={stage.key} style={{ width: '280px', flexShrink: 0 }}>
-          {/* Column Header */}
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 700, color: '#1A1A2E' }}>{stage.name}</span>
-              <span style={{ fontSize: '13px', color: '#999' }}>{stage.count}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <DollarSign size={13} color="#7B5EA7" />
-              <span style={{ fontSize: '13px', color: '#7B5EA7', fontWeight: 500 }}>{stage.value}</span>
-            </div>
-          </div>
+const BoardView = ({ rows }: { rows: OpportunityRow[] }) => {
+  const stages = BOARD_STAGE_DEFS.map(def => ({
+    ...def,
+    rows: rows.filter(r => r.dbStatus === def.key),
+  }));
 
-          {/* Cards */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {stage.rows.slice(0, 3).map(row => (
-              <BoardCard key={row.id} row={row} />
-            ))}
-            {stage.rows.length === 0 && (
-              <div style={{
-                border: '2px dashed #E8E6F0',
-                borderRadius: '10px',
-                padding: '20px',
-                textAlign: 'center',
-                fontSize: '13px',
-                color: '#CCC',
-              }}>
-                No records
+  return (
+    <div style={{ flex: 1, overflowX: 'auto', paddingBottom: '16px' }}>
+      <div style={{ display: 'flex', gap: '16px', minWidth: 'max-content' }}>
+        {stages.map(stage => (
+          <div key={stage.key} style={{ width: '280px', flexShrink: 0 }}>
+            {/* Column Header */}
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#1A1A2E' }}>{stage.name}</span>
+                <span style={{ fontSize: '13px', color: '#999' }}>{stage.rows.length}</span>
               </div>
-            )}
+            </div>
+
+            {/* Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {stage.rows.slice(0, 5).map(row => (
+                <BoardCard key={row.id} row={row} />
+              ))}
+              {stage.rows.length === 0 && (
+                <div style={{
+                  border: '2px dashed #E8E6F0',
+                  borderRadius: '10px',
+                  padding: '20px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  color: '#CCC',
+                }}>
+                  No records
+                </div>
+              )}
+              {stage.rows.length > 5 && (
+                <div style={{ textAlign: 'center', fontSize: '12px', color: '#999', padding: '4px' }}>
+                  +{stage.rows.length - 5} more
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const BoardCard = ({ row }: { row: OpportunityRow }) => (
   <div style={{
@@ -887,15 +958,28 @@ const DetailsTabContent = ({ row }: { row: OpportunityRow }) => (
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+const SAVED_FILTERS = [
+  'My Open Opportunities',
+  'Open Opportunities',
+  "Opportunities I'm Following",
+  'Won Opportunities',
+  'Deals for Initial Review',
+  'Deals Moving Towards Underwriting',
+  'Pre-Approval Letters Issued',
+  "Write Up's Pending Approval",
+];
+
 const UnderwritingPipeline = () => {
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [publicOpen, setPublicOpen] = useState(true);
   const [sortPanelOpen, setSortPanelOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<OpportunityRow | null>(null);
-  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [addDropdownOpen, setAddDropdownOpen] = useState(false);
   const [detailTab, setDetailTab] = useState<DetailTab>('details');
+
+  const { data: allRows = [], isLoading } = useUnderwritingLeads();
 
   const closeAllPanels = () => {
     setSortPanelOpen(false);
@@ -1157,15 +1241,20 @@ const UnderwritingPipeline = () => {
           )}
 
           {/* List / Board View */}
-          {viewMode === 'list' ? (
+          {isLoading ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
+              <Loader2 size={24} color="#7B5EA7" style={{ animation: 'spin 1s linear infinite' }} />
+              <span style={{ marginLeft: '8px', fontSize: '14px', color: '#999' }}>Loading leads...</span>
+            </div>
+          ) : viewMode === 'list' ? (
             <ListView
-              rows={SAMPLE_ROWS}
+              rows={allRows}
               hoveredRow={hoveredRow}
               setHoveredRow={setHoveredRow}
               onRowClick={(row) => { setSelectedRow(row); setDetailTab('details'); closeAllPanels(); }}
             />
           ) : (
-            <BoardView />
+            <BoardView rows={allRows} />
           )}
         </div>
       </div>
