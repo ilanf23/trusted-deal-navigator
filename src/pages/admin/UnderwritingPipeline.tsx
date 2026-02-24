@@ -1017,23 +1017,31 @@ const UnderwritingPipeline = () => {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '44px', paddingBottom: '8px' }}>
               <span style={{ fontSize: '16px', fontWeight: 700, color: '#1A1A2E' }}>Saved Filters</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <button style={{
-                  width: '28px', height: '28px', borderRadius: '50%',
-                  border: '1px solid #E0DFF0', background: 'white',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                }}>
-                  <Plus size={13} color="#7B5EA7" />
-                </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <button
-                  onClick={() => setFiltersCollapsed(true)}
+                  title="New Filter"
                   style={{
-                    width: '28px', height: '28px', borderRadius: '50%',
+                    width: '28px', height: '28px', borderRadius: '6px',
                     border: '1px solid #E0DFF0', background: 'white',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F3F0FA'; e.currentTarget.style.borderColor = '#C4B5E0'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#E0DFF0'; }}
                 >
-                  <ChevronLeft size={13} color="#666" />
+                  <Plus size={14} color="#7B5EA7" />
+                </button>
+                <button
+                  title="Collapse Filters"
+                  onClick={() => setFiltersCollapsed(true)}
+                  style={{
+                    width: '28px', height: '28px', borderRadius: '6px',
+                    border: '1px solid #E0DFF0', background: 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F3F0FA'; e.currentTarget.style.borderColor = '#C4B5E0'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#E0DFF0'; }}
+                >
+                  <ChevronLeft size={14} color="#666" />
                 </button>
               </div>
             </div>
