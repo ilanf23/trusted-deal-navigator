@@ -288,7 +288,7 @@ const ListView = ({ rows, hoveredRow, setHoveredRow, onRowClick }: ListViewProps
 interface ColDef {
   key: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; color?: string }>;
+  icon: React.ComponentType<any>;
   sortable: boolean;
   width: number;
 }
@@ -789,6 +789,7 @@ const SettingsPanel = ({ open, onClose, columnsOpen, onColumnsOpen, onColumnsClo
     top: 0,
     right: open ? 0 : '-440px',
     width: '400px',
+    maxWidth: '100vw',
     height: '100vh',
     background: 'white',
     boxShadow: '-4px 0 20px rgba(0,0,0,0.10)',
@@ -797,6 +798,7 @@ const SettingsPanel = ({ open, onClose, columnsOpen, onColumnsOpen, onColumnsClo
     display: 'flex',
     flexDirection: 'column',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    overflowX: 'hidden',
   }}>
     {/* Columns sub-panel (slides on top) */}
     <div style={{
@@ -1532,7 +1534,7 @@ const AddMenuItem = ({
   label,
   onClose,
 }: {
-  Icon: React.ComponentType<{ size?: number; color?: string }>;
+  Icon: React.ComponentType<any>;
   label: string;
   onClose: () => void;
 }) => {
