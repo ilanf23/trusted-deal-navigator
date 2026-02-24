@@ -288,7 +288,7 @@ const ListView = ({ rows, hoveredRow, setHoveredRow, onRowClick }: ListViewProps
 interface ColDef {
   key: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; color?: string }>;
+  icon: React.ComponentType<any>;
   sortable: boolean;
   width: number;
 }
@@ -1532,7 +1532,7 @@ const AddMenuItem = ({
   label,
   onClose,
 }: {
-  Icon: React.ComponentType<{ size?: number; color?: string }>;
+  Icon: React.ComponentType<any>;
   label: string;
   onClose: () => void;
 }) => {
