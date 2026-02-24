@@ -1234,6 +1234,7 @@ const UnderwritingPipeline = () => {
           display: 'flex',
           minHeight: 'calc(100vh - 130px)',
           fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+          position: 'relative',
         }}
         onClick={() => {
           if (sortPanelOpen) setSortPanelOpen(false);
@@ -1247,9 +1248,12 @@ const UnderwritingPipeline = () => {
             flexShrink: 0,
             borderRight: '1px solid #E8E6F0',
             paddingRight: '12px',
+            paddingLeft: '4px',
             marginRight: '20px',
             display: 'flex',
             flexDirection: 'column',
+            overflowY: 'auto',
+            maxHeight: 'calc(100vh - 130px)',
           }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '44px', paddingBottom: '8px' }}>
