@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Phone, PhoneOff, User, Mic, MicOff, Volume2, PhoneOutgoing } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { useCall } from '@/contexts/CallContext';
 
 
@@ -31,6 +32,7 @@ export const IncomingCallPopup = () => {
     mutationFn: answerCall,
     onError: (error: Error) => {
       console.error('Failed to answer call:', error.message);
+      toast.error(error.message || 'Failed to answer call. Please try again.');
     },
   });
 
@@ -38,6 +40,7 @@ export const IncomingCallPopup = () => {
     mutationFn: hangupCall,
     onError: (error: Error) => {
       console.error('Failed to end call:', error.message);
+      toast.error(error.message || 'Failed to end call.');
     },
   });
 
@@ -45,6 +48,7 @@ export const IncomingCallPopup = () => {
     mutationFn: declineCall,
     onError: (error: Error) => {
       console.error('Failed to decline call:', error.message);
+      toast.error(error.message || 'Failed to decline call.');
     },
   });
 

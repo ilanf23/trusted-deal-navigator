@@ -101,6 +101,57 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   const isReinitializingRef = useRef(false);
   const lastErrorToastRef = useRef<number>(0);
 
+  // Ring tone synthesizer — plays a dual-tone phone ring while a call is waiting
+  const ringStopRef = useRef<(() => void) | null>(null);
+
+  const startRinging = useCallback(() => {
+    if (ringStopRef.current) return; // Already ringing
+    let stopped = false;
+    let audioCtx: AudioContext | null = null;
+    let nextRingTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleRing = (ctx: AudioContext) => {
+      if (stopped) return;
+      const now = ctx.currentTime;
+
+      const gain = ctx.createGain();
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+      [480, 440].forEach((freq) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        osc.start(now);
+        osc.stop(now + 0.5);
+      });
+
+      // 0.5s ring + 1.5s silence = 2s cycle
+      nextRingTimeout = setTimeout(() => scheduleRing(ctx), 2000);
+    };
+
+    try {
+      audioCtx = new AudioContext();
+      scheduleRing(audioCtx);
+    } catch (e) {
+      console.warn('[CallContext] Could not start ringtone:', e);
+      return;
+    }
+
+    ringStopRef.current = () => {
+      stopped = true;
+      if (nextRingTimeout) clearTimeout(nextRingTimeout);
+      audioCtx?.close().catch(() => {});
+      ringStopRef.current = null;
+    };
+  }, []);
+
+  const stopRinging = useCallback(() => {
+    ringStopRef.current?.();
+  }, []);
+
   // Keep refs in sync with state
   useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
   useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
@@ -441,6 +492,16 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [incomingCall, isConnected]);
 
+  // Ring tone: play while an incoming call is waiting; stop once answered or cleared
+  useEffect(() => {
+    if (incomingCall && !isConnected) {
+      startRinging();
+    } else {
+      stopRinging();
+    }
+    return () => stopRinging();
+  }, [incomingCall, isConnected, startRinging, stopRinging]);
+
   // Subscribe to realtime changes with robust handling
   // Uses refs for mutable state so the effect is stable (only depends on isEvan)
   useEffect(() => {
@@ -564,9 +625,18 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
 
     await logCallEvent(incomingCall.call_sid, 'answer_attempted', incomingCall.call_flow_id);
 
-    // If SDK already has the call object, accept directly
-    if (activeCall) {
-      activeCall.accept();
+    // Prefer the React-state call object, but also check the SDK's internal call map
+    // in case the incoming event fired but React state hasn't propagated yet.
+    const sdkCallsDirect = Array.from(deviceRef.current?.calls?.values?.() || []);
+    const callToAnswer = activeCall ?? (sdkCallsDirect.length > 0 ? sdkCallsDirect[0] : null);
+
+    // If SDK already has the call object (via state or direct map lookup), accept directly
+    if (callToAnswer) {
+      callToAnswer.accept();
+      if (!activeCall) {
+        // State update is in-flight — sync it so the rest of the UI stays consistent
+        setActiveCall(callToAnswer);
+      }
     } else {
       // SDK didn't deliver the call — use REST API to redirect the call to our browser client
       console.log('[CallContext] No SDK activeCall — using REST API to redirect call', incomingCall.call_sid);
@@ -654,7 +724,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         status: 'in-progress',
         answered_at: new Date().toISOString(),
       })
-      .eq('id', incomingCall.id);
+      .eq('call_sid', incomingCall.call_sid);
 
     if (error) throw error;
     
