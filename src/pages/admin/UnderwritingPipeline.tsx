@@ -811,7 +811,7 @@ const SettingsPanel = ({ open, onClose, columnsOpen, onColumnsOpen, onColumnsClo
       display: 'flex',
       flexDirection: 'column',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 16px', borderBottom: '1px solid #F0EEF0', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid #F0EEF0', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button onClick={onColumnsClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
             <ChevronLeft size={18} color="#666" />
@@ -822,7 +822,7 @@ const SettingsPanel = ({ open, onClose, columnsOpen, onColumnsOpen, onColumnsClo
           <X size={18} color="#999" />
         </button>
       </div>
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid #E8E6F0', flexShrink: 0 }}>
+      <div style={{ padding: '12px 24px', borderBottom: '1px solid #E8E6F0', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #E0DFF0', borderRadius: '8px', padding: '8px 12px', background: '#F8F8FB' }}>
           <Search size={14} color="#999" />
           <input placeholder="Filter by field name" style={{ border: 'none', outline: 'none', fontSize: '13px', background: 'transparent', width: '100%', color: '#666' }} />
@@ -835,10 +835,15 @@ const SettingsPanel = ({ open, onClose, columnsOpen, onColumnsOpen, onColumnsClo
             alignItems: 'center',
             justifyContent: 'space-between',
             height: '44px',
-            padding: '0 20px 0 4px',
+            padding: '0 24px 0 12px',
             borderBottom: i < COLUMNS_TOGGLE.length - 1 ? '1px solid #F0EEF0' : undefined,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            transition: 'background-color 0.15s ease',
+            cursor: 'default',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F8F8FB')}
+          onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '4px' }}>
               <GripVertical size={14} color="#DDD" />
               <span style={{ fontSize: '14px', color: '#1A1A2E' }}>{col.label}</span>
               {'required' in col && col.required && (
@@ -852,13 +857,13 @@ const SettingsPanel = ({ open, onClose, columnsOpen, onColumnsOpen, onColumnsClo
     </div>
 
     {/* Main settings content */}
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 16px', borderBottom: '1px solid #F0EEF0', flexShrink: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid #F0EEF0', flexShrink: 0 }}>
       <span style={{ fontSize: '18px', fontWeight: 700, color: '#1A1A2E' }}>Pipeline Settings</span>
       <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
         <X size={18} color="#999" />
       </button>
     </div>
-    <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
       {/* General */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ fontSize: '14px', fontWeight: 700, color: '#1A1A2E', marginBottom: '12px' }}>General</div>
