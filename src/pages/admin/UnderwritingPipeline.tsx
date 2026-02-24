@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { STAGE_LABELS } from '@/constants/appConfig';
@@ -11,6 +11,14 @@ import {
   Zap, Target, GripVertical, Loader2, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { differenceInDays, format } from 'date-fns';
+import { toast } from '@/components/ui/sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Trash2 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -237,12 +245,19 @@ const ToggleSwitch = ({ on, disabled }: { on: boolean; disabled?: boolean }) => 
 
 // ─── FilterItem ───────────────────────────────────────────────────────────────
 
-const FilterItem = ({ name }: { name: string }) => {
+const FilterItem = ({ name, active, onClick, isUserCreated, onDelete }: {
+  name: string;
+  active?: boolean;
+  onClick?: () => void;
+  isUserCreated?: boolean;
+  onDelete?: () => void;
+}) => {
   const [hovered, setHovered] = useState(false);
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -251,12 +266,13 @@ const FilterItem = ({ name }: { name: string }) => {
         padding: '6px 12px',
         borderRadius: '6px',
         cursor: 'pointer',
-        background: hovered ? '#F5F3FF' : 'transparent',
+        background: active ? '#EDE9F8' : hovered ? '#F5F3FF' : 'transparent',
       }}
     >
       <span style={{
         fontSize: '14px',
-        color: '#1A1A2E',
+        color: active ? '#3D2B6B' : '#1A1A2E',
+        fontWeight: active ? 600 : 400,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
@@ -264,11 +280,31 @@ const FilterItem = ({ name }: { name: string }) => {
       }}>
         {name}
       </span>
-      {hovered && (
+      {hovered && isUserCreated && onDelete ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0 }}
+            >
+              <MoreVertical size={13} color="#999" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32">
+            <DropdownMenuItem
+              onClick={e => { e.stopPropagation(); onDelete(); }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-3.5 w-3.5" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : hovered ? (
         <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0 }}>
           <MoreVertical size={13} color="#999" />
         </button>
-      )}
+      ) : null}
     </div>
   );
 };
@@ -978,6 +1014,37 @@ const UnderwritingPipeline = () => {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [addDropdownOpen, setAddDropdownOpen] = useState(false);
   const [detailTab, setDetailTab] = useState<DetailTab>('details');
+  const [showNewFilterForm, setShowNewFilterForm] = useState(false);
+  const [newFilterName, setNewFilterName] = useState('');
+  const [userFilters, setUserFilters] = useState<string[]>([]);
+  const [activeFilter, setActiveFilter] = useState('All Opportunities');
+  const newFilterInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showNewFilterForm && newFilterInputRef.current) {
+      newFilterInputRef.current.focus();
+    }
+  }, [showNewFilterForm]);
+
+  const handleSaveFilter = () => {
+    const trimmed = newFilterName.trim();
+    if (!trimmed) return;
+    if ([...SAVED_FILTERS, ...userFilters].includes(trimmed)) {
+      toast.error('A filter with that name already exists');
+      return;
+    }
+    setUserFilters(prev => [...prev, trimmed]);
+    setActiveFilter(trimmed);
+    setNewFilterName('');
+    setShowNewFilterForm(false);
+    toast.success(`Filter "${trimmed}" created`);
+  };
+
+  const handleDeleteFilter = (name: string) => {
+    setUserFilters(prev => prev.filter(f => f !== name));
+    if (activeFilter === name) setActiveFilter('All Opportunities');
+    toast.success(`Filter "${name}" deleted`);
+  };
 
   const { data: allRows = [], isLoading } = useUnderwritingLeads();
 
@@ -1020,6 +1087,7 @@ const UnderwritingPipeline = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   title="New Filter"
+                  onClick={() => { setShowNewFilterForm(true); setNewFilterName(''); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '4px',
                     background: 'transparent', border: 'none', cursor: 'pointer',
@@ -1048,6 +1116,50 @@ const UnderwritingPipeline = () => {
               </div>
             </div>
 
+            {/* New Filter Inline Form */}
+            {showNewFilterForm && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                border: '1px solid #E0DFF0', borderRadius: '8px', padding: '6px 10px', marginBottom: '8px',
+              }}>
+                <input
+                  ref={newFilterInputRef}
+                  value={newFilterName}
+                  onChange={e => setNewFilterName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleSaveFilter();
+                    if (e.key === 'Escape') { setShowNewFilterForm(false); setNewFilterName(''); }
+                  }}
+                  placeholder="Filter name..."
+                  style={{
+                    border: 'none', outline: 'none', fontSize: '13px', color: '#1A1A2E',
+                    background: 'transparent', flex: 1, minWidth: 0,
+                  }}
+                />
+                <button
+                  onClick={handleSaveFilter}
+                  style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontSize: '12px', fontWeight: 600, color: '#7B5EA7',
+                    padding: '3px 8px', borderRadius: '4px', whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F3F0FA'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { setShowNewFilterForm(false); setNewFilterName(''); }}
+                  style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    padding: '2px', color: '#999', display: 'flex', alignItems: 'center',
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             {/* Search */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: '8px',
@@ -1060,17 +1172,21 @@ const UnderwritingPipeline = () => {
               />
             </div>
 
-            {/* Active Filter Row */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              background: '#EDE9F8', borderRadius: '8px', padding: '6px 12px',
-              height: '36px', marginBottom: '8px', cursor: 'pointer',
-            }}>
+            {/* All Opportunities Row */}
+            <div
+              onClick={() => setActiveFilter('All Opportunities')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: activeFilter === 'All Opportunities' ? '#EDE9F8' : 'transparent',
+                borderRadius: '8px', padding: '6px 12px',
+                height: '36px', marginBottom: '8px', cursor: 'pointer',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 600, color: '#3D2B6B' }}>All Opportunities</span>
-                <Bookmark size={12} color="#7B5EA7" fill="#7B5EA7" />
+                {activeFilter === 'All Opportunities' && <Bookmark size={12} color="#7B5EA7" fill="#7B5EA7" />}
               </div>
-              <span style={{ fontSize: '13px', color: '#888' }}>1,076</span>
+              <span style={{ fontSize: '13px', color: '#888' }}>{allRows.length.toLocaleString()}</span>
             </div>
 
             {/* Public Section */}
@@ -1090,8 +1206,34 @@ const UnderwritingPipeline = () => {
                   style={{ transform: publicOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }}
                 />
               </button>
-              {publicOpen && SAVED_FILTERS.map(f => <FilterItem key={f} name={f} />)}
+              {publicOpen && SAVED_FILTERS.map(f => (
+                <FilterItem
+                  key={f}
+                  name={f}
+                  active={activeFilter === f}
+                  onClick={() => setActiveFilter(f)}
+                />
+              ))}
             </div>
+
+            {/* User-Created Filters */}
+            {userFilters.length > 0 && (
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ padding: '4px 12px 6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em' }}>My Filters</span>
+                </div>
+                {userFilters.map(f => (
+                  <FilterItem
+                    key={f}
+                    name={f}
+                    active={activeFilter === f}
+                    onClick={() => setActiveFilter(f)}
+                    isUserCreated
+                    onDelete={() => handleDeleteFilter(f)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1120,12 +1262,12 @@ const UnderwritingPipeline = () => {
           {/* Page Header */}
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px', height: '48px', marginBottom: '10px' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#1A1A2E', margin: 0, whiteSpace: 'nowrap' }}>
-              All Opportunities
+              {activeFilter}
             </h1>
             <Bookmark size={15} color="#AAAAAA" style={{ cursor: 'pointer', flexShrink: 0 }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#666', fontSize: '13px' }}>
               <Hash size={12} color="#AAAAAA" />
-              <span>1,076 opportunities</span>
+              <span>{allRows.length.toLocaleString()} opportunities</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#666', fontSize: '13px' }}>
               <DollarSign size={12} color="#AAAAAA" />
