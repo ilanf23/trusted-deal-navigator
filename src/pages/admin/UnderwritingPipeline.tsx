@@ -6,9 +6,9 @@ import EvanLayout from '@/components/evan/EvanLayout';
 import {
   DollarSign, Building2, User, CheckCircle2, Hash, Calendar, Tag,
   LayoutList, LayoutGrid, ArrowUpDown, Filter, Search, Plus,
-  Bookmark, ChevronDown, ChevronLeft, ChevronRight, X, ExternalLink,
+  Bookmark, ChevronDown, ChevronRight, X, ExternalLink,
   MoreVertical, Info, Maximize2, Copy, MoreHorizontal,
-  Zap, Target, GripVertical, Loader2,
+  Zap, Target, GripVertical, Loader2, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { differenceInDays, format } from 'date-fns';
 
@@ -1017,31 +1017,33 @@ const UnderwritingPipeline = () => {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '44px', paddingBottom: '8px' }}>
               <span style={{ fontSize: '16px', fontWeight: 700, color: '#1A1A2E' }}>Saved Filters</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   title="New Filter"
                   style={{
-                    width: '28px', height: '28px', borderRadius: '6px',
-                    border: '1px solid #E0DFF0', background: 'white',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontSize: '13px', fontWeight: 600, color: '#7B5EA7',
+                    padding: '4px 8px', borderRadius: '6px',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#F3F0FA'; e.currentTarget.style.borderColor = '#C4B5E0'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#E0DFF0'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F3F0FA'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <Plus size={14} color="#7B5EA7" />
+                  <Plus size={14} />
+                  <span>New</span>
                 </button>
                 <button
                   title="Collapse Filters"
                   onClick={() => setFiltersCollapsed(true)}
                   style={{
-                    width: '28px', height: '28px', borderRadius: '6px',
-                    border: '1px solid #E0DFF0', background: 'white',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    padding: '4px', borderRadius: '6px', color: '#888',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#F3F0FA'; e.currentTarget.style.borderColor = '#C4B5E0'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#E0DFF0'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F3F0FA'; e.currentTarget.style.color = '#7B5EA7'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#888'; }}
                 >
-                  <ChevronLeft size={14} color="#666" />
+                  <PanelLeftClose size={18} />
                 </button>
               </div>
             </div>
@@ -1096,15 +1098,19 @@ const UnderwritingPipeline = () => {
         {/* Collapsed toggle */}
         {filtersCollapsed && (
           <button
+            title="Expand Filters"
             onClick={() => setFiltersCollapsed(false)}
             style={{
-              width: '28px', height: '28px', borderRadius: '50%',
+              width: '32px', height: '32px', borderRadius: '8px',
               border: '1px solid #E0DFF0', background: 'white',
               display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
               marginRight: '16px', alignSelf: 'flex-start', marginTop: '8px', flexShrink: 0,
+              color: '#888',
             }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#F3F0FA'; e.currentTarget.style.color = '#7B5EA7'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#888'; }}
           >
-            <ChevronRight size={13} color="#666" />
+            <PanelLeftOpen size={18} />
           </button>
         )}
 
