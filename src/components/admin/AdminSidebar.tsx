@@ -297,7 +297,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                 url: `/admin/${employeeName.toLowerCase()}/pipeline`, 
                 icon: Kanban,
                 subItems: [
-                  { title: 'Underwriting', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=underwriting`, icon: Kanban },
+                  { title: 'Underwriting', url: `/admin/${employeeName.toLowerCase()}/pipeline/underwriting`, icon: Kanban },
                   { title: 'Lender Management', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=lender-management`, icon: Kanban },
                   { title: 'Potential', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=potential`, icon: Kanban },
                 ],
@@ -760,7 +760,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   }`}
                   onClick={onAIToggle}
                 >
-                  <img src={chatgptLogo} alt="AI" className="w-5 h-5 invert" />
+                  <img src={chatgptLogo} alt="AI" className="w-5 h-5 invert object-contain" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
