@@ -44,20 +44,6 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
             
             {/* Time Display and Actions */}
             <div className="flex items-center gap-2 md:gap-4">
-              <time className="text-sm md:text-base text-muted-foreground font-medium tabular-nums hidden sm:block">
-                {new Date().toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
-              </time>
-              <time className="text-sm text-muted-foreground font-medium tabular-nums sm:hidden">
-                {new Date().toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
-              </time>
-              
               {/* Undo Button - Always Visible */}
               <TooltipProvider>
                 <Tooltip>

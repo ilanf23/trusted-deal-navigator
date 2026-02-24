@@ -200,13 +200,31 @@ const EvansPage = () => {
         `)
         .eq('status', 'funded')
         .gte('converted_at', periodStart.toISOString());
-      
+
       if (error) throw error;
       return data;
     },
     staleTime: 0,
     refetchOnMount: 'always',
   });
+
+  // Fetch company-wide funded deals for goal progress card
+  const { data: companyDeals } = useQuery({
+    queryKey: ['company-funded-deals', timePeriod],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('team_funded_deals')
+        .select('rep_name, fee_earned')
+        .gte('funded_at', periodStart.toISOString());
+      return data || [];
+    },
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+
+  const companyRevenue = (companyDeals || []).reduce((sum, d) => sum + Number(d.fee_earned), 0);
+  const ANNUAL_GOAL = 1500000;
+  const companyGoalPct = Math.min(100, (companyRevenue / ANNUAL_GOAL) * 100);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -549,93 +567,34 @@ const EvansPage = () => {
           </div>
         </div>
 
-        {/* Company-Wide Revenue Hero */}
-        <CompanyRevenueHero chartPeriod={chartPeriod} setChartPeriod={setChartPeriod} />
-
-        {/* P&L Revenue Breakdown */}
-        <Card className="border">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-primary" />
-                P&L Revenue Breakdown
-              </CardTitle>
-              <Badge variant="outline" className="text-xs">
-                {timePeriod === 'ytd' ? 'Year to Date' : 'Month to Date'}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {(() => {
-              // Calculate revenue per increment based on time period
-              const periodRevenue = timePeriod === 'ytd' ? ytdRevenue : chartRevenueData[chartRevenueData.length - 1]?.cumulative || 0;
-              
-              // YTD calculations
-              const dayOfYear = Math.floor((now.getTime() - startOfYear(now).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-              const weekOfYear = Math.ceil(dayOfYear / 7);
-              const monthOfYear = now.getMonth() + 1;
-              
-              // MTD calculations
-              const dayOfMonth = now.getDate();
-              const weekOfMonth = Math.ceil(dayOfMonth / 7);
-              
-              const increments = timePeriod === 'ytd' 
-                ? [
-                    { label: 'Per Day', value: periodRevenue / dayOfYear, count: dayOfYear, unit: 'days' },
-                    { label: 'Per Week', value: periodRevenue / weekOfYear, count: weekOfYear, unit: 'weeks' },
-                    { label: 'Per Month', value: periodRevenue / monthOfYear, count: monthOfYear, unit: 'months' },
-                  ]
-                : [
-                    { label: 'Per Day', value: periodRevenue / dayOfMonth, count: dayOfMonth, unit: 'days' },
-                    { label: 'Per Week', value: periodRevenue / Math.max(1, weekOfMonth), count: weekOfMonth, unit: 'weeks' },
-                  ];
-
-              return (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {increments.map((inc) => (
-                    <div key={inc.label} className="p-4 rounded-lg bg-muted/50 border">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{inc.label}</p>
-                      <p className="text-2xl font-bold text-primary mt-1">{formatCurrency(inc.value)}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Based on {inc.count} {inc.unit}
-                      </p>
-                    </div>
-                  ))}
-                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Revenue</p>
-                    <p className="text-2xl font-bold mt-1">{formatCurrency(periodRevenue)}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {timePeriod === 'ytd' ? `Jan 1 - ${format(now, 'MMM d')}` : format(now, 'MMMM yyyy')}
-                    </p>
-                  </div>
-                </div>
-              );
-            })()}
-          </CardContent>
-        </Card>
-
         {/* KPI Cards Row - responsive */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+          {/* Goal Progress Card */}
           <Card className="border hover:border-primary/30 transition-colors">
             <CardContent className="pt-4 md:pt-5 px-3 md:px-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Revenue</p>
-                  <p className="text-lg md:text-2xl font-bold mt-0.5 md:mt-1">{formatCurrency(metrics.totalRevenue)}</p>
-                  <div className="flex items-center gap-1 mt-0.5 md:mt-1">
-                    {metrics.totalRevenue > 0 ? (
-                      <ArrowUpRight className="h-2.5 w-2.5 md:h-3 md:w-3 text-green-600" />
-                    ) : (
-                      <ArrowDownRight className="h-2.5 w-2.5 md:h-3 md:w-3 text-red-500" />
-                    )}
-                    <span className="text-[10px] md:text-xs text-muted-foreground">
-                      {periodLabel}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-2 md:p-3 rounded-full bg-primary/10">
-                  <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                </div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs md:text-sm font-medium text-muted-foreground">Road to $1.5M</p>
+                <Target className="h-4 w-4 text-primary" />
+              </div>
+              <p className="text-lg md:text-2xl font-bold">{formatCurrency(companyRevenue)}</p>
+              {/* Stacked progress bar: company total (light) + Evan slice (solid) */}
+              <div className="relative h-2 w-full rounded-full bg-muted mt-2 overflow-hidden">
+                <div
+                  className="absolute left-0 top-0 h-full bg-primary/30 rounded-full transition-all duration-500"
+                  style={{ width: `${companyGoalPct}%` }}
+                />
+                <div
+                  className="absolute left-0 top-0 h-full bg-primary rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (metrics.totalRevenue / ANNUAL_GOAL) * 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-[10px] md:text-xs text-muted-foreground">
+                  Evan: {formatCurrency(metrics.totalRevenue)}
+                </span>
+                <span className="text-[10px] md:text-xs font-medium text-primary">
+                  {companyGoalPct.toFixed(0)}%
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -702,6 +661,71 @@ const EvansPage = () => {
 
         {/* Top 10 Actions Now */}
         <TopActions evanId={evanId} />
+
+        {/* Company-Wide Revenue Hero */}
+        <CompanyRevenueHero chartPeriod={chartPeriod} setChartPeriod={setChartPeriod} />
+
+        {/* P&L Revenue Breakdown */}
+        <Card className="border">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-primary" />
+                P&L Revenue Breakdown
+              </CardTitle>
+              <Badge variant="outline" className="text-xs">
+                {timePeriod === 'ytd' ? 'Year to Date' : 'Month to Date'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              // Calculate revenue per increment based on time period
+              const periodRevenue = timePeriod === 'ytd' ? ytdRevenue : chartRevenueData[chartRevenueData.length - 1]?.cumulative || 0;
+
+              // YTD calculations
+              const dayOfYear = Math.floor((now.getTime() - startOfYear(now).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+              const weekOfYear = Math.ceil(dayOfYear / 7);
+              const monthOfYear = now.getMonth() + 1;
+
+              // MTD calculations
+              const dayOfMonth = now.getDate();
+              const weekOfMonth = Math.ceil(dayOfMonth / 7);
+
+              const increments = timePeriod === 'ytd'
+                ? [
+                    { label: 'Per Day', value: periodRevenue / dayOfYear, count: dayOfYear, unit: 'days' },
+                    { label: 'Per Week', value: periodRevenue / weekOfYear, count: weekOfYear, unit: 'weeks' },
+                    { label: 'Per Month', value: periodRevenue / monthOfYear, count: monthOfYear, unit: 'months' },
+                  ]
+                : [
+                    { label: 'Per Day', value: periodRevenue / dayOfMonth, count: dayOfMonth, unit: 'days' },
+                    { label: 'Per Week', value: periodRevenue / Math.max(1, weekOfMonth), count: weekOfMonth, unit: 'weeks' },
+                  ];
+
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {increments.map((inc) => (
+                    <div key={inc.label} className="p-4 rounded-lg bg-muted/50 border">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{inc.label}</p>
+                      <p className="text-2xl font-bold text-primary mt-1">{formatCurrency(inc.value)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Based on {inc.count} {inc.unit}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Revenue</p>
+                    <p className="text-2xl font-bold mt-1">{formatCurrency(periodRevenue)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {timePeriod === 'ytd' ? `Jan 1 - ${format(now, 'MMM d')}` : format(now, 'MMMM yyyy')}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
 
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
