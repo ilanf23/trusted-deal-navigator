@@ -1,46 +1,38 @@
 
 
-## Fix: Settings Panel Toggle Cutoff + UI/UX Polish
+## Redesign: Saved Filters Sidebar Action Buttons
 
 ### Problem
-1. The Columns sub-panel inside the Settings panel has tight right padding (`0 20px 0 4px`), causing toggle switches to be clipped or feel cramped at the right edge.
-2. The overall Settings panel UI can be polished for better spacing, visual hierarchy, and interaction feedback.
+The two rounded-rectangle buttons next to "Saved Filters" (lines 1021-1046) look like empty boxes and are not intuitive. The collapsed-state expand button (lines 1097-1108) is also a vague circle. Users cannot tell what these controls do at a glance.
+
+### Solution
+Replace the two boxes with clearly labeled icon-text links, and replace the collapsed expand button with a recognizable sidebar toggle.
 
 ### Changes
 
 **File: `src/pages/admin/UnderwritingPipeline.tsx`**
 
-#### 1. Fix toggle cutoff in Columns sub-panel (line 838)
-Change the column row padding from `'0 20px 0 4px'` to `'0 24px 0 12px'` — more breathing room on both sides so the drag handle and toggle switch are fully visible.
+#### 1. Replace the two box buttons (lines 1020-1046) with icon-text actions
+Remove the two `28x28` bordered boxes. Replace with:
+- A `Plus` icon-text link reading "+ New" styled as a small text button (no border/box)
+- A `PanelLeftClose` icon (from lucide-react) for collapsing, also borderless
 
-#### 2. Increase left padding on drag handle area (line 841-843)
-Add `paddingLeft: '8px'` to ensure the grip icon doesn't sit flush against the panel edge.
+Both will use a simple ghost-style: transparent background, hover turns `#F3F0FA`, icon + text inline, no box borders.
 
-#### 3. Polish the Columns sub-panel header (line 814)
-Increase header padding from `'20px 20px 16px'` to `'20px 24px 16px'` for consistent horizontal padding.
+```text
+Before:  Saved Filters  [□] [□]
+After:   Saved Filters  + New  ◀
+```
 
-#### 4. Polish the search input area (line 825)
-Update padding from `'12px 20px'` to `'12px 24px'` for alignment consistency.
+#### 2. Replace the collapsed expand button (lines 1097-1108)
+Replace the `28x28` circle with a `PanelLeftOpen` icon button (from lucide-react) — a universally recognized sidebar-expand icon. Slightly larger at `32x32`, with a subtle hover background.
 
-#### 5. Improve toggle row hover states (lines 832-850)
-Add a subtle hover background (`#F8F8FB`) to each column toggle row for better interaction feedback. Currently the rows have no hover state.
-
-#### 6. Improve main settings panel padding consistency (line 855)
-Update the main settings header and content padding from `'20px'` to `'20px 24px'` for consistency with the columns sub-panel.
-
-### Summary of Padding Changes
-
-| Element | Before | After |
-|---------|--------|-------|
-| Column rows padding | `0 20px 0 4px` | `0 24px 0 12px` |
-| Column sub-panel header | `20px 20px 16px` | `20px 24px 16px` |
-| Search input container | `12px 20px` | `12px 24px` |
-| Main settings header | `20px 20px 16px` | `20px 24px 16px` |
-| Main settings content | `20px` | `20px 24px` |
+#### 3. Import updates
+Add `PanelLeftClose` and `PanelLeftOpen` from `lucide-react`. Remove `ChevronLeft` and `ChevronRight` if no longer used elsewhere in this file.
 
 ### Visual Result
-- Toggle switches will be fully visible with comfortable spacing from the right edge
-- Drag handles will have proper left margin
-- Consistent 24px horizontal padding throughout both panels
-- Hover feedback on column rows for better interactivity
+- "Saved Filters" header will have a clean `+ New` text-link and a recognizable panel-collapse icon
+- No more mysterious empty rectangles
+- Collapsed state shows a clear panel-open icon instead of a vague circle
+- All controls have descriptive tooltips and hover feedback
 
