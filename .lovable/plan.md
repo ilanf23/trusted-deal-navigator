@@ -1,54 +1,34 @@
 
 
-## Fix: Answer Call Button Stuck on "Connecting..."
+## Fix: Collapsed Sidebar Logo Shows "CX" Instead of "CLX"
 
-### Root Cause
+### Problem
+When the admin sidebar is collapsed, the logo displays "CX" in a generic rounded box (line 403-405 of `AdminSidebar.tsx`). It should show "CLX" styled to match the full logo's font.
 
-The `answerCall` function (lines 556-672 of `CallContext.tsx`) has a **blocking gate** that prevents the REST API redirect from ever executing:
+### Change
 
-```
-answerCall() 
-  -> activeCall is null (SDK never fired 'incoming')
-  -> get device ref
-  -> WAIT for device.state === 'registered'   <-- BLOCKS HERE (10s timeout)
-  -> throw "Device registration timed out"    <-- NEVER REACHES REST API
-```
+**File: `src/components/admin/AdminSidebar.tsx`** (lines 402-405)
 
-The call_events table confirms this: 4 consecutive `answer_attempted` events all show `device_ready: false`, and the `twilio-connect-call` edge function has zero logs -- it was never called.
+Replace the collapsed logo block:
 
-### Fix
+```tsx
+// Current (wrong)
+<div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center my-2">
+  <span className="text-white font-bold text-sm">CX</span>
+</div>
 
-**File: `src/contexts/CallContext.tsx`** -- Restructure `answerCall` (lines 556-672):
-
-1. **Remove the device registration gate** (lines 580-595). Don't block on device registration before calling the REST API.
-
-2. **Call `twilio-connect-call` immediately** when there's no SDK `activeCall`. The edge function redirects the live Twilio call to re-dial `<Client>clx-admin</Client>`.
-
-3. **Start device initialization in parallel** (non-blocking). While the REST API is redirecting the call, kick off device registration so it's hopefully ready by the time the redirected call arrives.
-
-4. **Keep the 15-second polling wait** for the SDK to pick up the redirected call (lines 624-657), but also attempt device registration during that window.
-
-5. **Improve error messaging**: If the 15s timeout fires, show a clearer message ("Could not connect. Please try answering again or refresh the page.")
-
-### Updated answerCall Flow
-
-```
-answerCall()
-  -> request mic permission
-  -> if activeCall exists: accept directly (no change)
-  -> else:
-      1. Fire-and-forget: initializeTwilioDevice() (non-blocking)
-      2. Immediately call twilio-connect-call REST API
-      3. Poll device.calls for 15s waiting for SDK incoming event
-      4. If found: accept the call
-      5. If timeout: throw clear error
+// New (correct)
+<span className="text-white font-extrabold text-lg tracking-tight my-2" 
+      style={{ fontFamily: "'Inter', sans-serif" }}>
+  CLX
+</span>
 ```
 
-### Changes Summary
+This removes the dark rounded box background and displays "CLX" in a bold, clean style matching the full logo aesthetic. No background box, just the text mark.
+
+### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/contexts/CallContext.tsx` | Remove device registration wait gate from `answerCall`; call REST API immediately; init device in parallel |
-
-No edge function changes needed -- `twilio-connect-call` is correct, it just was never being reached.
+| `src/components/admin/AdminSidebar.tsx` | Fix collapsed logo from "CX" box to "CLX" text |
 
