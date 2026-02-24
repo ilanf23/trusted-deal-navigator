@@ -400,9 +400,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
       <SidebarHeader className={`pt-0 pb-0 border-b-0 ${isCollapsed ? 'px-1' : 'px-3'}`}>
         <Link to={homeUrl} className="flex items-center justify-center group">
           {isCollapsed ? (
-            <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center my-2">
-              <span className="text-white font-bold text-sm">CX</span>
-            </div>
+            <span className="text-white font-extrabold text-lg tracking-tight my-2" 
+                  style={{ fontFamily: "'Inter', sans-serif" }}>
+              CLX
+            </span>
           ) : (
             <img 
               src="/logo.png" 
