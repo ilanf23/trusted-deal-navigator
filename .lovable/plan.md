@@ -1,38 +1,59 @@
 
 
-## Redesign: Saved Filters Sidebar Action Buttons
+## Make "+ New" Button Functional with Filter Creation UI
 
 ### Problem
-The two rounded-rectangle buttons next to "Saved Filters" (lines 1021-1046) look like empty boxes and are not intuitive. The collapsed-state expand button (lines 1097-1108) is also a vague circle. Users cannot tell what these controls do at a glance.
-
-### Solution
-Replace the two boxes with clearly labeled icon-text links, and replace the collapsed expand button with a recognizable sidebar toggle.
+The "+ New" button next to "Saved Filters" is non-functional -- clicking it does nothing. It needs to open a UI for creating and saving a new filter.
 
 ### Changes
 
 **File: `src/pages/admin/UnderwritingPipeline.tsx`**
 
-#### 1. Replace the two box buttons (lines 1020-1046) with icon-text actions
-Remove the two `28x28` bordered boxes. Replace with:
-- A `Plus` icon-text link reading "+ New" styled as a small text button (no border/box)
-- A `PanelLeftClose` icon (from lucide-react) for collapsing, also borderless
+#### 1. Add state for new-filter creation
+Add new state variables:
+- `showNewFilterForm: boolean` -- toggles an inline form below the header
+- `newFilterName: string` -- the name input value
+- `savedFilters: string[]` -- initialized from `SAVED_FILTERS` constant, will hold user-created filters too
+- `activeFilter: string` -- tracks which filter is currently selected (defaults to "All Opportunities")
 
-Both will use a simple ghost-style: transparent background, hover turns `#F3F0FA`, icon + text inline, no box borders.
+#### 2. Wire up the "+ New" button
+On click, set `showNewFilterForm = true`, which reveals a compact inline form directly below the "Saved Filters" header (above the search box).
+
+#### 3. Create the inline new-filter form
+A small inline card/row that appears when `showNewFilterForm` is true:
+- A text input with placeholder "Filter name..." auto-focused
+- A "Save" button (small, purple, ghost style) and an "X" cancel button
+- On Save: appends the new name to `savedFilters`, resets form, shows `toast.success`
+- On Cancel or Escape key: hides the form
 
 ```text
-Before:  Saved Filters  [□] [□]
-After:   Saved Filters  + New  ◀
+Layout when form is open:
+
+  Saved Filters          + New  ◀
+  ┌──────────────────────────────┐
+  │ [Filter name...______] Save X│
+  └──────────────────────────────┘
+  [🔍 Search Filters           ]
+  All Opportunities         1,076
+  ▾ PUBLIC
+    My Open Opportunities
+    ...
 ```
 
-#### 2. Replace the collapsed expand button (lines 1097-1108)
-Replace the `28x28` circle with a `PanelLeftOpen` icon button (from lucide-react) — a universally recognized sidebar-expand icon. Slightly larger at `32x32`, with a subtle hover background.
+#### 4. Make FilterItem clickable to set active filter
+When a filter item is clicked, set `activeFilter` to that filter's name. The "All Opportunities" row and FilterItem rows will highlight based on matching `activeFilter`.
 
-#### 3. Import updates
-Add `PanelLeftClose` and `PanelLeftOpen` from `lucide-react`. Remove `ChevronLeft` and `ChevronRight` if no longer used elsewhere in this file.
+#### 5. Add delete option to FilterItem for user-created filters
+The existing `MoreVertical` icon on hover will open a small dropdown with "Delete" for user-created filters (not the default ones). Deleting removes from `savedFilters` and shows `toast.success`.
 
-### Visual Result
-- "Saved Filters" header will have a clean `+ New` text-link and a recognizable panel-collapse icon
-- No more mysterious empty rectangles
-- Collapsed state shows a clear panel-open icon instead of a vague circle
-- All controls have descriptive tooltips and hover feedback
+#### 6. Visual polish
+- The inline form uses the same `#E0DFF0` border, `8px` border-radius as the search box
+- Save button matches existing purple ghost style (`#7B5EA7` text, `#F3F0FA` hover)
+- Focus ring on input uses `#C4B5E0`
+
+### Technical Notes
+- Filters are stored in component state only (no DB persistence) -- consistent with the current SAVED_FILTERS approach
+- The `toast` import from `sonner` is already available in the project
+- No new files needed; all changes within `UnderwritingPipeline.tsx`
+- Component stays well under 300 lines of new code added
 
