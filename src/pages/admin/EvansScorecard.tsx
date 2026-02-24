@@ -2,10 +2,10 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
+import {
   Users,
   Phone,
   Mail,
@@ -16,57 +16,39 @@ import {
   TrendingUp,
   Loader2,
   CheckCircle2,
-  Clock,
-  ArrowRight,
+  AlertCircle,
   Calendar,
   Send,
   Eye,
+  PhoneIncoming,
+  PhoneOutgoing,
+  ListTodo,
+  Timer,
 } from 'lucide-react';
-import { 
-  startOfMonth, 
-  format, 
-  differenceInDays, 
-  startOfWeek, 
-  endOfWeek, 
-  addWeeks, 
-  subWeeks, 
-  startOfYear, 
+import {
+  format,
+  differenceInDays,
+  startOfWeek,
+  endOfWeek,
   endOfMonth,
   eachWeekOfInterval,
   eachMonthOfInterval,
   getYear,
 } from 'date-fns';
-import { Link } from 'react-router-dom';
 
-// Stage labels for display
-const STAGE_LABELS: Record<string, string> = {
-  new: 'New',
-  discovery: 'Initial Consult',
-  pre_qualification: 'Onboarding',
-  document_collection: 'Underwriting',
-  underwriting: 'Lender Mgmt',
-  approval: 'Path to Close',
-  funded: 'Funded',
-  lost: 'Lost',
-};
 
-// Generate years for filter (current year and 2 previous years)
 const generateYearOptions = () => {
   const currentYear = getYear(new Date());
   return [currentYear, currentYear - 1, currentYear - 2];
 };
 
-// Generate weeks for a given year and month (weeks identified by Monday date)
 const generateWeekOptions = (year: number, month: number) => {
   const monthStart = new Date(year, month, 1);
   const monthEnd = endOfMonth(monthStart);
-  
-  // Get all weeks that have any days in this month
   const weeks = eachWeekOfInterval(
     { start: monthStart, end: monthEnd },
-    { weekStartsOn: 1 } // Monday
+    { weekStartsOn: 1 }
   );
-  
   return weeks.map((weekStart) => ({
     value: format(weekStart, 'yyyy-MM-dd'),
     label: `Week of ${format(weekStart, 'MMM d')}`,
@@ -75,41 +57,71 @@ const generateWeekOptions = (year: number, month: number) => {
   }));
 };
 
-// Generate month options for a given year
 const generateMonthOptions = (year: number) => {
   const now = new Date();
   const currentYear = getYear(now);
   const currentMonth = now.getMonth();
-  
-  // If it's the current year, only show months up to current month
   const endMonth = year === currentYear ? currentMonth : 11;
-  
   const yearStart = new Date(year, 0, 1);
   const yearEnd = new Date(year, endMonth, 1);
-  
   return eachMonthOfInterval({ start: yearStart, end: yearEnd }).map((date) => ({
     value: date.getMonth(),
     label: format(date, 'MMMM'),
   }));
 };
 
+// Stat card variants
+interface StatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number | string;
+  sub?: string;
+  colorClass: string;
+  iconColorClass: string;
+}
+
+const StatCard = ({ icon, label, value, sub, colorClass, iconColorClass }: StatCardProps) => (
+  <Card className={`border-0 shadow-sm ${colorClass}`}>
+    <CardContent className="p-3 sm:p-4">
+      <div className={`flex items-center gap-1.5 mb-2 ${iconColorClass}`}>
+        <span className="[&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>
+        <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide">{label}</span>
+      </div>
+      <p className="text-2xl sm:text-3xl font-bold leading-none">{value}</p>
+      {sub && <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5">{sub}</p>}
+    </CardContent>
+  </Card>
+);
+
+// Mini touchpoint tile
+interface TouchTileProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number | string;
+  sub?: string;
+  accent: string;
+}
+
+const TouchTile = ({ icon, label, value, sub, accent }: TouchTileProps) => (
+  <div className="flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl bg-background border border-border/60 text-center">
+    <span className={`[&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ${accent}`}>{icon}</span>
+    <p className="text-xl sm:text-2xl font-bold leading-none mt-1">{value}</p>
+    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">{label}</p>
+    {sub && <p className="text-[10px] sm:text-[11px] text-muted-foreground/70">{sub}</p>}
+  </div>
+);
+
 const EvansScorecard = () => {
   const now = new Date();
-  
-  // Initialize with current week's Monday
   const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
-  
-  // Use the week start's month/year so the filter always shows the current week
   const currentWeekYear = getYear(currentWeekStart);
   const currentWeekMonth = currentWeekStart.getMonth();
-  
+
   const [selectedYear, setSelectedYear] = useState<number>(currentWeekYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentWeekMonth);
   const [selectedWeek, setSelectedWeek] = useState<string>(format(currentWeekStart, 'yyyy-MM-dd'));
   const [repFilter, setRepFilter] = useState<string>('evan');
 
-  // Compute period boundaries based on selected week
-  // Parse the date as local time to avoid timezone offset issues
   const periodBoundaries = useMemo(() => {
     const [year, month, day] = selectedWeek.split('-').map(Number);
     const weekStart = new Date(year, month - 1, day);
@@ -120,7 +132,6 @@ const EvansScorecard = () => {
 
   const periodStart = periodBoundaries.start;
 
-  // Get Evan's team member ID for filtering
   const { data: evanMember } = useQuery({
     queryKey: ['evan-member-id'],
     queryFn: async () => {
@@ -134,21 +145,10 @@ const EvansScorecard = () => {
     },
   });
 
-  // Memoize week options based on selected year and month
-  const weekOptions = useMemo(() => 
-    generateWeekOptions(selectedYear, selectedMonth), 
-    [selectedYear, selectedMonth]
-  );
-
-  // Memoize month options based on selected year
-  const monthOptions = useMemo(() => 
-    generateMonthOptions(selectedYear), 
-    [selectedYear]
-  );
-
+  const weekOptions = useMemo(() => generateWeekOptions(selectedYear, selectedMonth), [selectedYear, selectedMonth]);
+  const monthOptions = useMemo(() => generateMonthOptions(selectedYear), [selectedYear]);
   const yearOptions = useMemo(() => generateYearOptions(), []);
 
-  // When year or month changes, reset week to first week of that month
   const handleYearChange = (year: string) => {
     const newYear = parseInt(year);
     setSelectedYear(newYear);
@@ -156,32 +156,25 @@ const EvansScorecard = () => {
     const newMonth = newMonths.length > 0 ? newMonths[newMonths.length - 1].value : 0;
     setSelectedMonth(newMonth);
     const newWeeks = generateWeekOptions(newYear, newMonth);
-    if (newWeeks.length > 0) {
-      setSelectedWeek(newWeeks[newWeeks.length - 1].value);
-    }
+    if (newWeeks.length > 0) setSelectedWeek(newWeeks[newWeeks.length - 1].value);
   };
 
   const handleMonthChange = (month: string) => {
     const newMonth = parseInt(month);
     setSelectedMonth(newMonth);
     const newWeeks = generateWeekOptions(selectedYear, newMonth);
-    if (newWeeks.length > 0) {
-      setSelectedWeek(newWeeks[newWeeks.length - 1].value);
-    }
+    if (newWeeks.length > 0) setSelectedWeek(newWeeks[newWeeks.length - 1].value);
   };
 
-  // Fetch all leads (for counting new leads this period)
   const { data: allLeads, isLoading: leadsLoading } = useQuery({
     queryKey: ['scorecard-all-leads', repFilter, evanMember?.id, selectedWeek],
     queryFn: async () => {
       let query = supabase
         .from('leads')
         .select('id, name, company_name, status, assigned_to, created_at, updated_at');
-      
       if (repFilter === 'evan' && evanMember?.id) {
         query = query.eq('assigned_to', evanMember.id);
       }
-      
       const { data, error } = await query;
       if (error) throw error;
       return data;
@@ -189,7 +182,6 @@ const EvansScorecard = () => {
     enabled: repFilter === 'all' || !!evanMember?.id,
   });
 
-  // Fetch communications (touchpoints)
   const { data: communications } = useQuery({
     queryKey: ['scorecard-communications', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
@@ -203,7 +195,6 @@ const EvansScorecard = () => {
     },
   });
 
-  // Fetch lead activities (for stage movements)
   const { data: leadActivities } = useQuery({
     queryKey: ['scorecard-activities', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
@@ -217,7 +208,6 @@ const EvansScorecard = () => {
     },
   });
 
-  // Fetch tasks for follow-up tracking
   const { data: tasks } = useQuery({
     queryKey: ['scorecard-tasks', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
@@ -231,7 +221,6 @@ const EvansScorecard = () => {
     },
   });
 
-  // Fetch 7-day follow-up emails sent
   const { data: followUpEmails } = useQuery({
     queryKey: ['scorecard-follow-up-emails', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
@@ -245,7 +234,6 @@ const EvansScorecard = () => {
     },
   });
 
-  // Fetch Rate Watch signups
   const { data: rateWatchSignups } = useQuery({
     queryKey: ['scorecard-ratewatch-signups', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
@@ -259,19 +247,15 @@ const EvansScorecard = () => {
     },
   });
 
-  // Calculate lead-centric metrics
   const metrics = useMemo(() => {
     if (!allLeads) return null;
-
     const periodEnd = periodBoundaries.end;
 
-    // New leads this period (within the selected week)
     const newLeadsThisPeriod = allLeads.filter((lead) => {
       const createdAt = new Date(lead.created_at);
       return createdAt >= periodStart && createdAt <= periodEnd;
     });
 
-    // Leads by status
     const activeLeads = allLeads.filter(
       (lead) => !['funded', 'won', 'lost'].includes(lead.status)
     );
@@ -284,39 +268,31 @@ const EvansScorecard = () => {
       return lead.status === 'lost' && updatedAt >= periodStart && updatedAt <= periodEnd;
     });
 
-    // Touchpoints breakdown
     const calls = communications?.filter((c) => c.communication_type === 'call') || [];
     const emails = communications?.filter((c) => c.communication_type === 'email') || [];
     const sms = communications?.filter((c) => c.communication_type === 'sms') || [];
-    
     const inboundCalls = calls.filter((c) => c.direction === 'inbound');
     const outboundCalls = calls.filter((c) => c.direction === 'outbound');
-    
-    const totalTouchpoints = (communications?.length || 0);
+    const totalTouchpoints = communications?.length || 0;
 
-    // Calculate total call duration in minutes
-    const totalCallMinutes = calls.reduce((sum, call) => 
+    const totalCallMinutes = calls.reduce((sum, call) =>
       sum + (call.duration_seconds || 0) / 60, 0
     );
 
-    // Unique leads contacted
     const uniqueLeadsContacted = new Set(
       communications?.filter((c) => c.lead_id).map((c) => c.lead_id) || []
     ).size;
 
-    // Stage movements from activities
     const stageChanges = leadActivities?.filter(
       (a) => a.activity_type === 'stage_change' || a.title?.includes('moved to')
     ) || [];
 
-    // Tasks metrics
     const tasksCompleted = tasks?.filter((t) => t.is_completed).length || 0;
     const tasksCreated = tasks?.length || 0;
     const tasksOverdue = tasks?.filter(
       (t) => !t.is_completed && t.due_date && new Date(t.due_date) < now
     ).length || 0;
 
-    // Recent stage movements for display
     const recentMovements = stageChanges.slice(0, 10).map((activity) => {
       const lead = allLeads.find((l) => l.id === activity.lead_id);
       return {
@@ -328,36 +304,26 @@ const EvansScorecard = () => {
       };
     });
 
-    // Leads needing attention (no touchpoint in 7+ days)
     const leadsNeedingAttention = activeLeads.filter((lead) => {
       const lastTouchpoint = communications?.find((c) => c.lead_id === lead.id);
       if (!lastTouchpoint) return true;
       return differenceInDays(now, new Date(lastTouchpoint.created_at)) >= 7;
     }).slice(0, 10);
 
-    // 7-day follow-ups sent (from outbound_emails with follow_up/7day sources or nudge tasks)
     const followUpEmailsSent = followUpEmails?.filter(
       (e) => e.source?.toLowerCase().includes('follow') || e.source?.toLowerCase().includes('nudge') || e.source?.toLowerCase().includes('7day')
     ).length || 0;
-    
+
     const nudgeTasksCompleted = tasks?.filter(
       (t) => t.source === 'nudge' && t.is_completed
     ).length || 0;
 
-    const totalFollowUpsSent = followUpEmailsSent + nudgeTasksCompleted;
-
-    // Rate Watch signups this period
-    const rateWatchSignupsCount = rateWatchSignups?.length || 0;
-
     return {
-      // Lead counts
       totalLeads: allLeads.length,
       activeLeads: activeLeads.length,
       newLeads: newLeadsThisPeriod.length,
       closedWon: closedWon.length,
       closedLost: closedLost.length,
-      
-      // Touchpoints
       totalTouchpoints,
       calls: calls.length,
       inboundCalls: inboundCalls.length,
@@ -366,21 +332,13 @@ const EvansScorecard = () => {
       sms: sms.length,
       totalCallMinutes: Math.round(totalCallMinutes),
       uniqueLeadsContacted,
-      
-      // Stage movements
       stageMovements: stageChanges.length,
       recentMovements,
-      
-      // Tasks
       tasksCreated,
       tasksCompleted,
       tasksOverdue,
-      
-      // New metrics
-      followUpsSent: totalFollowUpsSent,
-      rateWatchSignups: rateWatchSignupsCount,
-      
-      // Attention needed
+      followUpsSent: followUpEmailsSent + nudgeTasksCompleted,
+      rateWatchSignups: rateWatchSignups?.length || 0,
       leadsNeedingAttention,
     };
   }, [allLeads, communications, leadActivities, tasks, followUpEmails, rateWatchSignups, periodStart, periodBoundaries, now]);
@@ -400,20 +358,22 @@ const EvansScorecard = () => {
 
   if (!metrics) return null;
 
+  const periodLabel = `${format(periodBoundaries.start, 'MMM d')} – ${format(periodBoundaries.end, 'MMM d, yyyy')}`;
+
   return (
     <EvanLayout>
-      <div className="space-y-6">
-        {/* Header with Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="space-y-5 sm:space-y-8 pb-5 sm:pb-8">
+
+        {/* ── Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Lead Scorecard</h1>
-            <p className="text-muted-foreground">Track your lead activity & performance</p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Performance Scorecard</h1>
+            <p className="text-muted-foreground mt-1 text-sm">{periodLabel}</p>
           </div>
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Year filter */}
+
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:flex-wrap">
             <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
-              <SelectTrigger className="w-[100px]">
+              <SelectTrigger className="h-9 w-full sm:w-[90px] text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -423,39 +383,32 @@ const EvansScorecard = () => {
               </SelectContent>
             </Select>
 
-            {/* Month filter */}
             <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="h-9 w-full sm:w-[120px] text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {monthOptions.map((month) => (
-                  <SelectItem key={month.value} value={month.value.toString()}>
-                    {month.label}
-                  </SelectItem>
+                  <SelectItem key={month.value} value={month.value.toString()}>{month.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            {/* Week filter */}
             <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-              <SelectTrigger className="w-[150px]">
-                <Calendar className="h-4 w-4 mr-2" />
+              <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm">
+                <Calendar className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {weekOptions.map((week) => (
-                  <SelectItem key={week.value} value={week.value}>
-                    {week.label}
-                  </SelectItem>
+                  <SelectItem key={week.value} value={week.value}>{week.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
-            {/* Rep filter */}
+
             <Select value={repFilter} onValueChange={setRepFilter}>
-              <SelectTrigger className="w-[110px]">
-                <SelectValue placeholder="Evan" />
+              <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Company</SelectItem>
@@ -465,225 +418,172 @@ const EvansScorecard = () => {
           </div>
         </div>
 
-        {/* Section 1: Lead Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-          <Card className="bg-gradient-to-br from-blue-400/25 to-blue-500/35 dark:from-blue-600/35 dark:to-blue-700/45 border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
-                <Users className="h-4 w-4" />
-                <span className="text-xs font-medium">Active Leads</span>
-              </div>
-              <p className="text-3xl font-bold">{metrics.activeLeads}</p>
-            </CardContent>
-          </Card>
+        {/* ── Section 1: Pipeline Overview ── */}
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Pipeline Overview</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <StatCard
+              icon={<Users />}
+              label="Active"
+              value={metrics.activeLeads}
+              sub="total pipeline"
+              colorClass="bg-blue-50 dark:bg-blue-950/40"
+              iconColorClass="text-blue-600 dark:text-blue-400"
+            />
+            <StatCard
+              icon={<UserPlus />}
+              label="New Leads"
+              value={metrics.newLeads}
+              sub="this week"
+              colorClass="bg-violet-50 dark:bg-violet-950/40"
+              iconColorClass="text-violet-600 dark:text-violet-400"
+            />
+            <StatCard
+              icon={<Trophy />}
+              label="Closed Won"
+              value={metrics.closedWon}
+              sub="this week"
+              colorClass="bg-emerald-50 dark:bg-emerald-950/40"
+              iconColorClass="text-emerald-600 dark:text-emerald-400"
+            />
+            <StatCard
+              icon={<AlertCircle />}
+              label="Closed Lost"
+              value={metrics.closedLost}
+              sub="this week"
+              colorClass="bg-rose-50 dark:bg-rose-950/40"
+              iconColorClass="text-rose-500 dark:text-rose-400"
+            />
+            <StatCard
+              icon={<ArrowRightLeft />}
+              label="Stage Moves"
+              value={metrics.stageMovements}
+              sub="this week"
+              colorClass="bg-amber-50 dark:bg-amber-950/40"
+              iconColorClass="text-amber-600 dark:text-amber-400"
+            />
+            <StatCard
+              icon={<Send />}
+              label="Follow-ups"
+              value={metrics.followUpsSent}
+              sub="7-day sent"
+              colorClass="bg-cyan-50 dark:bg-cyan-950/40"
+              iconColorClass="text-cyan-600 dark:text-cyan-400"
+            />
+            <StatCard
+              icon={<Eye />}
+              label="Rate Watch"
+              value={metrics.rateWatchSignups}
+              sub="signups"
+              colorClass="bg-purple-50 dark:bg-purple-950/40"
+              iconColorClass="text-purple-600 dark:text-purple-400"
+            />
+          </div>
+        </section>
 
-          <Card className="bg-gradient-to-br from-blue-500/30 to-blue-600/40 dark:from-blue-700/40 dark:to-blue-800/50 border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
-                <UserPlus className="h-4 w-4" />
-                <span className="text-xs font-medium">New Leads</span>
-              </div>
-              <p className="text-3xl font-bold">{metrics.newLeads}</p>
-              <p className="text-xs text-muted-foreground">this period</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-600/35 to-blue-700/45 dark:from-blue-800/45 dark:to-blue-900/55 border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-300 mb-1">
-                <Trophy className="h-4 w-4" />
-                <span className="text-xs font-medium">Closed Won</span>
-              </div>
-              <p className="text-3xl font-bold">{metrics.closedWon}</p>
-              <p className="text-xs text-muted-foreground">this period</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-700/40 to-blue-800/50 dark:from-blue-900/50 dark:to-blue-950/60 border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-500 dark:text-blue-300 mb-1">
-                <Users className="h-4 w-4" />
-                <span className="text-xs font-medium">Closed Lost</span>
-              </div>
-              <p className="text-3xl font-bold">{metrics.closedLost}</p>
-              <p className="text-xs text-muted-foreground">this period</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-800/45 to-blue-900/55 dark:from-blue-950/55 dark:to-slate-900/65 border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-400 dark:text-blue-300 mb-1">
-                <ArrowRightLeft className="h-4 w-4" />
-                <span className="text-xs font-medium">Stage Moves</span>
-              </div>
-              <p className="text-3xl font-bold">{metrics.stageMovements}</p>
-              <p className="text-xs text-muted-foreground">this period</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-900/50 to-blue-950/60 dark:from-slate-800/55 dark:to-slate-900/65 border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-300 dark:text-blue-200 mb-1">
-                <Send className="h-4 w-4" />
-                <span className="text-xs font-medium">7-Day Follow-ups</span>
-              </div>
-              <p className="text-3xl font-bold">{metrics.followUpsSent}</p>
-              <p className="text-xs text-muted-foreground">sent this period</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-950/55 to-slate-900/65 dark:from-slate-900/60 dark:to-slate-950/70 border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-200 dark:text-blue-100 mb-1">
-                <Eye className="h-4 w-4" />
-                <span className="text-xs font-medium">Rate Watch Signups</span>
-              </div>
-              <p className="text-3xl font-bold">{metrics.rateWatchSignups}</p>
-              <p className="text-xs text-muted-foreground">this period</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Section 2: Touchpoints */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Touchpoints This Period
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
-                <p className="text-3xl font-bold text-primary">{metrics.totalTouchpoints}</p>
-                <p className="text-sm text-muted-foreground">Total Touchpoints</p>
-              </div>
-              
-              <div className="text-center p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Phone className="h-4 w-4 text-blue-500" />
+        {/* ── Section 2: Touchpoints ── */}
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Touchpoints</h2>
+          <Card className="border border-border/60">
+            <CardContent className="p-3 sm:p-5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                {/* Total — featured, full-width on mobile */}
+                <div className="col-span-2 sm:col-span-1 flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl bg-primary/8 border border-primary/20 text-center">
+                  <span className="text-primary [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5"><TrendingUp /></span>
+                  <p className="text-2xl sm:text-3xl font-bold leading-none mt-1">{metrics.totalTouchpoints}</p>
+                  <p className="text-[10px] sm:text-xs font-semibold text-primary/80">Total</p>
                 </div>
-                <p className="text-2xl font-bold">{metrics.calls}</p>
-                <p className="text-xs text-muted-foreground">Calls</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {metrics.totalCallMinutes} mins
-                </p>
-              </div>
 
-              <div className="text-center p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Phone className="h-4 w-4 text-emerald-500" />
-                </div>
-                <p className="text-2xl font-bold">{metrics.outboundCalls}</p>
-                <p className="text-xs text-muted-foreground">Outbound</p>
+                <TouchTile icon={<Phone />} label="All Calls" value={metrics.calls} sub={`${metrics.totalCallMinutes} min`} accent="text-blue-500" />
+                <TouchTile icon={<PhoneOutgoing />} label="Outbound" value={metrics.outboundCalls} accent="text-emerald-500" />
+                <TouchTile icon={<PhoneIncoming />} label="Inbound" value={metrics.inboundCalls} accent="text-amber-500" />
+                <TouchTile icon={<Mail />} label="Emails" value={metrics.emails} accent="text-purple-500" />
+                <TouchTile icon={<MessageSquare />} label="SMS" value={metrics.sms} accent="text-green-500" />
+                <TouchTile icon={<Users />} label="Leads Reached" value={metrics.uniqueLeadsContacted} accent="text-indigo-500" />
               </div>
+            </CardContent>
+          </Card>
+        </section>
 
-              <div className="text-center p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Phone className="h-4 w-4 text-amber-500" />
-                </div>
-                <p className="text-2xl font-bold">{metrics.inboundCalls}</p>
-                <p className="text-xs text-muted-foreground">Inbound</p>
-              </div>
-              
-              <div className="text-center p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Mail className="h-4 w-4 text-purple-500" />
-                </div>
-                <p className="text-2xl font-bold">{metrics.emails}</p>
-                <p className="text-xs text-muted-foreground">Emails</p>
-              </div>
-              
-              <div className="text-center p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <MessageSquare className="h-4 w-4 text-green-500" />
-                </div>
-                <p className="text-2xl font-bold">{metrics.sms}</p>
-                <p className="text-xs text-muted-foreground">SMS</p>
-              </div>
+        {/* ── Section 3 + 4 side by side ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
-              <div className="text-center p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <Users className="h-4 w-4 text-indigo-500" />
-                </div>
-                <p className="text-2xl font-bold">{metrics.uniqueLeadsContacted}</p>
-                <p className="text-xs text-muted-foreground">Leads Reached</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 3: Tasks & Follow-ups */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5" />
-              Tasks & Follow-ups
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-muted/30 rounded-lg">
-                <p className="text-3xl font-bold">{metrics.tasksCreated}</p>
-                <p className="text-sm text-muted-foreground">Tasks Created</p>
-              </div>
-              
-              <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
-                <p className="text-3xl font-bold text-emerald-600">{metrics.tasksCompleted}</p>
-                <p className="text-sm text-muted-foreground">Completed</p>
-              </div>
-              
-              <div className={`text-center p-4 rounded-lg ${metrics.tasksOverdue > 0 ? 'bg-red-50 dark:bg-red-950/30' : 'bg-muted/30'}`}>
-                <p className={`text-3xl font-bold ${metrics.tasksOverdue > 0 ? 'text-red-600' : ''}`}>
-                  {metrics.tasksOverdue}
-                </p>
-                <p className="text-sm text-muted-foreground">Overdue</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 4: Recent Stage Movements */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2">
-              <ArrowRightLeft className="h-5 w-5" />
-              Recent Stage Movements
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {metrics.recentMovements.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <ArrowRightLeft className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No stage movements this period</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {metrics.recentMovements.map((movement) => (
-                  <div 
-                    key={movement.id}
-                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium">{movement.leadName}</p>
-                      {movement.company && (
-                        <p className="text-xs text-muted-foreground">{movement.company}</p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="secondary" className="text-xs">
-                        {movement.action}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(movement.date), 'MMM d')}
-                      </p>
-                    </div>
+          {/* Tasks & Follow-ups */}
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Tasks & Follow-ups</h2>
+            <Card className="border border-border/60 h-full">
+              <CardContent className="p-3 sm:p-5">
+                <div className="grid grid-cols-3 gap-3 h-full">
+                  <div className="flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl bg-muted/40 border border-border/40 text-center">
+                    <ListTodo className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                    <p className="text-2xl sm:text-3xl font-bold leading-none mt-1">{metrics.tasksCreated}</p>
+                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">Created</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+                  <div className="flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-center">
+                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400" />
+                    <p className="text-2xl sm:text-3xl font-bold leading-none mt-1 text-emerald-700 dark:text-emerald-300">{metrics.tasksCompleted}</p>
+                    <p className="text-[10px] sm:text-xs font-medium text-emerald-600 dark:text-emerald-400">Completed</p>
+                  </div>
+
+                  <div className={`flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl border text-center ${
+                    metrics.tasksOverdue > 0
+                      ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900'
+                      : 'bg-muted/40 border-border/40'
+                  }`}>
+                    <Timer className={`h-4 w-4 sm:h-5 sm:w-5 ${metrics.tasksOverdue > 0 ? 'text-rose-500' : 'text-muted-foreground'}`} />
+                    <p className={`text-2xl sm:text-3xl font-bold leading-none mt-1 ${metrics.tasksOverdue > 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                      {metrics.tasksOverdue}
+                    </p>
+                    <p className={`text-[10px] sm:text-xs font-medium ${metrics.tasksOverdue > 0 ? 'text-rose-500 dark:text-rose-400' : 'text-muted-foreground'}`}>
+                      Overdue
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* Recent Stage Movements */}
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Recent Stage Movements</h2>
+            <Card className="border border-border/60 h-full">
+              <CardContent className="p-3 sm:p-5">
+                {metrics.recentMovements.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full min-h-[120px] text-center gap-2">
+                    <ArrowRightLeft className="h-7 w-7 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">No stage movements this week</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[180px] sm:max-h-[260px] overflow-y-auto pr-1">
+                    {metrics.recentMovements.map((movement) => (
+                      <div
+                        key={movement.id}
+                        className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{movement.leadName}</p>
+                          {movement.company && (
+                            <p className="text-xs text-muted-foreground truncate">{movement.company}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1 ml-3 shrink-0">
+                          <Badge variant="secondary" className="text-[11px] px-2 py-0.5 whitespace-nowrap">
+                            {movement.action}
+                          </Badge>
+                          <p className="text-[11px] text-muted-foreground">
+                            {format(new Date(movement.date), 'MMM d')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+        </div>
 
       </div>
     </EvanLayout>
