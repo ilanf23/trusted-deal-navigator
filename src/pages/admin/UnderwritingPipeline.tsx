@@ -2,9 +2,9 @@ import { useState, useRef } from 'react';
 import EvanLayout from '@/components/evan/EvanLayout';
 import {
   DollarSign, Building2, User, CheckCircle2, Hash, Calendar, Tag,
-  LayoutList, LayoutGrid, ArrowUpDown, Filter, Search, Settings, Plus,
+  LayoutList, LayoutGrid, ArrowUpDown, Filter, Search, Plus,
   Bookmark, ChevronDown, ChevronLeft, ChevronRight, X, ExternalLink,
-  MoreVertical, ArrowLeft, Info, Maximize2, Copy, MoreHorizontal,
+  MoreVertical, Info, Maximize2, Copy, MoreHorizontal,
   Zap, Target, GripVertical,
 } from 'lucide-react';
 
@@ -623,331 +623,6 @@ const BoardCard = ({ row }: { row: OpportunityRow }) => (
   </div>
 );
 
-// ─── Filter Panel ─────────────────────────────────────────────────────────────
-
-const FILTER_GROUPS = [
-  {
-    title: 'Activity',
-    filters: [
-      { label: 'Activity Type', type: 'dropdown' },
-      { label: 'Interactions', type: 'range' },
-      { label: 'Last Contacted', type: 'daterange' },
-      { label: 'Inactive Days', type: 'range' },
-    ],
-  },
-  {
-    title: 'Pipeline',
-    filters: [
-      { label: 'Pipeline', type: 'dropdown', badge: '1' },
-      { label: 'Stage', type: 'dropdown' },
-      { label: 'Days in Stage', type: 'range' },
-      { label: 'Status', type: 'dropdown' },
-      { label: 'Priority', type: 'dropdown' },
-    ],
-  },
-  {
-    title: 'People',
-    filters: [
-      { label: 'Owned By', type: 'dropdown' },
-      { label: 'Followed', type: 'dropdown' },
-      { label: 'Date Added', type: 'daterange' },
-      { label: 'Source', type: 'dropdown' },
-      { label: 'Close Date', type: 'daterange' },
-      { label: 'Loss Reason', type: 'dropdown' },
-    ],
-  },
-  {
-    title: 'Record',
-    filters: [
-      { label: 'Company', type: 'dropdown' },
-      { label: 'Value', type: 'range' },
-      { label: 'Tags', type: 'dropdown' },
-    ],
-  },
-  {
-    title: 'Text',
-    filters: [
-      { label: 'Name', type: 'dropdown' },
-      { label: 'Description', type: 'dropdown' },
-    ],
-  },
-  {
-    title: 'Custom Fields',
-    filters: [
-      { label: '#UW', type: 'dropdown' },
-      { label: 'Client Working with Other Lenders', type: 'dropdown' },
-      { label: 'Project Stage', type: 'dropdown' },
-      { label: "Weekly's", type: 'dropdown' },
-    ],
-  },
-];
-
-const FilterPanel = ({ open, onClose }: { open: boolean; onClose: () => void }) => (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    right: open ? 0 : '-420px',
-    width: '380px',
-    height: '100vh',
-    background: 'white',
-    boxShadow: '-4px 0 20px rgba(0,0,0,0.10)',
-    zIndex: 60,
-    transition: 'right 0.25s ease',
-    display: 'flex',
-    flexDirection: 'column',
-    overflowY: 'auto',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-  }}>
-    {/* Header */}
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '20px 20px 16px', borderBottom: '1px solid #F0EEF0', flexShrink: 0 }}>
-      <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-        <ArrowLeft size={18} color="#666" />
-      </button>
-      <span style={{ fontSize: '16px', fontWeight: 700, color: '#1A1A2E' }}>Filter Opportunity</span>
-    </div>
-
-    {/* Filter Groups */}
-    <div style={{ flex: 1, overflowY: 'auto' }}>
-      {FILTER_GROUPS.map((group, gi) => (
-        <div key={group.title}>
-          {group.filters.map((f, fi) => (
-            <div
-              key={f.label}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                height: '44px',
-                padding: '0 20px',
-                borderBottom: fi < group.filters.length - 1 ? '1px solid #F5F5F5' : undefined,
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '14px', color: '#1A1A2E' }}>{f.label}</span>
-                {'badge' in f && f.badge && (
-                  <span style={{
-                    background: '#EDE9F8',
-                    color: '#3D2B6B',
-                    borderRadius: '10px',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '1px 7px',
-                  }}>
-                    {f.badge}
-                  </span>
-                )}
-              </div>
-              {f.type === 'dropdown' ? (
-                <ChevronDown size={14} color="#999" />
-              ) : (
-                <span style={{ fontSize: '13px', color: '#3D67F5', cursor: 'pointer' }}>
-                  {f.type === 'range' ? 'Select Range' : 'Select Date Range'}
-                </span>
-              )}
-            </div>
-          ))}
-          {gi < FILTER_GROUPS.length - 1 && (
-            <div style={{ height: '1px', background: '#E8E6F0', margin: '0 0' }} />
-          )}
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
-// ─── Pipeline Settings Panel ──────────────────────────────────────────────────
-
-const COLUMNS_TOGGLE = [
-  { label: 'Opportunity', on: true, required: true },
-  { label: 'Company', on: true },
-  { label: 'Contact', on: true },
-  { label: 'Value', on: true },
-  { label: 'Owned By', on: true },
-  { label: 'Tasks', on: true },
-  { label: 'Status', on: true },
-  { label: 'Stage', on: true },
-  { label: 'Days in Stage', on: true },
-  { label: 'Stage Updated', on: true },
-  { label: 'Last Contacted', on: true },
-  { label: 'Interactions', on: true },
-  { label: 'Inactive Days', on: true },
-  { label: 'Tags', on: true },
-];
-
-interface SettingsPanelProps {
-  open: boolean;
-  onClose: () => void;
-  columnsOpen: boolean;
-  onColumnsOpen: () => void;
-  onColumnsClose: () => void;
-}
-
-const SettingsPanel = ({ open, onClose, columnsOpen, onColumnsOpen, onColumnsClose }: SettingsPanelProps) => (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    right: open ? 0 : '-440px',
-    width: '400px',
-    height: '100vh',
-    background: 'white',
-    boxShadow: '-4px 0 20px rgba(0,0,0,0.10)',
-    zIndex: 60,
-    transition: 'right 0.25s ease',
-    display: 'flex',
-    flexDirection: 'column',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-  }}>
-    {/* Columns sub-panel (slides on top) */}
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      left: columnsOpen ? 0 : '-400px',
-      width: '100%',
-      height: '100%',
-      background: 'white',
-      zIndex: 10,
-      transition: 'left 0.22s ease',
-      display: 'flex',
-      flexDirection: 'column',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid #F0EEF0', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button onClick={onColumnsClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-            <ChevronLeft size={18} color="#666" />
-          </button>
-          <span style={{ fontSize: '18px', fontWeight: 700, color: '#1A1A2E' }}>Columns</span>
-        </div>
-        <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-          <X size={18} color="#999" />
-        </button>
-      </div>
-      <div style={{ padding: '12px 24px', borderBottom: '1px solid #E8E6F0', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #E0DFF0', borderRadius: '8px', padding: '8px 12px', background: '#F8F8FB' }}>
-          <Search size={14} color="#999" />
-          <input placeholder="Filter by field name" style={{ border: 'none', outline: 'none', fontSize: '13px', background: 'transparent', width: '100%', color: '#666' }} />
-        </div>
-      </div>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {COLUMNS_TOGGLE.map((col, i) => (
-          <div key={col.label} style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            height: '44px',
-            padding: '0 24px 0 12px',
-            borderBottom: i < COLUMNS_TOGGLE.length - 1 ? '1px solid #F0EEF0' : undefined,
-            transition: 'background-color 0.15s ease',
-            cursor: 'default',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F8F8FB')}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '4px' }}>
-              <GripVertical size={14} color="#DDD" />
-              <span style={{ fontSize: '14px', color: '#1A1A2E' }}>{col.label}</span>
-              {'required' in col && col.required && (
-                <span style={{ fontSize: '11px', color: '#999' }}>Required</span>
-              )}
-            </div>
-            <ToggleSwitch on={col.on} disabled={'required' in col && col.required} />
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Main settings content */}
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 16px', borderBottom: '1px solid #F0EEF0', flexShrink: 0 }}>
-      <span style={{ fontSize: '18px', fontWeight: 700, color: '#1A1A2E' }}>Pipeline Settings</span>
-      <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-        <X size={18} color="#999" />
-      </button>
-    </div>
-    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-      {/* General */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ fontSize: '14px', fontWeight: 700, color: '#1A1A2E', marginBottom: '12px' }}>General</div>
-        <div style={{ border: '1px solid #E0DFF0', borderRadius: '8px', padding: '12px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '14px', color: '#1A1A2E' }}>Name</span>
-            <input
-              defaultValue="Underwriting"
-              style={{ border: '1px solid #E0DFF0', borderRadius: '6px', padding: '6px 10px', fontSize: '13px', color: '#1A1A2E', background: 'white', outline: 'none' }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Workflow */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ fontSize: '14px', fontWeight: 700, color: '#1A1A2E', marginBottom: '12px' }}>Workflow</div>
-        <div style={{ border: '1px solid #E0DFF0', borderRadius: '8px', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #F0EEF0' }}>
-            <span style={{ fontSize: '14px', color: '#1A1A2E' }}>Record type</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-              <span style={{ fontSize: '13px', color: '#333' }}>Opportunity</span>
-              <ChevronDown size={13} color="#999" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #F0EEF0', cursor: 'pointer' }}>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#1A1A2E' }}>Stages</div>
-              <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>Manage pipeline stages and win probability</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#888', fontSize: '13px' }}>
-              10 stages <ChevronRight size={14} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 600, color: '#1A1A2E' }}>Sales tracking</span>
-                <Info size={13} color="#CCC" />
-              </div>
-              <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>Use sales statuses and reports for pipeline.</div>
-            </div>
-            <ToggleSwitch on={true} />
-          </div>
-        </div>
-      </div>
-
-      {/* Customization */}
-      <div>
-        <div style={{ fontSize: '14px', fontWeight: 700, color: '#1A1A2E', marginBottom: '12px' }}>Customization</div>
-        <div style={{ border: '1px solid #E0DFF0', borderRadius: '8px', overflow: 'hidden' }}>
-          {[
-            { title: 'Board view card fields', sub: 'Choose fields to show on pipeline cards. Applies to all board views in your pipeline.', right: '2 enabled' },
-            { title: 'Pipeline card flags', sub: 'Automatically flag pipeline cards that meet certain conditions.', right: '2 active' },
-            { title: 'List view columns', sub: 'Choose columns to show in the list. Applies only to list views.', right: '14 enabled', action: onColumnsOpen },
-            { title: 'Create a pipeline field', sub: 'Create custom pipeline fields.', right: '' },
-          ].map((item, i, arr) => (
-            <div
-              key={item.title}
-              onClick={item.action}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 16px',
-                borderBottom: i < arr.length - 1 ? '1px solid #F0EEF0' : undefined,
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ flex: 1, marginRight: '12px' }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: '#1A1A2E' }}>{item.title}</div>
-                <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{item.sub}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#888', fontSize: '13px', flexShrink: 0 }}>
-                {item.right} <ChevronRight size={14} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 
 type DetailTab = 'details' | 'activity' | 'related';
@@ -1216,9 +891,6 @@ const UnderwritingPipeline = () => {
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [publicOpen, setPublicOpen] = useState(true);
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
-  const [columnsPanelOpen, setColumnsPanelOpen] = useState(false);
   const [sortPanelOpen, setSortPanelOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<OpportunityRow | null>(null);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
@@ -1227,8 +899,6 @@ const UnderwritingPipeline = () => {
 
   const closeAllPanels = () => {
     setSortPanelOpen(false);
-    setFilterPanelOpen(false);
-    setSettingsPanelOpen(false);
     setAddDropdownOpen(false);
   };
 
@@ -1394,10 +1064,8 @@ const UnderwritingPipeline = () => {
             </div>
 
             {[
-              { icon: ArrowUpDown, title: 'Sort', active: sortPanelOpen, onClick: (e: React.MouseEvent) => { e.stopPropagation(); setSortPanelOpen(s => !s); setFilterPanelOpen(false); setSettingsPanelOpen(false); setAddDropdownOpen(false); } },
-              { icon: Filter, title: 'Filter', active: filterPanelOpen, onClick: (e: React.MouseEvent) => { e.stopPropagation(); setFilterPanelOpen(s => !s); setSortPanelOpen(false); setSettingsPanelOpen(false); setAddDropdownOpen(false); } },
+              { icon: ArrowUpDown, title: 'Sort', active: sortPanelOpen, onClick: (e: React.MouseEvent) => { e.stopPropagation(); setSortPanelOpen(s => !s); setAddDropdownOpen(false); } },
               { icon: Search, title: 'Search', active: false, onClick: () => {} },
-              { icon: Settings, title: 'Pipeline Settings', active: settingsPanelOpen, onClick: (e: React.MouseEvent) => { e.stopPropagation(); setSettingsPanelOpen(s => !s); setSortPanelOpen(false); setFilterPanelOpen(false); setAddDropdownOpen(false); } },
             ].map(({ icon: Icon, title, active, onClick }) => (
               <button
                 key={title}
@@ -1512,15 +1180,6 @@ const UnderwritingPipeline = () => {
         />
       )}
 
-      <FilterPanel open={filterPanelOpen} onClose={() => setFilterPanelOpen(false)} />
-
-      <SettingsPanel
-        open={settingsPanelOpen}
-        onClose={() => { setSettingsPanelOpen(false); setColumnsPanelOpen(false); }}
-        columnsOpen={columnsPanelOpen}
-        onColumnsOpen={() => setColumnsPanelOpen(true)}
-        onColumnsClose={() => setColumnsPanelOpen(false)}
-      />
 
       {selectedRow && (
         <DetailPanel
