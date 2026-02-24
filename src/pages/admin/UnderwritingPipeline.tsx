@@ -1,11 +1,11 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import EvanLayout from '@/components/evan/EvanLayout';
 import {
   DollarSign, Building2, User, CheckCircle2, Hash, Calendar, Tag,
   LayoutList, LayoutGrid, ArrowUpDown, Filter, Search, Settings, Plus,
   Bookmark, ChevronDown, ChevronLeft, ChevronRight, X, ExternalLink,
   MoreVertical, ArrowLeft, Info, Maximize2, Copy, MoreHorizontal,
-  Zap, Target, GripVertical,
+  Zap, Target, GripVertical, HelpCircle,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -952,10 +952,13 @@ interface DetailPanelProps {
   tab: DetailTab;
   setTab: (tab: DetailTab) => void;
   onClose: () => void;
+  visible: boolean;
 }
 
-const DetailPanel = ({ row, tab, setTab, onClose }: DetailPanelProps) => (
-  <div style={{
+const DetailPanel = ({ row, tab, setTab, onClose, visible }: DetailPanelProps) => (
+  <div
+    onClick={(e) => e.stopPropagation()}
+    style={{
     position: 'fixed',
     top: 0,
     right: 0,
@@ -967,30 +970,64 @@ const DetailPanel = ({ row, tab, setTab, onClose }: DetailPanelProps) => (
     display: 'flex',
     flexDirection: 'column',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-  }}>
-    {/* Top action bar */}
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', flexShrink: 0 }}>
-      <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-        <X size={18} color="#999" />
+    transform: visible ? 'translateX(0)' : 'translateX(16px)',
+    opacity: visible ? 1 : 0,
+    transition: 'transform 180ms cubic-bezier(.2,.9,.2,1), opacity 180ms ease',
+  }}
+  >
+    {/* Top Bar */}
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '12px 14px',
+      borderBottom: '1px solid #F0EEF0',
+      flexShrink: 0,
+    }}>
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        style={{
+          width: '34px',
+          height: '34px',
+          borderRadius: '8px',
+          background: 'transparent',
+          border: '1px solid transparent',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <X size={18} color="#777" />
       </button>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button style={{ background: '#3D2B6B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+        <button style={{
+          background: '#3D2B6B',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          padding: '8px 16px',
+          fontSize: '13px',
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}>
           Follow
         </button>
-        <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-          <Maximize2 size={16} color="#999" />
+        <button aria-label="Open full record" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px' }}>
+          <Maximize2 size={16} color="#777" />
         </button>
-        <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-          <Copy size={16} color="#999" />
+        <button aria-label="Duplicate" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px' }}>
+          <Copy size={16} color="#777" />
         </button>
-        <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-          <MoreHorizontal size={16} color="#999" />
+        <button aria-label="More options" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px' }}>
+          <MoreHorizontal size={16} color="#777" />
         </button>
       </div>
     </div>
 
-    {/* Entity header */}
-    <div style={{ padding: '12px 20px 16px', flexShrink: 0 }}>
+    {/* Record Header */}
+    <div style={{ padding: '14px 20px 14px', flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
         <div style={{
           width: '48px',
@@ -1029,33 +1066,36 @@ const DetailPanel = ({ row, tab, setTab, onClose }: DetailPanelProps) => (
       </div>
     </div>
 
-    {/* Tabs */}
+    {/* Tab Navigation */}
     <div style={{ display: 'flex', borderBottom: '1px solid #E8E6F0', flexShrink: 0 }}>
-      {(['details', 'activity', 'related'] as DetailTab[]).map(t => (
+      {([
+        { key: 'details' as const, label: 'Details' },
+        { key: 'activity' as const, label: 'Activity' },
+        { key: 'related' as const, label: 'Related' },
+      ]).map(({ key, label }) => (
         <button
-          key={t}
-          onClick={() => setTab(t)}
+          key={key}
+          onClick={() => setTab(key)}
           style={{
             flex: 1,
             height: '40px',
             background: 'transparent',
             border: 'none',
-            borderBottom: tab === t ? '3px solid #3D2B6B' : '3px solid transparent',
+            borderBottom: tab === key ? '3px solid #3D2B6B' : '3px solid transparent',
             fontSize: '13px',
-            fontWeight: tab === t ? 700 : 400,
-            color: tab === t ? '#1A1A2E' : '#999',
+            fontWeight: tab === key ? 700 : 400,
+            color: tab === key ? '#1A1A2E' : '#999',
             cursor: 'pointer',
-            textTransform: 'uppercase',
-            letterSpacing: '0.03em',
+            letterSpacing: '0.01em',
           }}
         >
-          {t}
+          {label}
         </button>
       ))}
     </div>
 
-    {/* Tab content */}
-    <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+    {/* Details Tab (scrollable content area) */}
+    <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px 64px', position: 'relative' }}>
       {tab === 'details' && <DetailsTabContent row={row} />}
       {tab === 'activity' && (
         <div style={{ fontSize: '14px', color: '#999', textAlign: 'center', marginTop: '40px' }}>No activity yet</div>
@@ -1063,11 +1103,45 @@ const DetailPanel = ({ row, tab, setTab, onClose }: DetailPanelProps) => (
       {tab === 'related' && (
         <div style={{ fontSize: '14px', color: '#999', textAlign: 'center', marginTop: '40px' }}>No related records</div>
       )}
+
+      {/* Floating help button */}
+      <button
+        aria-label="Help"
+        style={{
+          position: 'absolute',
+          right: '16px',
+          bottom: '16px',
+          width: '42px',
+          height: '42px',
+          borderRadius: '50%',
+          background: '#3D2B6B',
+          border: 'none',
+          boxShadow: '0 10px 24px rgba(61,43,107,0.28)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+        }}
+      >
+        <HelpCircle size={18} color="white" />
+      </button>
     </div>
 
-    {/* Sticky footer */}
-    <div style={{ padding: '12px 20px', borderTop: '1px solid #F0EEF0', textAlign: 'center', flexShrink: 0 }}>
-      <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#AAAAAA' }}>
+    {/* Footer */}
+    <div style={{ padding: '12px 16px', borderTop: '1px solid #F0EEF0', flexShrink: 0 }}>
+      <button
+        style={{
+          width: '100%',
+          background: '#F6F5FB',
+          border: '1px dashed #E0DFF0',
+          borderRadius: '10px',
+          cursor: 'pointer',
+          fontSize: '13px',
+          color: '#666',
+          padding: '10px 12px',
+          fontWeight: 600,
+        }}
+      >
         + Add new field
       </button>
     </div>
@@ -1216,6 +1290,7 @@ const UnderwritingPipeline = () => {
   const [columnsPanelOpen, setColumnsPanelOpen] = useState(false);
   const [sortPanelOpen, setSortPanelOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<OpportunityRow | null>(null);
+  const [detailPanelOpen, setDetailPanelOpen] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [addDropdownOpen, setAddDropdownOpen] = useState(false);
   const [detailTab, setDetailTab] = useState<DetailTab>('details');
@@ -1225,6 +1300,27 @@ const UnderwritingPipeline = () => {
     setFilterPanelOpen(false);
     setSettingsPanelOpen(false);
     setAddDropdownOpen(false);
+  };
+
+  useEffect(() => {
+    if (selectedRow) {
+      requestAnimationFrame(() => setDetailPanelOpen(true));
+      return;
+    }
+    setDetailPanelOpen(false);
+  }, [selectedRow]);
+
+  // If switching records while open, keep it visibly open (no flicker)
+  useEffect(() => {
+    if (selectedRow && detailPanelOpen) return;
+    if (selectedRow) {
+      requestAnimationFrame(() => setDetailPanelOpen(true));
+    }
+  }, [selectedRow?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const closeDetailPanel = () => {
+    setDetailPanelOpen(false);
+    window.setTimeout(() => setSelectedRow(null), 180);
   };
 
   return (
@@ -1495,14 +1591,6 @@ const UnderwritingPipeline = () => {
 
       {/* ── Overlay Panels ────────────────────────────────────────────────────── */}
 
-      {/* Backdrop when detail panel is open */}
-      {selectedRow && (
-        <div
-          onClick={() => setSelectedRow(null)}
-          style={{ position: 'fixed', inset: 0, zIndex: 65, background: 'transparent' }}
-        />
-      )}
-
       <FilterPanel open={filterPanelOpen} onClose={() => setFilterPanelOpen(false)} />
 
       <SettingsPanel
@@ -1518,7 +1606,8 @@ const UnderwritingPipeline = () => {
           row={selectedRow}
           tab={detailTab}
           setTab={setDetailTab}
-          onClose={() => setSelectedRow(null)}
+          onClose={closeDetailPanel}
+          visible={detailPanelOpen}
         />
       )}
     </EvanLayout>

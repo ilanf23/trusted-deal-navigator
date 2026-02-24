@@ -368,6 +368,21 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
     return location.pathname.startsWith(path);
   };
 
+  const isRouteWithin = (url: string) => {
+    if (url === '/superadmin') return location.pathname === '/superadmin';
+    return location.pathname === url || location.pathname.startsWith(`${url}/`);
+  };
+
+  const isNavBranchActive = (item: NavItem): boolean => {
+    if (isRouteWithin(item.url)) return true;
+    return item.subItems?.some(isNavBranchActive) ?? false;
+  };
+
+  const focusRing =
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/50 focus-visible:ring-offset-0';
+  const activeIndicator =
+    "before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-1 before:rounded-r before:bg-sidebar-primary";
+
   const getUserInitials = (email?: string) => {
     if (!email) return 'U';
     return email.charAt(0).toUpperCase();
@@ -387,21 +402,18 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
   return (
     <Sidebar 
-      className="border-r border-white/[0.07] bg-[#0c1a2e] font-sans !text-white [&_[data-sidebar=sidebar]]:bg-[#0c1a2e]" 
+      className="border-r border-sidebar-border bg-sidebar font-sans text-sidebar-foreground [&_[data-sidebar=sidebar]]:bg-sidebar" 
       collapsible="icon"
       style={{ 
-        '--sidebar-width': '16rem', 
-        '--sidebar-width-icon': '3.5rem',
-        '--sidebar-foreground': '0 0% 100%',
-        '--sidebar-background': '214 58% 12%',
-        fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" 
+        '--sidebar-width': '17rem', 
+        '--sidebar-width-icon': '4rem',
       } as React.CSSProperties}
     >
       <SidebarHeader className={`pt-0 pb-0 border-b-0 ${isCollapsed ? 'px-1' : 'px-3'}`}>
         <Link to={homeUrl} className="flex items-center justify-center group">
           {isCollapsed ? (
-            <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center my-2">
-              <span className="text-white font-bold text-sm">CX</span>
+            <div className="w-8 h-8 rounded-md bg-sidebar-accent text-sidebar-accent-foreground flex items-center justify-center my-2">
+              <span className="font-bold text-sm">CX</span>
             </div>
           ) : (
             <img 
@@ -411,7 +423,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
             />
           )}
         </Link>
-        {!isCollapsed && <div className="h-px bg-white/15 -mt-8" />}
+        {!isCollapsed && <div className="h-px bg-sidebar-border/70 -mt-8" />}
       </SidebarHeader>
       
       <SidebarContent ref={scrollRef} className={`pt-3 space-y-0.5 ${isCollapsed ? 'px-1' : 'px-3'}`}>
@@ -421,7 +433,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               {/* Section heading label */}
               {section.isLabel && section.title && !isCollapsed && (
                 <div className="px-3 pt-0.5 pb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/60">
                     {section.title}
                   </span>
                 </div>
@@ -435,14 +447,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   >
                     <CollapsibleTrigger asChild>
                       <button className={`
-                        w-full flex items-center gap-2.5 py-2 px-3 rounded-lg transition-all duration-150 cursor-pointer text-[13.5px] tracking-tight border-0 bg-transparent
-                        ${openSections[item.title] 
-                          ? 'bg-[#1a56db] text-white' 
-                          : 'text-slate-300 hover:bg-white/[0.08] hover:text-white'
+                        ${focusRing}
+                        relative w-full flex items-center gap-2.5 py-2.5 px-3 rounded-lg transition-colors duration-150 cursor-pointer text-[13.5px] tracking-tight border-0 bg-transparent
+                        ${isNavBranchActive(item) || openSections[item.title]
+                          ? `bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ${activeIndicator}`
+                          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                         }
                       `}>
-                        <item.icon className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.6} />
-                        <span className="font-semibold flex-1 text-left">{item.title}</span>
+                        <item.icon className="w-[18px] h-[18px] flex-shrink-0 opacity-90" strokeWidth={1.75} />
+                        <span className="font-medium flex-1 text-left">{item.title}</span>
                         <ChevronDown 
                           className={`w-3.5 h-3.5 transition-transform duration-150 opacity-70 ${
                             openSections[item.title] ? '' : '-rotate-90'
@@ -451,7 +464,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                       </button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/[0.12] pl-2">
+                      <div className="ml-3 mt-1 space-y-0.5 border-l border-sidebar-border/70 pl-2">
                         {item.subItems.map((subItem) => (
                           subItem.subItems ? (
                             <Collapsible
@@ -461,14 +474,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                             >
                               <CollapsibleTrigger asChild>
                                 <button className={`
-                                  w-full flex items-center gap-2 py-1.5 px-2.5 rounded-md transition-all duration-150 cursor-pointer text-[12px] tracking-tight border-0 bg-transparent
-                                  ${openSections[`sub-${subItem.title}`]
-                                    ? 'bg-[#1a56db] text-white'
-                                    : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                                  ${focusRing}
+                                  relative w-full flex items-center gap-2 py-1.5 px-2.5 rounded-md transition-colors duration-150 cursor-pointer text-[12.5px] tracking-tight border-0 bg-transparent
+                                  ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`]
+                                    ? `bg-sidebar-accent text-sidebar-accent-foreground ${activeIndicator}`
+                                    : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                                   }
                                 `}>
-                                  <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.6} />
-                                  <span className="font-semibold flex-1 text-left">{subItem.title}</span>
+                                  <subItem.icon className="w-4 h-4 flex-shrink-0 opacity-80" strokeWidth={1.75} />
+                                  <span className="font-medium flex-1 text-left">{subItem.title}</span>
                                   <ChevronDown
                                     className={`w-3 h-3 transition-transform duration-150 opacity-70 ${
                                       openSections[`sub-${subItem.title}`] ? '' : '-rotate-90'
@@ -477,22 +491,23 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                 </button>
                               </CollapsibleTrigger>
                               <CollapsibleContent>
-                                <div className="ml-2.5 mt-0.5 space-y-0.5 border-l border-white/[0.12] pl-2">
+                                <div className="ml-2.5 mt-1 space-y-0.5 border-l border-sidebar-border/70 pl-2">
                                   {subItem.subItems.map((deepItem) => (
                                     <Link
                                       key={deepItem.title}
                                       to={deepItem.url}
                                       onClick={closeMobileMenu}
                                       className={`
-                                        flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[11.5px] tracking-tight
+                                        ${focusRing}
+                                        relative flex items-center gap-2 py-1.5 px-2 rounded-md transition-colors duration-150 text-[12px] tracking-tight
                                         ${isActive(deepItem.url)
-                                          ? 'bg-[#1a56db] text-white'
-                                          : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                                          ? `bg-sidebar-accent text-sidebar-accent-foreground ${activeIndicator}`
+                                          : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                                         }
                                       `}
                                     >
-                                      <deepItem.icon className="w-2.5 h-2.5 flex-shrink-0" strokeWidth={1.6} />
-                                      <span className="font-semibold">{deepItem.title}</span>
+                                      <deepItem.icon className="w-3 h-3 flex-shrink-0 opacity-80" strokeWidth={1.75} />
+                                      <span className="font-medium">{deepItem.title}</span>
                                     </Link>
                                   ))}
                                 </div>
@@ -504,15 +519,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                               to={subItem.url}
                               onClick={closeMobileMenu}
                               className={`
-                                flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12.5px] tracking-tight
+                                ${focusRing}
+                                relative flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-colors duration-150 text-[12.5px] tracking-tight
                                 ${isActive(subItem.url) 
-                                  ? 'bg-[#1a56db] text-white' 
-                                  : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                                  ? `bg-sidebar-accent text-sidebar-accent-foreground ${activeIndicator}` 
+                                  : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                                 }
                               `}
                             >
-                              <subItem.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.6} />
-                              <span className="font-semibold">{subItem.title}</span>
+                              <subItem.icon className="w-4 h-4 flex-shrink-0 opacity-80" strokeWidth={1.75} />
+                              <span className="font-medium">{subItem.title}</span>
                             </Link>
                           )
                         ))}
@@ -526,14 +542,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                         to={item.url}
                         onClick={closeMobileMenu}
                         className={`
-                          flex items-center justify-center py-2 px-2 rounded-md transition-all duration-150
+                          ${focusRing}
+                          flex items-center justify-center py-2 px-2 rounded-md transition-colors duration-150
                           ${isActive(item.url) 
-                            ? 'bg-[#1a56db] text-white' 
-                            : 'text-slate-300 hover:bg-white/[0.08] hover:text-white'
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-ring/30' 
+                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                           }
                         `}
                       >
-                        <item.icon className="w-5 h-5 flex-shrink-0" strokeWidth={1.6} />
+                        <item.icon className="w-5 h-5 flex-shrink-0 opacity-90" strokeWidth={1.75} />
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
@@ -546,14 +563,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     to={item.url}
                     onClick={closeMobileMenu}
                     className={`
-                      flex items-center gap-2.5 py-2 px-3 rounded-lg transition-all duration-150 text-[13.5px] tracking-tight
+                      ${focusRing}
+                      relative flex items-center gap-2.5 py-2.5 px-3 rounded-lg transition-colors duration-150 text-[13.5px] tracking-tight
                       ${isActive(item.url) 
-                        ? 'bg-[#1a56db] text-white font-semibold' 
-                        : 'text-slate-300 hover:bg-white/[0.08] hover:text-white font-semibold'
+                        ? `bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ${activeIndicator}` 
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                       }
                     `}
                   >
-                    <item.icon className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.6} />
+                    <item.icon className="w-[18px] h-[18px] flex-shrink-0 opacity-90" strokeWidth={1.75} />
                     <span>{item.title}</span>
                   </Link>
                 )
@@ -566,14 +584,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                 <Link
                   to={section.items[0]?.url || '#'}
                   className={`
-                    flex items-center justify-center py-2 px-2 rounded-md transition-all duration-150
-                    ${section.items.some(item => isActive(item.url)) 
-                      ? 'bg-[#1a56db] text-white' 
-                      : 'text-slate-300 hover:bg-white/[0.08] hover:text-white'
+                    ${focusRing}
+                    flex items-center justify-center py-2 px-2 rounded-md transition-colors duration-150
+                    ${section.items.some(isNavBranchActive) 
+                      ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-ring/30' 
+                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                     }
                   `}
                 >
-                  <section.icon className="w-5 h-5 flex-shrink-0" strokeWidth={1.6} />
+                  <section.icon className="w-5 h-5 flex-shrink-0 opacity-90" strokeWidth={1.75} />
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
@@ -587,7 +606,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               onOpenChange={() => toggleSection(section.title)}
             >
               <CollapsibleTrigger 
-                className="w-full"
+                className={`w-full ${focusRing}`}
                 onClick={() => {
                   // If section has navigateOnClick, navigate to that URL
                   if (section.navigateOnClick) {
@@ -596,14 +615,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                 }}
               >
                 <div className={`
-                  flex items-center gap-2.5 py-2 px-3 rounded-md transition-all duration-150 cursor-pointer text-[13.5px] tracking-tight
-                  ${openSections[section.title] || (section.navigateOnClick && isActive(section.navigateOnClick))
-                    ? 'bg-[#1a56db] text-white' 
-                    : 'text-slate-300 hover:bg-white/[0.08] hover:text-white'
+                  relative flex items-center gap-2.5 py-2.5 px-3 rounded-lg transition-colors duration-150 cursor-pointer text-[13.5px] tracking-tight
+                  ${(openSections[section.title] ||
+                    section.items.some(isNavBranchActive) ||
+                    (section.navigateOnClick && isRouteWithin(section.navigateOnClick)))
+                    ? `bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ${activeIndicator}`
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                   }
                 `}>
-                  <section.icon className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.6} />
-                  <span className="font-semibold flex-1 text-left">{section.title}</span>
+                  <section.icon className="w-[18px] h-[18px] flex-shrink-0 opacity-90" strokeWidth={1.75} />
+                  <span className="font-medium flex-1 text-left">{section.title}</span>
                   <ChevronDown 
                     className={`w-3.5 h-3.5 transition-transform duration-150 opacity-70 ${
                       openSections[section.title] ? '' : '-rotate-90'
@@ -612,7 +633,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/[0.12] pl-2">
+                <div className="ml-3 mt-1 space-y-0.5 border-l border-sidebar-border/70 pl-2">
                   {section.items.map((item) => (
                     item.subItems ? (
                       // Render nested collapsible for items with subItems
@@ -621,16 +642,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                         open={openSections[item.title]}
                         onOpenChange={() => toggleSection(item.title)}
                       >
-                        <CollapsibleTrigger className="w-full">
+                        <CollapsibleTrigger className={`w-full ${focusRing}`}>
                           <div className={`
-                            flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 cursor-pointer text-[12.5px] tracking-tight
-                            ${openSections[item.title] 
-                              ? 'bg-[#1a56db] text-white' 
-                              : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                            relative flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-colors duration-150 cursor-pointer text-[12.5px] tracking-tight
+                            ${isNavBranchActive(item) || openSections[item.title] 
+                              ? `bg-sidebar-accent text-sidebar-accent-foreground ${activeIndicator}` 
+                              : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                             }
                           `}>
-                            <item.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.6} />
-                            <span className="font-semibold flex-1 text-left">{item.title}</span>
+                            <item.icon className="w-4 h-4 flex-shrink-0 opacity-80" strokeWidth={1.75} />
+                            <span className="font-medium flex-1 text-left">{item.title}</span>
                             <ChevronDown 
                               className={`w-3 h-3 transition-transform duration-150 opacity-70 ${
                                 openSections[item.title] ? '' : '-rotate-90'
@@ -639,7 +660,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                           </div>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/[0.12] pl-2">
+                          <div className="ml-3 mt-1 space-y-0.5 border-l border-sidebar-border/70 pl-2">
                             {item.subItems.map((subItem) => (
                               subItem.subItems ? (
                                 <Collapsible
@@ -647,16 +668,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                   open={openSections[`sub-${subItem.title}`]}
                                   onOpenChange={() => toggleSection(`sub-${subItem.title}`)}
                                 >
-                                  <CollapsibleTrigger className="w-full">
+                                  <CollapsibleTrigger className={`w-full ${focusRing}`}>
                                     <div className={`
-                                      flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 cursor-pointer text-[12px] tracking-tight
-                                      ${openSections[`sub-${subItem.title}`]
-                                        ? 'bg-[#1a56db] text-white'
-                                        : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                                      relative flex items-center gap-2 py-1.5 px-2 rounded-md transition-colors duration-150 cursor-pointer text-[12px] tracking-tight
+                                      ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`]
+                                        ? `bg-sidebar-accent text-sidebar-accent-foreground ${activeIndicator}`
+                                        : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                                       }
                                     `}>
-                                      <subItem.icon className="w-3 h-3 flex-shrink-0" strokeWidth={1.6} />
-                                      <span className="font-semibold flex-1 text-left">{subItem.title}</span>
+                                      <subItem.icon className="w-3.5 h-3.5 flex-shrink-0 opacity-80" strokeWidth={1.75} />
+                                      <span className="font-medium flex-1 text-left">{subItem.title}</span>
                                       <ChevronDown
                                         className={`w-2.5 h-2.5 transition-transform duration-150 opacity-70 ${
                                           openSections[`sub-${subItem.title}`] ? '' : '-rotate-90'
@@ -665,22 +686,23 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                     </div>
                                   </CollapsibleTrigger>
                                   <CollapsibleContent>
-                                    <div className="ml-2.5 mt-0.5 space-y-0.5 border-l border-white/[0.12] pl-2">
+                                    <div className="ml-2.5 mt-1 space-y-0.5 border-l border-sidebar-border/70 pl-2">
                                       {subItem.subItems.map((deepItem) => (
                                         <Link
                                           key={deepItem.title}
                                           to={deepItem.url}
                                           onClick={closeMobileMenu}
                                           className={`
-                                            flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[11.5px] tracking-tight
+                                            ${focusRing}
+                                            relative flex items-center gap-2 py-1.5 px-2 rounded-md transition-colors duration-150 text-[11.5px] tracking-tight
                                             ${isActive(deepItem.url)
-                                              ? 'bg-[#1a56db] text-white'
-                                              : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                                              ? `bg-sidebar-accent text-sidebar-accent-foreground ${activeIndicator}`
+                                              : 'text-sidebar-foreground/55 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                                             }
                                           `}
                                         >
-                                          <deepItem.icon className="w-2.5 h-2.5 flex-shrink-0" strokeWidth={1.6} />
-                                          <span className="font-semibold">{deepItem.title}</span>
+                                          <deepItem.icon className="w-3 h-3 flex-shrink-0 opacity-80" strokeWidth={1.75} />
+                                          <span className="font-medium">{deepItem.title}</span>
                                         </Link>
                                       ))}
                                     </div>
@@ -692,15 +714,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                   to={subItem.url}
                                   onClick={closeMobileMenu}
                                   className={`
-                                    flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-150 text-[12px] tracking-tight
+                                    ${focusRing}
+                                    relative flex items-center gap-2 py-1.5 px-2 rounded-md transition-colors duration-150 text-[12px] tracking-tight
                                     ${isActive(subItem.url) 
-                                      ? 'bg-[#1a56db] text-white' 
-                                      : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                                      ? `bg-sidebar-accent text-sidebar-accent-foreground ${activeIndicator}` 
+                                      : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                                     }
                                   `}
                                 >
-                                  <subItem.icon className="w-3 h-3 flex-shrink-0" strokeWidth={1.6} />
-                                  <span className="font-semibold">{subItem.title}</span>
+                                  <subItem.icon className="w-3.5 h-3.5 flex-shrink-0 opacity-80" strokeWidth={1.75} />
+                                  <span className="font-medium">{subItem.title}</span>
                                 </Link>
                               )
                             ))}
@@ -713,15 +736,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                         to={item.url}
                         onClick={closeMobileMenu}
                         className={`
-                          flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12.5px] tracking-tight
+                          ${focusRing}
+                          relative flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-colors duration-150 text-[12.5px] tracking-tight
                           ${isActive(item.url) 
-                            ? 'bg-[#1a56db] text-white' 
-                            : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                            ? `bg-sidebar-accent text-sidebar-accent-foreground ${activeIndicator}` 
+                            : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground'
                           }
                         `}
                       >
-                        <item.icon className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.6} />
-                        <span className="font-semibold">{item.title}</span>
+                        <item.icon className="w-4 h-4 flex-shrink-0 opacity-80" strokeWidth={1.75} />
+                        <span className="font-medium">{item.title}</span>
                       </Link>
                     )
                   ))}
@@ -730,10 +754,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   {section.title === 'CRM' && teamMember && (
                     <button
                       onClick={() => setCreatePipelineOpen(true)}
-                      className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-150 text-[12.5px] tracking-tight text-[#4d8fff] hover:bg-white/[0.08] hover:text-white w-full"
+                      className={`${focusRing} flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-colors duration-150 text-[12.5px] tracking-tight text-sidebar-primary hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground w-full`}
                     >
-                      <Plus className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} />
-                      <span className="font-semibold">New Pipeline</span>
+                      <Plus className="w-3.5 h-3.5 flex-shrink-0 opacity-90" strokeWidth={2} />
+                      <span className="font-medium">New Pipeline</span>
                     </button>
                   )}
                 </div>
@@ -744,23 +768,23 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
       </SidebarContent>
 
-      <SidebarFooter className={`border-t border-white/[0.12] ${isCollapsed ? 'p-1' : 'p-3'}`}>
+      <SidebarFooter className={`border-t border-sidebar-border ${isCollapsed ? 'p-1.5' : 'p-3'}`}>
         {/* AI Assistant Button */}
         {onAIToggle && (
           isCollapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
                   className={`w-full h-9 ${
-                    aiChatOpen 
-                      ? 'bg-primary/20 text-primary hover:bg-primary/30' 
-                      : 'text-slate-300 hover:text-white hover:bg-white/[0.08]'
+                    aiChatOpen
+                      ? 'bg-primary/20 text-primary hover:bg-primary/30'
+                      : 'text-sidebar-foreground/70 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/80'
                   }`}
                   onClick={onAIToggle}
                 >
-                  <img src={chatgptLogo} alt="AI" className="w-5 h-5 invert object-contain" />
+                  <img src={chatgptLogo} alt="AI" className="w-6 h-6 invert object-contain flex-shrink-0" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
@@ -773,7 +797,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               className={`w-full justify-start gap-2.5 h-9 rounded-md text-[13px] px-3 mb-2 ${
                 aiChatOpen 
                   ? 'bg-primary/20 text-primary hover:bg-primary/30' 
-                  : 'text-slate-300 hover:text-white hover:bg-white/[0.08]'
+                  : 'text-sidebar-foreground/70 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/80'
               }`}
               onClick={onAIToggle}
             >
@@ -811,7 +835,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               <p className="text-[13px] font-semibold text-white truncate tracking-tight">
                 {teamMember?.name || user?.email?.split('@')[0] || 'User'}
               </p>
-              <p className="text-[11px] text-slate-400 truncate tracking-tight">
+              <p className="text-[11px] text-sidebar-foreground/55 truncate tracking-tight">
                 {user?.email}
               </p>
             </div>
@@ -821,13 +845,13 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         {isCollapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="icon"
-                className="w-full h-9 text-slate-400 hover:text-white hover:bg-white/[0.08]" 
+                className={`w-full h-11 text-sidebar-foreground/60 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/80 ${focusRing}`}
                 onClick={signOut}
               >
-                <LogOut className="w-5 h-5" strokeWidth={1.5} />
+                <LogOut className="w-7 h-7" strokeWidth={1.5} />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right" className="bg-slate-900 text-white border-slate-700">
@@ -835,12 +859,12 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
             </TooltipContent>
           </Tooltip>
         ) : (
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start gap-2.5 text-slate-400 hover:text-white hover:bg-white/[0.08] h-9 rounded-md text-[13px] px-3" 
+          <Button
+            variant="ghost"
+            className={`w-full justify-start gap-2.5 text-sidebar-foreground/60 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/80 h-10 rounded-md text-[13px] px-3 ${focusRing}`}
             onClick={signOut}
           >
-            <LogOut className="w-4 h-4" strokeWidth={1.5} />
+            <LogOut className="w-5 h-5" strokeWidth={1.5} />
             <span className="font-medium">Sign Out</span>
           </Button>
         )}
