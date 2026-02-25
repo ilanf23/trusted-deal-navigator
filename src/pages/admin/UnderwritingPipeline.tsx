@@ -1277,50 +1277,6 @@ const UnderwritingPipeline = () => {
 
           {/* Toolbar */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-            {/* View Toggle */}
-            <div style={{ display: 'flex', border: '1px solid #E0DFF0', borderRadius: '8px', overflow: 'hidden' }}>
-              <button
-                onClick={() => setViewMode('list')}
-                title="List View"
-                style={{
-                  width: '36px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', border: 'none',
-                  background: viewMode === 'list' ? '#EDE9F8' : 'white',
-                }}
-              >
-                <LayoutList size={16} color={viewMode === 'list' ? '#3D2B6B' : '#999'} />
-              </button>
-              <button
-                onClick={() => setViewMode('board')}
-                title="Board View"
-                style={{
-                  width: '36px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', border: 'none', borderLeft: '1px solid #E0DFF0',
-                  background: viewMode === 'board' ? '#EDE9F8' : 'white',
-                }}
-              >
-                <LayoutGrid size={16} color={viewMode === 'board' ? '#3D2B6B' : '#999'} />
-              </button>
-            </div>
-
-            {[
-              { icon: ArrowUpDown, title: 'Sort', active: sortPanelOpen, onClick: (e: React.MouseEvent) => { e.stopPropagation(); setSortPanelOpen(s => !s); setAddDropdownOpen(false); } },
-              { icon: Search, title: 'Search', active: false, onClick: () => {} },
-            ].map(({ icon: Icon, title, active, onClick }) => (
-              <button
-                key={title}
-                title={title}
-                onClick={onClick}
-                style={{
-                  width: '36px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', border: '1px solid #E0DFF0', borderRadius: '8px',
-                  background: active ? '#EDE9F8' : 'white',
-                }}
-              >
-                <Icon size={16} color={active ? '#3D2B6B' : '#999'} />
-              </button>
-            ))}
-
             {/* Add Button */}
             <div style={{ position: 'relative' }}>
               <button
