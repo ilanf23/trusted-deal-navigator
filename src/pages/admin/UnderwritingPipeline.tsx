@@ -9,6 +9,7 @@ import {
   Bookmark, ChevronDown, ChevronRight, X, ExternalLink,
   MoreVertical, Info, Maximize2, Copy, MoreHorizontal,
   Zap, Target, GripVertical, Loader2, PanelLeftClose, PanelLeftOpen,
+  Menu, Columns3, BarChart3, Settings,
 } from 'lucide-react';
 import { differenceInDays, format } from 'date-fns';
 import { toast } from '@/components/ui/sonner';
@@ -1276,25 +1277,70 @@ const UnderwritingPipeline = () => {
           </div>
 
           {/* Toolbar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-            {/* Add Button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            {/* Left icons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {/* Sidebar toggle group */}
+              <div style={{ display: 'flex', border: '1px solid #E0DFF0', borderRadius: '8px', overflow: 'hidden' }}>
+                <button
+                  onClick={() => setFiltersCollapsed(o => !o)}
+                  title="Toggle Sidebar"
+                  style={{
+                    width: '36px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', border: 'none', background: !filtersCollapsed ? '#EDE9F8' : 'white',
+                  }}
+                >
+                  <Menu size={16} color={!filtersCollapsed ? '#3D2B6B' : '#666'} />
+                </button>
+                <button
+                  title="Columns"
+                  style={{
+                    width: '36px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', border: 'none', borderLeft: '1px solid #E0DFF0', background: 'white',
+                  }}
+                >
+                  <Columns3 size={16} color="#666" />
+                </button>
+              </div>
+
+              {/* Individual icon buttons */}
+              {[
+                { icon: BarChart3, title: 'Chart' },
+                { icon: Filter, title: 'Filter' },
+                { icon: Search, title: 'Search' },
+                { icon: Settings, title: 'Settings' },
+              ].map(({ icon: Icon, title }) => (
+                <button
+                  key={title}
+                  title={title}
+                  style={{
+                    width: '36px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', border: '1px solid #E0DFF0', borderRadius: '8px', background: 'white',
+                  }}
+                >
+                  <Icon size={16} color="#666" />
+                </button>
+              ))}
+            </div>
+
+            {/* Add Opportunity Button */}
             <div style={{ position: 'relative' }}>
               <button
                 onClick={(e) => { e.stopPropagation(); setAddDropdownOpen(o => !o); setSortPanelOpen(false); }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  background: '#3D2B6B', color: 'white', border: 'none', borderRadius: '10px',
-                  padding: '8px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  background: '#3D2B6B', color: 'white', border: 'none', borderRadius: '24px',
+                  padding: '10px 22px', cursor: 'pointer', fontSize: '14px', fontWeight: 600,
                 }}
               >
-                <Plus size={14} />
-                <ChevronDown size={12} />
+                Add Opportunity
+                <ChevronDown size={14} />
               </button>
               {addDropdownOpen && (
                 <div
                   onClick={e => e.stopPropagation()}
                   style={{
-                    position: 'absolute', top: '42px', right: 0,
+                    position: 'absolute', top: '46px', right: 0,
                     background: 'white', borderRadius: '10px',
                     boxShadow: '0 4px 20px rgba(0,0,0,0.12)', padding: '8px 0', zIndex: 50, minWidth: '210px',
                   }}
