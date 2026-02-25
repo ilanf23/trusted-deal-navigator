@@ -67,8 +67,6 @@ import IlanTeamEvanNotes from "./pages/admin/IlanTeamEvanNotes";
 import UsersAndRoles from "./pages/admin/UsersAndRoles";
 import CalendarCallback from "./pages/admin/CalendarCallback";
 import SheetsCallback from "./pages/admin/SheetsCallback";
-import UnderwritingPipeline from "./pages/admin/UnderwritingPipeline";
-import UnderwritingOpportunityDetail from "./pages/admin/UnderwritingOpportunityDetail";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
@@ -163,8 +161,6 @@ const App = () => (
                 <Route path="/admin/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
                 <Route path="/admin/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><Pipeline /></EmployeeRoute>} />
                 <Route path="/admin/evan/pipeline/feed" element={<EmployeeRoute employeeName="Evan"><PipelineFeed /></EmployeeRoute>} />
-                <Route path="/admin/evan/pipeline/underwriting" element={<EmployeeRoute employeeName="Evan"><UnderwritingPipeline /></EmployeeRoute>} />
-                <Route path="/admin/evan/pipeline/underwriting/opportunities/:leadId" element={<EmployeeRoute employeeName="Evan"><UnderwritingOpportunityDetail /></EmployeeRoute>} />
                 <Route path="/admin/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
                 <Route path="/admin/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
                 <Route path="/admin/evan/lender-programs" element={<EmployeeRoute employeeName="Evan"><LenderPrograms /></EmployeeRoute>} />
