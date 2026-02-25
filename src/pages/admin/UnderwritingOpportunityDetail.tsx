@@ -137,7 +137,7 @@ const StatCard = ({ label, value, sub }: { label: string; value: string | number
 );
 
 const RelatedItem = ({ icon: Icon, label, count, open, onToggle }: {
-  icon: React.ComponentType<{ size?: number; color?: string }>;
+  icon: React.ComponentType<any>;
   label: string;
   count: number;
   open: boolean;
@@ -274,8 +274,8 @@ const LeftPanel = ({ data }: { data: ReturnType<typeof useLeadDetail>['data'] })
               <FieldRow key={p.id} label={i === 0 ? 'Phone' : ''}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Phone size={13} color="#7B5EA7" />
-                  <a href={`tel:${p.number}`} style={{ color: '#3D2B6B', textDecoration: 'none' }}>{p.number}</a>
-                  {p.type && <span style={{ color: '#AAAAAA', fontSize: '11px' }}>({p.type})</span>}
+                   <a href={`tel:${p.phone_number}`} style={{ color: '#3D2B6B', textDecoration: 'none' }}>{p.phone_number}</a>
+                   {p.phone_type && <span style={{ color: '#AAAAAA', fontSize: '11px' }}>({p.phone_type})</span>}
                 </div>
               </FieldRow>
             ))}
@@ -291,7 +291,7 @@ const LeftPanel = ({ data }: { data: ReturnType<typeof useLeadDetail>['data'] })
               <FieldRow key={a.id} label={i === 0 ? 'Address' : ''}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <MapPin size={13} color="#7B5EA7" />
-                  <span>{[a.street, a.city, a.state, a.zip].filter(Boolean).join(', ')}</span>
+                  <span>{[a.address_line_1, a.city, a.state, a.zip_code].filter(Boolean).join(', ')}</span>
                 </div>
               </FieldRow>
             ))}
@@ -310,7 +310,7 @@ const LeftPanel = ({ data }: { data: ReturnType<typeof useLeadDetail>['data'] })
             </FieldRow>
             <FieldRow label="Waiting On">
               {waitingOn.length > 0
-                ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>{waitingOn.map(w => <TagPill key={w.id} text={w.item} />)}</div>
+                ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>{waitingOn.map(w => <TagPill key={w.id} text={w.description || ''} />)}</div>
                 : <EmptyFieldValue placeholder="Nothing pending" />}
             </FieldRow>
             <FieldRow label="Milestones">
@@ -319,7 +319,7 @@ const LeftPanel = ({ data }: { data: ReturnType<typeof useLeadDetail>['data'] })
                   <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                     <CheckCircle2 size={13} color={m.completed ? '#27AE60' : '#CCC'} />
                     <span style={{ color: m.completed ? '#27AE60' : '#555', textDecoration: m.completed ? 'line-through' : 'none' }}>
-                      {m.title}
+                      {m.milestone_name}
                     </span>
                   </div>
                 ))
