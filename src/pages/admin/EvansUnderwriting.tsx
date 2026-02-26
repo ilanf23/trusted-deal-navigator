@@ -5,6 +5,8 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import {
@@ -97,14 +99,13 @@ const FILTER_OPTIONS = [
   { id: 'pre_approval_issued', label: 'Pre-Approval Issued' },
 ];
 
-// Sortable cycles: pressing the sort button cycles through these presets
-type SortPreset = { field: SortField; dir: SortDir; label: string };
-const SORT_PRESETS: SortPreset[] = [
-  { field: 'last_activity_at', dir: 'desc', label: 'Most Recent Activity' },
-  { field: 'name', dir: 'asc', label: 'Name A→Z' },
-  { field: 'company_name', dir: 'asc', label: 'Company A→Z' },
-  { field: 'updated_at', dir: 'desc', label: 'Recently Updated' },
-  { field: 'assigned_to', dir: 'asc', label: 'Owner' },
+const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
+  { value: 'last_activity_at', label: 'Last Activity' },
+  { value: 'name', label: 'Name' },
+  { value: 'company_name', label: 'Company' },
+  { value: 'status', label: 'Status' },
+  { value: 'assigned_to', label: 'Owner' },
+  { value: 'updated_at', label: 'Updated' },
 ];
 
 const AVATAR_COLORS = [
@@ -292,7 +293,8 @@ const EvansUnderwriting = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
-  const [sortPresetIdx, setSortPresetIdx] = useState(0);
+  const [sortField, setSortField] = useState<SortField>('last_activity_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -324,13 +326,7 @@ const EvansUnderwriting = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showColumnsMenu]);
 
-  const currentSort = SORT_PRESETS[sortPresetIdx];
-  const sortField = currentSort.field;
-  const sortDir = currentSort.dir;
-
-  function cycleSortPreset() {
-    setSortPresetIdx((i) => (i + 1) % SORT_PRESETS.length);
-  }
+  const sortFieldLabel = SORT_FIELD_OPTIONS.find(o => o.value === sortField)?.label ?? sortField;
 
   function clearAllFilters() {
     setActiveFilter('all');
@@ -343,7 +339,7 @@ const EvansUnderwriting = () => {
   }
 
   const isFiltersActive = activeFilter !== 'all' || searchTerm.trim() !== '';
-  const isNonDefaultSort = sortPresetIdx !== 0;
+  const isNonDefaultSort = sortField !== 'last_activity_at' || sortDir !== 'desc';
 
   // ── DnD sensors for Kanban ──
   const sensors = useSensors(
@@ -501,8 +497,12 @@ const EvansUnderwriting = () => {
   }, [filterSearch]);
 
   function handleColSort(field: SortField) {
-    const idx = SORT_PRESETS.findIndex((p) => p.field === field && p.dir === 'asc');
-    if (idx !== -1) setSortPresetIdx(idx);
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
   }
 
   function handleRowClick(lead: Lead) {
@@ -609,6 +609,44 @@ const EvansUnderwriting = () => {
               Kanban
             </button>
           </div>
+
+          {/* Sort popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-all shrink-0 ${
+                  isNonDefaultSort
+                    ? 'bg-violet-50 border-violet-200 text-violet-700'
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                }`}
+              >
+                <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
+                Sort
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-3 space-y-3">
+              <p className="text-xs font-semibold text-foreground">Sort by</p>
+              <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_FIELD_OPTIONS.map(o => (
+                    <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asc" className="text-xs">Ascending</SelectItem>
+                  <SelectItem value="desc" className="text-xs">Descending</SelectItem>
+                </SelectContent>
+              </Select>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* ── Body: Sidebar + Table ── */}
@@ -723,9 +761,9 @@ const EvansUnderwriting = () => {
                 {isNonDefaultSort && (
                   <span className="flex items-center gap-1 text-[11px] text-violet-600 font-medium bg-violet-50 border border-violet-200 rounded-md px-2 h-7">
                     <ArrowUpDown className="h-3 w-3 shrink-0" />
-                    {currentSort.label}
+                    {sortFieldLabel} {sortDir === 'asc' ? '↑' : '↓'}
                     <button
-                      onClick={() => setSortPresetIdx(0)}
+                      onClick={() => { setSortField('last_activity_at'); setSortDir('desc'); }}
                       className="ml-0.5 text-violet-400 hover:text-violet-700"
                       title="Reset sort"
                     >
@@ -751,17 +789,42 @@ const EvansUnderwriting = () => {
                   />
                 )}
 
-                {/* Sort — cycles through presets */}
-                <button
-                  onClick={cycleSortPreset}
-                  title={`Sort: ${currentSort.label} (click to cycle)`}
-                  className={iconBtn(isNonDefaultSort)}
-                >
-                  <ArrowUpDown className={`h-3.5 w-3.5 ${isNonDefaultSort ? 'text-violet-600' : ''}`} />
-                  {isNonDefaultSort && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-violet-600" />
-                  )}
-                </button>
+                {/* Sort — opens popover in header; this is just an indicator */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      title="Sort options"
+                      className={iconBtn(isNonDefaultSort)}
+                    >
+                      <ArrowUpDown className={`h-3.5 w-3.5 ${isNonDefaultSort ? 'text-violet-600' : ''}`} />
+                      {isNonDefaultSort && (
+                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-violet-600" />
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-56 p-3 space-y-3">
+                    <p className="text-xs font-semibold text-foreground">Sort by</p>
+                    <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SORT_FIELD_OPTIONS.map(o => (
+                          <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="asc" className="text-xs">Ascending</SelectItem>
+                        <SelectItem value="desc" className="text-xs">Descending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </PopoverContent>
+                </Popover>
 
                 {/* Filter — clears when active */}
                 <button
