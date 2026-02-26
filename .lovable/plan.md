@@ -1,29 +1,62 @@
 
 
-## Plan: Add Sort Leads Popover Next to Table/Kanban Toggle
+## Plan: Add "Create New Filter" Dialog from the + Button
 
 ### What changes
 
-Add a "Sort by" button with a popover dropdown next to the existing Table/Kanban toggle in the header area. The popover will show two selectors — one for the sort field and one for the direction (Ascending/Descending) — matching the reference screenshot's layout.
+When the user clicks the **+** button in the sidebar header, a dialog/popover will open presenting all the available filter criteria fields. The user can configure these fields to define a custom filter. The fields requested are:
+
+- **Text/Select fields**: Activity Type, Status, Priority, Owned By, Followed, Source, Loss Reason, Company, Tags, Name, Description, #UW, Client Working with Other Lenders, Weekly's
+- **Date range fields**: Interactions (Select Date Range), Last Contacted (Select Range), Close Date (Select Date Range), Date Added (Select Date Range)
+- **Numeric range fields**: Inactive Days, Days in Stage, Value
 
 ### Technical details
 
 **File: `src/pages/admin/EvansUnderwriting.tsx`**
 
-1. Add imports for `Popover`, `PopoverTrigger`, `PopoverContent` from `@/components/ui/popover` and `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectItem` from `@/components/ui/select`.
+1. **New state**: Add `newFilterOpen` boolean state to control the dialog visibility.
 
-2. Replace the current `sortPresetIdx` cycling approach with two independent state variables:
-   - `sortField` state (default: `'last_activity_at'`)
-   - `sortDir` state (default: `'desc'`)
-   
-   This gives the user full control over field + direction independently via the popover UI.
+2. **Wire the + button**: The existing `<Plus>` button at line ~717-722 gets an `onClick={() => setNewFilterOpen(true)}`.
 
-3. Insert a sort button + popover immediately after the view mode toggle (line ~611), styled as a small icon button matching the toggle height. The popover content will contain:
-   - "Sort by" heading
-   - A `Select` for the field (Name, Company, Status, Last Activity, Owner, Updated)
-   - A `Select` for direction (Ascending / Descending)
+3. **New component: `CreateFilterDialog`** — Extract into a new file `src/components/admin/CreateFilterDialog.tsx` (keeps EvansUnderwriting under 300 lines growth). This is a `Dialog` component containing:
 
-4. The existing `filteredAndSorted` memo already uses `sortField` and `sortDir` — just need to ensure these are wired to the new independent states instead of the preset index.
+   - A "Filter Opportunity" heading
+   - A scrollable form with all the requested fields organized in a clean list:
+     - **Activity Type** — `Select` dropdown
+     - **Interactions** — Date range picker (two date inputs)
+     - **Last Contacted** — Select range (numeric min/max or preset)
+     - **Inactive Days** — Numeric range input
+     - **Stage** — `Select` dropdown (from `UNDERWRITING_STATUSES` / `stageConfig`)
+     - **Days in Stage** — Numeric range input
+     - **Status** — `Select` dropdown
+     - **Priority** — `Select` dropdown
+     - **Owned By** — `Select` dropdown (populated from `teamMemberMap`)
+     - **Followed** — Checkbox/switch
+     - **Date Added** — Date range picker
+     - **Source** — `Select` dropdown
+     - **Close Date** — Date range picker
+     - **Loss Reason** — `Select` dropdown
+     - **Company** — Text input
+     - **Value** — Numeric range (min/max)
+     - **Tags** — Text input
+     - **Name** — Text input for filter name
+     - **Description** — Textarea
+     - **#UW** — Text input
+     - **Client Working with Other Lenders** — Checkbox/switch
+     - **Weekly's** — Checkbox/switch
+   - A "Save Filter" and "Cancel" button footer
 
-5. The column header sort arrows will continue to work by updating these same two states.
+4. **Filter name field**: At the top, a text input for naming the custom filter so it appears in the sidebar list.
+
+5. **Local state approach (MVP)**: Initially store custom filters in component state (array of custom filter objects). Each custom filter gets appended to the sidebar nav under a "Custom" section. This avoids a database migration for the initial implementation. A future iteration can persist to a `custom_filters` table.
+
+6. **Integration**: Import and render `<CreateFilterDialog>` in `EvansUnderwriting`, passing `open={newFilterOpen}`, `onOpenChange={setNewFilterOpen}`, `teamMemberMap`, `stageConfig`, and an `onSave` callback that adds the filter to the local custom filters list.
+
+### New file
+
+- `src/components/admin/CreateFilterDialog.tsx` — ~250 lines, contains the Dialog with all filter criteria fields using existing shadcn/ui components (`Dialog`, `Select`, `Input`, `Switch`, `Button`, `Label`, `Calendar`/`Popover` for date ranges, `ScrollArea`).
+
+### Files modified
+
+- `src/pages/admin/EvansUnderwriting.tsx` — Add state, wire + button, import and render `CreateFilterDialog`, add custom filters to sidebar nav.
 
