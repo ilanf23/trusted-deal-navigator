@@ -93,11 +93,19 @@ const stageConfig: Record<string, { label: string; color: string; bg: string; do
 };
 
 const FILTER_OPTIONS = [
-  { id: 'all', label: 'All Opportunities' },
-  { id: 'moving_to_underwriting', label: 'Moving to UW' },
-  { id: 'underwriting', label: 'Underwriting' },
-  { id: 'ready_for_wu_approval', label: 'Ready for Approval' },
-  { id: 'pre_approval_issued', label: 'Pre-Approval Issued' },
+  { id: 'all', label: 'All Opportunities', group: 'top' },
+  { id: 'my_open', label: 'My Open Opportunities', group: 'public' },
+  { id: 'open', label: 'Open Opportunities', group: 'public' },
+  { id: 'following', label: "Opportunities I'm Following", group: 'public' },
+  { id: 'won', label: 'Won Opportunities', group: 'public' },
+  { id: 'brad_incoming', label: 'Brad Incoming Opportunities', group: 'public' },
+  { id: 'initial_review', label: 'Deals for Initial Review', group: 'public' },
+  { id: 'moving_to_underwriting', label: 'Deals Moving Towards Underwriting', group: 'public' },
+  { id: 'onboarding_2024', label: 'OnBoarding 2024 - Opp. into UW', group: 'public' },
+  { id: 'onboarding_2025', label: 'OnBoarding 2025 - Opp. into UW', group: 'public' },
+  { id: 'onboarding_2026', label: 'OnBoarding 2026 - Opp. into UW', group: 'public' },
+  { id: 'pre_approval_issued', label: 'Pre-Approval Letters Issued', group: 'public' },
+  { id: 'ready_for_wu_approval', label: "Write Up's Pending Approval", group: 'public' },
 ];
 
 const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
@@ -457,14 +465,38 @@ const EvansUnderwriting = () => {
     for (const status of UNDERWRITING_STATUSES) {
       counts[status] = leads.filter((l) => l.status === status).length;
     }
+    counts['my_open'] = leads.length;
+    counts['open'] = leads.length;
+    counts['following'] = 0;
+    counts['won'] = leads.filter(l => l.status === 'won' as LeadStatus).length;
+    counts['brad_incoming'] = leads.filter(l => (l.assigned_to ?? '').toLowerCase().includes('brad') || teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad')).length;
+    counts['initial_review'] = leads.filter(l => l.status === ('initial_review' as LeadStatus)).length;
+    counts['onboarding_2024'] = leads.filter(l => l.cohort_year === 2024).length;
+    counts['onboarding_2025'] = leads.filter(l => l.cohort_year === 2025).length;
+    counts['onboarding_2026'] = leads.filter(l => l.cohort_year === 2026).length;
     return counts;
-  }, [leads]);
+  }, [leads, teamMemberMap]);
 
   const filteredAndSorted = useMemo(() => {
     let result = leads;
 
     if (activeFilter !== 'all') {
-      result = result.filter((l) => l.status === activeFilter);
+      if (['moving_to_underwriting', 'underwriting', 'ready_for_wu_approval', 'pre_approval_issued'].includes(activeFilter)) {
+        result = result.filter((l) => l.status === activeFilter);
+      } else if (activeFilter === 'initial_review') {
+        result = result.filter((l) => l.status === ('initial_review' as LeadStatus));
+      } else if (activeFilter === 'won') {
+        result = result.filter((l) => l.status === ('won' as LeadStatus));
+      } else if (activeFilter === 'brad_incoming') {
+        result = result.filter((l) => teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad'));
+      } else if (activeFilter === 'onboarding_2024') {
+        result = result.filter((l) => l.cohort_year === 2024);
+      } else if (activeFilter === 'onboarding_2025') {
+        result = result.filter((l) => l.cohort_year === 2025);
+      } else if (activeFilter === 'onboarding_2026') {
+        result = result.filter((l) => l.cohort_year === 2026);
+      }
+      // 'my_open', 'open', 'following' show all for now
     }
 
     if (searchTerm.trim()) {
@@ -703,7 +735,7 @@ const EvansUnderwriting = () => {
               </div>
 
               <nav className="flex-1 overflow-y-auto pb-4">
-                {visibleFilters.filter(o => o.id === 'all').map((opt) => {
+                {visibleFilters.filter(o => o.group === 'top').map((opt) => {
                   const isActive = activeFilter === opt.id;
                   const count = filterCounts[opt.id] ?? 0;
                   return (
@@ -729,7 +761,7 @@ const EvansUnderwriting = () => {
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Public</span>
                 </div>
 
-                {visibleFilters.filter(o => o.id !== 'all').map((opt) => {
+                {visibleFilters.filter(o => o.group === 'public').map((opt) => {
                   const isActive = activeFilter === opt.id;
                   const count = filterCounts[opt.id] ?? 0;
                   return (
