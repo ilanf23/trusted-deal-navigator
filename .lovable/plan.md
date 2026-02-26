@@ -1,54 +1,78 @@
 
 
-## Plan: Replace Lead Detail Dialog with Right Sidebar Panel
+## Plan: Build Expanded Lead Full View Page
 
-Currently, clicking a lead row opens a `LeadDetailDialog` (centered modal). The screenshot from Copper CRM shows a right-side detail panel that appears inline within the page layout. This plan converts the click behavior to show a right sidebar panel instead.
+The Maximize2 button in the `UnderwritingDetailPanel` will navigate to a new full-page view that matches the Copper CRM screenshot -- a 3-column layout with lead details on the left, activity feed in the center, and related records on the right.
 
-### What changes
+### Layout (matching the screenshot)
 
-When a user clicks a lead row in the table (or a card in Kanban), a right-side detail panel slides in showing the deal's details with tabs for DETAILS, ACTIVITY, and RELATED -- matching the Copper CRM reference screenshot.
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│  X  │  Lead Name (truncated)                     │ Follow │ ⬜ │ ⋯ │
+│     │  Company / $Value                                             │
+│     │  [$ Opportunity]                                              │
+├──────────────────────────────────────────────────────────────────────┤
+│          │ 1066        │ 10/7/2025      │ 142          │ 903        │
+│          │ Interactions│ Last Contacted │ Inactive Days│ Days in Stg│
+├────────────┬─────────────────────────────────┬───────────────────────┤
+│ LEFT       │ CENTER                          │ RIGHT                 │
+│ Details    │ Log Activity / Create Note tabs │ People (1)        +   │
+│            │                                 │ Companies (1)     +   │
+│ Name *     │ To Do ▼                         │ Tasks (0)         +   │
+│ Pipeline ▼ │ [note input area]               │  + Add task...        │
+│ Stage    ▼ │ [formatting toolbar]            │ Files (0)         +   │
+│ CLX File   │                                 │ Calendar Events   +   │
+│ Waiting On │ Earlier                         │ Projects (1)      +   │
+│ Tags       │ [activity entries...]           │ Pipeline Records  +   │
+│ Value      │                                 │                       │
+│ Description│                                 │                       │
+└────────────┴─────────────────────────────────┴───────────────────────┘
+```
 
-### Technical approach
+### New files
 
-**New file: `src/components/admin/UnderwritingDetailPanel.tsx`** (~250 lines)
+**`src/components/admin/UnderwritingExpandedView.tsx`** (~280 lines)
 
-A right sidebar panel component that renders inline (not as a Sheet/Dialog overlay) within the page layout. It will include:
+A full-page component rendered as a new route. Three-column layout:
 
-- **Header**: Lead name, company, value, close button, "Follow" button
-- **"$ Opportunity" badge** (matching the screenshot)
-- **Three tabs**: DETAILS, ACTIVITY, RELATED (using shadcn Tabs)
-- **DETAILS tab fields**: Name, Pipeline ("Underwriting"), Stage (with dropdown), CLX File Name, Waiting On, Tags, Value, Description
-- **ACTIVITY / RELATED tabs**: placeholder content for now
-- Fields rendered as label/value pairs matching the Copper CRM style
+1. **Left column** (~300px): Lead detail fields (Name, Pipeline dropdown, Stage dropdown, CLX File Name, Waiting On, Tags, Value, Description, "+ Add new field" link). Matches existing `DetailRow` pattern from the sidebar panel.
 
-**Modified file: `src/pages/admin/EvansUnderwriting.tsx`**
+2. **Top stats bar**: Four metric boxes -- Interactions, Last Contacted, Inactive Days, Days in Stage. Computed from lead data (created_at, last_contacted, etc.).
 
-1. **Replace dialog with inline panel**: Remove the `LeadDetailDialog` usage. Instead, when a lead is clicked, set `selectedLead` state (already exists) and render the new `UnderwritingDetailPanel` as a right-side column in the flex layout.
+3. **Center column** (flex-1): Two tabs -- "Log Activity" and "Create Note". Log Activity shows a "To Do" dropdown + text area with formatting toolbar placeholder. Below that, "Earlier" section with activity entries (placeholder for now, will show email/note history).
 
-2. **Layout change**: The body area becomes a 3-column flex:
-   - Left sidebar (filters) -- existing
-   - Main content (table/kanban) -- existing, shrinks when panel is open
-   - Right detail panel -- new, ~380px wide, slides in when a lead is selected
+4. **Right column** (~250px): Collapsible sections for People, Companies, Tasks, Files, Calendar Events, Projects, Pipeline Records. Each shows count and a "+" button. Tasks section includes "+ Add task..." link.
 
-3. **`handleRowClick`**: Instead of opening a dialog, just sets `selectedLead`. The panel renders conditionally based on `selectedLead !== null`.
+5. **Header**: Close (X) button that navigates back, Follow button, lead name + company + value, Opportunity badge.
 
-4. **Close behavior**: An X button on the panel sets `selectedLead` back to `null`.
+### Route addition
 
-### Panel field mapping (from DB lead data)
+**`src/App.tsx`**: Add route:
+```
+/admin/evan/pipeline/underwriting/lead/:leadId → UnderwritingExpandedView
+```
 
-| Field | Source |
-|-------|--------|
-| Name | `lead.name` |
-| Pipeline | "Underwriting" (static for this page) |
-| Stage | `stageConfig[lead.status].label` with Select dropdown |
-| CLX File Name | Derived from company name or lead field |
-| Waiting On | `lead.tags` or placeholder |
-| Tags | `lead.tags` array rendered as badges |
-| Value | `fakeValue(lead.id)` (existing helper) |
-| Description | `lead.notes` or loan amount info |
+### Wiring the expand button
+
+**`src/components/admin/UnderwritingDetailPanel.tsx`**:
+- Add `onExpand` callback prop
+- Wire Maximize2 button to call `onExpand`
+
+**`src/pages/admin/EvansUnderwriting.tsx`**:
+- Pass `onExpand` to `UnderwritingDetailPanel` that navigates to `/admin/evan/pipeline/underwriting/lead/${lead.id}`
+
+### Data flow
+
+The expanded view will:
+- Accept `leadId` from route params
+- Fetch the lead from the database using React Query
+- Reuse `stageConfig`, `formatValue`, team member lookup from shared constants/hooks
+- Activity/related sections start as placeholder UI matching the screenshot layout
 
 ### Files
 
-- **New**: `src/components/admin/UnderwritingDetailPanel.tsx`
-- **Modified**: `src/pages/admin/EvansUnderwriting.tsx` (swap dialog for inline panel, adjust layout)
+- **New**: `src/components/admin/UnderwritingExpandedView.tsx`
+- **Modified**: `src/App.tsx` (add route)
+- **Modified**: `src/components/admin/UnderwritingDetailPanel.tsx` (add `onExpand` prop)
+- **Modified**: `src/pages/admin/EvansUnderwriting.tsx` (pass `onExpand` with navigation)
 
