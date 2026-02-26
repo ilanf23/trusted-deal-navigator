@@ -603,14 +603,9 @@ const EvansUnderwriting = () => {
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">All Opportunities</h1>
             {!isLoading && (
-              <>
-                <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
-                  # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'opportunity' : 'opportunities'}
-                </span>
-                <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
-                  ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </>
+              <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
+                ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
             )}
           </div>
 
@@ -822,6 +817,12 @@ const EvansUnderwriting = () => {
                   <PanelLeft className="h-3.5 w-3.5 shrink-0" />
                   {sidebarOpen ? 'Hide Filters' : 'Show Filters'}
                 </button>
+
+                {!isLoading && (
+                  <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
+                    # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'opportunity' : 'opportunities'}
+                  </span>
+                )}
 
                 {/* Sort indicator */}
                 {isNonDefaultSort && (
