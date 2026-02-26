@@ -39,6 +39,7 @@ import {
   LayoutGrid,
   Table2,
   GripVertical,
+  PanelRightOpen,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -1027,6 +1028,7 @@ const EvansUnderwriting = () => {
                       <ColHeader colKey="tags" icon={<Tag className="h-3.5 w-3.5" />} className="min-w-[140px]">
                         Tags
                       </ColHeader>
+                      <th className="w-10 px-2 py-2.5" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
@@ -1243,6 +1245,13 @@ const EvansUnderwriting = () => {
                                 )}
                               </td>
                             )}
+                            <td className={`px-2 ${rowPad} w-10`}>
+                              <PanelRightOpen className={`h-4 w-4 transition-colors ${
+                                selectedLead?.id === lead.id
+                                  ? 'text-violet-600'
+                                  : 'text-muted-foreground/30 group-hover:text-muted-foreground'
+                              }`} />
+                            </td>
                           </tr>
                         );
                       })
