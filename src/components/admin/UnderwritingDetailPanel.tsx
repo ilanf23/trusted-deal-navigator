@@ -76,9 +76,6 @@ export default function UnderwritingDetailPanel({
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-7 w-7" title="Follow">
-              <Star className="h-3.5 w-3.5" />
-            </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" title="Expand full view" onClick={onExpand}>
               <Maximize2 className="h-3.5 w-3.5" />
             </Button>

@@ -231,9 +231,6 @@ export default function UnderwritingExpandedView() {
             Opportunity
           </Badge>
           <span className="text-sm font-semibold text-emerald-600 tabular-nums">{formatValue(dealValue)}</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-400 hover:text-amber-500" title="Follow">
-            <Star className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
