@@ -98,10 +98,10 @@ function DateRangePicker({ label, fromDate, toDate, onFromChange, onToChange }: 
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className={cn("h-8 flex-1 justify-start text-left text-xs font-normal", !fromDate && "text-muted-foreground")}>
+            <Button variant="outline" className={cn("h-8 w-full justify-start text-left text-xs font-normal", !fromDate && "text-muted-foreground")}>
               <CalendarIcon className="mr-1.5 h-3 w-3" />
               {fromDate ? format(fromDate, "MM/dd/yyyy") : "From"}
             </Button>
@@ -112,7 +112,7 @@ function DateRangePicker({ label, fromDate, toDate, onFromChange, onToChange }: 
         </Popover>
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className={cn("h-8 flex-1 justify-start text-left text-xs font-normal", !toDate && "text-muted-foreground")}>
+            <Button variant="outline" className={cn("h-8 w-full justify-start text-left text-xs font-normal", !toDate && "text-muted-foreground")}>
               <CalendarIcon className="mr-1.5 h-3 w-3" />
               {toDate ? format(toDate, "MM/dd/yyyy") : "To"}
             </Button>
@@ -137,9 +137,9 @@ function RangeInput({ label, minVal, maxVal, onMinChange, onMaxChange, placehold
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
-      <div className="flex gap-2">
-        <Input className="h-8 text-xs flex-1" placeholder={placeholder || "Min"} value={minVal} onChange={e => onMinChange(e.target.value)} />
-        <Input className="h-8 text-xs flex-1" placeholder={placeholder || "Max"} value={maxVal} onChange={e => onMaxChange(e.target.value)} />
+      <div className="grid grid-cols-2 gap-2">
+        <Input className="h-8 text-xs" placeholder={placeholder || "Min"} value={minVal} onChange={e => onMinChange(e.target.value)} />
+        <Input className="h-8 text-xs" placeholder={placeholder || "Max"} value={maxVal} onChange={e => onMaxChange(e.target.value)} />
       </div>
     </div>
   );
