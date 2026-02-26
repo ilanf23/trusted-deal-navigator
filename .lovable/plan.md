@@ -1,78 +1,25 @@
 
 
-## Plan: Build Expanded Lead Full View Page
+## Plan: Fix Expanded View Overlapping Sidebar
 
-The Maximize2 button in the `UnderwritingDetailPanel` will navigate to a new full-page view that matches the Copper CRM screenshot -- a 3-column layout with lead details on the left, activity feed in the center, and related records on the right.
+### Problem
+The expanded view uses negative margins (`-m-3` to `-m-10`) to break out of the `AdminLayout` content padding, but this causes it to slide under the left sidebar. The name also gets truncated because the header is too cramped.
 
-### Layout (matching the screenshot)
+### Solution
+Use the existing **`data-full-bleed`** pattern (already used by PipelineFeed) instead of hacky negative margins. This is the established pattern in this codebase for pages that need to fill the entire content area.
 
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│  X  │  Lead Name (truncated)                     │ Follow │ ⬜ │ ⋯ │
-│     │  Company / $Value                                             │
-│     │  [$ Opportunity]                                              │
-├──────────────────────────────────────────────────────────────────────┤
-│          │ 1066        │ 10/7/2025      │ 142          │ 903        │
-│          │ Interactions│ Last Contacted │ Inactive Days│ Days in Stg│
-├────────────┬─────────────────────────────────┬───────────────────────┤
-│ LEFT       │ CENTER                          │ RIGHT                 │
-│ Details    │ Log Activity / Create Note tabs │ People (1)        +   │
-│            │                                 │ Companies (1)     +   │
-│ Name *     │ To Do ▼                         │ Tasks (0)         +   │
-│ Pipeline ▼ │ [note input area]               │  + Add task...        │
-│ Stage    ▼ │ [formatting toolbar]            │ Files (0)         +   │
-│ CLX File   │                                 │ Calendar Events   +   │
-│ Waiting On │ Earlier                         │ Projects (1)      +   │
-│ Tags       │ [activity entries...]           │ Pipeline Records  +   │
-│ Value      │                                 │                       │
-│ Description│                                 │                       │
-└────────────┴─────────────────────────────────┴───────────────────────┘
-```
+### Changes
 
-### New files
+**`src/components/admin/UnderwritingExpandedView.tsx`**
 
-**`src/components/admin/UnderwritingExpandedView.tsx`** (~280 lines)
+1. **Replace negative margins with `data-full-bleed`**: Change the root `<div>` from `-m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10` to use the `data-full-bleed` attribute. This lets the CSS rules in `index.css` properly remove padding from the AdminLayout wrapper without overlapping the sidebar.
 
-A full-page component rendered as a new route. Three-column layout:
+2. **Adjust height**: Use `h-[calc(100vh-3.5rem)]` matching the PipelineFeed pattern instead of inline style.
 
-1. **Left column** (~300px): Lead detail fields (Name, Pipeline dropdown, Stage dropdown, CLX File Name, Waiting On, Tags, Value, Description, "+ Add new field" link). Matches existing `DetailRow` pattern from the sidebar panel.
+3. **Increase left details column width**: Widen from `w-[280px]` to `w-[320px]` so field labels and values have more breathing room.
 
-2. **Top stats bar**: Four metric boxes -- Interactions, Last Contacted, Inactive Days, Days in Stage. Computed from lead data (created_at, last_contacted, etc.).
-
-3. **Center column** (flex-1): Two tabs -- "Log Activity" and "Create Note". Log Activity shows a "To Do" dropdown + text area with formatting toolbar placeholder. Below that, "Earlier" section with activity entries (placeholder for now, will show email/note history).
-
-4. **Right column** (~250px): Collapsible sections for People, Companies, Tasks, Files, Calendar Events, Projects, Pipeline Records. Each shows count and a "+" button. Tasks section includes "+ Add task..." link.
-
-5. **Header**: Close (X) button that navigates back, Follow button, lead name + company + value, Opportunity badge.
-
-### Route addition
-
-**`src/App.tsx`**: Add route:
-```
-/admin/evan/pipeline/underwriting/lead/:leadId → UnderwritingExpandedView
-```
-
-### Wiring the expand button
-
-**`src/components/admin/UnderwritingDetailPanel.tsx`**:
-- Add `onExpand` callback prop
-- Wire Maximize2 button to call `onExpand`
-
-**`src/pages/admin/EvansUnderwriting.tsx`**:
-- Pass `onExpand` to `UnderwritingDetailPanel` that navigates to `/admin/evan/pipeline/underwriting/lead/${lead.id}`
-
-### Data flow
-
-The expanded view will:
-- Accept `leadId` from route params
-- Fetch the lead from the database using React Query
-- Reuse `stageConfig`, `formatValue`, team member lookup from shared constants/hooks
-- Activity/related sections start as placeholder UI matching the screenshot layout
+4. **Header name**: Change `text-base` to `text-lg` and ensure `min-w-0 flex-1` stays so the name doesn't get cut off prematurely.
 
 ### Files
-
-- **New**: `src/components/admin/UnderwritingExpandedView.tsx`
-- **Modified**: `src/App.tsx` (add route)
-- **Modified**: `src/components/admin/UnderwritingDetailPanel.tsx` (add `onExpand` prop)
-- **Modified**: `src/pages/admin/EvansUnderwriting.tsx` (pass `onExpand` with navigation)
+- **Modified**: `src/components/admin/UnderwritingExpandedView.tsx`
 
