@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -166,11 +166,11 @@ export default function CreateFilterDialog({ open, onOpenChange, teamMemberMap, 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle className="text-base font-semibold">Filter Opportunity</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-[400px] sm:max-w-[400px] flex flex-col p-0">
+        <SheetHeader className="px-6 pt-6 pb-2">
+          <SheetTitle className="text-base font-semibold">Filter Opportunity</SheetTitle>
+        </SheetHeader>
 
         <ScrollArea className="flex-1 px-6 overflow-y-auto">
           <div className="space-y-4 pb-4">
@@ -351,11 +351,11 @@ export default function CreateFilterDialog({ open, onOpenChange, teamMemberMap, 
           </div>
         </ScrollArea>
 
-        <DialogFooter className="px-6 py-4 border-t border-border">
+        <SheetFooter className="px-6 py-4 border-t border-border">
           <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
           <Button size="sm" onClick={handleSave} disabled={!values.filterName.trim()}>Save Filter</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
