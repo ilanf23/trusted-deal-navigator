@@ -723,15 +723,12 @@ const EvansUnderwriting = () => {
               </div>
 
               <div className="px-2 pb-2">
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
-                  <Input
-                    placeholder="Search Filters"
-                    value={filterSearch}
-                    onChange={(e) => setFilterSearch(e.target.value)}
-                    className="h-7 pl-6 text-xs bg-muted/40 border-border/60"
-                  />
-                </div>
+                <Input
+                  placeholder="Search Filters"
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  className="h-7 text-xs bg-muted/40 border-border/60"
+                />
               </div>
 
               <nav className="flex-1 overflow-y-auto pb-4">
