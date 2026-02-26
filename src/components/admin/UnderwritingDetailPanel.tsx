@@ -25,6 +25,7 @@ interface UnderwritingDetailPanelProps {
   formatValue: (v: number) => string;
   fakeValue: (id: string) => number;
   onClose: () => void;
+  onExpand?: () => void;
   onStageChange?: (leadId: string, newStatus: LeadStatus) => void;
 }
 
@@ -42,6 +43,7 @@ export default function UnderwritingDetailPanel({
   formatValue,
   fakeValue,
   onClose,
+  onExpand,
   onStageChange,
 }: UnderwritingDetailPanelProps) {
   const stageCfg = stageConfig[lead.status];
@@ -77,7 +79,7 @@ export default function UnderwritingDetailPanel({
             <Button variant="ghost" size="icon" className="h-7 w-7" title="Follow">
               <Star className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" title="Expand full view">
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Expand full view" onClick={onExpand}>
               <Maximize2 className="h-3.5 w-3.5" />
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
