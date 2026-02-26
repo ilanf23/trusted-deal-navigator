@@ -1,62 +1,54 @@
 
 
-## Plan: Add "Create New Filter" Dialog from the + Button
+## Plan: Replace Lead Detail Dialog with Right Sidebar Panel
+
+Currently, clicking a lead row opens a `LeadDetailDialog` (centered modal). The screenshot from Copper CRM shows a right-side detail panel that appears inline within the page layout. This plan converts the click behavior to show a right sidebar panel instead.
 
 ### What changes
 
-When the user clicks the **+** button in the sidebar header, a dialog/popover will open presenting all the available filter criteria fields. The user can configure these fields to define a custom filter. The fields requested are:
+When a user clicks a lead row in the table (or a card in Kanban), a right-side detail panel slides in showing the deal's details with tabs for DETAILS, ACTIVITY, and RELATED -- matching the Copper CRM reference screenshot.
 
-- **Text/Select fields**: Activity Type, Status, Priority, Owned By, Followed, Source, Loss Reason, Company, Tags, Name, Description, #UW, Client Working with Other Lenders, Weekly's
-- **Date range fields**: Interactions (Select Date Range), Last Contacted (Select Range), Close Date (Select Date Range), Date Added (Select Date Range)
-- **Numeric range fields**: Inactive Days, Days in Stage, Value
+### Technical approach
 
-### Technical details
+**New file: `src/components/admin/UnderwritingDetailPanel.tsx`** (~250 lines)
 
-**File: `src/pages/admin/EvansUnderwriting.tsx`**
+A right sidebar panel component that renders inline (not as a Sheet/Dialog overlay) within the page layout. It will include:
 
-1. **New state**: Add `newFilterOpen` boolean state to control the dialog visibility.
+- **Header**: Lead name, company, value, close button, "Follow" button
+- **"$ Opportunity" badge** (matching the screenshot)
+- **Three tabs**: DETAILS, ACTIVITY, RELATED (using shadcn Tabs)
+- **DETAILS tab fields**: Name, Pipeline ("Underwriting"), Stage (with dropdown), CLX File Name, Waiting On, Tags, Value, Description
+- **ACTIVITY / RELATED tabs**: placeholder content for now
+- Fields rendered as label/value pairs matching the Copper CRM style
 
-2. **Wire the + button**: The existing `<Plus>` button at line ~717-722 gets an `onClick={() => setNewFilterOpen(true)}`.
+**Modified file: `src/pages/admin/EvansUnderwriting.tsx`**
 
-3. **New component: `CreateFilterDialog`** — Extract into a new file `src/components/admin/CreateFilterDialog.tsx` (keeps EvansUnderwriting under 300 lines growth). This is a `Dialog` component containing:
+1. **Replace dialog with inline panel**: Remove the `LeadDetailDialog` usage. Instead, when a lead is clicked, set `selectedLead` state (already exists) and render the new `UnderwritingDetailPanel` as a right-side column in the flex layout.
 
-   - A "Filter Opportunity" heading
-   - A scrollable form with all the requested fields organized in a clean list:
-     - **Activity Type** — `Select` dropdown
-     - **Interactions** — Date range picker (two date inputs)
-     - **Last Contacted** — Select range (numeric min/max or preset)
-     - **Inactive Days** — Numeric range input
-     - **Stage** — `Select` dropdown (from `UNDERWRITING_STATUSES` / `stageConfig`)
-     - **Days in Stage** — Numeric range input
-     - **Status** — `Select` dropdown
-     - **Priority** — `Select` dropdown
-     - **Owned By** — `Select` dropdown (populated from `teamMemberMap`)
-     - **Followed** — Checkbox/switch
-     - **Date Added** — Date range picker
-     - **Source** — `Select` dropdown
-     - **Close Date** — Date range picker
-     - **Loss Reason** — `Select` dropdown
-     - **Company** — Text input
-     - **Value** — Numeric range (min/max)
-     - **Tags** — Text input
-     - **Name** — Text input for filter name
-     - **Description** — Textarea
-     - **#UW** — Text input
-     - **Client Working with Other Lenders** — Checkbox/switch
-     - **Weekly's** — Checkbox/switch
-   - A "Save Filter" and "Cancel" button footer
+2. **Layout change**: The body area becomes a 3-column flex:
+   - Left sidebar (filters) -- existing
+   - Main content (table/kanban) -- existing, shrinks when panel is open
+   - Right detail panel -- new, ~380px wide, slides in when a lead is selected
 
-4. **Filter name field**: At the top, a text input for naming the custom filter so it appears in the sidebar list.
+3. **`handleRowClick`**: Instead of opening a dialog, just sets `selectedLead`. The panel renders conditionally based on `selectedLead !== null`.
 
-5. **Local state approach (MVP)**: Initially store custom filters in component state (array of custom filter objects). Each custom filter gets appended to the sidebar nav under a "Custom" section. This avoids a database migration for the initial implementation. A future iteration can persist to a `custom_filters` table.
+4. **Close behavior**: An X button on the panel sets `selectedLead` back to `null`.
 
-6. **Integration**: Import and render `<CreateFilterDialog>` in `EvansUnderwriting`, passing `open={newFilterOpen}`, `onOpenChange={setNewFilterOpen}`, `teamMemberMap`, `stageConfig`, and an `onSave` callback that adds the filter to the local custom filters list.
+### Panel field mapping (from DB lead data)
 
-### New file
+| Field | Source |
+|-------|--------|
+| Name | `lead.name` |
+| Pipeline | "Underwriting" (static for this page) |
+| Stage | `stageConfig[lead.status].label` with Select dropdown |
+| CLX File Name | Derived from company name or lead field |
+| Waiting On | `lead.tags` or placeholder |
+| Tags | `lead.tags` array rendered as badges |
+| Value | `fakeValue(lead.id)` (existing helper) |
+| Description | `lead.notes` or loan amount info |
 
-- `src/components/admin/CreateFilterDialog.tsx` — ~250 lines, contains the Dialog with all filter criteria fields using existing shadcn/ui components (`Dialog`, `Select`, `Input`, `Switch`, `Button`, `Label`, `Calendar`/`Popover` for date ranges, `ScrollArea`).
+### Files
 
-### Files modified
-
-- `src/pages/admin/EvansUnderwriting.tsx` — Add state, wire + button, import and render `CreateFilterDialog`, add custom filters to sidebar nav.
+- **New**: `src/components/admin/UnderwritingDetailPanel.tsx`
+- **Modified**: `src/pages/admin/EvansUnderwriting.tsx` (swap dialog for inline panel, adjust layout)
 
