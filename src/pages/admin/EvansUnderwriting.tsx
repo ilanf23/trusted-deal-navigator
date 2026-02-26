@@ -731,7 +731,12 @@ const EvansUnderwriting = () => {
 
                           {columnVisibility.contact && (
                             <td className={`px-3 ${rowPad}`}>
-                              <span className="text-[13px] text-foreground truncate block max-w-[100px]">{lead.name}</span>
+                              <div className="flex items-center gap-2.5">
+                                <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0`}>
+                                  {initial}
+                                </div>
+                                <span className="text-[14px] text-stone-800">{lead.name}</span>
+                              </div>
                             </td>
                           )}
 
@@ -742,13 +747,13 @@ const EvansUnderwriting = () => {
                           )}
 
                           {columnVisibility.ownedBy && (
-                            <td className={`px-3 ${rowPad}`}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`}>
                               {assignedName && assignedInitial ? (
-                                <div className="flex items-center gap-1.5">
-                                  <div className={`h-5 w-5 rounded-full ${assignedColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-6 w-6 rounded-full ${assignedColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
                                     {assignedInitial}
                                   </div>
-                                  <span className="text-[13px] text-foreground truncate max-w-[80px]">{assignedName}</span>
+                                  <span className="text-[14px] text-stone-800">{assignedName}</span>
                                 </div>
                               ) : (
                                 <span className="text-muted-foreground text-[13px]">—</span>
@@ -765,9 +770,9 @@ const EvansUnderwriting = () => {
                           )}
 
                           {columnVisibility.stage && (
-                            <td className={`px-3 ${rowPad}`}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`}>
                               {stageCfg ? (
-                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${stageCfg.bg} ${stageCfg.color}`}>
+                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${stageCfg.bg} ${stageCfg.color}`}>
                                   <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
                                   {stageCfg.label}
                                 </span>
@@ -778,7 +783,7 @@ const EvansUnderwriting = () => {
                           )}
 
                           {columnVisibility.daysInStage && (
-                            <td className={`px-3 ${rowPad}`}>
+                            <td className={`px-3 ${rowPad} whitespace-nowrap`}>
                               <span className="flex items-center gap-1">
                                 {isLingering
                                   ? <Flame className="h-3 w-3 text-amber-500 shrink-0" />
