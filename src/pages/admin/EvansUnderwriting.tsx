@@ -583,7 +583,7 @@ const EvansUnderwriting = () => {
             )}
           </div>
 
-          {/* View mode toggle — right side of header */}
+          {/* Connected toolbar — Table | Kanban | Sort | Settings */}
           <div className="flex items-center h-7 rounded-md border border-slate-200 overflow-hidden shrink-0">
             <button
               onClick={() => setViewMode('table')}
@@ -611,52 +611,52 @@ const EvansUnderwriting = () => {
               Kanban
             </button>
             <div className="w-px h-4 bg-slate-200" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  title="Sort"
+                  className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
+                    isNonDefaultSort
+                      ? 'bg-violet-50 text-violet-700'
+                      : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                  }`}
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
+                  Sort
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-3 space-y-3">
+                <p className="text-xs font-semibold text-foreground">Sort by</p>
+                <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_FIELD_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc" className="text-xs">Ascending</SelectItem>
+                    <SelectItem value="desc" className="text-xs">Descending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </PopoverContent>
+            </Popover>
+            <div className="w-px h-4 bg-slate-200" />
             <button
               onClick={() => setSettingsOpen(true)}
               title="Pipeline settings"
-              className="flex items-center justify-center h-full px-2 text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-all"
+              className="flex items-center justify-center h-full px-2 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-all"
             >
               <Settings2 className="h-3.5 w-3.5" />
             </button>
           </div>
-
-          {/* Sort popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-all shrink-0 ${
-                  isNonDefaultSort
-                    ? 'bg-violet-50 border-violet-200 text-violet-700'
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                }`}
-              >
-                <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
-                Sort
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-56 p-3 space-y-3">
-              <p className="text-xs font-semibold text-foreground">Sort by</p>
-              <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SORT_FIELD_OPTIONS.map(o => (
-                    <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="asc" className="text-xs">Ascending</SelectItem>
-                  <SelectItem value="desc" className="text-xs">Descending</SelectItem>
-                </SelectContent>
-              </Select>
-          </PopoverContent>
-          </Popover>
 
           <PipelineSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
         </div>
