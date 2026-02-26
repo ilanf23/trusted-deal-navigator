@@ -32,7 +32,20 @@ import {
   ArrowRightCircle,
   Check,
   X,
+  LayoutGrid,
+  Table2,
+  GripVertical,
 } from 'lucide-react';
+import {
+  DndContext, DragEndEvent, DragOverlay, DragStartEvent,
+  PointerSensor, useSensor, useSensors, closestCenter, useDroppable,
+} from '@dnd-kit/core';
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
+import { useMutation } from '@tanstack/react-query';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -175,6 +188,103 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   tags: 'Tags',
 };
 
+// ── Kanban sub-components ──
+
+function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
+  lead: Lead;
+  teamMemberMap: Record<string, string>;
+  isDragging?: boolean;
+  onClick: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
+  const avatarColor = getAvatarColor(lead.name);
+  const initial = lead.name[0]?.toUpperCase() ?? '?';
+  const stageCfg = stageConfig[lead.status];
+  const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? null) : null;
+  const dealValue = fakeValue(lead.id);
+  const daysInStage = daysSince(lead.updated_at);
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <Card
+        className="p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+      >
+        <div className="flex items-center gap-2 mb-1.5">
+          <div className={`h-6 w-6 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+            {initial}
+          </div>
+          <p className="text-sm font-semibold text-foreground leading-tight truncate">{lead.name}</p>
+        </div>
+        {lead.company_name && (
+          <p className="text-[11px] text-muted-foreground mb-1.5 truncate">{lead.company_name}</p>
+        )}
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-[12px] font-medium text-foreground tabular-nums">{formatValue(dealValue)}</span>
+          {daysInStage !== null && (
+            <span className={`text-[11px] ${daysInStage > 14 ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
+              {daysInStage}d
+            </span>
+          )}
+        </div>
+        {assignedName && (
+          <p className="text-[11px] text-muted-foreground mt-1">{assignedName}</p>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedId, onLeadClick }: {
+  status: LeadStatus;
+  label: string;
+  color: string;
+  leads: Lead[];
+  teamMemberMap: Record<string, string>;
+  draggedId: string | null;
+  onLeadClick: (lead: Lead) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: status });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col rounded-xl flex-1 min-w-[220px] max-w-[300px] transition-all ${
+        isOver ? 'ring-2 ring-violet-400 ring-offset-2 bg-violet-50/30' : 'bg-muted/30'
+      }`}
+    >
+      <div className="px-3 py-2.5 flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
+        <span className="text-xs font-bold text-foreground uppercase tracking-wide">{label}</span>
+        <span className="ml-auto text-[11px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+          {leads.length}
+        </span>
+      </div>
+      <ScrollArea className="flex-1 px-2 pb-2">
+        <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2 min-h-[100px]">
+            {leads.map((lead) => (
+              <KanbanDealCard
+                key={lead.id}
+                lead={lead}
+                teamMemberMap={teamMemberMap}
+                isDragging={draggedId === lead.id}
+                onClick={() => onLeadClick(lead)}
+              />
+            ))}
+            {leads.length === 0 && (
+              <div className="text-center text-muted-foreground text-xs py-10 border-2 border-dashed border-muted-foreground/20 rounded-lg">
+                Drop deals here
+              </div>
+            )}
+          </div>
+        </SortableContext>
+      </ScrollArea>
+    </div>
+  );
+}
+
 const EvansUnderwriting = () => {
   const queryClient = useQueryClient();
 
@@ -187,8 +297,10 @@ const EvansUnderwriting = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // ── Toolbar state ──
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
@@ -232,6 +344,50 @@ const EvansUnderwriting = () => {
 
   const isFiltersActive = activeFilter !== 'all' || searchTerm.trim() !== '';
   const isNonDefaultSort = sortPresetIdx !== 0;
+
+  // ── DnD sensors for Kanban ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  // ── Status update mutation for Kanban drag ──
+  const statusMutation = useMutation({
+    mutationFn: async ({ leadId, newStatus }: { leadId: string; newStatus: LeadStatus }) => {
+      const { error } = await supabase
+        .from('leads')
+        .update({ status: newStatus })
+        .eq('id', leadId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+      toast.success('Deal moved successfully');
+    },
+    onError: () => {
+      toast.error('Failed to move deal');
+    },
+  });
+
+  function handleDragStart(event: DragStartEvent) {
+    const lead = filteredAndSorted.find(l => l.id === event.active.id);
+    setDraggedLead(lead ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setDraggedLead(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const targetStatus = UNDERWRITING_STATUSES.find(s => s === over.id)
+      ?? filteredAndSorted.find(l => l.id === over.id)?.status;
+
+    if (!targetStatus) return;
+
+    const lead = filteredAndSorted.find(l => l.id === active.id);
+    if (!lead || lead.status === targetStatus) return;
+
+    statusMutation.mutate({ leadId: lead.id, newStatus: targetStatus });
+  }
 
   // ── Queries ──
   const { data: teamMembers = [] } = useQuery({
@@ -519,19 +675,50 @@ const EvansUnderwriting = () => {
               {/* Left group: view toggles */}
               <div className="flex items-center gap-2">
 
-                {/* Row density toggle */}
-                <button
-                  onClick={() => setRowDensity(d => d === 'comfortable' ? 'compact' : 'comfortable')}
-                  title={rowDensity === 'comfortable' ? 'Switch to compact view' : 'Switch to comfortable view'}
-                  className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-all ${
-                    rowDensity === 'compact'
-                      ? 'bg-violet-50 border-violet-200 text-violet-700'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                  }`}
-                >
-                  <AlignJustify className="h-3.5 w-3.5 shrink-0" />
-                  {rowDensity === 'compact' ? 'Compact' : 'Comfortable'}
-                </button>
+                {/* View mode toggle */}
+                <div className="flex items-center h-7 rounded-md border border-slate-200 overflow-hidden">
+                  <button
+                    onClick={() => setViewMode('table')}
+                    title="Table view"
+                    className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
+                      viewMode === 'table'
+                        ? 'bg-violet-50 text-violet-700'
+                        : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    }`}
+                  >
+                    <Table2 className="h-3.5 w-3.5 shrink-0" />
+                    Table
+                  </button>
+                  <div className="w-px h-4 bg-slate-200" />
+                  <button
+                    onClick={() => setViewMode('kanban')}
+                    title="Kanban view"
+                    className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
+                      viewMode === 'kanban'
+                        ? 'bg-violet-50 text-violet-700'
+                        : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    }`}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
+                    Kanban
+                  </button>
+                </div>
+
+                {/* Row density toggle — only in table mode */}
+                {viewMode === 'table' && (
+                  <button
+                    onClick={() => setRowDensity(d => d === 'comfortable' ? 'compact' : 'comfortable')}
+                    title={rowDensity === 'comfortable' ? 'Switch to compact view' : 'Switch to comfortable view'}
+                    className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-all ${
+                      rowDensity === 'compact'
+                        ? 'bg-violet-50 border-violet-200 text-violet-700'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                    }`}
+                  >
+                    <AlignJustify className="h-3.5 w-3.5 shrink-0" />
+                    {rowDensity === 'compact' ? 'Compact' : 'Comfortable'}
+                  </button>
+                )}
 
                 {/* Sidebar toggle */}
                 <button
@@ -669,275 +856,320 @@ const EvansUnderwriting = () => {
               </div>
             </div>
 
-            {/* ── Table ── */}
-            <div className="flex-1 overflow-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead className="sticky top-0 z-10 bg-background border-b border-border">
-                  <tr>
-                    <th className="w-8 px-3 py-2.5" />
-                    <ColHeader sortable field="name" icon={<DollarSign className="h-3.5 w-3.5" />} className="min-w-[220px]">
-                      Opportunity
-                    </ColHeader>
-                    <ColHeader colKey="company" sortable field="company_name" icon={<Building2 className="h-3.5 w-3.5" />} className="min-w-[140px]">
-                      Company
-                    </ColHeader>
-                    <ColHeader colKey="contact" icon={<User className="h-3.5 w-3.5" />} className="min-w-[120px]">
-                      Contact
-                    </ColHeader>
-                    <ColHeader colKey="value" icon={<DollarSign className="h-3.5 w-3.5" />} className="min-w-[110px]">
-                      Value
-                    </ColHeader>
-                    <ColHeader colKey="ownedBy" sortable field="assigned_to" icon={<User className="h-3.5 w-3.5" />} className="min-w-[120px]">
-                      Owned By
-                    </ColHeader>
-                    <ColHeader colKey="tasks" icon={<CheckSquare className="h-3.5 w-3.5" />} className="min-w-[70px]">
-                      Tasks
-                    </ColHeader>
-                    <ColHeader colKey="stage" sortable field="status" icon={<ArrowRightCircle className="h-3.5 w-3.5" />} className="min-w-[170px]">
-                      Stage
-                    </ColHeader>
-                    <ColHeader colKey="daysInStage" sortable field="updated_at" icon={<Timer className="h-3.5 w-3.5" />} className="min-w-[110px]">
-                      Days in Stage
-                    </ColHeader>
-                    <ColHeader colKey="stageUpdated" icon={<CalendarDays className="h-3.5 w-3.5" />} className="min-w-[130px]">
-                      Stage Updated
-                    </ColHeader>
-                    <ColHeader colKey="lastContacted" sortable field="last_activity_at" icon={<Clock className="h-3.5 w-3.5" />} className="min-w-[130px]">
-                      Last Contacted
-                    </ColHeader>
-                    <ColHeader colKey="interactions" icon={<MessageSquare className="h-3.5 w-3.5" />} className="min-w-[100px]">
-                      Interactions
-                    </ColHeader>
-                    <ColHeader colKey="inactiveDays" icon={<Moon className="h-3.5 w-3.5" />} className="min-w-[110px]">
-                      Inactive Days
-                    </ColHeader>
-                    <ColHeader colKey="tags" icon={<Tag className="h-3.5 w-3.5" />} className="min-w-[140px]">
-                      Tags
-                    </ColHeader>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
-                  {isLoading ? (
-                    Array.from({ length: 7 }).map((_, i) => (
-                      <tr key={i}>
-                        <td className={`px-3 ${rowPad} w-8`}><Skeleton className="h-4 w-4 rounded" /></td>
-                        <td className={`px-3 ${rowPad}`}>
-                          <div className="flex items-center gap-2">
-                            <Skeleton className="h-5 w-5 rounded-full shrink-0" />
-                            <Skeleton className="h-3.5 w-40" />
-                          </div>
-                        </td>
-                        {columnVisibility.company && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-24" /></td>}
-                        {columnVisibility.contact && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
-                        {columnVisibility.value && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-16" /></td>}
-                        {columnVisibility.ownedBy && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
-                        {columnVisibility.tasks && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-6" /></td>}
-                        {columnVisibility.stage && <td className={`px-3 ${rowPad}`}><Skeleton className="h-5 w-28 rounded-full" /></td>}
-                        {columnVisibility.daysInStage && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-10" /></td>}
-                        {columnVisibility.stageUpdated && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
-                        {columnVisibility.lastContacted && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
-                        {columnVisibility.interactions && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-6" /></td>}
-                        {columnVisibility.inactiveDays && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-8" /></td>}
-                        {columnVisibility.tags && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-16" /></td>}
-                      </tr>
-                    ))
-                  ) : filteredAndSorted.length === 0 ? (
+            {/* ── Content Area: Table or Kanban ── */}
+            {viewMode === 'table' ? (
+              <div className="flex-1 overflow-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead className="sticky top-0 z-10 bg-background border-b border-border">
                     <tr>
-                      <td colSpan={14}>
-                        <div className="flex flex-col items-center justify-center py-20 gap-3">
-                          <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-muted/50">
-                            <FileSearch className="h-5 w-5 text-muted-foreground/50" />
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-medium text-foreground">No opportunities found</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {searchTerm ? 'Try adjusting your search or filter' : 'No deals are in this stage yet'}
-                            </p>
-                          </div>
-                          {isFiltersActive && (
-                            <button
-                              onClick={clearAllFilters}
-                              className="text-xs text-violet-600 hover:text-violet-700 font-medium"
-                            >
-                              Clear filters
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                      <th className="w-8 px-3 py-2.5" />
+                      <ColHeader sortable field="name" icon={<DollarSign className="h-3.5 w-3.5" />} className="min-w-[220px]">
+                        Opportunity
+                      </ColHeader>
+                      <ColHeader colKey="company" sortable field="company_name" icon={<Building2 className="h-3.5 w-3.5" />} className="min-w-[140px]">
+                        Company
+                      </ColHeader>
+                      <ColHeader colKey="contact" icon={<User className="h-3.5 w-3.5" />} className="min-w-[120px]">
+                        Contact
+                      </ColHeader>
+                      <ColHeader colKey="value" icon={<DollarSign className="h-3.5 w-3.5" />} className="min-w-[110px]">
+                        Value
+                      </ColHeader>
+                      <ColHeader colKey="ownedBy" sortable field="assigned_to" icon={<User className="h-3.5 w-3.5" />} className="min-w-[120px]">
+                        Owned By
+                      </ColHeader>
+                      <ColHeader colKey="tasks" icon={<CheckSquare className="h-3.5 w-3.5" />} className="min-w-[70px]">
+                        Tasks
+                      </ColHeader>
+                      <ColHeader colKey="stage" sortable field="status" icon={<ArrowRightCircle className="h-3.5 w-3.5" />} className="min-w-[170px]">
+                        Stage
+                      </ColHeader>
+                      <ColHeader colKey="daysInStage" sortable field="updated_at" icon={<Timer className="h-3.5 w-3.5" />} className="min-w-[110px]">
+                        Days in Stage
+                      </ColHeader>
+                      <ColHeader colKey="stageUpdated" icon={<CalendarDays className="h-3.5 w-3.5" />} className="min-w-[130px]">
+                        Stage Updated
+                      </ColHeader>
+                      <ColHeader colKey="lastContacted" sortable field="last_activity_at" icon={<Clock className="h-3.5 w-3.5" />} className="min-w-[130px]">
+                        Last Contacted
+                      </ColHeader>
+                      <ColHeader colKey="interactions" icon={<MessageSquare className="h-3.5 w-3.5" />} className="min-w-[100px]">
+                        Interactions
+                      </ColHeader>
+                      <ColHeader colKey="inactiveDays" icon={<Moon className="h-3.5 w-3.5" />} className="min-w-[110px]">
+                        Inactive Days
+                      </ColHeader>
+                      <ColHeader colKey="tags" icon={<Tag className="h-3.5 w-3.5" />} className="min-w-[140px]">
+                        Tags
+                      </ColHeader>
                     </tr>
-                  ) : (
-                    filteredAndSorted.map((lead) => {
-                      const dealLabel = lead.company_name
-                        ? `${lead.name} — ${lead.company_name}`
-                        : lead.name;
-                      const initial = lead.name[0]?.toUpperCase() ?? '?';
-                      const avatarColor = getAvatarColor(lead.name);
-                      const stageCfg = stageConfig[lead.status];
-                      const assignedName = lead.assigned_to
-                        ? (teamMemberMap[lead.assigned_to] ?? null)
-                        : null;
-                      const assignedInitial = assignedName?.[0]?.toUpperCase() ?? null;
-                      const assignedColor = assignedName ? getAvatarColor(assignedName) : '';
-                      const taskCount = taskCountMap[lead.id] ?? fakeTasks(lead.id);
-                      const interactionCount = interactionCountMap[lead.id] ?? fakeInteractions(lead.id);
-                      const daysInStage = daysSince(lead.updated_at);
-                      const inactiveDays = daysSince(lead.last_activity_at);
-                      const isStale = inactiveDays !== null && inactiveDays > 7;
-                      const isLingering = daysInStage !== null && daysInStage > 14;
-                      const dealValue = fakeValue(lead.id);
-
-                      return (
-                        <tr
-                          key={lead.id}
-                          onClick={() => handleRowClick(lead)}
-                          className="cursor-pointer hover:bg-muted/30 transition-colors group"
-                        >
-                          <td className={`px-3 ${rowPad} w-8`}>
-                            <div className="h-3.5 w-3.5 rounded border border-border bg-background group-hover:border-violet-400/50 transition-colors" />
-                          </td>
-
-                          {/* Opportunity — always visible */}
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {isLoading ? (
+                      Array.from({ length: 7 }).map((_, i) => (
+                        <tr key={i}>
+                          <td className={`px-3 ${rowPad} w-8`}><Skeleton className="h-4 w-4 rounded" /></td>
                           <td className={`px-3 ${rowPad}`}>
                             <div className="flex items-center gap-2">
-                              <div className={`h-5 w-5 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-                                {initial}
-                              </div>
-                              <span className="font-medium text-foreground truncate max-w-[180px] text-[13px]">
-                                {dealLabel}
-                              </span>
+                              <Skeleton className="h-5 w-5 rounded-full shrink-0" />
+                              <Skeleton className="h-3.5 w-40" />
                             </div>
                           </td>
-
-                          {columnVisibility.company && (
-                            <td className={`px-3 ${rowPad}`}>
-                              {lead.company_name ? (
-                                <span className="text-[13px] text-foreground truncate block max-w-[120px]">{lead.company_name}</span>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </td>
-                          )}
-
-                          {columnVisibility.contact && (
-                            <td className={`px-3 ${rowPad}`}>
-                              <span className="text-[13px] text-foreground truncate block max-w-[100px]">{lead.name}</span>
-                            </td>
-                          )}
-
-                          {columnVisibility.value && (
-                            <td className={`px-3 ${rowPad}`}>
-                              <span className="text-[13px] text-foreground font-medium tabular-nums">{formatValue(dealValue)}</span>
-                            </td>
-                          )}
-
-                          {columnVisibility.ownedBy && (
-                            <td className={`px-3 ${rowPad}`}>
-                              {assignedName && assignedInitial ? (
-                                <div className="flex items-center gap-1.5">
-                                  <div className={`h-5 w-5 rounded-full ${assignedColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-                                    {assignedInitial}
-                                  </div>
-                                  <span className="text-[13px] text-foreground truncate max-w-[80px]">{assignedName}</span>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-[13px]">—</span>
-                              )}
-                            </td>
-                          )}
-
-                          {columnVisibility.tasks && (
-                            <td className={`px-3 ${rowPad}`}>
-                              <span className={`text-[13px] ${taskCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                                {taskCount}
-                              </span>
-                            </td>
-                          )}
-
-                          {columnVisibility.stage && (
-                            <td className={`px-3 ${rowPad}`}>
-                              {stageCfg ? (
-                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${stageCfg.bg} ${stageCfg.color}`}>
-                                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
-                                  {stageCfg.label}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">{lead.status}</span>
-                              )}
-                            </td>
-                          )}
-
-                          {columnVisibility.daysInStage && (
-                            <td className={`px-3 ${rowPad}`}>
-                              <span className="flex items-center gap-1">
-                                {isLingering
-                                  ? <Flame className="h-3 w-3 text-amber-500 shrink-0" />
-                                  : <Timer className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                                }
-                                <span className={`text-[13px] ${isLingering ? 'text-amber-600 font-medium' : 'text-foreground'}`}>
-                                  {daysInStage !== null ? `${daysInStage}d` : '—'}
-                                </span>
-                              </span>
-                            </td>
-                          )}
-
-                          {columnVisibility.stageUpdated && (
-                            <td className={`px-3 ${rowPad}`}>
-                              <span className="text-[12px] text-muted-foreground">{formatShortDate(lead.updated_at)}</span>
-                            </td>
-                          )}
-
-                          {columnVisibility.lastContacted && (
-                            <td className={`px-3 ${rowPad}`}>
-                              <span className="text-[12px] text-muted-foreground">{formatShortDate(lead.last_activity_at)}</span>
-                            </td>
-                          )}
-
-                          {columnVisibility.interactions && (
-                            <td className={`px-3 ${rowPad}`}>
-                              <span className={`text-[13px] ${interactionCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                                {interactionCount}
-                              </span>
-                            </td>
-                          )}
-
-                          {columnVisibility.inactiveDays && (
-                            <td className={`px-3 ${rowPad}`}>
-                              {isStale ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-200">
-                                  <Moon className="h-3 w-3 shrink-0" />
-                                  {inactiveDays}d
-                                </span>
-                              ) : (
-                                <span className="text-[13px] text-foreground">{inactiveDays !== null ? `${inactiveDays}d` : '—'}</span>
-                              )}
-                            </td>
-                          )}
-
-                          {columnVisibility.tags && (
-                            <td className={`px-3 ${rowPad}`}>
-                              {lead.tags && lead.tags.length > 0 ? (
-                                <span className="flex items-center gap-1 flex-wrap">
-                                  {lead.tags.slice(0, 2).map((tag) => (
-                                    <span key={tag} className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground border border-border/60">
-                                      {tag}
-                                    </span>
-                                  ))}
-                                  {lead.tags.length > 2 && (
-                                    <span className="text-[11px] text-muted-foreground">+{lead.tags.length - 2}</span>
-                                  )}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </td>
-                          )}
+                          {columnVisibility.company && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-24" /></td>}
+                          {columnVisibility.contact && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
+                          {columnVisibility.value && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-16" /></td>}
+                          {columnVisibility.ownedBy && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
+                          {columnVisibility.tasks && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-6" /></td>}
+                          {columnVisibility.stage && <td className={`px-3 ${rowPad}`}><Skeleton className="h-5 w-28 rounded-full" /></td>}
+                          {columnVisibility.daysInStage && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-10" /></td>}
+                          {columnVisibility.stageUpdated && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
+                          {columnVisibility.lastContacted && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
+                          {columnVisibility.interactions && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-6" /></td>}
+                          {columnVisibility.inactiveDays && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-8" /></td>}
+                          {columnVisibility.tags && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-16" /></td>}
                         </tr>
+                      ))
+                    ) : filteredAndSorted.length === 0 ? (
+                      <tr>
+                        <td colSpan={14}>
+                          <div className="flex flex-col items-center justify-center py-20 gap-3">
+                            <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-muted/50">
+                              <FileSearch className="h-5 w-5 text-muted-foreground/50" />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm font-medium text-foreground">No opportunities found</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {searchTerm ? 'Try adjusting your search or filter' : 'No deals are in this stage yet'}
+                              </p>
+                            </div>
+                            {isFiltersActive && (
+                              <button
+                                onClick={clearAllFilters}
+                                className="text-xs text-violet-600 hover:text-violet-700 font-medium"
+                              >
+                                Clear filters
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAndSorted.map((lead) => {
+                        const dealLabel = lead.company_name
+                          ? `${lead.name} — ${lead.company_name}`
+                          : lead.name;
+                        const initial = lead.name[0]?.toUpperCase() ?? '?';
+                        const avatarColor = getAvatarColor(lead.name);
+                        const stageCfg = stageConfig[lead.status];
+                        const assignedName = lead.assigned_to
+                          ? (teamMemberMap[lead.assigned_to] ?? null)
+                          : null;
+                        const assignedInitial = assignedName?.[0]?.toUpperCase() ?? null;
+                        const assignedColor = assignedName ? getAvatarColor(assignedName) : '';
+                        const taskCount = taskCountMap[lead.id] ?? fakeTasks(lead.id);
+                        const interactionCount = interactionCountMap[lead.id] ?? fakeInteractions(lead.id);
+                        const daysInStage = daysSince(lead.updated_at);
+                        const inactiveDays = daysSince(lead.last_activity_at);
+                        const isStale = inactiveDays !== null && inactiveDays > 7;
+                        const isLingering = daysInStage !== null && daysInStage > 14;
+                        const dealValue = fakeValue(lead.id);
+
+                        return (
+                          <tr
+                            key={lead.id}
+                            onClick={() => handleRowClick(lead)}
+                            className="cursor-pointer hover:bg-muted/30 transition-colors group"
+                          >
+                            <td className={`px-3 ${rowPad} w-8`}>
+                              <div className="h-3.5 w-3.5 rounded border border-border bg-background group-hover:border-violet-400/50 transition-colors" />
+                            </td>
+
+                            <td className={`px-3 ${rowPad}`}>
+                              <div className="flex items-center gap-2">
+                                <div className={`h-5 w-5 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+                                  {initial}
+                                </div>
+                                <span className="font-medium text-foreground truncate max-w-[180px] text-[13px]">
+                                  {dealLabel}
+                                </span>
+                              </div>
+                            </td>
+
+                            {columnVisibility.company && (
+                              <td className={`px-3 ${rowPad}`}>
+                                {lead.company_name ? (
+                                  <span className="text-[13px] text-foreground truncate block max-w-[120px]">{lead.company_name}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                            )}
+
+                            {columnVisibility.contact && (
+                              <td className={`px-3 ${rowPad}`}>
+                                <span className="text-[13px] text-foreground truncate block max-w-[100px]">{lead.name}</span>
+                              </td>
+                            )}
+
+                            {columnVisibility.value && (
+                              <td className={`px-3 ${rowPad}`}>
+                                <span className="text-[13px] text-foreground font-medium tabular-nums">{formatValue(dealValue)}</span>
+                              </td>
+                            )}
+
+                            {columnVisibility.ownedBy && (
+                              <td className={`px-3 ${rowPad}`}>
+                                {assignedName && assignedInitial ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <div className={`h-5 w-5 rounded-full ${assignedColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+                                      {assignedInitial}
+                                    </div>
+                                    <span className="text-[13px] text-foreground truncate max-w-[80px]">{assignedName}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-[13px]">—</span>
+                                )}
+                              </td>
+                            )}
+
+                            {columnVisibility.tasks && (
+                              <td className={`px-3 ${rowPad}`}>
+                                <span className={`text-[13px] ${taskCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                                  {taskCount}
+                                </span>
+                              </td>
+                            )}
+
+                            {columnVisibility.stage && (
+                              <td className={`px-3 ${rowPad}`}>
+                                {stageCfg ? (
+                                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${stageCfg.bg} ${stageCfg.color}`}>
+                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
+                                    {stageCfg.label}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">{lead.status}</span>
+                                )}
+                              </td>
+                            )}
+
+                            {columnVisibility.daysInStage && (
+                              <td className={`px-3 ${rowPad}`}>
+                                <span className="flex items-center gap-1">
+                                  {isLingering
+                                    ? <Flame className="h-3 w-3 text-amber-500 shrink-0" />
+                                    : <Timer className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                                  }
+                                  <span className={`text-[13px] ${isLingering ? 'text-amber-600 font-medium' : 'text-foreground'}`}>
+                                    {daysInStage !== null ? `${daysInStage}d` : '—'}
+                                  </span>
+                                </span>
+                              </td>
+                            )}
+
+                            {columnVisibility.stageUpdated && (
+                              <td className={`px-3 ${rowPad}`}>
+                                <span className="text-[12px] text-muted-foreground">{formatShortDate(lead.updated_at)}</span>
+                              </td>
+                            )}
+
+                            {columnVisibility.lastContacted && (
+                              <td className={`px-3 ${rowPad}`}>
+                                <span className="text-[12px] text-muted-foreground">{formatShortDate(lead.last_activity_at)}</span>
+                              </td>
+                            )}
+
+                            {columnVisibility.interactions && (
+                              <td className={`px-3 ${rowPad}`}>
+                                <span className={`text-[13px] ${interactionCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                                  {interactionCount}
+                                </span>
+                              </td>
+                            )}
+
+                            {columnVisibility.inactiveDays && (
+                              <td className={`px-3 ${rowPad}`}>
+                                {isStale ? (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-200">
+                                    <Moon className="h-3 w-3 shrink-0" />
+                                    {inactiveDays}d
+                                  </span>
+                                ) : (
+                                  <span className="text-[13px] text-foreground">{inactiveDays !== null ? `${inactiveDays}d` : '—'}</span>
+                                )}
+                              </td>
+                            )}
+
+                            {columnVisibility.tags && (
+                              <td className={`px-3 ${rowPad}`}>
+                                {lead.tags && lead.tags.length > 0 ? (
+                                  <span className="flex items-center gap-1 flex-wrap">
+                                    {lead.tags.slice(0, 2).map((tag) => (
+                                      <span key={tag} className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground border border-border/60">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                    {lead.tags.length > 2 && (
+                                      <span className="text-[11px] text-muted-foreground">+{lead.tags.length - 2}</span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              /* ── Kanban View ── */
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="flex-1 overflow-auto p-4">
+                  <div className="flex gap-4 h-full min-h-[500px]">
+                    {UNDERWRITING_STATUSES.map((status) => {
+                      const cfg = stageConfig[status];
+                      const columnLeads = filteredAndSorted.filter(l => l.status === status);
+                      return (
+                        <KanbanDropColumn
+                          key={status}
+                          status={status}
+                          label={cfg?.label ?? status}
+                          color={cfg?.dot ?? 'bg-slate-500'}
+                          leads={columnLeads}
+                          teamMemberMap={teamMemberMap}
+                          draggedId={draggedLead?.id ?? null}
+                          onLeadClick={handleRowClick}
+                        />
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    })}
+                  </div>
+                </div>
+                <DragOverlay>
+                  {draggedLead ? (
+                    <Card className="p-3 shadow-lg border border-violet-300 rotate-2 cursor-grabbing w-56 bg-card">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className={`h-5 w-5 rounded-full ${getAvatarColor(draggedLead.name)} flex items-center justify-center text-white text-[10px] font-bold`}>
+                          {draggedLead.name[0]?.toUpperCase()}
+                        </div>
+                        <p className="text-sm font-semibold text-foreground truncate">{draggedLead.name}</p>
+                      </div>
+                      {draggedLead.company_name && (
+                        <p className="text-[11px] text-muted-foreground">{draggedLead.company_name}</p>
+                      )}
+                    </Card>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            )}
           </main>
         </div>
       </div>
