@@ -2,50 +2,62 @@
 
 ## Plan: Add Color Throughout the Expanded View
 
-The current expanded view is mostly monochrome -- gray text on white. I'll add semantic color accents to every major section to make it feel polished and alive.
+The file currently has zero color enhancements — everything is monochrome gray/foreground. I'll add semantic colors to every section in a single file edit.
 
-### Changes (single file: `UnderwritingExpandedView.tsx`)
+### Changes (single file: `src/components/admin/UnderwritingExpandedView.tsx`)
 
-**1. Header** 
-- Add subtle gradient background: `bg-gradient-to-r from-slate-50 to-blue-50/30`
-- Avatar: gradient background `from-amber-200 to-orange-300` with a white ring
-- Company name: small blue Building2 icon inline
-- Deal value: emerald-600 instead of plain foreground
-- Star button: amber-400 color with amber hover
+**1. Add imports** — `Activity, Clock, AlertCircle, TrendingUp` from lucide-react for stat icons.
 
-**2. Stats Bar**
-- Add colored icons to each stat box (blue Activity icon, violet Clock, amber/red AlertCircle, emerald TrendingUp)
-- Stat values colored to match their icon
-- Inactive Days turns red when > 30 days
-- Light muted background: `bg-muted/30`
+**2. Expand `stageConfig`** — Add `bg` and `borderColor` fields for Badge rendering:
+- `moving_to_underwriting`: blue bg/border
+- `underwriting`: amber bg/border
+- `ready_for_wu_approval`: violet bg/border
+- `pre_approval_issued`: emerald bg/border
 
-**3. Left Details Column**
-- Section header "Deal Details" with a blue dot
-- Light tinted background: `bg-muted/10`
-- Pipeline field: blue Badge instead of plain text
-- Stage field: colored Badge matching stage config (blue/amber/violet/emerald)
-- Value: emerald-600 font color
-- Owned By: blue-600 font color  
-- Source: purple Badge
-- Empty values: italic style
+**3. Update `StatBox`** — Add `icon` (ReactNode) and `color` (string) props. Render colored icon next to colored value.
 
-**4. Center Activity**
-- Tab underline colors: blue for "Log Activity", violet for "Create Note"
-- Textarea borders tinted to match active tab
-- Empty state: dashed border card with a muted Activity icon and helper text
+**4. Update `RelatedSection`** — Add `iconColor` prop. Render count as a small rounded Badge pill instead of plain `(n)` text.
 
-**5. Right Related Panel**
-- Section header "Related" with a violet dot
-- Each section icon gets a unique color (People=blue, Companies=indigo, Tasks=emerald, Files=orange, Calendar=rose, Projects=cyan, Pipeline=violet)
-- Counts shown in rounded Badge pills instead of plain parentheses
-- Contact and company entries get small colored avatar circles
-- Stage shown as colored Badge in Pipeline Records
+**5. Header bar** (line 206):
+- Gradient background: `bg-gradient-to-r from-slate-50/80 to-blue-50/40 dark:from-slate-900/50 dark:to-blue-950/30`
+- Avatar: gradient `bg-gradient-to-br from-amber-200 to-orange-300` with `ring-2 ring-white`
+- Company name: inline `Building2` icon in blue
+- Deal value: `text-emerald-600`
+- Star button: `text-amber-400 hover:text-amber-500`
 
-### Updated sub-components
+**6. Stats bar** (line 232):
+- Background: `bg-muted/30`
+- Each StatBox gets a colored icon:
+  - Interactions: blue `Activity` icon
+  - Last Contacted: violet `Clock` icon
+  - Inactive Days: amber (or red if >30) `AlertCircle` icon
+  - Days in Stage: emerald `TrendingUp` icon
 
-- **StatBox**: gains `icon` and `color` props
-- **RelatedSection**: gains `iconColor` prop; count rendered as a Badge pill
-- **stageConfig**: gains `bg` and `border` fields for Badge styling
+**7. Left details column** (line 243):
+- Background tint: `bg-muted/10`
+- Pipeline value: blue Badge
+- Stage select trigger: colored border matching stage
+- Value: `text-emerald-600 font-semibold`
+- Owned By: `text-blue-600`
+- Source: purple Badge (or italic dash if empty)
+- Empty values: `italic` style
+
+**8. Center activity tabs** (lines 304-329):
+- Log Activity active: `border-blue-500 text-blue-600`
+- Create Note active: `border-violet-500 text-violet-600`
+- Textarea focus borders: `focus-visible:border-blue-400` / `focus-visible:border-violet-400`
+- Empty state: dashed border card with muted icon
+
+**9. Right related panel** (lines 372-418):
+- Each section's icon gets a unique color class passed via `iconColor`:
+  - People: `text-blue-500`
+  - Companies: `text-indigo-500`
+  - Tasks: `text-emerald-500`
+  - Files: `text-orange-500`
+  - Calendar: `text-rose-500`
+  - Projects: `text-cyan-500`
+  - Pipeline Records: `text-violet-500`
+- Pipeline Records stage rendered as colored Badge
 
 ### Files modified
 - `src/components/admin/UnderwritingExpandedView.tsx`
