@@ -704,22 +704,6 @@ const EvansUnderwriting = () => {
                   </button>
                 </div>
 
-                {/* Row density toggle — only in table mode */}
-                {viewMode === 'table' && (
-                  <button
-                    onClick={() => setRowDensity(d => d === 'comfortable' ? 'compact' : 'comfortable')}
-                    title={rowDensity === 'comfortable' ? 'Switch to compact view' : 'Switch to comfortable view'}
-                    className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-all ${
-                      rowDensity === 'compact'
-                        ? 'bg-violet-50 border-violet-200 text-violet-700'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                    }`}
-                  >
-                    <AlignJustify className="h-3.5 w-3.5 shrink-0" />
-                    {rowDensity === 'compact' ? 'Compact' : 'Comfortable'}
-                  </button>
-                )}
-
                 {/* Sidebar toggle */}
                 <button
                   onClick={() => setSidebarOpen(v => !v)}
