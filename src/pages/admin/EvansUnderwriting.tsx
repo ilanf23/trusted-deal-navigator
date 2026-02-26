@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
+import PipelineSettingsDialog from '@/components/admin/PipelineSettingsDialog';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import {
   ArrowUpDown,
@@ -304,6 +305,7 @@ const EvansUnderwriting = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
     company: true, contact: true, value: true, ownedBy: true, tasks: true,
@@ -645,8 +647,19 @@ const EvansUnderwriting = () => {
                   <SelectItem value="desc" className="text-xs">Descending</SelectItem>
                 </SelectContent>
               </Select>
-            </PopoverContent>
+          </PopoverContent>
           </Popover>
+
+          {/* Settings button */}
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title="Pipeline settings"
+            className="flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all shrink-0"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
+
+          <PipelineSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
         </div>
 
         {/* ── Body: Sidebar + Table ── */}
