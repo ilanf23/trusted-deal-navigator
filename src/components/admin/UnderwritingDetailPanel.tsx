@@ -1,4 +1,4 @@
-import { X, Star, DollarSign, ChevronDown } from 'lucide-react';
+import { X, Star, DollarSign, ChevronDown, Maximize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -76,6 +76,9 @@ export default function UnderwritingDetailPanel({
           <div className="flex items-center gap-1 shrink-0">
             <Button variant="ghost" size="icon" className="h-7 w-7" title="Follow">
               <Star className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Expand full view">
+              <Maximize2 className="h-3.5 w-3.5" />
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
               <X className="h-3.5 w-3.5" />
