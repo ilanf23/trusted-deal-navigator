@@ -9,7 +9,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
 import PipelineSettingsDialog from '@/components/admin/PipelineSettingsDialog';
-import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import UnderwritingDetailPanel from '@/components/admin/UnderwritingDetailPanel';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import {
   ArrowUpDown,
@@ -306,7 +306,7 @@ const EvansUnderwriting = () => {
   const [sortField, setSortField] = useState<SortField>('last_activity_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  
 
   // ── Toolbar state ──
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
@@ -544,7 +544,6 @@ const EvansUnderwriting = () => {
 
   function handleRowClick(lead: Lead) {
     setSelectedLead(lead);
-    setDialogOpen(true);
   }
 
   // Row padding based on density
@@ -1297,19 +1296,25 @@ const EvansUnderwriting = () => {
               </DndContext>
             )}
           </main>
+
+          {/* ── Right Detail Panel ── */}
+          {selectedLead && (
+            <UnderwritingDetailPanel
+              lead={selectedLead}
+              stageConfig={stageConfig}
+              teamMemberMap={teamMemberMap}
+              formatValue={formatValue}
+              fakeValue={fakeValue}
+              onClose={() => setSelectedLead(null)}
+              onStageChange={(leadId, newStatus) => {
+                statusMutation.mutate({ leadId, newStatus });
+                setSelectedLead({ ...selectedLead, status: newStatus });
+              }}
+            />
+          )}
         </div>
       </div>
 
-      <LeadDetailDialog
-        lead={selectedLead}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onLeadUpdated={() => {
-          queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
-          queryClient.invalidateQueries({ queryKey: ['underwriting-task-counts'] });
-          queryClient.invalidateQueries({ queryKey: ['underwriting-interaction-counts'] });
-        }}
-      />
 
       <CreateFilterDialog
         open={newFilterOpen}
