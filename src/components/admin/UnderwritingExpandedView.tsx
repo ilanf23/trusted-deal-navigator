@@ -201,7 +201,7 @@ export default function UnderwritingExpandedView() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex flex-col bg-background overflow-hidden -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10" style={{ height: 'calc(100vh - 3.5rem)' }}>
       {/* ── Header ── */}
       <div className="shrink-0 border-b border-border px-5 py-3">
         <div className="flex items-center gap-3">
