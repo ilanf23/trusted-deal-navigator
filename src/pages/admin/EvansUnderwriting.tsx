@@ -602,11 +602,6 @@ const EvansUnderwriting = () => {
         <div className="shrink-0 border-b border-border bg-background px-5 py-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">All Opportunities</h1>
-            {!isLoading && (
-              <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
-                ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            )}
           </div>
 
           {/* Connected toolbar — Table | Kanban | Sort | Settings */}
@@ -821,6 +816,11 @@ const EvansUnderwriting = () => {
                 {!isLoading && (
                   <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
                     # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'opportunity' : 'opportunities'}
+                  </span>
+                )}
+                {!isLoading && (
+                  <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
+                    ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 )}
 
