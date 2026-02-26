@@ -14,7 +14,7 @@ import {
   X, Star, DollarSign, ChevronDown, ChevronRight,
   Users, Building2, CheckSquare, FileText,
   CalendarDays, FolderOpen, Layers, Plus,
-  MessageSquare, Pencil,
+  MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { differenceInDays, parseISO, format } from 'date-fns';
@@ -30,11 +30,11 @@ const UNDERWRITING_STATUSES: LeadStatus[] = [
   'pre_approval_issued',
 ];
 
-const stageConfig: Record<string, { label: string; color: string }> = {
-  moving_to_underwriting: { label: 'Moving to UW', color: 'text-blue-700' },
-  underwriting: { label: 'Underwriting', color: 'text-amber-700' },
-  ready_for_wu_approval: { label: 'Ready for Approval', color: 'text-violet-700' },
-  pre_approval_issued: { label: 'Pre-Approval Issued', color: 'text-emerald-700' },
+const stageConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  moving_to_underwriting: { label: 'Moving to UW', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
+  underwriting: { label: 'Underwriting', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+  ready_for_wu_approval: { label: 'Ready for Approval', color: 'text-violet-700', bg: 'bg-violet-50', border: 'border-violet-200' },
+  pre_approval_issued: { label: 'Pre-Approval Issued', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
 };
 
 const VALUE_BUCKETS = [25000, 50000, 75000, 100000, 150000, 200000, 250000, 350000, 500000, 750000];
@@ -80,18 +80,21 @@ function DetailField({ label, children, required }: { label: string; children: R
 }
 
 /* ─── Stats Card ─── */
-function StatBox({ value, label }: { value: string | number; label: string }) {
+function StatBox({ value, label, icon, color }: { value: string | number; label: string; icon: React.ReactNode; color: string }) {
   return (
-    <div className="flex flex-col items-center px-5 py-2">
-      <span className="text-lg font-bold text-foreground tabular-nums">{value}</span>
+    <div className="flex flex-col items-center px-6 py-2.5 gap-0.5">
+      <div className="flex items-center gap-1.5">
+        <span className={color}>{icon}</span>
+        <span className={`text-lg font-bold tabular-nums ${color}`}>{value}</span>
+      </div>
       <span className="text-[11px] text-muted-foreground">{label}</span>
     </div>
   );
 }
 
 /* ─── Related Section ─── */
-function RelatedSection({ icon, label, count, children }: {
-  icon: React.ReactNode; label: string; count: number; children?: React.ReactNode;
+function RelatedSection({ icon, label, count, iconColor, children }: {
+  icon: React.ReactNode; label: string; count: number; iconColor?: string; children?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
   return (
@@ -99,9 +102,11 @@ function RelatedSection({ icon, label, count, children }: {
       <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/40 px-3 rounded-md transition-colors">
         {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
         <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-          {icon} {label}
+          <span className={iconColor}>{icon}</span> {label}
         </span>
-        <span className="text-[11px] text-muted-foreground ml-1">({count})</span>
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1">
+          {count}
+        </Badge>
         <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto" onClick={(e) => e.stopPropagation()}>
           <Plus className="h-3 w-3" />
         </Button>
@@ -195,6 +200,7 @@ export default function UnderwritingExpandedView() {
   const inactiveDays = daysSince(lead.last_activity_at);
   const lastContacted = formatShortDate(lead.last_activity_at);
   const stageCfg = stageConfig[lead.status];
+  const inactiveColor = (inactiveDays ?? 0) > 30 ? 'text-red-600' : 'text-amber-600';
 
   function goBack() {
     navigate(-1);
@@ -203,54 +209,57 @@ export default function UnderwritingExpandedView() {
   return (
     <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
       {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border px-5 py-3">
+      <div className="shrink-0 border-b border-border px-5 py-3 bg-gradient-to-r from-slate-50/80 to-blue-50/40 dark:from-slate-900/50 dark:to-blue-950/30">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goBack}>
             <X className="h-4 w-4" />
           </Button>
-          <div className="h-9 w-9 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-sm font-bold shrink-0">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-amber-200 to-orange-300 flex items-center justify-center text-amber-800 text-sm font-bold shrink-0 ring-2 ring-white shadow-sm">
             {initial}
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-semibold text-foreground truncate">{lead.name}</h1>
             {lead.company_name && (
-              <p className="text-xs text-muted-foreground truncate">{lead.company_name}</p>
+              <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                <Building2 className="h-3 w-3 text-blue-500" />
+                {lead.company_name}
+              </p>
             )}
           </div>
           <Badge variant="secondary" className="gap-1 text-xs font-medium rounded-md bg-emerald-50 text-emerald-700 border-emerald-200">
             <DollarSign className="h-3 w-3" />
             Opportunity
           </Badge>
-          <span className="text-sm font-semibold text-foreground tabular-nums">{formatValue(dealValue)}</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Follow">
+          <span className="text-sm font-semibold text-emerald-600 tabular-nums">{formatValue(dealValue)}</span>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-400 hover:text-amber-500" title="Follow">
             <Star className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* ── Stats Bar ── */}
-      <div className="shrink-0 border-b border-border flex items-center justify-center gap-0 divide-x divide-border py-1">
-        <StatBox value={interactionCount} label="Interactions" />
-        <StatBox value={lastContacted} label="Last Contacted" />
-        <StatBox value={inactiveDays ?? '—'} label="Inactive Days" />
-        <StatBox value={daysInStage ?? '—'} label="Days in Stage" />
+      <div className="shrink-0 border-b border-border flex items-center justify-center gap-0 divide-x divide-border py-1 bg-muted/30">
+        <StatBox value={interactionCount} label="Interactions" icon={<Activity className="h-4 w-4" />} color="text-blue-600" />
+        <StatBox value={lastContacted} label="Last Contacted" icon={<Clock className="h-4 w-4" />} color="text-violet-600" />
+        <StatBox value={inactiveDays ?? '—'} label="Inactive Days" icon={<AlertCircle className="h-4 w-4" />} color={inactiveColor} />
+        <StatBox value={daysInStage ?? '—'} label="Days in Stage" icon={<TrendingUp className="h-4 w-4" />} color="text-emerald-600" />
       </div>
 
       {/* ── 3-Column Body ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Details */}
-        <ScrollArea className="w-[320px] shrink-0 border-r border-border">
+        <ScrollArea className="w-[320px] shrink-0 border-r border-border bg-muted/10">
           <div className="px-5 py-3 divide-y divide-border/50">
             <DetailField label="Name" required>
               <span className="font-medium">{lead.name}</span>
             </DetailField>
             <DetailField label="Pipeline">
-              <span>Underwriting</span>
+              <Badge variant="secondary" className="text-[11px] bg-blue-50 text-blue-700 border-blue-200">Underwriting</Badge>
             </DetailField>
             <DetailField label="Stage">
               <Select value={lead.status} disabled>
-                <SelectTrigger className="h-7 w-auto min-w-[130px] text-xs border-border/60">
+                <SelectTrigger className={`h-7 w-auto min-w-[130px] text-xs ${stageCfg?.border ?? 'border-border/60'} ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -266,7 +275,7 @@ export default function UnderwritingExpandedView() {
               <span>{lead.company_name ?? lead.name}</span>
             </DetailField>
             <DetailField label="Waiting On">
-              <span className="text-muted-foreground">—</span>
+              <span className="text-muted-foreground italic">—</span>
             </DetailField>
             <DetailField label="Tags">
               {lead.tags && lead.tags.length > 0 ? (
@@ -276,20 +285,24 @@ export default function UnderwritingExpandedView() {
                   ))}
                 </div>
               ) : (
-                <span className="text-muted-foreground">—</span>
+                <span className="text-muted-foreground italic">—</span>
               )}
             </DetailField>
             <DetailField label="Value">
-              <span className="font-medium tabular-nums">{formatValue(dealValue)}</span>
+              <span className="font-semibold tabular-nums text-emerald-600">{formatValue(dealValue)}</span>
             </DetailField>
             <DetailField label="Owned By">
-              <span>{assignedName}</span>
+              <span className="text-blue-600 font-medium">{assignedName}</span>
             </DetailField>
             <DetailField label="Source">
-              <span>{lead.source ?? '—'}</span>
+              {lead.source ? (
+                <Badge variant="secondary" className="text-[11px] bg-purple-50 text-purple-700 border-purple-200">{lead.source}</Badge>
+              ) : (
+                <span className="text-muted-foreground italic">—</span>
+              )}
             </DetailField>
             <DetailField label="Description">
-              <span className="text-xs text-muted-foreground line-clamp-4">{lead.notes ?? '—'}</span>
+              <span className="text-xs text-muted-foreground line-clamp-4">{lead.notes ?? <span className="italic">—</span>}</span>
             </DetailField>
           </div>
           <div className="px-5 pb-4">
@@ -304,7 +317,7 @@ export default function UnderwritingExpandedView() {
             <button
               className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
                 activityTab === 'log'
-                  ? 'border-foreground text-foreground'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActivityTab('log')}
@@ -317,7 +330,7 @@ export default function UnderwritingExpandedView() {
             <button
               className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
                 activityTab === 'note'
-                  ? 'border-foreground text-foreground'
+                  ? 'border-violet-500 text-violet-600'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActivityTab('note')}
@@ -348,13 +361,13 @@ export default function UnderwritingExpandedView() {
                   </div>
                   <Textarea
                     placeholder="Add a note..."
-                    className="min-h-[80px] text-sm resize-none"
+                    className="min-h-[80px] text-sm resize-none focus-visible:border-blue-400 focus-visible:ring-blue-400/20"
                   />
                 </div>
               ) : (
                 <Textarea
                   placeholder="Write a note..."
-                  className="min-h-[120px] text-sm resize-none"
+                  className="min-h-[120px] text-sm resize-none focus-visible:border-violet-400 focus-visible:ring-violet-400/20"
                 />
               )}
 
@@ -362,7 +375,10 @@ export default function UnderwritingExpandedView() {
               <Separator className="my-6" />
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground text-center py-6">No activity recorded yet</p>
+                <div className="border border-dashed border-border rounded-lg py-8 flex flex-col items-center gap-2">
+                  <Activity className="h-6 w-6 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No activity recorded yet</p>
+                </div>
               </div>
             </div>
           </ScrollArea>
@@ -371,13 +387,16 @@ export default function UnderwritingExpandedView() {
         {/* RIGHT: Related */}
         <ScrollArea className="w-[240px] shrink-0 border-l border-border">
           <div className="py-2">
-            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length}>
+            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} iconColor="text-blue-500">
               {contacts.length > 0 ? (
                 <div className="space-y-1.5 py-1">
                   {contacts.map((c) => (
-                    <div key={c.id} className="text-xs text-foreground">
+                    <div key={c.id} className="text-xs text-foreground flex items-center gap-1.5">
+                      <div className="h-4 w-4 rounded-full bg-blue-100 flex items-center justify-center text-[9px] font-bold text-blue-700 shrink-0">
+                        {c.name[0]?.toUpperCase()}
+                      </div>
                       <span className="font-medium">{c.name}</span>
-                      {c.title && <span className="text-muted-foreground ml-1">· {c.title}</span>}
+                      {c.title && <span className="text-muted-foreground">· {c.title}</span>}
                     </div>
                   ))}
                 </div>
@@ -386,33 +405,40 @@ export default function UnderwritingExpandedView() {
               )}
             </RelatedSection>
 
-            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0}>
+            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} iconColor="text-indigo-500">
               {lead.company_name ? (
-                <p className="text-xs text-foreground py-1">{lead.company_name}</p>
+                <div className="text-xs text-foreground py-1 flex items-center gap-1.5">
+                  <div className="h-4 w-4 rounded-full bg-indigo-100 flex items-center justify-center text-[9px] font-bold text-indigo-700 shrink-0">
+                    {lead.company_name[0]?.toUpperCase()}
+                  </div>
+                  {lead.company_name}
+                </div>
               ) : (
                 <p className="text-xs text-muted-foreground py-1">No companies</p>
               )}
             </RelatedSection>
 
-            <RelatedSection icon={<CheckSquare className="h-3.5 w-3.5" />} label="Tasks" count={taskCount}>
+            <RelatedSection icon={<CheckSquare className="h-3.5 w-3.5" />} label="Tasks" count={taskCount} iconColor="text-emerald-500">
               <button className="text-xs text-primary hover:underline py-1">+ Add task...</button>
             </RelatedSection>
 
-            <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0}>
+            <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0} iconColor="text-orange-500">
               <p className="text-xs text-muted-foreground py-1">No files</p>
             </RelatedSection>
 
-            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0}>
+            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0} iconColor="text-rose-500">
               <p className="text-xs text-muted-foreground py-1">No events</p>
             </RelatedSection>
 
-            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={0}>
+            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={0} iconColor="text-cyan-500">
               <p className="text-xs text-muted-foreground py-1">No projects</p>
             </RelatedSection>
 
-            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1}>
+            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1} iconColor="text-violet-500">
               <div className="text-xs py-1">
-                <span className={stageCfg?.color}>{stageCfg?.label ?? lead.status}</span>
+                <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''} ${stageCfg?.border ?? ''}`}>
+                  {stageCfg?.label ?? lead.status}
+                </Badge>
               </div>
             </RelatedSection>
           </div>
