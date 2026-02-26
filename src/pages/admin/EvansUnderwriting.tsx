@@ -659,6 +659,15 @@ const EvansUnderwriting = () => {
           </div>
 
           <PipelineSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+
+          {/* Add Opportunity button */}
+          <Button
+            size="sm"
+            className="h-8 px-4 text-xs font-semibold rounded-full gap-1.5 shrink-0"
+          >
+            Add Opportunity
+            <ChevronDown className="h-3 w-3" />
+          </Button>
         </div>
 
         {/* ── Body: Sidebar + Table ── */}
