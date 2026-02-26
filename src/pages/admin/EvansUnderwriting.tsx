@@ -610,6 +610,14 @@ const EvansUnderwriting = () => {
               <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
               Kanban
             </button>
+            <div className="w-px h-4 bg-slate-200" />
+            <button
+              onClick={() => setSettingsOpen(true)}
+              title="Pipeline settings"
+              className="flex items-center justify-center h-full px-2 text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-all"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+            </button>
           </div>
 
           {/* Sort popover */}
@@ -649,15 +657,6 @@ const EvansUnderwriting = () => {
               </Select>
           </PopoverContent>
           </Popover>
-
-          {/* Settings button */}
-          <button
-            onClick={() => setSettingsOpen(true)}
-            title="Pipeline settings"
-            className="flex items-center justify-center h-7 w-7 rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all shrink-0"
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-          </button>
 
           <PipelineSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
         </div>
