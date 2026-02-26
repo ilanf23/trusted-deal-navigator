@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -298,6 +299,7 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
 }
 
 const EvansUnderwriting = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // ── Core state ──
@@ -1315,6 +1317,7 @@ const EvansUnderwriting = () => {
               formatValue={formatValue}
               fakeValue={fakeValue}
               onClose={() => setSelectedLead(null)}
+              onExpand={() => navigate(`/admin/evan/pipeline/underwriting/lead/${selectedLead.id}`)}
               onStageChange={(leadId, newStatus) => {
                 statusMutation.mutate({ leadId, newStatus });
                 setSelectedLead({ ...selectedLead, status: newStatus });
