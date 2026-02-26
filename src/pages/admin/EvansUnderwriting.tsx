@@ -602,12 +602,6 @@ const EvansUnderwriting = () => {
         <div className="shrink-0 border-b border-border bg-background px-5 py-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <h1 className="text-lg font-bold text-foreground whitespace-nowrap">All Opportunities</h1>
-            <button
-              className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              title="Bookmark this view"
-            >
-              <Bookmark className="h-4 w-4" strokeWidth={1.75} />
-            </button>
             {!isLoading && (
               <>
                 <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
