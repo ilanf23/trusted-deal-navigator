@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -23,66 +22,78 @@ import {
   CheckSquare,
   Copy,
   Zap,
+  Settings2,
 } from 'lucide-react';
 
-interface PipelineSettingsDialogProps {
+interface PipelineSettingsPopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const PipelineSettingsDialog = ({ open, onOpenChange }: PipelineSettingsDialogProps) => {
+const PipelineSettingsPopover = ({ open, onOpenChange }: PipelineSettingsPopoverProps) => {
   const [pipelineName, setPipelineName] = useState('Workflow');
   const [salesTracking, setSalesTracking] = useState(true);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle className="text-lg font-semibold text-foreground">Pipeline Settings</DialogTitle>
-        </DialogHeader>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          title="Pipeline settings"
+          className="flex items-center justify-center h-full px-2 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-all"
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        className="w-[380px] max-h-[70vh] overflow-y-auto p-0 shadow-xl"
+      >
+        <div className="px-4 pt-4 pb-2">
+          <h3 className="text-sm font-semibold text-foreground">Pipeline Settings</h3>
+        </div>
 
-        <div className="px-6 pb-6 space-y-6">
+        <div className="px-4 pb-4 space-y-4">
           {/* ── General ── */}
-          <section className="space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">General</h3>
+          <section className="space-y-3">
+            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">General</h4>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="pipeline-name" className="text-sm text-foreground">Name</Label>
+            <div className="space-y-1">
+              <Label htmlFor="pipeline-name" className="text-xs text-foreground">Name</Label>
               <Input
                 id="pipeline-name"
                 value={pipelineName}
                 onChange={(e) => setPipelineName(e.target.value)}
-                className="h-9 text-sm"
+                className="h-8 text-xs"
               />
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-sm text-foreground">Record type</Label>
-              <p className="text-sm text-muted-foreground">Opportunity</p>
+            <div className="space-y-0.5">
+              <Label className="text-xs text-foreground">Record type</Label>
+              <p className="text-xs text-muted-foreground">Opportunity</p>
             </div>
           </section>
 
           <Separator />
 
           {/* ── Stages ── */}
-          <section className="space-y-3">
+          <section className="space-y-2">
             <SettingsRow
-              icon={<Layers className="h-4 w-4 text-muted-foreground" />}
+              icon={<Layers className="h-3.5 w-3.5 text-muted-foreground" />}
               title="Stages"
-              description="Manage pipeline stages and win probability when sales tracking is enabled."
+              description="Manage pipeline stages and win probability."
               badge="10 stages"
             />
 
-            {/* Sales tracking */}
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-3">
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center justify-between py-1.5">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">Sales tracking</p>
-                  <p className="text-xs text-muted-foreground">Use sales statuses and reports for pipeline.</p>
+                  <p className="text-xs font-medium text-foreground">Sales tracking</p>
+                  <p className="text-[10px] text-muted-foreground">Use sales statuses and reports.</p>
                 </div>
               </div>
-              <Switch checked={salesTracking} onCheckedChange={setSalesTracking} />
+              <Switch checked={salesTracking} onCheckedChange={setSalesTracking} className="scale-90" />
             </div>
           </section>
 
@@ -90,28 +101,28 @@ const PipelineSettingsDialog = ({ open, onOpenChange }: PipelineSettingsDialogPr
 
           {/* ── Customization ── */}
           <section className="space-y-1">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customization</h3>
+            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Customization</h4>
 
             <SettingsRow
-              icon={<LayoutGrid className="h-4 w-4 text-muted-foreground" />}
+              icon={<LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />}
               title="Board view card fields"
-              description="Choose fields to show on pipeline cards. Applies to all board views in your pipeline."
+              description="Choose fields to show on pipeline cards."
               badge="2 enabled"
             />
             <SettingsRow
-              icon={<Flag className="h-4 w-4 text-muted-foreground" />}
+              icon={<Flag className="h-3.5 w-3.5 text-muted-foreground" />}
               title="Pipeline card flags"
-              description="Automatically flag pipeline cards that meet certain conditions."
+              description="Automatically flag cards meeting conditions."
               badge="2 active"
             />
             <SettingsRow
-              icon={<ListChecks className="h-4 w-4 text-muted-foreground" />}
+              icon={<ListChecks className="h-3.5 w-3.5 text-muted-foreground" />}
               title="List view columns"
-              description="Choose columns to show in the list. Applies only to list views and will automatically be saved for the current saved filter."
+              description="Choose columns for list views."
               badge="14 enabled"
             />
             <SettingsRow
-              icon={<PlusCircle className="h-4 w-4 text-muted-foreground" />}
+              icon={<PlusCircle className="h-3.5 w-3.5 text-muted-foreground" />}
               title="Create a pipeline field"
               description="Create custom pipeline fields."
             />
@@ -121,43 +132,43 @@ const PipelineSettingsDialog = ({ open, onOpenChange }: PipelineSettingsDialogPr
 
           {/* ── Automations ── */}
           <section className="space-y-1">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Automations</h3>
+            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Automations</h4>
 
             <SettingsRow
-              icon={<Mail className="h-4 w-4 text-muted-foreground" />}
+              icon={<Mail className="h-3.5 w-3.5 text-muted-foreground" />}
               title="Email automations"
-              description="Manage email automations for this pipeline."
+              description="Manage email automations."
               badge="0"
             />
             <SettingsRow
-              icon={<Workflow className="h-4 w-4 text-muted-foreground" />}
+              icon={<Workflow className="h-3.5 w-3.5 text-muted-foreground" />}
               title="Workflow automations"
-              description="Manage workflow automations for this pipeline."
+              description="Manage workflow automations."
             />
             <SettingsRow
-              icon={<CheckSquare className="h-4 w-4 text-muted-foreground" />}
+              icon={<CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />}
               title="Task automations"
-              description="Manage task automations for this pipeline."
+              description="Manage task automations."
             />
           </section>
 
           <Separator />
 
           {/* ── Automation suggestions ── */}
-          <section className="space-y-3">
-            <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4">
-              <Zap className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">Let us help with automations</p>
-                <p className="text-xs text-muted-foreground">
-                  Customize your pipeline workflow using automations. Trigger actions based on updates to specific fields, stages, and more.
+          <section className="space-y-2">
+            <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
+              <Zap className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div className="space-y-0.5">
+                <p className="text-xs font-medium text-foreground">Let us help with automations</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Trigger actions based on field updates, stages, and more.
                 </p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <AutomationSuggestion label="Automatically send an email based on the stage" />
-              <AutomationSuggestion label="Automatically create tasks for new records" />
+            <div className="space-y-1.5">
+              <AutomationSuggestion label="Send email based on stage" />
+              <AutomationSuggestion label="Create tasks for new records" />
               <AutomationSuggestion label="Create tasks based on stage" />
             </div>
           </section>
@@ -165,13 +176,13 @@ const PipelineSettingsDialog = ({ open, onOpenChange }: PipelineSettingsDialogPr
           <Separator />
 
           {/* ── Duplicate ── */}
-          <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9">
-            <Copy className="h-4 w-4" />
+          <Button variant="outline" className="w-full justify-start gap-2 text-xs h-8">
+            <Copy className="h-3.5 w-3.5" />
             Duplicate this pipeline
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -185,25 +196,25 @@ interface SettingsRowProps {
 }
 
 const SettingsRow = ({ icon, title, description, badge }: SettingsRowProps) => (
-  <button className="flex items-center w-full gap-3 rounded-md px-2 py-2.5 text-left hover:bg-muted/60 transition-colors group">
+  <button className="flex items-center w-full gap-2 rounded-md px-1.5 py-2 text-left hover:bg-muted/60 transition-colors group">
     {icon}
     <div className="flex-1 min-w-0">
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      <p className="text-xs text-muted-foreground leading-snug">{description}</p>
+      <p className="text-xs font-medium text-foreground">{title}</p>
+      <p className="text-[10px] text-muted-foreground leading-snug">{description}</p>
     </div>
-    <div className="flex items-center gap-2 shrink-0">
-      {badge && <span className="text-xs text-muted-foreground">{badge}</span>}
-      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+    <div className="flex items-center gap-1.5 shrink-0">
+      {badge && <span className="text-[10px] text-muted-foreground">{badge}</span>}
+      <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
     </div>
   </button>
 );
 
 const AutomationSuggestion = ({ label }: { label: string }) => (
-  <button className="flex items-center w-full gap-3 rounded-md border border-dashed border-border px-3 py-2.5 text-left hover:bg-muted/40 transition-colors group">
-    <Zap className="h-4 w-4 text-muted-foreground shrink-0" />
-    <span className="text-xs text-muted-foreground flex-1">{label}</span>
-    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+  <button className="flex items-center w-full gap-2 rounded-md border border-dashed border-border px-2.5 py-2 text-left hover:bg-muted/40 transition-colors group">
+    <Zap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+    <span className="text-[10px] text-muted-foreground flex-1">{label}</span>
+    <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
   </button>
 );
 
-export default PipelineSettingsDialog;
+export default PipelineSettingsPopover;

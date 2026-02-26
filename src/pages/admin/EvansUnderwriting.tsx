@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
-import PipelineSettingsDialog from '@/components/admin/PipelineSettingsDialog';
+import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
 import UnderwritingDetailPanel from '@/components/admin/UnderwritingDetailPanel';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import {
@@ -686,16 +686,8 @@ const EvansUnderwriting = () => {
               </PopoverContent>
             </Popover>
             <div className="w-px h-4 bg-slate-200" />
-            <button
-              onClick={() => setSettingsOpen(true)}
-              title="Pipeline settings"
-              className="flex items-center justify-center h-full px-2 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-all"
-            >
-              <Settings2 className="h-3.5 w-3.5" />
-            </button>
+            <PipelineSettingsPopover open={settingsOpen} onOpenChange={setSettingsOpen} />
           </div>
-
-          <PipelineSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
           {/* Add Opportunity button */}
           <Button
