@@ -1,25 +1,52 @@
 
 
-## Plan: Fix Expanded View Overlapping Sidebar
+## Plan: Add Color Throughout the Expanded View
 
-### Problem
-The expanded view uses negative margins (`-m-3` to `-m-10`) to break out of the `AdminLayout` content padding, but this causes it to slide under the left sidebar. The name also gets truncated because the header is too cramped.
+The current expanded view is mostly monochrome -- gray text on white. I'll add semantic color accents to every major section to make it feel polished and alive.
 
-### Solution
-Use the existing **`data-full-bleed`** pattern (already used by PipelineFeed) instead of hacky negative margins. This is the established pattern in this codebase for pages that need to fill the entire content area.
+### Changes (single file: `UnderwritingExpandedView.tsx`)
 
-### Changes
+**1. Header** 
+- Add subtle gradient background: `bg-gradient-to-r from-slate-50 to-blue-50/30`
+- Avatar: gradient background `from-amber-200 to-orange-300` with a white ring
+- Company name: small blue Building2 icon inline
+- Deal value: emerald-600 instead of plain foreground
+- Star button: amber-400 color with amber hover
 
-**`src/components/admin/UnderwritingExpandedView.tsx`**
+**2. Stats Bar**
+- Add colored icons to each stat box (blue Activity icon, violet Clock, amber/red AlertCircle, emerald TrendingUp)
+- Stat values colored to match their icon
+- Inactive Days turns red when > 30 days
+- Light muted background: `bg-muted/30`
 
-1. **Replace negative margins with `data-full-bleed`**: Change the root `<div>` from `-m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10` to use the `data-full-bleed` attribute. This lets the CSS rules in `index.css` properly remove padding from the AdminLayout wrapper without overlapping the sidebar.
+**3. Left Details Column**
+- Section header "Deal Details" with a blue dot
+- Light tinted background: `bg-muted/10`
+- Pipeline field: blue Badge instead of plain text
+- Stage field: colored Badge matching stage config (blue/amber/violet/emerald)
+- Value: emerald-600 font color
+- Owned By: blue-600 font color  
+- Source: purple Badge
+- Empty values: italic style
 
-2. **Adjust height**: Use `h-[calc(100vh-3.5rem)]` matching the PipelineFeed pattern instead of inline style.
+**4. Center Activity**
+- Tab underline colors: blue for "Log Activity", violet for "Create Note"
+- Textarea borders tinted to match active tab
+- Empty state: dashed border card with a muted Activity icon and helper text
 
-3. **Increase left details column width**: Widen from `w-[280px]` to `w-[320px]` so field labels and values have more breathing room.
+**5. Right Related Panel**
+- Section header "Related" with a violet dot
+- Each section icon gets a unique color (People=blue, Companies=indigo, Tasks=emerald, Files=orange, Calendar=rose, Projects=cyan, Pipeline=violet)
+- Counts shown in rounded Badge pills instead of plain parentheses
+- Contact and company entries get small colored avatar circles
+- Stage shown as colored Badge in Pipeline Records
 
-4. **Header name**: Change `text-base` to `text-lg` and ensure `min-w-0 flex-1` stays so the name doesn't get cut off prematurely.
+### Updated sub-components
 
-### Files
-- **Modified**: `src/components/admin/UnderwritingExpandedView.tsx`
+- **StatBox**: gains `icon` and `color` props
+- **RelatedSection**: gains `iconColor` prop; count rendered as a Badge pill
+- **stageConfig**: gains `bg` and `border` fields for Badge styling
+
+### Files modified
+- `src/components/admin/UnderwritingExpandedView.tsx`
 
