@@ -241,7 +241,7 @@ export default function UnderwritingExpandedView() {
 
         {/* LEFT: Details */}
         <ScrollArea className="w-[320px] shrink-0 border-r border-border">
-          <div className="px-4 py-3 divide-y divide-border/50">
+          <div className="px-5 py-3 divide-y divide-border/50">
             <DetailField label="Name" required>
               <span className="font-medium">{lead.name}</span>
             </DetailField>
@@ -292,7 +292,7 @@ export default function UnderwritingExpandedView() {
               <span className="text-xs text-muted-foreground line-clamp-4">{lead.notes ?? '—'}</span>
             </DetailField>
           </div>
-          <div className="px-4 pb-4">
+          <div className="px-5 pb-4">
             <button className="text-xs text-primary hover:underline">+ Add new field</button>
           </div>
         </ScrollArea>
