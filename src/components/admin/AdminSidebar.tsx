@@ -298,8 +298,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                 icon: Kanban,
                 subItems: [
                   
-                  { title: 'Lender Management', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=lender-management`, icon: Kanban },
-                  { title: 'Potential', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=potential`, icon: Kanban },
+                  { title: 'Lender Management', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=lender-management`, icon: Building2 },
+                  { title: 'Potential', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=potential`, icon: Crosshair },
+                  { title: 'Underwriting', url: `/admin/${employeeName.toLowerCase()}/pipeline/underwriting`, icon: ClipboardList },
                 ],
               },
               { title: 'Contacts', url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts`, icon: Users },
@@ -816,7 +817,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     fallbackInitials={getUserInitials(user?.email)}
                     size="sm"
                   />
-                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-[1.5px] ring-sidebar" />
                 </div>
               </div>
             </TooltipTrigger>
@@ -833,7 +833,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                 fallbackInitials={getUserInitials(user?.email)}
                 size="md"
               />
-              <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-[1.5px] ring-sidebar" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[12.5px] font-semibold text-sidebar-accent-foreground truncate tracking-tight">

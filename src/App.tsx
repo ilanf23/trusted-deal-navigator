@@ -44,6 +44,7 @@ import EvansLeads from "./pages/admin/EvansLeads";
 import EvansPipeline from "./pages/admin/EvansPipeline";
 import Pipeline from "./pages/admin/Pipeline";
 import PipelineFeed from "./pages/admin/PipelineFeed";
+import EvansUnderwriting from "./pages/admin/EvansUnderwriting";
 import EvansTasks from "./pages/admin/EvansTasks";
 import EvansCalls from "./pages/admin/EvansCalls";
 import EvansGmail from "./pages/admin/EvansGmail";
@@ -161,6 +162,7 @@ const App = () => (
                 <Route path="/admin/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
                 <Route path="/admin/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><Pipeline /></EmployeeRoute>} />
                 <Route path="/admin/evan/pipeline/feed" element={<EmployeeRoute employeeName="Evan"><PipelineFeed /></EmployeeRoute>} />
+                <Route path="/admin/evan/pipeline/underwriting" element={<EmployeeRoute employeeName="Evan"><EvansUnderwriting /></EmployeeRoute>} />
                 <Route path="/admin/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
                 <Route path="/admin/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
                 <Route path="/admin/evan/lender-programs" element={<EmployeeRoute employeeName="Evan"><LenderPrograms /></EmployeeRoute>} />
