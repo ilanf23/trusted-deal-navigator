@@ -382,7 +382,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40 focus-visible:ring-offset-0 focus-visible:ring-offset-sidebar';
   const activeIndicator = "before:content-[''] before:absolute before:left-0 before:inset-y-1.5 before:w-[2.5px] before:rounded-full before:bg-sidebar-primary before:shadow-[0_0_6px_hsl(214_89%_62%/0.6)]";
   const activeSurface = 'bg-sidebar-accent [box-shadow:var(--sidebar-active-shadow)] text-sidebar-accent-foreground';
-  const inactiveItem = 'text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground/95';
+  const inactiveItem = 'text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground';
 
   const getUserInitials = (email?: string) => {
     if (!email) return 'U';
@@ -435,7 +435,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               {/* Section heading label */}
               {section.isLabel && section.title && !isCollapsed && (
                 <div className="px-2.5 pt-2 pb-1">
-                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40 select-none">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/50 select-none">
                     {section.title}
                   </span>
                 </div>
@@ -548,7 +548,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                           flex items-center justify-center py-2 px-2 rounded-md transition-all duration-200 ease-out
                           ${isActive(item.url) 
                             ? 'bg-sidebar-accent ring-1 ring-sidebar-primary/25 shadow-sm text-sidebar-accent-foreground' 
-                            : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground/95'
+                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
                           }
                         `}
                       >
@@ -590,7 +590,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     flex items-center justify-center py-2 px-2 rounded-md transition-all duration-200 ease-out
                     ${section.items.some(isNavBranchActive)
                       ? 'bg-sidebar-accent ring-1 ring-sidebar-primary/25 shadow-sm text-sidebar-accent-foreground' 
-                      : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground/95'
+                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
                     }
                   `}
                 >
@@ -779,7 +779,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   className={`w-full h-9 ${focusRing} transition-all duration-200 ease-out ${
                     aiChatOpen 
                       ? 'bg-sidebar-accent text-sidebar-primary ring-1 ring-sidebar-primary/25' 
-                      : 'text-sidebar-foreground/55 hover:text-sidebar-foreground/95 hover:bg-sidebar-accent/60'
+                      : 'text-sidebar-foreground/65 hover:text-sidebar-foreground hover:bg-sidebar-accent/60'
                   }`}
                   onClick={onAIToggle}
                 >
@@ -838,7 +838,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               <p className="text-[12.5px] font-semibold text-sidebar-accent-foreground truncate tracking-tight">
                 {teamMember?.name || user?.email?.split('@')[0] || 'User'}
               </p>
-              <p className="text-[10.5px] text-sidebar-foreground/45 truncate">
+              <p className="text-[10.5px] text-sidebar-foreground/55 truncate">
                 {user?.email}
               </p>
             </div>
@@ -851,7 +851,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               <Button 
                 variant="ghost" 
                 size="icon"
-                className={`w-full h-9 text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/60 transition-all duration-200 ease-out ${focusRing}`}
+                className={`w-full h-9 text-sidebar-foreground/50 hover:text-sidebar-foreground/80 hover:bg-sidebar-accent/60 transition-all duration-200 ease-out ${focusRing}`}
                 onClick={signOut}
               >
                 <LogOut className="w-4 h-4" strokeWidth={1.5} />
@@ -864,7 +864,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         ) : (
           <Button 
             variant="ghost" 
-            className={`w-full justify-start gap-2.5 text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/60 h-8 rounded-md text-[12px] px-2.5 transition-all duration-200 ease-out ${focusRing}`}
+            className={`w-full justify-start gap-2.5 text-sidebar-foreground/50 hover:text-sidebar-foreground/80 hover:bg-sidebar-accent/60 h-8 rounded-md text-[12px] px-2.5 transition-all duration-200 ease-out ${focusRing}`}
             onClick={signOut}
           >
             <LogOut className="w-3.5 h-3.5" strokeWidth={1.5} />
