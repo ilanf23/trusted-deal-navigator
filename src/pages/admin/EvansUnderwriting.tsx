@@ -580,6 +580,35 @@ const EvansUnderwriting = () => {
               </>
             )}
           </div>
+
+          {/* View mode toggle — right side of header */}
+          <div className="flex items-center h-7 rounded-md border border-slate-200 overflow-hidden shrink-0">
+            <button
+              onClick={() => setViewMode('table')}
+              title="Table view"
+              className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
+                viewMode === 'table'
+                  ? 'bg-violet-50 text-violet-700'
+                  : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+              }`}
+            >
+              <Table2 className="h-3.5 w-3.5 shrink-0" />
+              Table
+            </button>
+            <div className="w-px h-4 bg-slate-200" />
+            <button
+              onClick={() => setViewMode('kanban')}
+              title="Kanban view"
+              className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
+                viewMode === 'kanban'
+                  ? 'bg-violet-50 text-violet-700'
+                  : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+              }`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
+              Kanban
+            </button>
+          </div>
         </div>
 
         {/* ── Body: Sidebar + Table ── */}
@@ -675,34 +704,6 @@ const EvansUnderwriting = () => {
               {/* Left group: view toggles */}
               <div className="flex items-center gap-2">
 
-                {/* View mode toggle */}
-                <div className="flex items-center h-7 rounded-md border border-slate-200 overflow-hidden">
-                  <button
-                    onClick={() => setViewMode('table')}
-                    title="Table view"
-                    className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
-                      viewMode === 'table'
-                        ? 'bg-violet-50 text-violet-700'
-                        : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                    }`}
-                  >
-                    <Table2 className="h-3.5 w-3.5 shrink-0" />
-                    Table
-                  </button>
-                  <div className="w-px h-4 bg-slate-200" />
-                  <button
-                    onClick={() => setViewMode('kanban')}
-                    title="Kanban view"
-                    className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
-                      viewMode === 'kanban'
-                        ? 'bg-violet-50 text-violet-700'
-                        : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                    }`}
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
-                    Kanban
-                  </button>
-                </div>
 
                 {/* Sidebar toggle */}
                 <button
