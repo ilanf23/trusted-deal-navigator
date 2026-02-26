@@ -1,59 +1,29 @@
 
 
-## Make "+ New" Button Functional with Filter Creation UI
+## Plan: Add Sort Leads Popover Next to Table/Kanban Toggle
 
-### Problem
-The "+ New" button next to "Saved Filters" is non-functional -- clicking it does nothing. It needs to open a UI for creating and saving a new filter.
+### What changes
 
-### Changes
+Add a "Sort by" button with a popover dropdown next to the existing Table/Kanban toggle in the header area. The popover will show two selectors — one for the sort field and one for the direction (Ascending/Descending) — matching the reference screenshot's layout.
 
-**File: `src/pages/admin/UnderwritingPipeline.tsx`**
+### Technical details
 
-#### 1. Add state for new-filter creation
-Add new state variables:
-- `showNewFilterForm: boolean` -- toggles an inline form below the header
-- `newFilterName: string` -- the name input value
-- `savedFilters: string[]` -- initialized from `SAVED_FILTERS` constant, will hold user-created filters too
-- `activeFilter: string` -- tracks which filter is currently selected (defaults to "All Opportunities")
+**File: `src/pages/admin/EvansUnderwriting.tsx`**
 
-#### 2. Wire up the "+ New" button
-On click, set `showNewFilterForm = true`, which reveals a compact inline form directly below the "Saved Filters" header (above the search box).
+1. Add imports for `Popover`, `PopoverTrigger`, `PopoverContent` from `@/components/ui/popover` and `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectItem` from `@/components/ui/select`.
 
-#### 3. Create the inline new-filter form
-A small inline card/row that appears when `showNewFilterForm` is true:
-- A text input with placeholder "Filter name..." auto-focused
-- A "Save" button (small, purple, ghost style) and an "X" cancel button
-- On Save: appends the new name to `savedFilters`, resets form, shows `toast.success`
-- On Cancel or Escape key: hides the form
+2. Replace the current `sortPresetIdx` cycling approach with two independent state variables:
+   - `sortField` state (default: `'last_activity_at'`)
+   - `sortDir` state (default: `'desc'`)
+   
+   This gives the user full control over field + direction independently via the popover UI.
 
-```text
-Layout when form is open:
+3. Insert a sort button + popover immediately after the view mode toggle (line ~611), styled as a small icon button matching the toggle height. The popover content will contain:
+   - "Sort by" heading
+   - A `Select` for the field (Name, Company, Status, Last Activity, Owner, Updated)
+   - A `Select` for direction (Ascending / Descending)
 
-  Saved Filters          + New  ◀
-  ┌──────────────────────────────┐
-  │ [Filter name...______] Save X│
-  └──────────────────────────────┘
-  [🔍 Search Filters           ]
-  All Opportunities         1,076
-  ▾ PUBLIC
-    My Open Opportunities
-    ...
-```
+4. The existing `filteredAndSorted` memo already uses `sortField` and `sortDir` — just need to ensure these are wired to the new independent states instead of the preset index.
 
-#### 4. Make FilterItem clickable to set active filter
-When a filter item is clicked, set `activeFilter` to that filter's name. The "All Opportunities" row and FilterItem rows will highlight based on matching `activeFilter`.
-
-#### 5. Add delete option to FilterItem for user-created filters
-The existing `MoreVertical` icon on hover will open a small dropdown with "Delete" for user-created filters (not the default ones). Deleting removes from `savedFilters` and shows `toast.success`.
-
-#### 6. Visual polish
-- The inline form uses the same `#E0DFF0` border, `8px` border-radius as the search box
-- Save button matches existing purple ghost style (`#7B5EA7` text, `#F3F0FA` hover)
-- Focus ring on input uses `#C4B5E0`
-
-### Technical Notes
-- Filters are stored in component state only (no DB persistence) -- consistent with the current SAVED_FILTERS approach
-- The `toast` import from `sonner` is already available in the project
-- No new files needed; all changes within `UnderwritingPipeline.tsx`
-- Component stays well under 300 lines of new code added
+5. The column header sort arrows will continue to work by updating these same two states.
 
