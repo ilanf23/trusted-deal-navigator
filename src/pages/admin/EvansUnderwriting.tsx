@@ -715,9 +715,14 @@ const EvansUnderwriting = () => {
                           </td>
 
                           {columnVisibility.company && (
-                            <td className={`px-3 ${rowPad}`}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`}>
                               {lead.company_name ? (
-                                <span className="text-[13px] text-foreground truncate block max-w-[120px]">{lead.company_name}</span>
+                                <div className="flex items-center gap-2.5">
+                                  <div className={`h-7 w-7 rounded-full ${getAvatarColor(lead.company_name)} flex items-center justify-center text-white text-[11px] font-bold shrink-0`}>
+                                    {lead.company_name[0]?.toUpperCase() ?? '?'}
+                                  </div>
+                                  <span className="text-[14px] text-stone-800">{lead.company_name}</span>
+                                </div>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}
