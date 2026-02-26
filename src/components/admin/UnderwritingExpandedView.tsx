@@ -201,7 +201,7 @@ export default function UnderwritingExpandedView() {
   }
 
   return (
-    <div className="flex flex-col bg-background overflow-hidden -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10" style={{ height: 'calc(100vh - 3.5rem)' }}>
+    <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
       {/* ── Header ── */}
       <div className="shrink-0 border-b border-border px-5 py-3">
         <div className="flex items-center gap-3">
@@ -212,7 +212,7 @@ export default function UnderwritingExpandedView() {
             {initial}
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-base font-semibold text-foreground truncate">{lead.name}</h1>
+            <h1 className="text-lg font-semibold text-foreground truncate">{lead.name}</h1>
             {lead.company_name && (
               <p className="text-xs text-muted-foreground truncate">{lead.company_name}</p>
             )}
@@ -240,7 +240,7 @@ export default function UnderwritingExpandedView() {
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Details */}
-        <ScrollArea className="w-[280px] shrink-0 border-r border-border">
+        <ScrollArea className="w-[320px] shrink-0 border-r border-border">
           <div className="px-4 py-3 divide-y divide-border/50">
             <DetailField label="Name" required>
               <span className="font-medium">{lead.name}</span>
