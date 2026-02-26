@@ -1,27 +1,37 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import EvanLayout from '@/components/evan/EvanLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import {
-  Plus,
-  List,
   ArrowUpDown,
+  Search,
+  AlignJustify,
+  PanelLeft,
+  Filter,
+  Settings2,
   ChevronDown,
-  Hash,
-  Clock,
-  Building2,
+  Bookmark,
+  Plus,
+  DollarSign,
   User,
-  Tag,
   CheckSquare,
-  Activity,
+  Building2,
+  Tag,
   CalendarDays,
-  Timer,
+  Clock,
   MessageSquare,
   Moon,
+  FileSearch,
+  Timer,
+  Flame,
+  ArrowRightCircle,
+  Check,
+  X,
 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
@@ -35,39 +45,59 @@ const UNDERWRITING_STATUSES: LeadStatus[] = [
   'pre_approval_issued',
 ];
 
-const stageConfig: Record<string, { label: string; color: string; bg: string }> = {
-  moving_to_underwriting: { label: 'Moving to UW', color: 'text-cyan-700', bg: 'bg-cyan-50 border-cyan-200' },
-  underwriting: { label: 'Underwriting', color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200' },
-  ready_for_wu_approval: { label: 'Ready for Approval', color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
-  pre_approval_issued: { label: 'Pre-Approval Issued', color: 'text-violet-700', bg: 'bg-violet-50 border-violet-200' },
+const stageConfig: Record<string, { label: string; color: string; bg: string; dot: string; pill: string }> = {
+  moving_to_underwriting: {
+    label: 'Moving to UW',
+    color: 'text-blue-700',
+    bg: 'bg-blue-50 border-blue-200',
+    dot: 'bg-blue-500',
+    pill: 'bg-blue-100 text-blue-700',
+  },
+  underwriting: {
+    label: 'Underwriting',
+    color: 'text-amber-700',
+    bg: 'bg-amber-50 border-amber-200',
+    dot: 'bg-amber-500',
+    pill: 'bg-amber-100 text-amber-700',
+  },
+  ready_for_wu_approval: {
+    label: 'Ready for Approval',
+    color: 'text-violet-700',
+    bg: 'bg-violet-50 border-violet-200',
+    dot: 'bg-violet-500',
+    pill: 'bg-violet-100 text-violet-700',
+  },
+  pre_approval_issued: {
+    label: 'Pre-Approval Issued',
+    color: 'text-emerald-700',
+    bg: 'bg-emerald-50 border-emerald-200',
+    dot: 'bg-emerald-500',
+    pill: 'bg-emerald-100 text-emerald-700',
+  },
 };
-
-// Derive a simple Open/Won/Lost status from the lead status
-function deriveStatus(status: LeadStatus): { label: string; color: string; bg: string } {
-  if (status === 'won') return { label: 'Won', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' };
-  if (status === 'lost') return { label: 'Lost', color: 'text-red-700', bg: 'bg-red-50 border-red-200' };
-  return { label: 'Open', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' };
-}
 
 const FILTER_OPTIONS = [
   { id: 'all', label: 'All Opportunities' },
-  { id: 'moving_to_underwriting', label: 'Moving to Underwriting' },
+  { id: 'moving_to_underwriting', label: 'Moving to UW' },
   { id: 'underwriting', label: 'Underwriting' },
   { id: 'ready_for_wu_approval', label: 'Ready for Approval' },
   { id: 'pre_approval_issued', label: 'Pre-Approval Issued' },
 ];
 
+// Sortable cycles: pressing the sort button cycles through these presets
+type SortPreset = { field: SortField; dir: SortDir; label: string };
+const SORT_PRESETS: SortPreset[] = [
+  { field: 'last_activity_at', dir: 'desc', label: 'Most Recent Activity' },
+  { field: 'name', dir: 'asc', label: 'Name A→Z' },
+  { field: 'company_name', dir: 'asc', label: 'Company A→Z' },
+  { field: 'updated_at', dir: 'desc', label: 'Recently Updated' },
+  { field: 'assigned_to', dir: 'asc', label: 'Owner' },
+];
+
 const AVATAR_COLORS = [
-  'bg-blue-500',
-  'bg-emerald-500',
-  'bg-violet-500',
-  'bg-amber-500',
-  'bg-rose-500',
-  'bg-cyan-500',
-  'bg-indigo-500',
-  'bg-teal-500',
-  'bg-orange-500',
-  'bg-pink-500',
+  'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500',
+  'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
+  'bg-orange-500', 'bg-pink-500',
 ];
 
 function getAvatarColor(name: string): string {
@@ -78,7 +108,6 @@ function getAvatarColor(name: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-// Seeded pseudo-random — same lead ID always produces same values
 function seededRand(seed: string, index: number): number {
   let h = index * 2654435761;
   for (let i = 0; i < seed.length; i++) {
@@ -89,18 +118,22 @@ function seededRand(seed: string, index: number): number {
   return Math.abs(h) / 0xffffffff;
 }
 
-function fakeValue(id: string): string {
-  const buckets = [25000, 50000, 75000, 100000, 150000, 200000, 250000, 350000, 500000, 750000];
-  const v = buckets[Math.floor(seededRand(id, 1) * buckets.length)];
-  return `$${v.toLocaleString()}`;
+const VALUE_BUCKETS = [25000, 50000, 75000, 100000, 150000, 200000, 250000, 350000, 500000, 750000];
+
+function fakeValue(id: string): number {
+  return VALUE_BUCKETS[Math.floor(seededRand(id, 1) * VALUE_BUCKETS.length)];
+}
+
+function formatValue(v: number): string {
+  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function fakeTasks(id: string): number {
-  return Math.floor(seededRand(id, 2) * 9); // 0–8
+  return Math.floor(seededRand(id, 2) * 9);
 }
 
 function fakeInteractions(id: string): number {
-  return Math.floor(seededRand(id, 3) * 26); // 0–25
+  return Math.floor(seededRand(id, 3) * 26);
 }
 
 function daysSince(dateStr: string | null): number | null {
@@ -124,15 +157,83 @@ function formatShortDate(dateStr: string | null): string {
 type SortField = 'name' | 'company_name' | 'status' | 'last_activity_at' | 'assigned_to' | 'updated_at';
 type SortDir = 'asc' | 'desc';
 
+// Column visibility keys
+type ColumnKey = 'company' | 'contact' | 'value' | 'ownedBy' | 'tasks' | 'stage' | 'daysInStage' | 'stageUpdated' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
+
+const COLUMN_LABELS: Record<ColumnKey, string> = {
+  company: 'Company',
+  contact: 'Contact',
+  value: 'Value',
+  ownedBy: 'Owned By',
+  tasks: 'Tasks',
+  stage: 'Stage',
+  daysInStage: 'Days in Stage',
+  stageUpdated: 'Stage Updated',
+  lastContacted: 'Last Contacted',
+  interactions: 'Interactions',
+  inactiveDays: 'Inactive Days',
+  tags: 'Tags',
+};
+
 const EvansUnderwriting = () => {
   const queryClient = useQueryClient();
+
+  // ── Core state ──
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<SortField>('last_activity_at');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [filterSearch, setFilterSearch] = useState('');
+  const [sortPresetIdx, setSortPresetIdx] = useState(0);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // ── Toolbar state ──
+  const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [showColumnsMenu, setShowColumnsMenu] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
+    company: true, contact: true, value: true, ownedBy: true, tasks: true,
+    stage: true, daysInStage: true, stageUpdated: true, lastContacted: true,
+    interactions: true, inactiveDays: true, tags: true,
+  });
+
+  const columnsMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close columns dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (columnsMenuRef.current && !columnsMenuRef.current.contains(e.target as Node)) {
+        setShowColumnsMenu(false);
+      }
+    }
+    if (showColumnsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showColumnsMenu]);
+
+  const currentSort = SORT_PRESETS[sortPresetIdx];
+  const sortField = currentSort.field;
+  const sortDir = currentSort.dir;
+
+  function cycleSortPreset() {
+    setSortPresetIdx((i) => (i + 1) % SORT_PRESETS.length);
+  }
+
+  function clearAllFilters() {
+    setActiveFilter('all');
+    setSearchTerm('');
+    setSearchOpen(false);
+  }
+
+  function toggleColumn(key: ColumnKey) {
+    setColumnVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  const isFiltersActive = activeFilter !== 'all' || searchTerm.trim() !== '';
+  const isNonDefaultSort = sortPresetIdx !== 0;
+
+  // ── Queries ──
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members'],
     queryFn: async () => {
@@ -163,7 +264,6 @@ const EvansUnderwriting = () => {
     },
   });
 
-  // Fetch task counts keyed by lead_id
   const { data: taskCountMap = {} } = useQuery({
     queryKey: ['underwriting-task-counts'],
     queryFn: async () => {
@@ -181,7 +281,6 @@ const EvansUnderwriting = () => {
     enabled: leads.length > 0,
   });
 
-  // Fetch interaction counts keyed by lead_id
   const { data: interactionCountMap = {} } = useQuery({
     queryKey: ['underwriting-interaction-counts'],
     queryFn: async () => {
@@ -234,13 +333,20 @@ const EvansUnderwriting = () => {
     return result;
   }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap]);
 
-  function handleSort(field: SortField) {
-    if (sortField === field) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
+  const totalValue = useMemo(
+    () => leads.reduce((sum, l) => sum + fakeValue(l.id), 0),
+    [leads]
+  );
+
+  const visibleFilters = useMemo(() => {
+    if (!filterSearch.trim()) return FILTER_OPTIONS;
+    const q = filterSearch.toLowerCase();
+    return FILTER_OPTIONS.filter((o) => o.label.toLowerCase().includes(q));
+  }, [filterSearch]);
+
+  function handleColSort(field: SortField) {
+    const idx = SORT_PRESETS.findIndex((p) => p.field === field && p.dir === 'asc');
+    if (idx !== -1) setSortPresetIdx(idx);
   }
 
   function handleRowClick(lead: Lead) {
@@ -248,335 +354,592 @@ const EvansUnderwriting = () => {
     setDialogOpen(true);
   }
 
-  const SortableHeader = ({
+  // Row padding based on density
+  const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
+
+  const ColHeader = ({
+    colKey,
     field,
+    icon,
     children,
     className = '',
+    sortable = false,
   }: {
-    field: SortField;
+    colKey?: ColumnKey;
+    field?: SortField;
+    icon: React.ReactNode;
     children: React.ReactNode;
     className?: string;
-  }) => (
-    <th
-      className={`px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground group whitespace-nowrap ${className}`}
-      onClick={() => handleSort(field)}
-    >
-      <span className="inline-flex items-center gap-1">
-        {children}
-        <ArrowUpDown
-          className={`h-3 w-3 transition-opacity ${sortField === field ? 'opacity-100 text-foreground' : 'opacity-0 group-hover:opacity-50'}`}
-        />
-      </span>
-    </th>
-  );
+    sortable?: boolean;
+  }) => {
+    if (colKey && !columnVisibility[colKey]) return null;
+    return (
+      <th
+        className={`px-3 py-2.5 text-left whitespace-nowrap ${sortable ? 'cursor-pointer select-none group' : ''} ${className}`}
+        onClick={sortable && field ? () => handleColSort(field) : undefined}
+      >
+        <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
+          <span className="shrink-0 text-muted-foreground/70">{icon}</span>
+          {children}
+          {sortable && field && (
+            <ArrowUpDown
+              className={`h-3 w-3 transition-opacity ${sortField === field ? 'opacity-100 text-violet-600' : 'opacity-0 group-hover:opacity-40'}`}
+            />
+          )}
+        </span>
+      </th>
+    );
+  };
 
-  const PlainHeader = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-    <th
-      className={`px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide whitespace-nowrap ${className}`}
-    >
-      {children}
-    </th>
-  );
+  // Toolbar icon button base class
+  const iconBtn = (active = false) =>
+    `relative flex items-center justify-center h-7 w-7 rounded transition-all ${
+      active
+        ? 'bg-white shadow-sm text-slate-800 border border-slate-200'
+        : 'text-slate-500 hover:bg-white hover:shadow-sm hover:text-slate-800 hover:border hover:border-slate-200'
+    }`;
 
   return (
     <EvanLayout>
-      <div className="flex h-full min-h-0 overflow-hidden">
-        {/* Left Sidebar */}
-        <aside className="w-56 shrink-0 border-r border-border bg-background flex flex-col">
-          <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-            <span className="text-sm font-semibold text-foreground">Saved Filters</span>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
 
-          <div className="px-3 pb-2">
-            <div className="h-px bg-border" />
+        {/* ── CRM-Style Header ── */}
+        <div className="shrink-0 border-b border-border bg-background px-5 py-3 flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <h1 className="text-lg font-bold text-foreground whitespace-nowrap">All Opportunities</h1>
+            <button
+              className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              title="Bookmark this view"
+            >
+              <Bookmark className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+            {!isLoading && (
+              <>
+                <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
+                  # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'opportunity' : 'opportunities'}
+                </span>
+                <span className="text-muted-foreground text-sm tabular-nums whitespace-nowrap">
+                  ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </>
+            )}
           </div>
+        </div>
 
-          <nav className="flex-1 overflow-y-auto px-2 space-y-0.5">
-            {FILTER_OPTIONS.map((opt) => {
-              const isActive = activeFilter === opt.id;
-              return (
+        {/* ── Body: Sidebar + Table ── */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+
+          {/* ── Left Sidebar ── */}
+          <aside
+            className={`shrink-0 border-r border-border bg-background flex flex-col overflow-hidden transition-all duration-200 ${
+              sidebarOpen ? 'w-56' : 'w-0 border-r-0'
+            }`}
+          >
+            <div className="w-56">
+              <div className="px-3 pt-3 pb-2 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
                 <button
-                  key={opt.id}
-                  onClick={() => setActiveFilter(opt.id)}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-sm transition-colors text-left ${
-                    isActive
-                      ? 'bg-primary/10 text-primary font-medium'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Add filter"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div className="px-2 pb-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                  <Input
+                    placeholder="Search Filters"
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                    className="h-7 pl-6 text-xs bg-muted/40 border-border/60"
+                  />
+                </div>
+              </div>
+
+              <nav className="flex-1 overflow-y-auto pb-4">
+                {visibleFilters.filter(o => o.id === 'all').map((opt) => {
+                  const isActive = activeFilter === opt.id;
+                  const count = filterCounts[opt.id] ?? 0;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setActiveFilter(opt.id)}
+                      className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
+                        isActive ? 'bg-violet-50 text-violet-700' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-violet-600" />}
+                      <span className={`text-[13px] font-medium truncate ${isActive ? 'text-violet-700' : ''}`}>{opt.label}</span>
+                      {count > 0 && (
+                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-violet-600 text-white' : 'text-muted-foreground'}`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+
+                <div className="px-3 pt-3 pb-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Public</span>
+                </div>
+
+                {visibleFilters.filter(o => o.id !== 'all').map((opt) => {
+                  const isActive = activeFilter === opt.id;
+                  const count = filterCounts[opt.id] ?? 0;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setActiveFilter(opt.id)}
+                      className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
+                        isActive ? 'bg-violet-50 text-violet-700' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-violet-600" />}
+                      <span className={`text-[13px] truncate ${isActive ? 'font-medium text-violet-700' : ''}`}>{opt.label}</span>
+                      {count > 0 && (
+                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-violet-600 text-white' : 'text-muted-foreground'}`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </aside>
+
+          {/* ── Main Table Area ── */}
+          <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+            {/* ── Toolbar ── */}
+            <div className="shrink-0 border-b border-border px-3 py-2 flex items-center justify-between gap-2 bg-slate-50">
+
+              {/* Left group: view toggles */}
+              <div className="flex items-center gap-2">
+
+                {/* Row density toggle */}
+                <button
+                  onClick={() => setRowDensity(d => d === 'comfortable' ? 'compact' : 'comfortable')}
+                  title={rowDensity === 'comfortable' ? 'Switch to compact view' : 'Switch to comfortable view'}
+                  className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-all ${
+                    rowDensity === 'compact'
+                      ? 'bg-violet-50 border-violet-200 text-violet-700'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
                   }`}
                 >
-                  <span className="truncate">{opt.label}</span>
-                  {filterCounts[opt.id] > 0 && (
-                    <span className={`ml-1.5 text-xs shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {filterCounts[opt.id]}
-                    </span>
+                  <AlignJustify className="h-3.5 w-3.5 shrink-0" />
+                  {rowDensity === 'compact' ? 'Compact' : 'Comfortable'}
+                </button>
+
+                {/* Sidebar toggle */}
+                <button
+                  onClick={() => setSidebarOpen(v => !v)}
+                  title={sidebarOpen ? 'Hide filters' : 'Show filters'}
+                  className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-all ${
+                    !sidebarOpen
+                      ? 'bg-violet-50 border-violet-200 text-violet-700'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                  }`}
+                >
+                  <PanelLeft className="h-3.5 w-3.5 shrink-0" />
+                  {sidebarOpen ? 'Hide Filters' : 'Show Filters'}
+                </button>
+
+                {/* Sort indicator */}
+                {isNonDefaultSort && (
+                  <span className="flex items-center gap-1 text-[11px] text-violet-600 font-medium bg-violet-50 border border-violet-200 rounded-md px-2 h-7">
+                    <ArrowUpDown className="h-3 w-3 shrink-0" />
+                    {currentSort.label}
+                    <button
+                      onClick={() => setSortPresetIdx(0)}
+                      className="ml-0.5 text-violet-400 hover:text-violet-700"
+                      title="Reset sort"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+              </div>
+
+              {/* Right group: action buttons + CTA */}
+              <div className="flex items-center gap-0.5">
+
+                {/* Inline search input */}
+                {searchOpen && (
+                  <Input
+                    autoFocus
+                    placeholder="Search deals, companies..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { setSearchTerm(''); setSearchOpen(false); } }}
+                    onBlur={() => { if (!searchTerm) setSearchOpen(false); }}
+                    className="h-7 w-52 text-xs mr-1 border-slate-200 bg-white"
+                  />
+                )}
+
+                {/* Sort — cycles through presets */}
+                <button
+                  onClick={cycleSortPreset}
+                  title={`Sort: ${currentSort.label} (click to cycle)`}
+                  className={iconBtn(isNonDefaultSort)}
+                >
+                  <ArrowUpDown className={`h-3.5 w-3.5 ${isNonDefaultSort ? 'text-violet-600' : ''}`} />
+                  {isNonDefaultSort && (
+                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-violet-600" />
                   )}
                 </button>
-              );
-            })}
-          </nav>
-        </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
-          {/* Page Header */}
-          <div className="px-6 pt-5 pb-3 border-b border-border shrink-0">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <h1 className="text-xl font-semibold text-foreground whitespace-nowrap">All Opportunities</h1>
-                <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Hash className="h-3.5 w-3.5" />
-                  {isLoading ? '—' : `${filteredAndSorted.length} opportunit${filteredAndSorted.length === 1 ? 'y' : 'ies'}`}
-                </span>
-              </div>
+                {/* Filter — clears when active */}
+                <button
+                  onClick={isFiltersActive ? clearAllFilters : undefined}
+                  title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
+                  className={iconBtn(isFiltersActive)}
+                >
+                  {isFiltersActive ? (
+                    <X className="h-3.5 w-3.5 text-violet-600" />
+                  ) : (
+                    <Filter className="h-3.5 w-3.5" />
+                  )}
+                  {isFiltersActive && (
+                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-violet-600" />
+                  )}
+                </button>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <Input
-                  placeholder="Search by name, company..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-8 w-56 text-sm"
-                />
-                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                  <ArrowUpDown className="h-3.5 w-3.5" />
-                  Sort
-                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                </Button>
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                  <List className="h-4 w-4" />
-                </Button>
+                {/* Search toggle */}
+                <button
+                  onClick={() => setSearchOpen(v => !v)}
+                  title="Search opportunities"
+                  className={iconBtn(searchOpen || !!searchTerm)}
+                >
+                  <Search className={`h-3.5 w-3.5 ${(searchOpen || searchTerm) ? 'text-violet-600' : ''}`} />
+                </button>
+
+                {/* Column visibility */}
+                <div className="relative" ref={columnsMenuRef}>
+                  <button
+                    onClick={() => setShowColumnsMenu(v => !v)}
+                    title="Show/hide columns"
+                    className={iconBtn(showColumnsMenu)}
+                  >
+                    <Settings2 className={`h-3.5 w-3.5 ${showColumnsMenu ? 'text-violet-600' : ''}`} />
+                  </button>
+
+                  {showColumnsMenu && (
+                    <div className="absolute right-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-52 py-1.5 overflow-hidden">
+                      <div className="px-3 py-1.5 border-b border-slate-100">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Visible Columns</p>
+                      </div>
+                      <div className="py-1">
+                        {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map((key) => (
+                          <button
+                            key={key}
+                            onClick={() => toggleColumn(key)}
+                            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-slate-50 transition-colors"
+                          >
+                            <span className="text-[13px] text-slate-700">{COLUMN_LABELS[key]}</span>
+                            <span className={`flex items-center justify-center h-4 w-4 rounded border transition-colors ${
+                              columnVisibility[key]
+                                ? 'bg-violet-600 border-violet-600'
+                                : 'border-slate-300 bg-white'
+                            }`}>
+                              {columnVisibility[key] && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="px-3 py-1.5 border-t border-slate-100">
+                        <button
+                          onClick={() => {
+                            const allTrue = Object.fromEntries(
+                              (Object.keys(COLUMN_LABELS) as ColumnKey[]).map(k => [k, true])
+                            ) as Record<ColumnKey, boolean>;
+                            setColumnVisibility(allTrue);
+                          }}
+                          className="text-[11px] text-violet-600 hover:text-violet-700 font-medium"
+                        >
+                          Show all columns
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
-          </div>
 
-          {/* Table — horizontally scrollable for 14 columns */}
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead className="sticky top-0 z-10 bg-muted/70 backdrop-blur border-b border-border">
-                <tr>
-                  <th className="w-8 px-3 py-3" />
-                  <SortableHeader field="name" className="min-w-[200px]">Opportunity</SortableHeader>
-                  <SortableHeader field="company_name" className="min-w-[140px]">Company</SortableHeader>
-                  <PlainHeader className="min-w-[130px]">Contact</PlainHeader>
-                  <PlainHeader className="min-w-[100px]">Value</PlainHeader>
-                  <SortableHeader field="assigned_to" className="min-w-[120px]">Owned By</SortableHeader>
-                  <PlainHeader className="min-w-[80px]">Tasks</PlainHeader>
-                  <PlainHeader className="min-w-[90px]">Status</PlainHeader>
-                  <SortableHeader field="status" className="min-w-[160px]">Stage</SortableHeader>
-                  <SortableHeader field="updated_at" className="min-w-[110px]">Days in Stage</SortableHeader>
-                  <PlainHeader className="min-w-[130px]">Stage Updated</PlainHeader>
-                  <SortableHeader field="last_activity_at" className="min-w-[130px]">Last Contacted</SortableHeader>
-                  <PlainHeader className="min-w-[110px]">Interactions</PlainHeader>
-                  <PlainHeader className="min-w-[110px]">Inactive Days</PlainHeader>
-                  <PlainHeader className="min-w-[150px]">Tags</PlainHeader>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {isLoading ? (
+            {/* ── Table ── */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead className="sticky top-0 z-10 bg-background border-b border-border">
                   <tr>
-                    <td colSpan={15} className="px-4 py-12 text-center text-muted-foreground text-sm">
-                      Loading opportunities...
-                    </td>
+                    <th className="w-8 px-3 py-2.5" />
+                    <ColHeader sortable field="name" icon={<DollarSign className="h-3.5 w-3.5" />} className="min-w-[220px]">
+                      Opportunity
+                    </ColHeader>
+                    <ColHeader colKey="company" sortable field="company_name" icon={<Building2 className="h-3.5 w-3.5" />} className="min-w-[140px]">
+                      Company
+                    </ColHeader>
+                    <ColHeader colKey="contact" icon={<User className="h-3.5 w-3.5" />} className="min-w-[120px]">
+                      Contact
+                    </ColHeader>
+                    <ColHeader colKey="value" icon={<DollarSign className="h-3.5 w-3.5" />} className="min-w-[110px]">
+                      Value
+                    </ColHeader>
+                    <ColHeader colKey="ownedBy" sortable field="assigned_to" icon={<User className="h-3.5 w-3.5" />} className="min-w-[120px]">
+                      Owned By
+                    </ColHeader>
+                    <ColHeader colKey="tasks" icon={<CheckSquare className="h-3.5 w-3.5" />} className="min-w-[70px]">
+                      Tasks
+                    </ColHeader>
+                    <ColHeader colKey="stage" sortable field="status" icon={<ArrowRightCircle className="h-3.5 w-3.5" />} className="min-w-[170px]">
+                      Stage
+                    </ColHeader>
+                    <ColHeader colKey="daysInStage" sortable field="updated_at" icon={<Timer className="h-3.5 w-3.5" />} className="min-w-[110px]">
+                      Days in Stage
+                    </ColHeader>
+                    <ColHeader colKey="stageUpdated" icon={<CalendarDays className="h-3.5 w-3.5" />} className="min-w-[130px]">
+                      Stage Updated
+                    </ColHeader>
+                    <ColHeader colKey="lastContacted" sortable field="last_activity_at" icon={<Clock className="h-3.5 w-3.5" />} className="min-w-[130px]">
+                      Last Contacted
+                    </ColHeader>
+                    <ColHeader colKey="interactions" icon={<MessageSquare className="h-3.5 w-3.5" />} className="min-w-[100px]">
+                      Interactions
+                    </ColHeader>
+                    <ColHeader colKey="inactiveDays" icon={<Moon className="h-3.5 w-3.5" />} className="min-w-[110px]">
+                      Inactive Days
+                    </ColHeader>
+                    <ColHeader colKey="tags" icon={<Tag className="h-3.5 w-3.5" />} className="min-w-[140px]">
+                      Tags
+                    </ColHeader>
                   </tr>
-                ) : filteredAndSorted.length === 0 ? (
-                  <tr>
-                    <td colSpan={15} className="px-4 py-12 text-center text-muted-foreground text-sm">
-                      No opportunities found
-                    </td>
-                  </tr>
-                ) : (
-                  filteredAndSorted.map((lead) => {
-                    const dealLabel = lead.company_name
-                      ? `${lead.name} — ${lead.company_name}`
-                      : lead.name;
-                    const initials = lead.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')
-                      .slice(0, 2)
-                      .toUpperCase();
-                    const avatarColor = getAvatarColor(lead.name);
-                    const stageInfo = stageConfig[lead.status];
-                    const statusInfo = deriveStatus(lead.status);
-                    const assignedName = lead.assigned_to
-                      ? (teamMemberMap[lead.assigned_to] ?? null)
-                      : null;
-                    const taskCount = taskCountMap[lead.id] ?? fakeTasks(lead.id);
-                    const interactionCount = interactionCountMap[lead.id] ?? fakeInteractions(lead.id);
-                    const daysInStage = daysSince(lead.updated_at);
-                    const inactiveDays = daysSince(lead.last_activity_at);
-
-                    return (
-                      <tr
-                        key={lead.id}
-                        onClick={() => handleRowClick(lead)}
-                        className="cursor-pointer hover:bg-muted/40 transition-colors group"
-                      >
-                        {/* Checkbox */}
-                        <td className="px-3 py-3 w-8">
-                          <div className="h-4 w-4 rounded border border-border bg-background group-hover:border-primary/40 transition-colors" />
-                        </td>
-
-                        {/* Opportunity */}
-                        <td className="px-3 py-3">
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {isLoading ? (
+                    Array.from({ length: 7 }).map((_, i) => (
+                      <tr key={i}>
+                        <td className={`px-3 ${rowPad} w-8`}><Skeleton className="h-4 w-4 rounded" /></td>
+                        <td className={`px-3 ${rowPad}`}>
                           <div className="flex items-center gap-2">
-                            <div className={`h-6 w-6 rounded-full ${avatarColor} flex items-center justify-center text-white text-xs font-semibold shrink-0`}>
-                              {initials}
-                            </div>
-                            <span className="font-medium text-foreground truncate max-w-[170px]">{dealLabel}</span>
+                            <Skeleton className="h-5 w-5 rounded-full shrink-0" />
+                            <Skeleton className="h-3.5 w-40" />
                           </div>
                         </td>
-
-                        {/* Company */}
-                        <td className="px-3 py-3">
-                          {lead.company_name ? (
-                            <span className="flex items-center gap-1.5 text-foreground">
-                              <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="truncate max-w-[110px]">{lead.company_name}</span>
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
-
-                        {/* Contact */}
-                        <td className="px-3 py-3">
-                          <span className="flex items-center gap-1.5 text-foreground">
-                            <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="truncate max-w-[100px]">{lead.name}</span>
-                          </span>
-                        </td>
-
-                        {/* Value */}
-                        <td className="px-3 py-3">
-                          <span className="text-foreground font-medium tabular-nums">{fakeValue(lead.id)}</span>
-                        </td>
-
-                        {/* Owned By */}
-                        <td className="px-3 py-3">
-                          {assignedName ? (
-                            <span className="flex items-center gap-1.5 text-foreground">
-                              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <span className="truncate max-w-[90px]">{assignedName}</span>
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
-
-                        {/* Tasks */}
-                        <td className="px-3 py-3">
-                          <span className="flex items-center gap-1.5">
-                            <CheckSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className={taskCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-                              {taskCount}
-                            </span>
-                          </span>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-3 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${statusInfo.bg} ${statusInfo.color}`}>
-                            {statusInfo.label}
-                          </span>
-                        </td>
-
-                        {/* Stage */}
-                        <td className="px-3 py-3">
-                          {stageInfo ? (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${stageInfo.bg} ${stageInfo.color}`}>
-                              {stageInfo.label}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">{lead.status}</span>
-                          )}
-                        </td>
-
-                        {/* Days in Stage */}
-                        <td className="px-3 py-3">
-                          <span className="flex items-center gap-1.5">
-                            <Timer className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className={
-                              daysInStage !== null && daysInStage > 14
-                                ? 'text-amber-600 font-medium'
-                                : 'text-foreground'
-                            }>
-                              {daysInStage !== null ? `${daysInStage}d` : '—'}
-                            </span>
-                          </span>
-                        </td>
-
-                        {/* Stage Updated */}
-                        <td className="px-3 py-3">
-                          <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-                            {formatShortDate(lead.updated_at)}
-                          </span>
-                        </td>
-
-                        {/* Last Contacted */}
-                        <td className="px-3 py-3">
-                          <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                            <Clock className="h-3.5 w-3.5 shrink-0" />
-                            {formatShortDate(lead.last_activity_at)}
-                          </span>
-                        </td>
-
-                        {/* Interactions */}
-                        <td className="px-3 py-3">
-                          <span className="flex items-center gap-1.5">
-                            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className={interactionCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}>
-                              {interactionCount}
-                            </span>
-                          </span>
-                        </td>
-
-                        {/* Inactive Days */}
-                        <td className="px-3 py-3">
-                          <span className="flex items-center gap-1.5">
-                            <Moon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className={
-                              inactiveDays !== null && inactiveDays > 7
-                                ? 'text-red-500 font-medium'
-                                : 'text-foreground'
-                            }>
-                              {inactiveDays !== null ? `${inactiveDays}d` : '—'}
-                            </span>
-                          </span>
-                        </td>
-
-                        {/* Tags */}
-                        <td className="px-3 py-3">
-                          {lead.tags && lead.tags.length > 0 ? (
-                            <span className="flex items-center gap-1 flex-wrap">
-                              <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              {lead.tags.slice(0, 2).map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground border border-border"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                              {lead.tags.length > 2 && (
-                                <span className="text-xs text-muted-foreground">+{lead.tags.length - 2}</span>
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
+                        {columnVisibility.company && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-24" /></td>}
+                        {columnVisibility.contact && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
+                        {columnVisibility.value && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-16" /></td>}
+                        {columnVisibility.ownedBy && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
+                        {columnVisibility.tasks && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-6" /></td>}
+                        {columnVisibility.stage && <td className={`px-3 ${rowPad}`}><Skeleton className="h-5 w-28 rounded-full" /></td>}
+                        {columnVisibility.daysInStage && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-10" /></td>}
+                        {columnVisibility.stageUpdated && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
+                        {columnVisibility.lastContacted && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-20" /></td>}
+                        {columnVisibility.interactions && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-6" /></td>}
+                        {columnVisibility.inactiveDays && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-8" /></td>}
+                        {columnVisibility.tags && <td className={`px-3 ${rowPad}`}><Skeleton className="h-3.5 w-16" /></td>}
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </main>
+                    ))
+                  ) : filteredAndSorted.length === 0 ? (
+                    <tr>
+                      <td colSpan={14}>
+                        <div className="flex flex-col items-center justify-center py-20 gap-3">
+                          <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-muted/50">
+                            <FileSearch className="h-5 w-5 text-muted-foreground/50" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-foreground">No opportunities found</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {searchTerm ? 'Try adjusting your search or filter' : 'No deals are in this stage yet'}
+                            </p>
+                          </div>
+                          {isFiltersActive && (
+                            <button
+                              onClick={clearAllFilters}
+                              className="text-xs text-violet-600 hover:text-violet-700 font-medium"
+                            >
+                              Clear filters
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAndSorted.map((lead) => {
+                      const dealLabel = lead.company_name
+                        ? `${lead.name} — ${lead.company_name}`
+                        : lead.name;
+                      const initial = lead.name[0]?.toUpperCase() ?? '?';
+                      const avatarColor = getAvatarColor(lead.name);
+                      const stageCfg = stageConfig[lead.status];
+                      const assignedName = lead.assigned_to
+                        ? (teamMemberMap[lead.assigned_to] ?? null)
+                        : null;
+                      const assignedInitial = assignedName?.[0]?.toUpperCase() ?? null;
+                      const assignedColor = assignedName ? getAvatarColor(assignedName) : '';
+                      const taskCount = taskCountMap[lead.id] ?? fakeTasks(lead.id);
+                      const interactionCount = interactionCountMap[lead.id] ?? fakeInteractions(lead.id);
+                      const daysInStage = daysSince(lead.updated_at);
+                      const inactiveDays = daysSince(lead.last_activity_at);
+                      const isStale = inactiveDays !== null && inactiveDays > 7;
+                      const isLingering = daysInStage !== null && daysInStage > 14;
+                      const dealValue = fakeValue(lead.id);
+
+                      return (
+                        <tr
+                          key={lead.id}
+                          onClick={() => handleRowClick(lead)}
+                          className="cursor-pointer hover:bg-muted/30 transition-colors group"
+                        >
+                          <td className={`px-3 ${rowPad} w-8`}>
+                            <div className="h-3.5 w-3.5 rounded border border-border bg-background group-hover:border-violet-400/50 transition-colors" />
+                          </td>
+
+                          {/* Opportunity — always visible */}
+                          <td className={`px-3 ${rowPad}`}>
+                            <div className="flex items-center gap-2">
+                              <div className={`h-5 w-5 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+                                {initial}
+                              </div>
+                              <span className="font-medium text-foreground truncate max-w-[180px] text-[13px]">
+                                {dealLabel}
+                              </span>
+                            </div>
+                          </td>
+
+                          {columnVisibility.company && (
+                            <td className={`px-3 ${rowPad}`}>
+                              {lead.company_name ? (
+                                <span className="text-[13px] text-foreground truncate block max-w-[120px]">{lead.company_name}</span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                          )}
+
+                          {columnVisibility.contact && (
+                            <td className={`px-3 ${rowPad}`}>
+                              <span className="text-[13px] text-foreground truncate block max-w-[100px]">{lead.name}</span>
+                            </td>
+                          )}
+
+                          {columnVisibility.value && (
+                            <td className={`px-3 ${rowPad}`}>
+                              <span className="text-[13px] text-foreground font-medium tabular-nums">{formatValue(dealValue)}</span>
+                            </td>
+                          )}
+
+                          {columnVisibility.ownedBy && (
+                            <td className={`px-3 ${rowPad}`}>
+                              {assignedName && assignedInitial ? (
+                                <div className="flex items-center gap-1.5">
+                                  <div className={`h-5 w-5 rounded-full ${assignedColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+                                    {assignedInitial}
+                                  </div>
+                                  <span className="text-[13px] text-foreground truncate max-w-[80px]">{assignedName}</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-[13px]">—</span>
+                              )}
+                            </td>
+                          )}
+
+                          {columnVisibility.tasks && (
+                            <td className={`px-3 ${rowPad}`}>
+                              <span className={`text-[13px] ${taskCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                                {taskCount}
+                              </span>
+                            </td>
+                          )}
+
+                          {columnVisibility.stage && (
+                            <td className={`px-3 ${rowPad}`}>
+                              {stageCfg ? (
+                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${stageCfg.bg} ${stageCfg.color}`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
+                                  {stageCfg.label}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">{lead.status}</span>
+                              )}
+                            </td>
+                          )}
+
+                          {columnVisibility.daysInStage && (
+                            <td className={`px-3 ${rowPad}`}>
+                              <span className="flex items-center gap-1">
+                                {isLingering
+                                  ? <Flame className="h-3 w-3 text-amber-500 shrink-0" />
+                                  : <Timer className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                                }
+                                <span className={`text-[13px] ${isLingering ? 'text-amber-600 font-medium' : 'text-foreground'}`}>
+                                  {daysInStage !== null ? `${daysInStage}d` : '—'}
+                                </span>
+                              </span>
+                            </td>
+                          )}
+
+                          {columnVisibility.stageUpdated && (
+                            <td className={`px-3 ${rowPad}`}>
+                              <span className="text-[12px] text-muted-foreground">{formatShortDate(lead.updated_at)}</span>
+                            </td>
+                          )}
+
+                          {columnVisibility.lastContacted && (
+                            <td className={`px-3 ${rowPad}`}>
+                              <span className="text-[12px] text-muted-foreground">{formatShortDate(lead.last_activity_at)}</span>
+                            </td>
+                          )}
+
+                          {columnVisibility.interactions && (
+                            <td className={`px-3 ${rowPad}`}>
+                              <span className={`text-[13px] ${interactionCount > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                                {interactionCount}
+                              </span>
+                            </td>
+                          )}
+
+                          {columnVisibility.inactiveDays && (
+                            <td className={`px-3 ${rowPad}`}>
+                              {isStale ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-200">
+                                  <Moon className="h-3 w-3 shrink-0" />
+                                  {inactiveDays}d
+                                </span>
+                              ) : (
+                                <span className="text-[13px] text-foreground">{inactiveDays !== null ? `${inactiveDays}d` : '—'}</span>
+                              )}
+                            </td>
+                          )}
+
+                          {columnVisibility.tags && (
+                            <td className={`px-3 ${rowPad}`}>
+                              {lead.tags && lead.tags.length > 0 ? (
+                                <span className="flex items-center gap-1 flex-wrap">
+                                  {lead.tags.slice(0, 2).map((tag) => (
+                                    <span key={tag} className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground border border-border/60">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                  {lead.tags.length > 2 && (
+                                    <span className="text-[11px] text-muted-foreground">+{lead.tags.length - 2}</span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </main>
+        </div>
       </div>
 
       <LeadDetailDialog
