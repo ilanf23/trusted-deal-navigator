@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import EvanLayout from '@/components/evan/EvanLayout';
 import PipelineSettingsDialog from '@/components/admin/PipelineSettingsDialog';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import {
   ArrowUpDown,
   Search,
@@ -314,6 +315,8 @@ const EvansUnderwriting = () => {
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newFilterOpen, setNewFilterOpen] = useState(false);
+  const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
     company: true, contact: true, value: true, ownedBy: true, tasks: true,
@@ -717,6 +720,7 @@ const EvansUnderwriting = () => {
                 <button
                   className="text-muted-foreground hover:text-foreground transition-colors"
                   title="Add filter"
+                  onClick={() => setNewFilterOpen(true)}
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
@@ -779,6 +783,30 @@ const EvansUnderwriting = () => {
                     </button>
                   );
                 })}
+
+                {/* Custom Filters */}
+                {customFilters.length > 0 && (
+                  <>
+                    <div className="px-3 pt-3 pb-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Custom</span>
+                    </div>
+                    {customFilters.map((cf) => {
+                      const isActive = activeFilter === cf.id;
+                      return (
+                        <button
+                          key={cf.id}
+                          onClick={() => setActiveFilter(cf.id)}
+                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
+                            isActive ? 'bg-violet-50 text-violet-700' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          }`}
+                        >
+                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-violet-600" />}
+                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-violet-700' : ''}`}>{cf.label}</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </nav>
             </div>
           </aside>
@@ -1280,6 +1308,18 @@ const EvansUnderwriting = () => {
           queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
           queryClient.invalidateQueries({ queryKey: ['underwriting-task-counts'] });
           queryClient.invalidateQueries({ queryKey: ['underwriting-interaction-counts'] });
+        }}
+      />
+
+      <CreateFilterDialog
+        open={newFilterOpen}
+        onOpenChange={setNewFilterOpen}
+        teamMemberMap={teamMemberMap}
+        stageConfig={stageConfig}
+        onSave={(filter) => {
+          const id = `custom_${Date.now()}`;
+          setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+          toast.success(`Filter "${filter.filterName}" created`);
         }}
       />
     </EvanLayout>
