@@ -2861,6 +2861,7 @@ export type Database = {
           icon: string | null
           id: string
           is_main: boolean | null
+          is_system: boolean
           name: string
           owner_id: string
           template_type: string | null
@@ -2873,6 +2874,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_main?: boolean | null
+          is_system?: boolean
           name: string
           owner_id: string
           template_type?: string | null
@@ -2885,6 +2887,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_main?: boolean | null
+          is_system?: boolean
           name?: string
           owner_id?: string
           template_type?: string | null
