@@ -335,11 +335,11 @@ export default function UnderwritingExpandedView() {
             )}
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-800">
-              <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Opportunity</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800">
+              <DollarSign className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Opportunity</span>
             </div>
-            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatValue(dealValue)}</span>
+            <span className="text-sm font-bold text-blue-600 dark:text-blue-400 tabular-nums">{formatValue(dealValue)}</span>
           </div>
         </div>
       </div>

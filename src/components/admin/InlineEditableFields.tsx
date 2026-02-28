@@ -183,13 +183,13 @@ export function EditableField({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3.5 py-2.5 bg-card hover:bg-muted/50 transition-colors cursor-pointer group">
+    <div onClick={() => setEditing(true)} className={`flex items-center justify-between px-3.5 py-2.5 transition-colors cursor-pointer group ${highlight ? 'bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/70 dark:hover:bg-blue-950/30' : 'bg-card hover:bg-muted/50'}`}>
       <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className={`text-[13px] text-right truncate max-w-[170px] ${highlight ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'font-medium text-foreground'}`}>
+        <span className={`text-[13px] text-right truncate max-w-[170px] ${highlight ? 'font-bold text-blue-700 dark:text-blue-400' : 'font-medium text-foreground'}`}>
           {value || '—'}
         </span>
         <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

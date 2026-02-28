@@ -1201,55 +1201,55 @@ const EvansUnderwriting = () => {
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                   <thead className="border-b border-border">
                     <tr>
-                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-muted" />
-                      <ColHeader className="sticky top-0 z-30 bg-muted border-r border-border/50" style={{ left: 40 }}>
+                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted" />
+                      <ColHeader className="sticky top-0 z-30 bg-gray-100 dark:bg-muted border-r border-border/50" style={{ left: 40 }}>
                         Opportunity
                       </ColHeader>
-                      <ColHeader colKey="company" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="company" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Company
                       </ColHeader>
-                      <ColHeader colKey="contact" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="contact" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Contact
                       </ColHeader>
-                      <ColHeader colKey="value" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="value" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Value
                       </ColHeader>
-                      <ColHeader colKey="ownedBy" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="ownedBy" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Owner
                       </ColHeader>
-                      <ColHeader colKey="tasks" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="tasks" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Tasks
                       </ColHeader>
-                      <ColHeader colKey="stage" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="stage" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Stage
                       </ColHeader>
-                      <ColHeader colKey="daysInStage" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="daysInStage" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Days
                       </ColHeader>
-                      <ColHeader colKey="stageUpdated" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="stageUpdated" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Updated
                       </ColHeader>
-                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Contacted
                       </ColHeader>
-                      <ColHeader colKey="interactions" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="interactions" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Activity
                       </ColHeader>
-                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Dormant
                       </ColHeader>
-                      <ColHeader colKey="tags" className="sticky top-0 z-10 bg-muted">
+                      <ColHeader colKey="tags" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Tags
                       </ColHeader>
-                      <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-muted" />
+                      <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-white dark:bg-card" />
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
-                          <td className="px-4 py-3.5 w-10 sticky left-0 z-[5] bg-card"><Skeleton className="h-4 w-4 rounded" /></td>
-                          <td className="px-4 py-3.5 sticky z-[5] border-r border-border/50 bg-card" style={{ width: columnWidths.opportunity, left: 40 }}>
+                          <td className="px-4 py-3.5 w-10 sticky left-0 z-[5] bg-white dark:bg-card"><Skeleton className="h-4 w-4 rounded" /></td>
+                          <td className="px-4 py-3.5 sticky z-[5] border-r border-border/50 bg-white dark:bg-card" style={{ width: columnWidths.opportunity, left: 40 }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                               <div className="space-y-1.5">
@@ -1318,9 +1318,7 @@ const EvansUnderwriting = () => {
 
                         const stickyBg = isSelected
                           ? 'bg-violet-50 dark:bg-violet-950 group-hover:bg-violet-100 dark:group-hover:bg-violet-900'
-                          : rowIdx % 2 === 0
-                            ? 'bg-card group-hover:bg-muted'
-                            : 'bg-card group-hover:bg-muted';
+                          : 'bg-white dark:bg-card group-hover:bg-gray-50 dark:group-hover:bg-muted';
 
                         return (
                           <tr
