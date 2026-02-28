@@ -1836,6 +1836,7 @@ export type Database = {
           converted_to_client_id: string | null
           created_at: string
           email: string | null
+
           flagged_for_weekly: boolean
           id: string
           initial_nudge_created_at: string | null
@@ -1875,6 +1876,7 @@ export type Database = {
           converted_to_client_id?: string | null
           created_at?: string
           email?: string | null
+
           flagged_for_weekly?: boolean
           id?: string
           initial_nudge_created_at?: string | null
@@ -1914,6 +1916,7 @@ export type Database = {
           converted_to_client_id?: string | null
           created_at?: string
           email?: string | null
+
           flagged_for_weekly?: boolean
           id?: string
           initial_nudge_created_at?: string | null
@@ -3511,6 +3514,14 @@ export type Database = {
         | "ready_for_wu_approval"
         | "pre_approval_issued"
         | "won"
+        | "review_kill_keep"
+        | "waiting_on_needs_list"
+        | "waiting_on_client"
+        | "complete_files_for_review"
+        | "need_structure_from_brad"
+        | "maura_underwriting"
+        | "brad_underwriting"
+        | "uw_paused"
       pipeline_column_type:
         | "free_form"
         | "date"

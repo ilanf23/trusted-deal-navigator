@@ -42,6 +42,10 @@ import {
   Table2,
   GripVertical,
   PanelRightOpen,
+  Sparkles,
+  Loader2,
+  Download,
+  PlusCircle,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -51,6 +55,9 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -59,36 +66,84 @@ type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 const UNDERWRITING_STATUSES: LeadStatus[] = [
-  'moving_to_underwriting',
-  'underwriting',
+  'review_kill_keep',
+  'initial_review',
+  'waiting_on_needs_list',
+  'waiting_on_client',
+  'complete_files_for_review',
+  'need_structure_from_brad',
+  'maura_underwriting',
+  'brad_underwriting',
+  'uw_paused',
   'ready_for_wu_approval',
-  'pre_approval_issued',
 ];
 
 const stageConfig: Record<string, { label: string; color: string; bg: string; dot: string; pill: string }> = {
-  moving_to_underwriting: {
-    label: 'Moving to UW',
-    color: 'text-blue-700',
-    bg: 'bg-blue-50 border-blue-200',
-    dot: 'bg-blue-500',
-    pill: 'bg-blue-100 text-blue-700',
+  review_kill_keep: {
+    label: 'Review Kill / Keep',
+    color: 'text-red-700',
+    bg: 'bg-red-50 border-red-200',
+    dot: 'bg-red-500',
+    pill: 'bg-red-100 text-red-700',
   },
-  underwriting: {
-    label: 'Underwriting',
+  initial_review: {
+    label: 'Initial Review',
+    color: 'text-sky-700',
+    bg: 'bg-sky-50 border-sky-200',
+    dot: 'bg-sky-500',
+    pill: 'bg-sky-100 text-sky-700',
+  },
+  waiting_on_needs_list: {
+    label: 'Waiting on Needs List',
     color: 'text-amber-700',
     bg: 'bg-amber-50 border-amber-200',
     dot: 'bg-amber-500',
     pill: 'bg-amber-100 text-amber-700',
   },
-  ready_for_wu_approval: {
-    label: 'Ready for Approval',
-    color: 'text-violet-700',
-    bg: 'bg-violet-50 border-violet-200',
-    dot: 'bg-violet-500',
-    pill: 'bg-violet-100 text-violet-700',
+  waiting_on_client: {
+    label: 'Waiting on Client',
+    color: 'text-orange-700',
+    bg: 'bg-orange-50 border-orange-200',
+    dot: 'bg-orange-500',
+    pill: 'bg-orange-100 text-orange-700',
   },
-  pre_approval_issued: {
-    label: 'Pre-Approval Issued',
+  complete_files_for_review: {
+    label: 'Complete Files for Review',
+    color: 'text-blue-700',
+    bg: 'bg-blue-50 border-blue-200',
+    dot: 'bg-blue-500',
+    pill: 'bg-blue-100 text-blue-700',
+  },
+  need_structure_from_brad: {
+    label: 'Need Structure from Brad',
+    color: 'text-indigo-700',
+    bg: 'bg-indigo-50 border-indigo-200',
+    dot: 'bg-indigo-500',
+    pill: 'bg-indigo-100 text-indigo-700',
+  },
+  maura_underwriting: {
+    label: 'Maura Underwriting',
+    color: 'text-pink-700',
+    bg: 'bg-pink-50 border-pink-200',
+    dot: 'bg-pink-500',
+    pill: 'bg-pink-100 text-pink-700',
+  },
+  brad_underwriting: {
+    label: 'Brad Underwriting',
+    color: 'text-teal-700',
+    bg: 'bg-teal-50 border-teal-200',
+    dot: 'bg-teal-500',
+    pill: 'bg-teal-100 text-teal-700',
+  },
+  uw_paused: {
+    label: 'UW Paused',
+    color: 'text-slate-600',
+    bg: 'bg-slate-100 border-slate-300',
+    dot: 'bg-slate-400',
+    pill: 'bg-slate-200 text-slate-600',
+  },
+  ready_for_wu_approval: {
+    label: 'Ready for WU Approval',
     color: 'text-emerald-700',
     bg: 'bg-emerald-50 border-emerald-200',
     dot: 'bg-emerald-500',
@@ -104,7 +159,7 @@ const FILTER_OPTIONS = [
   { id: 'won', label: 'Won Opportunities', group: 'public' },
   { id: 'brad_incoming', label: 'Brad Incoming Opportunities', group: 'public' },
   { id: 'initial_review', label: 'Deals for Initial Review', group: 'public' },
-  { id: 'moving_to_underwriting', label: 'Deals Moving Towards Underwriting', group: 'public' },
+  { id: 'review_kill_keep', label: 'Deals Moving Towards Underwriting', group: 'public' },
   { id: 'onboarding_2024', label: 'OnBoarding 2024 - Opp. into UW', group: 'public' },
   { id: 'onboarding_2025', label: 'OnBoarding 2025 - Opp. into UW', group: 'public' },
   { id: 'onboarding_2026', label: 'OnBoarding 2026 - Opp. into UW', group: 'public' },
@@ -316,10 +371,11 @@ const EvansUnderwriting = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [newFilterOpen, setNewFilterOpen] = useState(false);
+
   const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
@@ -328,14 +384,29 @@ const EvansUnderwriting = () => {
     interactions: true, inactiveDays: true, tags: true,
   });
 
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
-    opportunity: 240, company: 150, contact: 120, value: 110, ownedBy: 130,
-    tasks: 70, stage: 170, daysInStage: 100, stageUpdated: 120,
-    lastContacted: 120, interactions: 90, inactiveDays: 100, tags: 140,
+  const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
+    opportunity: 200, company: 130, contact: 110, value: 90, ownedBy: 80,
+    tasks: 55, stage: 150, daysInStage: 55, stageUpdated: 85,
+    lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+  }), []);
+
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('evan-underwriting-column-widths');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
+      }
+    } catch {}
+    return DEFAULT_COLUMN_WIDTHS;
   });
 
   const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => ({ ...prev, [columnId]: newWidth }));
+    setColumnWidths(prev => {
+      const next = { ...prev, [columnId]: newWidth };
+      localStorage.setItem('evan-underwriting-column-widths', JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const columnsMenuRef = useRef<HTMLDivElement>(null);
@@ -391,6 +462,55 @@ const EvansUnderwriting = () => {
     },
   });
 
+  // ── Add Opportunity state ──
+  const [addOpportunityOpen, setAddOpportunityOpen] = useState(false);
+  const [addOpportunityStage, setAddOpportunityStage] = useState<LeadStatus>('review_kill_keep');
+  const [newOpp, setNewOpp] = useState({ name: '', company_name: '', email: '', phone: '' });
+
+  const createOpportunityMutation = useMutation({
+    mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; status: LeadStatus }) => {
+      const evanMember = teamMembers.find(m => m.name === 'Evan');
+      const { data: lead, error } = await supabase
+        .from('leads')
+        .insert({
+          name: data.name,
+          company_name: data.company_name || null,
+          email: data.email || null,
+          phone: data.phone || null,
+          status: data.status,
+          assigned_to: evanMember?.id || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return lead;
+    },
+    onSuccess: (lead) => {
+      queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+      setAddOpportunityOpen(false);
+      setNewOpp({ name: '', company_name: '', email: '', phone: '' });
+      toast.success(`"${lead.name}" added to ${stageConfig[lead.status]?.label ?? lead.status}`);
+      setSelectedLead(lead);
+    },
+    onError: () => {
+      toast.error('Failed to create opportunity');
+    },
+  });
+
+  const handleCreateOpportunity = () => {
+    if (!newOpp.name.trim()) {
+      toast.error('Opportunity name is required');
+      return;
+    }
+    createOpportunityMutation.mutate({ ...newOpp, status: addOpportunityStage });
+  };
+
+  const openAddDialog = (stage?: LeadStatus) => {
+    setAddOpportunityStage(stage ?? 'review_kill_keep');
+    setNewOpp({ name: '', company_name: '', email: '', phone: '' });
+    setAddOpportunityOpen(true);
+  };
+
   function handleDragStart(event: DragStartEvent) {
     const lead = filteredAndSorted.find(l => l.id === event.active.id);
     setDraggedLead(lead ?? null);
@@ -441,12 +561,26 @@ const EvansUnderwriting = () => {
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['underwriting-leads'],
     queryFn: async () => {
+      // Query using DB-known enum values; new values will work once migration is run
+      const DB_KNOWN_UW_STATUSES: LeadStatus[] = [
+        'initial_review', 'moving_to_underwriting', 'underwriting',
+        'ready_for_wu_approval', 'pre_approval_issued',
+      ];
       const { data, error } = await supabase
         .from('leads')
         .select('*')
-        .in('status', UNDERWRITING_STATUSES)
+        .in('status', [...new Set([...DB_KNOWN_UW_STATUSES, ...UNDERWRITING_STATUSES])])
         .order('last_activity_at', { ascending: false });
-      if (error) throw error;
+      // If query fails (new enum values not yet migrated), fall back to known values only
+      if (error) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('leads')
+          .select('*')
+          .in('status', DB_KNOWN_UW_STATUSES)
+          .order('last_activity_at', { ascending: false });
+        if (fallbackError) throw fallbackError;
+        return fallbackData as Lead[];
+      }
       return data as Lead[];
     },
   });
@@ -495,7 +629,6 @@ const EvansUnderwriting = () => {
     counts['following'] = 0;
     counts['won'] = leads.filter(l => l.status === 'won' as LeadStatus).length;
     counts['brad_incoming'] = leads.filter(l => (l.assigned_to ?? '').toLowerCase().includes('brad') || teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad')).length;
-    counts['initial_review'] = leads.filter(l => l.status === ('initial_review' as LeadStatus)).length;
     counts['onboarding_2024'] = leads.filter(l => l.cohort_year === 2024).length;
     counts['onboarding_2025'] = leads.filter(l => l.cohort_year === 2025).length;
     counts['onboarding_2026'] = leads.filter(l => l.cohort_year === 2026).length;
@@ -506,10 +639,8 @@ const EvansUnderwriting = () => {
     let result = leads;
 
     if (activeFilter !== 'all') {
-      if (['moving_to_underwriting', 'underwriting', 'ready_for_wu_approval', 'pre_approval_issued'].includes(activeFilter)) {
+      if ((UNDERWRITING_STATUSES as string[]).includes(activeFilter)) {
         result = result.filter((l) => l.status === activeFilter);
-      } else if (activeFilter === 'initial_review') {
-        result = result.filter((l) => l.status === ('initial_review' as LeadStatus));
       } else if (activeFilter === 'won') {
         result = result.filter((l) => l.status === ('won' as LeadStatus));
       } else if (activeFilter === 'brad_incoming') {
@@ -622,41 +753,38 @@ const EvansUnderwriting = () => {
             <button
               onClick={() => setViewMode('table')}
               title="Table view"
-              className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
+              className={`flex items-center justify-center h-full px-2 transition-all ${
                 viewMode === 'table'
                   ? 'bg-violet-50 text-violet-700'
                   : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
               }`}
             >
-              <Table2 className="h-3.5 w-3.5 shrink-0" />
-              Table
+              <Table2 className="h-3.5 w-3.5" />
             </button>
             <div className="w-px h-4 bg-slate-200" />
             <button
               onClick={() => setViewMode('kanban')}
               title="Kanban view"
-              className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
+              className={`flex items-center justify-center h-full px-2 transition-all ${
                 viewMode === 'kanban'
                   ? 'bg-violet-50 text-violet-700'
                   : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
               }`}
             >
-              <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
-              Kanban
+              <LayoutGrid className="h-3.5 w-3.5" />
             </button>
             <div className="w-px h-4 bg-slate-200" />
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   title="Sort"
-                  className={`flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-all ${
+                  className={`flex items-center justify-center h-full px-2 transition-all ${
                     isNonDefaultSort
                       ? 'bg-violet-50 text-violet-700'
                       : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                   }`}
                 >
-                  <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
-                  Sort
+                  <ArrowUpDown className="h-3.5 w-3.5" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 p-3 space-y-3">
@@ -687,13 +815,33 @@ const EvansUnderwriting = () => {
           </div>
 
           {/* Add Opportunity button */}
-          <Button
-            size="sm"
-            className="h-8 px-4 text-xs font-semibold rounded-full gap-1.5 shrink-0"
-          >
-            Add Opportunity
-            <ChevronDown className="h-3 w-3" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="group relative h-9 pl-4 pr-3 text-[13px] font-semibold rounded-full shrink-0 flex items-center gap-2 text-white overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2"
+                style={{ background: 'linear-gradient(135deg, #4c1d95 0%, #5b21b6 50%, #6d28d9 100%)' }}
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
+                <span>Add Opportunity</span>
+                <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-xl border border-slate-200/80 bg-white">
+              <DropdownMenuItem
+                onClick={() => openAddDialog()}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-slate-700 hover:bg-slate-50 focus:bg-slate-50 transition-colors"
+              >
+                <PlusCircle className="h-4.5 w-4.5 text-slate-500" />
+                Add Opportunity
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-slate-700 hover:bg-slate-50 focus:bg-slate-50 transition-colors"
+              >
+                <Download className="h-4.5 w-4.5 text-slate-500" />
+                Import Opportunities
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* ── Body: Sidebar + Table ── */}
@@ -708,13 +856,15 @@ const EvansUnderwriting = () => {
             <div className="w-56">
               <div className="px-3 pt-3 pb-2 flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
-                <button
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  title="Add filter"
-                  onClick={() => setNewFilterOpen(true)}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
+                <CreateFilterDialog
+                  teamMemberMap={teamMemberMap}
+                  stageConfig={stageConfig}
+                  onSave={(filter) => {
+                    const id = `custom_${Date.now()}`;
+                    setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+                    toast.success(`Filter "${filter.filterName}" created`);
+                  }}
+                />
               </div>
 
               <div className="px-2 pb-2">
@@ -749,11 +899,15 @@ const EvansUnderwriting = () => {
                   );
                 })}
 
-                <div className="px-3 pt-3 pb-1">
+                <button
+                  onClick={() => setPublicFiltersOpen(v => !v)}
+                  className="w-full px-3 pt-3 pb-1 flex items-center justify-between group"
+                >
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Public</span>
-                </div>
+                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : '-rotate-90'}`} />
+                </button>
 
-                {visibleFilters.filter(o => o.group === 'public').map((opt) => {
+                {publicFiltersOpen && visibleFilters.filter(o => o.group === 'public').map((opt) => {
                   const isActive = activeFilter === opt.id;
                   const count = filterCounts[opt.id] ?? 0;
                   return (
@@ -1366,6 +1520,7 @@ const EvansUnderwriting = () => {
               lead={selectedLead}
               stageConfig={stageConfig}
               teamMemberMap={teamMemberMap}
+              teamMembers={teamMembers}
               formatValue={formatValue}
               fakeValue={fakeValue}
               onClose={() => setSelectedLead(null)}
@@ -1374,23 +1529,135 @@ const EvansUnderwriting = () => {
                 statusMutation.mutate({ leadId, newStatus });
                 setSelectedLead({ ...selectedLead, status: newStatus });
               }}
+              onLeadUpdate={(updatedLead) => setSelectedLead(updatedLead)}
             />
           )}
         </div>
       </div>
 
 
-      <CreateFilterDialog
-        open={newFilterOpen}
-        onOpenChange={setNewFilterOpen}
-        teamMemberMap={teamMemberMap}
-        stageConfig={stageConfig}
-        onSave={(filter) => {
-          const id = `custom_${Date.now()}`;
-          setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
-          toast.success(`Filter "${filter.filterName}" created`);
-        }}
-      />
+
+      {/* ── Add Opportunity Dialog ── */}
+      <Dialog open={addOpportunityOpen} onOpenChange={setAddOpportunityOpen}>
+        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
+          {/* Header with gradient */}
+          <div className="px-6 pt-6 pb-4" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)' }}>
+            <DialogHeader>
+              <DialogTitle className="text-white text-lg font-bold flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
+                  <Plus className="h-4 w-4 text-white" />
+                </div>
+                New Opportunity
+              </DialogTitle>
+            </DialogHeader>
+            {/* Stage selector pills */}
+            <div className="flex flex-wrap gap-1.5 mt-4">
+              {UNDERWRITING_STATUSES.map((status) => {
+                const cfg = stageConfig[status];
+                const isActive = addOpportunityStage === status;
+                return (
+                  <button
+                    key={status}
+                    onClick={() => setAddOpportunityStage(status)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'bg-white text-slate-800 shadow-md scale-105'
+                        : 'bg-white/15 text-white/90 hover:bg-white/25'
+                    }`}
+                  >
+                    <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 ${isActive ? cfg.dot : 'bg-white/60'}`} />
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Form body */}
+          <div className="px-6 py-5 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="opp-name" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Opportunity Name <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="opp-name"
+                placeholder="e.g. Riverside Plaza Acquisition"
+                value={newOpp.name}
+                onChange={(e) => setNewOpp(prev => ({ ...prev, name: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter' && newOpp.name.trim()) handleCreateOpportunity(); }}
+                className="h-10 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-slate-300"
+                autoFocus
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="opp-company" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Company</Label>
+              <Input
+                id="opp-company"
+                placeholder="Company name"
+                value={newOpp.company_name}
+                onChange={(e) => setNewOpp(prev => ({ ...prev, company_name: e.target.value }))}
+                className="h-10 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-slate-300"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="opp-email" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Email</Label>
+                <Input
+                  id="opp-email"
+                  placeholder="email@example.com"
+                  type="email"
+                  value={newOpp.email}
+                  onChange={(e) => setNewOpp(prev => ({ ...prev, email: e.target.value }))}
+                  className="h-10 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-slate-300"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="opp-phone" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Phone</Label>
+                <Input
+                  id="opp-phone"
+                  placeholder="(555) 123-4567"
+                  type="tel"
+                  value={newOpp.phone}
+                  onChange={(e) => setNewOpp(prev => ({ ...prev, phone: e.target.value }))}
+                  className="h-10 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-slate-300"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAddOpportunityOpen(false)}
+              className="h-9 px-4 rounded-xl text-slate-500 hover:text-slate-700"
+            >
+              Cancel
+            </Button>
+            <button
+              onClick={handleCreateOpportunity}
+              disabled={!newOpp.name.trim() || createOpportunityMutation.isPending}
+              className="h-9 px-5 rounded-xl text-[13px] font-semibold text-white flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+              style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)' }}
+            >
+              {createOpportunityMutation.isPending ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Create Opportunity
+                </>
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </EvanLayout>
   );
 };

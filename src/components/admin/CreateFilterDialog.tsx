@@ -1,41 +1,42 @@
-import { useState } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { CalendarIcon, Plus, ChevronDown, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export interface CustomFilterValues {
   filterName: string;
-  activityType: string;
+  activityType: string[];
   interactionsFrom: Date | undefined;
   interactionsTo: Date | undefined;
   lastContactedMin: string;
   lastContactedMax: string;
   inactiveDaysMin: string;
   inactiveDaysMax: string;
-  stage: string;
+  stage: string[];
   daysInStageMin: string;
   daysInStageMax: string;
-  status: string;
-  priority: string;
-  ownedBy: string;
+  status: string[];
+  priority: string[];
+  ownedBy: string[];
   followed: boolean;
   dateAddedFrom: Date | undefined;
   dateAddedTo: Date | undefined;
-  source: string;
+  source: string[];
   closeDateFrom: Date | undefined;
   closeDateTo: Date | undefined;
-  lossReason: string;
+  lossReason: string[];
   company: string;
   valueMin: string;
   valueMax: string;
@@ -49,26 +50,26 @@ export interface CustomFilterValues {
 
 const defaultValues: CustomFilterValues = {
   filterName: '',
-  activityType: '',
+  activityType: [],
   interactionsFrom: undefined,
   interactionsTo: undefined,
   lastContactedMin: '',
   lastContactedMax: '',
   inactiveDaysMin: '',
   inactiveDaysMax: '',
-  stage: '',
+  stage: [],
   daysInStageMin: '',
   daysInStageMax: '',
-  status: '',
-  priority: '',
-  ownedBy: '',
+  status: [],
+  priority: [],
+  ownedBy: [],
   followed: false,
   dateAddedFrom: undefined,
   dateAddedTo: undefined,
-  source: '',
+  source: [],
   closeDateFrom: undefined,
   closeDateTo: undefined,
-  lossReason: '',
+  lossReason: [],
   company: '',
   valueMin: '',
   valueMax: '',
@@ -81,11 +82,101 @@ const defaultValues: CustomFilterValues = {
 };
 
 interface CreateFilterDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   teamMemberMap: Record<string, string>;
   stageConfig: Record<string, { label: string }>;
   onSave: (filter: CustomFilterValues) => void;
+}
+
+function MultiSelect({ label, options, selected, onChange }: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const allSelected = selected.length === options.length;
+
+  const toggle = (value: string) => {
+    onChange(
+      selected.includes(value)
+        ? selected.filter(v => v !== value)
+        : [...selected, value]
+    );
+  };
+
+  const toggleAll = () => {
+    onChange(allSelected ? [] : options.map(o => o.value));
+  };
+
+  const summary = selected.length === 0
+    ? 'Select...'
+    : allSelected
+      ? 'All'
+      : selected.length === 1
+        ? options.find(o => o.value === selected[0])?.label ?? selected[0]
+        : `${selected.length} selected`;
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            className={cn(
+              "flex items-center justify-between w-full h-8 px-3 rounded-md border border-input bg-background text-xs transition-colors hover:bg-accent",
+              selected.length === 0 && "text-muted-foreground"
+            )}
+          >
+            <span className="truncate">{summary}</span>
+            <div className="flex items-center gap-1 shrink-0 ml-1">
+              {selected.length > 0 && (
+                <span
+                  role="button"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={(e) => { e.stopPropagation(); onChange([]); }}
+                >
+                  <X className="h-3 w-3" />
+                </span>
+              )}
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            </div>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-[--radix-popover-trigger-width] p-1"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <button
+            onClick={toggleAll}
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors"
+          >
+            <Checkbox
+              checked={allSelected}
+              className="h-3.5 w-3.5 rounded-sm"
+              tabIndex={-1}
+            />
+            <span className="font-medium">All</span>
+          </button>
+          <Separator className="my-1" />
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => toggle(opt.value)}
+              className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs hover:bg-accent transition-colors"
+            >
+              <Checkbox
+                checked={selected.includes(opt.value)}
+                className="h-3.5 w-3.5 rounded-sm"
+                tabIndex={-1}
+              />
+              <span>{opt.label}</span>
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 }
 
 function DateRangePicker({ label, fromDate, toDate, onFromChange, onToChange }: {
@@ -145,11 +236,60 @@ function RangeInput({ label, minVal, maxVal, onMinChange, onMaxChange, placehold
   );
 }
 
-export default function CreateFilterDialog({ open, onOpenChange, teamMemberMap, stageConfig, onSave }: CreateFilterDialogProps) {
+function SectionBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <span className="bg-primary/10 text-primary text-[10px] rounded-full px-1.5 font-medium ml-2">
+      {count}
+    </span>
+  );
+}
+
+export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave }: CreateFilterDialogProps) {
+  const [open, setOpen] = useState(false);
   const [values, setValues] = useState<CustomFilterValues>({ ...defaultValues });
 
   const set = <K extends keyof CustomFilterValues>(key: K, val: CustomFilterValues[K]) =>
     setValues(prev => ({ ...prev, [key]: val }));
+
+  const sectionCounts = useMemo(() => {
+    const arr = (v: string[]) => v.length > 0 ? 1 : 0;
+    const str = (v: string) => v.trim() !== '' ? 1 : 0;
+    const range = (min: string, max: string) => (min.trim() !== '' || max.trim() !== '') ? 1 : 0;
+    const dateRange = (from: Date | undefined, to: Date | undefined) => (from !== undefined || to !== undefined) ? 1 : 0;
+    const bool = (v: boolean) => v ? 1 : 0;
+
+    return {
+      activity:
+        arr(values.activityType) +
+        dateRange(values.interactionsFrom, values.interactionsTo) +
+        range(values.lastContactedMin, values.lastContactedMax) +
+        range(values.inactiveDaysMin, values.inactiveDaysMax),
+      pipeline:
+        arr(values.stage) +
+        range(values.daysInStageMin, values.daysInStageMax) +
+        arr(values.status) +
+        arr(values.priority),
+      ownership:
+        arr(values.ownedBy) +
+        bool(values.followed),
+      dates:
+        dateRange(values.dateAddedFrom, values.dateAddedTo) +
+        dateRange(values.closeDateFrom, values.closeDateTo),
+      source:
+        arr(values.source) +
+        arr(values.lossReason),
+      details:
+        str(values.company) +
+        range(values.valueMin, values.valueMax) +
+        str(values.tags) +
+        str(values.name) +
+        str(values.description) +
+        str(values.uwNumber) +
+        bool(values.clientWorkingWithOtherLenders) +
+        bool(values.weeklys),
+    };
+  }, [values]);
 
   const handleSave = () => {
     if (!values.filterName.trim()) {
@@ -157,205 +297,241 @@ export default function CreateFilterDialog({ open, onOpenChange, teamMemberMap, 
     }
     onSave(values);
     setValues({ ...defaultValues });
-    onOpenChange(false);
+    setOpen(false);
   };
 
   const handleCancel = () => {
     setValues({ ...defaultValues });
-    onOpenChange(false);
+    setOpen(false);
   };
 
+  const triggerClass = "text-xs font-semibold uppercase tracking-wide text-muted-foreground py-2.5 hover:no-underline";
+
+  const stageOptions = useMemo(() =>
+    Object.entries(stageConfig).map(([key, cfg]) => ({ value: key, label: cfg.label })),
+    [stageConfig]
+  );
+
+  const ownerOptions = useMemo(() =>
+    Object.entries(teamMemberMap).map(([id, name]) => ({ value: id, label: name })),
+    [teamMemberMap]
+  );
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[400px] sm:max-w-[400px] flex flex-col p-0">
-        <SheetHeader className="px-6 pt-6 pb-2">
-          <SheetTitle className="text-base font-semibold">Filter Opportunity</SheetTitle>
-        </SheetHeader>
+    <>
+      <button
+        className="text-muted-foreground hover:text-foreground transition-colors"
+        title="Add filter"
+        onClick={() => setOpen(true)}
+      >
+        <Plus className="h-3.5 w-3.5" />
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="w-[420px] max-w-[90vw] p-0 flex flex-col max-h-[75vh] gap-0">
+          <DialogHeader className="px-5 pt-5 pb-3">
+            <DialogTitle className="text-sm font-semibold">Filter Opportunity</DialogTitle>
+          </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 overflow-y-auto">
-          <div className="space-y-4 pb-4">
-            {/* Filter Name */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Filter Name *</Label>
-              <Input className="h-8 text-xs" placeholder="Name this filter..." value={values.filterName} onChange={e => set('filterName', e.target.value)} />
-            </div>
+          <ScrollArea className="flex-1 px-5 overflow-y-auto">
+            <div className="pb-4">
+              {/* Filter Name — always visible */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Filter Name *</Label>
+                <Input className="h-8 text-xs" placeholder="Name this filter..." value={values.filterName} onChange={e => set('filterName', e.target.value)} />
+              </div>
 
-            <Separator />
+              <Separator className="my-3" />
 
-            {/* Activity Type */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Activity Type</Label>
-              <Select value={values.activityType} onValueChange={v => set('activityType', v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="meeting">Meeting</SelectItem>
-                  <SelectItem value="note">Note</SelectItem>
-                  <SelectItem value="task">Task</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <Accordion type="multiple" className="w-full">
+              {/* Activity & Communication */}
+              <AccordionItem value="activity" className="border-b border-border/50">
+                <AccordionTrigger className={triggerClass}>
+                  <span className="flex items-center">
+                    Activity & Communication
+                    <SectionBadge count={sectionCounts.activity} />
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <MultiSelect
+                    label="Activity Type"
+                    options={[
+                      { value: 'call', label: 'Call' },
+                      { value: 'email', label: 'Email' },
+                      { value: 'meeting', label: 'Meeting' },
+                      { value: 'note', label: 'Note' },
+                      { value: 'task', label: 'Task' },
+                    ]}
+                    selected={values.activityType}
+                    onChange={v => set('activityType', v)}
+                  />
+                  <DateRangePicker label="Interactions" fromDate={values.interactionsFrom} toDate={values.interactionsTo} onFromChange={d => set('interactionsFrom', d)} onToChange={d => set('interactionsTo', d)} />
+                  <RangeInput label="Last Contacted" minVal={values.lastContactedMin} maxVal={values.lastContactedMax} onMinChange={v => set('lastContactedMin', v)} onMaxChange={v => set('lastContactedMax', v)} placeholder="Days" />
+                  <RangeInput label="Inactive Days" minVal={values.inactiveDaysMin} maxVal={values.inactiveDaysMax} onMinChange={v => set('inactiveDaysMin', v)} onMaxChange={v => set('inactiveDaysMax', v)} />
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Interactions - Date Range */}
-            <DateRangePicker label="Interactions" fromDate={values.interactionsFrom} toDate={values.interactionsTo} onFromChange={d => set('interactionsFrom', d)} onToChange={d => set('interactionsTo', d)} />
+              {/* Pipeline */}
+              <AccordionItem value="pipeline" className="border-b border-border/50">
+                <AccordionTrigger className={triggerClass}>
+                  <span className="flex items-center">
+                    Pipeline
+                    <SectionBadge count={sectionCounts.pipeline} />
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <MultiSelect
+                    label="Stage"
+                    options={stageOptions}
+                    selected={values.stage}
+                    onChange={v => set('stage', v)}
+                  />
+                  <RangeInput label="Days in Stage" minVal={values.daysInStageMin} maxVal={values.daysInStageMax} onMinChange={v => set('daysInStageMin', v)} onMaxChange={v => set('daysInStageMax', v)} />
+                  <MultiSelect
+                    label="Status"
+                    options={[
+                      { value: 'open', label: 'Open' },
+                      { value: 'won', label: 'Won' },
+                      { value: 'lost', label: 'Lost' },
+                      { value: 'on_hold', label: 'On Hold' },
+                    ]}
+                    selected={values.status}
+                    onChange={v => set('status', v)}
+                  />
+                  <MultiSelect
+                    label="Priority"
+                    options={[
+                      { value: 'high', label: 'High' },
+                      { value: 'medium', label: 'Medium' },
+                      { value: 'low', label: 'Low' },
+                    ]}
+                    selected={values.priority}
+                    onChange={v => set('priority', v)}
+                  />
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Last Contacted - Range */}
-            <RangeInput label="Last Contacted" minVal={values.lastContactedMin} maxVal={values.lastContactedMax} onMinChange={v => set('lastContactedMin', v)} onMaxChange={v => set('lastContactedMax', v)} placeholder="Days" />
+              {/* Ownership */}
+              <AccordionItem value="ownership" className="border-b border-border/50">
+                <AccordionTrigger className={triggerClass}>
+                  <span className="flex items-center">
+                    Ownership
+                    <SectionBadge count={sectionCounts.ownership} />
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <MultiSelect
+                    label="Owned By"
+                    options={ownerOptions}
+                    selected={values.ownedBy}
+                    onChange={v => set('ownedBy', v)}
+                  />
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium text-muted-foreground">Followed</Label>
+                    <Switch checked={values.followed} onCheckedChange={v => set('followed', v)} />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Inactive Days */}
-            <RangeInput label="Inactive Days" minVal={values.inactiveDaysMin} maxVal={values.inactiveDaysMax} onMinChange={v => set('inactiveDaysMin', v)} onMaxChange={v => set('inactiveDaysMax', v)} />
+              {/* Dates */}
+              <AccordionItem value="dates" className="border-b border-border/50">
+                <AccordionTrigger className={triggerClass}>
+                  <span className="flex items-center">
+                    Dates
+                    <SectionBadge count={sectionCounts.dates} />
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <DateRangePicker label="Date Added" fromDate={values.dateAddedFrom} toDate={values.dateAddedTo} onFromChange={d => set('dateAddedFrom', d)} onToChange={d => set('dateAddedTo', d)} />
+                  <DateRangePicker label="Close Date" fromDate={values.closeDateFrom} toDate={values.closeDateTo} onFromChange={d => set('closeDateFrom', d)} onToChange={d => set('closeDateTo', d)} />
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Stage */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Stage</Label>
-              <Select value={values.stage} onValueChange={v => set('stage', v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(stageConfig).map(([key, cfg]) => (
-                    <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Source & Outcome */}
+              <AccordionItem value="source" className="border-b border-border/50">
+                <AccordionTrigger className={triggerClass}>
+                  <span className="flex items-center">
+                    Source & Outcome
+                    <SectionBadge count={sectionCounts.source} />
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <MultiSelect
+                    label="Source"
+                    options={[
+                      { value: 'referral', label: 'Referral' },
+                      { value: 'website', label: 'Website' },
+                      { value: 'cold_call', label: 'Cold Call' },
+                      { value: 'partner', label: 'Partner' },
+                      { value: 'other', label: 'Other' },
+                    ]}
+                    selected={values.source}
+                    onChange={v => set('source', v)}
+                  />
+                  <MultiSelect
+                    label="Loss Reason"
+                    options={[
+                      { value: 'pricing', label: 'Pricing' },
+                      { value: 'timing', label: 'Timing' },
+                      { value: 'competition', label: 'Competition' },
+                      { value: 'no_response', label: 'No Response' },
+                      { value: 'other', label: 'Other' },
+                    ]}
+                    selected={values.lossReason}
+                    onChange={v => set('lossReason', v)}
+                  />
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Days in Stage */}
-            <RangeInput label="Days in Stage" minVal={values.daysInStageMin} maxVal={values.daysInStageMax} onMinChange={v => set('daysInStageMin', v)} onMaxChange={v => set('daysInStageMax', v)} />
-
-            {/* Status */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Status</Label>
-              <Select value={values.status} onValueChange={v => set('status', v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="won">Won</SelectItem>
-                  <SelectItem value="lost">Lost</SelectItem>
-                  <SelectItem value="on_hold">On Hold</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Priority */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Priority</Label>
-              <Select value={values.priority} onValueChange={v => set('priority', v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Owned By */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Owned By</Label>
-              <Select value={values.ownedBy} onValueChange={v => set('ownedBy', v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(teamMemberMap).map(([id, name]) => (
-                    <SelectItem key={id} value={id}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Followed */}
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-muted-foreground">Followed</Label>
-              <Switch checked={values.followed} onCheckedChange={v => set('followed', v)} />
-            </div>
-
-            {/* Date Added */}
-            <DateRangePicker label="Date Added" fromDate={values.dateAddedFrom} toDate={values.dateAddedTo} onFromChange={d => set('dateAddedFrom', d)} onToChange={d => set('dateAddedTo', d)} />
-
-            {/* Source */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Source</Label>
-              <Select value={values.source} onValueChange={v => set('source', v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="referral">Referral</SelectItem>
-                  <SelectItem value="website">Website</SelectItem>
-                  <SelectItem value="cold_call">Cold Call</SelectItem>
-                  <SelectItem value="partner">Partner</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Close Date */}
-            <DateRangePicker label="Close Date" fromDate={values.closeDateFrom} toDate={values.closeDateTo} onFromChange={d => set('closeDateFrom', d)} onToChange={d => set('closeDateTo', d)} />
-
-            {/* Loss Reason */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Loss Reason</Label>
-              <Select value={values.lossReason} onValueChange={v => set('lossReason', v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pricing">Pricing</SelectItem>
-                  <SelectItem value="timing">Timing</SelectItem>
-                  <SelectItem value="competition">Competition</SelectItem>
-                  <SelectItem value="no_response">No Response</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Company */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Company</Label>
-              <Input className="h-8 text-xs" placeholder="Company name..." value={values.company} onChange={e => set('company', e.target.value)} />
-            </div>
-
-            {/* Value */}
-            <RangeInput label="Value" minVal={values.valueMin} maxVal={values.valueMax} onMinChange={v => set('valueMin', v)} onMaxChange={v => set('valueMax', v)} placeholder="$" />
-
-            {/* Tags */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Tags</Label>
-              <Input className="h-8 text-xs" placeholder="Comma-separated tags..." value={values.tags} onChange={e => set('tags', e.target.value)} />
-            </div>
-
-            {/* Name */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Name</Label>
-              <Input className="h-8 text-xs" placeholder="Contact name..." value={values.name} onChange={e => set('name', e.target.value)} />
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Description</Label>
-              <Textarea className="text-xs min-h-[60px]" placeholder="Filter description..." value={values.description} onChange={e => set('description', e.target.value)} />
-            </div>
-
-            {/* #UW */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">#UW</Label>
-              <Input className="h-8 text-xs" placeholder="#UW number..." value={values.uwNumber} onChange={e => set('uwNumber', e.target.value)} />
-            </div>
-
-            {/* Client Working with Other Lenders */}
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-muted-foreground">Client Working with Other Lenders</Label>
-              <Switch checked={values.clientWorkingWithOtherLenders} onCheckedChange={v => set('clientWorkingWithOtherLenders', v)} />
-            </div>
-
-            {/* Weekly's */}
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-muted-foreground">Weekly's</Label>
-              <Switch checked={values.weeklys} onCheckedChange={v => set('weeklys', v)} />
-            </div>
+              {/* Details */}
+              <AccordionItem value="details" className="border-none">
+                <AccordionTrigger className={triggerClass}>
+                  <span className="flex items-center">
+                    Details
+                    <SectionBadge count={sectionCounts.details} />
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Company</Label>
+                    <Input className="h-8 text-xs" placeholder="Company name..." value={values.company} onChange={e => set('company', e.target.value)} />
+                  </div>
+                  <RangeInput label="Value" minVal={values.valueMin} maxVal={values.valueMax} onMinChange={v => set('valueMin', v)} onMaxChange={v => set('valueMax', v)} placeholder="$" />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Tags</Label>
+                    <Input className="h-8 text-xs" placeholder="Comma-separated tags..." value={values.tags} onChange={e => set('tags', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Name</Label>
+                    <Input className="h-8 text-xs" placeholder="Contact name..." value={values.name} onChange={e => set('name', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Description</Label>
+                    <Textarea className="text-xs min-h-[60px]" placeholder="Filter description..." value={values.description} onChange={e => set('description', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">#UW</Label>
+                    <Input className="h-8 text-xs" placeholder="#UW number..." value={values.uwNumber} onChange={e => set('uwNumber', e.target.value)} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium text-muted-foreground">Client Working with Other Lenders</Label>
+                    <Switch checked={values.clientWorkingWithOtherLenders} onCheckedChange={v => set('clientWorkingWithOtherLenders', v)} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium text-muted-foreground">Weekly's</Label>
+                    <Switch checked={values.weeklys} onCheckedChange={v => set('weeklys', v)} />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </ScrollArea>
 
-        <SheetFooter className="px-6 py-4 border-t border-border">
-          <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
-          <Button size="sm" onClick={handleSave} disabled={!values.filterName.trim()}>Save Filter</Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+          <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
+            <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
+            <Button size="sm" onClick={handleSave} disabled={!values.filterName.trim()}>Save Filter</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
