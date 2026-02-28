@@ -164,7 +164,7 @@ function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-slate-800 bg-white border border-violet-200 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
+            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-violet-200 dark:border-violet-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 shrink-0" />}
         </div>
@@ -173,16 +173,16 @@ function EditableField({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3.5 py-2.5 bg-white hover:bg-slate-50/80 transition-colors cursor-pointer group">
-      <div className="flex items-center gap-2 text-slate-400">
+    <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3.5 py-2.5 bg-card hover:bg-muted/50 transition-colors cursor-pointer group">
+      <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
-        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className={`text-[13px] text-right truncate max-w-[170px] ${highlight ? 'font-bold text-emerald-700' : 'font-medium text-slate-800'}`}>
+        <span className={`text-[13px] text-right truncate max-w-[170px] ${highlight ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'font-medium text-foreground'}`}>
           {value || '\u2014'}
         </span>
-        <Pencil className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+        <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
     </div>
   );
@@ -215,14 +215,14 @@ function EditableSelectField({
   };
 
   return (
-    <div className="flex items-center justify-between px-3.5 py-2 bg-white hover:bg-slate-50/80 transition-colors">
-      <div className="flex items-center gap-2 text-slate-400">
+    <div className="flex items-center justify-between px-3.5 py-2 bg-card hover:bg-muted/50 transition-colors">
+      <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
-        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
       <div className="flex items-center gap-1.5">
         <Select value={value} onValueChange={handleChange}>
-          <SelectTrigger className="h-7 w-auto min-w-[100px] text-[13px] font-medium text-slate-800 border-transparent hover:border-slate-200 bg-transparent shadow-none px-2 gap-1">
+          <SelectTrigger className="h-7 w-auto min-w-[100px] text-[13px] font-medium text-foreground border-transparent hover:border-border bg-transparent shadow-none px-2 gap-1">
             <SelectValue>{displayValue}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -266,7 +266,7 @@ function EditableContactRow({
           onBlur={save}
           placeholder={placeholder}
           disabled={saving}
-          className="flex-1 text-[13px] text-slate-700 bg-transparent outline-none placeholder:text-slate-300"
+          className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
         />
         {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 shrink-0" />}
       </div>
@@ -274,12 +274,12 @@ function EditableContactRow({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50/80 hover:bg-slate-100/80 transition-colors group cursor-pointer">
-      <div className="text-slate-400 group-hover:text-slate-500 shrink-0">{icon}</div>
-      <span className={`text-[13px] truncate flex-1 ${value ? 'text-slate-700 font-medium' : 'text-slate-400 italic'}`}>
+    <div onClick={() => setEditing(true)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors group cursor-pointer">
+      <div className="text-muted-foreground group-hover:text-foreground shrink-0">{icon}</div>
+      <span className={`text-[13px] truncate flex-1 ${value ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
         {value || placeholder}
       </span>
-      <Pencil className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+      <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
     </div>
   );
 }
@@ -337,9 +337,9 @@ function EditableTags({
           onBlur={save}
           placeholder="tag1, tag2, tag3..."
           disabled={saving}
-          className="w-full text-[13px] text-slate-700 bg-transparent outline-none placeholder:text-slate-300"
+          className="w-full text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
         />
-        <p className="text-[10px] text-slate-400 mt-1">Comma-separated. Press Enter to save.</p>
+        <p className="text-[10px] text-muted-foreground mt-1">Comma-separated. Press Enter to save.</p>
         {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 mt-1" />}
       </div>
     );
@@ -350,16 +350,16 @@ function EditableTags({
       {tags.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 items-center">
           {tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border-violet-200 font-medium">
+            <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800 font-medium">
               {tag}
             </Badge>
           ))}
-          <Pencil className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
+          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
         </div>
       ) : (
         <div className="flex items-center gap-1.5">
-          <p className="text-xs text-slate-400 italic">No tags</p>
-          <Pencil className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+          <p className="text-xs text-muted-foreground italic">No tags</p>
+          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </div>
       )}
     </div>
@@ -412,12 +412,12 @@ function EditableNotes({
           onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false); }}
           disabled={saving}
           placeholder="Add notes..."
-          className="w-full text-[13px] text-slate-600 leading-relaxed bg-transparent outline-none resize-none placeholder:text-slate-300"
+          className="w-full text-[13px] text-foreground/80 leading-relaxed bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
           rows={3}
         />
         <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-violet-100">
           {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500" />}
-          <button onClick={() => setEditing(false)} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded transition-colors">Cancel</button>
+          <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">Cancel</button>
           <button onClick={save} disabled={saving} className="text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
             <Check className="h-3 w-3" />Save
           </button>
@@ -427,15 +427,15 @@ function EditableNotes({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="rounded-xl border border-slate-100 bg-slate-50/50 p-3.5 cursor-pointer hover:border-slate-200 hover:bg-slate-50 transition-all group">
+    <div onClick={() => setEditing(true)} className="rounded-xl border border-border bg-muted/30 p-3.5 cursor-pointer hover:border-border hover:bg-muted/50 transition-all group">
       {value ? (
-        <p className="text-[13px] text-slate-600 leading-relaxed whitespace-pre-wrap">{value}</p>
+        <p className="text-[13px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{value}</p>
       ) : (
-        <p className="text-[13px] text-slate-400 italic">Click to add notes...</p>
+        <p className="text-[13px] text-muted-foreground italic">Click to add notes...</p>
       )}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Pencil className="h-3 w-3 text-slate-400" />
-        <span className="text-[11px] text-slate-400">Click to edit</span>
+        <Pencil className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[11px] text-muted-foreground">Click to edit</span>
       </div>
     </div>
   );
@@ -444,12 +444,12 @@ function EditableNotes({
 // ── Read-only row (Pipeline, Created) ──
 function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between px-3.5 py-2.5 bg-white">
-      <div className="flex items-center gap-2 text-slate-400">
+    <div className="flex items-center justify-between px-3.5 py-2.5 bg-card">
+      <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
-        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
-      <span className="text-[13px] font-medium text-slate-800 text-right truncate max-w-[180px]">{value}</span>
+      <span className="text-[13px] font-medium text-foreground text-right truncate max-w-[180px]">{value}</span>
     </div>
   );
 }
@@ -471,12 +471,12 @@ function RelatedSection({ icon, label, count, iconColor, children }: {
   const [open, setOpen] = useState(true);
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-slate-50/80 px-1 rounded-lg transition-colors">
-        {open ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+      <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-1 rounded-lg transition-colors">
+        {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <span className={iconColor}>{icon}</span> {label}
         </span>
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-slate-100 text-slate-500">
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-muted text-muted-foreground">
           {count}
         </Badge>
       </CollapsibleTrigger>
@@ -579,16 +579,16 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
     <div className="px-5 py-4">
       {timelineItems.length === 0 ? (
         <div className="py-10 flex flex-col items-center justify-center text-center">
-          <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-            <Clock className="h-5 w-5 text-slate-400" />
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
+            <Clock className="h-5 w-5 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium text-slate-500">No activity recorded yet</p>
-          <p className="text-xs text-slate-400 mt-0.5">Communications and events will appear here</p>
+          <p className="text-sm font-medium text-muted-foreground">No activity recorded yet</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Communications and events will appear here</p>
         </div>
       ) : (
         <div className="relative">
           {/* Vertical timeline line */}
-          <div className="absolute left-[13px] top-2 bottom-2 w-px bg-slate-200" />
+          <div className="absolute left-[13px] top-2 bottom-2 w-px bg-border" />
 
           <div className="space-y-0.5">
             {timelineItems.map((item) => {
@@ -615,8 +615,8 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-[13px] font-semibold text-slate-800 leading-tight">{item.title}</p>
-                      <span className="text-[11px] text-slate-400 whitespace-nowrap shrink-0">
+                      <p className="text-[13px] font-semibold text-foreground leading-tight">{item.title}</p>
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                         {formatDistanceToNow(parseISO(item.createdAt), { addSuffix: true })}
                       </span>
                     </div>
@@ -624,11 +624,11 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
                     {/* Stage change badges */}
                     {item.type === 'stage_change' && fromStage && toStage && (
                       <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${stageConfig[fromStage]?.pill ?? 'bg-slate-100 text-slate-600'}`}>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${stageConfig[fromStage]?.pill ?? 'bg-muted text-muted-foreground'}`}>
                           {stageConfig[fromStage]?.label ?? fromStage}
                         </span>
-                        <ArrowRight className="h-3 w-3 text-slate-400 shrink-0" />
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${stageConfig[toStage]?.pill ?? 'bg-slate-100 text-slate-600'}`}>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${stageConfig[toStage]?.pill ?? 'bg-muted text-muted-foreground'}`}>
                           {stageConfig[toStage]?.label ?? toStage}
                         </span>
                       </div>
@@ -636,12 +636,12 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
 
                     {/* Communication content preview */}
                     {item.type !== 'stage_change' && item.content && (
-                      <p className="text-[12px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{item.content}</p>
+                      <p className="text-[12px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{item.content}</p>
                     )}
 
                     {/* Call duration */}
                     {item.type === 'call' && item.durationSeconds != null && item.durationSeconds > 0 && (
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
                         {Math.floor(item.durationSeconds / 60)}m {item.durationSeconds % 60}s
                       </p>
                     )}
@@ -730,7 +730,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
       {/* People */}
       <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} iconColor="text-blue-500">
         {contacts.length === 0 ? (
-          <p className="text-xs text-slate-400 italic py-1">No contacts added</p>
+          <p className="text-xs text-muted-foreground italic py-1">No contacts added</p>
         ) : (
           <div className="space-y-2 pt-1">
             {contacts.map((c) => (
@@ -739,11 +739,11 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
                   {c.name[0]?.toUpperCase() ?? '?'}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[12px] font-medium text-slate-700 truncate leading-tight">
+                  <p className="text-[12px] font-medium text-foreground truncate leading-tight">
                     {c.name}
-                    {c.is_primary && <span className="ml-1 text-[10px] text-violet-500 font-semibold">Primary</span>}
+                    {c.is_primary && <span className="ml-1 text-[10px] text-violet-500 dark:text-violet-400 font-semibold">Primary</span>}
                   </p>
-                  {c.title && <p className="text-[11px] text-slate-400 truncate">{c.title}</p>}
+                  {c.title && <p className="text-[11px] text-muted-foreground truncate">{c.title}</p>}
                 </div>
               </div>
             ))}
@@ -758,27 +758,27 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
             <div className={`h-7 w-7 rounded-lg bg-gradient-to-br ${getAvatarGradient(lead.company_name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
               {lead.company_name[0]?.toUpperCase() ?? '?'}
             </div>
-            <p className="text-[12px] font-medium text-slate-700">{lead.company_name}</p>
+            <p className="text-[12px] font-medium text-foreground">{lead.company_name}</p>
           </div>
         ) : (
-          <p className="text-xs text-slate-400 italic py-1">No company set</p>
+          <p className="text-xs text-muted-foreground italic py-1">No company set</p>
         )}
       </RelatedSection>
 
       {/* Tasks */}
       <RelatedSection icon={<CheckSquare className="h-3.5 w-3.5" />} label="Tasks" count={tasks.length} iconColor="text-emerald-500">
         {tasks.length === 0 ? (
-          <p className="text-xs text-slate-400 italic py-1">No tasks</p>
+          <p className="text-xs text-muted-foreground italic py-1">No tasks</p>
         ) : (
           <div className="space-y-1.5 pt-1">
             {tasks.map((t) => (
               <div key={t.id} className={`flex items-center gap-2 ${t.is_completed ? 'opacity-50' : ''}`}>
                 <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
-                  t.is_completed ? 'bg-emerald-100 border-emerald-300' : 'border-slate-300'
+                  t.is_completed ? 'bg-emerald-100 dark:bg-emerald-900/50 border-emerald-300 dark:border-emerald-700' : 'border-border'
                 }`}>
-                  {t.is_completed && <Check className="h-2.5 w-2.5 text-emerald-600" />}
+                  {t.is_completed && <Check className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />}
                 </div>
-                <span className={`text-[12px] truncate flex-1 ${t.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                <span className={`text-[12px] truncate flex-1 ${t.is_completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                   {t.title}
                 </span>
                 {t.status && !t.is_completed && (
@@ -795,21 +795,21 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
       {/* Milestones */}
       <RelatedSection icon={<Flag className="h-3.5 w-3.5" />} label="Milestones" count={milestones.length} iconColor="text-amber-500">
         {milestones.length === 0 ? (
-          <p className="text-xs text-slate-400 italic py-1">No milestones</p>
+          <p className="text-xs text-muted-foreground italic py-1">No milestones</p>
         ) : (
           <div className="space-y-1.5 pt-1">
             {milestones.map((m) => (
               <div key={m.id} className="flex items-center gap-2">
                 <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
-                  m.completed ? 'bg-amber-100 border-amber-300' : 'border-slate-300'
+                  m.completed ? 'bg-amber-100 dark:bg-amber-900/50 border-amber-300 dark:border-amber-700' : 'border-border'
                 }`}>
-                  {m.completed && <Check className="h-2.5 w-2.5 text-amber-600" />}
+                  {m.completed && <Check className="h-2.5 w-2.5 text-amber-600 dark:text-amber-400" />}
                 </div>
-                <span className={`text-[12px] truncate flex-1 ${m.completed ? 'text-slate-400' : 'text-slate-700'}`}>
+                <span className={`text-[12px] truncate flex-1 ${m.completed ? 'text-muted-foreground' : 'text-foreground'}`}>
                   {m.milestone_name}
                 </span>
                 {m.completed_at && (
-                  <span className="text-[10px] text-slate-400 shrink-0">{formatDate(m.completed_at)}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">{formatDate(m.completed_at)}</span>
                 )}
               </div>
             ))}
@@ -820,17 +820,17 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
       {/* Waiting On */}
       <RelatedSection icon={<Clock className="h-3.5 w-3.5" />} label="Waiting On" count={openWaiting.length} iconColor="text-rose-500">
         {openWaiting.length === 0 ? (
-          <p className="text-xs text-slate-400 italic py-1">Nothing pending</p>
+          <p className="text-xs text-muted-foreground italic py-1">Nothing pending</p>
         ) : (
           <div className="space-y-2 pt-1">
             {openWaiting.map((w) => {
               const isOverdue = w.due_date && new Date(w.due_date) < new Date();
               return (
-                <div key={w.id} className={`rounded-lg border p-2 ${isOverdue ? 'border-rose-200 bg-rose-50/50' : 'border-slate-100 bg-slate-50/50'}`}>
-                  <p className={`text-[12px] font-medium ${isOverdue ? 'text-rose-700' : 'text-slate-700'}`}>{w.owner}</p>
-                  {w.description && <p className="text-[11px] text-slate-500 mt-0.5">{w.description}</p>}
+                <div key={w.id} className={`rounded-lg border p-2 ${isOverdue ? 'border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/30' : 'border-border bg-muted/30'}`}>
+                  <p className={`text-[12px] font-medium ${isOverdue ? 'text-rose-700 dark:text-rose-400' : 'text-foreground'}`}>{w.owner}</p>
+                  {w.description && <p className="text-[11px] text-muted-foreground mt-0.5">{w.description}</p>}
                   {w.due_date && (
-                    <p className={`text-[10px] mt-1 ${isOverdue ? 'text-rose-500 font-medium' : 'text-slate-400'}`}>
+                    <p className={`text-[10px] mt-1 ${isOverdue ? 'text-rose-500 dark:text-rose-400 font-medium' : 'text-muted-foreground'}`}>
                       {isOverdue ? 'Overdue: ' : 'Due: '}{formatDate(w.due_date)}
                     </p>
                   )}
@@ -903,7 +903,7 @@ export default function UnderwritingDetailPanel({
   const ownerOptions = teamMembers.map((m) => ({ value: m.id, label: m.name }));
 
   return (
-    <aside className="shrink-0 w-[380px] border-l border-border/60 bg-white flex flex-col h-full animate-in slide-in-from-right-5 duration-200">
+    <aside className="shrink-0 w-[380px] border-l border-border/60 bg-card flex flex-col h-full animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
       <div className="shrink-0">
         <div className="h-1" style={{ background: 'linear-gradient(90deg, #6d28d9, #8b5cf6, #a78bfa)' }} />
@@ -915,9 +915,9 @@ export default function UnderwritingDetailPanel({
                 {initial}
               </div>
               <div className="min-w-0">
-                <h2 className="text-[15px] font-bold text-slate-900 truncate leading-tight">{lead.name}</h2>
+                <h2 className="text-[15px] font-bold text-foreground truncate leading-tight">{lead.name}</h2>
                 {lead.company_name && (
-                  <p className="text-xs text-slate-500 truncate flex items-center gap-1 mt-0.5">
+                  <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
                     <Building2 className="h-3 w-3 shrink-0" />
                     {lead.company_name}
                   </p>
@@ -926,20 +926,20 @@ export default function UnderwritingDetailPanel({
             </div>
             <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
               {onExpand && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-600" title="Expand full view" onClick={onExpand}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Expand full view" onClick={onExpand}>
                   <Maximize2 className="h-3.5 w-3.5" />
                 </Button>
               )}
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-600" onClick={onClose}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onClose}>
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100">
-              <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="text-sm font-bold text-emerald-700 tabular-nums">{formatValue(dealValue)}</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-800">
+              <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatValue(dealValue)}</span>
             </div>
             {stageCfg && (
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${stageCfg.bg}`}>
@@ -951,13 +951,13 @@ export default function UnderwritingDetailPanel({
         </div>
 
         {/* Tabs */}
-        <div className="flex px-5 gap-1 border-b border-slate-100">
+        <div className="flex px-5 gap-1 border-b border-border">
           {(['details', 'activity', 'related'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all relative ${
-                activeTab === tab ? 'text-violet-700' : 'text-slate-400 hover:text-slate-600'
+                activeTab === tab ? 'text-violet-700 dark:text-violet-400' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab}
@@ -975,11 +975,11 @@ export default function UnderwritingDetailPanel({
           <div className="px-5 py-4 space-y-5">
 
             {/* Stage Progress */}
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3.5">
+            <div className="rounded-xl border border-border bg-muted/30 p-3.5">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Stage Progress</span>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Stage Progress</span>
                 {daysInStage !== null && (
-                  <span className={`text-[11px] font-medium flex items-center gap-1 ${daysInStage > 14 ? 'text-amber-600' : 'text-slate-400'}`}>
+                  <span className={`text-[11px] font-medium flex items-center gap-1 ${daysInStage > 14 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
                     <Clock className="h-3 w-3" />
                     {daysInStage}d in stage
                   </span>
@@ -996,7 +996,7 @@ export default function UnderwritingDetailPanel({
                       key={status}
                       title={cfg?.label ?? status}
                       className={`flex-1 h-1.5 rounded-full transition-all ${
-                        isCurrent ? `${cfg?.dot ?? 'bg-slate-500'} shadow-sm ring-2 ring-offset-1 ring-slate-200` : isPast ? 'bg-violet-400' : 'bg-slate-200'
+                        isCurrent ? `${cfg?.dot ?? 'bg-muted-foreground'} shadow-sm ring-2 ring-offset-1 ring-border` : isPast ? 'bg-violet-400' : 'bg-border'
                       }`}
                     />
                   );
@@ -1005,9 +1005,9 @@ export default function UnderwritingDetailPanel({
               {/* Stage dropdown */}
               {onStageChange && (
                 <Select value={lead.status} onValueChange={(v) => onStageChange(lead.id, v as LeadStatus)}>
-                  <SelectTrigger className="h-9 w-full text-xs border-slate-200 bg-white rounded-lg">
+                  <SelectTrigger className="h-9 w-full text-xs border-border bg-card rounded-lg">
                     <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full shrink-0 ${stageCfg?.dot ?? 'bg-slate-400'}`} />
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${stageCfg?.dot ?? 'bg-muted-foreground'}`} />
                       <SelectValue>{stageCfg?.label ?? lead.status}</SelectValue>
                     </div>
                   </SelectTrigger>
@@ -1017,7 +1017,7 @@ export default function UnderwritingDetailPanel({
                       return (
                         <SelectItem key={s} value={s} className="text-xs">
                           <div className="flex items-center gap-2">
-                            <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-slate-400'}`} />
+                            <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
                             {cfg?.label ?? s}
                           </div>
                         </SelectItem>
@@ -1030,7 +1030,7 @@ export default function UnderwritingDetailPanel({
 
             {/* Contact — all editable */}
             <div>
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Contact</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Contact</span>
               <div className="space-y-1.5">
                 <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={lead.name} field="name" leadId={lead.id} placeholder="Name" onSaved={handleFieldSaved} />
                 <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={lead.email ?? ''} field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} />
@@ -1040,8 +1040,8 @@ export default function UnderwritingDetailPanel({
 
             {/* Deal Details — all editable */}
             <div>
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Deal Details</span>
-              <div className="rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Deal Details</span>
+              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
                 <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Underwriting" />
                 <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="CLX File" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
                 {ownerOptions.length > 0 ? (
@@ -1067,13 +1067,13 @@ export default function UnderwritingDetailPanel({
 
             {/* Tags — editable */}
             <div>
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Tags</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Tags</span>
               <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
             </div>
 
             {/* Notes — editable */}
             <div>
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Notes</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Notes</span>
               <EditableNotes value={lead.notes ?? ''} leadId={lead.id} onSaved={handleFieldSaved} />
             </div>
           </div>
@@ -1094,8 +1094,8 @@ export default function UnderwritingDetailPanel({
 
       {/* Footer */}
       {onExpand && (
-        <div className="shrink-0 px-5 py-3 border-t border-slate-100">
-          <button onClick={onExpand} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 transition-colors">
+        <div className="shrink-0 px-5 py-3 border-t border-border">
+          <button onClick={onExpand} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-violet-700 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors">
             Open full record
             <Maximize2 className="h-3 w-3" />
           </button>

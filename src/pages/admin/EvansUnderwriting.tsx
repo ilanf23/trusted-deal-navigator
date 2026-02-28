@@ -1032,14 +1032,9 @@ const EvansUnderwriting = () => {
                 <button
                   onClick={() => setSidebarOpen(v => !v)}
                   title={sidebarOpen ? 'Hide filters' : 'Show filters'}
-                  className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-all ${
-                    !sidebarOpen
-                      ? 'bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400'
-                      : 'bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
+                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border text-xs font-medium transition-all bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <PanelLeft className="h-3.5 w-3.5 shrink-0" />
-                  {sidebarOpen ? 'Hide Filters' : 'Show Filters'}
                 </button>
 
                 {!isLoading && (
@@ -1204,57 +1199,57 @@ const EvansUnderwriting = () => {
             {viewMode === 'table' ? (
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
-                  <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm border-b border-border">
+                  <thead className="border-b border-border">
                     <tr>
-                      <th className="w-10 px-4 py-3 sticky left-0 z-20 bg-muted/90 backdrop-blur-sm" />
-                      <ColHeader className="sticky z-20 bg-muted/90 backdrop-blur-sm border-r border-border/50" style={{ left: 40 }}>
+                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-muted" />
+                      <ColHeader className="sticky top-0 z-30 bg-muted border-r border-border/50" style={{ left: 40 }}>
                         Opportunity
                       </ColHeader>
-                      <ColHeader colKey="company">
+                      <ColHeader colKey="company" className="sticky top-0 z-10 bg-muted">
                         Company
                       </ColHeader>
-                      <ColHeader colKey="contact">
+                      <ColHeader colKey="contact" className="sticky top-0 z-10 bg-muted">
                         Contact
                       </ColHeader>
-                      <ColHeader colKey="value">
+                      <ColHeader colKey="value" className="sticky top-0 z-10 bg-muted">
                         Value
                       </ColHeader>
-                      <ColHeader colKey="ownedBy">
+                      <ColHeader colKey="ownedBy" className="sticky top-0 z-10 bg-muted">
                         Owner
                       </ColHeader>
-                      <ColHeader colKey="tasks">
+                      <ColHeader colKey="tasks" className="sticky top-0 z-10 bg-muted">
                         Tasks
                       </ColHeader>
-                      <ColHeader colKey="stage">
+                      <ColHeader colKey="stage" className="sticky top-0 z-10 bg-muted">
                         Stage
                       </ColHeader>
-                      <ColHeader colKey="daysInStage">
+                      <ColHeader colKey="daysInStage" className="sticky top-0 z-10 bg-muted">
                         Days
                       </ColHeader>
-                      <ColHeader colKey="stageUpdated">
+                      <ColHeader colKey="stageUpdated" className="sticky top-0 z-10 bg-muted">
                         Updated
                       </ColHeader>
-                      <ColHeader colKey="lastContacted">
+                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10 bg-muted">
                         Contacted
                       </ColHeader>
-                      <ColHeader colKey="interactions">
+                      <ColHeader colKey="interactions" className="sticky top-0 z-10 bg-muted">
                         Activity
                       </ColHeader>
-                      <ColHeader colKey="inactiveDays">
+                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10 bg-muted">
                         Dormant
                       </ColHeader>
-                      <ColHeader colKey="tags">
+                      <ColHeader colKey="tags" className="sticky top-0 z-10 bg-muted">
                         Tags
                       </ColHeader>
-                      <th className="w-10 px-2 py-3" />
+                      <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-muted" />
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
-                          <td className="px-4 py-3.5 w-10 sticky left-0 z-[5] bg-inherit"><Skeleton className="h-4 w-4 rounded" /></td>
-                          <td className="px-4 py-3.5 sticky z-[5] bg-inherit border-r border-border/50" style={{ width: columnWidths.opportunity, left: 40 }}>
+                          <td className="px-4 py-3.5 w-10 sticky left-0 z-[5] bg-card"><Skeleton className="h-4 w-4 rounded" /></td>
+                          <td className="px-4 py-3.5 sticky z-[5] border-r border-border/50 bg-card" style={{ width: columnWidths.opportunity, left: 40 }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                               <div className="space-y-1.5">
@@ -1321,6 +1316,12 @@ const EvansUnderwriting = () => {
                         const dealValue = fakeValue(lead.id);
                         const isSelected = selectedLead?.id === lead.id;
 
+                        const stickyBg = isSelected
+                          ? 'bg-violet-50 dark:bg-violet-950 group-hover:bg-violet-100 dark:group-hover:bg-violet-900'
+                          : rowIdx % 2 === 0
+                            ? 'bg-card group-hover:bg-muted'
+                            : 'bg-card group-hover:bg-muted';
+
                         return (
                           <tr
                             key={lead.id}
@@ -1330,11 +1331,11 @@ const EvansUnderwriting = () => {
                                 ? 'bg-violet-50/60 dark:bg-violet-950/30 hover:bg-violet-50/80 dark:hover:bg-violet-950/40'
                                 : rowIdx % 2 === 0
                                   ? 'bg-card hover:bg-muted/50'
-                                  : 'bg-muted/20 hover:bg-muted/50'
+                                  : 'bg-muted/30 hover:bg-muted/50'
                             }`}
                           >
                             {/* Checkbox */}
-                            <td className="px-4 py-3 w-10 sticky left-0 z-[5] bg-inherit">
+                            <td className={`px-4 py-3 w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}>
                               <div className={`h-4 w-4 rounded border-2 transition-colors ${
                                 isSelected ? 'border-violet-500 bg-violet-500' : 'border-border bg-card group-hover:border-muted-foreground/50'
                               } flex items-center justify-center`}>
@@ -1343,7 +1344,7 @@ const EvansUnderwriting = () => {
                             </td>
 
                             {/* Opportunity */}
-                            <td className="px-4 py-3 overflow-hidden sticky z-[5] bg-inherit border-r border-border/50" style={{ width: columnWidths.opportunity, left: 40 }}>
+                            <td className={`px-4 py-3 overflow-hidden sticky z-[5] border-r border-border/50 transition-colors ${stickyBg}`} style={{ width: columnWidths.opportunity, left: 40 }}>
                               <div className="flex items-center gap-2.5">
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
@@ -1519,7 +1520,7 @@ const EvansUnderwriting = () => {
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isSelected
                                   ? 'text-violet-500'
-                                  : 'text-transparent group-hover:text-slate-400'
+                                  : 'text-transparent group-hover:text-muted-foreground'
                               }`} />
                             </td>
                           </tr>
@@ -1547,7 +1548,7 @@ const EvansUnderwriting = () => {
                           key={status}
                           status={status}
                           label={cfg?.label ?? status}
-                          color={cfg?.dot ?? 'bg-slate-500'}
+                          color={cfg?.dot ?? 'bg-muted-foreground'}
                           leads={columnLeads}
                           teamMemberMap={teamMemberMap}
                           draggedId={draggedLead?.id ?? null}

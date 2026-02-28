@@ -1835,6 +1835,7 @@ export type Database = {
           converted_at: string | null
           converted_to_client_id: string | null
           created_at: string
+          deal_value: number | null
           email: string | null
 
           flagged_for_weekly: boolean
@@ -1875,6 +1876,7 @@ export type Database = {
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
+          deal_value?: number | null
           email?: string | null
 
           flagged_for_weekly?: boolean
@@ -1915,6 +1917,7 @@ export type Database = {
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
+          deal_value?: number | null
           email?: string | null
 
           flagged_for_weekly?: boolean

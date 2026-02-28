@@ -241,6 +241,7 @@ export const AvatarUpload = ({
       toast.success('Profile photo updated!');
       handleClose();
       queryClient.invalidateQueries({ queryKey: ['team-member'] });
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
     } catch (error: any) {
       toast.error('Failed to upload photo: ' + error.message);
     } finally {
@@ -262,6 +263,7 @@ export const AvatarUpload = ({
       toast.success('Profile photo removed');
       handleClose();
       queryClient.invalidateQueries({ queryKey: ['team-member'] });
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
     } catch (error: any) {
       toast.error('Failed to remove photo: ' + error.message);
     } finally {

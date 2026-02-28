@@ -103,6 +103,7 @@ export function useInlineSave(
   field: string,
   currentValue: string,
   onSaved: (field: string, newValue: string) => void,
+  transform?: (val: string) => unknown,
 ) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(currentValue);
@@ -119,18 +120,20 @@ export function useInlineSave(
       return;
     }
     setSaving(true);
+    const saveValue = transform ? transform(trimmed) : (trimmed || null);
     const { error } = await supabase
       .from('leads')
-      .update({ [field]: trimmed || null })
+      .update({ [field]: saveValue })
       .eq('id', leadId);
     setSaving(false);
     if (error) {
+      console.error('InlineEditableFields save error:', { field, leadId, saveValue, error });
       toast.error('Failed to save');
       return;
     }
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, currentValue, field, leadId, onSaved]);
+  }, [draft, currentValue, field, leadId, onSaved, transform]);
 
   const cancel = useCallback(() => {
     setDraft(currentValue);
@@ -142,13 +145,14 @@ export function useInlineSave(
 
 // ── Editable Deal-details row ──
 export function EditableField({
-  icon, label, value, field, leadId, highlight = false, onSaved,
+  icon, label, value, field, leadId, highlight = false, onSaved, transform,
 }: {
   icon: React.ReactNode; label: string; value: string; field: string;
   leadId: string; highlight?: boolean;
   onSaved: (field: string, newValue: string) => void;
+  transform?: (val: string) => unknown;
 }) {
-  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved);
+  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved, transform);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -170,7 +174,7 @@ export function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-slate-800 bg-white border border-violet-200 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
+            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-violet-200 dark:border-violet-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 shrink-0" />}
         </div>
@@ -179,16 +183,16 @@ export function EditableField({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3.5 py-2.5 bg-white hover:bg-slate-50/80 transition-colors cursor-pointer group">
-      <div className="flex items-center gap-2 text-slate-400">
+    <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3.5 py-2.5 bg-card hover:bg-muted/50 transition-colors cursor-pointer group">
+      <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
-        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className={`text-[13px] text-right truncate max-w-[170px] ${highlight ? 'font-bold text-emerald-700' : 'font-medium text-slate-800'}`}>
+        <span className={`text-[13px] text-right truncate max-w-[170px] ${highlight ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'font-medium text-foreground'}`}>
           {value || '—'}
         </span>
-        <Pencil className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+        <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
     </div>
   );
@@ -221,14 +225,14 @@ export function EditableSelectField({
   };
 
   return (
-    <div className="flex items-center justify-between px-3.5 py-2 bg-white hover:bg-slate-50/80 transition-colors">
-      <div className="flex items-center gap-2 text-slate-400">
+    <div className="flex items-center justify-between px-3.5 py-2 bg-card hover:bg-muted/50 transition-colors">
+      <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
-        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
       <div className="flex items-center gap-1.5">
         <Select value={value} onValueChange={handleChange}>
-          <SelectTrigger className="h-7 w-auto min-w-[100px] text-[13px] font-medium text-slate-800 border-transparent hover:border-slate-200 bg-transparent shadow-none px-2 gap-1">
+          <SelectTrigger className="h-7 w-auto min-w-[100px] text-[13px] font-medium text-foreground border-transparent hover:border-border bg-transparent shadow-none px-2 gap-1">
             <SelectValue>{displayValue}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -272,7 +276,7 @@ export function EditableContactRow({
           onBlur={save}
           placeholder={placeholder}
           disabled={saving}
-          className="flex-1 text-[13px] text-slate-700 bg-transparent outline-none placeholder:text-slate-300"
+          className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
         />
         {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 shrink-0" />}
       </div>
@@ -280,12 +284,12 @@ export function EditableContactRow({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50/80 hover:bg-slate-100/80 transition-colors group cursor-pointer">
-      <div className="text-slate-400 group-hover:text-slate-500 shrink-0">{icon}</div>
-      <span className={`text-[13px] truncate flex-1 ${value ? 'text-slate-700 font-medium' : 'text-slate-400 italic'}`}>
+    <div onClick={() => setEditing(true)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors group cursor-pointer">
+      <div className="text-muted-foreground group-hover:text-foreground shrink-0">{icon}</div>
+      <span className={`text-[13px] truncate flex-1 ${value ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
         {value || placeholder}
       </span>
-      <Pencil className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+      <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
     </div>
   );
 }
@@ -342,9 +346,9 @@ export function EditableTags({
           onBlur={save}
           placeholder="tag1, tag2, tag3..."
           disabled={saving}
-          className="w-full text-[13px] text-slate-700 bg-transparent outline-none placeholder:text-slate-300"
+          className="w-full text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
         />
-        <p className="text-[10px] text-slate-400 mt-1">Comma-separated. Press Enter to save.</p>
+        <p className="text-[10px] text-muted-foreground mt-1">Comma-separated. Press Enter to save.</p>
         {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 mt-1" />}
       </div>
     );
@@ -355,16 +359,16 @@ export function EditableTags({
       {tags.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 items-center">
           {tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border-violet-200 font-medium">
+            <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800 font-medium">
               {tag}
             </Badge>
           ))}
-          <Pencil className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
+          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
         </div>
       ) : (
         <div className="flex items-center gap-1.5">
-          <p className="text-xs text-slate-400 italic">No tags</p>
-          <Pencil className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+          <p className="text-xs text-muted-foreground italic">No tags</p>
+          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </div>
       )}
     </div>
@@ -417,12 +421,12 @@ export function EditableNotes({
           onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false); }}
           disabled={saving}
           placeholder="Add notes..."
-          className="w-full text-[13px] text-slate-600 leading-relaxed bg-transparent outline-none resize-none placeholder:text-slate-300"
+          className="w-full text-[13px] text-foreground/80 leading-relaxed bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
           rows={3}
         />
         <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-violet-100">
           {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500" />}
-          <button onClick={() => setEditing(false)} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded transition-colors">Cancel</button>
+          <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">Cancel</button>
           <button onClick={save} disabled={saving} className="text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
             <Check className="h-3 w-3" />Save
           </button>
@@ -432,15 +436,15 @@ export function EditableNotes({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="rounded-xl border border-slate-100 bg-slate-50/50 p-3.5 cursor-pointer hover:border-slate-200 hover:bg-slate-50 transition-all group">
+    <div onClick={() => setEditing(true)} className="rounded-xl border border-border bg-muted/30 p-3.5 cursor-pointer hover:border-border hover:bg-muted/50 transition-all group">
       {value ? (
-        <p className="text-[13px] text-slate-600 leading-relaxed whitespace-pre-wrap">{value}</p>
+        <p className="text-[13px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{value}</p>
       ) : (
-        <p className="text-[13px] text-slate-400 italic">Click to add notes...</p>
+        <p className="text-[13px] text-muted-foreground italic">Click to add notes...</p>
       )}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Pencil className="h-3 w-3 text-slate-400" />
-        <span className="text-[11px] text-slate-400">Click to edit</span>
+        <Pencil className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[11px] text-muted-foreground">Click to edit</span>
       </div>
     </div>
   );
@@ -449,12 +453,12 @@ export function EditableNotes({
 // ── Read-only row (Pipeline, Created) ──
 export function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between px-3.5 py-2.5 bg-white">
-      <div className="flex items-center gap-2 text-slate-400">
+    <div className="flex items-center justify-between px-3.5 py-2.5 bg-card">
+      <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
-        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
-      <span className="text-[13px] font-medium text-slate-800 text-right truncate max-w-[180px]">{value}</span>
+      <span className="text-[13px] font-medium text-foreground text-right truncate max-w-[180px]">{value}</span>
     </div>
   );
 }
