@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,8 @@ import {
   CalendarDays, FolderOpen, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { differenceInDays, parseISO, format } from 'date-fns';
 
 
@@ -28,13 +29,17 @@ const UNDERWRITING_STATUSES: LeadStatus[] = [
   'underwriting',
   'ready_for_wu_approval',
   'pre_approval_issued',
+  'won',
+  'lost',
 ];
 
 const stageConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  moving_to_underwriting: { label: 'Moving to UW', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' },
-  underwriting: { label: 'Underwriting', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
-  ready_for_wu_approval: { label: 'Ready for Approval', color: 'text-violet-700', bg: 'bg-violet-50', border: 'border-violet-200' },
-  pre_approval_issued: { label: 'Pre-Approval Issued', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  moving_to_underwriting: { label: 'Moving to UW', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/50', border: 'border-blue-200 dark:border-blue-800' },
+  underwriting: { label: 'Underwriting', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/50', border: 'border-amber-200 dark:border-amber-800' },
+  ready_for_wu_approval: { label: 'Ready for Approval', color: 'text-violet-700 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-950/50', border: 'border-violet-200 dark:border-violet-800' },
+  pre_approval_issued: { label: 'Pre-Approval Issued', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' },
+  won: { label: 'Won', color: 'text-green-700 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-950/50', border: 'border-green-200 dark:border-green-800' },
+  lost: { label: 'Lost', color: 'text-red-700 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/50', border: 'border-red-200 dark:border-red-800' },
 };
 
 const VALUE_BUCKETS = [25000, 50000, 75000, 100000, 150000, 200000, 250000, 350000, 500000, 750000];
@@ -71,10 +76,10 @@ function formatShortDate(dateStr: string | null): string {
 function DetailField({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div className="flex items-start justify-between py-3 px-3.5 gap-4">
-      <span className="text-xs font-medium text-slate-500 shrink-0 pt-0.5">
+      <span className="text-xs font-medium text-muted-foreground shrink-0 pt-0.5">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </span>
-      <div className="text-[13px] font-medium text-slate-800 text-right">{children}</div>
+      <div className="text-[13px] font-medium text-foreground text-right">{children}</div>
     </div>
   );
 }
@@ -87,7 +92,7 @@ function StatBox({ value, label, icon, color }: { value: string | number; label:
         <span className={color}>{icon}</span>
         <span className={`text-lg font-bold tabular-nums ${color}`}>{value}</span>
       </div>
-      <span className="text-[11px] font-medium text-slate-400">{label}</span>
+      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
     </div>
   );
 }
@@ -99,15 +104,15 @@ function RelatedSection({ icon, label, count, iconColor, children }: {
   const [open, setOpen] = useState(true);
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-slate-50/80 px-4 rounded-lg transition-colors">
-        {open ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+      <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-4 rounded-lg transition-colors">
+        {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <span className={iconColor}>{icon}</span> {label}
         </span>
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-slate-100 text-slate-500">
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-muted text-muted-foreground">
           {count}
         </Badge>
-        <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto text-slate-400 hover:text-slate-600" onClick={(e) => e.stopPropagation()}>
+        <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto text-muted-foreground hover:text-foreground" onClick={(e) => e.stopPropagation()}>
           <Plus className="h-3 w-3" />
         </Button>
       </CollapsibleTrigger>
@@ -121,7 +126,23 @@ function RelatedSection({ icon, label, count, iconColor, children }: {
 export default function UnderwritingExpandedView() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
+
+  const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
+    if (!leadId) return;
+    const { error } = await supabase
+      .from('leads')
+      .update({ status: newStatus })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Failed to update stage');
+      return;
+    }
+    toast.success('Stage updated');
+    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+  }, [leadId, queryClient]);
 
   const { data: lead, isLoading } = useQuery({
     queryKey: ['lead-expanded', leadId],
@@ -209,35 +230,35 @@ export default function UnderwritingExpandedView() {
   return (
     <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
       {/* ── Header ── */}
-      <div className="shrink-0 border-b border-slate-200/80 px-6 py-4 bg-gradient-to-r from-slate-50/80 to-violet-50/40">
+      <div className="shrink-0 border-b border-border px-6 py-4 bg-gradient-to-r from-muted/50 to-violet-50/20 dark:to-violet-950/20">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600" onClick={goBack}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
             <X className="h-4 w-4" />
           </Button>
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md">
             {initial}
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold text-slate-900 truncate">{lead.name}</h1>
+            <h1 className="text-lg font-semibold text-foreground truncate">{lead.name}</h1>
             {lead.company_name && (
-              <p className="text-xs text-slate-500 truncate flex items-center gap-1 mt-0.5">
-                <Building2 className="h-3 w-3 text-slate-400" />
+              <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                <Building2 className="h-3 w-3 text-muted-foreground" />
                 {lead.company_name}
               </p>
             )}
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100">
-              <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="text-xs font-medium text-emerald-700">Opportunity</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-800">
+              <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Opportunity</span>
             </div>
-            <span className="text-sm font-bold text-emerald-700 tabular-nums">{formatValue(dealValue)}</span>
+            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatValue(dealValue)}</span>
           </div>
         </div>
       </div>
 
       {/* ── Stats Bar ── */}
-      <div className="shrink-0 border-b border-slate-200/80 flex items-center justify-center gap-0 divide-x divide-slate-200/60 py-1 bg-slate-50/50">
+      <div className="shrink-0 border-b border-border flex items-center justify-center gap-0 divide-x divide-border py-1 bg-muted/30">
         <StatBox value={interactionCount} label="Interactions" icon={<Activity className="h-4 w-4" />} color="text-blue-600" />
         <StatBox value={lastContacted} label="Last Contacted" icon={<Clock className="h-4 w-4" />} color="text-violet-600" />
         <StatBox value={inactiveDays ?? '—'} label="Inactive Days" icon={<AlertCircle className="h-4 w-4" />} color={inactiveColor} />
@@ -248,19 +269,19 @@ export default function UnderwritingExpandedView() {
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Details */}
-        <ScrollArea className="w-[340px] shrink-0 border-r border-slate-200/80 bg-white">
+        <ScrollArea className="w-[340px] shrink-0 border-r border-border bg-card">
           <div className="px-5 py-5">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3 block">Deal Details</span>
-            <div className="rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Deal Details</span>
+            <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
               <DetailField label="Name" required>
                 <span className="font-medium">{lead.name}</span>
               </DetailField>
               <DetailField label="Pipeline">
-                <Badge variant="secondary" className="text-[11px] rounded-full bg-violet-50 text-violet-700 border-violet-200 px-2.5">Underwriting</Badge>
+                <Badge variant="secondary" className="text-[11px] rounded-full bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800 px-2.5">Underwriting</Badge>
               </DetailField>
               <DetailField label="Stage">
-                <Select value={lead.status} disabled>
-                  <SelectTrigger className={`h-7 w-auto min-w-[130px] text-xs rounded-lg ${stageCfg?.border ?? 'border-slate-200'} ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
+                <Select value={lead.status} onValueChange={(v) => handleStageChange(v as LeadStatus)}>
+                  <SelectTrigger className={`h-7 w-auto min-w-[130px] text-xs rounded-lg ${stageCfg?.border ?? 'border-border'} ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -276,51 +297,51 @@ export default function UnderwritingExpandedView() {
                 <span>{lead.company_name ?? lead.name}</span>
               </DetailField>
               <DetailField label="Waiting On">
-                <span className="text-slate-400 italic">—</span>
+                <span className="text-muted-foreground italic">—</span>
               </DetailField>
               <DetailField label="Tags">
                 {lead.tags && lead.tags.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 justify-end">
                     {lead.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border-violet-200 font-medium">{tag}</Badge>
+                      <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800 font-medium">{tag}</Badge>
                     ))}
                   </div>
                 ) : (
-                  <span className="text-slate-400 italic">—</span>
+                  <span className="text-muted-foreground italic">—</span>
                 )}
               </DetailField>
               <DetailField label="Value">
-                <span className="font-semibold tabular-nums text-emerald-600">{formatValue(dealValue)}</span>
+                <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatValue(dealValue)}</span>
               </DetailField>
               <DetailField label="Owned By">
-                <span className="text-violet-600 font-medium">{assignedName}</span>
+                <span className="text-violet-600 dark:text-violet-400 font-medium">{assignedName}</span>
               </DetailField>
               <DetailField label="Source">
                 {lead.source ? (
-                  <Badge variant="secondary" className="text-[11px] rounded-full bg-violet-50 text-violet-700 border-violet-200 px-2.5 font-medium">{lead.source}</Badge>
+                  <Badge variant="secondary" className="text-[11px] rounded-full bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800 px-2.5 font-medium">{lead.source}</Badge>
                 ) : (
-                  <span className="text-slate-400 italic">—</span>
+                  <span className="text-muted-foreground italic">—</span>
                 )}
               </DetailField>
               <DetailField label="Description">
-                <span className="text-xs text-slate-500 line-clamp-4">{lead.notes ?? <span className="text-slate-400 italic">—</span>}</span>
+                <span className="text-xs text-muted-foreground line-clamp-4">{lead.notes ?? <span className="text-muted-foreground italic">—</span>}</span>
               </DetailField>
             </div>
           </div>
           <div className="px-5 pb-5">
-            <button className="text-xs text-violet-600 font-medium hover:text-violet-700 transition-colors">+ Add new field</button>
+            <button className="text-xs text-violet-600 dark:text-violet-400 font-medium hover:text-violet-700 dark:hover:text-violet-300 transition-colors">+ Add new field</button>
           </div>
         </ScrollArea>
 
         {/* CENTER: Activity */}
-        <div className="flex-1 flex flex-col min-w-0 bg-slate-50/30">
+        <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
           {/* Tabs */}
-          <div className="shrink-0 flex items-center gap-0 border-b border-slate-200/80 px-6 bg-white">
+          <div className="shrink-0 flex items-center gap-0 border-b border-border px-6 bg-card">
             <button
               className={`px-4 py-3 text-xs font-semibold transition-colors relative ${
                 activityTab === 'log'
-                  ? 'text-violet-700'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'text-violet-700 dark:text-violet-400'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActivityTab('log')}
             >
@@ -335,8 +356,8 @@ export default function UnderwritingExpandedView() {
             <button
               className={`px-4 py-3 text-xs font-semibold transition-colors relative ${
                 activityTab === 'note'
-                  ? 'text-violet-700'
-                  : 'text-slate-400 hover:text-slate-600'
+                  ? 'text-violet-700 dark:text-violet-400'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActivityTab('note')}
             >
@@ -356,7 +377,7 @@ export default function UnderwritingExpandedView() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Select defaultValue="todo">
-                      <SelectTrigger className="h-8 w-[120px] text-xs rounded-lg border-slate-200">
+                      <SelectTrigger className="h-8 w-[120px] text-xs rounded-lg border-border">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -369,25 +390,25 @@ export default function UnderwritingExpandedView() {
                   </div>
                   <Textarea
                     placeholder="Add a note..."
-                    className="min-h-[80px] text-sm resize-none rounded-xl border-slate-200 focus-visible:border-violet-400 focus-visible:ring-violet-400/20"
+                    className="min-h-[80px] text-sm resize-none rounded-xl border-border focus-visible:border-violet-400 focus-visible:ring-violet-400/20"
                   />
                 </div>
               ) : (
                 <Textarea
                   placeholder="Write a note..."
-                  className="min-h-[120px] text-sm resize-none rounded-xl border-slate-200 focus-visible:border-violet-400 focus-visible:ring-violet-400/20"
+                  className="min-h-[120px] text-sm resize-none rounded-xl border-border focus-visible:border-violet-400 focus-visible:ring-violet-400/20"
                 />
               )}
 
               {/* Earlier section */}
               <Separator className="my-6" />
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Earlier</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
               <div className="space-y-3">
-                <div className="border border-dashed border-slate-200 rounded-xl py-10 flex flex-col items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
-                    <Activity className="h-5 w-5 text-slate-400" />
+                <div className="border border-dashed border-border rounded-xl py-10 flex flex-col items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                    <Activity className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <p className="text-sm text-slate-400">No activity recorded yet</p>
+                  <p className="text-sm text-muted-foreground">No activity recorded yet</p>
                 </div>
               </div>
             </div>
@@ -395,54 +416,54 @@ export default function UnderwritingExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <ScrollArea className="w-[260px] shrink-0 border-l border-slate-200/80 bg-white">
+        <ScrollArea className="w-[260px] shrink-0 border-l border-border bg-card">
           <div className="py-4 px-1">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2 block px-3">Related</span>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block px-3">Related</span>
             <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} iconColor="text-blue-500">
               {contacts.length > 0 ? (
                 <div className="space-y-2 py-1">
                   {contacts.map((c) => (
-                    <div key={c.id} className="text-xs text-slate-700 flex items-center gap-2">
-                      <div className="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-700 shrink-0">
+                    <div key={c.id} className="text-xs text-foreground flex items-center gap-2">
+                      <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
                         {c.name[0]?.toUpperCase()}
                       </div>
                       <span className="font-medium">{c.name}</span>
-                      {c.title && <span className="text-slate-400">· {c.title}</span>}
+                      {c.title && <span className="text-muted-foreground">· {c.title}</span>}
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 py-1">No contacts</p>
+                <p className="text-xs text-muted-foreground py-1">No contacts</p>
               )}
             </RelatedSection>
 
             <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} iconColor="text-indigo-500">
               {lead.company_name ? (
-                <div className="text-xs text-slate-700 py-1 flex items-center gap-2">
-                  <div className="h-5 w-5 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-700 shrink-0">
+                <div className="text-xs text-foreground py-1 flex items-center gap-2">
+                  <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
                     {lead.company_name[0]?.toUpperCase()}
                   </div>
                   {lead.company_name}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 py-1">No companies</p>
+                <p className="text-xs text-muted-foreground py-1">No companies</p>
               )}
             </RelatedSection>
 
             <RelatedSection icon={<CheckSquare className="h-3.5 w-3.5" />} label="Tasks" count={taskCount} iconColor="text-emerald-500">
-              <button className="text-xs text-violet-600 font-medium hover:text-violet-700 transition-colors py-1">+ Add task...</button>
+              <button className="text-xs text-violet-600 dark:text-violet-400 font-medium hover:text-violet-700 dark:hover:text-violet-300 transition-colors py-1">+ Add task...</button>
             </RelatedSection>
 
             <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0} iconColor="text-orange-500">
-              <p className="text-xs text-slate-400 py-1">No files</p>
+              <p className="text-xs text-muted-foreground py-1">No files</p>
             </RelatedSection>
 
             <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0} iconColor="text-rose-500">
-              <p className="text-xs text-slate-400 py-1">No events</p>
+              <p className="text-xs text-muted-foreground py-1">No events</p>
             </RelatedSection>
 
             <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={0} iconColor="text-cyan-500">
-              <p className="text-xs text-slate-400 py-1">No projects</p>
+              <p className="text-xs text-muted-foreground py-1">No projects</p>
             </RelatedSection>
 
             <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1} iconColor="text-violet-500">

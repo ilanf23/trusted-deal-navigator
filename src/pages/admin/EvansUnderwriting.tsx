@@ -81,73 +81,87 @@ const UNDERWRITING_STATUSES: LeadStatus[] = [
 const stageConfig: Record<string, { label: string; color: string; bg: string; dot: string; pill: string }> = {
   review_kill_keep: {
     label: 'Review Kill / Keep',
-    color: 'text-red-700',
-    bg: 'bg-red-50 border-red-200',
+    color: 'text-red-700 dark:text-red-400',
+    bg: 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800',
     dot: 'bg-red-500',
-    pill: 'bg-red-100 text-red-700',
+    pill: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300',
   },
   initial_review: {
     label: 'Initial Review',
-    color: 'text-sky-700',
-    bg: 'bg-sky-50 border-sky-200',
+    color: 'text-sky-700 dark:text-sky-400',
+    bg: 'bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800',
     dot: 'bg-sky-500',
-    pill: 'bg-sky-100 text-sky-700',
+    pill: 'bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300',
   },
   waiting_on_needs_list: {
     label: 'Waiting on Needs List',
-    color: 'text-amber-700',
-    bg: 'bg-amber-50 border-amber-200',
+    color: 'text-amber-700 dark:text-amber-400',
+    bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800',
     dot: 'bg-amber-500',
-    pill: 'bg-amber-100 text-amber-700',
+    pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
   },
   waiting_on_client: {
     label: 'Waiting on Client',
-    color: 'text-orange-700',
-    bg: 'bg-orange-50 border-orange-200',
+    color: 'text-orange-700 dark:text-orange-400',
+    bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800',
     dot: 'bg-orange-500',
-    pill: 'bg-orange-100 text-orange-700',
+    pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300',
   },
   complete_files_for_review: {
     label: 'Complete Files for Review',
-    color: 'text-blue-700',
-    bg: 'bg-blue-50 border-blue-200',
+    color: 'text-blue-700 dark:text-blue-400',
+    bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800',
     dot: 'bg-blue-500',
-    pill: 'bg-blue-100 text-blue-700',
+    pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
   },
   need_structure_from_brad: {
     label: 'Need Structure from Brad',
-    color: 'text-indigo-700',
-    bg: 'bg-indigo-50 border-indigo-200',
+    color: 'text-indigo-700 dark:text-indigo-400',
+    bg: 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800',
     dot: 'bg-indigo-500',
-    pill: 'bg-indigo-100 text-indigo-700',
+    pill: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300',
   },
   maura_underwriting: {
     label: 'Maura Underwriting',
-    color: 'text-pink-700',
-    bg: 'bg-pink-50 border-pink-200',
+    color: 'text-pink-700 dark:text-pink-400',
+    bg: 'bg-pink-50 dark:bg-pink-950/50 border-pink-200 dark:border-pink-800',
     dot: 'bg-pink-500',
-    pill: 'bg-pink-100 text-pink-700',
+    pill: 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300',
   },
   brad_underwriting: {
     label: 'Brad Underwriting',
-    color: 'text-teal-700',
-    bg: 'bg-teal-50 border-teal-200',
+    color: 'text-teal-700 dark:text-teal-400',
+    bg: 'bg-teal-50 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800',
     dot: 'bg-teal-500',
-    pill: 'bg-teal-100 text-teal-700',
+    pill: 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
   },
   uw_paused: {
     label: 'UW Paused',
-    color: 'text-slate-600',
-    bg: 'bg-slate-100 border-slate-300',
+    color: 'text-slate-600 dark:text-slate-400',
+    bg: 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700',
     dot: 'bg-slate-400',
-    pill: 'bg-slate-200 text-slate-600',
+    pill: 'bg-slate-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300',
   },
   ready_for_wu_approval: {
     label: 'Ready for WU Approval',
-    color: 'text-emerald-700',
-    bg: 'bg-emerald-50 border-emerald-200',
+    color: 'text-emerald-700 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800',
     dot: 'bg-emerald-500',
-    pill: 'bg-emerald-100 text-emerald-700',
+    pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300',
+  },
+  won: {
+    label: 'Won',
+    color: 'text-green-700 dark:text-green-400',
+    bg: 'bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800',
+    dot: 'bg-green-500',
+    pill: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300',
+  },
+  lost: {
+    label: 'Lost',
+    color: 'text-red-700 dark:text-red-400',
+    bg: 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800',
+    dot: 'bg-red-500',
+    pill: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300',
   },
 };
 
@@ -157,6 +171,7 @@ const FILTER_OPTIONS = [
   { id: 'open', label: 'Open Opportunities', group: 'public' },
   { id: 'following', label: "Opportunities I'm Following", group: 'public' },
   { id: 'won', label: 'Won Opportunities', group: 'public' },
+  { id: 'lost', label: 'Lost Opportunities', group: 'public' },
   { id: 'brad_incoming', label: 'Brad Incoming Opportunities', group: 'public' },
   { id: 'initial_review', label: 'Deals for Initial Review', group: 'public' },
   { id: 'review_kill_keep', label: 'Deals Moving Towards Underwriting', group: 'public' },
@@ -320,7 +335,7 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
     <div
       ref={setNodeRef}
       className={`flex flex-col rounded-xl flex-1 min-w-[220px] max-w-[300px] transition-all ${
-        isOver ? 'ring-2 ring-violet-400 ring-offset-2 bg-violet-50/30' : 'bg-muted/30'
+        isOver ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-background bg-violet-50/30 dark:bg-violet-950/20' : 'bg-muted/30'
       }`}
     >
       <div className="px-3 py-2.5 flex items-center gap-2">
@@ -446,15 +461,25 @@ const EvansUnderwriting = () => {
 
   // ── Status update mutation for Kanban drag ──
   const statusMutation = useMutation({
-    mutationFn: async ({ leadId, newStatus }: { leadId: string; newStatus: LeadStatus }) => {
+    mutationFn: async ({ leadId, newStatus, oldStatus }: { leadId: string; newStatus: LeadStatus; oldStatus: LeadStatus }) => {
       const { error } = await supabase
         .from('leads')
         .update({ status: newStatus })
         .eq('id', leadId);
       if (error) throw error;
+      // Log stage change activity
+      const fromLabel = stageConfig[oldStatus]?.label ?? oldStatus;
+      const toLabel = stageConfig[newStatus]?.label ?? newStatus;
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId,
+        activity_type: 'stage_change',
+        title: `Moved from ${fromLabel} to ${toLabel}`,
+        content: JSON.stringify({ from: oldStatus, to: newStatus }),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-activity-timeline'] });
       toast.success('Deal moved successfully');
     },
     onError: () => {
@@ -529,7 +554,7 @@ const EvansUnderwriting = () => {
     const lead = filteredAndSorted.find(l => l.id === active.id);
     if (!lead || lead.status === targetStatus) return;
 
-    statusMutation.mutate({ leadId: lead.id, newStatus: targetStatus });
+    statusMutation.mutate({ leadId: lead.id, newStatus: targetStatus, oldStatus: lead.status as LeadStatus });
   }
 
   // ── Queries ──
@@ -565,6 +590,7 @@ const EvansUnderwriting = () => {
       const DB_KNOWN_UW_STATUSES: LeadStatus[] = [
         'initial_review', 'moving_to_underwriting', 'underwriting',
         'ready_for_wu_approval', 'pre_approval_issued',
+        'won', 'lost',
       ];
       const { data, error } = await supabase
         .from('leads')
@@ -628,6 +654,7 @@ const EvansUnderwriting = () => {
     counts['open'] = leads.length;
     counts['following'] = 0;
     counts['won'] = leads.filter(l => l.status === 'won' as LeadStatus).length;
+    counts['lost'] = leads.filter(l => l.status === 'lost' as LeadStatus).length;
     counts['brad_incoming'] = leads.filter(l => (l.assigned_to ?? '').toLowerCase().includes('brad') || teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad')).length;
     counts['onboarding_2024'] = leads.filter(l => l.cohort_year === 2024).length;
     counts['onboarding_2025'] = leads.filter(l => l.cohort_year === 2025).length;
@@ -643,6 +670,37 @@ const EvansUnderwriting = () => {
         result = result.filter((l) => l.status === activeFilter);
       } else if (activeFilter === 'won') {
         result = result.filter((l) => l.status === ('won' as LeadStatus));
+      } else if (activeFilter === 'lost') {
+        result = result.filter((l) => l.status === ('lost' as LeadStatus));
+      } else if (activeFilter.startsWith('custom_')) {
+        const cf = customFilters.find(f => f.id === activeFilter);
+        if (cf) {
+          const v = cf.values;
+          result = result.filter((l) => {
+            if (v.stage.length > 0 && !v.stage.includes(l.status)) return false;
+            if (v.status.length > 0 && !v.status.includes(l.status)) return false;
+            if (v.source.length > 0 && !v.source.includes(l.source ?? '')) return false;
+            if (v.ownedBy.length > 0 && !v.ownedBy.includes(l.assigned_to ?? '')) return false;
+
+            if (v.company.trim() && !(l.company_name ?? '').toLowerCase().includes(v.company.toLowerCase())) return false;
+            if (v.name.trim() && !l.name.toLowerCase().includes(v.name.toLowerCase())) return false;
+            if (v.uwNumber.trim() && !(l.uw_number ?? '').toLowerCase().includes(v.uwNumber.toLowerCase())) return false;
+
+            if (v.tags.trim()) {
+              const filterTags = v.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+              const leadTags = (l.tags ?? []).map(t => t.toLowerCase());
+              if (!filterTags.some(ft => leadTags.includes(ft))) return false;
+            }
+
+            if (v.clientWorkingWithOtherLenders && !l.client_other_lenders) return false;
+            if (v.weeklys && !l.flagged_for_weekly) return false;
+
+            if (v.dateAddedFrom && new Date(l.created_at) < v.dateAddedFrom) return false;
+            if (v.dateAddedTo && new Date(l.created_at) > v.dateAddedTo) return false;
+
+            return true;
+          });
+        }
       } else if (activeFilter === 'brad_incoming') {
         result = result.filter((l) => teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad'));
       } else if (activeFilter === 'onboarding_2024') {
@@ -673,7 +731,7 @@ const EvansUnderwriting = () => {
     });
 
     return result;
-  }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap]);
+  }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, customFilters]);
 
   const totalValue = useMemo(
     () => leads.reduce((sum, l) => sum + fakeValue(l.id), 0),
@@ -705,24 +763,28 @@ const EvansUnderwriting = () => {
   const ColHeader = ({
     colKey,
     children,
+    className: extraClassName,
+    style: extraStyle,
   }: {
     colKey?: ColumnKey;
     children: React.ReactNode;
+    className?: string;
+    style?: React.CSSProperties;
   }) => {
     if (colKey && !columnVisibility[colKey]) return null;
     const widthKey = colKey ?? 'opportunity';
     const width = columnWidths[widthKey] ?? 120;
     return (
       <th
-        className="px-4 py-3 text-left whitespace-nowrap"
-        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500 }}
+        className={`px-4 py-3 text-left whitespace-nowrap ${extraClassName ?? ''}`}
+        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, ...extraStyle }}
       >
         <ResizableColumnHeader
           columnId={widthKey}
           currentWidth={`${width}px`}
           onResize={handleColumnResize}
         >
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {children}
           </span>
         </ResizableColumnHeader>
@@ -734,8 +796,8 @@ const EvansUnderwriting = () => {
   const iconBtn = (active = false) =>
     `relative flex items-center justify-center h-7 w-7 rounded transition-all ${
       active
-        ? 'bg-white shadow-sm text-slate-800 border border-slate-200'
-        : 'text-slate-500 hover:bg-white hover:shadow-sm hover:text-slate-800 hover:border hover:border-slate-200'
+        ? 'bg-card shadow-sm text-foreground border border-border'
+        : 'text-muted-foreground hover:bg-card hover:shadow-sm hover:text-foreground hover:border hover:border-border'
     }`;
 
   return (
@@ -749,39 +811,39 @@ const EvansUnderwriting = () => {
           </div>
 
           {/* Connected toolbar — Table | Kanban | Sort | Settings */}
-          <div className="flex items-center h-7 rounded-md border border-slate-200 overflow-hidden shrink-0">
+          <div className="flex items-center h-7 rounded-md border border-border overflow-hidden shrink-0">
             <button
               onClick={() => setViewMode('table')}
               title="Table view"
               className={`flex items-center justify-center h-full px-2 transition-all ${
                 viewMode === 'table'
-                  ? 'bg-violet-50 text-violet-700'
-                  : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                  ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400'
+                  : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <Table2 className="h-3.5 w-3.5" />
             </button>
-            <div className="w-px h-4 bg-slate-200" />
+            <div className="w-px h-4 bg-border" />
             <button
               onClick={() => setViewMode('kanban')}
               title="Kanban view"
               className={`flex items-center justify-center h-full px-2 transition-all ${
                 viewMode === 'kanban'
-                  ? 'bg-violet-50 text-violet-700'
-                  : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                  ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400'
+                  : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
             </button>
-            <div className="w-px h-4 bg-slate-200" />
+            <div className="w-px h-4 bg-border" />
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   title="Sort"
                   className={`flex items-center justify-center h-full px-2 transition-all ${
                     isNonDefaultSort
-                      ? 'bg-violet-50 text-violet-700'
-                      : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                      ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400'
+                      : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
                   <ArrowUpDown className="h-3.5 w-3.5" />
@@ -810,7 +872,7 @@ const EvansUnderwriting = () => {
                 </Select>
               </PopoverContent>
             </Popover>
-            <div className="w-px h-4 bg-slate-200" />
+            <div className="w-px h-4 bg-border" />
             <PipelineSettingsPopover open={settingsOpen} onOpenChange={setSettingsOpen} />
           </div>
 
@@ -826,18 +888,18 @@ const EvansUnderwriting = () => {
                 <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-xl border border-slate-200/80 bg-white">
+            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-xl border border-border bg-popover">
               <DropdownMenuItem
                 onClick={() => openAddDialog()}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-slate-700 hover:bg-slate-50 focus:bg-slate-50 transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-foreground hover:bg-muted focus:bg-muted transition-colors"
               >
-                <PlusCircle className="h-4.5 w-4.5 text-slate-500" />
+                <PlusCircle className="h-4.5 w-4.5 text-muted-foreground" />
                 Add Opportunity
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-slate-700 hover:bg-slate-50 focus:bg-slate-50 transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-foreground hover:bg-muted focus:bg-muted transition-colors"
               >
-                <Download className="h-4.5 w-4.5 text-slate-500" />
+                <Download className="h-4.5 w-4.5 text-muted-foreground" />
                 Import Opportunities
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -885,11 +947,11 @@ const EvansUnderwriting = () => {
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
                       className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                        isActive ? 'bg-violet-50 text-violet-700' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        isActive ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
                       {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-violet-600" />}
-                      <span className={`text-[13px] font-medium truncate ${isActive ? 'text-violet-700' : ''}`}>{opt.label}</span>
+                      <span className={`text-[13px] font-medium truncate ${isActive ? 'text-violet-700 dark:text-violet-400' : ''}`}>{opt.label}</span>
                       {count > 0 && (
                         <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-violet-600 text-white' : 'text-muted-foreground'}`}>
                           {count}
@@ -915,11 +977,11 @@ const EvansUnderwriting = () => {
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
                       className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                        isActive ? 'bg-violet-50 text-violet-700' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        isActive ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
                       {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-violet-600" />}
-                      <span className={`text-[13px] truncate ${isActive ? 'font-medium text-violet-700' : ''}`}>{opt.label}</span>
+                      <span className={`text-[13px] truncate ${isActive ? 'font-medium text-violet-700 dark:text-violet-400' : ''}`}>{opt.label}</span>
                       {count > 0 && (
                         <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-violet-600 text-white' : 'text-muted-foreground'}`}>
                           {count}
@@ -942,11 +1004,11 @@ const EvansUnderwriting = () => {
                           key={cf.id}
                           onClick={() => setActiveFilter(cf.id)}
                           className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                            isActive ? 'bg-violet-50 text-violet-700' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            isActive ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                           }`}
                         >
                           {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-violet-600" />}
-                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-violet-700' : ''}`}>{cf.label}</span>
+                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-violet-700 dark:text-violet-400' : ''}`}>{cf.label}</span>
                         </button>
                       );
                     })}
@@ -960,7 +1022,7 @@ const EvansUnderwriting = () => {
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
             {/* ── Toolbar ── */}
-            <div className="shrink-0 border-b border-border px-3 py-2 flex items-center justify-between gap-2 bg-slate-50">
+            <div className="shrink-0 border-b border-border px-3 py-2 flex items-center justify-between gap-2 bg-muted/50">
 
               {/* Left group: view toggles */}
               <div className="flex items-center gap-2">
@@ -972,8 +1034,8 @@ const EvansUnderwriting = () => {
                   title={sidebarOpen ? 'Hide filters' : 'Show filters'}
                   className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium transition-all ${
                     !sidebarOpen
-                      ? 'bg-violet-50 border-violet-200 text-violet-700'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                      ? 'bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400'
+                      : 'bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
                   <PanelLeft className="h-3.5 w-3.5 shrink-0" />
@@ -993,7 +1055,7 @@ const EvansUnderwriting = () => {
 
                 {/* Sort indicator */}
                 {isNonDefaultSort && (
-                  <span className="flex items-center gap-1 text-[11px] text-violet-600 font-medium bg-violet-50 border border-violet-200 rounded-md px-2 h-7">
+                  <span className="flex items-center gap-1 text-[11px] text-violet-600 dark:text-violet-400 font-medium bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 rounded-md px-2 h-7">
                     <ArrowUpDown className="h-3 w-3 shrink-0" />
                     {sortFieldLabel} {sortDir === 'asc' ? '↑' : '↓'}
                     <button
@@ -1019,7 +1081,7 @@ const EvansUnderwriting = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Escape') { setSearchTerm(''); setSearchOpen(false); } }}
                     onBlur={() => { if (!searchTerm) setSearchOpen(false); }}
-                    className="h-7 w-52 text-xs mr-1 border-slate-200 bg-white"
+                    className="h-7 w-52 text-xs mr-1 border-border bg-card"
                   />
                 )}
 
@@ -1096,29 +1158,29 @@ const EvansUnderwriting = () => {
                   </button>
 
                   {showColumnsMenu && (
-                    <div className="absolute right-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-xl shadow-lg w-52 py-1.5 overflow-hidden">
-                      <div className="px-3 py-1.5 border-b border-slate-100">
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Visible Columns</p>
+                    <div className="absolute right-0 top-full mt-1.5 z-50 bg-popover border border-border rounded-xl shadow-lg w-52 py-1.5 overflow-hidden">
+                      <div className="px-3 py-1.5 border-b border-border">
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Visible Columns</p>
                       </div>
                       <div className="py-1">
                         {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map((key) => (
                           <button
                             key={key}
                             onClick={() => toggleColumn(key)}
-                            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-slate-50 transition-colors"
+                            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-muted transition-colors"
                           >
-                            <span className="text-[13px] text-slate-700">{COLUMN_LABELS[key]}</span>
+                            <span className="text-[13px] text-foreground">{COLUMN_LABELS[key]}</span>
                             <span className={`flex items-center justify-center h-4 w-4 rounded border transition-colors ${
                               columnVisibility[key]
                                 ? 'bg-violet-600 border-violet-600'
-                                : 'border-slate-300 bg-white'
+                                : 'border-border bg-card'
                             }`}>
                               {columnVisibility[key] && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
                             </span>
                           </button>
                         ))}
                       </div>
-                      <div className="px-3 py-1.5 border-t border-slate-100">
+                      <div className="px-3 py-1.5 border-t border-border">
                         <button
                           onClick={() => {
                             const allTrue = Object.fromEntries(
@@ -1142,10 +1204,10 @@ const EvansUnderwriting = () => {
             {viewMode === 'table' ? (
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
-                  <thead className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm border-b border-slate-200">
+                  <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm border-b border-border">
                     <tr>
-                      <th className="w-10 px-4 py-3" />
-                      <ColHeader>
+                      <th className="w-10 px-4 py-3 sticky left-0 z-20 bg-muted/90 backdrop-blur-sm" />
+                      <ColHeader className="sticky z-20 bg-muted/90 backdrop-blur-sm border-r border-border/50" style={{ left: 40 }}>
                         Opportunity
                       </ColHeader>
                       <ColHeader colKey="company">
@@ -1190,9 +1252,9 @@ const EvansUnderwriting = () => {
                   <tbody>
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
-                          <td className="px-4 py-3.5 w-10"><Skeleton className="h-4 w-4 rounded" /></td>
-                          <td className="px-4 py-3.5" style={{ width: columnWidths.opportunity }}>
+                        <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
+                          <td className="px-4 py-3.5 w-10 sticky left-0 z-[5] bg-inherit"><Skeleton className="h-4 w-4 rounded" /></td>
+                          <td className="px-4 py-3.5 sticky z-[5] bg-inherit border-r border-border/50" style={{ width: columnWidths.opportunity, left: 40 }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                               <div className="space-y-1.5">
@@ -1219,19 +1281,19 @@ const EvansUnderwriting = () => {
                       <tr>
                         <td colSpan={15}>
                           <div className="flex flex-col items-center justify-center py-24 gap-4">
-                            <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-slate-100">
-                              <FileSearch className="h-6 w-6 text-slate-400" />
+                            <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
+                              <FileSearch className="h-6 w-6 text-muted-foreground" />
                             </div>
                             <div className="text-center">
-                              <p className="text-sm font-semibold text-slate-700">No opportunities found</p>
-                              <p className="text-xs text-slate-400 mt-1 max-w-[240px]">
+                              <p className="text-sm font-semibold text-foreground">No opportunities found</p>
+                              <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
                                 {searchTerm ? 'Try adjusting your search or filter criteria' : 'No deals are in this stage yet'}
                               </p>
                             </div>
                             {isFiltersActive && (
                               <button
                                 onClick={clearAllFilters}
-                                className="text-xs text-violet-600 hover:text-violet-700 font-semibold mt-1 px-3 py-1.5 rounded-lg hover:bg-violet-50 transition-colors"
+                                className="text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-semibold mt-1 px-3 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/50 transition-colors"
                               >
                                 Clear all filters
                               </button>
@@ -1263,35 +1325,35 @@ const EvansUnderwriting = () => {
                           <tr
                             key={lead.id}
                             onClick={() => handleRowClick(lead)}
-                            className={`cursor-pointer transition-colors duration-100 group border-b border-slate-100 last:border-b-0 ${
+                            className={`cursor-pointer transition-colors duration-100 group border-b border-border/60 last:border-b-0 ${
                               isSelected
-                                ? 'bg-violet-50/60 hover:bg-violet-50/80'
+                                ? 'bg-violet-50/60 dark:bg-violet-950/30 hover:bg-violet-50/80 dark:hover:bg-violet-950/40'
                                 : rowIdx % 2 === 0
-                                  ? 'bg-white hover:bg-slate-50/80'
-                                  : 'bg-slate-50/30 hover:bg-slate-100/60'
+                                  ? 'bg-card hover:bg-muted/50'
+                                  : 'bg-muted/20 hover:bg-muted/50'
                             }`}
                           >
                             {/* Checkbox */}
-                            <td className="px-4 py-3 w-10">
+                            <td className="px-4 py-3 w-10 sticky left-0 z-[5] bg-inherit">
                               <div className={`h-4 w-4 rounded border-2 transition-colors ${
-                                isSelected ? 'border-violet-500 bg-violet-500' : 'border-slate-300 bg-white group-hover:border-slate-400'
+                                isSelected ? 'border-violet-500 bg-violet-500' : 'border-border bg-card group-hover:border-muted-foreground/50'
                               } flex items-center justify-center`}>
                                 {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
                               </div>
                             </td>
 
                             {/* Opportunity */}
-                            <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.opportunity }}>
+                            <td className="px-4 py-3 overflow-hidden sticky z-[5] bg-inherit border-r border-border/50" style={{ width: columnWidths.opportunity, left: 40 }}>
                               <div className="flex items-center gap-2.5">
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-semibold text-slate-800 truncate text-[13px] leading-tight">
+                                  <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
                                     {lead.name}
                                   </p>
                                   {lead.company_name && (
-                                    <p className="text-[11px] text-slate-400 truncate leading-tight mt-0.5">{lead.company_name}</p>
+                                    <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{lead.company_name}</p>
                                   )}
                                 </div>
                               </div>
@@ -1302,13 +1364,13 @@ const EvansUnderwriting = () => {
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.company }}>
                                 {lead.company_name ? (
                                   <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
-                                      <Building2 className="h-3 w-3 text-slate-400" />
+                                    <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                      <Building2 className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[13px] text-slate-600 truncate max-w-[110px]">{lead.company_name}</span>
+                                    <span className="text-[13px] text-foreground/80 truncate max-w-[110px]">{lead.company_name}</span>
                                   </div>
                                 ) : (
-                                  <span className="text-slate-300">—</span>
+                                  <span className="text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
@@ -1316,14 +1378,14 @@ const EvansUnderwriting = () => {
                             {/* Contact */}
                             {columnVisibility.contact && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.contact }}>
-                                <span className="text-[13px] text-slate-600 truncate block max-w-[100px]">{lead.name}</span>
+                                <span className="text-[13px] text-foreground/80 truncate block max-w-[100px]">{lead.name}</span>
                               </td>
                             )}
 
                             {/* Value */}
                             {columnVisibility.value && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.value }}>
-                                <span className="text-[13px] text-slate-800 font-semibold tabular-nums tracking-tight">{formatValue(dealValue)}</span>
+                                <span className="text-[13px] text-foreground font-semibold tabular-nums tracking-tight">{formatValue(dealValue)}</span>
                               </td>
                             )}
 
@@ -1339,10 +1401,10 @@ const EvansUnderwriting = () => {
                                         {assignedInitial}
                                       </div>
                                     )}
-                                    <span className="text-[13px] text-slate-600 truncate max-w-[80px]">{assignedName}</span>
+                                    <span className="text-[13px] text-foreground/80 truncate max-w-[80px]">{assignedName}</span>
                                   </div>
                                 ) : (
-                                  <span className="text-slate-300 text-[13px]">—</span>
+                                  <span className="text-muted-foreground/40 text-[13px]">—</span>
                                 )}
                               </td>
                             )}
@@ -1351,11 +1413,11 @@ const EvansUnderwriting = () => {
                             {columnVisibility.tasks && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.tasks }}>
                                 {taskCount > 0 ? (
-                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-slate-100 text-[11px] font-bold text-slate-600">
+                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-muted text-[11px] font-bold text-foreground/70">
                                     {taskCount}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-300 text-[13px]">0</span>
+                                  <span className="text-muted-foreground/40 text-[13px]">0</span>
                                 )}
                               </td>
                             )}
@@ -1369,7 +1431,7 @@ const EvansUnderwriting = () => {
                                     {stageCfg.label}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-400 text-xs">{lead.status}</span>
+                                  <span className="text-muted-foreground text-xs">{lead.status}</span>
                                 )}
                               </td>
                             )}
@@ -1379,13 +1441,13 @@ const EvansUnderwriting = () => {
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.daysInStage }}>
                                 {daysInStage !== null ? (
                                   <span className={`inline-flex items-center gap-1 text-[12px] font-medium ${
-                                    isLingering ? 'text-amber-600' : 'text-slate-500'
+                                    isLingering ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
                                   }`}>
                                     {isLingering && <Flame className="h-3 w-3 text-amber-500 shrink-0" />}
                                     {daysInStage}d
                                   </span>
                                 ) : (
-                                  <span className="text-slate-300">—</span>
+                                  <span className="text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
@@ -1393,14 +1455,14 @@ const EvansUnderwriting = () => {
                             {/* Stage Updated */}
                             {columnVisibility.stageUpdated && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.stageUpdated }}>
-                                <span className="text-[12px] text-slate-400 tabular-nums">{formatShortDate(lead.updated_at)}</span>
+                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(lead.updated_at)}</span>
                               </td>
                             )}
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.lastContacted }}>
-                                <span className="text-[12px] text-slate-400 tabular-nums">{formatShortDate(lead.last_activity_at)}</span>
+                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(lead.last_activity_at)}</span>
                               </td>
                             )}
 
@@ -1408,11 +1470,11 @@ const EvansUnderwriting = () => {
                             {columnVisibility.interactions && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.interactions }}>
                                 {interactionCount > 0 ? (
-                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-violet-50 text-[11px] font-bold text-violet-600">
+                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-violet-50 dark:bg-violet-950/50 text-[11px] font-bold text-violet-600 dark:text-violet-400">
                                     {interactionCount}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-300 text-[13px]">0</span>
+                                  <span className="text-muted-foreground/40 text-[13px]">0</span>
                                 )}
                               </td>
                             )}
@@ -1421,13 +1483,13 @@ const EvansUnderwriting = () => {
                             {columnVisibility.inactiveDays && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.inactiveDays }}>
                                 {isStale ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-100">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
                                     {inactiveDays}d
                                   </span>
                                 ) : inactiveDays !== null ? (
-                                  <span className="text-[12px] text-slate-500 tabular-nums">{inactiveDays}d</span>
+                                  <span className="text-[12px] text-muted-foreground tabular-nums">{inactiveDays}d</span>
                                 ) : (
-                                  <span className="text-slate-300">—</span>
+                                  <span className="text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
@@ -1438,16 +1500,16 @@ const EvansUnderwriting = () => {
                                 {lead.tags && lead.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {lead.tags.slice(0, 2).map((tag) => (
-                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/60">
+                                      <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-muted text-muted-foreground border border-border/60">
                                         {tag}
                                       </span>
                                     ))}
                                     {lead.tags.length > 2 && (
-                                      <span className="text-[10px] text-slate-400 font-medium">+{lead.tags.length - 2}</span>
+                                      <span className="text-[10px] text-muted-foreground font-medium">+{lead.tags.length - 2}</span>
                                     )}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-300">—</span>
+                                  <span className="text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
@@ -1526,7 +1588,7 @@ const EvansUnderwriting = () => {
               onClose={() => setSelectedLead(null)}
               onExpand={() => navigate(`/admin/evan/pipeline/underwriting/lead/${selectedLead.id}`)}
               onStageChange={(leadId, newStatus) => {
-                statusMutation.mutate({ leadId, newStatus });
+                statusMutation.mutate({ leadId, newStatus, oldStatus: selectedLead.status as LeadStatus });
                 setSelectedLead({ ...selectedLead, status: newStatus });
               }}
               onLeadUpdate={(updatedLead) => setSelectedLead(updatedLead)}
@@ -1561,7 +1623,7 @@ const EvansUnderwriting = () => {
                     onClick={() => setAddOpportunityStage(status)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-white text-slate-800 shadow-md scale-105'
+                        ? 'bg-white text-slate-800 shadow-md scale-105 dark:bg-white/90 dark:text-slate-900'
                         : 'bg-white/15 text-white/90 hover:bg-white/25'
                     }`}
                   >
@@ -1576,7 +1638,7 @@ const EvansUnderwriting = () => {
           {/* Form body */}
           <div className="px-6 py-5 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="opp-name" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+              <Label htmlFor="opp-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Opportunity Name <span className="text-red-400">*</span>
               </Label>
               <Input
@@ -1585,55 +1647,55 @@ const EvansUnderwriting = () => {
                 value={newOpp.name}
                 onChange={(e) => setNewOpp(prev => ({ ...prev, name: e.target.value }))}
                 onKeyDown={(e) => { if (e.key === 'Enter' && newOpp.name.trim()) handleCreateOpportunity(); }}
-                className="h-10 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-slate-300"
+                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
                 autoFocus
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="opp-company" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Company</Label>
+              <Label htmlFor="opp-company" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</Label>
               <Input
                 id="opp-company"
                 placeholder="Company name"
                 value={newOpp.company_name}
                 onChange={(e) => setNewOpp(prev => ({ ...prev, company_name: e.target.value }))}
-                className="h-10 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-slate-300"
+                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="opp-email" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Email</Label>
+                <Label htmlFor="opp-email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</Label>
                 <Input
                   id="opp-email"
                   placeholder="email@example.com"
                   type="email"
                   value={newOpp.email}
                   onChange={(e) => setNewOpp(prev => ({ ...prev, email: e.target.value }))}
-                  className="h-10 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-slate-300"
+                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="opp-phone" className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Phone</Label>
+                <Label htmlFor="opp-phone" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone</Label>
                 <Input
                   id="opp-phone"
                   placeholder="(555) 123-4567"
                   type="tel"
                   value={newOpp.phone}
                   onChange={(e) => setNewOpp(prev => ({ ...prev, phone: e.target.value }))}
-                  className="h-10 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-slate-300"
+                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
                 />
               </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+          <div className="px-6 py-4 bg-muted/50 border-t border-border flex items-center justify-end gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setAddOpportunityOpen(false)}
-              className="h-9 px-4 rounded-xl text-slate-500 hover:text-slate-700"
+              className="h-9 px-4 rounded-xl text-muted-foreground hover:text-foreground"
             >
               Cancel
             </Button>

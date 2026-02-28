@@ -1,18 +1,20 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   X, DollarSign, Maximize2, Building2, User, Mail, Phone,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase, Hash,
-  Pencil, Check, Loader2,
+  Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Flag, Layers,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
-import { differenceInDays, parseISO, format } from 'date-fns';
+import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -81,11 +83,11 @@ function daysSince(dateStr: string | null): number | null {
 }
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '\u2014';
   try {
     return format(parseISO(dateStr), 'MMM d, yyyy');
   } catch {
-    return '—';
+    return '\u2014';
   }
 }
 
@@ -178,7 +180,7 @@ function EditableField({
       </div>
       <div className="flex items-center gap-1.5">
         <span className={`text-[13px] text-right truncate max-w-[170px] ${highlight ? 'font-bold text-emerald-700' : 'font-medium text-slate-800'}`}>
-          {value || '—'}
+          {value || '\u2014'}
         </span>
         <Pencil className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
@@ -452,6 +454,410 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
   );
 }
 
+// ── Timeline icon config ──
+const TIMELINE_ICON_CONFIG: Record<string, { icon: React.ReactNode; dotColor: string }> = {
+  stage_change: { icon: <ArrowRight className="h-3 w-3" />, dotColor: 'bg-violet-500 text-white' },
+  call: { icon: <Phone className="h-3 w-3" />, dotColor: 'bg-blue-500 text-white' },
+  sms: { icon: <MessageSquare className="h-3 w-3" />, dotColor: 'bg-emerald-500 text-white' },
+  email: { icon: <Mail className="h-3 w-3" />, dotColor: 'bg-amber-500 text-white' },
+  comment: { icon: <MessageSquare className="h-3 w-3" />, dotColor: 'bg-slate-500 text-white' },
+  meeting: { icon: <Users className="h-3 w-3" />, dotColor: 'bg-rose-500 text-white' },
+};
+
+// ── Related Section (collapsible) ──
+function RelatedSection({ icon, label, count, iconColor, children }: {
+  icon: React.ReactNode; label: string; count: number; iconColor?: string; children?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-slate-50/80 px-1 rounded-lg transition-colors">
+        {open ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+          <span className={iconColor}>{icon}</span> {label}
+        </span>
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-slate-100 text-slate-500">
+          {count}
+        </Badge>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pl-6 pb-2">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ── Activity Tab Content ──
+function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Record<string, StageConfigEntry> }) {
+  const { data: communications = [], isLoading: loadingComms } = useQuery({
+    queryKey: ['lead-activity-timeline', 'communications', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('evan_communications')
+        .select('id, communication_type, direction, content, duration_seconds, created_at')
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const { data: activities = [], isLoading: loadingActivities } = useQuery({
+    queryKey: ['lead-activity-timeline', 'activities', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lead_activities')
+        .select('id, activity_type, title, content, created_at')
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const isLoading = loadingComms || loadingActivities;
+
+  interface TimelineItem {
+    id: string;
+    type: string;
+    title: string;
+    content: string | null;
+    createdAt: string;
+    source: 'communication' | 'activity';
+    direction?: string;
+    durationSeconds?: number | null;
+  }
+
+  const timelineItems = useMemo<TimelineItem[]>(() => {
+    const items: TimelineItem[] = [];
+
+    for (const c of communications) {
+      const typeLabel = c.communication_type === 'sms' ? 'SMS' : c.communication_type === 'call' ? 'Call' : 'Email';
+      const dirLabel = c.direction === 'inbound' ? 'Inbound' : 'Outbound';
+      items.push({
+        id: c.id,
+        type: c.communication_type,
+        title: `${dirLabel} ${typeLabel}`,
+        content: c.content,
+        createdAt: c.created_at,
+        source: 'communication',
+        direction: c.direction,
+        durationSeconds: c.duration_seconds,
+      });
+    }
+
+    for (const a of activities) {
+      items.push({
+        id: a.id,
+        type: a.activity_type,
+        title: a.title ?? a.activity_type,
+        content: a.content,
+        createdAt: a.created_at,
+        source: 'activity',
+      });
+    }
+
+    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return items;
+  }, [communications, activities]);
+
+  if (isLoading) {
+    return (
+      <div className="px-5 py-4 space-y-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex gap-3">
+            <Skeleton className="h-7 w-7 rounded-full shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3.5 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-5 py-4">
+      {timelineItems.length === 0 ? (
+        <div className="py-10 flex flex-col items-center justify-center text-center">
+          <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+            <Clock className="h-5 w-5 text-slate-400" />
+          </div>
+          <p className="text-sm font-medium text-slate-500">No activity recorded yet</p>
+          <p className="text-xs text-slate-400 mt-0.5">Communications and events will appear here</p>
+        </div>
+      ) : (
+        <div className="relative">
+          {/* Vertical timeline line */}
+          <div className="absolute left-[13px] top-2 bottom-2 w-px bg-slate-200" />
+
+          <div className="space-y-0.5">
+            {timelineItems.map((item) => {
+              const iconCfg = TIMELINE_ICON_CONFIG[item.type] ?? TIMELINE_ICON_CONFIG.comment;
+
+              // Parse stage_change content for badges
+              let fromStage: string | null = null;
+              let toStage: string | null = null;
+              if (item.type === 'stage_change' && item.content) {
+                try {
+                  const parsed = JSON.parse(item.content);
+                  fromStage = parsed.from;
+                  toStage = parsed.to;
+                } catch { /* ignore */ }
+              }
+
+              return (
+                <div key={item.id} className="flex gap-3 py-2.5 relative">
+                  {/* Icon dot */}
+                  <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 z-10 ${iconCfg.dotColor}`}>
+                    {iconCfg.icon}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-[13px] font-semibold text-slate-800 leading-tight">{item.title}</p>
+                      <span className="text-[11px] text-slate-400 whitespace-nowrap shrink-0">
+                        {formatDistanceToNow(parseISO(item.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
+
+                    {/* Stage change badges */}
+                    {item.type === 'stage_change' && fromStage && toStage && (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${stageConfig[fromStage]?.pill ?? 'bg-slate-100 text-slate-600'}`}>
+                          {stageConfig[fromStage]?.label ?? fromStage}
+                        </span>
+                        <ArrowRight className="h-3 w-3 text-slate-400 shrink-0" />
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${stageConfig[toStage]?.pill ?? 'bg-slate-100 text-slate-600'}`}>
+                          {stageConfig[toStage]?.label ?? toStage}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Communication content preview */}
+                    {item.type !== 'stage_change' && item.content && (
+                      <p className="text-[12px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{item.content}</p>
+                    )}
+
+                    {/* Call duration */}
+                    {item.type === 'call' && item.durationSeconds != null && item.durationSeconds > 0 && (
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {Math.floor(item.durationSeconds / 60)}m {item.durationSeconds % 60}s
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Related Tab Content ──
+function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Record<string, StageConfigEntry> }) {
+  const { data: contacts = [], isLoading: loadingContacts } = useQuery({
+    queryKey: ['lead-related', 'contacts', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lead_contacts')
+        .select('id, name, title, email, phone, is_primary')
+        .eq('lead_id', lead.id)
+        .order('is_primary', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const { data: tasks = [], isLoading: loadingTasks } = useQuery({
+    queryKey: ['lead-related', 'tasks', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('evan_tasks')
+        .select('id, title, status, is_completed, due_date')
+        .eq('lead_id', lead.id)
+        .order('is_completed', { ascending: true })
+        .order('created_at', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const { data: milestones = [], isLoading: loadingMilestones } = useQuery({
+    queryKey: ['lead-related', 'milestones', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('deal_milestones')
+        .select('id, milestone_name, completed, completed_at, position')
+        .eq('lead_id', lead.id)
+        .order('position', { ascending: true });
+      return data || [];
+    },
+  });
+
+  const { data: waitingOn = [], isLoading: loadingWaiting } = useQuery({
+    queryKey: ['lead-related', 'waiting_on', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('deal_waiting_on')
+        .select('id, owner, description, due_date, resolved_at')
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const isLoading = loadingContacts || loadingTasks || loadingMilestones || loadingWaiting;
+
+  if (isLoading) {
+    return (
+      <div className="px-5 py-4 space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const stageCfg = stageConfig[lead.status];
+  const openWaiting = waitingOn.filter((w) => !w.resolved_at);
+
+  return (
+    <div className="px-5 py-4 space-y-1">
+      {/* People */}
+      <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} iconColor="text-blue-500">
+        {contacts.length === 0 ? (
+          <p className="text-xs text-slate-400 italic py-1">No contacts added</p>
+        ) : (
+          <div className="space-y-2 pt-1">
+            {contacts.map((c) => (
+              <div key={c.id} className="flex items-center gap-2.5">
+                <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(c.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+                  {c.name[0]?.toUpperCase() ?? '?'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-medium text-slate-700 truncate leading-tight">
+                    {c.name}
+                    {c.is_primary && <span className="ml-1 text-[10px] text-violet-500 font-semibold">Primary</span>}
+                  </p>
+                  {c.title && <p className="text-[11px] text-slate-400 truncate">{c.title}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </RelatedSection>
+
+      {/* Company */}
+      <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Company" count={lead.company_name ? 1 : 0} iconColor="text-indigo-500">
+        {lead.company_name ? (
+          <div className="flex items-center gap-2.5 pt-1">
+            <div className={`h-7 w-7 rounded-lg bg-gradient-to-br ${getAvatarGradient(lead.company_name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+              {lead.company_name[0]?.toUpperCase() ?? '?'}
+            </div>
+            <p className="text-[12px] font-medium text-slate-700">{lead.company_name}</p>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-400 italic py-1">No company set</p>
+        )}
+      </RelatedSection>
+
+      {/* Tasks */}
+      <RelatedSection icon={<CheckSquare className="h-3.5 w-3.5" />} label="Tasks" count={tasks.length} iconColor="text-emerald-500">
+        {tasks.length === 0 ? (
+          <p className="text-xs text-slate-400 italic py-1">No tasks</p>
+        ) : (
+          <div className="space-y-1.5 pt-1">
+            {tasks.map((t) => (
+              <div key={t.id} className={`flex items-center gap-2 ${t.is_completed ? 'opacity-50' : ''}`}>
+                <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
+                  t.is_completed ? 'bg-emerald-100 border-emerald-300' : 'border-slate-300'
+                }`}>
+                  {t.is_completed && <Check className="h-2.5 w-2.5 text-emerald-600" />}
+                </div>
+                <span className={`text-[12px] truncate flex-1 ${t.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                  {t.title}
+                </span>
+                {t.status && !t.is_completed && (
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 rounded-full shrink-0">
+                    {t.status}
+                  </Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </RelatedSection>
+
+      {/* Milestones */}
+      <RelatedSection icon={<Flag className="h-3.5 w-3.5" />} label="Milestones" count={milestones.length} iconColor="text-amber-500">
+        {milestones.length === 0 ? (
+          <p className="text-xs text-slate-400 italic py-1">No milestones</p>
+        ) : (
+          <div className="space-y-1.5 pt-1">
+            {milestones.map((m) => (
+              <div key={m.id} className="flex items-center gap-2">
+                <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
+                  m.completed ? 'bg-amber-100 border-amber-300' : 'border-slate-300'
+                }`}>
+                  {m.completed && <Check className="h-2.5 w-2.5 text-amber-600" />}
+                </div>
+                <span className={`text-[12px] truncate flex-1 ${m.completed ? 'text-slate-400' : 'text-slate-700'}`}>
+                  {m.milestone_name}
+                </span>
+                {m.completed_at && (
+                  <span className="text-[10px] text-slate-400 shrink-0">{formatDate(m.completed_at)}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </RelatedSection>
+
+      {/* Waiting On */}
+      <RelatedSection icon={<Clock className="h-3.5 w-3.5" />} label="Waiting On" count={openWaiting.length} iconColor="text-rose-500">
+        {openWaiting.length === 0 ? (
+          <p className="text-xs text-slate-400 italic py-1">Nothing pending</p>
+        ) : (
+          <div className="space-y-2 pt-1">
+            {openWaiting.map((w) => {
+              const isOverdue = w.due_date && new Date(w.due_date) < new Date();
+              return (
+                <div key={w.id} className={`rounded-lg border p-2 ${isOverdue ? 'border-rose-200 bg-rose-50/50' : 'border-slate-100 bg-slate-50/50'}`}>
+                  <p className={`text-[12px] font-medium ${isOverdue ? 'text-rose-700' : 'text-slate-700'}`}>{w.owner}</p>
+                  {w.description && <p className="text-[11px] text-slate-500 mt-0.5">{w.description}</p>}
+                  {w.due_date && (
+                    <p className={`text-[10px] mt-1 ${isOverdue ? 'text-rose-500 font-medium' : 'text-slate-400'}`}>
+                      {isOverdue ? 'Overdue: ' : 'Due: '}{formatDate(w.due_date)}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </RelatedSection>
+
+      {/* Pipeline */}
+      <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline" count={1} iconColor="text-violet-500">
+        <div className="pt-1">
+          {stageCfg ? (
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${stageCfg.bg}`}>
+              <span className={`h-2 w-2 rounded-full ${stageCfg.dot}`} />
+              <span className={`text-[11px] font-semibold ${stageCfg.color}`}>{stageCfg.label}</span>
+            </div>
+          ) : (
+            <Badge variant="outline" className="text-[11px]">{lead.status}</Badge>
+          )}
+        </div>
+      </RelatedSection>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════
 // ── Main Panel ──
 // ══════════════════════════════════════════════════
@@ -470,7 +876,7 @@ export default function UnderwritingDetailPanel({
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'related'>('details');
   const queryClient = useQueryClient();
   const stageCfg = stageConfig[lead.status];
-  const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? '—') : '—';
+  const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? '\u2014') : '\u2014';
   const dealValue = fakeValue(lead.id);
   const initial = lead.name[0]?.toUpperCase() ?? '?';
   const gradient = getAvatarGradient(lead.name);
@@ -676,25 +1082,13 @@ export default function UnderwritingDetailPanel({
 
       {activeTab === 'activity' && (
         <ScrollArea className="flex-1">
-          <div className="px-5 py-10 flex flex-col items-center justify-center text-center">
-            <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-              <Clock className="h-5 w-5 text-slate-400" />
-            </div>
-            <p className="text-sm font-medium text-slate-500">Activity timeline</p>
-            <p className="text-xs text-slate-400 mt-0.5">Coming soon</p>
-          </div>
+          <ActivityTabContent lead={lead} stageConfig={stageConfig} />
         </ScrollArea>
       )}
 
       {activeTab === 'related' && (
         <ScrollArea className="flex-1">
-          <div className="px-5 py-10 flex flex-col items-center justify-center text-center">
-            <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-              <ChevronRight className="h-5 w-5 text-slate-400" />
-            </div>
-            <p className="text-sm font-medium text-slate-500">Related records</p>
-            <p className="text-xs text-slate-400 mt-0.5">Coming soon</p>
-          </div>
+          <RelatedTabContent lead={lead} stageConfig={stageConfig} />
         </ScrollArea>
       )}
 
