@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -111,7 +112,8 @@ const TouchTile = ({ icon, label, value, sub, accent }: TouchTileProps) => (
   </div>
 );
 
-const EvansScorecard = () => {
+const Scorecard = () => {
+  const { teamMember } = useTeamMember();
   const now = new Date();
   const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
   const currentWeekYear = getYear(currentWeekStart);
@@ -120,7 +122,7 @@ const EvansScorecard = () => {
   const [selectedYear, setSelectedYear] = useState<number>(currentWeekYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(currentWeekMonth);
   const [selectedWeek, setSelectedWeek] = useState<string>(format(currentWeekStart, 'yyyy-MM-dd'));
-  const [repFilter, setRepFilter] = useState<string>('evan');
+  const [repFilter, setRepFilter] = useState<string>('me');
 
   const periodBoundaries = useMemo(() => {
     const [year, month, day] = selectedWeek.split('-').map(Number);
@@ -132,18 +134,7 @@ const EvansScorecard = () => {
 
   const periodStart = periodBoundaries.start;
 
-  const { data: evanMember } = useQuery({
-    queryKey: ['evan-member-id'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('id')
-        .eq('name', 'Evan')
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const evanMember = teamMember ? { id: teamMember.id } : null;
 
   const weekOptions = useMemo(() => generateWeekOptions(selectedYear, selectedMonth), [selectedYear, selectedMonth]);
   const monthOptions = useMemo(() => generateMonthOptions(selectedYear), [selectedYear]);
@@ -172,7 +163,7 @@ const EvansScorecard = () => {
       let query = supabase
         .from('leads')
         .select('id, name, company_name, status, assigned_to, created_at, updated_at');
-      if (repFilter === 'evan' && evanMember?.id) {
+      if (repFilter === 'me' && evanMember?.id) {
         query = query.eq('assigned_to', evanMember.id);
       }
       const { data, error } = await query;
@@ -412,7 +403,7 @@ const EvansScorecard = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Company</SelectItem>
-                <SelectItem value="evan">Evan</SelectItem>
+                <SelectItem value="me">{teamMember?.name || 'Me'}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -590,4 +581,4 @@ const EvansScorecard = () => {
   );
 };
 
-export default EvansScorecard;
+export default Scorecard;

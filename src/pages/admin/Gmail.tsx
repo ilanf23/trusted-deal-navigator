@@ -1,12 +1,14 @@
 import EvanLayout from '@/components/evan/EvanLayout';
 import { GmailCore } from '@/components/gmail/GmailCore';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
-const EvansGmail = () => {
+const Gmail = () => {
+  const { teamMember } = useTeamMember();
   return (
     <EvanLayout>
-      <GmailCore userId="evan" variant="crm" callbackPrefix="admin" returnPath="/team/evan/gmail" />
+      <GmailCore userId={teamMember?.name?.toLowerCase() || 'admin'} variant="crm" callbackPrefix="admin" returnPath="/admin/gmail" />
     </EvanLayout>
   );
 };
 
-export default EvansGmail;
+export default Gmail;

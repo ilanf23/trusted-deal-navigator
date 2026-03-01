@@ -1,7 +1,7 @@
 import EvanLayout from '@/components/evan/EvanLayout';
 import { EvanCalendarWidget } from '@/components/evan/EvanCalendarWidget';
 
-const EvansCalendar = () => {
+const Calendar = () => {
   return (
     <EvanLayout>
       <div className="space-y-2">
@@ -18,4 +18,4 @@ const EvansCalendar = () => {
   );
 };
 
-export default EvansCalendar;
+export default Calendar;

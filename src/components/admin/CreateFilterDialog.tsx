@@ -9,9 +9,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { CalendarIcon, Plus, ChevronDown, X } from 'lucide-react';
+import {
+  CalendarIcon, Plus, ChevronDown, X,
+  Filter, SlidersHorizontal, MessageSquare, GitBranch,
+  UserCheck, CalendarDays, Globe, FileText, RotateCcw,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -236,12 +240,46 @@ function RangeInput({ label, minVal, maxVal, onMinChange, onMaxChange, placehold
   );
 }
 
-function SectionBadge({ count }: { count: number }) {
+type BadgeColor = 'blue' | 'violet' | 'emerald' | 'amber' | 'sky' | 'slate';
+
+const badgeColorMap: Record<BadgeColor, string> = {
+  blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+  violet: 'bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300',
+  emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
+  amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+  sky: 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300',
+  slate: 'bg-slate-100 text-slate-700 dark:bg-slate-900/50 dark:text-slate-300',
+};
+
+function SectionBadge({ count, color = 'blue' }: { count: number; color?: BadgeColor }) {
   if (count === 0) return null;
   return (
-    <span className="bg-primary/10 text-primary text-[10px] rounded-full px-1.5 font-medium ml-2">
+    <span className={cn(
+      "text-[10px] rounded-full px-1.5 py-0.5 font-semibold min-w-[18px] text-center ml-2",
+      badgeColorMap[color],
+    )}>
       {count}
     </span>
+  );
+}
+
+const iconContainerMap: Record<BadgeColor, string> = {
+  blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400',
+  violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-400',
+  emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400',
+  amber: 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400',
+  sky: 'bg-sky-100 text-sky-600 dark:bg-sky-900/50 dark:text-sky-400',
+  slate: 'bg-slate-100 text-slate-600 dark:bg-slate-900/50 dark:text-slate-400',
+};
+
+function SectionIcon({ icon: Icon, color }: { icon: React.ElementType; color: BadgeColor }) {
+  return (
+    <div className={cn(
+      "flex items-center justify-center h-7 w-7 rounded-md shrink-0 transition-colors",
+      iconContainerMap[color],
+    )}>
+      <Icon className="h-3.5 w-3.5" />
+    </div>
   );
 }
 
@@ -291,6 +329,11 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
     };
   }, [values]);
 
+  const totalActive = useMemo(() =>
+    Object.values(sectionCounts).reduce((sum, n) => sum + n, 0),
+    [sectionCounts]
+  );
+
   const handleSave = () => {
     if (!values.filterName.trim()) {
       return;
@@ -305,7 +348,11 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
     setOpen(false);
   };
 
-  const triggerClass = "text-xs font-semibold uppercase tracking-wide text-muted-foreground py-2.5 hover:no-underline";
+  const handleReset = () => {
+    setValues(prev => ({ ...defaultValues, filterName: prev.filterName }));
+  };
+
+  const triggerClass = "text-xs font-semibold tracking-wide text-foreground py-2.5 hover:no-underline hover:bg-accent rounded-md p-1";
 
   const stageOptions = useMemo(() =>
     Object.entries(stageConfig).map(([key, cfg]) => ({ value: key, label: cfg.label })),
@@ -327,31 +374,56 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
         <Plus className="h-3.5 w-3.5" />
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-[420px] max-w-[90vw] p-0 flex flex-col max-h-[75vh] gap-0">
-          <DialogHeader className="px-5 pt-5 pb-3">
-            <DialogTitle className="text-sm font-semibold">Filter Opportunity</DialogTitle>
+        <DialogContent className="w-[460px] max-w-[90vw] p-0 flex flex-col max-h-[80vh] gap-0 rounded-xl shadow-2xl border-border/60">
+          {/* Header */}
+          <DialogHeader className="px-5 pt-5 pb-3 bg-gradient-to-r from-muted/50 to-transparent">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
+                <SlidersHorizontal className="h-4.5 w-4.5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold">Filter Opportunity</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Build a custom filter to narrow your pipeline
+                  {totalActive > 0 && (
+                    <span className="ml-1.5 inline-flex items-center rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-semibold">
+                      {totalActive} active
+                    </span>
+                  )}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
           <ScrollArea className="flex-1 px-5 overflow-y-auto">
             <div className="pb-4">
-              {/* Filter Name — always visible */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Filter Name *</Label>
-                <Input className="h-8 text-xs" placeholder="Name this filter..." value={values.filterName} onChange={e => set('filterName', e.target.value)} />
+              {/* Filter Name */}
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+                <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Filter className="h-3 w-3" />
+                  Filter Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  className="h-9 text-sm"
+                  placeholder="e.g. High-value deals in underwriting..."
+                  value={values.filterName}
+                  onChange={e => set('filterName', e.target.value)}
+                />
               </div>
 
-              <Separator className="my-3" />
+              <Separator className="my-4" />
 
               <Accordion type="multiple" className="w-full">
               {/* Activity & Communication */}
               <AccordionItem value="activity" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
-                  <span className="flex items-center">
+                  <span className="flex items-center gap-2">
+                    <SectionIcon icon={MessageSquare} color="blue" />
                     Activity & Communication
-                    <SectionBadge count={sectionCounts.activity} />
+                    <SectionBadge count={sectionCounts.activity} color="blue" />
                   </span>
                 </AccordionTrigger>
-                <AccordionContent className="space-y-4">
+                <AccordionContent className="space-y-3 pb-1">
                   <MultiSelect
                     label="Activity Type"
                     options={[
@@ -373,12 +445,13 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               {/* Pipeline */}
               <AccordionItem value="pipeline" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
-                  <span className="flex items-center">
+                  <span className="flex items-center gap-2">
+                    <SectionIcon icon={GitBranch} color="violet" />
                     Pipeline
-                    <SectionBadge count={sectionCounts.pipeline} />
+                    <SectionBadge count={sectionCounts.pipeline} color="violet" />
                   </span>
                 </AccordionTrigger>
-                <AccordionContent className="space-y-4">
+                <AccordionContent className="space-y-3 pb-1">
                   <MultiSelect
                     label="Stage"
                     options={stageOptions}
@@ -413,12 +486,13 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               {/* Ownership */}
               <AccordionItem value="ownership" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
-                  <span className="flex items-center">
+                  <span className="flex items-center gap-2">
+                    <SectionIcon icon={UserCheck} color="emerald" />
                     Ownership
-                    <SectionBadge count={sectionCounts.ownership} />
+                    <SectionBadge count={sectionCounts.ownership} color="emerald" />
                   </span>
                 </AccordionTrigger>
-                <AccordionContent className="space-y-4">
+                <AccordionContent className="space-y-3 pb-1">
                   <MultiSelect
                     label="Owned By"
                     options={ownerOptions}
@@ -435,12 +509,13 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               {/* Dates */}
               <AccordionItem value="dates" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
-                  <span className="flex items-center">
+                  <span className="flex items-center gap-2">
+                    <SectionIcon icon={CalendarDays} color="amber" />
                     Dates
-                    <SectionBadge count={sectionCounts.dates} />
+                    <SectionBadge count={sectionCounts.dates} color="amber" />
                   </span>
                 </AccordionTrigger>
-                <AccordionContent className="space-y-4">
+                <AccordionContent className="space-y-3 pb-1">
                   <DateRangePicker label="Date Added" fromDate={values.dateAddedFrom} toDate={values.dateAddedTo} onFromChange={d => set('dateAddedFrom', d)} onToChange={d => set('dateAddedTo', d)} />
                   <DateRangePicker label="Close Date" fromDate={values.closeDateFrom} toDate={values.closeDateTo} onFromChange={d => set('closeDateFrom', d)} onToChange={d => set('closeDateTo', d)} />
                 </AccordionContent>
@@ -449,12 +524,13 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               {/* Source & Outcome */}
               <AccordionItem value="source" className="border-b border-border/50">
                 <AccordionTrigger className={triggerClass}>
-                  <span className="flex items-center">
+                  <span className="flex items-center gap-2">
+                    <SectionIcon icon={Globe} color="sky" />
                     Source & Outcome
-                    <SectionBadge count={sectionCounts.source} />
+                    <SectionBadge count={sectionCounts.source} color="sky" />
                   </span>
                 </AccordionTrigger>
-                <AccordionContent className="space-y-4">
+                <AccordionContent className="space-y-3 pb-1">
                   <MultiSelect
                     label="Source"
                     options={[
@@ -485,12 +561,13 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
               {/* Details */}
               <AccordionItem value="details" className="border-none">
                 <AccordionTrigger className={triggerClass}>
-                  <span className="flex items-center">
+                  <span className="flex items-center gap-2">
+                    <SectionIcon icon={FileText} color="slate" />
                     Details
-                    <SectionBadge count={sectionCounts.details} />
+                    <SectionBadge count={sectionCounts.details} color="slate" />
                   </span>
                 </AccordionTrigger>
-                <AccordionContent className="space-y-4">
+                <AccordionContent className="space-y-3 pb-1">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground">Company</Label>
                     <Input className="h-8 text-xs" placeholder="Company name..." value={values.company} onChange={e => set('company', e.target.value)} />
@@ -526,9 +603,24 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
           </div>
         </ScrollArea>
 
-          <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
-            <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
-            <Button size="sm" onClick={handleSave} disabled={!values.filterName.trim()}>Save Filter</Button>
+          {/* Footer */}
+          <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/30">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={handleReset}
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Reset All
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
+              <Button size="sm" onClick={handleSave} disabled={!values.filterName.trim()}>
+                <Filter className="h-3.5 w-3.5 mr-1.5" />
+                Save Filter
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -20,7 +20,7 @@ interface EmailTemplate {
   category: string | null;
 }
 
-const EvansEmailTemplates = () => {
+const EmailTemplates = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
@@ -162,7 +162,7 @@ const EvansEmailTemplates = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/admin/evan/gmail')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/admin/gmail')}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
@@ -286,4 +286,4 @@ const EvansEmailTemplates = () => {
   );
 };
 
-export default EvansEmailTemplates;
+export default EmailTemplates;

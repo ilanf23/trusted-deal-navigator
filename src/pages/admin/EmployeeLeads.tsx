@@ -45,7 +45,7 @@ const statusConfig: Record<LeadStatus, { label: string; color: string; bg: strin
   funded: { label: 'Funded', color: 'text-violet-500', bg: 'bg-violet-50' },
 };
 
-const EvansLeads = () => {
+const EmployeeLeads = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { teamMember, isOwner } = useTeamMember();
@@ -116,24 +116,10 @@ const EvansLeads = () => {
     });
   };
 
-  // Get Evan's team member ID
-  const { data: evanTeamMember } = useQuery({
-    queryKey: ['evan-team-member'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('id')
-        .ilike('name', 'evan')
-        .single();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const evanId = teamMember?.id;
 
-  const evanId = evanTeamMember?.id;
-
-  // Check if current user can edit (is Evan or is owner/super admin)
-  const canEdit = isOwner || teamMember?.name?.toLowerCase() === 'evan';
+  // Check if current user can edit
+  const canEdit = isOwner || !!teamMember;
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['evans-leads', evanId],
@@ -368,7 +354,7 @@ const EvansLeads = () => {
         <div className="flex items-center gap-3">
           <Button 
             variant="outline" 
-            onClick={() => navigate('/team/evan/pipeline')}
+            onClick={() => navigate('/admin/pipeline')}
             className="h-9 px-4 border-slate-200 text-slate-600 hover:bg-slate-50"
           >
             <Kanban className="w-4 h-4 mr-2" />
@@ -959,4 +945,4 @@ const EvansLeads = () => {
   );
 };
 
-export default EvansLeads;
+export default EmployeeLeads;

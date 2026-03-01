@@ -61,7 +61,7 @@ const UNDERWRITING_STATUSES: LeadStatus[] = [
 
 function getAvatarGradient(name: string) {
   const gradients = [
-    'from-violet-500 to-purple-600',
+    'from-blue-500 to-blue-600',
     'from-blue-500 to-indigo-600',
     'from-emerald-500 to-teal-600',
     'from-amber-500 to-orange-600',
@@ -151,10 +151,10 @@ function EditableField({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-violet-50/50">
-        <div className="flex items-center gap-2 text-violet-400 shrink-0">
+      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50/50">
+        <div className="flex items-center gap-2 text-blue-400 shrink-0">
           {icon}
-          <span className="text-xs font-medium text-violet-500">{label}</span>
+          <span className="text-xs font-medium text-blue-500">{label}</span>
         </div>
         <div className="flex-1 flex items-center gap-1.5 justify-end">
           <input
@@ -164,9 +164,9 @@ function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-violet-200 dark:border-violet-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
+            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
           />
-          {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 shrink-0" />}
+          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
       </div>
     );
@@ -233,7 +233,7 @@ function EditableSelectField({
             ))}
           </SelectContent>
         </Select>
-        {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 shrink-0" />}
+        {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
       </div>
     </div>
   );
@@ -256,8 +256,8 @@ function EditableContactRow({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-violet-50/50 border border-violet-100">
-        <div className="text-violet-400 shrink-0">{icon}</div>
+      <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+        <div className="text-blue-400 shrink-0">{icon}</div>
         <input
           ref={inputRef}
           value={draft}
@@ -268,7 +268,7 @@ function EditableContactRow({
           disabled={saving}
           className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
         />
-        {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 shrink-0" />}
+        {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
       </div>
     );
   }
@@ -328,7 +328,7 @@ function EditableTags({
 
   if (editing) {
     return (
-      <div className="rounded-lg bg-violet-50/50 border border-violet-100 p-2.5">
+      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5">
         <input
           ref={inputRef}
           value={draft}
@@ -340,7 +340,7 @@ function EditableTags({
           className="w-full text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
         />
         <p className="text-[10px] text-muted-foreground mt-1">Comma-separated. Press Enter to save.</p>
-        {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500 mt-1" />}
+        {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
       </div>
     );
   }
@@ -350,7 +350,7 @@ function EditableTags({
       {tags.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 items-center">
           {tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800 font-medium">
+            <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 font-medium">
               {tag}
             </Badge>
           ))}
@@ -404,7 +404,7 @@ function EditableNotes({
 
   if (editing) {
     return (
-      <div className="rounded-xl border border-violet-200 bg-violet-50/30 p-3">
+      <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-3">
         <textarea
           ref={textareaRef}
           value={draft}
@@ -415,10 +415,10 @@ function EditableNotes({
           className="w-full text-[13px] text-foreground/80 leading-relaxed bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
           rows={3}
         />
-        <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-violet-100">
-          {saving && <Loader2 className="h-3 w-3 animate-spin text-violet-500" />}
+        <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-blue-100">
+          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
           <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">Cancel</button>
-          <button onClick={save} disabled={saving} className="text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
+          <button onClick={save} disabled={saving} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
             <Check className="h-3 w-3" />Save
           </button>
         </div>
@@ -456,7 +456,7 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
 
 // ── Timeline icon config ──
 const TIMELINE_ICON_CONFIG: Record<string, { icon: React.ReactNode; dotColor: string }> = {
-  stage_change: { icon: <ArrowRight className="h-3 w-3" />, dotColor: 'bg-violet-500 text-white' },
+  stage_change: { icon: <ArrowRight className="h-3 w-3" />, dotColor: 'bg-blue-500 text-white' },
   call: { icon: <Phone className="h-3 w-3" />, dotColor: 'bg-blue-500 text-white' },
   sms: { icon: <MessageSquare className="h-3 w-3" />, dotColor: 'bg-emerald-500 text-white' },
   email: { icon: <Mail className="h-3 w-3" />, dotColor: 'bg-amber-500 text-white' },
@@ -741,7 +741,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
                 <div className="min-w-0">
                   <p className="text-[12px] font-medium text-foreground truncate leading-tight">
                     {c.name}
-                    {c.is_primary && <span className="ml-1 text-[10px] text-violet-500 dark:text-violet-400 font-semibold">Primary</span>}
+                    {c.is_primary && <span className="ml-1 text-[10px] text-blue-500 dark:text-blue-400 font-semibold">Primary</span>}
                   </p>
                   {c.title && <p className="text-[11px] text-muted-foreground truncate">{c.title}</p>}
                 </div>
@@ -842,7 +842,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
       </RelatedSection>
 
       {/* Pipeline */}
-      <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline" count={1} iconColor="text-violet-500">
+      <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline" count={1} iconColor="text-blue-500">
         <div className="pt-1">
           {stageCfg ? (
             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${stageCfg.bg}`}>
@@ -957,12 +957,12 @@ export default function UnderwritingDetailPanel({
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all relative ${
-                activeTab === tab ? 'text-violet-700 dark:text-violet-400' : 'text-muted-foreground hover:text-foreground'
+                activeTab === tab ? 'text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab}
               {activeTab === tab && (
-                <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-violet-600" />
+                <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-blue-600" />
               )}
             </button>
           ))}
@@ -996,7 +996,7 @@ export default function UnderwritingDetailPanel({
                       key={status}
                       title={cfg?.label ?? status}
                       className={`flex-1 h-1.5 rounded-full transition-all ${
-                        isCurrent ? `${cfg?.dot ?? 'bg-muted-foreground'} shadow-sm ring-2 ring-offset-1 ring-border` : isPast ? 'bg-violet-400' : 'bg-border'
+                        isCurrent ? `${cfg?.dot ?? 'bg-muted-foreground'} shadow-sm ring-2 ring-offset-1 ring-border` : isPast ? 'bg-blue-400' : 'bg-border'
                       }`}
                     />
                   );
@@ -1095,7 +1095,7 @@ export default function UnderwritingDetailPanel({
       {/* Footer */}
       {onExpand && (
         <div className="shrink-0 px-5 py-3 border-t border-border">
-          <button onClick={onExpand} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-violet-700 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors">
+          <button onClick={onExpand} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
             Open full record
             <Maximize2 className="h-3 w-3" />
           </button>

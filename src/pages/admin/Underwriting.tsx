@@ -192,7 +192,7 @@ const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
 ];
 
 const AVATAR_COLORS = [
-  'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500',
+  'bg-blue-500', 'bg-emerald-500', 'bg-blue-500', 'bg-amber-500',
   'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
   'bg-orange-500', 'bg-pink-500',
 ];
@@ -335,7 +335,7 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
     <div
       ref={setNodeRef}
       className={`flex flex-col rounded-xl flex-1 min-w-[220px] max-w-[300px] transition-all ${
-        isOver ? 'ring-2 ring-violet-400 ring-offset-2 ring-offset-background bg-violet-50/30 dark:bg-violet-950/20' : 'bg-muted/30'
+        isOver ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-background bg-blue-50/30 dark:bg-blue-950/20' : 'bg-muted/30'
       }`}
     >
       <div className="px-3 py-2.5 flex items-center gap-2">
@@ -369,7 +369,7 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
   );
 }
 
-const EvansUnderwriting = () => {
+const Underwriting = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -817,7 +817,7 @@ const EvansUnderwriting = () => {
               title="Table view"
               className={`flex items-center justify-center h-full px-2 transition-all ${
                 viewMode === 'table'
-                  ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400'
+                  ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
                   : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
@@ -829,7 +829,7 @@ const EvansUnderwriting = () => {
               title="Kanban view"
               className={`flex items-center justify-center h-full px-2 transition-all ${
                 viewMode === 'kanban'
-                  ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400'
+                  ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
                   : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
@@ -842,7 +842,7 @@ const EvansUnderwriting = () => {
                   title="Sort"
                   className={`flex items-center justify-center h-full px-2 transition-all ${
                     isNonDefaultSort
-                      ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400'
+                      ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
                       : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
@@ -880,8 +880,8 @@ const EvansUnderwriting = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="group relative h-9 pl-4 pr-3 text-[13px] font-semibold rounded-full shrink-0 flex items-center gap-2 text-white overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2"
-                style={{ background: 'linear-gradient(135deg, #4c1d95 0%, #5b21b6 50%, #6d28d9 100%)' }}
+                className="group relative h-9 pl-4 pr-3 text-[13px] font-semibold rounded-full shrink-0 flex items-center gap-2 text-white overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+                style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
                 <span>Add Opportunity</span>
@@ -947,13 +947,13 @@ const EvansUnderwriting = () => {
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
                       className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                        isActive ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
-                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-violet-600" />}
-                      <span className={`text-[13px] font-medium truncate ${isActive ? 'text-violet-700 dark:text-violet-400' : ''}`}>{opt.label}</span>
+                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
+                      <span className={`text-[13px] font-medium truncate ${isActive ? 'text-blue-700 dark:text-blue-400' : ''}`}>{opt.label}</span>
                       {count > 0 && (
-                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-violet-600 text-white' : 'text-muted-foreground'}`}>
+                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
                           {count}
                         </span>
                       )}
@@ -977,13 +977,13 @@ const EvansUnderwriting = () => {
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
                       className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                        isActive ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
-                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-violet-600" />}
-                      <span className={`text-[13px] truncate ${isActive ? 'font-medium text-violet-700 dark:text-violet-400' : ''}`}>{opt.label}</span>
+                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
+                      <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{opt.label}</span>
                       {count > 0 && (
-                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-violet-600 text-white' : 'text-muted-foreground'}`}>
+                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
                           {count}
                         </span>
                       )}
@@ -1004,11 +1004,11 @@ const EvansUnderwriting = () => {
                           key={cf.id}
                           onClick={() => setActiveFilter(cf.id)}
                           className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                            isActive ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                           }`}
                         >
-                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-violet-600" />}
-                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-violet-700 dark:text-violet-400' : ''}`}>{cf.label}</span>
+                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
+                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{cf.label}</span>
                         </button>
                       );
                     })}
@@ -1050,12 +1050,12 @@ const EvansUnderwriting = () => {
 
                 {/* Sort indicator */}
                 {isNonDefaultSort && (
-                  <span className="flex items-center gap-1 text-[11px] text-violet-600 dark:text-violet-400 font-medium bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 rounded-md px-2 h-7">
+                  <span className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md px-2 h-7">
                     <ArrowUpDown className="h-3 w-3 shrink-0" />
                     {sortFieldLabel} {sortDir === 'asc' ? '↑' : '↓'}
                     <button
                       onClick={() => { setSortField('last_activity_at'); setSortDir('desc'); }}
-                      className="ml-0.5 text-violet-400 hover:text-violet-700"
+                      className="ml-0.5 text-blue-400 hover:text-blue-700"
                       title="Reset sort"
                     >
                       <X className="h-3 w-3" />
@@ -1087,9 +1087,9 @@ const EvansUnderwriting = () => {
                       title="Sort options"
                       className={iconBtn(isNonDefaultSort)}
                     >
-                      <ArrowUpDown className={`h-3.5 w-3.5 ${isNonDefaultSort ? 'text-violet-600' : ''}`} />
+                      <ArrowUpDown className={`h-3.5 w-3.5 ${isNonDefaultSort ? 'text-blue-600' : ''}`} />
                       {isNonDefaultSort && (
-                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-violet-600" />
+                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600" />
                       )}
                     </button>
                   </PopoverTrigger>
@@ -1124,12 +1124,12 @@ const EvansUnderwriting = () => {
                   className={iconBtn(isFiltersActive)}
                 >
                   {isFiltersActive ? (
-                    <X className="h-3.5 w-3.5 text-violet-600" />
+                    <X className="h-3.5 w-3.5 text-blue-600" />
                   ) : (
                     <Filter className="h-3.5 w-3.5" />
                   )}
                   {isFiltersActive && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-violet-600" />
+                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600" />
                   )}
                 </button>
 
@@ -1139,7 +1139,7 @@ const EvansUnderwriting = () => {
                   title="Search opportunities"
                   className={iconBtn(searchOpen || !!searchTerm)}
                 >
-                  <Search className={`h-3.5 w-3.5 ${(searchOpen || searchTerm) ? 'text-violet-600' : ''}`} />
+                  <Search className={`h-3.5 w-3.5 ${(searchOpen || searchTerm) ? 'text-blue-600' : ''}`} />
                 </button>
 
                 {/* Column visibility */}
@@ -1149,7 +1149,7 @@ const EvansUnderwriting = () => {
                     title="Show/hide columns"
                     className={iconBtn(showColumnsMenu)}
                   >
-                    <Settings2 className={`h-3.5 w-3.5 ${showColumnsMenu ? 'text-violet-600' : ''}`} />
+                    <Settings2 className={`h-3.5 w-3.5 ${showColumnsMenu ? 'text-blue-600' : ''}`} />
                   </button>
 
                   {showColumnsMenu && (
@@ -1167,7 +1167,7 @@ const EvansUnderwriting = () => {
                             <span className="text-[13px] text-foreground">{COLUMN_LABELS[key]}</span>
                             <span className={`flex items-center justify-center h-4 w-4 rounded border transition-colors ${
                               columnVisibility[key]
-                                ? 'bg-violet-600 border-violet-600'
+                                ? 'bg-blue-600 border-blue-600'
                                 : 'border-border bg-card'
                             }`}>
                               {columnVisibility[key] && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
@@ -1183,7 +1183,7 @@ const EvansUnderwriting = () => {
                             ) as Record<ColumnKey, boolean>;
                             setColumnVisibility(allTrue);
                           }}
-                          className="text-[11px] text-violet-600 hover:text-violet-700 font-medium"
+                          className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
                         >
                           Show all columns
                         </button>
@@ -1288,7 +1288,7 @@ const EvansUnderwriting = () => {
                             {isFiltersActive && (
                               <button
                                 onClick={clearAllFilters}
-                                className="text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-semibold mt-1 px-3 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/50 transition-colors"
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold mt-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
                               >
                                 Clear all filters
                               </button>
@@ -1317,7 +1317,7 @@ const EvansUnderwriting = () => {
                         const isSelected = selectedLead?.id === lead.id;
 
                         const stickyBg = isSelected
-                          ? 'bg-violet-50 dark:bg-violet-950 group-hover:bg-violet-100 dark:group-hover:bg-violet-900'
+                          ? 'bg-blue-50 dark:bg-blue-950 group-hover:bg-blue-100 dark:group-hover:bg-blue-900'
                           : 'bg-white dark:bg-card group-hover:bg-gray-50 dark:group-hover:bg-muted';
 
                         return (
@@ -1326,7 +1326,7 @@ const EvansUnderwriting = () => {
                             onClick={() => handleRowClick(lead)}
                             className={`cursor-pointer transition-colors duration-100 group border-b border-border/60 last:border-b-0 ${
                               isSelected
-                                ? 'bg-violet-50/60 dark:bg-violet-950/30 hover:bg-violet-50/80 dark:hover:bg-violet-950/40'
+                                ? 'bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-50/80 dark:hover:bg-blue-950/40'
                                 : rowIdx % 2 === 0
                                   ? 'bg-card hover:bg-muted/50'
                                   : 'bg-muted/30 hover:bg-muted/50'
@@ -1335,7 +1335,7 @@ const EvansUnderwriting = () => {
                             {/* Checkbox */}
                             <td className={`px-4 py-3 w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}>
                               <div className={`h-4 w-4 rounded border-2 transition-colors ${
-                                isSelected ? 'border-violet-500 bg-violet-500' : 'border-border bg-card group-hover:border-muted-foreground/50'
+                                isSelected ? 'border-blue-500 bg-blue-500' : 'border-border bg-card group-hover:border-muted-foreground/50'
                               } flex items-center justify-center`}>
                                 {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
                               </div>
@@ -1469,7 +1469,7 @@ const EvansUnderwriting = () => {
                             {columnVisibility.interactions && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.interactions }}>
                                 {interactionCount > 0 ? (
-                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-violet-50 dark:bg-violet-950/50 text-[11px] font-bold text-violet-600 dark:text-violet-400">
+                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
                                     {interactionCount}
                                   </span>
                                 ) : (
@@ -1517,7 +1517,7 @@ const EvansUnderwriting = () => {
                             <td className="px-2 py-3 w-10">
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isSelected
-                                  ? 'text-violet-500'
+                                  ? 'text-blue-500'
                                   : 'text-transparent group-hover:text-muted-foreground'
                               }`} />
                             </td>
@@ -1558,7 +1558,7 @@ const EvansUnderwriting = () => {
                 </div>
                 <DragOverlay>
                   {draggedLead ? (
-                    <Card className="p-3 shadow-lg border border-violet-300 rotate-2 cursor-grabbing w-56 bg-card">
+                    <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
                       <div className="flex items-center gap-2 mb-1">
                         <div className={`h-5 w-5 rounded-full ${getAvatarColor(draggedLead.name)} flex items-center justify-center text-white text-[10px] font-bold`}>
                           {draggedLead.name[0]?.toUpperCase()}
@@ -1602,7 +1602,7 @@ const EvansUnderwriting = () => {
       <Dialog open={addOpportunityOpen} onOpenChange={setAddOpportunityOpen}>
         <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
           {/* Header with gradient */}
-          <div className="px-6 pt-6 pb-4" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)' }}>
+          <div className="px-6 pt-6 pb-4" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}>
             <DialogHeader>
               <DialogTitle className="text-white text-lg font-bold flex items-center gap-2">
                 <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
@@ -1702,7 +1702,7 @@ const EvansUnderwriting = () => {
               onClick={handleCreateOpportunity}
               disabled={!newOpp.name.trim() || createOpportunityMutation.isPending}
               className="h-9 px-5 rounded-xl text-[13px] font-semibold text-white flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
-              style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)' }}
+              style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}
             >
               {createOpportunityMutation.isPending ? (
                 <>
@@ -1723,4 +1723,4 @@ const EvansUnderwriting = () => {
   );
 };
 
-export default EvansUnderwriting;
+export default Underwriting;

@@ -151,7 +151,7 @@ const formatDuration = (seconds: number | null) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-const EvansCalls = () => {
+const Calls = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { outboundCall } = useCall();
@@ -1139,4 +1139,4 @@ const EvansCalls = () => {
   );
 };
 
-export default EvansCalls;
+export default Calls;

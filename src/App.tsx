@@ -14,7 +14,8 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import EmployeeRoute from "@/components/admin/EmployeeRoute";
 import AdminRouteLayout from "@/components/admin/AdminRouteLayout";
 import PublicLayout from "@/components/layout/PublicLayout";
-import EvanPortalWrapper from "@/components/evan/EvanPortalWrapper";
+import AdminPortalWrapper from "@/components/admin/AdminPortalWrapper";
+import AdminRoute from "@/components/admin/AdminRoute";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
 import Contact from "./pages/Contact";
@@ -39,19 +40,19 @@ import CRMBoard from "./pages/admin/CRMBoard";
 import AdminRateWatch from "./pages/admin/RateWatch";
 import AdminInboxCallback from "./pages/admin/InboxCallback";
 import LenderPrograms from "./pages/admin/LenderPrograms";
-import EvansPage from "./pages/admin/EvansPage";
-import EvansLeads from "./pages/admin/EvansLeads";
-import EvansPipeline from "./pages/admin/EvansPipeline";
+import Dashboard from "./pages/admin/Dashboard";
+import EmployeeLeads from "./pages/admin/EmployeeLeads";
+import EmployeePipeline from "./pages/admin/EmployeePipeline";
 import Pipeline from "./pages/admin/Pipeline";
 import PipelineFeed from "./pages/admin/PipelineFeed";
-import EvansUnderwriting from "./pages/admin/EvansUnderwriting";
+import Underwriting from "./pages/admin/Underwriting";
 import UnderwritingExpandedView from "./components/admin/UnderwritingExpandedView";
-import EvansTasks from "./pages/admin/EvansTasks";
-import EvansCalls from "./pages/admin/EvansCalls";
-import EvansGmail from "./pages/admin/EvansGmail";
-import EvansEmailTemplates from "./pages/admin/EvansEmailTemplates";
-import EvansCalendar from "./pages/admin/EvansCalendar";
-import EvansScorecard from "./pages/admin/EvansScorecard";
+import Tasks from "./pages/admin/Tasks";
+import Calls from "./pages/admin/Calls";
+import Gmail from "./pages/admin/Gmail";
+import EmailTemplates from "./pages/admin/EmailTemplates";
+import Calendar from "./pages/admin/Calendar";
+import Scorecard from "./pages/admin/Scorecard";
 import DevNotes from "./pages/admin/DevNotes";
 import ModuleTracker from "./pages/admin/ModuleTracker";
 import MaurasPage from "./pages/admin/MaurasPage";
@@ -127,8 +128,8 @@ const App = () => (
                 <Route path="/superadmin/team-performance" element={<TeamPerformance />} />
                 <Route path="/superadmin/leads" element={<AdminLeads />} />
                 <Route path="/superadmin/pipeline" element={<Pipeline />} />
-                <Route path="/superadmin/pipeline-test" element={<EvansPipeline />} />
-                <Route path="/superadmin/crm" element={<EvansPipeline />} />
+                <Route path="/superadmin/pipeline-test" element={<EmployeePipeline />} />
+                <Route path="/superadmin/crm" element={<EmployeePipeline />} />
                 <Route path="/superadmin/clients" element={<AdminClients />} />
                 <Route path="/superadmin/contracts" element={<AdminContracts />} />
                 <Route path="/superadmin/invoices" element={<AdminInvoices />} />
@@ -157,30 +158,32 @@ const App = () => (
                 <Route path="/superadmin/ilan/users-roles" element={<EmployeeRoute employeeName="Ilan"><UsersAndRoles /></EmployeeRoute>} />
               </Route>
               
-              {/* Employee Routes - Evan (wrapped with EvanPortalWrapper for persistent call state) */}
-              <Route element={<EvanPortalWrapper />}>
-                <Route path="/admin/evan" element={<EmployeeRoute employeeName="Evan"><EvansPage /></EmployeeRoute>} />
-                <Route path="/admin/evan/leads" element={<EmployeeRoute employeeName="Evan"><EvansLeads /></EmployeeRoute>} />
-                <Route path="/admin/evan/pipeline" element={<EmployeeRoute employeeName="Evan"><Pipeline /></EmployeeRoute>} />
-                <Route path="/admin/evan/pipeline/feed" element={<EmployeeRoute employeeName="Evan"><PipelineFeed /></EmployeeRoute>} />
-                <Route path="/admin/evan/pipeline/underwriting" element={<EmployeeRoute employeeName="Evan"><EvansUnderwriting /></EmployeeRoute>} />
-                <Route path="/admin/evan/pipeline/underwriting/lead/:leadId" element={<EmployeeRoute employeeName="Evan"><UnderwritingExpandedView /></EmployeeRoute>} />
-                <Route path="/admin/evan/tasks" element={<EmployeeRoute employeeName="Evan"><EvansTasks /></EmployeeRoute>} />
-                <Route path="/admin/evan/calls" element={<EmployeeRoute employeeName="Evan"><EvansCalls /></EmployeeRoute>} />
-                <Route path="/admin/evan/lender-programs" element={<EmployeeRoute employeeName="Evan"><LenderPrograms /></EmployeeRoute>} />
-                <Route path="/admin/evan/gmail" element={<EmployeeRoute employeeName="Evan"><EvansGmail /></EmployeeRoute>} />
-                <Route path="/admin/evan/email-templates" element={<EmployeeRoute employeeName="Evan"><EvansEmailTemplates /></EmployeeRoute>} />
-                <Route path="/admin/evan/calendar" element={<EmployeeRoute employeeName="Evan"><EvansCalendar /></EmployeeRoute>} />
-                <Route path="/admin/evan/scorecard" element={<EmployeeRoute employeeName="Evan"><EvansScorecard /></EmployeeRoute>} />
-                <Route path="/admin/evan/dev-notes" element={<EmployeeRoute employeeName="Evan"><DevNotes /></EmployeeRoute>} />
-                <Route path="/admin/evan/bug-reporting" element={<EmployeeRoute employeeName="Evan"><BugReporting /></EmployeeRoute>} />
-                <Route path="/admin/evan/messages" element={<EmployeeRoute employeeName="Evan"><AdminMessages /></EmployeeRoute>} />
-                <Route path="/admin/evan/rate-watch" element={<EmployeeRoute employeeName="Evan"><AdminRateWatch /></EmployeeRoute>} />
-                {/* Legacy /user/evan and /team/evan routes for backward compatibility */}
-                <Route path="/user/evan" element={<Navigate to="/admin/evan" replace />} />
-                <Route path="/user/evan/*" element={<Navigate to="/admin/evan" replace />} />
-                <Route path="/team/evan" element={<Navigate to="/admin/evan" replace />} />
-                <Route path="/team/evan/*" element={<Navigate to="/admin/evan" replace />} />
+              {/* Admin Employee Routes (wrapped with AdminPortalWrapper for persistent call state) */}
+              <Route element={<AdminPortalWrapper />}>
+                <Route path="/admin/dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
+                <Route path="/admin/leads" element={<AdminRoute><EmployeeLeads /></AdminRoute>} />
+                <Route path="/admin/pipeline" element={<AdminRoute><Pipeline /></AdminRoute>} />
+                <Route path="/admin/pipeline/feed" element={<AdminRoute><PipelineFeed /></AdminRoute>} />
+                <Route path="/admin/pipeline/underwriting" element={<AdminRoute><Underwriting /></AdminRoute>} />
+                <Route path="/admin/pipeline/underwriting/lead/:leadId" element={<AdminRoute><UnderwritingExpandedView /></AdminRoute>} />
+                <Route path="/admin/tasks" element={<AdminRoute><Tasks /></AdminRoute>} />
+                <Route path="/admin/calls" element={<AdminRoute><Calls /></AdminRoute>} />
+                <Route path="/admin/lender-programs" element={<AdminRoute><LenderPrograms /></AdminRoute>} />
+                <Route path="/admin/gmail" element={<AdminRoute><Gmail /></AdminRoute>} />
+                <Route path="/admin/email-templates" element={<AdminRoute><EmailTemplates /></AdminRoute>} />
+                <Route path="/admin/calendar" element={<AdminRoute><Calendar /></AdminRoute>} />
+                <Route path="/admin/scorecard" element={<AdminRoute><Scorecard /></AdminRoute>} />
+                <Route path="/admin/dev-notes" element={<AdminRoute><DevNotes /></AdminRoute>} />
+                <Route path="/admin/bug-reporting" element={<AdminRoute><BugReporting /></AdminRoute>} />
+                <Route path="/admin/messages" element={<AdminRoute><AdminMessages /></AdminRoute>} />
+                <Route path="/admin/rate-watch" element={<AdminRoute><AdminRateWatch /></AdminRoute>} />
+                {/* Legacy redirects */}
+                <Route path="/admin/evan" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="/admin/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="/user/evan" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="/user/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="/team/evan" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="/team/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
               </Route>
               
               {/* Other Employee Routes */}
@@ -189,8 +192,8 @@ const App = () => (
                 <Route path="/admin/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
               </Route>
 
-              {/* Legacy redirects for old /admin/* shared pages */}
-              <Route path="/admin" element={<Navigate to="/superadmin" replace />} />
+              {/* Legacy redirects for old /admin shared pages */}
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
               {/* Partner Portal Routes */}
               <Route element={<PartnerRouteLayout />}>

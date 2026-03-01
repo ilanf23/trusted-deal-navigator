@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { useEvanUIState } from '@/contexts/EvanUIStateContext';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -72,7 +73,8 @@ const SOURCE_COLORS = [
   'hsl(30, 100%, 35%)',   // Dark orange
 ];
 
-const EvansPage = () => {
+const Dashboard = () => {
+  const { teamMember } = useTeamMember();
   const { getPageState, setPageState } = useEvanUIState();
   const persisted = getPageState('dashboard', { timePeriod: 'ytd' as TimePeriod, chartPeriod: 'ytd' as TimePeriod, calcLoanAmount: '500000', calcExtraDeals: '0' });
 
@@ -90,37 +92,24 @@ const EvansPage = () => {
   const periodStart = timePeriod === 'ytd' ? startOfYear(now) : startOfMonth(now);
 
   // Dynamic greeting based on time of day
+  const firstName = teamMember?.name || 'there';
   const getGreeting = () => {
     const hour = now.getHours();
     if (hour < 12) {
-      return 'Good morning, Evan!';
+      return `Good morning, ${firstName}!`;
     } else if (hour >= 12 && hour < 16) {
       const dayName = format(now, 'EEEE');
-      return `Happy ${dayName}, Evan!`;
+      return `Happy ${dayName}, ${firstName}!`;
     } else {
-      return 'Good afternoon, Evan!';
+      return `Good afternoon, ${firstName}!`;
     }
   };
 
-  // Fetch Evan's team member ID
-  const { data: evanTeamMember } = useQuery({
-    queryKey: ['evan-team-member'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('id')
-        .ilike('name', 'evan')
-        .single();
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const evanId = evanTeamMember?.id;
+  const evanId = teamMember?.id;
 
   // Fetch leads with their responses (for loan amounts)
   const { data: leadsData, isLoading: leadsLoading, isFetching: leadsFetching } = useQuery({
-    queryKey: ['evan-leads-analytics', evanId, timePeriod],
+    queryKey: ['admin-leads-analytics', evanId, timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
@@ -147,7 +136,7 @@ const EvansPage = () => {
 
   // Fetch upcoming tasks
   const { data: upcomingTasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ['evan-upcoming-tasks'],
+    queryKey: ['admin-upcoming-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_tasks')
@@ -164,7 +153,7 @@ const EvansPage = () => {
 
   // Fetch all leads for pipeline (not just period-filtered)
   const { data: pipelineData, isLoading: pipelineLoading, isFetching: pipelineFetching } = useQuery({
-    queryKey: ['evan-pipeline-analytics'],
+    queryKey: ['admin-pipeline-analytics'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
@@ -187,7 +176,7 @@ const EvansPage = () => {
 
   // Fetch funded leads for revenue calculation
   const { data: fundedLeads, isLoading: fundedLoading, isFetching: fundedFetching } = useQuery({
-    queryKey: ['evan-funded-analytics', timePeriod],
+    queryKey: ['admin-funded-analytics', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
@@ -590,7 +579,7 @@ const EvansPage = () => {
               </div>
               <div className="flex items-center justify-between mt-1.5">
                 <span className="text-[10px] md:text-xs text-muted-foreground">
-                  Evan: {formatCurrency(metrics.totalRevenue)}
+                  {firstName}: {formatCurrency(metrics.totalRevenue)}
                 </span>
                 <span className="text-[10px] md:text-xs font-medium text-primary">
                   {companyGoalPct.toFixed(0)}%
@@ -922,7 +911,7 @@ const EvansPage = () => {
                   <CardTitle className="text-base">Upcoming To-Do</CardTitle>
                   <CardDescription>Tasks due in the next 7 days</CardDescription>
                 </div>
-                <Link to="/user/evan/tasks">
+                <Link to="/admin/tasks">
                   <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">
                     View All
                   </Badge>
@@ -1053,4 +1042,4 @@ const EvansPage = () => {
   );
 };
 
-export default EvansPage;
+export default Dashboard;

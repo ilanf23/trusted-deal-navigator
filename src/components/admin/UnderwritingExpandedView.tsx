@@ -73,7 +73,7 @@ function formatDate(dateStr: string | null): string {
 const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string }> = {
   call: { icon: Phone, color: 'text-blue-500' },
   email: { icon: Mail, color: 'text-emerald-500' },
-  meeting: { icon: Users, color: 'text-violet-500' },
+  meeting: { icon: Users, color: 'text-blue-500' },
   note: { icon: Pencil, color: 'text-amber-500' },
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
 };
@@ -317,12 +317,12 @@ export default function UnderwritingExpandedView() {
   return (
     <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
       {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border px-6 py-4 bg-gradient-to-r from-muted/50 to-violet-50/20 dark:to-violet-950/20">
+      <div className="shrink-0 border-b border-border px-6 py-4 bg-gradient-to-r from-muted/50 to-blue-50/20 dark:to-blue-950/20">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
             <X className="h-4 w-4" />
           </Button>
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md">
             {initial}
           </div>
           <div className="min-w-0 flex-1">
@@ -347,7 +347,7 @@ export default function UnderwritingExpandedView() {
       {/* ── Stats Bar ── */}
       <div className="shrink-0 border-b border-border flex items-center justify-center gap-0 divide-x divide-border py-1 bg-muted/30">
         <StatBox value={interactionCount} label="Interactions" icon={<Activity className="h-4 w-4" />} color="text-blue-600" />
-        <StatBox value={lastContacted} label="Last Contacted" icon={<Clock className="h-4 w-4" />} color="text-violet-600" />
+        <StatBox value={lastContacted} label="Last Contacted" icon={<Clock className="h-4 w-4" />} color="text-blue-600" />
         <StatBox value={inactiveDays ?? '—'} label="Inactive Days" icon={<AlertCircle className="h-4 w-4" />} color={inactiveColor} />
         <StatBox value={daysInStage ?? '—'} label="Days in Stage" icon={<TrendingUp className="h-4 w-4" />} color="text-emerald-600" />
       </div>
@@ -447,7 +447,7 @@ export default function UnderwritingExpandedView() {
             <button
               className={`px-4 py-3 text-xs font-semibold transition-colors relative ${
                 activityTab === 'log'
-                  ? 'text-violet-700 dark:text-violet-400'
+                  ? 'text-blue-700 dark:text-blue-400'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActivityTab('log')}
@@ -457,13 +457,13 @@ export default function UnderwritingExpandedView() {
                 Log Activity
               </span>
               {activityTab === 'log' && (
-                <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-violet-600" />
+                <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-blue-600" />
               )}
             </button>
             <button
               className={`px-4 py-3 text-xs font-semibold transition-colors relative ${
                 activityTab === 'note'
-                  ? 'text-violet-700 dark:text-violet-400'
+                  ? 'text-blue-700 dark:text-blue-400'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setActivityTab('note')}
@@ -473,7 +473,7 @@ export default function UnderwritingExpandedView() {
                 Create Note
               </span>
               {activityTab === 'note' && (
-                <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-violet-600" />
+                <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-blue-600" />
               )}
             </button>
           </div>
@@ -499,14 +499,14 @@ export default function UnderwritingExpandedView() {
                     value={activityNote}
                     onChange={(e) => setActivityNote(e.target.value)}
                     placeholder="Add a note..."
-                    className="min-h-[80px] text-sm resize-none rounded-xl border-border focus-visible:border-violet-400 focus-visible:ring-violet-400/20"
+                    className="min-h-[80px] text-sm resize-none rounded-xl border-border focus-visible:border-blue-400 focus-visible:ring-blue-400/20"
                   />
                   <div className="flex justify-end">
                     <Button
                       size="sm"
                       onClick={handleSaveActivity}
                       disabled={savingActivity || !activityNote.trim()}
-                      className="bg-violet-600 hover:bg-violet-700 text-white text-xs px-4 rounded-lg"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 rounded-lg"
                     >
                       {savingActivity && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
                       Save Activity
@@ -519,14 +519,14 @@ export default function UnderwritingExpandedView() {
                     value={noteContent}
                     onChange={(e) => setNoteContent(e.target.value)}
                     placeholder="Write a note..."
-                    className="min-h-[120px] text-sm resize-none rounded-xl border-border focus-visible:border-violet-400 focus-visible:ring-violet-400/20"
+                    className="min-h-[120px] text-sm resize-none rounded-xl border-border focus-visible:border-blue-400 focus-visible:ring-blue-400/20"
                   />
                   <div className="flex justify-end">
                     <Button
                       size="sm"
                       onClick={handleSaveActivity}
                       disabled={savingActivity || !noteContent.trim()}
-                      className="bg-violet-600 hover:bg-violet-700 text-white text-xs px-4 rounded-lg"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 rounded-lg"
                     >
                       {savingActivity && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
                       Save Note
@@ -648,14 +648,14 @@ export default function UnderwritingExpandedView() {
                       }}
                       placeholder="Task title..."
                       disabled={savingTask}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400"
+                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                     />
-                    {savingTask && <Loader2 className="h-3 w-3 animate-spin text-violet-500 shrink-0" />}
+                    {savingTask && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
                   </div>
                 ) : (
                   <button
                     onClick={() => setAddingTask(true)}
-                    className="text-xs text-violet-600 dark:text-violet-400 font-medium hover:text-violet-700 dark:hover:text-violet-300 transition-colors py-1"
+                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
                   >
                     + Add task...
                   </button>
@@ -675,7 +675,7 @@ export default function UnderwritingExpandedView() {
               <p className="text-xs text-muted-foreground py-1">No projects</p>
             </RelatedSection>
 
-            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1} iconColor="text-violet-500">
+            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1} iconColor="text-blue-500">
               <div className="text-xs py-1">
                 <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
                   {stageCfg?.label ?? lead.status}

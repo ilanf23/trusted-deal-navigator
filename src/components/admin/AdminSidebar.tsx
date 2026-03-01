@@ -266,6 +266,37 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         noCollapse: true,
       });
 
+      // CRM section with heading
+      sections.push({
+        title: 'CRM',
+        icon: Kanban,
+        isLabel: true,
+        items: [
+          { title: 'Feed', url: `/admin/${employeeName.toLowerCase()}/pipeline/feed`, icon: Rss },
+          {
+            title: 'Pipeline',
+            url: `/admin/${employeeName.toLowerCase()}/pipeline`,
+            icon: Kanban,
+            subItems: [
+              { title: 'Underwriting', url: `/admin/${employeeName.toLowerCase()}/pipeline/underwriting`, icon: ClipboardList },
+              { title: 'Lender Management', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=lender-management`, icon: Building2 },
+              { title: 'Potential', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=potential`, icon: Crosshair },
+            ],
+          },
+          {
+            title: 'Contacts',
+            url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts`,
+            icon: Users,
+            subItems: [
+              { title: 'People', url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts/people`, icon: User },
+              { title: 'Companies', url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts/companies`, icon: Building2 },
+            ],
+          },
+          { title: 'Lender Programs', url: `/admin/${employeeName.toLowerCase()}/lender-programs`, icon: Building2 },
+        ],
+        noCollapse: true,
+      });
+
       // Workspace section with heading
       sections.push({
         title: 'Workspace',
@@ -276,37 +307,6 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Calendar', url: `/admin/${employeeName.toLowerCase()}/calendar`, icon: Calendar },
           { title: 'Calls', url: `/admin/${employeeName.toLowerCase()}/calls`, icon: Phone },
           { title: 'Gmail', url: `/admin/${employeeName.toLowerCase()}/gmail`, icon: Mail },
-        ],
-        noCollapse: true,
-      });
-
-      // CRM section with heading
-      sections.push({
-        title: 'CRM',
-        icon: Kanban,
-        isLabel: true,
-        items: [
-          { 
-            title: 'CRM', 
-            url: `/admin/${employeeName.toLowerCase()}/pipeline`, 
-            icon: Kanban,
-            subItems: [
-              { title: 'Feed', url: `/admin/${employeeName.toLowerCase()}/pipeline/feed`, icon: Rss },
-              { 
-                title: 'Pipeline', 
-                url: `/admin/${employeeName.toLowerCase()}/pipeline`, 
-                icon: Kanban,
-                subItems: [
-                  
-                  { title: 'Lender Management', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=lender-management`, icon: Building2 },
-                  { title: 'Potential', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=potential`, icon: Crosshair },
-                  { title: 'Underwriting', url: `/admin/${employeeName.toLowerCase()}/pipeline/underwriting`, icon: ClipboardList },
-                ],
-              },
-              { title: 'Contacts', url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts`, icon: Users },
-            ],
-          },
-          { title: 'Lender Programs', url: `/admin/${employeeName.toLowerCase()}/lender-programs`, icon: Building2 },
         ],
         noCollapse: true,
       });
@@ -380,9 +380,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   };
 
   const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40 focus-visible:ring-offset-0 focus-visible:ring-offset-sidebar';
-  const activeIndicator = "before:content-[''] before:absolute before:left-0 before:inset-y-1.5 before:w-[2.5px] before:rounded-full before:bg-sidebar-primary before:shadow-[0_0_6px_hsl(214_89%_62%/0.6)]";
-  const activeSurface = 'bg-sidebar-accent [box-shadow:var(--sidebar-active-shadow)] text-sidebar-accent-foreground';
-  const inactiveItem = 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground';
+  const activeIndicator = "before:content-[''] before:absolute before:left-0 before:inset-y-1.5 before:w-[2.5px] before:rounded-full before:bg-sidebar-primary";
+  const activeSurface = 'bg-sidebar-accent text-sidebar-accent-foreground';
+  const inactiveItem = 'text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-foreground';
 
   const getUserInitials = (email?: string) => {
     if (!email) return 'U';
@@ -435,7 +435,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               {/* Section heading label */}
               {section.isLabel && section.title && !isCollapsed && (
                 <div className="px-2.5 pt-2 pb-1">
-                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/50 select-none">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/70 select-none">
                     {section.title}
                   </span>
                 </div>
@@ -456,7 +456,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                           : `${inactiveItem} font-normal`
                         }
                       `}>
-                        <item.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${isNavBranchActive(item) || openSections[item.title] ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                        <item.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${isNavBranchActive(item) || openSections[item.title] ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                         <span className="flex-1 text-left">{item.title}</span>
                         <ChevronDown 
                           className={`w-3.5 h-3.5 transition-transform duration-200 ease-out opacity-50 ${
@@ -483,7 +483,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                     : `${inactiveItem} font-normal`
                                   }
                                 `}>
-                                  <subItem.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`] ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                  <subItem.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`] ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                   <span className="flex-1 text-left">{subItem.title}</span>
                                   <ChevronDown
                                     className={`w-3 h-3 transition-transform duration-200 ease-out opacity-50 ${
@@ -508,7 +508,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                         }
                                       `}
                                     >
-                                      <deepItem.icon className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${isActive(deepItem.url) ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                      <deepItem.icon className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${isActive(deepItem.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                       <span>{deepItem.title}</span>
                                     </Link>
                                   ))}
@@ -529,7 +529,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                 }
                               `}
                             >
-                              <subItem.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isActive(subItem.url) ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                              <subItem.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isActive(subItem.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                               <span>{subItem.title}</span>
                             </Link>
                           )
@@ -548,7 +548,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                           flex items-center justify-center py-2 px-2 rounded-md transition-all duration-200 ease-out
                           ${isActive(item.url) 
                             ? 'bg-sidebar-accent ring-1 ring-sidebar-primary/25 shadow-sm text-sidebar-accent-foreground' 
-                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                            : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                           }
                         `}
                       >
@@ -573,7 +573,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                       }
                     `}
                   >
-                    <item.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${isActive(item.url) ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                    <item.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${isActive(item.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                     <span>{item.title}</span>
                   </Link>
                 )
@@ -590,7 +590,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     flex items-center justify-center py-2 px-2 rounded-md transition-all duration-200 ease-out
                     ${section.items.some(isNavBranchActive)
                       ? 'bg-sidebar-accent ring-1 ring-sidebar-primary/25 shadow-sm text-sidebar-accent-foreground' 
-                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                      : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                     }
                   `}
                 >
@@ -622,7 +622,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     : `${inactiveItem} font-normal`
                   }
                 `}>
-                  <section.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${openSections[section.title] || section.items.some(isNavBranchActive) ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                  <section.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${openSections[section.title] || section.items.some(isNavBranchActive) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                   <span className="flex-1 text-left">{section.title}</span>
                   <ChevronDown 
                     className={`w-3.5 h-3.5 transition-transform duration-200 ease-out opacity-50 ${
@@ -649,7 +649,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                               : `${inactiveItem} font-normal`
                             }
                           `}>
-                            <item.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(item) || openSections[item.title] ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                            <item.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(item) || openSections[item.title] ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                             <span className="flex-1 text-left">{item.title}</span>
                             <ChevronDown 
                               className={`w-3 h-3 transition-transform duration-200 ease-out opacity-50 ${
@@ -675,7 +675,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                         : `${inactiveItem} font-normal`
                                       }
                                     `}>
-                                      <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`] ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                      <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`] ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                       <span className="flex-1 text-left">{subItem.title}</span>
                                       <ChevronDown
                                         className={`w-2.5 h-2.5 transition-transform duration-200 ease-out opacity-50 ${
@@ -700,7 +700,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                             }
                                           `}
                                         >
-                                          <deepItem.icon className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${isActive(deepItem.url) ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                          <deepItem.icon className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${isActive(deepItem.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                           <span>{deepItem.title}</span>
                                         </Link>
                                       ))}
@@ -721,7 +721,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                     }
                                   `}
                                 >
-                                  <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isActive(subItem.url) ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                  <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isActive(subItem.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                   <span>{subItem.title}</span>
                                 </Link>
                               )
@@ -743,7 +743,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                           }
                         `}
                       >
-                        <item.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isActive(item.url) ? 'opacity-100' : 'opacity-60 group-hover:opacity-85 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                        <item.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isActive(item.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                         <span>{item.title}</span>
                       </Link>
                     )
@@ -779,7 +779,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   className={`w-full h-9 ${focusRing} transition-all duration-200 ease-out ${
                     aiChatOpen 
                       ? 'bg-sidebar-accent text-sidebar-primary ring-1 ring-sidebar-primary/25' 
-                      : 'text-sidebar-foreground/65 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                      : 'text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent'
                   }`}
                   onClick={onAIToggle}
                 >
@@ -796,7 +796,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               className={`w-full justify-start gap-3 h-9 rounded-md text-[13px] px-2.5 mb-2 transition-all duration-200 ease-out ${focusRing} ${
                 aiChatOpen 
                   ? 'bg-sidebar-accent text-sidebar-primary ring-1 ring-sidebar-primary/25' 
-                  : 'text-sidebar-foreground/60 hover:text-sidebar-foreground/95 hover:bg-sidebar-accent'
+                  : 'text-sidebar-foreground/80 hover:text-sidebar-foreground/95 hover:bg-sidebar-accent'
               }`}
               onClick={onAIToggle}
             >
@@ -838,7 +838,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               <p className="text-[12.5px] font-semibold text-sidebar-accent-foreground truncate tracking-tight">
                 {teamMember?.name || user?.email?.split('@')[0] || 'User'}
               </p>
-              <p className="text-[10.5px] text-sidebar-foreground/55 truncate">
+              <p className="text-[10.5px] text-sidebar-foreground/70 truncate">
                 {user?.email}
               </p>
             </div>
@@ -851,7 +851,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               <Button 
                 variant="ghost" 
                 size="icon"
-                className={`w-full h-9 text-sidebar-foreground/50 hover:text-sidebar-foreground/80 hover:bg-sidebar-accent transition-all duration-200 ease-out ${focusRing}`}
+                className={`w-full h-9 text-sidebar-foreground/70 hover:text-sidebar-foreground/90 hover:bg-sidebar-accent transition-all duration-200 ease-out ${focusRing}`}
                 onClick={signOut}
               >
                 <LogOut className="w-4 h-4" strokeWidth={1.5} />
@@ -864,7 +864,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         ) : (
           <Button 
             variant="ghost" 
-            className={`w-full justify-start gap-2.5 text-sidebar-foreground/50 hover:text-sidebar-foreground/80 hover:bg-sidebar-accent h-8 rounded-md text-[12px] px-2.5 transition-all duration-200 ease-out ${focusRing}`}
+            className={`w-full justify-start gap-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground/90 hover:bg-sidebar-accent h-8 rounded-md text-[12px] px-2.5 transition-all duration-200 ease-out ${focusRing}`}
             onClick={signOut}
           >
             <LogOut className="w-3.5 h-3.5" strokeWidth={1.5} />

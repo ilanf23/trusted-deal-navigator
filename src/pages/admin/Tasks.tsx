@@ -1,7 +1,7 @@
 import EvanLayout from '@/components/evan/EvanLayout';
 import { TaskWorkspace } from '@/components/evan/tasks/TaskWorkspace';
 
-const EvansTasks = () => {
+const Tasks = () => {
   return (
     <EvanLayout>
       <div className="space-y-2">
@@ -18,4 +18,4 @@ const EvansTasks = () => {
   );
 };
 
-export default EvansTasks;
+export default Tasks;
