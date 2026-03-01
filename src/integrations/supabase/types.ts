@@ -1879,15 +1879,20 @@ export type Database = {
         Row: {
           about: string | null
           assigned_to: string | null
+          bank_relationships: string | null
           client_other_lenders: boolean
+          clx_file_name: string | null
           cohort_year: number | null
           company_name: string | null
           contact_type: string | null
           converted_at: string | null
           converted_to_client_id: string | null
           created_at: string
+          deal_value: number | null
+          description: string | null
           email: string | null
           flagged_for_weekly: boolean
+          history: string | null
           id: string
           initial_nudge_created_at: string | null
           known_as: string | null
@@ -1896,6 +1901,7 @@ export type Database = {
           name: string
           next_action: string | null
           notes: string | null
+          opportunity_name: string | null
           phone: string | null
           qualified_at: string | null
           questionnaire_completed_at: string | null
@@ -1918,15 +1924,20 @@ export type Database = {
         Insert: {
           about?: string | null
           assigned_to?: string | null
+          bank_relationships?: string | null
           client_other_lenders?: boolean
+          clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
+          deal_value?: number | null
+          description?: string | null
           email?: string | null
           flagged_for_weekly?: boolean
+          history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
           known_as?: string | null
@@ -1935,6 +1946,7 @@ export type Database = {
           name: string
           next_action?: string | null
           notes?: string | null
+          opportunity_name?: string | null
           phone?: string | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
@@ -1957,15 +1969,20 @@ export type Database = {
         Update: {
           about?: string | null
           assigned_to?: string | null
+          bank_relationships?: string | null
           client_other_lenders?: boolean
+          clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
+          deal_value?: number | null
+          description?: string | null
           email?: string | null
           flagged_for_weekly?: boolean
+          history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
           known_as?: string | null
@@ -1974,6 +1991,7 @@ export type Database = {
           name?: string
           next_action?: string | null
           notes?: string | null
+          opportunity_name?: string | null
           phone?: string | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
@@ -2644,51 +2662,139 @@ export type Database = {
       }
       people: {
         Row: {
-          company: string | null
+          assigned_to: string | null
+          company_name: string | null
           contact_type: string | null
           created_at: string
           email: string | null
           id: string
           inactive_days: number
           interactions_count: number
+          last_activity_at: string | null
           last_contacted: string | null
-          person_name: string
+          linkedin: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          source: string | null
           tags: string[] | null
           tasks_count: number
           title: string | null
           updated_at: string
         }
         Insert: {
-          company?: string | null
+          assigned_to?: string | null
+          company_name?: string | null
           contact_type?: string | null
           created_at?: string
           email?: string | null
           id?: string
           inactive_days?: number
           interactions_count?: number
+          last_activity_at?: string | null
           last_contacted?: string | null
-          person_name: string
+          linkedin?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          source?: string | null
           tags?: string[] | null
           tasks_count?: number
           title?: string | null
           updated_at?: string
         }
         Update: {
-          company?: string | null
+          assigned_to?: string | null
+          company_name?: string | null
           contact_type?: string | null
           created_at?: string
           email?: string | null
           id?: string
           inactive_days?: number
           interactions_count?: number
+          last_activity_at?: string | null
           last_contacted?: string | null
-          person_name?: string
+          linkedin?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          source?: string | null
           tags?: string[] | null
           tasks_count?: number
           title?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      people_activities: {
+        Row: {
+          activity_type: string
+          content: string | null
+          created_at: string
+          id: string
+          person_id: string
+          title: string | null
+        }
+        Insert: {
+          activity_type: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          person_id: string
+          title?: string | null
+        }
+        Update: {
+          activity_type?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          person_id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_activities_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_tasks: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          id: string
+          person_id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          person_id: string
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          person_id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_tasks_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pipeline_column_values: {
         Row: {
@@ -3607,6 +3713,14 @@ export type Database = {
         | "ready_for_wu_approval"
         | "pre_approval_issued"
         | "won"
+        | "review_kill_keep"
+        | "waiting_on_needs_list"
+        | "waiting_on_client"
+        | "complete_files_for_review"
+        | "need_structure_from_brad"
+        | "maura_underwriting"
+        | "brad_underwriting"
+        | "uw_paused"
       pipeline_column_type:
         | "free_form"
         | "date"
@@ -3775,6 +3889,14 @@ export const Constants = {
         "ready_for_wu_approval",
         "pre_approval_issued",
         "won",
+        "review_kill_keep",
+        "waiting_on_needs_list",
+        "waiting_on_client",
+        "complete_files_for_review",
+        "need_structure_from_brad",
+        "maura_underwriting",
+        "brad_underwriting",
+        "uw_paused",
       ],
       pipeline_column_type: [
         "free_form",

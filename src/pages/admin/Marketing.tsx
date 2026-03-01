@@ -25,13 +25,20 @@ const statusColors: Record<LeadStatus, string> = {
   pre_approval_issued: 'bg-violet-100 text-violet-800',
   won: 'bg-green-100 text-green-800',
   lost: 'bg-red-100 text-red-800',
-  // Legacy values
   discovery: 'bg-blue-50 text-blue-700',
   questionnaire: 'bg-indigo-100 text-indigo-800',
   pre_qualification: 'bg-cyan-50 text-cyan-700',
   document_collection: 'bg-yellow-100 text-yellow-800',
   approval: 'bg-green-50 text-green-700',
   funded: 'bg-purple-100 text-purple-800',
+  review_kill_keep: 'bg-red-100 text-red-800',
+  waiting_on_needs_list: 'bg-amber-100 text-amber-800',
+  waiting_on_client: 'bg-yellow-100 text-yellow-800',
+  complete_files_for_review: 'bg-teal-100 text-teal-800',
+  need_structure_from_brad: 'bg-indigo-100 text-indigo-800',
+  maura_underwriting: 'bg-pink-100 text-pink-800',
+  brad_underwriting: 'bg-sky-100 text-sky-800',
+  uw_paused: 'bg-gray-100 text-gray-800',
 };
 
 const AdminMarketing = () => {

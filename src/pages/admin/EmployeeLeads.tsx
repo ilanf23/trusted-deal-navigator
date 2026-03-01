@@ -36,13 +36,20 @@ const statusConfig: Record<LeadStatus, { label: string; color: string; bg: strin
   pre_approval_issued: { label: 'Pre-Approval Issued', color: 'text-violet-600', bg: 'bg-violet-50' },
   won: { label: 'Won', color: 'text-emerald-600', bg: 'bg-emerald-50' },
   lost: { label: 'Lost', color: 'text-red-600', bg: 'bg-red-50' },
-  // Legacy values
   discovery: { label: 'Discovery', color: 'text-blue-500', bg: 'bg-blue-50' },
   questionnaire: { label: 'Questionnaire', color: 'text-indigo-600', bg: 'bg-indigo-50' },
   pre_qualification: { label: 'Pre-Qual', color: 'text-cyan-500', bg: 'bg-cyan-50' },
   document_collection: { label: 'Documents', color: 'text-amber-500', bg: 'bg-amber-50' },
   approval: { label: 'Approved', color: 'text-emerald-500', bg: 'bg-emerald-50' },
   funded: { label: 'Funded', color: 'text-violet-500', bg: 'bg-violet-50' },
+  review_kill_keep: { label: 'Review Kill/Keep', color: 'text-red-600', bg: 'bg-red-50' },
+  waiting_on_needs_list: { label: 'Waiting Needs List', color: 'text-amber-600', bg: 'bg-amber-50' },
+  waiting_on_client: { label: 'Waiting on Client', color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  complete_files_for_review: { label: 'Complete Files', color: 'text-teal-600', bg: 'bg-teal-50' },
+  need_structure_from_brad: { label: 'Need Structure', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  maura_underwriting: { label: 'Maura UW', color: 'text-pink-600', bg: 'bg-pink-50' },
+  brad_underwriting: { label: 'Brad UW', color: 'text-sky-600', bg: 'bg-sky-50' },
+  uw_paused: { label: 'UW Paused', color: 'text-gray-600', bg: 'bg-gray-50' },
 };
 
 const EmployeeLeads = () => {
