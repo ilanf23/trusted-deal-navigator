@@ -334,7 +334,8 @@ const Companies = () => {
                 <p className="text-xs">Try adjusting your filters or add a new company</p>
               </div>
             ) : (
-              <table className="w-full text-xs">
+              <div className="overflow-x-auto">
+              <table className="min-w-max text-xs">
                 <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm">
                   <tr className="border-b border-border">
                     <th className="text-left font-semibold text-muted-foreground px-3 py-2 cursor-pointer select-none" style={{ width: columnWidths.company }} onClick={() => handleSort('company_name')}>
@@ -478,6 +479,7 @@ const Companies = () => {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </ScrollArea>
         </div>
