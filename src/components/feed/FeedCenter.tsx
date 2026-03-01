@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
-import { ArrowUp, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Search, Loader2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import ActivityCard from './ActivityCard';
 import feedEmptyState from '@/assets/feed-empty-state.png';
 import type { FeedActivity } from '@/hooks/useFeedData';
@@ -8,10 +9,15 @@ import type { FeedActivity } from '@/hooks/useFeedData';
 interface FeedCenterProps {
   activities: FeedActivity[];
   isLoading: boolean;
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  onToggleLeftPanel?: () => void;
+  selectedTeamMember?: string | null;
 }
 
-const FeedCenter = ({ activities, isLoading }: FeedCenterProps) => {
+const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onToggleLeftPanel, selectedTeamMember }: FeedCenterProps) => {
   const [activeTab, setActiveTab] = useState<'all' | 'notes' | 'comms'>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = activities.filter((a) => {
@@ -35,25 +41,66 @@ const FeedCenter = ({ activities, isLoading }: FeedCenterProps) => {
   if (yesterdayItems.length > 0) groups.push({ label: 'Yesterday', items: yesterdayItems });
   if (olderItems.length > 0) groups.push({ label: 'Earlier', items: olderItems });
 
+  const tabCounts = {
+    all: activities.length,
+    notes: activities.filter(a => a.type === 'note' || a.type === 'lead_created').length,
+    comms: activities.filter(a => a.type === 'call' || a.type === 'email' || a.type === 'sms').length,
+  };
+
+  const handleToggle = (id: string) => {
+    setExpandedId(prev => prev === id ? null : id);
+  };
+
   return (
     <div className="flex-1 min-w-0 bg-muted/50 flex flex-col h-full relative">
-      {/* Tab bar */}
-      <div className="bg-white dark:bg-card border-b border-border px-4">
+      {/* Search bar */}
+      <div className="bg-card border-b border-border px-3 sm:px-4 pt-3 pb-0">
+        {/* Mobile filter button */}
+        {onToggleLeftPanel && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleLeftPanel}
+            className="mb-2 lg:hidden flex items-center gap-2"
+          >
+            <Users className="w-4 h-4" />
+            {selectedTeamMember || 'All Team'}
+          </Button>
+        )}
+
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search by name, company, or keyword..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full h-9 pl-9 pr-4 bg-muted rounded-lg text-sm outline-none border-0 placeholder:text-muted-foreground text-foreground focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+
+        {/* Tab bar */}
         <div className="flex">
           {(['all', 'notes', 'comms'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                'relative px-4 py-3.5 text-[15px] font-semibold transition-colors',
+                'relative px-2 sm:px-3 md:px-4 py-3 text-sm font-medium transition-colors',
                 activeTab === tab
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              {tab === 'comms' ? 'Communications' : tab === 'all' ? 'All Activity' : 'Notes & Leads'}
+              <span className="sm:hidden">
+                {tab === 'comms' ? 'Comms' : tab === 'all' ? 'All' : 'Notes'}
+              </span>
+              <span className="hidden sm:inline">
+                {tab === 'comms' ? 'Communications' : tab === 'all' ? 'All Activity' : 'Notes & Leads'}
+              </span>
+              <span className="ml-1.5 text-xs text-muted-foreground">({tabCounts[tab]})</span>
               {activeTab === tab && (
-                <span className="absolute bottom-0 left-2 right-2 h-[3px] rounded-full bg-[#5B21B6]" />
+                <span className="absolute bottom-0 left-2 right-2 h-[3px] rounded-full bg-primary" />
               )}
             </button>
           ))}
@@ -83,11 +130,23 @@ const FeedCenter = ({ activities, isLoading }: FeedCenterProps) => {
         ) : (
           groups.map((group) => (
             <div key={group.label}>
-              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-4 mt-2">
-                {group.label}
+              {/* Date group header with rule + count */}
+              <div className="flex items-center gap-3 mb-4 mt-2">
+                <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wide whitespace-nowrap">
+                  {group.label}
+                </span>
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
+                </span>
               </div>
               {group.items.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} />
+                <ActivityCard
+                  key={activity.id}
+                  activity={activity}
+                  isExpanded={expandedId === activity.id}
+                  onToggle={() => handleToggle(activity.id)}
+                />
               ))}
             </div>
           ))

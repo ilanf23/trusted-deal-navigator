@@ -30,7 +30,7 @@ export interface CRMGmailConfig {
 export function useEvansGmailLogic(config?: CRMGmailConfig) {
   const userKey = config?.userKey ?? 'evan';
   const callbackPrefix = config?.callbackPrefix ?? 'admin';
-  const returnPath = config?.returnPath ?? '/team/evan/gmail';
+  const returnPath = config?.returnPath ?? '/admin/gmail';
 
   const navigate = useNavigate();
   const location = useLocation();

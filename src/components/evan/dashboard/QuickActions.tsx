@@ -96,7 +96,7 @@ export const QuickActions = ({ evanId }: QuickActionsProps) => {
     {
       label: 'Add Deal',
       icon: Plus,
-      onClick: () => navigate('/user/evan/leads'),
+      onClick: () => navigate('/admin/leads'),
     },
     {
       label: 'Log Call',
@@ -111,7 +111,7 @@ export const QuickActions = ({ evanId }: QuickActionsProps) => {
     {
       label: 'Pipeline',
       icon: ArrowRight,
-      onClick: () => navigate('/user/evan/pipeline'),
+      onClick: () => navigate('/admin/pipeline'),
     },
   ];
 

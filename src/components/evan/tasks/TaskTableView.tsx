@@ -61,8 +61,8 @@ export const TaskTableView = ({
     if (title.includes('closing') || title.includes('prepare closing')) {
       return { 
         path: hasLead 
-          ? `/admin/evan/gmail?compose=true&leadId=${task.lead_id}&template=closing&taskId=${task.id}`
-          : `/admin/evan/gmail?compose=true&template=closing&taskId=${task.id}`,
+          ? `/admin/gmail?compose=true&leadId=${task.lead_id}&template=closing&taskId=${task.id}`
+          : `/admin/gmail?compose=true&template=closing&taskId=${task.id}`,
         label: 'Draft Closing Email', 
         icon: <FileText className="h-3.5 w-3.5" />,
         action: 'compose',
@@ -73,8 +73,8 @@ export const TaskTableView = ({
     if (source === 'nudge' || title.includes('follow up') || title.includes('follow-up')) {
       return { 
         path: hasLead 
-          ? `/admin/evan/gmail?compose=true&leadId=${task.lead_id}&template=follow_up&taskId=${task.id}`
-          : `/admin/evan/gmail?compose=true&template=follow_up&taskId=${task.id}`,
+          ? `/admin/gmail?compose=true&leadId=${task.lead_id}&template=follow_up&taskId=${task.id}`
+          : `/admin/gmail?compose=true&template=follow_up&taskId=${task.id}`,
         label: 'Draft Follow-up Email', 
         icon: <Mail className="h-3.5 w-3.5" />,
         action: 'compose',
@@ -85,8 +85,8 @@ export const TaskTableView = ({
     if (source === 'gmail' || title.includes('email') || title.includes('send')) {
       return { 
         path: hasLead 
-          ? `/admin/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`
-          : `/admin/evan/gmail?compose=true&taskId=${task.id}`,
+          ? `/admin/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`
+          : `/admin/gmail?compose=true&taskId=${task.id}`,
         label: 'Compose Email', 
         icon: <Mail className="h-3.5 w-3.5" />,
         action: 'compose'
@@ -95,7 +95,7 @@ export const TaskTableView = ({
     
     if (source === 'lead' || hasLead) {
       return { 
-        path: `/admin/evan/pipeline?lead=${task.lead_id}&tab=lenders`, 
+        path: `/admin/pipeline?lead=${task.lead_id}&tab=lenders`, 
         label: 'View in CRM', 
         icon: <Users className="h-3.5 w-3.5" />,
         action: 'view'
@@ -104,7 +104,7 @@ export const TaskTableView = ({
     
     if (title.includes('document') || title.includes('doc') || title.includes('file')) {
       return { 
-        path: '/admin/evan/pipeline', 
+        path: '/admin/pipeline', 
         label: 'Go to Pipeline', 
         icon: <FileText className="h-3.5 w-3.5" />,
         action: 'view'
@@ -230,7 +230,7 @@ export const TaskTableView = ({
                             onClick={(e) => {
                               e.stopPropagation();
                               if (task.lead?.phone) {
-                                navigate(`/admin/evan/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
+                                navigate(`/admin/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
                               }
                             }}
                             disabled={!task.lead?.phone}
@@ -264,7 +264,7 @@ export const TaskTableView = ({
                                 const isFollowUp = title.includes('follow up') || title.includes('follow-up');
                                 const template = isFollowUp ? 'follow_up' : '';
                                 const templateParam = template ? `&template=${template}` : '';
-                                navigate(`/admin/evan/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}${templateParam}`);
+                                navigate(`/admin/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}${templateParam}`);
                               }
                             }}
                             disabled={!task.lead_id}

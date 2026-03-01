@@ -153,11 +153,3 @@ export const useFeedData = () => {
   });
 };
 
-export const FEED_ACTIVITY_FILTERS = [
-  'New Lead',
-  'Note',
-  'Call',
-  'Email',
-  'SMS',
-  'Task',
-];

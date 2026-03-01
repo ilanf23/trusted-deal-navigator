@@ -271,7 +271,7 @@ export function EmailActionBar({
 
   // Action: Create New Deal
   const handleCreateDeal = () => {
-    onNavigate(`/team/evan/pipeline?createDeal=true&emailFrom=${encodeURIComponent(emailFrom)}&emailSubject=${encodeURIComponent(emailSubject)}`);
+    onNavigate(`/admin/pipeline?createDeal=true&emailFrom=${encodeURIComponent(emailFrom)}&emailSubject=${encodeURIComponent(emailSubject)}`);
   };
 
   // Action: Mark FYI
@@ -461,7 +461,7 @@ export function EmailActionBar({
 
   // Action: Assign Task
   const handleAssignTask = () => {
-    onNavigate(`/team/evan/tasks?createTask=true&emailSubject=${encodeURIComponent(emailSubject)}&leadId=${linkedDeal?.id || ''}`);
+    onNavigate(`/admin/tasks?createTask=true&emailSubject=${encodeURIComponent(emailSubject)}&leadId=${linkedDeal?.id || ''}`);
   };
 
   // Action: Mark Complete

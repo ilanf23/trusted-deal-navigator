@@ -2667,7 +2667,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                         {allEmailThreads.map((thread: any) => (
                           <a
                             key={thread.id}
-                            href={`/team/evan/gmail?thread=${thread.thread_id}`}
+                            href={`/admin/gmail?thread=${thread.thread_id}`}
                             className="flex items-start gap-2 py-2 px-2 -mx-2 rounded hover:bg-muted/50 cursor-pointer group"
                           >
                             <Mail className="w-4 h-4 text-muted-foreground mt-0.5 group-hover:text-primary shrink-0" />
@@ -2699,7 +2699,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                     <Button 
                       variant="link" 
                       className="text-blue-600 text-sm p-0 h-auto"
-                      onClick={() => window.location.href = '/team/evan/gmail'}
+                      onClick={() => window.location.href = '/admin/gmail'}
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       View all emails

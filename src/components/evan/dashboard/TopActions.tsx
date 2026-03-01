@@ -370,7 +370,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
                 return (
                   <Link
                     key={item.id}
-                    to={`/user/evan/leads?highlight=${item.leadId}`}
+                    to={`/admin/leads?highlight=${item.leadId}`}
                     className="block"
                   >
                     <div className="group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all cursor-pointer">

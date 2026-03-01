@@ -3,7 +3,7 @@ import { Progress } from '@/components/ui/progress';
 import { TrendingUp, Target, Users, User, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { TimePeriod } from '@/pages/admin/EvansPage';
+import type { TimePeriod } from '@/pages/admin/Dashboard';
 
 interface RoadTo1Point5MProps {
   evanId?: string;

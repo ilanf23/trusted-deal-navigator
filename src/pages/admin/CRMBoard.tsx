@@ -153,7 +153,7 @@ const CRMBoard = () => {
       return;
     }
     // Navigate to Gmail with compose pre-filled (using Evan's gmail for now)
-    navigate(`/team/evan/gmail?compose=true&to=${encodeURIComponent(lead.email)}&name=${encodeURIComponent(lead.name)}`);
+    navigate(`/admin/gmail?compose=true&to=${encodeURIComponent(lead.email)}&name=${encodeURIComponent(lead.name)}`);
   };
 
   const sources = [...new Set(leads.map(lead => lead.source).filter(Boolean))];

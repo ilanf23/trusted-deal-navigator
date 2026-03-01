@@ -491,7 +491,7 @@ const TeamPerformance = () => {
                     </div>
                   </div>
                   <Button asChild variant="outline">
-                    <Link to="/team/evan" className="gap-2">
+                    <Link to="/admin/dashboard" className="gap-2">
                       View Full Dashboard
                       <ArrowRight className="h-4 w-4" />
                     </Link>

@@ -17,7 +17,7 @@ import {
   eachMonthOfInterval, eachDayOfInterval, endOfDay, addMonths,
 } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { TimePeriod } from '@/pages/admin/EvansPage';
+import type { TimePeriod } from '@/pages/admin/Dashboard';
 
 interface CompanyRevenueHeroProps {
   chartPeriod: TimePeriod;

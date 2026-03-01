@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, TrendingDown, Target, DollarSign, Gauge, BarChart3 } from 'lucide-react';
 import { startOfYear, startOfMonth, differenceInDays } from 'date-fns';
-import type { TimePeriod } from '@/pages/admin/EvansPage';
+import type { TimePeriod } from '@/pages/admin/Dashboard';
 
 interface PerformanceSnapshotProps {
   evanId?: string;

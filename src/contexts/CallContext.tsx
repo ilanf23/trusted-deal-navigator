@@ -479,9 +479,9 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
   // Auto-navigate to calls page when an incoming call is detected (only for ringing, not connected)
   useEffect(() => {
     if (incomingCall && isEvan && !hasNavigated && !isConnected && 
-        location.pathname !== '/admin/evan/calls') {
+        location.pathname !== '/admin/calls') {
       setHasNavigated(true);
-      navigate('/admin/evan/calls');
+      navigate('/admin/calls');
     }
   }, [incomingCall, isEvan, hasNavigated, isConnected, navigate, location.pathname]);
 

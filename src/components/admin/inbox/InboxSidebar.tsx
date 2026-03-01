@@ -229,7 +229,7 @@ export function InboxSidebar({
                 </span>
               )}
             </div>
-            <Link to="/user/evan/pipeline">
+            <Link to="/admin/pipeline">
               <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-slate-100 rounded-md" title="View Pipeline">
                 <ExternalLink className="w-3 h-3 text-slate-400" />
               </Button>
@@ -277,7 +277,7 @@ export function InboxSidebar({
               })}
               {nudgeLeads.length > 8 && (
                 <Link 
-                  to="/user/evan/pipeline"
+                  to="/admin/pipeline"
                   className="block px-3 py-2 text-xs text-primary hover:underline"
                 >
                   +{nudgeLeads.length - 8} more

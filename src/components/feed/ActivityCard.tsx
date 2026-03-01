@@ -1,11 +1,14 @@
-import { useState } from 'react';
-import { Phone, Mail, MessageSquare, StickyNote, UserPlus, CheckSquare, Maximize2, MoreHorizontal } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Phone, Mail, MessageSquare, StickyNote, UserPlus, CheckSquare, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import type { FeedActivity } from '@/hooks/useFeedData';
 
 interface ActivityCardProps {
   activity: FeedActivity;
+  isExpanded: boolean;
+  onToggle: () => void;
 }
 
 const avatarColors: Record<string, string> = {
@@ -70,19 +73,36 @@ const getTypeLabel = (type: FeedActivity['type']) => {
   }
 };
 
-const ActivityCard = ({ activity }: ActivityCardProps) => {
-  const [hovered, setHovered] = useState(false);
+const ActivityCard = ({ activity, isExpanded, onToggle }: ActivityCardProps) => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleViewLead = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (activity.leadId) {
+      navigate(`/superadmin/pipeline?leadId=${activity.leadId}`);
+    }
+  };
+
+  const handleAction = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toast({ title: 'Coming soon', description: 'This action is not yet available.' });
+  };
 
   return (
     <div
-      className="bg-card rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] mb-3 relative group"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onClick={onToggle}
+      className={cn(
+        'rounded-lg border mb-3 transition-all cursor-pointer',
+        isExpanded
+          ? 'bg-card ring-1 ring-primary/20'
+          : 'bg-card hover:bg-muted/50'
+      )}
     >
-      <div className="flex gap-3 p-4">
+      <div className="flex gap-3 p-3 sm:p-4">
         {/* Left avatar */}
         <div className="relative flex-shrink-0">
-          <Avatar className="w-11 h-11">
+          <Avatar className="w-9 h-9 sm:w-11 sm:h-11">
             {activity.actorAvatarUrl && (
               <AvatarImage src={activity.actorAvatarUrl} alt={activity.actorName} />
             )}
@@ -96,7 +116,7 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
             </AvatarFallback>
           </Avatar>
           <div className={cn(
-            'absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center',
+            'absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center',
             getTypeBadgeColor(activity.type)
           )}>
             {getTypeIcon(activity.type)}
@@ -112,11 +132,6 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded text-[11px] text-muted-foreground font-medium">
               {getTypeLabel(activity.type)}
             </span>
-            {activity.direction && (
-              <span className="text-[11px] text-muted-foreground/60">
-                ({activity.direction})
-              </span>
-            )}
             <span className="text-muted-foreground/60 text-xs ml-auto">{activity.time}</span>
           </div>
 
@@ -129,29 +144,67 @@ const ActivityCard = ({ activity }: ActivityCardProps) => {
             )}
           </div>
 
-          {/* Stage badge */}
-          {activity.stage && (
-            <span className="inline-flex items-center px-2 py-0.5 mt-1.5 bg-primary/10 text-primary rounded-full text-[11px] font-medium">
-              {activity.stage}
-            </span>
-          )}
-
-          {/* Content preview */}
-          <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">
+          {/* Content preview (clamped when collapsed) */}
+          <p className={cn('mt-1.5 text-sm text-muted-foreground', !isExpanded && 'line-clamp-2')}>
             {activity.content}
           </p>
         </div>
+
+        {/* Expand chevron */}
+        <div className="flex-shrink-0 pt-1">
+          <ChevronDown
+            className={cn(
+              'w-4 h-4 text-muted-foreground transition-transform',
+              isExpanded && 'rotate-180'
+            )}
+          />
+        </div>
       </div>
 
-      {/* Hover controls */}
-      {hovered && (
-        <div className="absolute top-3 right-3 flex items-center gap-1">
-          <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground">
-            <Maximize2 className="w-4 h-4" />
-          </button>
-          <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground">
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
+      {/* Expanded section */}
+      {isExpanded && (
+        <div className="border-t border-border px-3 sm:px-4 py-3 space-y-3">
+          {/* Metadata badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {activity.direction && (
+              <span className="inline-flex items-center px-2 py-0.5 bg-muted rounded-full text-[11px] text-muted-foreground font-medium">
+                {activity.direction}
+              </span>
+            )}
+            {activity.stage && (
+              <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[11px] font-medium">
+                {activity.stage}
+              </span>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            {activity.leadId && (
+              <button
+                onClick={handleViewLead}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-foreground hover:bg-muted transition-colors"
+              >
+                View Lead
+              </button>
+            )}
+            {activity.type === 'email' && (
+              <button
+                onClick={handleAction}
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Reply
+              </button>
+            )}
+            {activity.type === 'call' && (
+              <button
+                onClick={handleAction}
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Call Back
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

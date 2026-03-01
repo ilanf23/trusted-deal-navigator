@@ -2,28 +2,22 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
-import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
-import UnderwritingDetailPanel from '@/components/admin/UnderwritingDetailPanel';
-import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
+import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import {
   ArrowUpDown,
   Search,
-  AlignJustify,
   PanelLeft,
   Filter,
   Settings2,
   ChevronDown,
-  Bookmark,
   Plus,
-  DollarSign,
   User,
   CheckSquare,
   Building2,
@@ -33,9 +27,6 @@ import {
   MessageSquare,
   Moon,
   FileSearch,
-  Timer,
-  Flame,
-  ArrowRightCircle,
   Check,
   X,
   LayoutGrid,
@@ -46,6 +37,10 @@ import {
   Loader2,
   Download,
   PlusCircle,
+  Mail,
+  Phone,
+  Briefcase,
+  Link2,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -57,139 +52,140 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
-type Lead = Database['public']['Tables']['leads']['Row'];
-type LeadStatus = Database['public']['Enums']['lead_status'];
+// ── Person type (local, since people table isn't in auto-generated types yet) ──
+interface Person {
+  id: string;
+  name: string;
+  title: string | null;
+  company_name: string | null;
+  email: string | null;
+  phone: string | null;
+  contact_type: string | null;
+  tags: string[] | null;
+  assigned_to: string | null;
+  notes: string | null;
+  linkedin: string | null;
+  source: string | null;
+  last_activity_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
-const UNDERWRITING_STATUSES: LeadStatus[] = [
-  'review_kill_keep',
-  'initial_review',
-  'waiting_on_needs_list',
-  'waiting_on_client',
-  'complete_files_for_review',
-  'need_structure_from_brad',
-  'maura_underwriting',
-  'brad_underwriting',
-  'uw_paused',
-  'ready_for_wu_approval',
+type ContactType = string;
+
+const CONTACT_TYPES: ContactType[] = [
+  'Client',
+  'Prospect',
+  'Referral Partner',
+  'Lender',
+  'Attorney',
+  'CPA',
+  'Vendor',
+  'Other',
 ];
 
-const stageConfig: Record<string, { label: string; color: string; bg: string; dot: string; pill: string }> = {
-  review_kill_keep: {
-    label: 'Review Kill / Keep',
-    color: 'text-red-700 dark:text-red-400',
-    bg: 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800',
-    dot: 'bg-red-500',
-    pill: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300',
-  },
-  initial_review: {
-    label: 'Initial Review',
-    color: 'text-sky-700 dark:text-sky-400',
-    bg: 'bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800',
-    dot: 'bg-sky-500',
-    pill: 'bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300',
-  },
-  waiting_on_needs_list: {
-    label: 'Waiting on Needs List',
-    color: 'text-amber-700 dark:text-amber-400',
-    bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800',
-    dot: 'bg-amber-500',
-    pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
-  },
-  waiting_on_client: {
-    label: 'Waiting on Client',
-    color: 'text-orange-700 dark:text-orange-400',
-    bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800',
-    dot: 'bg-orange-500',
-    pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300',
-  },
-  complete_files_for_review: {
-    label: 'Complete Files for Review',
-    color: 'text-blue-700 dark:text-blue-400',
-    bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800',
-    dot: 'bg-blue-500',
-    pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
-  },
-  need_structure_from_brad: {
-    label: 'Need Structure from Brad',
-    color: 'text-indigo-700 dark:text-indigo-400',
-    bg: 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800',
-    dot: 'bg-indigo-500',
-    pill: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300',
-  },
-  maura_underwriting: {
-    label: 'Maura Underwriting',
-    color: 'text-pink-700 dark:text-pink-400',
-    bg: 'bg-pink-50 dark:bg-pink-950/50 border-pink-200 dark:border-pink-800',
-    dot: 'bg-pink-500',
-    pill: 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300',
-  },
-  brad_underwriting: {
-    label: 'Brad Underwriting',
-    color: 'text-teal-700 dark:text-teal-400',
-    bg: 'bg-teal-50 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800',
-    dot: 'bg-teal-500',
-    pill: 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
-  },
-  uw_paused: {
-    label: 'UW Paused',
-    color: 'text-slate-600 dark:text-slate-400',
-    bg: 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700',
-    dot: 'bg-slate-400',
-    pill: 'bg-slate-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300',
-  },
-  ready_for_wu_approval: {
-    label: 'Ready for WU Approval',
+const contactTypeConfig: Record<string, { label: string; color: string; bg: string; dot: string; pill: string }> = {
+  Client: {
+    label: 'Client',
     color: 'text-emerald-700 dark:text-emerald-400',
     bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800',
     dot: 'bg-emerald-500',
     pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300',
   },
-  won: {
-    label: 'Won',
-    color: 'text-green-700 dark:text-green-400',
-    bg: 'bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800',
-    dot: 'bg-green-500',
-    pill: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300',
+  Prospect: {
+    label: 'Prospect',
+    color: 'text-blue-700 dark:text-blue-400',
+    bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800',
+    dot: 'bg-blue-500',
+    pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
   },
-  lost: {
-    label: 'Lost',
-    color: 'text-red-700 dark:text-red-400',
-    bg: 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800',
-    dot: 'bg-red-500',
-    pill: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300',
+  'Referral Partner': {
+    label: 'Referral Partner',
+    color: 'text-amber-700 dark:text-amber-400',
+    bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800',
+    dot: 'bg-amber-500',
+    pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
+  },
+  Lender: {
+    label: 'Lender',
+    color: 'text-indigo-700 dark:text-indigo-400',
+    bg: 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800',
+    dot: 'bg-indigo-500',
+    pill: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300',
+  },
+  Attorney: {
+    label: 'Attorney',
+    color: 'text-rose-700 dark:text-rose-400',
+    bg: 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800',
+    dot: 'bg-rose-500',
+    pill: 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300',
+  },
+  CPA: {
+    label: 'CPA',
+    color: 'text-teal-700 dark:text-teal-400',
+    bg: 'bg-teal-50 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800',
+    dot: 'bg-teal-500',
+    pill: 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
+  },
+  Vendor: {
+    label: 'Vendor',
+    color: 'text-orange-700 dark:text-orange-400',
+    bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800',
+    dot: 'bg-orange-500',
+    pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300',
+  },
+  Other: {
+    label: 'Other',
+    color: 'text-slate-600 dark:text-slate-400',
+    bg: 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700',
+    dot: 'bg-slate-400',
+    pill: 'bg-slate-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300',
   },
 };
 
 const FILTER_OPTIONS = [
-  { id: 'all', label: 'All Opportunities', group: 'top' },
-  { id: 'my_open', label: 'My Open Opportunities', group: 'public' },
-  { id: 'open', label: 'Open Opportunities', group: 'public' },
-  { id: 'following', label: "Opportunities I'm Following", group: 'public' },
-  { id: 'won', label: 'Won Opportunities', group: 'public' },
-  { id: 'lost', label: 'Lost Opportunities', group: 'public' },
-  { id: 'brad_incoming', label: 'Brad Incoming Opportunities', group: 'public' },
-  { id: 'initial_review', label: 'Deals for Initial Review', group: 'public' },
-  { id: 'review_kill_keep', label: 'Deals Moving Towards Underwriting', group: 'public' },
-  { id: 'onboarding_2024', label: 'OnBoarding 2024 - Opp. into UW', group: 'public' },
-  { id: 'onboarding_2025', label: 'OnBoarding 2025 - Opp. into UW', group: 'public' },
-  { id: 'onboarding_2026', label: 'OnBoarding 2026 - Opp. into UW', group: 'public' },
-  { id: 'pre_approval_issued', label: 'Pre-Approval Letters Issued', group: 'public' },
-  { id: 'ready_for_wu_approval', label: "Write Up's Pending Approval", group: 'public' },
+  { id: 'all', label: 'All Contacts', group: 'top' },
+  { id: 'my_contacts', label: 'My Contacts', group: 'public' },
+  { id: 'Client', label: 'Clients', group: 'public' },
+  { id: 'Prospect', label: 'Prospects', group: 'public' },
+  { id: 'Referral Partner', label: 'Referral Partners', group: 'public' },
+  { id: 'Lender', label: 'Lenders', group: 'public' },
+  { id: 'Attorney', label: 'Attorneys', group: 'public' },
+  { id: 'CPA', label: 'CPAs', group: 'public' },
+  { id: 'Vendor', label: 'Vendors', group: 'public' },
+  { id: 'recently_contacted', label: 'Recently Contacted', group: 'public' },
+  { id: 'inactive', label: 'Inactive (30+ days)', group: 'public' },
 ];
+
+type SortField = 'name' | 'company_name' | 'contact_type' | 'last_activity_at' | 'updated_at';
+type SortDir = 'asc' | 'desc';
 
 const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
   { value: 'last_activity_at', label: 'Last Activity' },
   { value: 'name', label: 'Name' },
   { value: 'company_name', label: 'Company' },
-  { value: 'status', label: 'Status' },
-  { value: 'assigned_to', label: 'Owner' },
+  { value: 'contact_type', label: 'Contact Type' },
   { value: 'updated_at', label: 'Updated' },
 ];
+
+type ColumnKey = 'title' | 'company' | 'tasks' | 'email' | 'contactType' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
+
+const COLUMN_LABELS: Record<ColumnKey, string> = {
+  title: 'Title',
+  company: 'Company',
+  tasks: 'Tasks',
+  email: 'Email',
+  contactType: 'Contact Type',
+  lastContacted: 'Last Contacted',
+  interactions: 'Interactions',
+  inactiveDays: 'Inactive Days',
+  tags: 'Tags',
+};
 
 const AVATAR_COLORS = [
   'bg-blue-500', 'bg-emerald-500', 'bg-blue-500', 'bg-amber-500',
@@ -203,34 +199,6 @@ function getAvatarColor(name: string): string {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-function seededRand(seed: string, index: number): number {
-  let h = index * 2654435761;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
-    h ^= h >>> 16;
-  }
-  return Math.abs(h) / 0xffffffff;
-}
-
-const VALUE_BUCKETS = [25000, 50000, 75000, 100000, 150000, 200000, 250000, 350000, 500000, 750000];
-
-function fakeValue(id: string): number {
-  return VALUE_BUCKETS[Math.floor(seededRand(id, 1) * VALUE_BUCKETS.length)];
-}
-
-function formatValue(v: number): string {
-  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function fakeTasks(id: string): number {
-  return Math.floor(seededRand(id, 2) * 9);
-}
-
-function fakeInteractions(id: string): number {
-  return Math.floor(seededRand(id, 3) * 26);
 }
 
 function daysSince(dateStr: string | null): number | null {
@@ -251,43 +219,17 @@ function formatShortDate(dateStr: string | null): string {
   }
 }
 
-type SortField = 'name' | 'company_name' | 'status' | 'last_activity_at' | 'assigned_to' | 'updated_at';
-type SortDir = 'asc' | 'desc';
-
-// Column visibility keys
-type ColumnKey = 'company' | 'contact' | 'value' | 'ownedBy' | 'tasks' | 'stage' | 'daysInStage' | 'stageUpdated' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
-
-const COLUMN_LABELS: Record<ColumnKey, string> = {
-  company: 'Company',
-  contact: 'Contact',
-  value: 'Value',
-  ownedBy: 'Owned By',
-  tasks: 'Tasks',
-  stage: 'Stage',
-  daysInStage: 'Days in Stage',
-  stageUpdated: 'Stage Updated',
-  lastContacted: 'Last Contacted',
-  interactions: 'Interactions',
-  inactiveDays: 'Inactive Days',
-  tags: 'Tags',
-};
-
 // ── Kanban sub-components ──
 
-function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
-  lead: Lead;
-  teamMemberMap: Record<string, string>;
+function KanbanPersonCard({ person, isDragging, onClick }: {
+  person: Person;
   isDragging?: boolean;
   onClick: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id });
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: person.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
-  const avatarColor = getAvatarColor(lead.name);
-  const initial = lead.name[0]?.toUpperCase() ?? '?';
-  const stageCfg = stageConfig[lead.status];
-  const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? null) : null;
-  const dealValue = fakeValue(lead.id);
-  const daysInStage = daysSince(lead.updated_at);
+  const avatarColor = getAvatarColor(person.name);
+  const initial = person.name[0]?.toUpperCase() ?? '?';
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
@@ -299,37 +241,31 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
           <div className={`h-6 w-6 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
             {initial}
           </div>
-          <p className="text-sm font-semibold text-foreground leading-tight truncate">{lead.name}</p>
+          <p className="text-sm font-semibold text-foreground leading-tight truncate">{person.name}</p>
         </div>
-        {lead.company_name && (
-          <p className="text-[11px] text-muted-foreground mb-1.5 truncate">{lead.company_name}</p>
+        {person.title && (
+          <p className="text-[11px] text-muted-foreground mb-0.5 truncate">{person.title}</p>
         )}
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-[12px] font-medium text-foreground tabular-nums">{formatValue(dealValue)}</span>
-          {daysInStage !== null && (
-            <span className={`text-[11px] ${daysInStage > 14 ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
-              {daysInStage}d
-            </span>
-          )}
-        </div>
-        {assignedName && (
-          <p className="text-[11px] text-muted-foreground mt-1">{assignedName}</p>
+        {person.company_name && (
+          <p className="text-[11px] text-muted-foreground mb-1.5 truncate">{person.company_name}</p>
+        )}
+        {person.email && (
+          <p className="text-[11px] text-muted-foreground truncate">{person.email}</p>
         )}
       </Card>
     </div>
   );
 }
 
-function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedId, onLeadClick }: {
-  status: LeadStatus;
+function KanbanDropColumn({ contactType, label, color, people, draggedId, onPersonClick }: {
+  contactType: string;
   label: string;
   color: string;
-  leads: Lead[];
-  teamMemberMap: Record<string, string>;
+  people: Person[];
   draggedId: string | null;
-  onLeadClick: (lead: Lead) => void;
+  onPersonClick: (person: Person) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: status });
+  const { setNodeRef, isOver } = useDroppable({ id: contactType });
 
   return (
     <div
@@ -342,24 +278,23 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
         <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
         <span className="text-xs font-bold text-foreground uppercase tracking-wide">{label}</span>
         <span className="ml-auto text-[11px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-          {leads.length}
+          {people.length}
         </span>
       </div>
       <ScrollArea className="flex-1 px-2 pb-2">
-        <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={people.map(p => p.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2 min-h-[100px]">
-            {leads.map((lead) => (
-              <KanbanDealCard
-                key={lead.id}
-                lead={lead}
-                teamMemberMap={teamMemberMap}
-                isDragging={draggedId === lead.id}
-                onClick={() => onLeadClick(lead)}
+            {people.map((person) => (
+              <KanbanPersonCard
+                key={person.id}
+                person={person}
+                isDragging={draggedId === person.id}
+                onClick={() => onPersonClick(person)}
               />
             ))}
-            {leads.length === 0 && (
+            {people.length === 0 && (
               <div className="text-center text-muted-foreground text-xs py-10 border-2 border-dashed border-muted-foreground/20 rounded-lg">
-                Drop deals here
+                Drop contacts here
               </div>
             )}
           </div>
@@ -369,7 +304,7 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
   );
 }
 
-const Underwriting = () => {
+const People = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -379,35 +314,30 @@ const Underwriting = () => {
   const [filterSearch, setFilterSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('last_activity_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
 
   // ── Toolbar state ──
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
-  const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
+  const [draggedPerson, setDraggedPerson] = useState<Person | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
-    company: true, contact: true, value: true, ownedBy: true, tasks: true,
-    stage: true, daysInStage: true, stageUpdated: true, lastContacted: true,
-    interactions: true, inactiveDays: true, tags: true,
+    title: true, company: true, tasks: true, email: true, contactType: true,
+    lastContacted: true, interactions: true, inactiveDays: true, tags: true,
   });
 
   const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    opportunity: 200, company: 130, contact: 110, value: 90, ownedBy: 80,
-    tasks: 55, stage: 150, daysInStage: 55, stageUpdated: 85,
-    lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+    person: 200, title: 130, company: 130, tasks: 55, email: 170,
+    contactType: 130, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
   }), []);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     try {
-      const saved = localStorage.getItem('evan-underwriting-column-widths');
+      const saved = localStorage.getItem('people-column-widths');
       if (saved) {
         const parsed = JSON.parse(saved);
         return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
@@ -419,14 +349,13 @@ const Underwriting = () => {
   const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
     setColumnWidths(prev => {
       const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('evan-underwriting-column-widths', JSON.stringify(next));
+      localStorage.setItem('people-column-widths', JSON.stringify(next));
       return next;
     });
   }, []);
 
   const columnsMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close columns dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (columnsMenuRef.current && !columnsMenuRef.current.contains(e.target as Node)) {
@@ -459,102 +388,97 @@ const Underwriting = () => {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // ── Status update mutation for Kanban drag ──
-  const statusMutation = useMutation({
-    mutationFn: async ({ leadId, newStatus, oldStatus }: { leadId: string; newStatus: LeadStatus; oldStatus: LeadStatus }) => {
+  // ── Contact type update mutation for Kanban drag ──
+  const contactTypeMutation = useMutation({
+    mutationFn: async ({ personId, newType, oldType }: { personId: string; newType: string; oldType: string }) => {
       const { error } = await supabase
-        .from('leads')
-        .update({ status: newStatus })
-        .eq('id', leadId);
+        .from('people')
+        .update({ contact_type: newType })
+        .eq('id', personId);
       if (error) throw error;
-      // Log stage change activity
-      const fromLabel = stageConfig[oldStatus]?.label ?? oldStatus;
-      const toLabel = stageConfig[newStatus]?.label ?? newStatus;
-      await supabase.from('lead_activities').insert({
-        lead_id: leadId,
-        activity_type: 'stage_change',
-        title: `Moved from ${fromLabel} to ${toLabel}`,
-        content: JSON.stringify({ from: oldStatus, to: newStatus }),
+      await supabase.from('people_activities').insert({
+        person_id: personId,
+        activity_type: 'type_change',
+        title: `Changed from ${oldType} to ${newType}`,
+        content: JSON.stringify({ from: oldType, to: newType }),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['lead-activity-timeline'] });
-      toast.success('Deal moved successfully');
+      queryClient.invalidateQueries({ queryKey: ['people-list'] });
+      toast.success('Contact type updated');
     },
     onError: () => {
-      toast.error('Failed to move deal');
+      toast.error('Failed to update contact type');
     },
   });
 
-  // ── Add Opportunity state ──
-  const [addOpportunityOpen, setAddOpportunityOpen] = useState(false);
-  const [addOpportunityStage, setAddOpportunityStage] = useState<LeadStatus>('review_kill_keep');
-  const [newOpp, setNewOpp] = useState({ name: '', company_name: '', email: '', phone: '' });
+  // ── Add Person state ──
+  const [addPersonOpen, setAddPersonOpen] = useState(false);
+  const [addPersonType, setAddPersonType] = useState<string>('Prospect');
+  const [newPerson, setNewPerson] = useState({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect' });
 
-  const createOpportunityMutation = useMutation({
-    mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; status: LeadStatus }) => {
-      const evanMember = teamMembers.find(m => m.name === 'Evan');
-      const { data: lead, error } = await supabase
-        .from('leads')
+  const createPersonMutation = useMutation({
+    mutationFn: async (data: { name: string; title: string; company_name: string; email: string; phone: string; contact_type: string }) => {
+      const { data: person, error } = await supabase
+        .from('people')
         .insert({
           name: data.name,
+          title: data.title || null,
           company_name: data.company_name || null,
           email: data.email || null,
           phone: data.phone || null,
-          status: data.status,
-          assigned_to: evanMember?.id || null,
+          contact_type: data.contact_type,
         })
         .select()
         .single();
       if (error) throw error;
-      return lead;
+      return person as Person;
     },
-    onSuccess: (lead) => {
-      queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
-      setAddOpportunityOpen(false);
-      setNewOpp({ name: '', company_name: '', email: '', phone: '' });
-      toast.success(`"${lead.name}" added to ${stageConfig[lead.status]?.label ?? lead.status}`);
-      setSelectedLead(lead);
+    onSuccess: (person) => {
+      queryClient.invalidateQueries({ queryKey: ['people-list'] });
+      setAddPersonOpen(false);
+      setNewPerson({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect' });
+      toast.success(`"${person.name}" added as ${person.contact_type}`);
+      setSelectedPerson(person);
     },
     onError: () => {
-      toast.error('Failed to create opportunity');
+      toast.error('Failed to create contact');
     },
   });
 
-  const handleCreateOpportunity = () => {
-    if (!newOpp.name.trim()) {
-      toast.error('Opportunity name is required');
+  const handleCreatePerson = () => {
+    if (!newPerson.name.trim()) {
+      toast.error('Name is required');
       return;
     }
-    createOpportunityMutation.mutate({ ...newOpp, status: addOpportunityStage });
+    createPersonMutation.mutate({ ...newPerson, contact_type: addPersonType });
   };
 
-  const openAddDialog = (stage?: LeadStatus) => {
-    setAddOpportunityStage(stage ?? 'review_kill_keep');
-    setNewOpp({ name: '', company_name: '', email: '', phone: '' });
-    setAddOpportunityOpen(true);
+  const openAddDialog = (type?: string) => {
+    setAddPersonType(type ?? 'Prospect');
+    setNewPerson({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: type ?? 'Prospect' });
+    setAddPersonOpen(true);
   };
 
   function handleDragStart(event: DragStartEvent) {
-    const lead = filteredAndSorted.find(l => l.id === event.active.id);
-    setDraggedLead(lead ?? null);
+    const person = filteredAndSorted.find(p => p.id === event.active.id);
+    setDraggedPerson(person ?? null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setDraggedLead(null);
+    setDraggedPerson(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const targetStatus = UNDERWRITING_STATUSES.find(s => s === over.id)
-      ?? filteredAndSorted.find(l => l.id === over.id)?.status;
+    const targetType = CONTACT_TYPES.find(t => t === over.id)
+      ?? filteredAndSorted.find(p => p.id === over.id)?.contact_type;
 
-    if (!targetStatus) return;
+    if (!targetType) return;
 
-    const lead = filteredAndSorted.find(l => l.id === active.id);
-    if (!lead || lead.status === targetStatus) return;
+    const person = filteredAndSorted.find(p => p.id === active.id);
+    if (!person || person.contact_type === targetType) return;
 
-    statusMutation.mutate({ leadId: lead.id, newStatus: targetStatus, oldStatus: lead.status as LeadStatus });
+    contactTypeMutation.mutate({ personId: person.id, newType: targetType, oldType: person.contact_type ?? 'Other' });
   }
 
   // ── Queries ──
@@ -575,151 +499,97 @@ const Underwriting = () => {
     return map;
   }, [teamMembers]);
 
-  const teamAvatarMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const m of teamMembers) {
-      if (m.avatar_url) map[m.id] = m.avatar_url;
-    }
-    return map;
-  }, [teamMembers]);
-
-  const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['underwriting-leads'],
+  const { data: people = [], isLoading } = useQuery({
+    queryKey: ['people-list'],
     queryFn: async () => {
-      // Query using DB-known enum values; new values will work once migration is run
-      const DB_KNOWN_UW_STATUSES: LeadStatus[] = [
-        'initial_review', 'moving_to_underwriting', 'underwriting',
-        'ready_for_wu_approval', 'pre_approval_issued',
-        'won', 'lost',
-      ];
       const { data, error } = await supabase
-        .from('leads')
+        .from('people')
         .select('*')
-        .in('status', [...new Set([...DB_KNOWN_UW_STATUSES, ...UNDERWRITING_STATUSES])])
         .order('last_activity_at', { ascending: false });
-      // If query fails (new enum values not yet migrated), fall back to known values only
-      if (error) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('leads')
-          .select('*')
-          .in('status', DB_KNOWN_UW_STATUSES)
-          .order('last_activity_at', { ascending: false });
-        if (fallbackError) throw fallbackError;
-        return fallbackData as Lead[];
-      }
-      return data as Lead[];
+      if (error) throw error;
+      return (data || []) as Person[];
     },
   });
 
   const { data: taskCountMap = {} } = useQuery({
-    queryKey: ['underwriting-task-counts'],
+    queryKey: ['people-task-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_tasks')
-        .select('lead_id')
-        .in('lead_id', leads.map((l) => l.id));
+        .from('people_tasks')
+        .select('person_id')
+        .in('person_id', people.map((p) => p.id));
       if (error) return {} as Record<string, number>;
       const counts: Record<string, number> = {};
       for (const row of data) {
-        if (row.lead_id) counts[row.lead_id] = (counts[row.lead_id] ?? 0) + 1;
+        if (row.person_id) counts[row.person_id] = (counts[row.person_id] ?? 0) + 1;
       }
       return counts;
     },
-    enabled: leads.length > 0,
+    enabled: people.length > 0,
   });
 
   const { data: interactionCountMap = {} } = useQuery({
-    queryKey: ['underwriting-interaction-counts'],
+    queryKey: ['people-interaction-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
-        .select('lead_id')
-        .in('lead_id', leads.map((l) => l.id));
+        .from('people_activities')
+        .select('person_id')
+        .in('person_id', people.map((p) => p.id));
       if (error) return {} as Record<string, number>;
       const counts: Record<string, number> = {};
       for (const row of data) {
-        if (row.lead_id) counts[row.lead_id] = (counts[row.lead_id] ?? 0) + 1;
+        if (row.person_id) counts[row.person_id] = (counts[row.person_id] ?? 0) + 1;
       }
       return counts;
     },
-    enabled: leads.length > 0,
+    enabled: people.length > 0,
   });
 
   const filterCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: leads.length };
-    for (const status of UNDERWRITING_STATUSES) {
-      counts[status] = leads.filter((l) => l.status === status).length;
+    const counts: Record<string, number> = { all: people.length };
+    for (const type of CONTACT_TYPES) {
+      counts[type] = people.filter((p) => p.contact_type === type).length;
     }
-    counts['my_open'] = leads.length;
-    counts['open'] = leads.length;
-    counts['following'] = 0;
-    counts['won'] = leads.filter(l => l.status === 'won' as LeadStatus).length;
-    counts['lost'] = leads.filter(l => l.status === 'lost' as LeadStatus).length;
-    counts['brad_incoming'] = leads.filter(l => (l.assigned_to ?? '').toLowerCase().includes('brad') || teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad')).length;
-    counts['onboarding_2024'] = leads.filter(l => l.cohort_year === 2024).length;
-    counts['onboarding_2025'] = leads.filter(l => l.cohort_year === 2025).length;
-    counts['onboarding_2026'] = leads.filter(l => l.cohort_year === 2026).length;
+    counts['my_contacts'] = people.length;
+    counts['recently_contacted'] = people.filter(p => {
+      const d = daysSince(p.last_activity_at);
+      return d !== null && d <= 7;
+    }).length;
+    counts['inactive'] = people.filter(p => {
+      const d = daysSince(p.last_activity_at);
+      return d !== null && d >= 30;
+    }).length;
     return counts;
-  }, [leads, teamMemberMap]);
+  }, [people]);
 
   const filteredAndSorted = useMemo(() => {
-    let result = leads;
+    let result = people;
 
     if (activeFilter !== 'all') {
-      if ((UNDERWRITING_STATUSES as string[]).includes(activeFilter)) {
-        result = result.filter((l) => l.status === activeFilter);
-      } else if (activeFilter === 'won') {
-        result = result.filter((l) => l.status === ('won' as LeadStatus));
-      } else if (activeFilter === 'lost') {
-        result = result.filter((l) => l.status === ('lost' as LeadStatus));
-      } else if (activeFilter.startsWith('custom_')) {
-        const cf = customFilters.find(f => f.id === activeFilter);
-        if (cf) {
-          const v = cf.values;
-          result = result.filter((l) => {
-            if (v.stage.length > 0 && !v.stage.includes(l.status)) return false;
-            if (v.status.length > 0 && !v.status.includes(l.status)) return false;
-            if (v.source.length > 0 && !v.source.includes(l.source ?? '')) return false;
-            if (v.ownedBy.length > 0 && !v.ownedBy.includes(l.assigned_to ?? '')) return false;
-
-            if (v.company.trim() && !(l.company_name ?? '').toLowerCase().includes(v.company.toLowerCase())) return false;
-            if (v.name.trim() && !l.name.toLowerCase().includes(v.name.toLowerCase())) return false;
-            if (v.uwNumber.trim() && !(l.uw_number ?? '').toLowerCase().includes(v.uwNumber.toLowerCase())) return false;
-
-            if (v.tags.trim()) {
-              const filterTags = v.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
-              const leadTags = (l.tags ?? []).map(t => t.toLowerCase());
-              if (!filterTags.some(ft => leadTags.includes(ft))) return false;
-            }
-
-            if (v.clientWorkingWithOtherLenders && !l.client_other_lenders) return false;
-            if (v.weeklys && !l.flagged_for_weekly) return false;
-
-            if (v.dateAddedFrom && new Date(l.created_at) < v.dateAddedFrom) return false;
-            if (v.dateAddedTo && new Date(l.created_at) > v.dateAddedTo) return false;
-
-            return true;
-          });
-        }
-      } else if (activeFilter === 'brad_incoming') {
-        result = result.filter((l) => teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad'));
-      } else if (activeFilter === 'onboarding_2024') {
-        result = result.filter((l) => l.cohort_year === 2024);
-      } else if (activeFilter === 'onboarding_2025') {
-        result = result.filter((l) => l.cohort_year === 2025);
-      } else if (activeFilter === 'onboarding_2026') {
-        result = result.filter((l) => l.cohort_year === 2026);
+      if (CONTACT_TYPES.includes(activeFilter)) {
+        result = result.filter((p) => p.contact_type === activeFilter);
+      } else if (activeFilter === 'recently_contacted') {
+        result = result.filter((p) => {
+          const d = daysSince(p.last_activity_at);
+          return d !== null && d <= 7;
+        });
+      } else if (activeFilter === 'inactive') {
+        result = result.filter((p) => {
+          const d = daysSince(p.last_activity_at);
+          return d !== null && d >= 30;
+        });
       }
-      // 'my_open', 'open', 'following' show all for now
+      // 'my_contacts' shows all for now
     }
 
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       result = result.filter(
-        (l) =>
-          l.name.toLowerCase().includes(q) ||
-          (l.company_name ?? '').toLowerCase().includes(q) ||
-          (teamMemberMap[l.assigned_to ?? ''] ?? '').toLowerCase().includes(q)
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.company_name ?? '').toLowerCase().includes(q) ||
+          (p.email ?? '').toLowerCase().includes(q) ||
+          (p.title ?? '').toLowerCase().includes(q)
       );
     }
 
@@ -731,12 +601,7 @@ const Underwriting = () => {
     });
 
     return result;
-  }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, customFilters]);
-
-  const totalValue = useMemo(
-    () => leads.reduce((sum, l) => sum + fakeValue(l.id), 0),
-    [leads]
-  );
+  }, [people, activeFilter, searchTerm, sortField, sortDir]);
 
   const visibleFilters = useMemo(() => {
     if (!filterSearch.trim()) return FILTER_OPTIONS;
@@ -753,11 +618,10 @@ const Underwriting = () => {
     }
   }
 
-  function handleRowClick(lead: Lead) {
-    setSelectedLead(lead);
+  function handleRowClick(person: Person) {
+    setSelectedPerson(person);
   }
 
-  // Row padding based on density
   const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
 
   const ColHeader = ({
@@ -772,7 +636,7 @@ const Underwriting = () => {
     style?: React.CSSProperties;
   }) => {
     if (colKey && !columnVisibility[colKey]) return null;
-    const widthKey = colKey ?? 'opportunity';
+    const widthKey = colKey ?? 'person';
     const width = columnWidths[widthKey] ?? 120;
     return (
       <th
@@ -792,7 +656,6 @@ const Underwriting = () => {
     );
   };
 
-  // Toolbar icon button base class
   const iconBtn = (active = false) =>
     `relative flex items-center justify-center h-7 w-7 rounded transition-all ${
       active
@@ -807,10 +670,10 @@ const Underwriting = () => {
         {/* ── CRM-Style Header ── */}
         <div className="shrink-0 border-b border-border bg-background px-5 py-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">All Opportunities</h1>
+            <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">People</h1>
           </div>
 
-          {/* Connected toolbar — Table | Kanban | Sort | Settings */}
+          {/* Connected toolbar — Table | Kanban | Sort */}
           <div className="flex items-center h-7 rounded-md border border-border overflow-hidden shrink-0">
             <button
               onClick={() => setViewMode('table')}
@@ -872,11 +735,9 @@ const Underwriting = () => {
                 </Select>
               </PopoverContent>
             </Popover>
-            <div className="w-px h-4 bg-border" />
-            <PipelineSettingsPopover open={settingsOpen} onOpenChange={setSettingsOpen} />
           </div>
 
-          {/* Add Opportunity button */}
+          {/* Add Person button */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -884,7 +745,7 @@ const Underwriting = () => {
                 style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
-                <span>Add Opportunity</span>
+                <span>Add Person</span>
                 <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </button>
             </DropdownMenuTrigger>
@@ -894,13 +755,13 @@ const Underwriting = () => {
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-foreground hover:bg-muted focus:bg-muted transition-colors"
               >
                 <PlusCircle className="h-4.5 w-4.5 text-muted-foreground" />
-                Add Opportunity
+                Add Person
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-foreground hover:bg-muted focus:bg-muted transition-colors"
               >
                 <Download className="h-4.5 w-4.5 text-muted-foreground" />
-                Import Opportunities
+                Import Contacts
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -917,16 +778,7 @@ const Underwriting = () => {
           >
             <div className="w-56">
               <div className="px-3 pt-3 pb-2 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
-                <CreateFilterDialog
-                  teamMemberMap={teamMemberMap}
-                  stageConfig={stageConfig}
-                  onSave={(filter) => {
-                    const id = `custom_${Date.now()}`;
-                    setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
-                    toast.success(`Filter "${filter.filterName}" created`);
-                  }}
-                />
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Filters</span>
               </div>
 
               <div className="px-2 pb-2">
@@ -965,7 +817,7 @@ const Underwriting = () => {
                   onClick={() => setPublicFiltersOpen(v => !v)}
                   className="w-full px-3 pt-3 pb-1 flex items-center justify-between group"
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Public</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">By Type</span>
                   <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : '-rotate-90'}`} />
                 </button>
 
@@ -990,30 +842,6 @@ const Underwriting = () => {
                     </button>
                   );
                 })}
-
-                {/* Custom Filters */}
-                {customFilters.length > 0 && (
-                  <>
-                    <div className="px-3 pt-3 pb-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Custom</span>
-                    </div>
-                    {customFilters.map((cf) => {
-                      const isActive = activeFilter === cf.id;
-                      return (
-                        <button
-                          key={cf.id}
-                          onClick={() => setActiveFilter(cf.id)}
-                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                          }`}
-                        >
-                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{cf.label}</span>
-                        </button>
-                      );
-                    })}
-                  </>
-                )}
               </nav>
             </div>
           </aside>
@@ -1024,11 +852,7 @@ const Underwriting = () => {
             {/* ── Toolbar ── */}
             <div className="shrink-0 border-b border-border px-3 py-2 flex items-center justify-between gap-2 bg-muted/50">
 
-              {/* Left group: view toggles */}
               <div className="flex items-center gap-2">
-
-
-                {/* Sidebar toggle */}
                 <button
                   onClick={() => setSidebarOpen(v => !v)}
                   title={sidebarOpen ? 'Hide filters' : 'Show filters'}
@@ -1039,16 +863,10 @@ const Underwriting = () => {
 
                 {!isLoading && (
                   <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
-                    # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'opportunity' : 'opportunities'}
-                  </span>
-                )}
-                {!isLoading && (
-                  <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
-                    ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'contact' : 'contacts'}
                   </span>
                 )}
 
-                {/* Sort indicator */}
                 {isNonDefaultSort && (
                   <span className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md px-2 h-7">
                     <ArrowUpDown className="h-3 w-3 shrink-0" />
@@ -1064,14 +882,11 @@ const Underwriting = () => {
                 )}
               </div>
 
-              {/* Right group: action buttons + CTA */}
               <div className="flex items-center gap-0.5">
-
-                {/* Inline search input */}
                 {searchOpen && (
                   <Input
                     autoFocus
-                    placeholder="Search deals, companies..."
+                    placeholder="Search contacts, companies..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Escape') { setSearchTerm(''); setSearchOpen(false); } }}
@@ -1080,7 +895,6 @@ const Underwriting = () => {
                   />
                 )}
 
-                {/* Sort — opens popover in header; this is just an indicator */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <button
@@ -1117,7 +931,6 @@ const Underwriting = () => {
                   </PopoverContent>
                 </Popover>
 
-                {/* Filter — clears when active */}
                 <button
                   onClick={isFiltersActive ? clearAllFilters : undefined}
                   title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
@@ -1133,16 +946,14 @@ const Underwriting = () => {
                   )}
                 </button>
 
-                {/* Search toggle */}
                 <button
                   onClick={() => setSearchOpen(v => !v)}
-                  title="Search opportunities"
+                  title="Search contacts"
                   className={iconBtn(searchOpen || !!searchTerm)}
                 >
                   <Search className={`h-3.5 w-3.5 ${(searchOpen || searchTerm) ? 'text-blue-600' : ''}`} />
                 </button>
 
-                {/* Column visibility */}
                 <div className="relative" ref={columnsMenuRef}>
                   <button
                     onClick={() => setShowColumnsMenu(v => !v)}
@@ -1191,7 +1002,6 @@ const Underwriting = () => {
                     </div>
                   )}
                 </div>
-
               </div>
             </div>
 
@@ -1203,31 +1013,22 @@ const Underwriting = () => {
                     <tr>
                       <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted" />
                       <ColHeader className="sticky top-0 z-30 bg-gray-100 dark:bg-muted border-r border-border/50" style={{ left: 40 }}>
-                        Opportunity
+                        Person
+                      </ColHeader>
+                      <ColHeader colKey="title" className="sticky top-0 z-10 bg-white dark:bg-card">
+                        Title
                       </ColHeader>
                       <ColHeader colKey="company" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Company
                       </ColHeader>
-                      <ColHeader colKey="contact" className="sticky top-0 z-10 bg-white dark:bg-card">
-                        Contact
-                      </ColHeader>
-                      <ColHeader colKey="value" className="sticky top-0 z-10 bg-white dark:bg-card">
-                        Value
-                      </ColHeader>
-                      <ColHeader colKey="ownedBy" className="sticky top-0 z-10 bg-white dark:bg-card">
-                        Owner
-                      </ColHeader>
                       <ColHeader colKey="tasks" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Tasks
                       </ColHeader>
-                      <ColHeader colKey="stage" className="sticky top-0 z-10 bg-white dark:bg-card">
-                        Stage
+                      <ColHeader colKey="email" className="sticky top-0 z-10 bg-white dark:bg-card">
+                        Email
                       </ColHeader>
-                      <ColHeader colKey="daysInStage" className="sticky top-0 z-10 bg-white dark:bg-card">
-                        Days
-                      </ColHeader>
-                      <ColHeader colKey="stageUpdated" className="sticky top-0 z-10 bg-white dark:bg-card">
-                        Updated
+                      <ColHeader colKey="contactType" className="sticky top-0 z-10 bg-white dark:bg-card">
+                        Type
                       </ColHeader>
                       <ColHeader colKey="lastContacted" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Contacted
@@ -1249,7 +1050,7 @@ const Underwriting = () => {
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
                           <td className="px-4 py-3.5 w-10 sticky left-0 z-[5] bg-white dark:bg-card"><Skeleton className="h-4 w-4 rounded" /></td>
-                          <td className="px-4 py-3.5 sticky z-[5] border-r border-border/50 bg-white dark:bg-card" style={{ width: columnWidths.opportunity, left: 40 }}>
+                          <td className="px-4 py-3.5 sticky z-[5] border-r border-border/50 bg-white dark:bg-card" style={{ width: columnWidths.person, left: 40 }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                               <div className="space-y-1.5">
@@ -1258,14 +1059,11 @@ const Underwriting = () => {
                               </div>
                             </div>
                           </td>
+                          {columnVisibility.title && <td className="px-4 py-3.5" style={{ width: columnWidths.title }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
                           {columnVisibility.company && <td className="px-4 py-3.5" style={{ width: columnWidths.company }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.contact && <td className="px-4 py-3.5" style={{ width: columnWidths.contact }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.value && <td className="px-4 py-3.5" style={{ width: columnWidths.value }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                          {columnVisibility.ownedBy && <td className="px-4 py-3.5" style={{ width: columnWidths.ownedBy }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
                           {columnVisibility.tasks && <td className="px-4 py-3.5" style={{ width: columnWidths.tasks }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.stage && <td className="px-4 py-3.5" style={{ width: columnWidths.stage }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
-                          {columnVisibility.daysInStage && <td className="px-4 py-3.5" style={{ width: columnWidths.daysInStage }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.stageUpdated && <td className="px-4 py-3.5" style={{ width: columnWidths.stageUpdated }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.email && <td className="px-4 py-3.5" style={{ width: columnWidths.email }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
+                          {columnVisibility.contactType && <td className="px-4 py-3.5" style={{ width: columnWidths.contactType }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
                           {columnVisibility.lastContacted && <td className="px-4 py-3.5" style={{ width: columnWidths.lastContacted }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
                           {columnVisibility.interactions && <td className="px-4 py-3.5" style={{ width: columnWidths.interactions }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
                           {columnVisibility.inactiveDays && <td className="px-4 py-3.5" style={{ width: columnWidths.inactiveDays }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
@@ -1274,15 +1072,15 @@ const Underwriting = () => {
                       ))
                     ) : filteredAndSorted.length === 0 ? (
                       <tr>
-                        <td colSpan={15}>
+                        <td colSpan={12}>
                           <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
                               <FileSearch className="h-6 w-6 text-muted-foreground" />
                             </div>
                             <div className="text-center">
-                              <p className="text-sm font-semibold text-foreground">No opportunities found</p>
+                              <p className="text-sm font-semibold text-foreground">No contacts found</p>
                               <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
-                                {searchTerm ? 'Try adjusting your search or filter criteria' : 'No deals are in this stage yet'}
+                                {searchTerm ? 'Try adjusting your search or filter criteria' : 'No people have been added yet'}
                               </p>
                             </div>
                             {isFiltersActive && (
@@ -1297,24 +1095,15 @@ const Underwriting = () => {
                         </td>
                       </tr>
                     ) : (
-                      filteredAndSorted.map((lead, rowIdx) => {
-                        const initial = lead.name[0]?.toUpperCase() ?? '?';
-                        const avatarColor = getAvatarColor(lead.name);
-                        const stageCfg = stageConfig[lead.status];
-                        const assignedName = lead.assigned_to
-                          ? (teamMemberMap[lead.assigned_to] ?? null)
-                          : null;
-                        const assignedInitial = assignedName?.[0]?.toUpperCase() ?? null;
-                        const assignedColor = assignedName ? getAvatarColor(assignedName) : '';
-                        const assignedAvatar = lead.assigned_to ? (teamAvatarMap[lead.assigned_to] ?? null) : null;
-                        const taskCount = taskCountMap[lead.id] ?? fakeTasks(lead.id);
-                        const interactionCount = interactionCountMap[lead.id] ?? fakeInteractions(lead.id);
-                        const daysInStage = daysSince(lead.updated_at);
-                        const inactiveDays = daysSince(lead.last_activity_at);
+                      filteredAndSorted.map((person, rowIdx) => {
+                        const initial = person.name[0]?.toUpperCase() ?? '?';
+                        const avatarColor = getAvatarColor(person.name);
+                        const typeCfg = contactTypeConfig[person.contact_type ?? 'Other'];
+                        const taskCount = taskCountMap[person.id] ?? 0;
+                        const interactionCount = interactionCountMap[person.id] ?? 0;
+                        const inactiveDays = daysSince(person.last_activity_at);
                         const isStale = inactiveDays !== null && inactiveDays > 7;
-                        const isLingering = daysInStage !== null && daysInStage > 14;
-                        const dealValue = fakeValue(lead.id);
-                        const isSelected = selectedLead?.id === lead.id;
+                        const isSelected = selectedPerson?.id === person.id;
 
                         const stickyBg = isSelected
                           ? 'bg-blue-50 dark:bg-blue-950 group-hover:bg-blue-100 dark:group-hover:bg-blue-900'
@@ -1322,8 +1111,8 @@ const Underwriting = () => {
 
                         return (
                           <tr
-                            key={lead.id}
-                            onClick={() => handleRowClick(lead)}
+                            key={person.id}
+                            onClick={() => handleRowClick(person)}
                             className={`cursor-pointer transition-colors duration-100 group border-b border-border/60 last:border-b-0 ${
                               isSelected
                                 ? 'bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-50/80 dark:hover:bg-blue-950/40'
@@ -1341,69 +1130,42 @@ const Underwriting = () => {
                               </div>
                             </td>
 
-                            {/* Opportunity */}
-                            <td className={`px-4 py-3 overflow-hidden sticky z-[5] border-r border-border/50 transition-colors ${stickyBg}`} style={{ width: columnWidths.opportunity, left: 40 }}>
+                            {/* Person (sticky) */}
+                            <td className={`px-4 py-3 overflow-hidden sticky z-[5] border-r border-border/50 transition-colors ${stickyBg}`} style={{ width: columnWidths.person, left: 40 }}>
                               <div className="flex items-center gap-2.5">
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
                                 </div>
                                 <div className="min-w-0">
                                   <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
-                                    {lead.name}
+                                    {person.name}
                                   </p>
-                                  {lead.company_name && (
-                                    <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{lead.company_name}</p>
+                                  {person.title && (
+                                    <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{person.title}</p>
                                   )}
                                 </div>
                               </div>
                             </td>
 
+                            {/* Title */}
+                            {columnVisibility.title && (
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.title }}>
+                                <span className="text-[13px] text-foreground/80 truncate block max-w-[120px]">{person.title ?? '—'}</span>
+                              </td>
+                            )}
+
                             {/* Company */}
                             {columnVisibility.company && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.company }}>
-                                {lead.company_name ? (
+                                {person.company_name ? (
                                   <div className="flex items-center gap-2">
                                     <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
                                       <Building2 className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[13px] text-foreground/80 truncate max-w-[110px]">{lead.company_name}</span>
+                                    <span className="text-[13px] text-foreground/80 truncate max-w-[110px]">{person.company_name}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Contact */}
-                            {columnVisibility.contact && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.contact }}>
-                                <span className="text-[13px] text-foreground/80 truncate block max-w-[100px]">{lead.name}</span>
-                              </td>
-                            )}
-
-                            {/* Value */}
-                            {columnVisibility.value && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.value }}>
-                                <span className="text-[13px] text-foreground font-semibold tabular-nums tracking-tight">{formatValue(dealValue)}</span>
-                              </td>
-                            )}
-
-                            {/* Owner */}
-                            {columnVisibility.ownedBy && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.ownedBy }}>
-                                {assignedName && assignedInitial ? (
-                                  <div className="flex items-center gap-2">
-                                    {assignedAvatar ? (
-                                      <img src={assignedAvatar} alt={assignedName} className="h-6 w-6 rounded-full object-cover shrink-0 shadow-sm" />
-                                    ) : (
-                                      <div className={`h-6 w-6 rounded-full ${assignedColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0 shadow-sm`}>
-                                        {assignedInitial}
-                                      </div>
-                                    )}
-                                    <span className="text-[13px] text-foreground/80 truncate max-w-[80px]">{assignedName}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground/40 text-[13px]">—</span>
                                 )}
                               </td>
                             )}
@@ -1421,47 +1183,35 @@ const Underwriting = () => {
                               </td>
                             )}
 
-                            {/* Stage */}
-                            {columnVisibility.stage && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.stage }}>
-                                {stageCfg ? (
-                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${stageCfg.bg} ${stageCfg.color}`}>
-                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
-                                    {stageCfg.label}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">{lead.status}</span>
-                                )}
-                              </td>
-                            )}
-
-                            {/* Days in Stage */}
-                            {columnVisibility.daysInStage && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.daysInStage }}>
-                                {daysInStage !== null ? (
-                                  <span className={`inline-flex items-center gap-1 text-[12px] font-medium ${
-                                    isLingering ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
-                                  }`}>
-                                    {isLingering && <Flame className="h-3 w-3 text-amber-500 shrink-0" />}
-                                    {daysInStage}d
-                                  </span>
+                            {/* Email */}
+                            {columnVisibility.email && (
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.email }}>
+                                {person.email ? (
+                                  <span className="text-[13px] text-foreground/80 truncate block max-w-[160px]">{person.email}</span>
                                 ) : (
                                   <span className="text-muted-foreground/40">—</span>
                                 )}
                               </td>
                             )}
 
-                            {/* Stage Updated */}
-                            {columnVisibility.stageUpdated && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.stageUpdated }}>
-                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(lead.updated_at)}</span>
+                            {/* Contact Type */}
+                            {columnVisibility.contactType && (
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.contactType }}>
+                                {typeCfg ? (
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
+                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
+                                    {typeCfg.label}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">{person.contact_type}</span>
+                                )}
                               </td>
                             )}
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.lastContacted }}>
-                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(lead.last_activity_at)}</span>
+                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(person.last_activity_at)}</span>
                               </td>
                             )}
 
@@ -1496,15 +1246,15 @@ const Underwriting = () => {
                             {/* Tags */}
                             {columnVisibility.tags && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.tags }}>
-                                {lead.tags && lead.tags.length > 0 ? (
+                                {person.tags && person.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
-                                    {lead.tags.slice(0, 2).map((tag) => (
+                                    {person.tags.slice(0, 2).map((tag) => (
                                       <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-muted text-muted-foreground border border-border/60">
                                         {tag}
                                       </span>
                                     ))}
-                                    {lead.tags.length > 2 && (
-                                      <span className="text-[10px] text-muted-foreground font-medium">+{lead.tags.length - 2}</span>
+                                    {person.tags.length > 2 && (
+                                      <span className="text-[10px] text-muted-foreground font-medium">+{person.tags.length - 2}</span>
                                     )}
                                   </span>
                                 ) : (
@@ -1538,35 +1288,34 @@ const Underwriting = () => {
               >
                 <div className="flex-1 overflow-auto p-4">
                   <div className="flex gap-4 h-full min-h-[500px]">
-                    {UNDERWRITING_STATUSES.map((status) => {
-                      const cfg = stageConfig[status];
-                      const columnLeads = filteredAndSorted.filter(l => l.status === status);
+                    {CONTACT_TYPES.map((type) => {
+                      const cfg = contactTypeConfig[type];
+                      const columnPeople = filteredAndSorted.filter(p => p.contact_type === type);
                       return (
                         <KanbanDropColumn
-                          key={status}
-                          status={status}
-                          label={cfg?.label ?? status}
+                          key={type}
+                          contactType={type}
+                          label={cfg?.label ?? type}
                           color={cfg?.dot ?? 'bg-muted-foreground'}
-                          leads={columnLeads}
-                          teamMemberMap={teamMemberMap}
-                          draggedId={draggedLead?.id ?? null}
-                          onLeadClick={handleRowClick}
+                          people={columnPeople}
+                          draggedId={draggedPerson?.id ?? null}
+                          onPersonClick={handleRowClick}
                         />
                       );
                     })}
                   </div>
                 </div>
                 <DragOverlay>
-                  {draggedLead ? (
+                  {draggedPerson ? (
                     <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
                       <div className="flex items-center gap-2 mb-1">
-                        <div className={`h-5 w-5 rounded-full ${getAvatarColor(draggedLead.name)} flex items-center justify-center text-white text-[10px] font-bold`}>
-                          {draggedLead.name[0]?.toUpperCase()}
+                        <div className={`h-5 w-5 rounded-full ${getAvatarColor(draggedPerson.name)} flex items-center justify-center text-white text-[10px] font-bold`}>
+                          {draggedPerson.name[0]?.toUpperCase()}
                         </div>
-                        <p className="text-sm font-semibold text-foreground truncate">{draggedLead.name}</p>
+                        <p className="text-sm font-semibold text-foreground truncate">{draggedPerson.name}</p>
                       </div>
-                      {draggedLead.company_name && (
-                        <p className="text-[11px] text-muted-foreground">{draggedLead.company_name}</p>
+                      {draggedPerson.company_name && (
+                        <p className="text-[11px] text-muted-foreground">{draggedPerson.company_name}</p>
                       )}
                     </Card>
                   ) : null}
@@ -1576,30 +1325,25 @@ const Underwriting = () => {
           </main>
 
           {/* ── Right Detail Panel ── */}
-          {selectedLead && (
-            <UnderwritingDetailPanel
-              lead={selectedLead}
-              stageConfig={stageConfig}
+          {selectedPerson && (
+            <PeopleDetailPanel
+              person={selectedPerson}
+              contactTypeConfig={contactTypeConfig}
               teamMemberMap={teamMemberMap}
               teamMembers={teamMembers}
-              formatValue={formatValue}
-              fakeValue={fakeValue}
-              onClose={() => setSelectedLead(null)}
-              onExpand={() => navigate(`/admin/pipeline/underwriting/lead/${selectedLead.id}`)}
-              onStageChange={(leadId, newStatus) => {
-                statusMutation.mutate({ leadId, newStatus, oldStatus: selectedLead.status as LeadStatus });
-                setSelectedLead({ ...selectedLead, status: newStatus });
+              onClose={() => setSelectedPerson(null)}
+              onContactTypeChange={(personId, newType) => {
+                contactTypeMutation.mutate({ personId, newType, oldType: selectedPerson.contact_type ?? 'Other' });
+                setSelectedPerson({ ...selectedPerson, contact_type: newType });
               }}
-              onLeadUpdate={(updatedLead) => setSelectedLead(updatedLead)}
+              onPersonUpdate={(updatedPerson) => setSelectedPerson(updatedPerson)}
             />
           )}
         </div>
       </div>
 
-
-
-      {/* ── Add Opportunity Dialog ── */}
-      <Dialog open={addOpportunityOpen} onOpenChange={setAddOpportunityOpen}>
+      {/* ── Add Person Dialog ── */}
+      <Dialog open={addPersonOpen} onOpenChange={setAddPersonOpen}>
         <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
           {/* Header with gradient */}
           <div className="px-6 pt-6 pb-4" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}>
@@ -1608,18 +1352,18 @@ const Underwriting = () => {
                 <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
                   <Plus className="h-4 w-4 text-white" />
                 </div>
-                New Opportunity
+                New Contact
               </DialogTitle>
             </DialogHeader>
-            {/* Stage selector pills */}
+            {/* Contact type selector pills */}
             <div className="flex flex-wrap gap-1.5 mt-4">
-              {UNDERWRITING_STATUSES.map((status) => {
-                const cfg = stageConfig[status];
-                const isActive = addOpportunityStage === status;
+              {CONTACT_TYPES.map((type) => {
+                const cfg = contactTypeConfig[type];
+                const isActive = addPersonType === type;
                 return (
                   <button
-                    key={status}
-                    onClick={() => setAddOpportunityStage(status)}
+                    key={type}
+                    onClick={() => setAddPersonType(type)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
                       isActive
                         ? 'bg-white text-slate-800 shadow-md scale-105 dark:bg-white/90 dark:text-slate-900'
@@ -1637,51 +1381,62 @@ const Underwriting = () => {
           {/* Form body */}
           <div className="px-6 py-5 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="opp-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Opportunity Name <span className="text-red-400">*</span>
+              <Label htmlFor="person-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Name <span className="text-red-400">*</span>
               </Label>
               <Input
-                id="opp-name"
-                placeholder="e.g. Riverside Plaza Acquisition"
-                value={newOpp.name}
-                onChange={(e) => setNewOpp(prev => ({ ...prev, name: e.target.value }))}
-                onKeyDown={(e) => { if (e.key === 'Enter' && newOpp.name.trim()) handleCreateOpportunity(); }}
+                id="person-name"
+                placeholder="e.g. John Smith"
+                value={newPerson.name}
+                onChange={(e) => setNewPerson(prev => ({ ...prev, name: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter' && newPerson.name.trim()) handleCreatePerson(); }}
                 className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
                 autoFocus
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="opp-company" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</Label>
+              <Label htmlFor="person-title" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Title</Label>
               <Input
-                id="opp-company"
+                id="person-title"
+                placeholder="e.g. Managing Director"
+                value={newPerson.title}
+                onChange={(e) => setNewPerson(prev => ({ ...prev, title: e.target.value }))}
+                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="person-company" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</Label>
+              <Input
+                id="person-company"
                 placeholder="Company name"
-                value={newOpp.company_name}
-                onChange={(e) => setNewOpp(prev => ({ ...prev, company_name: e.target.value }))}
+                value={newPerson.company_name}
+                onChange={(e) => setNewPerson(prev => ({ ...prev, company_name: e.target.value }))}
                 className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="opp-email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</Label>
+                <Label htmlFor="person-email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</Label>
                 <Input
-                  id="opp-email"
+                  id="person-email"
                   placeholder="email@example.com"
                   type="email"
-                  value={newOpp.email}
-                  onChange={(e) => setNewOpp(prev => ({ ...prev, email: e.target.value }))}
+                  value={newPerson.email}
+                  onChange={(e) => setNewPerson(prev => ({ ...prev, email: e.target.value }))}
                   className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="opp-phone" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone</Label>
+                <Label htmlFor="person-phone" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone</Label>
                 <Input
-                  id="opp-phone"
+                  id="person-phone"
                   placeholder="(555) 123-4567"
                   type="tel"
-                  value={newOpp.phone}
-                  onChange={(e) => setNewOpp(prev => ({ ...prev, phone: e.target.value }))}
+                  value={newPerson.phone}
+                  onChange={(e) => setNewPerson(prev => ({ ...prev, phone: e.target.value }))}
                   className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
                 />
               </div>
@@ -1693,18 +1448,18 @@ const Underwriting = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setAddOpportunityOpen(false)}
+              onClick={() => setAddPersonOpen(false)}
               className="h-9 px-4 rounded-xl text-muted-foreground hover:text-foreground"
             >
               Cancel
             </Button>
             <button
-              onClick={handleCreateOpportunity}
-              disabled={!newOpp.name.trim() || createOpportunityMutation.isPending}
+              onClick={handleCreatePerson}
+              disabled={!newPerson.name.trim() || createPersonMutation.isPending}
               className="h-9 px-5 rounded-xl text-[13px] font-semibold text-white flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
               style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}
             >
-              {createOpportunityMutation.isPending ? (
+              {createPersonMutation.isPending ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Creating...
@@ -1712,7 +1467,7 @@ const Underwriting = () => {
               ) : (
                 <>
                   <Sparkles className="h-3.5 w-3.5" />
-                  Create Opportunity
+                  Add Contact
                 </>
               )}
             </button>
@@ -1723,4 +1478,4 @@ const Underwriting = () => {
   );
 };
 
-export default Underwriting;
+export default People;

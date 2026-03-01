@@ -46,6 +46,7 @@ import EmployeePipeline from "./pages/admin/EmployeePipeline";
 import Pipeline from "./pages/admin/Pipeline";
 import PipelineFeed from "./pages/admin/PipelineFeed";
 import Underwriting from "./pages/admin/Underwriting";
+import People from "./pages/admin/People";
 import UnderwritingExpandedView from "./components/admin/UnderwritingExpandedView";
 import Tasks from "./pages/admin/Tasks";
 import Calls from "./pages/admin/Calls";
@@ -165,6 +166,7 @@ const App = () => (
                 <Route path="/admin/pipeline" element={<AdminRoute><Pipeline /></AdminRoute>} />
                 <Route path="/admin/pipeline/feed" element={<AdminRoute><PipelineFeed /></AdminRoute>} />
                 <Route path="/admin/pipeline/underwriting" element={<AdminRoute><Underwriting /></AdminRoute>} />
+                <Route path="/admin/pipeline/contacts/people" element={<AdminRoute><People /></AdminRoute>} />
                 <Route path="/admin/pipeline/underwriting/lead/:leadId" element={<AdminRoute><UnderwritingExpandedView /></AdminRoute>} />
                 <Route path="/admin/tasks" element={<AdminRoute><Tasks /></AdminRoute>} />
                 <Route path="/admin/calls" element={<AdminRoute><Calls /></AdminRoute>} />

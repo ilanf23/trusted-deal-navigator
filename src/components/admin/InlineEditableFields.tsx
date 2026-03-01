@@ -450,6 +450,81 @@ export function EditableNotes({
   );
 }
 
+// ── Editable Notes Field (parameterized — for about, history, bank_relationships) ──
+export function EditableNotesField({
+  value, field, leadId, placeholder, onSaved,
+}: {
+  value: string; field: string; leadId: string; placeholder?: string;
+  onSaved: (field: string, newValue: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(value);
+      setTimeout(() => {
+        const el = textareaRef.current;
+        if (el) { el.focus(); el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+      }, 0);
+    }
+  }, [editing, value]);
+
+  const save = useCallback(async () => {
+    const trimmed = draft.trim();
+    if (trimmed === value) { setEditing(false); return; }
+    setSaving(true);
+    const { error } = await supabase
+      .from('leads')
+      .update({ [field]: trimmed || null })
+      .eq('id', leadId);
+    setSaving(false);
+    if (error) { toast.error('Failed to save'); return; }
+    onSaved(field, trimmed);
+    setEditing(false);
+  }, [draft, value, field, leadId, onSaved]);
+
+  if (editing) {
+    return (
+      <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-3">
+        <textarea
+          ref={textareaRef}
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false); }}
+          disabled={saving}
+          placeholder={placeholder || 'Add details...'}
+          className="w-full text-[13px] text-foreground/80 leading-relaxed bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
+          rows={3}
+        />
+        <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-blue-100">
+          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+          <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">Cancel</button>
+          <button onClick={save} disabled={saving} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
+            <Check className="h-3 w-3" />Save
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={() => setEditing(true)} className="rounded-xl border border-border bg-muted/30 p-3.5 cursor-pointer hover:border-border hover:bg-muted/50 transition-all group">
+      {value ? (
+        <p className="text-[13px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{value}</p>
+      ) : (
+        <p className="text-[13px] text-muted-foreground italic">{placeholder || 'Click to add...'}</p>
+      )}
+      <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Pencil className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[11px] text-muted-foreground">Click to edit</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Read-only row (Pipeline, Created) ──
 export function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (

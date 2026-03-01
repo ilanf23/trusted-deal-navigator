@@ -228,7 +228,7 @@ Evan`;
                 </CardDescription>
               </div>
             </div>
-            <Link to="/admin/evan/gmail">
+            <Link to="/admin/gmail">
               <Button variant="ghost" size="sm" className="gap-1">
                 <ExternalLink className="h-3.5 w-3.5" />
                 Gmail

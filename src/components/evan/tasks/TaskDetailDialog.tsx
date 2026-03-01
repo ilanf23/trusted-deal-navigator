@@ -209,8 +209,8 @@ export const TaskDetailDialog = ({
     if (title.includes('closing') || title.includes('prepare closing')) {
       return { 
         path: hasLead 
-          ? `/admin/evan/gmail?compose=true&leadId=${taskData.lead_id}&template=closing`
-          : '/admin/evan/gmail?compose=true&template=closing',
+          ? `/admin/gmail?compose=true&leadId=${taskData.lead_id}&template=closing`
+          : '/admin/gmail?compose=true&template=closing',
         label: 'Draft Closing Email', 
         icon: <FileText className="h-4 w-4" />,
         action: 'compose',
@@ -221,8 +221,8 @@ export const TaskDetailDialog = ({
     if (source === 'nudge' || title.includes('follow up') || title.includes('follow-up')) {
       return { 
         path: hasLead 
-          ? `/admin/evan/gmail?compose=true&leadId=${taskData.lead_id}&template=follow_up`
-          : '/admin/evan/gmail?compose=true&template=follow_up',
+          ? `/admin/gmail?compose=true&leadId=${taskData.lead_id}&template=follow_up`
+          : '/admin/gmail?compose=true&template=follow_up',
         label: 'Draft Follow-up Email', 
         icon: <Mail className="h-4 w-4" />,
         action: 'compose',
@@ -233,8 +233,8 @@ export const TaskDetailDialog = ({
     if (source === 'gmail' || title.includes('email') || title.includes('send')) {
       return { 
         path: hasLead 
-          ? `/admin/evan/gmail?compose=true&leadId=${taskData.lead_id}`
-          : '/admin/evan/gmail?compose=true',
+          ? `/admin/gmail?compose=true&leadId=${taskData.lead_id}`
+          : '/admin/gmail?compose=true',
         label: 'Compose Email', 
         icon: <Mail className="h-4 w-4" />,
         action: 'compose'
@@ -243,7 +243,7 @@ export const TaskDetailDialog = ({
     
     if (source === 'lead' || hasLead) {
       return { 
-        path: `/admin/evan/pipeline?lead=${taskData.lead_id}&tab=lenders`, 
+        path: `/admin/pipeline?lead=${taskData.lead_id}&tab=lenders`, 
         label: 'View in CRM', 
         icon: <Users className="h-4 w-4" />,
         action: 'view'
@@ -252,7 +252,7 @@ export const TaskDetailDialog = ({
     
     if (title.includes('document') || title.includes('doc') || title.includes('file')) {
       return { 
-        path: '/admin/evan/pipeline', 
+        path: '/admin/pipeline', 
         label: 'Go to Pipeline', 
         icon: <FileText className="h-4 w-4" />,
         action: 'view'

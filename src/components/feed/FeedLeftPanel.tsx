@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { FEED_ACTIVITY_FILTERS } from '@/hooks/useFeedData';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Users, Activity } from 'lucide-react';
 
 interface TeamMember {
   id: string;
@@ -10,127 +9,95 @@ interface TeamMember {
 }
 
 interface FeedLeftPanelProps {
-  userName: string;
   selectedTeamMember: string | null;
   onTeamMemberSelect: (member: string | null) => void;
-  selectedFilters: string[];
-  onFilterChange: (filters: string[]) => void;
   teamMembers: TeamMember[];
+  activityCounts: { today: number; thisWeek: number };
+  isSheet?: boolean;
 }
 
 const FeedLeftPanel = ({
-  userName,
   selectedTeamMember,
   onTeamMemberSelect,
-  selectedFilters,
-  onFilterChange,
   teamMembers,
+  activityCounts,
+  isSheet,
 }: FeedLeftPanelProps) => {
-  const [filterSearch, setFilterSearch] = useState('');
-  const isAllSelected = selectedFilters.length === 0;
-
-  const filteredActivityFilters = FEED_ACTIVITY_FILTERS.filter((f) =>
-    f.toLowerCase().includes(filterSearch.toLowerCase())
-  );
-
-  const handleFilterToggle = (filter: string) => {
-    if (selectedFilters.includes(filter)) {
-      onFilterChange(selectedFilters.filter((f) => f !== filter));
-    } else {
-      onFilterChange([...selectedFilters, filter]);
-    }
-  };
-
-  const handleAllClick = () => {
-    onFilterChange([]);
-  };
-
   return (
-    <div className="w-[220px] min-w-[220px] bg-card border-r border-border flex flex-col h-full overflow-hidden">
-      {/* Welcome header */}
-      <div className="px-4 pt-5 pb-3">
-        <h2 className="text-lg font-bold text-foreground leading-tight">
-          Welcome to your Feed, {userName} 👋
-        </h2>
-        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-          Your pipeline activity, communications, and deal updates — all in one place.
-        </p>
-        <div className="h-px bg-border mt-4" />
-      </div>
-
-      {/* Team avatars */}
-      <div className="px-4 pb-3 flex flex-wrap">
-        {teamMembers.filter(m => m.name.toLowerCase() !== 'adam').map((member, idx) => (
-          <button
-            key={member.id}
-            onClick={() =>
-              onTeamMemberSelect(selectedTeamMember === member.name ? null : member.name)
-            }
-            className={cn(
-              'rounded-full transition-all border-2',
-              idx > 0 && '-ml-2',
-              selectedTeamMember === member.name
-                ? 'border-primary z-10'
-                : 'border-transparent hover:border-muted'
-            )}
-            style={{ zIndex: selectedTeamMember === member.name ? 10 : teamMembers.length - idx }}
-          >
-            <Avatar className="w-10 h-10">
-              {member.avatar_url && (
-                <AvatarImage src={member.avatar_url} alt={member.name} />
-              )}
-              <AvatarFallback className="bg-muted/60 text-foreground text-sm font-semibold">
-                {member.name.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </button>
-        ))}
-      </div>
-
-      {/* Search filters */}
-      <div className="px-4 pb-2">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search Filters"
-            value={filterSearch}
-            onChange={(e) => setFilterSearch(e.target.value)}
-            className="w-full h-8 pl-3 pr-3 text-xs bg-muted rounded-md border-0 outline-none focus:ring-1 focus:ring-[#5B21B6]/30 placeholder:text-muted-foreground/60 text-foreground"
-          />
-        </div>
-      </div>
-
-      {/* Filter list */}
-      <div className="flex-1 overflow-y-auto px-2">
-        {/* "All" option */}
+    <div className={cn(
+      'bg-card flex flex-col h-full overflow-hidden',
+      isSheet
+        ? 'w-full'
+        : 'w-[240px] min-w-[240px] 2xl:w-[270px] 2xl:min-w-[270px] border-r border-border'
+    )}>
+      {/* Team filter */}
+      <div className="p-3 space-y-1">
         <button
-          onClick={handleAllClick}
+          onClick={() => onTeamMemberSelect(null)}
           className={cn(
-            'w-full text-left px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-            isAllSelected
-              ? 'bg-primary/10 text-primary font-bold'
+            'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            !selectedTeamMember
+              ? 'bg-primary/10 text-primary'
               : 'text-foreground hover:bg-muted'
           )}
         >
-          All
+          <div className="p-1.5 rounded-lg bg-muted">
+            <Users className="w-4 h-4" />
+          </div>
+          All Team
         </button>
 
-        {filteredActivityFilters.map((filter, idx) => (
-          <label
-            key={`${filter}-${idx}`}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-foreground hover:bg-muted cursor-pointer"
-          >
-            <input
-              type="checkbox"
-              checked={selectedFilters.includes(filter)}
-              onChange={() => handleFilterToggle(filter)}
-              className="w-3.5 h-3.5 rounded border-border text-[#5B21B6] focus:ring-[#5B21B6]/30"
-            />
-            <span className="text-xs">{filter}</span>
-          </label>
-        ))}
+        {teamMembers
+          .filter((m) => m.name.toLowerCase() !== 'adam')
+          .map((member) => (
+            <button
+              key={member.id}
+              onClick={() =>
+                onTeamMemberSelect(
+                  selectedTeamMember === member.name ? null : member.name
+                )
+              }
+              className={cn(
+                'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors',
+                selectedTeamMember === member.name
+                  ? 'bg-primary/10 text-primary font-medium'
+                  : 'text-foreground hover:bg-muted'
+              )}
+            >
+              <Avatar className="w-9 h-9">
+                {member.avatar_url && (
+                  <AvatarImage src={member.avatar_url} alt={member.name} />
+                )}
+                <AvatarFallback className="bg-muted text-foreground text-sm font-semibold">
+                  {member.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {member.name}
+            </button>
+          ))}
       </div>
 
+      <div className="mx-3 border-t border-border" />
+
+      {/* Activity Summary */}
+      <div className="p-3">
+        <div className="flex items-center gap-2 mb-3 px-3">
+          <Activity className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Activity Summary
+          </span>
+        </div>
+        <div className="space-y-2 px-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Today</span>
+            <span className="text-sm font-semibold text-foreground">{activityCounts.today}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">This week</span>
+            <span className="text-sm font-semibold text-foreground">{activityCounts.thisWeek}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

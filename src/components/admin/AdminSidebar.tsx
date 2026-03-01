@@ -252,16 +252,13 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         ],
       });
     } else if (teamMember) {
-      const employeeName = teamMember.name;
-      const employeeUrl = `/admin/${employeeName.toLowerCase()}`;
-
       // Top-level pages (no section heading, direct links)
       sections.push({
         title: '',
         icon: LayoutDashboard,
         items: [
-          { title: 'Dashboard', url: employeeUrl, icon: LayoutDashboard },
-          { title: 'Scorecard', url: `/admin/${employeeName.toLowerCase()}/scorecard`, icon: ClipboardList },
+          { title: 'Dashboard', url: '/admin/dashboard', icon: LayoutDashboard },
+          { title: 'Scorecard', url: '/admin/scorecard', icon: ClipboardList },
         ],
         noCollapse: true,
       });
@@ -272,27 +269,27 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: Kanban,
         isLabel: true,
         items: [
-          { title: 'Feed', url: `/admin/${employeeName.toLowerCase()}/pipeline/feed`, icon: Rss },
+          { title: 'Feed', url: '/admin/pipeline/feed', icon: Rss },
           {
             title: 'Pipeline',
-            url: `/admin/${employeeName.toLowerCase()}/pipeline`,
+            url: '/admin/pipeline',
             icon: Kanban,
             subItems: [
-              { title: 'Underwriting', url: `/admin/${employeeName.toLowerCase()}/pipeline/underwriting`, icon: ClipboardList },
-              { title: 'Lender Management', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=lender-management`, icon: Building2 },
-              { title: 'Potential', url: `/admin/${employeeName.toLowerCase()}/pipeline?view=potential`, icon: Crosshair },
+              { title: 'Underwriting', url: '/admin/pipeline/underwriting', icon: ClipboardList },
+              { title: 'Lender Management', url: '/admin/pipeline?view=lender-management', icon: Building2 },
+              { title: 'Potential', url: '/admin/pipeline?view=potential', icon: Crosshair },
             ],
           },
           {
             title: 'Contacts',
-            url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts`,
+            url: '/admin/pipeline/contacts',
             icon: Users,
             subItems: [
-              { title: 'People', url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts/people`, icon: User },
-              { title: 'Companies', url: `/admin/${employeeName.toLowerCase()}/pipeline/contacts/companies`, icon: Building2 },
+              { title: 'People', url: '/admin/pipeline/contacts/people', icon: User },
+              { title: 'Companies', url: '/admin/pipeline/contacts/companies', icon: Building2 },
             ],
           },
-          { title: 'Lender Programs', url: `/admin/${employeeName.toLowerCase()}/lender-programs`, icon: Building2 },
+          { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },
         ],
         noCollapse: true,
       });
@@ -303,10 +300,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: ListTodo,
         isLabel: true,
         items: [
-          { title: "To Do's", url: `/admin/${employeeName.toLowerCase()}/tasks`, icon: ListTodo },
-          { title: 'Calendar', url: `/admin/${employeeName.toLowerCase()}/calendar`, icon: Calendar },
-          { title: 'Calls', url: `/admin/${employeeName.toLowerCase()}/calls`, icon: Phone },
-          { title: 'Gmail', url: `/admin/${employeeName.toLowerCase()}/gmail`, icon: Mail },
+          { title: "To Do's", url: '/admin/tasks', icon: ListTodo },
+          { title: 'Calendar', url: '/admin/calendar', icon: Calendar },
+          { title: 'Calls', url: '/admin/calls', icon: Phone },
+          { title: 'Gmail', url: '/admin/gmail', icon: Mail },
         ],
         noCollapse: true,
       });
@@ -317,9 +314,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: TrendingDown,
         isLabel: true,
         items: [
-          { title: 'Rate Watch', url: `/admin/${employeeName.toLowerCase()}/rate-watch`, icon: TrendingDown },
-          { title: 'Messages', url: `/admin/${employeeName.toLowerCase()}/messages`, icon: MessageSquare },
-          { title: 'Bug Reporting', url: `/admin/${employeeName.toLowerCase()}/bug-reporting`, icon: Bug },
+          { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
+          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
+          { title: 'Bug Reporting', url: '/admin/bug-reporting', icon: Bug },
         ],
         noCollapse: true,
       });
@@ -357,12 +354,12 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   };
 
   const isActive = (path: string) => {
-    // Exact match for base routes like /superadmin or /admin/evan or /superadmin/ilan
-    if (path === '/superadmin' || path.match(/^\/admin\/[^/]+$/) || path.match(/^\/superadmin\/[^/]+$/)) {
+    // Exact match for base routes like /superadmin or /admin/dashboard or /superadmin/ilan
+    if (path === '/superadmin' || path === '/admin/dashboard' || path.match(/^\/superadmin\/[^/]+$/)) {
       return location.pathname === path;
     }
     // For pipeline sub-items, use exact match to avoid multiple highlights
-    // e.g. /admin/evan/pipeline should not match /admin/evan/pipeline/feed
+    // e.g. /admin/pipeline should not match /admin/pipeline/feed
     if (path.match(/\/pipeline$/)) {
       return location.pathname === path;
     }
@@ -383,6 +380,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   const activeIndicator = "before:content-[''] before:absolute before:left-0 before:inset-y-1.5 before:w-[2.5px] before:rounded-full before:bg-sidebar-primary";
   const activeSurface = 'bg-sidebar-accent text-sidebar-accent-foreground';
   const inactiveItem = 'text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-foreground';
+  const inactiveParent = 'text-sidebar-foreground hover:bg-sidebar-accent/70';
+  const inactiveChild = 'text-sidebar-foreground hover:bg-sidebar-accent/50';
 
   const getUserInitials = (email?: string) => {
     if (!email) return 'U';
@@ -398,7 +397,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
     
     if (isFounder) return `/superadmin/${teamMember.name.toLowerCase()}`;
     if (isOwner && !isFounder) return '/superadmin';
-    return `/admin/${teamMember.name.toLowerCase()}`;
+    return '/admin/dashboard';
   }, [isOwner, teamMember]);
 
   return (
@@ -452,21 +451,21 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                         ${focusRing}
                         group relative w-full flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-200 ease-out cursor-pointer text-[13px] tracking-tight border-0 bg-transparent
                         ${isNavBranchActive(item) || openSections[item.title]
-                          ? `${activeSurface} ${activeIndicator} font-medium`
-                          : `${inactiveItem} font-normal`
+                          ? 'bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold'
+                          : `${inactiveParent} font-medium`
                         }
                       `}>
-                        <item.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${isNavBranchActive(item) || openSections[item.title] ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                        <item.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${isNavBranchActive(item) || openSections[item.title] ? 'opacity-100 text-sidebar-primary' : 'opacity-70 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                         <span className="flex-1 text-left">{item.title}</span>
-                        <ChevronDown 
-                          className={`w-3.5 h-3.5 transition-transform duration-200 ease-out opacity-50 ${
+                        <ChevronDown
+                          className={`w-3 h-3 transition-transform duration-200 ease-out opacity-40 group-hover:opacity-60 ${
                             openSections[item.title] ? '' : '-rotate-90'
-                          }`} 
+                          }`}
                         />
                       </button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <div className="ml-3 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
+                      <div className="ml-[18px] mt-0.5 space-y-px border-l border-sidebar-border/25 pl-2.5">
                         {item.subItems.map((subItem) => (
                           subItem.subItems ? (
                             <Collapsible
@@ -479,21 +478,21 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                   ${focusRing}
                                   group relative w-full flex items-center gap-2 py-1.5 px-2.5 rounded-md transition-all duration-200 ease-out cursor-pointer text-[12.5px] tracking-tight border-0 bg-transparent
                                   ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`]
-                                    ? `${activeSurface} ${activeIndicator} font-medium`
-                                    : `${inactiveItem} font-normal`
+                                    ? 'bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold'
+                                    : `${inactiveParent} font-medium`
                                   }
                                 `}>
-                                  <subItem.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`] ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                  <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`] ? 'opacity-100 text-sidebar-primary' : 'opacity-70 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                   <span className="flex-1 text-left">{subItem.title}</span>
                                   <ChevronDown
-                                    className={`w-3 h-3 transition-transform duration-200 ease-out opacity-50 ${
+                                    className={`w-2.5 h-2.5 transition-transform duration-200 ease-out opacity-40 group-hover:opacity-60 ${
                                       openSections[`sub-${subItem.title}`] ? '' : '-rotate-90'
                                     }`}
                                   />
                                 </button>
                               </CollapsibleTrigger>
                               <CollapsibleContent>
-                                <div className="ml-2.5 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
+                                <div className="ml-[18px] mt-0.5 space-y-px border-l border-sidebar-border/25 pl-2.5">
                                   {subItem.subItems.map((deepItem) => (
                                     <Link
                                       key={deepItem.title}
@@ -501,14 +500,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                       onClick={closeMobileMenu}
                                       className={`
                                         ${focusRing}
-                                        group relative flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-200 ease-out text-[12px] tracking-tight
+                                        group relative flex items-center gap-2 py-[5px] px-2 rounded-md transition-all duration-200 ease-out text-[11.5px] tracking-tight
                                         ${isActive(deepItem.url)
                                           ? `${activeSurface} ${activeIndicator} font-medium`
-                                          : `${inactiveItem} font-normal`
+                                          : `${inactiveChild} font-normal`
                                         }
                                       `}
                                     >
-                                      <deepItem.icon className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${isActive(deepItem.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                      <deepItem.icon className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${isActive(deepItem.url) ? 'opacity-100' : 'opacity-40 group-hover:opacity-70 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                       <span>{deepItem.title}</span>
                                     </Link>
                                   ))}
@@ -522,14 +521,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                               onClick={closeMobileMenu}
                               className={`
                                 ${focusRing}
-                                group relative flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-200 ease-out text-[12.5px] tracking-tight
-                                ${isActive(subItem.url) 
+                                group relative flex items-center gap-2 py-[5px] px-2.5 rounded-md transition-all duration-200 ease-out text-[12px] tracking-tight
+                                ${isActive(subItem.url)
                                   ? `${activeSurface} ${activeIndicator} font-medium`
-                                  : `${inactiveItem} font-normal`
+                                  : `${inactiveChild} font-normal`
                                 }
                               `}
                             >
-                              <subItem.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isActive(subItem.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                              <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isActive(subItem.url) ? 'opacity-100' : 'opacity-40 group-hover:opacity-70 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                               <span>{subItem.title}</span>
                             </Link>
                           )
@@ -566,10 +565,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     onClick={closeMobileMenu}
                     className={`
                       ${focusRing}
-                      group relative flex items-center gap-3 py-1.5 px-2.5 rounded-md transition-all duration-200 ease-out text-[13px] tracking-tight
-                      ${isActive(item.url) 
+                      group relative flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-200 ease-out text-[13px] tracking-tight
+                      ${isActive(item.url)
                         ? `${activeSurface} ${activeIndicator} font-medium`
-                        : `${inactiveItem} font-normal`
+                        : `${inactiveParent} font-normal`
                       }
                     `}
                   >
@@ -618,21 +617,21 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                 <div className={`
                   group relative flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-200 ease-out cursor-pointer text-[13px] tracking-tight
                   ${openSections[section.title] || section.items.some(isNavBranchActive) || (section.navigateOnClick && isRouteWithin(section.navigateOnClick))
-                    ? `${activeSurface} ${activeIndicator} font-medium`
-                    : `${inactiveItem} font-normal`
+                    ? 'bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold'
+                    : `${inactiveParent} font-medium`
                   }
                 `}>
-                  <section.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${openSections[section.title] || section.items.some(isNavBranchActive) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                  <section.icon className={`w-[17px] h-[17px] flex-shrink-0 transition-all duration-200 ${openSections[section.title] || section.items.some(isNavBranchActive) ? 'opacity-100 text-sidebar-primary' : 'opacity-70 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                   <span className="flex-1 text-left">{section.title}</span>
-                  <ChevronDown 
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ease-out opacity-50 ${
+                  <ChevronDown
+                    className={`w-3 h-3 transition-transform duration-200 ease-out opacity-40 group-hover:opacity-60 ${
                       openSections[section.title] ? '' : '-rotate-90'
-                    }`} 
+                    }`}
                   />
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="ml-3 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
+                <div className="ml-[18px] mt-0.5 space-y-px border-l border-sidebar-border/25 pl-2.5">
                   {section.items.map((item) => (
                     item.subItems ? (
                       // Render nested collapsible for items with subItems
@@ -644,22 +643,22 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                         <CollapsibleTrigger className={`w-full ${focusRing}`}>
                           <div className={`
                             group relative flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-200 ease-out cursor-pointer text-[12.5px] tracking-tight
-                            ${isNavBranchActive(item) || openSections[item.title] 
-                              ? `${activeSurface} ${activeIndicator} font-medium`
-                              : `${inactiveItem} font-normal`
+                            ${isNavBranchActive(item) || openSections[item.title]
+                              ? 'bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold'
+                              : `${inactiveParent} font-medium`
                             }
                           `}>
-                            <item.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(item) || openSections[item.title] ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                            <item.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(item) || openSections[item.title] ? 'opacity-100 text-sidebar-primary' : 'opacity-70 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                             <span className="flex-1 text-left">{item.title}</span>
-                            <ChevronDown 
-                              className={`w-3 h-3 transition-transform duration-200 ease-out opacity-50 ${
+                            <ChevronDown
+                              className={`w-3 h-3 transition-transform duration-200 ease-out opacity-40 group-hover:opacity-60 ${
                                 openSections[item.title] ? '' : '-rotate-90'
-                              }`} 
+                              }`}
                             />
                           </div>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <div className="ml-3 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
+                          <div className="ml-[18px] mt-0.5 space-y-px border-l border-sidebar-border/25 pl-2.5">
                             {item.subItems.map((subItem) => (
                               subItem.subItems ? (
                                 <Collapsible
@@ -671,21 +670,21 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                     <div className={`
                                       group relative flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-200 ease-out cursor-pointer text-[12px] tracking-tight
                                       ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`]
-                                        ? `${activeSurface} ${activeIndicator} font-medium`
-                                        : `${inactiveItem} font-normal`
+                                        ? 'bg-sidebar-accent/80 text-sidebar-accent-foreground font-semibold'
+                                        : `${inactiveParent} font-medium`
                                       }
                                     `}>
-                                      <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`] ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                      <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isNavBranchActive(subItem) || openSections[`sub-${subItem.title}`] ? 'opacity-100 text-sidebar-primary' : 'opacity-70 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                       <span className="flex-1 text-left">{subItem.title}</span>
                                       <ChevronDown
-                                        className={`w-2.5 h-2.5 transition-transform duration-200 ease-out opacity-50 ${
+                                        className={`w-2.5 h-2.5 transition-transform duration-200 ease-out opacity-40 group-hover:opacity-60 ${
                                           openSections[`sub-${subItem.title}`] ? '' : '-rotate-90'
                                         }`}
                                       />
                                     </div>
                                   </CollapsibleTrigger>
                                   <CollapsibleContent>
-                                    <div className="ml-2.5 mt-1 space-y-0.5 border-l border-sidebar-border/40 pl-2">
+                                    <div className="ml-[18px] mt-0.5 space-y-px border-l border-sidebar-border/25 pl-2.5">
                                       {subItem.subItems.map((deepItem) => (
                                         <Link
                                           key={deepItem.title}
@@ -693,14 +692,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                           onClick={closeMobileMenu}
                                           className={`
                                             ${focusRing}
-                                            group relative flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-200 ease-out text-[11.5px] tracking-tight
+                                            group relative flex items-center gap-2 py-[5px] px-2 rounded-md transition-all duration-200 ease-out text-[11px] tracking-tight
                                             ${isActive(deepItem.url)
                                               ? `${activeSurface} ${activeIndicator} font-medium`
-                                              : `${inactiveItem} font-normal`
+                                              : `${inactiveChild} font-normal`
                                             }
                                           `}
                                         >
-                                          <deepItem.icon className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${isActive(deepItem.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                          <deepItem.icon className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${isActive(deepItem.url) ? 'opacity-100' : 'opacity-40 group-hover:opacity-70 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                           <span>{deepItem.title}</span>
                                         </Link>
                                       ))}
@@ -714,14 +713,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                                   onClick={closeMobileMenu}
                                   className={`
                                     ${focusRing}
-                                    group relative flex items-center gap-2 py-1.5 px-2 rounded-md transition-all duration-200 ease-out text-[12px] tracking-tight
-                                    ${isActive(subItem.url) 
+                                    group relative flex items-center gap-2 py-[5px] px-2 rounded-md transition-all duration-200 ease-out text-[11.5px] tracking-tight
+                                    ${isActive(subItem.url)
                                       ? `${activeSurface} ${activeIndicator} font-medium`
-                                      : `${inactiveItem} font-normal`
+                                      : `${inactiveChild} font-normal`
                                     }
                                   `}
                                 >
-                                  <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isActive(subItem.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                                  <subItem.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isActive(subItem.url) ? 'opacity-100' : 'opacity-40 group-hover:opacity-70 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                                   <span>{subItem.title}</span>
                                 </Link>
                               )
@@ -736,14 +735,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                         onClick={closeMobileMenu}
                         className={`
                           ${focusRing}
-                          group relative flex items-center gap-2.5 py-1.5 px-2.5 rounded-md transition-all duration-200 ease-out text-[12.5px] tracking-tight
-                          ${isActive(item.url) 
+                          group relative flex items-center gap-2 py-[5px] px-2.5 rounded-md transition-all duration-200 ease-out text-[12px] tracking-tight
+                          ${isActive(item.url)
                             ? `${activeSurface} ${activeIndicator} font-medium`
-                            : `${inactiveItem} font-normal`
+                            : `${inactiveChild} font-normal`
                           }
                         `}
                       >
-                        <item.icon className={`w-4 h-4 flex-shrink-0 transition-all duration-200 ${isActive(item.url) ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
+                        <item.icon className={`w-3.5 h-3.5 flex-shrink-0 transition-all duration-200 ${isActive(item.url) ? 'opacity-100' : 'opacity-40 group-hover:opacity-70 group-hover:translate-x-[1px]'}`} strokeWidth={1.75} />
                         <span>{item.title}</span>
                       </Link>
                     )

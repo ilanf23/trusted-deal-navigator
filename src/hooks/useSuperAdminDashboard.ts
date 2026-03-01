@@ -50,7 +50,7 @@ const TEAM_URL_MAP: Record<string, string> = {
   'Ilan': '/superadmin/ilan',
   'Maura': '/admin/maura',
   'Wendy': '/admin/wendy',
-  'Evan': '/admin/evan',
+  'Evan': '/admin/dashboard',
 };
 
 // Team role mapping from team_members table
