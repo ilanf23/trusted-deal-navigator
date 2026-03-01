@@ -108,7 +108,7 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
       </div>
 
       {/* Feed content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
