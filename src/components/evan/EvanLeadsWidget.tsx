@@ -19,13 +19,20 @@ const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
   pre_approval_issued: { label: 'Pre-Approval Issued', color: 'bg-violet-500' },
   won: { label: 'Won', color: 'bg-green-500' },
   lost: { label: 'Lost', color: 'bg-red-500' },
-  // Legacy values (kept for backward compat)
   discovery: { label: 'Discovery', color: 'bg-slate-500' },
   questionnaire: { label: 'Questionnaire', color: 'bg-indigo-500' },
   pre_qualification: { label: 'Pre-Qual', color: 'bg-blue-400' },
   document_collection: { label: 'Docs', color: 'bg-yellow-500' },
   approval: { label: 'Approval', color: 'bg-purple-400' },
   funded: { label: 'Funded', color: 'bg-green-400' },
+  review_kill_keep: { label: 'Review Kill/Keep', color: 'bg-red-500' },
+  waiting_on_needs_list: { label: 'Waiting Needs List', color: 'bg-amber-400' },
+  waiting_on_client: { label: 'Waiting on Client', color: 'bg-yellow-500' },
+  complete_files_for_review: { label: 'Complete Files', color: 'bg-teal-500' },
+  need_structure_from_brad: { label: 'Need Structure', color: 'bg-indigo-400' },
+  maura_underwriting: { label: 'Maura UW', color: 'bg-pink-500' },
+  brad_underwriting: { label: 'Brad UW', color: 'bg-sky-500' },
+  uw_paused: { label: 'UW Paused', color: 'bg-gray-500' },
 };
 
 export const EvanLeadsWidget = () => {
