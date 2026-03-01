@@ -547,7 +547,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                           ${focusRing}
                           flex items-center justify-center py-2 px-2 rounded-md transition-all duration-200 ease-out
                           ${isActive(item.url) 
-                            ? 'bg-sidebar-accent ring-1 ring-sidebar-primary/25 shadow-sm text-sidebar-accent-foreground' 
+                            ? 'bg-sidebar-accent shadow-sm text-sidebar-accent-foreground' 
                             : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                           }
                         `}
@@ -589,7 +589,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                     ${focusRing}
                     flex items-center justify-center py-2 px-2 rounded-md transition-all duration-200 ease-out
                     ${section.items.some(isNavBranchActive)
-                      ? 'bg-sidebar-accent ring-1 ring-sidebar-primary/25 shadow-sm text-sidebar-accent-foreground' 
+                      ? 'bg-sidebar-accent shadow-sm text-sidebar-accent-foreground' 
                       : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                     }
                   `}
