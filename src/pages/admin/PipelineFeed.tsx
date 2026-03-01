@@ -1,14 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
 import FeedLeftPanel from '@/components/feed/FeedLeftPanel';
 import FeedCenter from '@/components/feed/FeedCenter';
 import FeedRightPanel from '@/components/feed/FeedRightPanel';
+import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useFeedData } from '@/hooks/useFeedData';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 const PipelineFeed = () => {
   const { data: activities = [], isLoading } = useFeedData();
+  const { teamMember } = useTeamMember();
 
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['feed-team-members'],
@@ -23,7 +27,34 @@ const PipelineFeed = () => {
   });
 
   const [selectedTeamMember, setSelectedTeamMember] = useState<string | null>(null);
+  const initializedRef = useRef(false);
+
+  // Auto-select the logged-in team member's feed on first load
+  useEffect(() => {
+    if (!initializedRef.current && teamMember?.name) {
+      setSelectedTeamMember(teamMember.name);
+      initializedRef.current = true;
+    }
+  }, [teamMember?.name]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [leftPanelOpen, setLeftPanelOpen] = useState(false);
+  const [detailLead, setDetailLead] = useState<any>(null);
+
+  const handleViewLead = useCallback(async (leadId: string) => {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('id', leadId)
+      .single();
+    if (!error && data) {
+      setDetailLead(data);
+    }
+  }, []);
+
+  const handleTeamMemberSelect = useCallback((member: string | null) => {
+    setSelectedTeamMember(member);
+    setLeftPanelOpen(false);
+  }, []);
 
   const filteredActivities = useMemo(() => {
     let result = activities;
@@ -50,39 +81,75 @@ const PipelineFeed = () => {
 
   const activityCounts = useMemo(() => {
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const weekStart = new Date(now);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const source = selectedTeamMember
       ? activities.filter((a) => a.actorName.toLowerCase().includes(selectedTeamMember.toLowerCase()))
       : activities;
 
     return {
-      today: source.filter((a) => a.rawDate >= now).length,
-      thisWeek: source.filter((a) => a.rawDate >= weekStart).length,
+      total: source.length,
+      last30Days: source.filter((a) => a.rawDate >= thirtyDaysAgo).length,
+      calls: source.filter((a) => a.type === 'call').length,
+      emails: source.filter((a) => a.type === 'email').length,
+      sms: source.filter((a) => a.type === 'sms').length,
+      notes: source.filter((a) => a.type === 'note').length,
+      tasks: source.filter((a) => a.type === 'task_created').length,
+      leads: source.filter((a) => a.type === 'lead_created').length,
     };
   }, [activities, selectedTeamMember]);
 
   return (
     <EvanLayout>
-      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full pl-6 md:pl-10 lg:pl-14 bg-background">
+      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full pl-4 sm:pl-6 md:pl-10 lg:pl-14 bg-background">
+        {/* Mobile Sheet drawer for left panel */}
+        <Sheet open={leftPanelOpen} onOpenChange={setLeftPanelOpen}>
+          <SheetContent side="left" className="p-0 w-[280px]">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Team Filter</SheetTitle>
+            </SheetHeader>
+            <FeedLeftPanel
+              selectedTeamMember={selectedTeamMember}
+              onTeamMemberSelect={handleTeamMemberSelect}
+              teamMembers={teamMembers}
+              activityCounts={activityCounts}
+              isSheet
+            />
+          </SheetContent>
+        </Sheet>
+
         <div className="flex flex-1 min-h-0">
-          <FeedLeftPanel
-            selectedTeamMember={selectedTeamMember}
-            onTeamMemberSelect={setSelectedTeamMember}
-            teamMembers={teamMembers}
-            activityCounts={activityCounts}
-          />
+          {/* Inline left panel — visible at lg+ */}
+          <div className="hidden lg:block">
+            <FeedLeftPanel
+              selectedTeamMember={selectedTeamMember}
+              onTeamMemberSelect={setSelectedTeamMember}
+              teamMembers={teamMembers}
+              activityCounts={activityCounts}
+            />
+          </div>
           <FeedCenter
             activities={filteredActivities}
             isLoading={isLoading}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            onToggleLeftPanel={() => setLeftPanelOpen(true)}
+            selectedTeamMember={selectedTeamMember}
+            onViewLead={handleViewLead}
           />
           <FeedRightPanel />
         </div>
       </div>
+
+      {/* Lead detail dialog — opens inline, closing stays on feed */}
+      <LeadDetailDialog
+        lead={detailLead}
+        open={!!detailLead}
+        onOpenChange={(open) => {
+          if (!open) setDetailLead(null);
+        }}
+      />
     </EvanLayout>
   );
 };

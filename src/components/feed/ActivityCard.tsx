@@ -1,5 +1,4 @@
-import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, MessageSquare, StickyNote, UserPlus, CheckSquare, ChevronDown } from 'lucide-react';
+import { Phone, Mail, MessageSquare, StickyNote, UserPlus, CheckSquare, ChevronDown, Check } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -9,6 +8,9 @@ interface ActivityCardProps {
   activity: FeedActivity;
   isExpanded: boolean;
   onToggle: () => void;
+  onViewLead?: (leadId: string) => void;
+  isSelected?: boolean;
+  onSelect?: (id: string) => void;
 }
 
 const avatarColors: Record<string, string> = {
@@ -73,14 +75,13 @@ const getTypeLabel = (type: FeedActivity['type']) => {
   }
 };
 
-const ActivityCard = ({ activity, isExpanded, onToggle }: ActivityCardProps) => {
-  const navigate = useNavigate();
+const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead, isSelected, onSelect }: ActivityCardProps) => {
   const { toast } = useToast();
 
   const handleViewLead = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (activity.leadId) {
-      navigate(`/superadmin/pipeline?leadId=${activity.leadId}`);
+    if (activity.leadId && onViewLead) {
+      onViewLead(activity.leadId);
     }
   };
 
@@ -89,17 +90,37 @@ const ActivityCard = ({ activity, isExpanded, onToggle }: ActivityCardProps) => 
     toast({ title: 'Coming soon', description: 'This action is not yet available.' });
   };
 
+  const handleCheckbox = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelect?.(activity.id);
+  };
+
   return (
     <div
       onClick={onToggle}
       className={cn(
         'rounded-lg border mb-3 transition-all cursor-pointer',
-        isExpanded
-          ? 'bg-card ring-1 ring-primary/20'
-          : 'bg-card hover:bg-muted/50'
+        isSelected
+          ? 'bg-primary/5 ring-1 ring-primary/30 border-primary/30'
+          : isExpanded
+            ? 'bg-card ring-1 ring-primary/20'
+            : 'bg-card hover:bg-muted/50'
       )}
     >
       <div className="flex gap-3 p-3 sm:p-4">
+        {/* Selection checkbox */}
+        <button
+          onClick={handleCheckbox}
+          className={cn(
+            'flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all mt-1',
+            isSelected
+              ? 'bg-primary border-primary'
+              : 'border-muted-foreground/30 hover:border-primary/50'
+          )}
+        >
+          {isSelected && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
+        </button>
+
         {/* Left avatar */}
         <div className="relative flex-shrink-0">
           <Avatar className="w-9 h-9 sm:w-11 sm:h-11">

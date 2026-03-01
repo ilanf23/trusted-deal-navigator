@@ -372,8 +372,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   };
 
   const isNavBranchActive = (item: NavItem): boolean => {
-    if (isRouteWithin(item.url)) return true;
-    return item.subItems?.some(isNavBranchActive) ?? false;
+    if (item.subItems) {
+      return location.pathname === item.url || item.subItems.some(isNavBranchActive);
+    }
+    return isRouteWithin(item.url);
   };
 
   const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40 focus-visible:ring-offset-0 focus-visible:ring-offset-sidebar';
@@ -409,16 +411,16 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         '--sidebar-width-icon': '4rem',
       } as React.CSSProperties}
     >
-      <SidebarHeader className={`pb-3 border-b border-sidebar-border/40 ${isCollapsed ? 'px-2 pt-3' : 'px-4 pt-4'}`}>
-        <Link to={homeUrl} className="flex items-center justify-center group">
+      <SidebarHeader className={`border-b border-sidebar-border/40 overflow-visible ${isCollapsed ? 'px-2 pt-3 pb-3' : 'px-4 pt-0 pb-0'}`}>
+        <Link to={homeUrl} className={`flex items-center justify-center group ${isCollapsed ? '' : 'relative z-10 -mt-6 -mb-10'}`}>
           {isCollapsed ? (
             <div className="w-12 h-12 rounded-xl bg-sidebar-accent flex items-center justify-center shadow-sm">
               <span className="text-sidebar-accent-foreground font-extrabold text-lg tracking-tight">CX</span>
             </div>
           ) : (
-            <img 
-              src="/logo.png" 
-              alt="CommercialLendingX" 
+            <img
+              src="/logo.png"
+              alt="CommercialLendingX"
               className="max-h-[180px] max-w-full object-contain brightness-0 invert opacity-95"
             />
           )}

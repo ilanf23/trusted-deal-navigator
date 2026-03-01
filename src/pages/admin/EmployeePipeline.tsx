@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Filter, Lock, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, Star, MoreVertical, Layers, Columns as ColumnsIcon, GripVertical } from 'lucide-react';
@@ -222,7 +221,6 @@ const EmployeePipeline = () => {
   const { getPageState, setPageState } = useEvanUIState();
   const persistedPipeline = getPageState('pipeline', { collapsedSections: {} as Record<LeadStatus, boolean>, selectedLeadId: null as string | null });
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<string>('evan');
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
@@ -1037,24 +1035,20 @@ const EmployeePipeline = () => {
   };
 
   const filteredLeads = leads.filter(lead => {
-    const matchesSearch = 
-      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
-    
+
     // Handle won leads filter - show only won/funded leads
     if (ownerFilter === 'won') {
-      return matchesSearch && matchesSource && (lead.status === 'won' || lead.status === 'funded');
+      return matchesSource && (lead.status === 'won' || lead.status === 'funded');
     }
-    
+
     // Handle finished leads filter - show only lost leads
     if (ownerFilter === 'dead') {
-      return matchesSearch && matchesSource && lead.status === 'lost';
+      return matchesSource && lead.status === 'lost';
     }
-    
+
     // For all other filters, exclude lost leads from the main pipeline view
-    return matchesSearch && matchesSource && lead.status !== 'lost';
+    return matchesSource && lead.status !== 'lost';
   });
 
   const getLeadsByStatus = (status: LeadStatus) => 
@@ -1453,19 +1447,6 @@ const EmployeePipeline = () => {
 
         {/* Filters - responsive */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-4 mb-3 md:mb-4">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Input
-              placeholder="Search leads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 md:h-10 pl-3 md:pl-4 text-sm border-slate-200 focus:border-[#0066FF] focus:ring-[#0066FF]/20"
-            />
-            <HelpTooltip 
-              content="Search by lead name, email, or company. Results filter in real-time as you type."
-              side="right"
-              className="hidden sm:block"
-            />
-          </div>
           <div className="flex items-center gap-2">
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
               <SelectTrigger className="w-auto min-w-[120px] h-9 md:h-10 border-slate-200 dark:border-slate-600 text-sm px-3">

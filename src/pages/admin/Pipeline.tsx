@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Kanban } from 'lucide-react';
 import EvanLayout from '@/components/evan/EvanLayout';
@@ -38,7 +37,6 @@ const stageConfig: Record<string, { title: string; color: string }> = {
 
 const Pipeline = () => {
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
 
@@ -117,19 +115,13 @@ const Pipeline = () => {
   // Filter leads
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
-      const matchesSearch =
-        !searchTerm ||
-        lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
-
       const matchesOwner =
         ownerFilter === 'all' ||
         lead.assigned_to?.toLowerCase() === ownerFilter.toLowerCase();
 
-      return matchesSearch && matchesOwner;
+      return matchesOwner;
     });
-  }, [leads, searchTerm, ownerFilter]);
+  }, [leads, ownerFilter]);
 
   // Group leads by status
   const leadsByStatus = useMemo(() => {
@@ -175,14 +167,6 @@ const Pipeline = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <Input
-                placeholder="Search leads..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-[200px]"
-              />
-            </div>
             <Select value={ownerFilter} onValueChange={setOwnerFilter}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Owner" />

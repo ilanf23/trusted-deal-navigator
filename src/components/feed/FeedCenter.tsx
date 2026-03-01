@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Search, Loader2, Users } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Loader2, Users, Pencil, ExternalLink, MoreVertical, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import ActivityCard from './ActivityCard';
@@ -13,12 +13,27 @@ interface FeedCenterProps {
   onSearchChange: (q: string) => void;
   onToggleLeftPanel?: () => void;
   selectedTeamMember?: string | null;
+  onViewLead?: (leadId: string) => void;
 }
 
-const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onToggleLeftPanel, selectedTeamMember }: FeedCenterProps) => {
+const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onToggleLeftPanel, selectedTeamMember, onViewLead }: FeedCenterProps) => {
   const [activeTab, setActiveTab] = useState<'all' | 'notes' | 'comms'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   const filtered = activities.filter((a) => {
     if (activeTab === 'notes') return a.type === 'note' || a.type === 'lead_created';
@@ -51,9 +66,38 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
     setExpandedId(prev => prev === id ? null : id);
   };
 
+  const hasSelection = selectedIds.size > 0;
+
   return (
     <div className="flex-1 min-w-0 bg-muted/50 flex flex-col h-full relative">
-      {/* Search bar */}
+      {/* Selection toolbar — shown when items are selected */}
+      {hasSelection ? (
+        <div className="bg-card border-b border-border px-3 sm:px-4 flex items-center h-[52px] gap-3">
+          <button
+            onClick={clearSelection}
+            className="flex-shrink-0 p-1 rounded-md hover:bg-muted transition-colors"
+          >
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <span className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-semibold">
+            {selectedIds.size} out of {filtered.length}
+          </span>
+          <span className="text-sm font-medium text-foreground">selected</span>
+          <div className="w-px h-6 bg-border mx-1" />
+          <Button variant="outline" size="sm" className="gap-1.5 font-medium">
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 font-medium">
+            <ExternalLink className="w-3.5 h-3.5" />
+            Export
+          </Button>
+          <button className="p-1.5 rounded-md hover:bg-muted transition-colors">
+            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      ) : (
+      /* Search bar */
       <div className="bg-card border-b border-border px-3 sm:px-4 pt-3 pb-0">
         {/* Mobile filter button */}
         {onToggleLeftPanel && (
@@ -69,13 +113,12 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
         )}
 
         <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search by name, company, or keyword..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full h-9 pl-9 pr-4 bg-muted rounded-lg text-sm outline-none border-0 placeholder:text-muted-foreground text-foreground focus:ring-2 focus:ring-primary/20"
+            className="w-full h-9 px-4 bg-muted rounded-lg text-sm outline-none border-0 placeholder:text-muted-foreground text-foreground focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
@@ -106,6 +149,7 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
           ))}
         </div>
       </div>
+      )}
 
       {/* Feed content */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
@@ -146,6 +190,9 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
                   activity={activity}
                   isExpanded={expandedId === activity.id}
                   onToggle={() => handleToggle(activity.id)}
+                  onViewLead={onViewLead}
+                  isSelected={selectedIds.has(activity.id)}
+                  onSelect={toggleSelect}
                 />
               ))}
             </div>
