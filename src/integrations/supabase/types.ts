@@ -2642,6 +2642,54 @@ export type Database = {
           },
         ]
       }
+      people: {
+        Row: {
+          company: string | null
+          contact_type: string | null
+          created_at: string
+          email: string | null
+          id: string
+          inactive_days: number
+          interactions_count: number
+          last_contacted: string | null
+          person_name: string
+          tags: string[] | null
+          tasks_count: number
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          contact_type?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inactive_days?: number
+          interactions_count?: number
+          last_contacted?: string | null
+          person_name: string
+          tags?: string[] | null
+          tasks_count?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          contact_type?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inactive_days?: number
+          interactions_count?: number
+          last_contacted?: string | null
+          person_name?: string
+          tags?: string[] | null
+          tasks_count?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pipeline_column_values: {
         Row: {
           assigned_to_id: string | null
