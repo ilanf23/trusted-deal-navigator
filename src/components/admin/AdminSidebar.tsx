@@ -403,7 +403,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
   return (
     <Sidebar 
-      className="bg-sidebar font-sans text-sidebar-foreground [&_[data-sidebar=sidebar]]:bg-sidebar [&_[data-sidebar=sidebar]]:[box-shadow:1px_0_0_0_hsl(var(--sidebar-border))] [&_[data-sidebar=sidebar]]:[background-image:radial-gradient(ellipse_at_top,hsl(214_89%_62%/0.04)_0%,transparent_70%)]"
+      className="bg-sidebar font-sans text-sidebar-foreground [&_[data-sidebar=sidebar]]:bg-sidebar [&_[data-sidebar=sidebar]]:[box-shadow:1px_0_0_0_hsl(var(--sidebar-border))]"
       collapsible="icon"
       style={{ 
         '--sidebar-width': '17rem', 

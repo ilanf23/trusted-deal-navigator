@@ -155,8 +155,7 @@
     --sidebar-accent-foreground: 210 30% 97%;
     --sidebar-border: 220 16% 17%;
     --sidebar-ring: 214 89% 62%;
-    --sidebar-active-shadow: 0 0 0 1px hsl(214 89% 62% / 0.12), inset 0 1px 0 hsl(214 89% 62% / 0.08);
-    
+
     /* Refined Shadows */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
     --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
@@ -226,8 +225,7 @@
     --sidebar-accent-foreground: 210 30% 97%;
     --sidebar-border: 220 16% 17%;
     --sidebar-ring: 214 89% 62%;
-    --sidebar-active-shadow: 0 0 0 1px hsl(214 89% 62% / 0.12), inset 0 1px 0 hsl(214 89% 62% / 0.08);
-    
+
     /* Dark mode shadows (more subtle) */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.15);
     --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.15);
