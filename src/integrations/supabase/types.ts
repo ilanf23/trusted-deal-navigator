@@ -275,57 +275,6 @@ export type Database = {
         }
         Relationships: []
       }
-      companies: {
-        Row: {
-          contact: string | null
-          contact_type: string | null
-          created_at: string
-          email_domain: string | null
-          id: string
-          inactive_days: number | null
-          interactions: number | null
-          last_contacted_at: string | null
-          name: string
-          phone: string | null
-          tags: string[] | null
-          tasks: number | null
-          updated_at: string
-          website: string | null
-        }
-        Insert: {
-          contact?: string | null
-          contact_type?: string | null
-          created_at?: string
-          email_domain?: string | null
-          id?: string
-          inactive_days?: number | null
-          interactions?: number | null
-          last_contacted_at?: string | null
-          name: string
-          phone?: string | null
-          tags?: string[] | null
-          tasks?: number | null
-          updated_at?: string
-          website?: string | null
-        }
-        Update: {
-          contact?: string | null
-          contact_type?: string | null
-          created_at?: string
-          email_domain?: string | null
-          id?: string
-          inactive_days?: number | null
-          interactions?: number | null
-          last_contacted_at?: string | null
-          name?: string
-          phone?: string | null
-          tags?: string[] | null
-          tasks?: number | null
-          updated_at?: string
-          website?: string | null
-        }
-        Relationships: []
-      }
       call_events: {
         Row: {
           call_flow_id: string
@@ -459,6 +408,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      companies: {
+        Row: {
+          company_name: string
+          contact_name: string | null
+          contact_type: string | null
+          created_at: string
+          email_domain: string | null
+          id: string
+          inactive_days: number
+          interactions_count: number
+          last_contacted: string | null
+          phone: string | null
+          tags: string[] | null
+          tasks_count: number
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          company_name: string
+          contact_name?: string | null
+          contact_type?: string | null
+          created_at?: string
+          email_domain?: string | null
+          id?: string
+          inactive_days?: number
+          interactions_count?: number
+          last_contacted?: string | null
+          phone?: string | null
+          tags?: string[] | null
+          tasks_count?: number
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          company_name?: string
+          contact_name?: string | null
+          contact_type?: string | null
+          created_at?: string
+          email_domain?: string | null
+          id?: string
+          inactive_days?: number
+          interactions_count?: number
+          last_contacted?: string | null
+          phone?: string | null
+          tags?: string[] | null
+          tasks_count?: number
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
       }
       contracts: {
         Row: {
@@ -1880,20 +1880,14 @@ export type Database = {
           about: string | null
           assigned_to: string | null
           client_other_lenders: boolean
-          clx_file_name: string | null
           cohort_year: number | null
           company_name: string | null
           contact_type: string | null
           converted_at: string | null
           converted_to_client_id: string | null
           created_at: string
-          bank_relationships: string | null
-          deal_value: number | null
-          description: string | null
           email: string | null
-
           flagged_for_weekly: boolean
-          history: string | null
           id: string
           initial_nudge_created_at: string | null
           known_as: string | null
@@ -1902,7 +1896,6 @@ export type Database = {
           name: string
           next_action: string | null
           notes: string | null
-          opportunity_name: string | null
           phone: string | null
           qualified_at: string | null
           questionnaire_completed_at: string | null
@@ -1925,21 +1918,15 @@ export type Database = {
         Insert: {
           about?: string | null
           assigned_to?: string | null
-          bank_relationships?: string | null
           client_other_lenders?: boolean
-          clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
-          deal_value?: number | null
-          description?: string | null
           email?: string | null
-
           flagged_for_weekly?: boolean
-          history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
           known_as?: string | null
@@ -1948,7 +1935,6 @@ export type Database = {
           name: string
           next_action?: string | null
           notes?: string | null
-          opportunity_name?: string | null
           phone?: string | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
@@ -1971,21 +1957,15 @@ export type Database = {
         Update: {
           about?: string | null
           assigned_to?: string | null
-          bank_relationships?: string | null
           client_other_lenders?: boolean
-          clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
           contact_type?: string | null
           converted_at?: string | null
           converted_to_client_id?: string | null
           created_at?: string
-          deal_value?: number | null
-          description?: string | null
           email?: string | null
-
           flagged_for_weekly?: boolean
-          history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
           known_as?: string | null
@@ -1994,7 +1974,6 @@ export type Database = {
           name?: string
           next_action?: string | null
           notes?: string | null
-          opportunity_name?: string | null
           phone?: string | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
@@ -2933,7 +2912,6 @@ export type Database = {
           icon: string | null
           id: string
           is_main: boolean | null
-          is_system: boolean
           name: string
           owner_id: string
           template_type: string | null
@@ -2946,7 +2924,6 @@ export type Database = {
           icon?: string | null
           id?: string
           is_main?: boolean | null
-          is_system?: boolean
           name: string
           owner_id: string
           template_type?: string | null
@@ -2959,7 +2936,6 @@ export type Database = {
           icon?: string | null
           id?: string
           is_main?: boolean | null
-          is_system?: boolean
           name?: string
           owner_id?: string
           template_type?: string | null
@@ -3583,14 +3559,6 @@ export type Database = {
         | "ready_for_wu_approval"
         | "pre_approval_issued"
         | "won"
-        | "review_kill_keep"
-        | "waiting_on_needs_list"
-        | "waiting_on_client"
-        | "complete_files_for_review"
-        | "need_structure_from_brad"
-        | "maura_underwriting"
-        | "brad_underwriting"
-        | "uw_paused"
       pipeline_column_type:
         | "free_form"
         | "date"
