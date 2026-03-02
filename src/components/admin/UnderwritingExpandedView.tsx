@@ -874,7 +874,7 @@ export default function UnderwritingExpandedView() {
 
             {/* Primary Contact */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Primary Contact</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Primary Contact</span>
               <div className="rounded-xl border border-border p-5 space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
@@ -894,7 +894,7 @@ export default function UnderwritingExpandedView() {
 
             {/* Deal Info (editable — white box) */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Deal Info</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Deal Info</span>
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
                 <div className="px-3 py-2 space-y-1.5">
                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -935,13 +935,13 @@ export default function UnderwritingExpandedView() {
 
             {/* Tags */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Tags</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Tags</span>
               <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
             </div>
 
             {/* Value */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Value</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Value</span>
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
                 <EditableField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={dealValueStr} field="deal_value" leadId={lead.id} onSaved={handleFieldSaved} highlight transform={(v) => { const n = parseFloat(v.replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n; }} />
               </div>
@@ -949,13 +949,13 @@ export default function UnderwritingExpandedView() {
 
             {/* Description */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Description</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Description</span>
               <EditableNotesField value={lead.description ?? ''} field="description" leadId={lead.id} placeholder={"Deal referred by ____\nLoan Amount $____M\nAdditional deal/collateral details..."} onSaved={handleFieldSaved} />
             </div>
 
             {/* Details (editable — white box) */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Details</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Details</span>
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
                 <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
                 {ownerOptions.length > 0 ? (
@@ -989,7 +989,7 @@ export default function UnderwritingExpandedView() {
 
             {/* Email */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Email</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Email</span>
               <div className="space-y-1">
                 {leadEmails.map((e) => (
                   <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
@@ -1016,7 +1016,7 @@ export default function UnderwritingExpandedView() {
 
             {/* Phone */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Phone</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Phone</span>
               <div className="space-y-1">
                 {leadPhones.map((p) => (
                   <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} />
@@ -1044,7 +1044,7 @@ export default function UnderwritingExpandedView() {
 
             {/* Address */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Address</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Address</span>
               <div className="space-y-1">
                 {leadAddresses.map((a) => (
                   <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
@@ -1079,32 +1079,32 @@ export default function UnderwritingExpandedView() {
 
             {/* About */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">About</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">About</span>
               <EditableNotesField value={lead.about ?? ''} field="about" leadId={lead.id} placeholder="Details from initial contact..." onSaved={handleFieldSaved} />
             </div>
 
             {/* History */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">History</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">History</span>
               <EditableNotesField value={lead.history ?? ''} field="history" leadId={lead.id} placeholder="Old CRM carryover info..." onSaved={handleFieldSaved} />
             </div>
 
             {/* Bank Relationships */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Bank Relationships</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Bank Relationships</span>
               <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Excluded lender names from CLX agreement..." onSaved={handleFieldSaved} />
             </div>
 
             {/* #UW */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">#UW</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">#UW</span>
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
                 <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="UW Number" value={lead.uw_number ?? ''} field="uw_number" leadId={lead.id} onSaved={handleFieldSaved} />
               </div>
             </div>
 
             {/* Client Working with Other Lenders */}
-            <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between px-3 py-1.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
+            <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between px-4 py-3.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
               <div className="flex items-center gap-2">
                 <Users className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-xs font-medium text-muted-foreground">Client Working with Other Lenders</span>
@@ -1115,7 +1115,7 @@ export default function UnderwritingExpandedView() {
             </div>
 
             {/* Weekly's */}
-            <div onClick={() => handleBooleanToggle('flagged_for_weekly', lead.flagged_for_weekly)} className="flex items-center justify-between px-3 py-1.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
+            <div onClick={() => handleBooleanToggle('flagged_for_weekly', lead.flagged_for_weekly)} className="flex items-center justify-between px-4 py-3.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
               <div className="flex items-center gap-2">
                 <Flag className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-xs font-medium text-muted-foreground">Weekly's</span>
@@ -1127,7 +1127,7 @@ export default function UnderwritingExpandedView() {
 
             {/* Notes */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Notes</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Notes</span>
               <EditableNotes value={lead.notes ?? ''} leadId={lead.id} onSaved={handleFieldSaved} />
             </div>
           </div>
@@ -1310,7 +1310,7 @@ export default function UnderwritingExpandedView() {
         {/* RIGHT: Related */}
         <ScrollArea className="w-[260px] shrink-0 border-l border-border bg-card">
           <div className="py-4 px-1">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block px-3">Related</span>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
             {/* People */}
             <RelatedSection icon={<Users className="h-3.5 w-3.5 text-blue-500" />} label="People" count={contacts.length} iconColor="text-blue-500" onAdd={() => setAddingContact(true)}>
               <div className="space-y-2 py-1">
