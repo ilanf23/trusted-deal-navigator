@@ -1,31 +1,57 @@
 
 
-## Plan: Seed 5-10 Fake Activities for Every Lead and Person
+## Plan: Fix File Upload in Underwriting Deal Cards
 
-### Current State
-- **39 leads** total — only 11 have activities, **28 leads have zero activities**
-- **20 people** total — **all 20 have zero activities**
+### Root Cause
+Two issues are preventing file uploads:
 
-### What Needs to Happen
+1. **Missing UPDATE storage policy**: The `storage.objects` table has INSERT, SELECT, DELETE policies for `lead-files` but no UPDATE policy. Some Supabase storage upload flows require UPDATE permissions.
 
-**1. Seed `lead_activities` for 28 leads missing data**
-- Insert 5-8 varied activities per lead (mix of `call`, `email`, `note` types)
-- Realistic commercial lending content (intro calls, document requests, term sheets, credit reviews, follow-ups)
-- Timestamps spread across the last 1-30 days
-- `created_by` set to "Evan"
+2. **Wrong `file_url` stored in expanded view**: `UnderwritingExpandedView.tsx` stores the full public URL instead of the storage path. Since the bucket is private, this breaks downloads/previews. The `LeadFilesSection.tsx` already does it correctly.
 
-**2. Seed `people_activities` for all 20 people**
-- Insert 5-8 activities per person (mix of `call`, `email`, `note`, `meeting` types)
-- Content appropriate to contact/lender context (check-ins, program updates, referral discussions)
-- Timestamps spread across the last 1-30 days
+### Changes
 
-**3. Execution approach**
-- Use the database insert tool to run batch INSERT statements
-- Split into multiple batches to stay within query limits
-- No schema changes needed — both tables already exist with correct columns and RLS policies
+**1. Database migration -- add missing UPDATE policy and recreate policies as explicitly PERMISSIVE**
 
-### Scope
-- ~28 leads × ~7 activities = ~196 new `lead_activities` rows
-- ~20 people × ~7 activities = ~140 new `people_activities` rows
-- Total: ~336 new records
+Drop and recreate all four `lead-files` storage policies to ensure they are PERMISSIVE (the default, but safeguarding), and add the missing UPDATE policy:
+
+```sql
+-- Drop existing
+DROP POLICY IF EXISTS "Admins can upload lead files" ON storage.objects;
+DROP POLICY IF EXISTS "Admins can read lead files" ON storage.objects;
+DROP POLICY IF EXISTS "Admins can delete lead files" ON storage.objects;
+
+-- Recreate as PERMISSIVE with UPDATE added
+CREATE POLICY "Admins can upload lead files" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'lead-files' AND public.has_role(auth.uid(), 'admin'::public.app_role));
+
+CREATE POLICY "Admins can read lead files" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'lead-files' AND public.has_role(auth.uid(), 'admin'::public.app_role));
+
+CREATE POLICY "Admins can update lead files" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'lead-files' AND public.has_role(auth.uid(), 'admin'::public.app_role));
+
+CREATE POLICY "Admins can delete lead files" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'lead-files' AND public.has_role(auth.uid(), 'admin'::public.app_role));
+```
+
+**2. Fix `UnderwritingExpandedView.tsx` -- store path, not public URL**
+
+In `handleFileUpload` (around line 557-558), change:
+```ts
+// Before (broken):
+const { data: urlData } = supabase.storage.from('lead-files').getPublicUrl(filePath);
+const fileUrl = urlData?.publicUrl || filePath;
+
+// After (correct -- store just the path for signed URL access):
+const fileUrl = filePath;
+```
+
+Remove the unused `getPublicUrl` call. The download handler (`handleDeleteFile`) also needs fixing -- it currently tries to parse a public URL to extract the path (line 580-581). Since we'll now store the path directly, simplify to use `file.file_url` as the storage path.
+
+Also fix the download link in the template (line 1525-1529) to use signed URLs instead of the raw `file_url` which won't work for a private bucket.
 
