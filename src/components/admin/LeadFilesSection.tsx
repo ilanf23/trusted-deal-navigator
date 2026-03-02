@@ -101,10 +101,13 @@ export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
 
         const { error: uploadError } = await supabase.storage
           .from('lead-files')
-          .upload(filePath, file);
+          .upload(filePath, file, {
+            contentType: file.type || 'application/octet-stream',
+            upsert: true,
+          });
 
         if (uploadError) {
-          console.error('Upload error:', uploadError);
+          console.error('Storage upload error:', uploadError);
           toast.error(`Failed to upload ${file.name}`);
           continue;
         }

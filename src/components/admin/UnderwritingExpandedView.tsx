@@ -546,9 +546,13 @@ export default function UnderwritingExpandedView() {
     const filePath = `${leadId}/${Date.now()}_${file.name}`;
     const { error: uploadError } = await supabase.storage
       .from('lead-files')
-      .upload(filePath, file, { contentType: file.type });
+      .upload(filePath, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: true,
+      });
 
     if (uploadError) {
+      console.error('Storage upload error:', uploadError);
       setUploadingFile(false);
       toast.error('Failed to upload file');
       return;
