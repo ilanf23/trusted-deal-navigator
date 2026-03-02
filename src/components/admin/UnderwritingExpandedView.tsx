@@ -554,13 +554,10 @@ export default function UnderwritingExpandedView() {
       return;
     }
 
-    const { data: urlData } = supabase.storage.from('lead-files').getPublicUrl(filePath);
-    const fileUrl = urlData?.publicUrl || filePath;
-
     const { error: dbError } = await supabase.from('lead_files').insert({
       lead_id: leadId,
       file_name: file.name,
-      file_url: fileUrl,
+      file_url: filePath,
       file_type: file.type || null,
       file_size: file.size,
     });
@@ -576,13 +573,8 @@ export default function UnderwritingExpandedView() {
 
   // ── File delete ──
   const handleDeleteFile = useCallback(async (file: LeadFile) => {
-    // Extract storage path from URL
-    const urlParts = file.file_url.split('/lead-files/');
-    const storagePath = urlParts.length > 1 ? decodeURIComponent(urlParts[urlParts.length - 1].split('?')[0]) : null;
-
-    if (storagePath) {
-      await supabase.storage.from('lead-files').remove([storagePath]);
-    }
+    // file_url stores the storage path directly
+    await supabase.storage.from('lead-files').remove([file.file_url]);
 
     const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
     if (error) {
@@ -1522,16 +1514,29 @@ export default function UnderwritingExpandedView() {
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <a
-                        href={f.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const { data, error } = await supabase.storage
+                            .from('lead-files')
+                            .createSignedUrl(f.file_url, 60);
+                          if (error || !data?.signedUrl) {
+                            toast.error('Failed to generate download link');
+                            return;
+                          }
+                          const a = document.createElement('a');
+                          a.href = data.signedUrl;
+                          a.download = f.file_name;
+                          a.target = '_blank';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        }}
                         className="p-1 rounded hover:bg-muted"
                         title="Download"
                       >
                         <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </a>
+                      </button>
                       <button
                         onClick={() => handleDeleteFile(f)}
                         className="p-1 rounded hover:bg-muted"
