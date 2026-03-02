@@ -2,7 +2,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Mail, Phone, Calendar, CheckCircle2, Clock, PhoneIncoming, PhoneOutgoing, MessageSquare } from 'lucide-react';
+import { Building2, Mail, Phone, Calendar, CheckCircle2, Clock, PhoneIncoming, PhoneOutgoing, MessageSquare, Maximize2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import type { Database } from '@/integrations/supabase/types';
@@ -58,6 +58,18 @@ const getTouchpointLabel = (type: string, direction: string) => {
   return type;
 };
 
+const formatPhoneNumber = (phone: string | null | undefined): string => {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return phone;
+};
+
 export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
   const {
     attributes,
@@ -91,13 +103,22 @@ export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
       {...attributes}
       {...listeners}
       onClick={handleClick}
-      className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
+      className={`group/card cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
         isDragging ? 'shadow-lg ring-2 ring-primary z-50' : ''
       }`}
     >
       <CardContent className="p-3 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-semibold text-sm leading-tight truncate">{lead.name}</h4>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h4 className="font-semibold text-sm leading-tight truncate">{lead.name}</h4>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+              className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity hover:text-foreground"
+            >
+              <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+            </button>
+          </div>
           <div className="flex items-center gap-1 shrink-0">
             {/* Questionnaire Status Indicator */}
             {questionnaireSent && (
@@ -127,6 +148,17 @@ export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
             <Building2 className="w-3 h-3" />
             <span className="truncate">{lead.company_name}</span>
           </div>
+        )}
+
+        {lead.phone && (
+          <a
+            href={`tel:${lead.phone.replace(/\D/g, '')}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-blue-600 transition-colors"
+          >
+            <Phone className="w-3 h-3" />
+            <span className="truncate">{formatPhoneNumber(lead.phone)}</span>
+          </a>
         )}
 
         {/* Last Touchpoint Indicator */}

@@ -5,6 +5,8 @@ import {
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Layers,
   Link2,
 } from 'lucide-react';
+import { RichTextEditor } from '@/components/ui/rich-text-input';
+import { HtmlContent } from '@/components/ui/html-content';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -179,13 +181,13 @@ function EditableField({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3.5 py-2.5 bg-card hover:bg-muted/50 transition-colors cursor-pointer group">
-      <div className="flex items-center gap-2 text-muted-foreground">
+    <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors cursor-pointer group">
+      <div className="flex items-center gap-2 text-muted-foreground shrink-0">
         {icon}
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{label}</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="text-[13px] text-right truncate max-w-[170px] font-medium text-foreground">
+        <span className="text-[13px] text-right truncate font-medium text-foreground">
           {value || '\u2014'}
         </span>
         <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
@@ -229,7 +231,7 @@ function EditableContactRow({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors group cursor-pointer">
+    <div onClick={() => setEditing(true)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group cursor-pointer">
       <div className="text-muted-foreground group-hover:text-foreground shrink-0">{icon}</div>
       <span className={`text-[13px] truncate flex-1 ${value ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
         {value || placeholder}
@@ -330,15 +332,10 @@ function EditableNotes({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (editing) {
       setDraft(value);
-      setTimeout(() => {
-        const el = textareaRef.current;
-        if (el) { el.focus(); el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
-      }, 0);
     }
   }, [editing, value]);
 
@@ -359,15 +356,12 @@ function EditableNotes({
   if (editing) {
     return (
       <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-3">
-        <textarea
-          ref={textareaRef}
+        <RichTextEditor
           value={draft}
-          onChange={(e) => { setDraft(e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-          onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false); }}
-          disabled={saving}
+          onChange={setDraft}
           placeholder="Add notes..."
-          className="w-full text-[13px] text-foreground/80 leading-relaxed bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
-          rows={3}
+          minHeight="60px"
+          disabled={saving}
         />
         <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-blue-100">
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
@@ -381,9 +375,9 @@ function EditableNotes({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="rounded-xl border border-border bg-muted/30 p-3.5 cursor-pointer hover:border-border hover:bg-muted/50 transition-all group">
+    <div onClick={() => setEditing(true)} className="rounded-lg border border-border p-3 cursor-pointer hover:border-border hover:bg-muted/50 transition-all group">
       {value ? (
-        <p className="text-[13px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{value}</p>
+        <HtmlContent value={value} />
       ) : (
         <p className="text-[13px] text-muted-foreground italic">Click to add notes...</p>
       )}
@@ -398,12 +392,12 @@ function EditableNotes({
 // ── Read-only row ──
 function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between px-3.5 py-2.5 bg-card">
+    <div className="flex items-center justify-between px-3 py-2">
       <div className="flex items-center gap-2 text-muted-foreground">
         {icon}
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
-      <span className="text-[13px] font-medium text-foreground text-right truncate max-w-[180px]">{value}</span>
+      <span className="text-[13px] font-medium text-foreground text-right truncate">{value}</span>
     </div>
   );
 }
@@ -738,7 +732,7 @@ export default function PeopleDetailPanel({
 
             {/* Contact Type selector */}
             {onContactTypeChange && (
-              <div className="rounded-xl border border-border bg-muted/30 p-3.5">
+              <div className="rounded-lg border border-border p-3">
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Contact Type</span>
                 <Select value={person.contact_type ?? 'Other'} onValueChange={(v) => onContactTypeChange(person.id, v)}>
                   <SelectTrigger className="h-9 w-full text-xs border-border bg-card rounded-lg">

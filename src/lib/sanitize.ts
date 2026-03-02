@@ -1,6 +1,16 @@
 import DOMPurify from 'dompurify';
 
 /**
+ * Check if an HTML string is visually empty.
+ * ContentEditable produces `<br>`, `<div><br></div>`, etc. when the editor looks empty.
+ */
+export function isHtmlEmpty(html: string): boolean {
+  if (!html) return true;
+  const stripped = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+  return stripped.length === 0;
+}
+
+/**
  * Sanitize untrusted HTML (e.g. email bodies) using DOMPurify.
  * Strips scripts, iframes, forms, event handlers, javascript: URIs,
  * and inline color styles so dark-mode prose-invert can apply proper contrast.

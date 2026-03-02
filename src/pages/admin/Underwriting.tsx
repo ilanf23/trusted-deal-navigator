@@ -46,6 +46,7 @@ import {
   Loader2,
   Download,
   PlusCircle,
+  Maximize2,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -280,6 +281,7 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
   isDragging?: boolean;
   onClick: () => void;
 }) {
+  const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const avatarColor = getAvatarColor(lead.name);
@@ -292,7 +294,7 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
-        className="p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
+        className="group/card p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
         <div className="flex items-center gap-2 mb-1.5">
@@ -300,6 +302,13 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
             {initial}
           </div>
           <p className="text-sm font-semibold text-foreground leading-tight truncate">{lead.name}</p>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/underwriting/lead/${lead.id}`); }}
+            className="ml-auto shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity hover:text-foreground"
+          >
+            <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+          </button>
         </div>
         {lead.company_name && (
           <p className="text-[11px] text-muted-foreground mb-1.5 truncate">{lead.company_name}</p>
@@ -1347,10 +1356,19 @@ const Underwriting = () => {
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
-                                    {lead.name}
-                                  </p>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
+                                      {lead.name}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/underwriting/lead/${lead.id}`); }}
+                                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                    >
+                                      <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                    </button>
+                                  </div>
                                   {lead.company_name && (
                                     <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{lead.company_name}</p>
                                   )}

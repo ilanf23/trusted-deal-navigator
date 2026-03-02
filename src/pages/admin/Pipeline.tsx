@@ -25,6 +25,7 @@ import {
   FileSearch,
   Building2,
   Flame,
+  Maximize2,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent,
@@ -906,10 +907,19 @@ const Pipeline = () => {
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
-                                    {lead.name}
-                                  </p>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
+                                      {lead.name}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setDetailDialogLead(lead); }}
+                                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                    >
+                                      <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                    </button>
+                                  </div>
                                   {lead.company_name && (
                                     <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{lead.company_name}</p>
                                   )}

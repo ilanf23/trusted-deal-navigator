@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-input';
+import { isHtmlEmpty } from '@/lib/sanitize';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,11 +15,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
-  Loader2, Mail, Phone, Building2, Calendar, FileText, User, Clock, 
-  PhoneCall, ChevronDown, ChevronUp, ChevronRight, Play, PhoneIncoming, PhoneOutgoing, 
+  Loader2, Mail, Phone, Building2, Calendar, FileText, User, Clock,
+  PhoneCall, ChevronDown, ChevronUp, ChevronRight, Play, PhoneIncoming, PhoneOutgoing,
   MessageSquare, History, Plus, Trash2, Globe, Linkedin, MapPin,
   Link2, Users, ListTodo, Tag, CheckCircle2, Circle, X, GripVertical,
-  Briefcase, FileSpreadsheet, MessagesSquare, Video, Sparkles, HelpCircle, Columns, Handshake
+  Briefcase, FileSpreadsheet, MessagesSquare, Video, Sparkles, HelpCircle, Columns, Handshake, DollarSign
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -170,6 +172,20 @@ interface Communication {
   status: string | null;
   transcript: string | null;
   created_at: string;
+}
+
+function getAvatarGradient(name: string) {
+  const gradients = [
+    'from-blue-500 to-blue-600',
+    'from-blue-500 to-indigo-600',
+    'from-emerald-500 to-teal-600',
+    'from-amber-500 to-orange-600',
+    'from-rose-500 to-pink-600',
+    'from-cyan-500 to-blue-600',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return gradients[Math.abs(hash) % gradients.length];
 }
 
 const stages = [
@@ -1137,6 +1153,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   // Get assigned team member
   const assignedMember = teamMembers.find(t => t.id === lead.assigned_to);
   const currentStage = stages.find(s => s.status === lead.status);
+  const initial = lead.name?.[0]?.toUpperCase() ?? '?';
+  const gradient = getAvatarGradient(lead.name ?? '');
 
   // Get all emails for contacts section
   const allEmails = emails.length > 0 ? emails : (lead.email ? [{ id: 'legacy', email: lead.email, email_type: 'primary' }] : []);
@@ -1190,7 +1208,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-6xl max-h-[90vh] p-0 gap-0 overflow-hidden"
+        className="max-w-6xl max-h-[90vh] p-0 gap-0 overflow-hidden [&>button.absolute]:hidden flex flex-col"
         onPointerDownOutside={(e) => {
           // Prevent closing when clicking within lender dropdown or other popover content
           const target = e.target as HTMLElement;
@@ -1206,9 +1224,40 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
           }
         }}
       >
+        {/* Hidden accessibility elements for Radix */}
+        <DialogHeader className="sr-only">
+          <DialogTitle>{lead.name}</DialogTitle>
+          <DialogDescription>Lead detail view</DialogDescription>
+        </DialogHeader>
+
+        {/* Header Bar */}
+        <div className="shrink-0 flex items-center gap-3 px-5 py-3.5 border-b border-border bg-background">
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0" onClick={() => onOpenChange(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+          <div className={`h-9 w-9 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
+            {initial}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold text-foreground truncate leading-tight">{lead.name}</h2>
+            {lead.company_name && (
+              <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                <Building2 className="h-3 w-3 shrink-0" />
+                {lead.company_name}
+              </p>
+            )}
+          </div>
+          {customFields.loanAmount && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-800 shrink-0">
+              <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Opportunity</span>
+              <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{customFields.loanAmount}</span>
+            </div>
+          )}
+        </div>
 
         {/* Main Content - Two Column Layout */}
-        <div className="flex h-[calc(90vh-60px)]">
+        <div className="flex flex-1 overflow-hidden">
           {/* Left Panel - Activity Timeline */}
           <div className="flex-1 flex flex-col border-r border-border">
             {/* Search Bar */}
@@ -2768,13 +2817,12 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
                 {/* Notes Section - No header, content displayed prominently */}
                 <div className="py-3">
-                  <Textarea 
-                    id="lead-notes-textarea"
+                  <RichTextEditor
                     value={notesContent}
-                    onChange={(e) => setNotesContent(e.target.value)}
+                    onChange={setNotesContent}
                     onBlur={() => notesContent !== lead.notes && saveNotes.mutate()}
                     placeholder="Add notes..."
-                    className="min-h-[100px] text-lg font-bold border-transparent hover:border-border focus:border-border resize-none bg-transparent px-0 shadow-none focus:ring-0"
+                    minHeight="100px"
                   />
                   {lead.updated_at && notesContent && (
                     <p className="text-xs text-muted-foreground mt-1">

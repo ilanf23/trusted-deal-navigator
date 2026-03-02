@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-input';
+import { HtmlContent } from '@/components/ui/html-content';
+import { isHtmlEmpty } from '@/lib/sanitize';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,9 +18,9 @@ import {
   CalendarDays, FolderOpen, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
   User, Mail, Phone, Hash, Tag, Briefcase, Loader2,
-  Globe, Linkedin, AtSign, MapPin, Trash2,
+  Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download,
 } from 'lucide-react';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { differenceInDays, parseISO, format } from 'date-fns';
 
@@ -64,6 +66,36 @@ interface LeadAddress {
   zip_code: string | null;
   country: string | null;
   is_primary: boolean;
+}
+
+interface LeadFile {
+  id: string;
+  lead_id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(fileType: string | null): string {
+  if (!fileType) return '📄';
+  if (fileType.startsWith('image/')) return '🖼️';
+  if (fileType === 'application/pdf') return '📕';
+  if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv')) return '📊';
+  if (fileType.includes('word') || fileType.includes('document')) return '📝';
+  if (fileType.includes('zip') || fileType.includes('compressed')) return '📦';
+  return '📄';
 }
 
 const CONTACT_TYPE_OPTIONS = [
@@ -116,15 +148,21 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
 };
 
-/* ─── Stats Card ─── */
-function StatBox({ value, label, icon, color }: { value: string | number; label: string; icon: React.ReactNode; color: string }) {
+/* ─── Stats Card (accent card style) ─── */
+function StatBox({ value, label, icon, bg, border, valueColor, iconBg }: {
+  value: string | number;
+  label: string;
+  icon: React.ReactNode;
+  bg: string;
+  border: string;
+  valueColor: string;
+  iconBg: string;
+}) {
   return (
-    <div className="flex flex-col items-center px-8 py-3.5 gap-1">
-      <div className="flex items-center gap-1.5">
-        <span className={color}>{icon}</span>
-        <span className={`text-lg font-bold tabular-nums ${color}`}>{value}</span>
-      </div>
-      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+    <div className={`relative flex flex-col gap-0.5 rounded-lg px-3.5 py-2.5 border-t-2 ${bg} ${border} min-w-0 flex-1 shadow-sm`}>
+      <span className={`absolute top-2 right-2.5 h-6 w-6 rounded-full flex items-center justify-center ${iconBg}`}>{icon}</span>
+      <span className={`text-xl font-extrabold tabular-nums leading-tight ${valueColor}`}>{value}</span>
+      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
     </div>
   );
 }
@@ -167,7 +205,7 @@ function RelatedSection({ icon, label, count, iconColor, onAdd, children }: {
 /* ─── Contact Email Row ─── */
 function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id: string) => void }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 group">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
         {entry.email_type}
@@ -183,7 +221,7 @@ function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id:
 /* ─── Contact Phone Row ─── */
 function ContactPhoneRow({ entry, onDelete }: { entry: LeadPhone; onDelete: (id: string) => void }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 group">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
         {entry.phone_type}
@@ -201,7 +239,7 @@ function AddressBlock({ entry, onDelete }: { entry: LeadAddress; onDelete: (id: 
   const parts = [entry.address_line_1, entry.address_line_2].filter(Boolean);
   const cityLine = [entry.city, entry.state, entry.zip_code].filter(Boolean).join(', ');
   return (
-    <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-muted/50 group">
+    <div className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group">
       <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
         {parts.map((p, i) => (
@@ -235,6 +273,33 @@ export default function UnderwritingExpandedView() {
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [savingTask, setSavingTask] = useState(false);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+
+  // File upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  // Contact inline add state (Related sidebar)
+  const [addingContact, setAddingContact] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactTitle, setNewContactTitle] = useState('');
+  const [savingContact, setSavingContact] = useState(false);
+
+  // Company inline add state (Related sidebar)
+  const [addingCompany, setAddingCompany] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [savingCompany, setSavingCompany] = useState(false);
+
+  // Milestone inline add state (Related sidebar)
+  const [addingMilestone, setAddingMilestone] = useState(false);
+  const [newMilestoneName, setNewMilestoneName] = useState('');
+  const [savingMilestone, setSavingMilestone] = useState(false);
+
+  // Waiting On inline add state (Related sidebar)
+  const [addingWaitingOn, setAddingWaitingOn] = useState(false);
+  const [newWaitingOwner, setNewWaitingOwner] = useState('');
+  const [newWaitingDesc, setNewWaitingDesc] = useState('');
+  const [savingWaitingOn, setSavingWaitingOn] = useState(false);
 
   // Satellite table inline add state
   const [showAddEmail, setShowAddEmail] = useState(false);
@@ -273,12 +338,22 @@ export default function UnderwritingExpandedView() {
     toast.success('Updated');
   }, [leadId, queryClient]);
 
+  const handleBooleanToggle = useCallback(async (field: string, currentVal: boolean) => {
+    if (!leadId) return;
+    const { error } = await supabase.from('leads').update({ [field]: !currentVal }).eq('id', leadId);
+    if (error) { toast.error('Failed to save'); return; }
+    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    toast.success('Updated');
+  }, [leadId, queryClient]);
+
   // ── Save activity ──
   const handleSaveActivity = useCallback(async () => {
     if (!leadId) return;
-    const content = activityTab === 'log' ? activityNote.trim() : noteContent.trim();
+    const rawContent = activityTab === 'log' ? activityNote : noteContent;
+    const content = rawContent.trim();
     const type = activityTab === 'log' ? activityType : 'note';
-    if (!content) {
+    if (!content || isHtmlEmpty(content)) {
       toast.error('Please enter some content');
       return;
     }
@@ -294,10 +369,13 @@ export default function UnderwritingExpandedView() {
       toast.error('Failed to save activity');
       return;
     }
+    // Reset inactive days timer
+    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
     queryClient.invalidateQueries({ queryKey: ['lead-activities', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
   }, [leadId, activityTab, activityType, activityNote, noteContent, queryClient]);
 
   // ── Save task ──
@@ -320,6 +398,118 @@ export default function UnderwritingExpandedView() {
     setAddingTask(false);
     queryClient.invalidateQueries({ queryKey: ['lead-tasks', leadId] });
   }, [leadId, newTaskTitle, queryClient]);
+
+  // ── Save contact (Related sidebar) ──
+  const handleSaveContact = useCallback(async () => {
+    if (!leadId || !newContactName.trim()) return;
+    setSavingContact(true);
+    const { error } = await supabase.from('lead_contacts').insert({
+      lead_id: leadId,
+      name: newContactName.trim(),
+      title: newContactTitle.trim() || null,
+    });
+    setSavingContact(false);
+    if (error) {
+      toast.error('Failed to add contact');
+      return;
+    }
+    toast.success('Contact added');
+    setNewContactName('');
+    setNewContactTitle('');
+    setAddingContact(false);
+    queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+  }, [leadId, newContactName, newContactTitle, queryClient]);
+
+  // ── Save company (Related sidebar) ──
+  const handleSaveCompany = useCallback(async () => {
+    if (!leadId || !newCompanyName.trim()) return;
+    setSavingCompany(true);
+    const { error } = await supabase
+      .from('leads')
+      .update({ company_name: newCompanyName.trim() })
+      .eq('id', leadId);
+    setSavingCompany(false);
+    if (error) {
+      toast.error('Failed to update company');
+      return;
+    }
+    toast.success('Company updated');
+    setNewCompanyName('');
+    setAddingCompany(false);
+    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+  }, [leadId, newCompanyName, queryClient]);
+
+  // ── Save milestone (Related sidebar) ──
+  const handleSaveMilestone = useCallback(async (milestoneCount: number) => {
+    if (!leadId || !newMilestoneName.trim()) return;
+    setSavingMilestone(true);
+    const { error } = await supabase.from('deal_milestones').insert({
+      lead_id: leadId,
+      milestone_name: newMilestoneName.trim(),
+      position: milestoneCount,
+    });
+    setSavingMilestone(false);
+    if (error) {
+      toast.error('Failed to add milestone');
+      return;
+    }
+    toast.success('Milestone added');
+    setNewMilestoneName('');
+    setAddingMilestone(false);
+    queryClient.invalidateQueries({ queryKey: ['lead-milestones', leadId] });
+  }, [leadId, newMilestoneName, queryClient]);
+
+  // ── Toggle milestone complete ──
+  const handleToggleMilestone = useCallback(async (milestoneId: string, currentlyCompleted: boolean) => {
+    const { error } = await supabase
+      .from('deal_milestones')
+      .update({
+        completed: !currentlyCompleted,
+        completed_at: !currentlyCompleted ? new Date().toISOString() : null,
+      })
+      .eq('id', milestoneId);
+    if (error) {
+      toast.error('Failed to update milestone');
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['lead-milestones', leadId] });
+  }, [leadId, queryClient]);
+
+  // ── Save waiting on (Related sidebar) ──
+  const handleSaveWaitingOn = useCallback(async () => {
+    if (!leadId || !newWaitingOwner.trim()) return;
+    setSavingWaitingOn(true);
+    const { error } = await supabase.from('deal_waiting_on').insert({
+      lead_id: leadId,
+      owner: newWaitingOwner.trim(),
+      description: newWaitingDesc.trim() || null,
+    });
+    setSavingWaitingOn(false);
+    if (error) {
+      toast.error('Failed to add waiting on item');
+      return;
+    }
+    toast.success('Waiting on item added');
+    setNewWaitingOwner('');
+    setNewWaitingDesc('');
+    setAddingWaitingOn(false);
+    queryClient.invalidateQueries({ queryKey: ['lead-waiting-on', leadId] });
+  }, [leadId, newWaitingOwner, newWaitingDesc, queryClient]);
+
+  // ── Resolve waiting on ──
+  const handleResolveWaitingOn = useCallback(async (itemId: string) => {
+    const { error } = await supabase
+      .from('deal_waiting_on')
+      .update({ resolved_at: new Date().toISOString() })
+      .eq('id', itemId);
+    if (error) {
+      toast.error('Failed to resolve item');
+      return;
+    }
+    toast.success('Resolved');
+    queryClient.invalidateQueries({ queryKey: ['lead-waiting-on', leadId] });
+  }, [leadId, queryClient]);
 
   // ── Queries ──
   const { data: lead, isLoading } = useQuery({
@@ -381,6 +571,46 @@ export default function UnderwritingExpandedView() {
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false });
       return data ?? [];
+    },
+    enabled: !!leadId,
+  });
+
+  const { data: milestones = [] } = useQuery({
+    queryKey: ['lead-milestones', leadId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('deal_milestones')
+        .select('id, milestone_name, completed, completed_at, position')
+        .eq('lead_id', leadId!)
+        .order('position', { ascending: true });
+      return data ?? [];
+    },
+    enabled: !!leadId,
+  });
+
+  const { data: waitingOn = [] } = useQuery({
+    queryKey: ['lead-waiting-on', leadId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('deal_waiting_on')
+        .select('id, owner, description, due_date, resolved_at')
+        .eq('lead_id', leadId!)
+        .is('resolved_at', null)
+        .order('created_at', { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!leadId,
+  });
+
+  const { data: leadFiles = [] } = useQuery({
+    queryKey: ['lead-files', leadId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lead_files' as any)
+        .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .eq('lead_id', leadId!)
+        .order('created_at', { ascending: false });
+      return (data ?? []) as LeadFile[];
     },
     enabled: !!leadId,
   });
@@ -566,14 +796,6 @@ export default function UnderwritingExpandedView() {
         </div>
       </div>
 
-      {/* ── Stats Bar ── */}
-      <div className="shrink-0 border-b border-border flex items-center justify-center gap-0 divide-x divide-border py-1 bg-muted/30">
-        <StatBox value={interactionCount} label="Interactions" icon={<Activity className="h-4 w-4" />} color="text-blue-600" />
-        <StatBox value={lastContacted} label="Last Contacted" icon={<Clock className="h-4 w-4" />} color="text-blue-600" />
-        <StatBox value={inactiveDays ?? '—'} label="Inactive Days" icon={<AlertCircle className="h-4 w-4" />} color={inactiveColor} />
-        <StatBox value={daysInStage ?? '—'} label="Days in Stage" icon={<TrendingUp className="h-4 w-4" />} color="text-emerald-600" />
-      </div>
-
       {/* ── 3-Column Body ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
@@ -614,7 +836,7 @@ export default function UnderwritingExpandedView() {
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
                       <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                       <Select value={newEmailType} onValueChange={setNewEmailType}>
-                        <SelectTrigger className="h-6 w-[70px] text-[11px] border-transparent bg-transparent shadow-none px-1">
+                        <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -654,7 +876,7 @@ export default function UnderwritingExpandedView() {
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
                       <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                       <Select value={newPhoneType} onValueChange={setNewPhoneType}>
-                        <SelectTrigger className="h-6 w-[70px] text-[11px] border-transparent bg-transparent shadow-none px-1">
+                        <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -708,7 +930,7 @@ export default function UnderwritingExpandedView() {
                       </div>
                       <div className="flex items-center justify-between">
                         <Select value={newAddressType} onValueChange={setNewAddressType}>
-                          <SelectTrigger className="h-7 w-[100px] text-[11px] border-border">
+                          <SelectTrigger className="h-8 w-[110px] text-xs border-border">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -738,13 +960,13 @@ export default function UnderwritingExpandedView() {
                 <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Underwriting" />
 
                 {/* Stage — enabled select with 10-stage list */}
-                <div className="flex items-center justify-between px-3.5 py-2 bg-card">
+                <div className="flex items-center justify-between px-3 py-2">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Layers className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium text-muted-foreground">Stage</span>
                   </div>
                   <Select value={lead.status} onValueChange={(v) => handleStageChange(v as LeadStatus)}>
-                    <SelectTrigger className={`h-7 w-auto min-w-[130px] text-xs rounded-lg ${stageCfg?.bg ?? 'bg-muted'} ${stageCfg?.color ?? 'text-foreground'} border-transparent hover:border-border shadow-none px-2 gap-1`}>
+                    <SelectTrigger className={`h-8 w-auto min-w-[160px] text-[13px] rounded-lg ${stageCfg?.bg ?? 'bg-muted'} ${stageCfg?.color ?? 'text-foreground'} border-transparent hover:border-border shadow-none px-2 gap-1`}>
                       <SelectValue>{stageCfg?.label ?? lead.status}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -839,6 +1061,45 @@ export default function UnderwritingExpandedView() {
 
         {/* CENTER: Activity */}
         <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
+          {/* Stats Bar */}
+          <div className="shrink-0 grid grid-cols-4 gap-3 px-5 py-3.5 border-b border-border bg-card">
+            <StatBox
+              value={interactionCount}
+              label="Interactions"
+              icon={<Activity className="h-3.5 w-3.5 text-blue-500" />}
+              bg="bg-white dark:bg-slate-900/80"
+              border="border-blue-500"
+              valueColor="text-blue-700 dark:text-blue-400"
+              iconBg="bg-blue-100 dark:bg-blue-900/40"
+            />
+            <StatBox
+              value={lastContacted}
+              label="Last Contacted"
+              icon={<Clock className="h-3.5 w-3.5 text-slate-400" />}
+              bg="bg-white dark:bg-slate-900/80"
+              border="border-slate-400"
+              valueColor="text-slate-700 dark:text-slate-300"
+              iconBg="bg-slate-100 dark:bg-slate-700/40"
+            />
+            <StatBox
+              value={inactiveDays ?? '—'}
+              label="Inactive Days"
+              icon={<AlertCircle className="h-3.5 w-3.5" />}
+              bg="bg-white dark:bg-slate-900/80"
+              border={(inactiveDays ?? 0) > 30 ? 'border-red-500' : 'border-amber-500'}
+              valueColor={(inactiveDays ?? 0) > 30 ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}
+              iconBg={(inactiveDays ?? 0) > 30 ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}
+            />
+            <StatBox
+              value={daysInStage ?? '—'}
+              label="Days in Stage"
+              icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
+              bg="bg-white dark:bg-slate-900/80"
+              border="border-emerald-500"
+              valueColor="text-emerald-700 dark:text-emerald-400"
+              iconBg="bg-emerald-100 dark:bg-emerald-900/40"
+            />
+          </div>
           {/* Tabs */}
           <div className="shrink-0 flex items-center gap-0 border-b border-border px-6 bg-card">
             <button
@@ -892,17 +1153,17 @@ export default function UnderwritingExpandedView() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Textarea
+                  <RichTextEditor
                     value={activityNote}
-                    onChange={(e) => setActivityNote(e.target.value)}
+                    onChange={setActivityNote}
                     placeholder="Add a note..."
-                    className="min-h-[80px] text-sm resize-none rounded-xl border-border focus-visible:border-blue-400 focus-visible:ring-blue-400/20"
+                    minHeight="80px"
                   />
                   <div className="flex justify-end">
                     <Button
                       size="sm"
                       onClick={handleSaveActivity}
-                      disabled={savingActivity || !activityNote.trim()}
+                      disabled={savingActivity || isHtmlEmpty(activityNote)}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 rounded-lg"
                     >
                       {savingActivity && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
@@ -912,17 +1173,17 @@ export default function UnderwritingExpandedView() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <Textarea
+                  <RichTextEditor
                     value={noteContent}
-                    onChange={(e) => setNoteContent(e.target.value)}
+                    onChange={setNoteContent}
                     placeholder="Write a note..."
-                    className="min-h-[120px] text-sm resize-none rounded-xl border-border focus-visible:border-blue-400 focus-visible:ring-blue-400/20"
+                    minHeight="120px"
                   />
                   <div className="flex justify-end">
                     <Button
                       size="sm"
                       onClick={handleSaveActivity}
-                      disabled={savingActivity || !noteContent.trim()}
+                      disabled={savingActivity || isHtmlEmpty(noteContent)}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 rounded-lg"
                     >
                       {savingActivity && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
@@ -951,7 +1212,9 @@ export default function UnderwritingExpandedView() {
                             <span className="text-[10px] text-muted-foreground">{formatShortDate(act.created_at)}</span>
                           </div>
                           {act.content && (
-                            <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">{act.content}</p>
+                            <div className="text-xs text-muted-foreground line-clamp-3">
+                              <HtmlContent value={act.content} className="text-xs text-muted-foreground" />
+                            </div>
                           )}
                         </div>
                       </div>
@@ -974,51 +1237,113 @@ export default function UnderwritingExpandedView() {
         <ScrollArea className="w-[260px] shrink-0 border-l border-border bg-card">
           <div className="py-4 px-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block px-3">Related</span>
-            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} iconColor="text-blue-500">
-              {contacts.length > 0 ? (
-                <div className="space-y-2 py-1">
-                  {contacts.map((c) => (
-                    <div key={c.id} className="text-xs text-foreground flex items-center gap-2">
-                      <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                        {c.name[0]?.toUpperCase()}
-                      </div>
-                      <span className="font-medium">{c.name}</span>
-                      {c.title && <span className="text-muted-foreground">· {c.title}</span>}
+            {/* People */}
+            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} iconColor="text-blue-500" onAdd={() => setAddingContact(true)}>
+              <div className="space-y-2 py-1">
+                {contacts.map((c) => (
+                  <div key={c.id} className="text-xs text-foreground flex items-center gap-2">
+                    <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
+                      {c.name[0]?.toUpperCase()}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground py-1">No contacts</p>
-              )}
-            </RelatedSection>
-
-            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} iconColor="text-indigo-500">
-              {lead.company_name ? (
-                <div className="text-xs text-foreground py-1 flex items-center gap-2">
-                  <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
-                    {lead.company_name[0]?.toUpperCase()}
+                    <span className="font-medium">{c.name}</span>
+                    {c.title && <span className="text-muted-foreground">· {c.title}</span>}
                   </div>
-                  {lead.company_name}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground py-1">No companies</p>
-              )}
+                ))}
+                {contacts.length === 0 && !addingContact && (
+                  <p className="text-xs text-muted-foreground">No contacts</p>
+                )}
+                {addingContact ? (
+                  <div className="space-y-1.5 mt-1">
+                    <input
+                      autoFocus
+                      value={newContactName}
+                      onChange={(e) => setNewContactName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newContactName.trim()) handleSaveContact();
+                        if (e.key === 'Escape') { setAddingContact(false); setNewContactName(''); setNewContactTitle(''); }
+                      }}
+                      placeholder="Name (required)"
+                      disabled={savingContact}
+                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                    />
+                    <input
+                      value={newContactTitle}
+                      onChange={(e) => setNewContactTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newContactName.trim()) handleSaveContact();
+                        if (e.key === 'Escape') { setAddingContact(false); setNewContactName(''); setNewContactTitle(''); }
+                      }}
+                      placeholder="Title (optional)"
+                      disabled={savingContact}
+                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                    />
+                    {savingContact && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingContact(true)}
+                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                  >
+                    + Add person...
+                  </button>
+                )}
+              </div>
             </RelatedSection>
 
+            {/* Companies */}
+            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} iconColor="text-indigo-500" onAdd={() => setAddingCompany(true)}>
+              <div className="space-y-2 py-1">
+                {lead.company_name && (
+                  <div className="text-xs text-foreground flex items-center gap-2">
+                    <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
+                      {lead.company_name[0]?.toUpperCase()}
+                    </div>
+                    {lead.company_name}
+                  </div>
+                )}
+                {!lead.company_name && !addingCompany && (
+                  <p className="text-xs text-muted-foreground">No companies</p>
+                )}
+                {addingCompany ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      autoFocus
+                      value={newCompanyName}
+                      onChange={(e) => setNewCompanyName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newCompanyName.trim()) handleSaveCompany();
+                        if (e.key === 'Escape') { setAddingCompany(false); setNewCompanyName(''); }
+                      }}
+                      placeholder="Company name..."
+                      disabled={savingCompany}
+                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                    />
+                    {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingCompany(true)}
+                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                  >
+                    + {lead.company_name ? 'Change' : 'Add'} company...
+                  </button>
+                )}
+              </div>
+            </RelatedSection>
+
+            {/* Tasks */}
             <RelatedSection
               icon={<CheckSquare className="h-3.5 w-3.5" />}
               label="Tasks"
-              count={tasks.length}
+              count={tasks.filter(t => t.status !== 'completed' && t.status !== 'done').length}
               iconColor="text-emerald-500"
               onAdd={() => setAddingTask(true)}
             >
               <div className="space-y-2 py-1">
-                {tasks.map((t) => (
+                {tasks.filter(t => t.status !== 'completed' && t.status !== 'done').map((t) => (
                   <div key={t.id} className="flex items-center gap-2 text-xs">
-                    <CheckSquare className={`h-3.5 w-3.5 shrink-0 ${t.status === 'completed' || t.status === 'done' ? 'text-emerald-500' : 'text-muted-foreground/50'}`} />
-                    <span className={`flex-1 truncate ${t.status === 'completed' || t.status === 'done' ? 'line-through text-muted-foreground' : 'text-foreground font-medium'}`}>
-                      {t.title}
-                    </span>
+                    <CheckSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                    <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
                     {t.priority && (
                       <Badge variant="outline" className={`text-[9px] px-1.5 py-0 rounded-full ${
                         t.priority === 'high' ? 'border-red-200 text-red-600 bg-red-50' :
@@ -1030,9 +1355,6 @@ export default function UnderwritingExpandedView() {
                     )}
                   </div>
                 ))}
-                {tasks.length === 0 && !addingTask && (
-                  <p className="text-xs text-muted-foreground">No tasks</p>
-                )}
                 {addingTask ? (
                   <div className="flex items-center gap-1.5 mt-1">
                     <input
@@ -1057,21 +1379,56 @@ export default function UnderwritingExpandedView() {
                     + Add task...
                   </button>
                 )}
+                {/* Show completed tasks toggle */}
+                {(() => {
+                  const completedTasks = tasks.filter(t => t.status === 'completed' || t.status === 'done');
+                  if (completedTasks.length === 0) return null;
+                  return (
+                    <>
+                      <button
+                        onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
+                      >
+                        {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        Show completed tasks ({completedTasks.length})
+                      </button>
+                      {showCompletedTasks && completedTasks.map((t) => (
+                        <div key={t.id} className="flex items-center gap-2 text-xs">
+                          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                          <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
+                {/* View in List link */}
+                {tasks.length > 0 && (
+                  <button
+                    onClick={() => toast.info('View in List coming soon')}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 flex items-center gap-1"
+                  >
+                    <Layers className="h-3 w-3" /> View in List
+                  </button>
+                )}
               </div>
             </RelatedSection>
 
+            {/* Files */}
             <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0} iconColor="text-orange-500">
               <p className="text-xs text-muted-foreground py-1">No files</p>
             </RelatedSection>
 
+            {/* Calendar Events */}
             <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0} iconColor="text-rose-500">
               <p className="text-xs text-muted-foreground py-1">No events</p>
             </RelatedSection>
 
+            {/* Projects */}
             <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={0} iconColor="text-cyan-500">
               <p className="text-xs text-muted-foreground py-1">No projects</p>
             </RelatedSection>
 
+            {/* Pipeline Records */}
             <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1} iconColor="text-blue-500">
               <div className="text-xs py-1">
                 <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>

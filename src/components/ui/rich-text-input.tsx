@@ -1,176 +1,274 @@
-import { useState, useRef } from 'react';
-import { 
-  Bold, 
-  Italic, 
-  Underline, 
-  Strikethrough, 
-  Link2, 
-  List, 
-  ListOrdered, 
-  Code, 
+import { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  Bold,
+  Italic,
+  Strikethrough,
+  Link2,
+  List,
+  ListOrdered,
+  Code,
   Quote,
-  Plus,
-  Type,
-  Smile,
-  AtSign,
-  Video,
-  Mic,
-  Zap,
-  Send,
-  Loader2
+  Heading,
+  ChevronDown,
+  RemoveFormatting,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import DOMPurify from 'dompurify';
 
-interface RichTextInputProps {
+interface RichTextEditorProps {
   value: string;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
+  onChange: (html: string) => void;
   placeholder?: string;
   disabled?: boolean;
-  sending?: boolean;
-  channelName?: string;
+  className?: string;
+  minHeight?: string;
+  maxHeight?: string;
+  onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
 }
 
-const RichTextInput = ({
+const RichTextEditor = ({
   value,
   onChange,
-  onSubmit,
-  placeholder = 'Type a message...',
+  placeholder = 'Type here...',
   disabled = false,
-  sending = false,
-  channelName
-}: RichTextInputProps) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [isFocused, setIsFocused] = useState(false);
+  className,
+  minHeight = '80px',
+  maxHeight = '300px',
+  onBlur,
+  onKeyDown,
+}: RichTextEditorProps) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const lastExternalValue = useRef<string>(value);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkOpen, setLinkOpen] = useState(false);
+  const savedSelection = useRef<Range | null>(null);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (value.trim()) {
-        onSubmit();
-      }
+  // Sync external value → editor (avoid infinite loop)
+  useEffect(() => {
+    if (!editorRef.current) return;
+    if (value !== lastExternalValue.current) {
+      lastExternalValue.current = value;
+      editorRef.current.innerHTML = value;
     }
-  };
+  }, [value]);
 
-  const topToolbarItems = [
-    { icon: Bold, label: 'Bold' },
-    { icon: Italic, label: 'Italic' },
-    { icon: Underline, label: 'Underline' },
-    { icon: Strikethrough, label: 'Strikethrough' },
-    { icon: Link2, label: 'Link', separator: true },
-    { icon: List, label: 'Bullet List' },
-    { icon: ListOrdered, label: 'Numbered List' },
-    { icon: Code, label: 'Code Block', separator: true },
-    { icon: Quote, label: 'Quote' },
-  ];
+  const emitChange = useCallback(() => {
+    if (!editorRef.current) return;
+    const html = editorRef.current.innerHTML;
+    lastExternalValue.current = html;
+    onChange(html);
+  }, [onChange]);
 
-  const bottomToolbarItems = [
-    { icon: Plus, label: 'Add attachment' },
-    { icon: Type, label: 'Formatting' },
-    { icon: Smile, label: 'Emoji' },
-    { icon: AtSign, label: 'Mention' },
-    { icon: Video, label: 'Record video', separator: true },
-    { icon: Mic, label: 'Record audio' },
-    { icon: Zap, label: 'Shortcuts' },
-  ];
+  const exec = useCallback((command: string, val?: string) => {
+    restoreSelection();
+    editorRef.current?.focus();
+    document.execCommand(command, false, val);
+    emitChange();
+  }, [emitChange, restoreSelection]);
 
-  return (
-    <div 
+  const handleInput = useCallback(() => {
+    emitChange();
+  }, [emitChange]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData('text/html');
+    const text = e.clipboardData.getData('text/plain');
+    const clean = html
+      ? DOMPurify.sanitize(html, { FORBID_TAGS: ['script', 'iframe', 'form', 'style'], FORBID_ATTR: ['onerror', 'onload', 'onclick'] })
+      : text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    document.execCommand('insertHTML', false, clean);
+    emitChange();
+  }, [emitChange]);
+
+  const saveSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedSelection.current = sel.getRangeAt(0).cloneRange();
+    }
+  }, []);
+
+  const restoreSelection = useCallback(() => {
+    if (savedSelection.current) {
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(savedSelection.current);
+    }
+  }, []);
+
+  const handleInsertLink = useCallback(() => {
+    if (!linkUrl.trim()) return;
+    restoreSelection();
+    editorRef.current?.focus();
+    const url = linkUrl.startsWith('http') ? linkUrl : `https://${linkUrl}`;
+    const sel = window.getSelection();
+    const selectedText = sel?.toString() || url;
+    document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener noreferrer">${selectedText}</a>`);
+    setLinkUrl('');
+    setLinkOpen(false);
+    emitChange();
+  }, [linkUrl, restoreSelection, emitChange]);
+
+  const handleInsertCode = useCallback(() => {
+    restoreSelection();
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const text = sel.toString();
+    if (text) {
+      document.execCommand('insertHTML', false, `<code>${text}</code>`);
+    }
+    emitChange();
+  }, [emitChange, restoreSelection]);
+
+  const ToolBtn = ({ icon: Icon, label, onClick, active }: { icon: React.ElementType; label: string; onClick: () => void; active?: boolean }) => (
+    <button
+      type="button"
+      title={label}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      disabled={disabled}
       className={cn(
-        "rounded-xl border bg-slate-800 dark:bg-slate-900 transition-all duration-200",
-        isFocused ? "ring-2 ring-admin-blue/50 border-admin-blue" : "border-slate-600"
+        'p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40',
+        active && 'bg-muted text-foreground'
       )}
     >
-      {/* Top Toolbar */}
-      <div className="flex items-center gap-0.5 px-3 py-2 border-b border-slate-700">
-        <TooltipProvider delayDuration={300}>
-          {topToolbarItems.map((item, index) => (
-            <div key={item.label} className="flex items-center">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
-                    disabled={disabled}
-                  >
-                    <item.icon className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  {item.label}
-                </TooltipContent>
-              </Tooltip>
-              {item.separator && index < topToolbarItems.length - 1 && (
-                <div className="w-px h-4 bg-slate-600 mx-1.5" />
-              )}
+      <Icon className="w-3.5 h-3.5" />
+    </button>
+  );
+
+  const Sep = () => <div className="w-px h-4 bg-border mx-0.5" />;
+
+  return (
+    <div
+      className={cn(
+        'rounded-xl border border-border bg-card transition-all',
+        disabled && 'opacity-50 pointer-events-none',
+        className,
+      )}
+    >
+      {/* Editor */}
+      <div
+        ref={editorRef}
+        contentEditable={!disabled}
+        suppressContentEditableWarning
+        data-placeholder={placeholder}
+        onInput={handleInput}
+        onPaste={handlePaste}
+        onBlur={() => { saveSelection(); onBlur?.(); }}
+        onKeyUp={saveSelection}
+        onMouseUp={saveSelection}
+        onKeyDown={onKeyDown}
+        className={cn(
+          'px-3 py-2 text-sm text-foreground outline-none overflow-y-auto',
+          'prose prose-sm max-w-none',
+          'prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-blockquote:my-1',
+          'prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono',
+          'prose-a:text-blue-600 prose-a:underline',
+          'prose-blockquote:border-l-2 prose-blockquote:border-border prose-blockquote:pl-3 prose-blockquote:text-muted-foreground',
+          '[&:empty]:before:content-[attr(data-placeholder)] [&:empty]:before:text-muted-foreground [&:empty]:before:opacity-50 [&:empty]:before:pointer-events-none',
+        )}
+        style={{ minHeight, maxHeight }}
+      />
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-0.5 px-2 py-1.5 border-t border-border flex-wrap">
+        {/* Link */}
+        <Popover open={linkOpen} onOpenChange={(open) => {
+          if (open) saveSelection();
+          setLinkOpen(open);
+          if (!open) setLinkUrl('');
+        }}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              title="Insert link"
+              onMouseDown={(e) => e.preventDefault()}
+              disabled={disabled}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <div className="flex gap-1.5">
+              <input
+                type="url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleInsertLink(); } }}
+                placeholder="https://..."
+                className="flex-1 text-xs border border-border rounded px-2 py-1 bg-background outline-none focus:border-blue-400"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleInsertLink}
+                className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded transition-colors"
+              >
+                Add
+              </button>
             </div>
-          ))}
-        </TooltipProvider>
-      </div>
+          </PopoverContent>
+        </Popover>
 
-      {/* Text Area */}
-      <div className="px-3 py-2">
-        <Textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholder={channelName ? `Message ${channelName}` : placeholder}
-          disabled={disabled || sending}
-          className="min-h-[40px] max-h-[200px] resize-none border-0 bg-transparent text-slate-200 placeholder:text-slate-500 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
-          rows={1}
-        />
-      </div>
+        <ToolBtn icon={Bold} label="Bold" onClick={() => exec('bold')} />
+        <ToolBtn icon={Italic} label="Italic" onClick={() => exec('italic')} />
+        <ToolBtn icon={Strikethrough} label="Strikethrough" onClick={() => exec('strikeThrough')} />
+        <ToolBtn icon={Code} label="Inline Code" onClick={handleInsertCode} />
+        <ToolBtn icon={RemoveFormatting} label="Clear Formatting" onClick={() => exec('removeFormat')} />
 
-      {/* Bottom Toolbar */}
-      <div className="flex items-center justify-between px-3 py-2 border-t border-slate-700">
-        <div className="flex items-center gap-0.5">
-          <TooltipProvider delayDuration={300}>
-            {bottomToolbarItems.map((item, index) => (
-              <div key={item.label} className="flex items-center">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
-                      disabled={disabled}
-                    >
-                      <item.icon className="w-4 h-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
-                {item.separator && index < bottomToolbarItems.length - 1 && (
-                  <div className="w-px h-4 bg-slate-600 mx-1.5" />
-                )}
-              </div>
-            ))}
-          </TooltipProvider>
-        </div>
+        <Sep />
 
-        <Button
-          type="button"
-          size="icon"
-          onClick={onSubmit}
-          disabled={disabled || sending || !value.trim()}
-          className="h-8 w-8 bg-admin-blue hover:bg-admin-blue-dark text-white rounded-lg"
-        >
-          {sending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-        </Button>
+        <ToolBtn icon={Quote} label="Blockquote" onClick={() => exec('formatBlock', 'blockquote')} />
+
+        {/* Heading dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              title="Heading"
+              onMouseDown={(e) => e.preventDefault()}
+              disabled={disabled}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 flex items-center gap-0.5"
+            >
+              <Heading className="w-3.5 h-3.5" />
+              <ChevronDown className="w-2.5 h-2.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'h1')} className="text-xs">
+              <span className="font-bold text-base">Heading 1</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'h2')} className="text-xs">
+              <span className="font-bold text-sm">Heading 2</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'h3')} className="text-xs">
+              <span className="font-semibold text-xs">Heading 3</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'p')} className="text-xs">
+              Normal text
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <ToolBtn icon={List} label="Bullet List" onClick={() => exec('insertUnorderedList')} />
+        <ToolBtn icon={ListOrdered} label="Ordered List" onClick={() => exec('insertOrderedList')} />
       </div>
     </div>
   );
 };
 
-export { RichTextInput };
+export { RichTextEditor };
