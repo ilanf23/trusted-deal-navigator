@@ -109,12 +109,10 @@ const RichTextEditor = ({
     emitChange();
   }, [emitChange]);
 
-
-
   const handleInsertLink = useCallback(() => {
     if (!linkUrl.trim()) return;
-    restoreSelection();
     editorRef.current?.focus();
+    restoreSelection();
     const url = linkUrl.startsWith('http') ? linkUrl : `https://${linkUrl}`;
     const sel = window.getSelection();
     const selectedText = sel?.toString() || url;

@@ -17,7 +17,7 @@ import {
   Users, Building2, CheckSquare, FileText,
   CalendarDays, FolderOpen, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
-  User, Mail, Phone, Hash, Tag, Briefcase, Loader2,
+  User, Mail, Phone, PhoneCall, Hash, Tag, Briefcase, Loader2,
   Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef } from 'react';
@@ -220,7 +220,7 @@ function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id:
 }
 
 /* ─── Contact Phone Row ─── */
-function ContactPhoneRow({ entry, onDelete }: { entry: LeadPhone; onDelete: (id: string) => void }) {
+function ContactPhoneRow({ entry, onDelete, onCall }: { entry: LeadPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -228,6 +228,11 @@ function ContactPhoneRow({ entry, onDelete }: { entry: LeadPhone; onDelete: (id:
         {entry.phone_type}
       </Badge>
       <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
+      {onCall && (
+        <button onClick={() => onCall(entry.phone_number)} title="Call this number" className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <PhoneCall className="h-3 w-3 text-green-600 hover:text-green-700" />
+        </button>
+      )}
       <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
       </button>
@@ -869,7 +874,7 @@ export default function UnderwritingExpandedView() {
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Details — fully editable */}
-        <ScrollArea className="w-[340px] shrink-0 border-r border-border bg-card">
+        <ScrollArea className="w-[400px] shrink-0 border-r border-border bg-card">
           <div className="px-6 py-6 space-y-6">
 
             {/* Primary Contact */}
@@ -886,7 +891,20 @@ export default function UnderwritingExpandedView() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={lead.phone ?? ''} field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+                  <div className="flex items-center gap-1">
+                    <div className="flex-1 min-w-0">
+                      <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={lead.phone ?? ''} field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+                    </div>
+                    {lead.phone && (
+                      <button
+                        onClick={() => navigate(`/admin/calls?phone=${encodeURIComponent(lead.phone!.replace(/\D/g, ''))}&leadId=${lead.id}`)}
+                        title="Call this number"
+                        className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                      >
+                        <PhoneCall className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                   <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={lead.email ?? ''} field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} />
                 </div>
               </div>
@@ -923,14 +941,6 @@ export default function UnderwritingExpandedView() {
                 <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Clock className="h-3.5 w-3.5" />} label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} />
               </div>
-            </div>
-
-            {/* Read-only info (gray box) */}
-            <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-muted/50">
-              <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Underwriting" />
-              <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
-              <ReadOnlyField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? '\u2014'} />
-              <ReadOnlyField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value="\u2014" />
             </div>
 
             {/* Tags */}
@@ -1019,7 +1029,7 @@ export default function UnderwritingExpandedView() {
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Phone</span>
               <div className="space-y-1">
                 {leadPhones.map((p) => (
-                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} />
+                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
                 ))}
                 {showAddPhone ? (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
@@ -1129,6 +1139,17 @@ export default function UnderwritingExpandedView() {
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Notes</span>
               <EditableNotes value={lead.notes ?? ''} leadId={lead.id} onSaved={handleFieldSaved} />
+            </div>
+
+            {/* Fixed (read-only info) */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
+              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-muted/50">
+                <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Underwriting" />
+                <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
+                <ReadOnlyField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? '\u2014'} />
+                <ReadOnlyField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value="\u2014" />
+              </div>
             </div>
           </div>
         </ScrollArea>
@@ -1312,7 +1333,7 @@ export default function UnderwritingExpandedView() {
           <div className="py-4 px-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
             {/* People */}
-            <RelatedSection icon={<Users className="h-3.5 w-3.5 text-blue-500" />} label="People" count={contacts.length} iconColor="text-blue-500" onAdd={() => setAddingContact(true)}>
+            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} onAdd={() => setAddingContact(true)}>
               <div className="space-y-2 py-1">
                 {contacts.map((c) => (
                   <div key={c.id} className="text-xs text-foreground flex items-center gap-2">
@@ -1365,7 +1386,7 @@ export default function UnderwritingExpandedView() {
             </RelatedSection>
 
             {/* Companies */}
-            <RelatedSection icon={<Building2 className="h-3.5 w-3.5 text-indigo-500" />} label="Companies" count={lead.company_name ? 1 : 0} iconColor="text-indigo-500" onAdd={() => setAddingCompany(true)}>
+            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} onAdd={() => setAddingCompany(true)}>
               <div className="space-y-2 py-1">
                 {lead.company_name && (
                   <div className="text-xs text-foreground flex items-center gap-2">
@@ -1407,10 +1428,9 @@ export default function UnderwritingExpandedView() {
 
             {/* Tasks */}
             <RelatedSection
-              icon={<CheckSquare className="h-3.5 w-3.5 text-emerald-500" />}
+              icon={<CheckSquare className="h-3.5 w-3.5" />}
               label="Tasks"
               count={tasks.filter(t => t.status !== 'completed' && t.status !== 'done').length}
-              iconColor="text-emerald-500"
               onAdd={() => setAddingTask(true)}
             >
               <div className="space-y-2 py-1">
@@ -1489,10 +1509,9 @@ export default function UnderwritingExpandedView() {
 
             {/* Files */}
             <RelatedSection
-              icon={<FileText className="h-3.5 w-3.5 text-orange-500" />}
+              icon={<FileText className="h-3.5 w-3.5" />}
               label="Files"
               count={leadFiles.length}
-              iconColor="text-orange-500"
               onAdd={() => fileInputRef.current?.click()}
             >
               <input
@@ -1551,17 +1570,17 @@ export default function UnderwritingExpandedView() {
             </RelatedSection>
 
             {/* Calendar Events */}
-            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5 text-rose-500" />} label="Calendar Events" count={0} iconColor="text-rose-500">
+            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0}>
               <p className="text-xs text-muted-foreground py-1">No events</p>
             </RelatedSection>
 
             {/* Projects */}
-            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5 text-cyan-500" />} label="Projects" count={0} iconColor="text-cyan-500">
+            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={0}>
               <p className="text-xs text-muted-foreground py-1">No projects</p>
             </RelatedSection>
 
             {/* Pipeline Records */}
-            <RelatedSection icon={<Layers className="h-3.5 w-3.5 text-blue-500" />} label="Pipeline Records" count={1} iconColor="text-blue-500">
+            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1}>
               <div className="text-xs py-1">
                 <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
                   {stageCfg?.label ?? lead.status}

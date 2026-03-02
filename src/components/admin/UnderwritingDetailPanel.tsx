@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  X, DollarSign, Maximize2, Building2, User, Mail, Phone,
+  X, DollarSign, Maximize2, Building2, User, Mail, Phone, PhoneCall,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase, Hash,
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Flag, Layers,
 } from 'lucide-react';
@@ -896,6 +897,7 @@ export default function UnderwritingDetailPanel({
   onLeadUpdate,
 }: UnderwritingDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'related'>('details');
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const stageCfg = stageConfig[lead.status];
   const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? '\u2014') : '\u2014';
@@ -1056,7 +1058,20 @@ export default function UnderwritingDetailPanel({
               <div className="space-y-1.5">
                 <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={lead.name} field="name" leadId={lead.id} placeholder="Name" onSaved={handleFieldSaved} />
                 <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={lead.email ?? ''} field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} />
-                <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={lead.phone ?? ''} field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+                <div className="flex items-center gap-1">
+                  <div className="flex-1 min-w-0">
+                    <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={lead.phone ?? ''} field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+                  </div>
+                  {lead.phone && (
+                    <button
+                      onClick={() => navigate(`/admin/calls?phone=${encodeURIComponent(lead.phone!.replace(/\D/g, ''))}&leadId=${lead.id}`)}
+                      title="Call this number"
+                      className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                    >
+                      <PhoneCall className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
