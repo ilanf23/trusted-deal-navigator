@@ -71,6 +71,31 @@ const RichTextEditor = ({
     onChange(html);
   }, [onChange]);
 
+<<<<<<< HEAD
+=======
+  const saveSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedSelection.current = sel.getRangeAt(0).cloneRange();
+    }
+  }, []);
+
+  const restoreSelection = useCallback(() => {
+    if (savedSelection.current) {
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(savedSelection.current);
+    }
+  }, []);
+
+  const exec = useCallback((command: string, val?: string) => {
+    editorRef.current?.focus();
+    restoreSelection();
+    document.execCommand(command, false, val);
+    saveSelection();
+    emitChange();
+  }, [emitChange, restoreSelection, saveSelection]);
+>>>>>>> d560fe7 (Add phone number formatting utility and update contact display in admin components)
 
   const handleInput = useCallback(() => {
     emitChange();
@@ -87,6 +112,7 @@ const RichTextEditor = ({
     emitChange();
   }, [emitChange]);
 
+<<<<<<< HEAD
   const saveSelection = useCallback(() => {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
@@ -109,6 +135,8 @@ const RichTextEditor = ({
     emitChange();
   }, [emitChange, restoreSelection]);
 
+=======
+>>>>>>> d560fe7 (Add phone number formatting utility and update contact display in admin components)
   const handleInsertLink = useCallback(() => {
     if (!linkUrl.trim()) return;
     restoreSelection();
@@ -123,16 +151,17 @@ const RichTextEditor = ({
   }, [linkUrl, restoreSelection, emitChange]);
 
   const handleInsertCode = useCallback(() => {
-    restoreSelection();
     editorRef.current?.focus();
+    restoreSelection();
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const text = sel.toString();
     if (text) {
       document.execCommand('insertHTML', false, `<code>${text}</code>`);
     }
+    saveSelection();
     emitChange();
-  }, [emitChange, restoreSelection]);
+  }, [emitChange, restoreSelection, saveSelection]);
 
   const ToolBtn = ({ icon: Icon, label, onClick, active }: { icon: React.ElementType; label: string; onClick: () => void; active?: boolean }) => (
     <button
@@ -236,12 +265,12 @@ const RichTextEditor = ({
         <ToolBtn icon={Quote} label="Blockquote" onClick={() => exec('formatBlock', 'blockquote')} />
 
         {/* Heading dropdown */}
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={(open) => { if (open) saveSelection(); }}>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               title="Heading"
-              onMouseDown={(e) => e.preventDefault()}
+              onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
               disabled={disabled}
               className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 flex items-center gap-0.5"
             >
@@ -249,17 +278,17 @@ const RichTextEditor = ({
               <ChevronDown className="w-2.5 h-2.5" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'h1')} className="text-xs">
+          <DropdownMenuContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
+            <DropdownMenuItem onSelect={() => exec('formatBlock', 'h1')} className="text-xs">
               <span className="font-bold text-base">Heading 1</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'h2')} className="text-xs">
+            <DropdownMenuItem onSelect={() => exec('formatBlock', 'h2')} className="text-xs">
               <span className="font-bold text-sm">Heading 2</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'h3')} className="text-xs">
+            <DropdownMenuItem onSelect={() => exec('formatBlock', 'h3')} className="text-xs">
               <span className="font-semibold text-xs">Heading 3</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onMouseDown={(e) => e.preventDefault()} onClick={() => exec('formatBlock', 'p')} className="text-xs">
+            <DropdownMenuItem onSelect={() => exec('formatBlock', 'p')} className="text-xs">
               Normal text
             </DropdownMenuItem>
           </DropdownMenuContent>

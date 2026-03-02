@@ -34,6 +34,7 @@ import {
   EditableNotes,
   EditableNotesField,
   ReadOnlyField,
+  formatPhoneNumber,
 } from './InlineEditableFields';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -159,7 +160,7 @@ function StatBox({ value, label, icon, bg, border, valueColor, iconBg }: {
   iconBg: string;
 }) {
   return (
-    <div className={`relative flex flex-col gap-0.5 rounded-lg px-3.5 py-2.5 border-t-2 ${bg} ${border} min-w-0 flex-1 shadow-sm`}>
+    <div className={`relative flex flex-col gap-0.5 rounded-lg px-3.5 py-2.5 border-2 ${bg} ${border} min-w-0 flex-1 shadow-sm`}>
       <span className={`absolute top-2 right-2.5 h-6 w-6 rounded-full flex items-center justify-center ${iconBg}`}>{icon}</span>
       <span className={`text-xl font-extrabold tabular-nums leading-tight ${valueColor}`}>{value}</span>
       <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
@@ -226,7 +227,7 @@ function ContactPhoneRow({ entry, onDelete }: { entry: LeadPhone; onDelete: (id:
       <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
         {entry.phone_type}
       </Badge>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{entry.phone_number}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
       <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
       </button>
@@ -509,6 +510,69 @@ export default function UnderwritingExpandedView() {
     }
     toast.success('Resolved');
     queryClient.invalidateQueries({ queryKey: ['lead-waiting-on', leadId] });
+  }, [leadId, queryClient]);
+
+  // ── File upload ──
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !leadId) return;
+    // Reset the input so the same file can be re-selected
+    e.target.value = '';
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('File must be under 10MB');
+      return;
+    }
+
+    setUploadingFile(true);
+    const filePath = `${leadId}/${Date.now()}_${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from('lead-files')
+      .upload(filePath, file, { contentType: file.type });
+
+    if (uploadError) {
+      setUploadingFile(false);
+      toast.error('Failed to upload file');
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from('lead-files').getPublicUrl(filePath);
+    const fileUrl = urlData?.publicUrl || filePath;
+
+    const { error: dbError } = await supabase.from('lead_files' as any).insert({
+      lead_id: leadId,
+      file_name: file.name,
+      file_url: fileUrl,
+      file_type: file.type || null,
+      file_size: file.size,
+    });
+
+    setUploadingFile(false);
+    if (dbError) {
+      toast.error('File uploaded but failed to save record');
+      return;
+    }
+    toast.success('File uploaded');
+    queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+  }, [leadId, queryClient]);
+
+  // ── File delete ──
+  const handleDeleteFile = useCallback(async (file: LeadFile) => {
+    // Extract storage path from URL
+    const urlParts = file.file_url.split('/lead-files/');
+    const storagePath = urlParts.length > 1 ? decodeURIComponent(urlParts[urlParts.length - 1].split('?')[0]) : null;
+
+    if (storagePath) {
+      await supabase.storage.from('lead-files').remove([storagePath]);
+    }
+
+    const { error } = await supabase.from('lead_files' as any).delete().eq('id', file.id);
+    if (error) {
+      toast.error('Failed to delete file');
+      return;
+    }
+    toast.success('File deleted');
+    queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
   }, [leadId, queryClient]);
 
   // ── Queries ──
@@ -806,179 +870,46 @@ export default function UnderwritingExpandedView() {
 
         {/* LEFT: Details — fully editable */}
         <ScrollArea className="w-[340px] shrink-0 border-r border-border bg-card">
-          <div className="px-5 py-5 space-y-5">
+          <div className="px-6 py-6 space-y-6">
 
-            {/* Contact Section */}
+            {/* Primary Contact */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Contact</span>
-              <div className="space-y-1.5">
-                {/* Name */}
-                <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={lead.name} field="name" leadId={lead.id} placeholder="Name" onSaved={handleFieldSaved} />
-                {/* Known As */}
-                <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={lead.known_as ?? ''} field="known_as" leadId={lead.id} placeholder="Nickname / Known As" onSaved={handleFieldSaved} />
-                {/* Contact Type */}
-                <EditableSelectField
-                  icon={<Users className="h-3.5 w-3.5" />}
-                  label="Contact Type"
-                  value={lead.contact_type ?? ''}
-                  displayValue={CONTACT_TYPE_OPTIONS.find(o => o.value === lead.contact_type)?.label ?? lead.contact_type ?? '—'}
-                  field="contact_type"
-                  leadId={lead.id}
-                  options={CONTACT_TYPE_OPTIONS}
-                  onSaved={handleFieldSaved}
-                />
-
-                {/* Emails — satellite table with fallback to leads.email */}
-                <div className="space-y-1">
-                  {leadEmails.length > 0 ? (
-                    leadEmails.map((e) => (
-                      <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
-                    ))
-                  ) : lead.email ? (
-                    <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={lead.email} field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} />
-                  ) : null}
-                  {showAddEmail ? (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
-                      <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                      <Select value={newEmailType} onValueChange={setNewEmailType}>
-                        <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="work" className="text-xs">Work</SelectItem>
-                          <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <input
-                        autoFocus
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim());
-                          if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); }
-                        }}
-                        placeholder="email@example.com"
-                        className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
-                      />
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">
-                      + Add email...
-                    </button>
-                  )}
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Primary Contact</span>
+              <div className="rounded-xl border border-border p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                    {initial}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-foreground truncate">{lead.name}</p>
+                    {lead.title && <p className="text-xs text-muted-foreground truncate">{lead.title}</p>}
+                  </div>
                 </div>
-
-                {/* Phones — satellite table with fallback to leads.phone */}
                 <div className="space-y-1">
-                  {leadPhones.length > 0 ? (
-                    leadPhones.map((p) => (
-                      <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} />
-                    ))
-                  ) : lead.phone ? (
-                    <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={lead.phone} field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
-                  ) : null}
-                  {showAddPhone ? (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
-                      <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                      <Select value={newPhoneType} onValueChange={setNewPhoneType}>
-                        <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="work" className="text-xs">Work</SelectItem>
-                          <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                          <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <input
-                        autoFocus
-                        value={newPhone}
-                        onChange={(e) => setNewPhone(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim());
-                          if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); }
-                        }}
-                        placeholder="(555) 123-4567"
-                        className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
-                      />
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">
-                      + Add phone...
-                    </button>
-                  )}
-                </div>
-
-                {/* Website */}
-                <EditableContactRow icon={<Globe className="h-3.5 w-3.5" />} value={lead.website ?? ''} field="website" leadId={lead.id} placeholder="Website URL" onSaved={handleFieldSaved} />
-                {/* LinkedIn */}
-                <EditableContactRow icon={<Linkedin className="h-3.5 w-3.5" />} value={lead.linkedin ?? ''} field="linkedin" leadId={lead.id} placeholder="LinkedIn URL" onSaved={handleFieldSaved} />
-
-                {/* Addresses — satellite table */}
-                <div className="space-y-1">
-                  {leadAddresses.map((a) => (
-                    <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
-                  ))}
-                  {showAddAddress ? (
-                    <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
-                      <input
-                        autoFocus
-                        value={newAddressLine1}
-                        onChange={(e) => setNewAddressLine1(e.target.value)}
-                        placeholder="Address line 1"
-                        className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300"
-                      />
-                      <div className="flex gap-1.5">
-                        <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                        <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                        <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Select value={newAddressType} onValueChange={setNewAddressType}>
-                          <SelectTrigger className="h-8 w-[110px] text-xs border-border">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="business" className="text-xs">Business</SelectItem>
-                            <SelectItem value="home" className="text-xs">Home</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <div className="flex gap-1.5">
-                          <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
-                          <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">
-                      + Add address...
-                    </button>
-                  )}
+                  <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={lead.phone ?? ''} field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+                  <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={lead.email ?? ''} field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} />
                 </div>
               </div>
             </div>
 
-            {/* Deal Details */}
+            {/* Deal Info (editable — white box) */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Deal Details</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
-                <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Underwriting" />
-
-                {/* Stage — enabled select with 10-stage list */}
-                <div className="flex items-center justify-between px-3 py-2">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Deal Info</span>
+              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
+                <div className="px-3 py-2 space-y-1.5">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Layers className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium text-muted-foreground">Stage</span>
                   </div>
                   <Select value={lead.status} onValueChange={(v) => handleStageChange(v as LeadStatus)}>
-                    <SelectTrigger className={`h-8 w-auto min-w-[160px] text-[13px] rounded-lg ${stageCfg?.bg ?? 'bg-muted'} ${stageCfg?.color ?? 'text-foreground'} border-transparent hover:border-border shadow-none px-2 gap-1`}>
+                    <SelectTrigger className={`h-8 w-full text-[13px] rounded-lg ${stageCfg?.bg ?? 'bg-muted'} ${stageCfg?.color ?? 'text-foreground'} border-border shadow-none px-2.5 gap-1`}>
                       <SelectValue>{stageCfg?.label ?? lead.status}</SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="min-w-[220px]">
                       {UNDERWRITING_STATUSES.map((s) => {
                         const cfg = canonicalStageConfig[s];
                         return (
-                          <SelectItem key={s} value={s} className="text-xs">
+                          <SelectItem key={s} value={s} className="text-[13px]">
                             <div className="flex items-center gap-2">
                               <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
                               {cfg?.label ?? s}
@@ -989,30 +920,30 @@ export default function UnderwritingExpandedView() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <EditableField icon={<Briefcase className="h-3.5 w-3.5" />} label="Opportunity Name" value={lead.opportunity_name ?? ''} field="opportunity_name" leadId={lead.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Clock className="h-3.5 w-3.5" />} label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<FileText className="h-3.5 w-3.5" />} label="UW Number" value={lead.uw_number ?? ''} field="uw_number" leadId={lead.id} onSaved={handleFieldSaved} />
+              </div>
+            </div>
 
-                {ownerOptions.length > 0 ? (
-                  <EditableSelectField
-                    icon={<User className="h-3.5 w-3.5" />}
-                    label="Owned By"
-                    value={lead.assigned_to ?? ''}
-                    displayValue={assignedName}
-                    field="assigned_to"
-                    leadId={lead.id}
-                    options={ownerOptions}
-                    onSaved={handleFieldSaved}
-                  />
-                ) : (
-                  <EditableField icon={<User className="h-3.5 w-3.5" />} label="Owned By" value={assignedName} field="assigned_to" leadId={lead.id} onSaved={handleFieldSaved} />
-                )}
+            {/* Read-only info (gray box) */}
+            <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-muted/50">
+              <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Underwriting" />
+              <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
+              <ReadOnlyField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? '\u2014'} />
+              <ReadOnlyField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value="\u2014" />
+            </div>
 
-                <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? ''} field="source" leadId={lead.id} onSaved={handleFieldSaved} />
+            {/* Tags */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Tags</span>
+              <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
+            </div>
+
+            {/* Value */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Value</span>
+              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
                 <EditableField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={dealValueStr} field="deal_value" leadId={lead.id} onSaved={handleFieldSaved} highlight transform={(v) => { const n = parseFloat(v.replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n; }} />
-                <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
               </div>
             </div>
 
@@ -1022,16 +953,128 @@ export default function UnderwritingExpandedView() {
               <EditableNotesField value={lead.description ?? ''} field="description" leadId={lead.id} placeholder={"Deal referred by ____\nLoan Amount $____M\nAdditional deal/collateral details..."} onSaved={handleFieldSaved} />
             </div>
 
-            {/* Tags */}
+            {/* Details (editable — white box) */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Tags</span>
-              <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Details</span>
+              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
+                <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
+                {ownerOptions.length > 0 ? (
+                  <EditableSelectField
+                    icon={<User className="h-3.5 w-3.5" />}
+                    label="Owner"
+                    value={lead.assigned_to ?? ''}
+                    displayValue={assignedName}
+                    field="assigned_to"
+                    leadId={lead.id}
+                    options={ownerOptions}
+                    onSaved={handleFieldSaved}
+                  />
+                ) : (
+                  <EditableField icon={<User className="h-3.5 w-3.5" />} label="Owner" value={assignedName} field="assigned_to" leadId={lead.id} onSaved={handleFieldSaved} />
+                )}
+                <EditableField icon={<Briefcase className="h-3.5 w-3.5" />} label="Opportunity Name" value={lead.opportunity_name ?? ''} field="opportunity_name" leadId={lead.id} onSaved={handleFieldSaved} />
+                <EditableSelectField
+                  icon={<Users className="h-3.5 w-3.5" />}
+                  label="Contact Type"
+                  value={lead.contact_type ?? ''}
+                  displayValue={CONTACT_TYPE_OPTIONS.find(o => o.value === lead.contact_type)?.label ?? lead.contact_type ?? '\u2014'}
+                  field="contact_type"
+                  leadId={lead.id}
+                  options={CONTACT_TYPE_OPTIONS}
+                  onSaved={handleFieldSaved}
+                />
+                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} />
+              </div>
             </div>
 
-            {/* Notes */}
+            {/* Email */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Notes</span>
-              <EditableNotes value={lead.notes ?? ''} leadId={lead.id} onSaved={handleFieldSaved} />
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Email</span>
+              <div className="space-y-1">
+                {leadEmails.map((e) => (
+                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
+                ))}
+                {showAddEmail ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <Select value={newEmailType} onValueChange={setNewEmailType}>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="work" className="text-xs">Work</SelectItem>
+                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
+                )}
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Phone</span>
+              <div className="space-y-1">
+                {leadPhones.map((p) => (
+                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} />
+                ))}
+                {showAddPhone ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <Select value={newPhoneType} onValueChange={setNewPhoneType}>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="work" className="text-xs">Work</SelectItem>
+                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+                        <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
+                )}
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Address</span>
+              <div className="space-y-1">
+                {leadAddresses.map((a) => (
+                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
+                ))}
+                {showAddAddress ? (
+                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                    <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    <div className="flex gap-1.5">
+                      <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                      <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                      <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Select value={newAddressType} onValueChange={setNewAddressType}>
+                        <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="business" className="text-xs">Business</SelectItem>
+                          <SelectItem value="home" className="text-xs">Home</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
+                        <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
+                )}
+              </div>
             </div>
 
             {/* About */}
@@ -1040,27 +1083,53 @@ export default function UnderwritingExpandedView() {
               <EditableNotesField value={lead.about ?? ''} field="about" leadId={lead.id} placeholder="Details from initial contact..." onSaved={handleFieldSaved} />
             </div>
 
-            {/* History — collapsed by default */}
-            <Collapsible defaultOpen={false}>
-              <CollapsibleTrigger className="flex items-center gap-1.5 w-full group">
-                <ChevronRight className="h-3 w-3 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">History</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <EditableNotesField value={lead.history ?? ''} field="history" leadId={lead.id} placeholder="Old CRM carryover info..." onSaved={handleFieldSaved} />
-              </CollapsibleContent>
-            </Collapsible>
+            {/* History */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">History</span>
+              <EditableNotesField value={lead.history ?? ''} field="history" leadId={lead.id} placeholder="Old CRM carryover info..." onSaved={handleFieldSaved} />
+            </div>
 
-            {/* Bank Relationships — collapsed by default */}
-            <Collapsible defaultOpen={false}>
-              <CollapsibleTrigger className="flex items-center gap-1.5 w-full group">
-                <ChevronRight className="h-3 w-3 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Bank Relationships</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Excluded lender names from CLX agreement..." onSaved={handleFieldSaved} />
-              </CollapsibleContent>
-            </Collapsible>
+            {/* Bank Relationships */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Bank Relationships</span>
+              <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Excluded lender names from CLX agreement..." onSaved={handleFieldSaved} />
+            </div>
+
+            {/* #UW */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">#UW</span>
+              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
+                <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="UW Number" value={lead.uw_number ?? ''} field="uw_number" leadId={lead.id} onSaved={handleFieldSaved} />
+              </div>
+            </div>
+
+            {/* Client Working with Other Lenders */}
+            <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between px-3 py-1.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
+              <div className="flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Client Working with Other Lenders</span>
+              </div>
+              <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.client_other_lenders ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
+                <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.client_other_lenders ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+            </div>
+
+            {/* Weekly's */}
+            <div onClick={() => handleBooleanToggle('flagged_for_weekly', lead.flagged_for_weekly)} className="flex items-center justify-between px-3 py-1.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
+              <div className="flex items-center gap-2">
+                <Flag className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Weekly's</span>
+              </div>
+              <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.flagged_for_weekly ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
+                <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.flagged_for_weekly ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Notes</span>
+              <EditableNotes value={lead.notes ?? ''} leadId={lead.id} onSaved={handleFieldSaved} />
+            </div>
           </div>
         </ScrollArea>
 
@@ -1243,7 +1312,7 @@ export default function UnderwritingExpandedView() {
           <div className="py-4 px-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block px-3">Related</span>
             {/* People */}
-            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} iconColor="text-blue-500" onAdd={() => setAddingContact(true)}>
+            <RelatedSection icon={<Users className="h-3.5 w-3.5 text-blue-500" />} label="People" count={contacts.length} iconColor="text-blue-500" onAdd={() => setAddingContact(true)}>
               <div className="space-y-2 py-1">
                 {contacts.map((c) => (
                   <div key={c.id} className="text-xs text-foreground flex items-center gap-2">
@@ -1296,7 +1365,7 @@ export default function UnderwritingExpandedView() {
             </RelatedSection>
 
             {/* Companies */}
-            <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Companies" count={lead.company_name ? 1 : 0} iconColor="text-indigo-500" onAdd={() => setAddingCompany(true)}>
+            <RelatedSection icon={<Building2 className="h-3.5 w-3.5 text-indigo-500" />} label="Companies" count={lead.company_name ? 1 : 0} iconColor="text-indigo-500" onAdd={() => setAddingCompany(true)}>
               <div className="space-y-2 py-1">
                 {lead.company_name && (
                   <div className="text-xs text-foreground flex items-center gap-2">
@@ -1338,7 +1407,7 @@ export default function UnderwritingExpandedView() {
 
             {/* Tasks */}
             <RelatedSection
-              icon={<CheckSquare className="h-3.5 w-3.5" />}
+              icon={<CheckSquare className="h-3.5 w-3.5 text-emerald-500" />}
               label="Tasks"
               count={tasks.filter(t => t.status !== 'completed' && t.status !== 'done').length}
               iconColor="text-emerald-500"
@@ -1419,22 +1488,80 @@ export default function UnderwritingExpandedView() {
             </RelatedSection>
 
             {/* Files */}
-            <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0} iconColor="text-orange-500">
-              <p className="text-xs text-muted-foreground py-1">No files</p>
+            <RelatedSection
+              icon={<FileText className="h-3.5 w-3.5 text-orange-500" />}
+              label="Files"
+              count={leadFiles.length}
+              iconColor="text-orange-500"
+              onAdd={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <div className="space-y-1.5 py-1">
+                {leadFiles.map((f) => (
+                  <div key={f.id} className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+                    <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">{f.file_name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <a
+                        href={f.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 rounded hover:bg-muted"
+                        title="Download"
+                      >
+                        <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                      </a>
+                      <button
+                        onClick={() => handleDeleteFile(f)}
+                        className="p-1 rounded hover:bg-muted"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {uploadingFile && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                    <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
+                    Uploading...
+                  </div>
+                )}
+                {leadFiles.length === 0 && !uploadingFile && (
+                  <p className="text-xs text-muted-foreground">No files</p>
+                )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                >
+                  + Upload file...
+                </button>
+              </div>
             </RelatedSection>
 
             {/* Calendar Events */}
-            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0} iconColor="text-rose-500">
+            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5 text-rose-500" />} label="Calendar Events" count={0} iconColor="text-rose-500">
               <p className="text-xs text-muted-foreground py-1">No events</p>
             </RelatedSection>
 
             {/* Projects */}
-            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={0} iconColor="text-cyan-500">
+            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5 text-cyan-500" />} label="Projects" count={0} iconColor="text-cyan-500">
               <p className="text-xs text-muted-foreground py-1">No projects</p>
             </RelatedSection>
 
             {/* Pipeline Records */}
-            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1} iconColor="text-blue-500">
+            <RelatedSection icon={<Layers className="h-3.5 w-3.5 text-blue-500" />} label="Pipeline Records" count={1} iconColor="text-blue-500">
               <div className="text-xs py-1">
                 <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
                   {stageCfg?.label ?? lead.status}

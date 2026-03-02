@@ -12,6 +12,18 @@ import type { Database } from '@/integrations/supabase/types';
 
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
+// Format phone numbers to (XXX) XXX-XXXX
+export function formatPhoneNumber(phone: string | null | undefined): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  } else if (digits.length === 11 && digits[0] === '1') {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return phone;
+}
+
 // ── Canonical 10-stage underwriting statuses ──
 export const UNDERWRITING_STATUSES: LeadStatus[] = [
   'review_kill_keep',
@@ -261,6 +273,8 @@ export function EditableContactRow({
 }) {
   const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isPhone = field === 'phone';
+  const displayValue = isPhone ? formatPhoneNumber(value) : value;
 
   useEffect(() => {
     if (editing) setTimeout(() => inputRef.current?.focus(), 0);
@@ -289,7 +303,7 @@ export function EditableContactRow({
     <div onClick={() => setEditing(true)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group cursor-pointer">
       <div className="text-muted-foreground group-hover:text-foreground shrink-0">{icon}</div>
       <span className={`text-[13px] truncate flex-1 ${value ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
-        {value || placeholder}
+        {displayValue || placeholder}
       </span>
       <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
     </div>
