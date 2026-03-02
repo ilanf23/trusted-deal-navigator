@@ -5,6 +5,7 @@ import {
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Flag, Layers,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
+import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
 import { HtmlContent } from '@/components/ui/html-content';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -712,6 +713,17 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
     },
   });
 
+  const { data: files = [] } = useQuery({
+    queryKey: ['lead-files-count', lead.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('lead_files')
+        .select('id')
+        .eq('lead_id', lead.id);
+      return data || [];
+    },
+  });
+
   const isLoading = loadingContacts || loadingTasks || loadingMilestones || loadingWaiting;
 
   if (isLoading) {
@@ -844,6 +856,11 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
             })}
           </div>
         )}
+      </RelatedSection>
+
+      {/* Files */}
+      <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={files.length} iconColor="text-orange-500">
+        <LeadFilesSection leadId={lead.id} />
       </RelatedSection>
 
       {/* Pipeline */}
