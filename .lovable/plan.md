@@ -1,64 +1,31 @@
 
 
-## Plan: Add Color Throughout the Expanded View
+## Plan: Seed 5-10 Fake Activities for Every Lead and Person
 
-The file currently has zero color enhancements — everything is monochrome gray/foreground. I'll add semantic colors to every section in a single file edit.
+### Current State
+- **39 leads** total — only 11 have activities, **28 leads have zero activities**
+- **20 people** total — **all 20 have zero activities**
 
-### Changes (single file: `src/components/admin/UnderwritingExpandedView.tsx`)
+### What Needs to Happen
 
-**1. Add imports** — `Activity, Clock, AlertCircle, TrendingUp` from lucide-react for stat icons.
+**1. Seed `lead_activities` for 28 leads missing data**
+- Insert 5-8 varied activities per lead (mix of `call`, `email`, `note` types)
+- Realistic commercial lending content (intro calls, document requests, term sheets, credit reviews, follow-ups)
+- Timestamps spread across the last 1-30 days
+- `created_by` set to "Evan"
 
-**2. Expand `stageConfig`** — Add `bg` and `borderColor` fields for Badge rendering:
-- `moving_to_underwriting`: blue bg/border
-- `underwriting`: amber bg/border
-- `ready_for_wu_approval`: violet bg/border
-- `pre_approval_issued`: emerald bg/border
+**2. Seed `people_activities` for all 20 people**
+- Insert 5-8 activities per person (mix of `call`, `email`, `note`, `meeting` types)
+- Content appropriate to contact/lender context (check-ins, program updates, referral discussions)
+- Timestamps spread across the last 1-30 days
 
-**3. Update `StatBox`** — Add `icon` (ReactNode) and `color` (string) props. Render colored icon next to colored value.
+**3. Execution approach**
+- Use the database insert tool to run batch INSERT statements
+- Split into multiple batches to stay within query limits
+- No schema changes needed — both tables already exist with correct columns and RLS policies
 
-**4. Update `RelatedSection`** — Add `iconColor` prop. Render count as a small rounded Badge pill instead of plain `(n)` text.
-
-**5. Header bar** (line 206):
-- Gradient background: `bg-gradient-to-r from-slate-50/80 to-blue-50/40 dark:from-slate-900/50 dark:to-blue-950/30`
-- Avatar: gradient `bg-gradient-to-br from-amber-200 to-orange-300` with `ring-2 ring-white`
-- Company name: inline `Building2` icon in blue
-- Deal value: `text-emerald-600`
-- Star button: `text-amber-400 hover:text-amber-500`
-
-**6. Stats bar** (line 232):
-- Background: `bg-muted/30`
-- Each StatBox gets a colored icon:
-  - Interactions: blue `Activity` icon
-  - Last Contacted: violet `Clock` icon
-  - Inactive Days: amber (or red if >30) `AlertCircle` icon
-  - Days in Stage: emerald `TrendingUp` icon
-
-**7. Left details column** (line 243):
-- Background tint: `bg-muted/10`
-- Pipeline value: blue Badge
-- Stage select trigger: colored border matching stage
-- Value: `text-emerald-600 font-semibold`
-- Owned By: `text-blue-600`
-- Source: purple Badge (or italic dash if empty)
-- Empty values: `italic` style
-
-**8. Center activity tabs** (lines 304-329):
-- Log Activity active: `border-blue-500 text-blue-600`
-- Create Note active: `border-violet-500 text-violet-600`
-- Textarea focus borders: `focus-visible:border-blue-400` / `focus-visible:border-violet-400`
-- Empty state: dashed border card with muted icon
-
-**9. Right related panel** (lines 372-418):
-- Each section's icon gets a unique color class passed via `iconColor`:
-  - People: `text-blue-500`
-  - Companies: `text-indigo-500`
-  - Tasks: `text-emerald-500`
-  - Files: `text-orange-500`
-  - Calendar: `text-rose-500`
-  - Projects: `text-cyan-500`
-  - Pipeline Records: `text-violet-500`
-- Pipeline Records stage rendered as colored Badge
-
-### Files modified
-- `src/components/admin/UnderwritingExpandedView.tsx`
+### Scope
+- ~28 leads × ~7 activities = ~196 new `lead_activities` rows
+- ~20 people × ~7 activities = ~140 new `people_activities` rows
+- Total: ~336 new records
 
