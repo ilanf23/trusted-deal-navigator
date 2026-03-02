@@ -77,7 +77,7 @@ export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
   const { data: files = [], isLoading } = useQuery({
     queryKey: ['lead-files', leadId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('lead_files')
         .select('id, lead_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
         .eq('lead_id', leadId)
@@ -113,7 +113,7 @@ export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
           .from('lead-files')
           .getPublicUrl(filePath);
 
-        const { error: dbError } = await (supabase as any)
+        const { error: dbError } = await supabase
           .from('lead_files')
           .insert({
             lead_id: leadId,
@@ -151,7 +151,7 @@ export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
 
       if (storageError) console.error('Storage delete error:', storageError);
 
-      const { error: dbError } = await (supabase as any)
+      const { error: dbError } = await supabase
         .from('lead_files')
         .delete()
         .eq('id', file.id);

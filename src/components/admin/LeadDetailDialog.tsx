@@ -29,6 +29,7 @@ import { TaskDetailDialog } from '@/components/evan/tasks/TaskDetailDialog';
 import { Task } from '@/components/evan/tasks/types';
 import { LeadTodosSection } from '@/components/admin/LeadTodosSection';
 import { FormattedPhoneInput } from '@/components/admin/FormattedPhoneInput';
+import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
 
 // Helper to format activity timestamps - show time if <24h, otherwise show date and time
 const formatActivityTimestamp = (date: Date | string) => {
@@ -1852,11 +1853,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                   </TabsContent>
 
                   {/* Files Tab */}
-                  <TabsContent value="files" className="m-0">
-                    <div className="text-center py-12 text-slate-400">
-                      <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No files attached</p>
-                    </div>
+                  <TabsContent value="files" className="m-0 p-4">
+                    <LeadFilesSection leadId={lead.id} />
                   </TabsContent>
 
                   {/* Comments Tab */}

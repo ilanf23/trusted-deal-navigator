@@ -18,7 +18,7 @@ import {
   CalendarDays, FolderOpen, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
   User, Mail, Phone, PhoneCall, Hash, Tag, Briefcase, Loader2,
-  Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download,
+  Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download, Send,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
@@ -205,13 +205,26 @@ function RelatedSection({ icon, label, count, iconColor, onAdd, children }: {
 
 /* ─── Contact Email Row ─── */
 function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id: string) => void }) {
+  const navigate = useNavigate();
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
         {entry.email_type}
       </Badge>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{entry.email}</span>
+      <button
+        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
+        className="text-[13px] text-foreground font-medium truncate flex-1 text-left hover:underline hover:text-blue-600 transition-colors"
+      >
+        {entry.email}
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
+        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+        title="Compose in Gmail"
+      >
+        <Send className="h-3 w-3 text-blue-500 hover:text-blue-600" />
+      </button>
       <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
       </button>
@@ -544,7 +557,7 @@ export default function UnderwritingExpandedView() {
     const { data: urlData } = supabase.storage.from('lead-files').getPublicUrl(filePath);
     const fileUrl = urlData?.publicUrl || filePath;
 
-    const { error: dbError } = await supabase.from('lead_files' as any).insert({
+    const { error: dbError } = await supabase.from('lead_files').insert({
       lead_id: leadId,
       file_name: file.name,
       file_url: fileUrl,
@@ -571,7 +584,7 @@ export default function UnderwritingExpandedView() {
       await supabase.storage.from('lead-files').remove([storagePath]);
     }
 
-    const { error } = await supabase.from('lead_files' as any).delete().eq('id', file.id);
+    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
     if (error) {
       toast.error('Failed to delete file');
       return;
@@ -675,7 +688,7 @@ export default function UnderwritingExpandedView() {
     queryKey: ['lead-files', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_files' as any)
+        .from('lead_files')
         .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false });
@@ -843,31 +856,10 @@ export default function UnderwritingExpandedView() {
   return (
     <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
       {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border px-6 py-4 bg-gradient-to-r from-muted/50 to-blue-50/20 dark:to-blue-950/20">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
-            <X className="h-4 w-4" />
-          </Button>
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md">
-            {initial}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold text-foreground truncate">{lead.name}</h1>
-            {lead.company_name && (
-              <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                <Building2 className="h-3 w-3 text-muted-foreground" />
-                {lead.company_name}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800">
-              <DollarSign className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
-              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Opportunity</span>
-            </div>
-            <span className="text-sm font-bold text-blue-600 dark:text-blue-400 tabular-nums">{formatValue(dealValue)}</span>
-          </div>
-        </div>
+      <div className="shrink-0 border-b border-border px-4 py-2 flex items-center">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
+          <X className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* ── 3-Column Body ── */}
@@ -877,19 +869,27 @@ export default function UnderwritingExpandedView() {
         <ScrollArea className="w-[400px] shrink-0 border-r border-border bg-card">
           <div className="px-6 py-6 space-y-6">
 
-            {/* Primary Contact */}
+            {/* Primary Contact + Value */}
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Primary Contact</span>
-              <div className="rounded-xl border border-border p-5 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {initial}
+              <div className="rounded-2xl bg-gradient-to-b from-card to-muted/20 dark:to-muted/10 border border-border/60 shadow-sm p-5">
+                <div className="flex items-start gap-3.5">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md shadow-blue-500/20 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-white">{initial}</span>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-foreground truncate">{lead.name}</p>
-                    {lead.title && <p className="text-xs text-muted-foreground truncate">{lead.title}</p>}
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-base font-bold tracking-tight text-foreground truncate">{lead.name}</p>
+                    {lead.company_name && (
+                      <p className="text-[13px] text-muted-foreground truncate">{lead.company_name}</p>
+                    )}
+                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{formatValue(dealValue)}</p>
+                    <div className="flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/60 w-fit">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Opportunity</span>
+                    </div>
                   </div>
                 </div>
+                <Separator className="!my-4 opacity-50" />
                 <div className="space-y-1">
                   {lead.phone ? (
                     <button
@@ -903,7 +903,18 @@ export default function UnderwritingExpandedView() {
                   ) : (
                     <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value="" field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
                   )}
-                  <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={lead.email ?? ''} field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} />
+                  {lead.email ? (
+                    <button
+                      onClick={() => navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(lead.email!)}`)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group cursor-pointer w-full"
+                    >
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground group-hover:text-blue-600 shrink-0" />
+                      <span className="text-[13px] text-foreground font-medium truncate flex-1 text-left">{lead.email}</span>
+                      <Send className="h-3.5 w-3.5 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </button>
+                  ) : (
+                    <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value="" field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} />
+                  )}
                 </div>
               </div>
             </div>
@@ -945,14 +956,6 @@ export default function UnderwritingExpandedView() {
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Tags</span>
               <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
-            </div>
-
-            {/* Value */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Value</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
-                <EditableField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={dealValueStr} field="deal_value" leadId={lead.id} onSaved={handleFieldSaved} highlight transform={(v) => { const n = parseFloat(v.replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n; }} />
-              </div>
             </div>
 
             {/* Description */}
@@ -1194,38 +1197,28 @@ export default function UnderwritingExpandedView() {
             />
           </div>
           {/* Tabs */}
-          <div className="shrink-0 flex items-center gap-0 border-b border-border px-6 bg-card">
+          <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border px-6 py-2.5 bg-card">
             <button
-              className={`px-4 py-3 text-xs font-semibold transition-colors relative ${
+              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
                 activityTab === 'log'
-                  ? 'text-blue-700 dark:text-blue-400'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
               }`}
               onClick={() => setActivityTab('log')}
             >
-              <span className="inline-flex items-center gap-1.5">
-                <MessageSquare className="h-3.5 w-3.5" />
-                Log Activity
-              </span>
-              {activityTab === 'log' && (
-                <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-blue-600" />
-              )}
+              <MessageSquare className="h-3.5 w-3.5" />
+              Log Activity
             </button>
             <button
-              className={`px-4 py-3 text-xs font-semibold transition-colors relative ${
+              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
                 activityTab === 'note'
-                  ? 'text-blue-700 dark:text-blue-400'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
               }`}
               onClick={() => setActivityTab('note')}
             >
-              <span className="inline-flex items-center gap-1.5">
-                <Pencil className="h-3.5 w-3.5" />
-                Create Note
-              </span>
-              {activityTab === 'note' && (
-                <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-blue-600" />
-              )}
+              <Pencil className="h-3.5 w-3.5" />
+              Create Note
             </button>
           </div>
 
