@@ -1,57 +1,63 @@
 
 
-## Plan: Fix File Upload in Underwriting Deal Cards
+## Plan: Fix 400 Error on File Upload in Underwriting Related Tab
 
-### Root Cause
-Two issues are preventing file uploads:
+### Investigation Summary
+Everything on the backend appears correctly configured:
+- The `lead-files` storage bucket exists and is private
+- All four storage policies (INSERT, SELECT, UPDATE, DELETE) are present and PERMISSIVE for admin role
+- The logged-in user has the `admin` role confirmed via `has_role()` function
+- The `lead_files` table schema is correct
 
-1. **Missing UPDATE storage policy**: The `storage.objects` table has INSERT, SELECT, DELETE policies for `lead-files` but no UPDATE policy. Some Supabase storage upload flows require UPDATE permissions.
-
-2. **Wrong `file_url` stored in expanded view**: `UnderwritingExpandedView.tsx` stores the full public URL instead of the storage path. Since the bucket is private, this breaks downloads/previews. The `LeadFilesSection.tsx` already does it correctly.
+### Root Cause (Most Likely)
+The 400 error from Supabase storage upload is likely caused by one of:
+1. **Missing `upsert` option** -- if a file with the same path somehow exists (e.g., from a previous partial upload), the upload silently fails with 400 instead of overwriting
+2. **Content-type detection issues** -- the `contentType: file.type` option may send an empty or invalid MIME type for certain files
+3. **No error logging** -- the current code catches `uploadError` but only shows a generic toast, hiding the actual error message
 
 ### Changes
 
-**1. Database migration -- add missing UPDATE policy and recreate policies as explicitly PERMISSIVE**
+**1. Fix `UnderwritingExpandedView.tsx` upload handler (lines 546-554)**
 
-Drop and recreate all four `lead-files` storage policies to ensure they are PERMISSIVE (the default, but safeguarding), and add the missing UPDATE policy:
+Add three fixes:
+- Add `upsert: true` to the storage upload options to prevent 400 on path conflicts
+- Fallback `contentType` to `application/octet-stream` if `file.type` is empty
+- Log the actual error object via `console.error` so we can diagnose if the issue persists
 
-```sql
--- Drop existing
-DROP POLICY IF EXISTS "Admins can upload lead files" ON storage.objects;
-DROP POLICY IF EXISTS "Admins can read lead files" ON storage.objects;
-DROP POLICY IF EXISTS "Admins can delete lead files" ON storage.objects;
-
--- Recreate as PERMISSIVE with UPDATE added
-CREATE POLICY "Admins can upload lead files" ON storage.objects
-  FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'lead-files' AND public.has_role(auth.uid(), 'admin'::public.app_role));
-
-CREATE POLICY "Admins can read lead files" ON storage.objects
-  FOR SELECT TO authenticated
-  USING (bucket_id = 'lead-files' AND public.has_role(auth.uid(), 'admin'::public.app_role));
-
-CREATE POLICY "Admins can update lead files" ON storage.objects
-  FOR UPDATE TO authenticated
-  USING (bucket_id = 'lead-files' AND public.has_role(auth.uid(), 'admin'::public.app_role));
-
-CREATE POLICY "Admins can delete lead files" ON storage.objects
-  FOR DELETE TO authenticated
-  USING (bucket_id = 'lead-files' AND public.has_role(auth.uid(), 'admin'::public.app_role));
-```
-
-**2. Fix `UnderwritingExpandedView.tsx` -- store path, not public URL**
-
-In `handleFileUpload` (around line 557-558), change:
 ```ts
-// Before (broken):
-const { data: urlData } = supabase.storage.from('lead-files').getPublicUrl(filePath);
-const fileUrl = urlData?.publicUrl || filePath;
+// Before:
+const { error: uploadError } = await supabase.storage
+  .from('lead-files')
+  .upload(filePath, file, { contentType: file.type });
 
-// After (correct -- store just the path for signed URL access):
-const fileUrl = filePath;
+if (uploadError) {
+  setUploadingFile(false);
+  toast.error('Failed to upload file');
+  return;
+}
+
+// After:
+const { error: uploadError } = await supabase.storage
+  .from('lead-files')
+  .upload(filePath, file, {
+    contentType: file.type || 'application/octet-stream',
+    upsert: true,
+  });
+
+if (uploadError) {
+  console.error('Storage upload error:', uploadError);
+  setUploadingFile(false);
+  toast.error('Failed to upload file');
+  return;
+}
 ```
 
-Remove the unused `getPublicUrl` call. The download handler (`handleDeleteFile`) also needs fixing -- it currently tries to parse a public URL to extract the path (line 580-581). Since we'll now store the path directly, simplify to use `file.file_url` as the storage path.
+**2. Apply same fix to `LeadFilesSection.tsx` upload handler (lines 90-95)**
 
-Also fix the download link in the template (line 1525-1529) to use signed URLs instead of the raw `file_url` which won't work for a private bucket.
+Same three improvements: `upsert: true`, content-type fallback, and error logging. This component is used in the `LeadDetailDialog` and could have the same problem.
+
+### Why This Should Work
+- `upsert: true` is the most common fix for Supabase storage 400 errors -- it tells the server to overwrite if a path conflict exists rather than failing
+- The content-type fallback prevents sending an empty MIME type which some Supabase versions reject
+- Console logging will give us exact error details if the issue persists after these fixes
 
