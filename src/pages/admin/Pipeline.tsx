@@ -9,7 +9,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import EvanLayout from '@/components/evan/EvanLayout';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import { KanbanColumn } from '@/components/admin/KanbanColumn';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ArrowUpDown,
   Search,
@@ -159,6 +161,7 @@ const Pipeline = () => {
   const [sortField, setSortField] = useState<SortField>('last_activity_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
 
   // Toolbar state
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
@@ -386,6 +389,23 @@ const Pipeline = () => {
     setDetailDialogLead(lead);
   }
 
+  // Selection helpers
+  const toggleLeadSelection = (leadId: string) => {
+    setSelectedLeadIds(prev => {
+      const next = new Set(prev);
+      if (next.has(leadId)) next.delete(leadId);
+      else next.add(leadId);
+      return next;
+    });
+  };
+
+  const isAllSelected = useMemo(() => {
+    return filteredAndSorted.length > 0 && filteredAndSorted.every(l => selectedLeadIds.has(l.id));
+  }, [filteredAndSorted, selectedLeadIds]);
+
+  const selectAll = () => setSelectedLeadIds(new Set(filteredAndSorted.map(l => l.id)));
+  const clearSelection = () => setSelectedLeadIds(new Set());
+
   // Column header helper
   const ColHeader = ({
     colKey,
@@ -437,39 +457,37 @@ const Pipeline = () => {
           </div>
 
           {/* Table | Kanban | Sort toggle */}
-          <div className="flex items-center h-7 rounded-md border border-border overflow-hidden shrink-0">
+          <div className="flex items-center h-7 gap-0.5 shrink-0">
             <button
               onClick={() => setViewMode('table')}
               title="Table view"
-              className={`flex items-center justify-center h-full px-2 transition-all ${
+              className={`flex items-center justify-center h-full px-2 rounded-md transition-all ${
                 viewMode === 'table'
-                  ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
-                  : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'text-blue-700 dark:text-blue-400'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Table2 className="h-3.5 w-3.5" />
             </button>
-            <div className="w-px h-4 bg-border" />
             <button
               onClick={() => setViewMode('kanban')}
               title="Kanban view"
-              className={`flex items-center justify-center h-full px-2 transition-all ${
+              className={`flex items-center justify-center h-full px-2 rounded-md transition-all ${
                 viewMode === 'kanban'
-                  ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
-                  : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'text-blue-700 dark:text-blue-400'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
             </button>
-            <div className="w-px h-4 bg-border" />
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   title="Sort"
-                  className={`flex items-center justify-center h-full px-2 transition-all ${
+                  className={`flex items-center justify-center h-full px-2 rounded-md transition-all ${
                     isNonDefaultSort
-                      ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
-                      : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'text-blue-700 dark:text-blue-400'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <ArrowUpDown className="h-3.5 w-3.5" />
@@ -597,7 +615,18 @@ const Pipeline = () => {
                           }`}
                         >
                           {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{tm.name}</span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="h-5 w-5 rounded-full overflow-hidden shrink-0">
+                              {tm.avatar_url ? (
+                                <img src={tm.avatar_url} alt={tm.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className={`h-full w-full ${getAvatarColor(tm.name)} flex items-center justify-center text-white text-[8px] font-bold`}>
+                                  {tm.name[0]?.toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{tm.name}</span>
+                          </div>
                           {count > 0 && (
                             <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
                               {count}
@@ -787,13 +816,32 @@ const Pipeline = () => {
               </div>
             </div>
 
+            {/* Bulk Selection Toolbar */}
+            {selectedLeadIds.size > 0 && (
+              <div className="mb-3">
+                <PipelineBulkToolbar
+                  selectedCount={selectedLeadIds.size}
+                  totalCount={filteredAndSorted.length}
+                  onClearSelection={clearSelection}
+                  onEdit={() => {/* TODO */}}
+                  onExport={() => {/* TODO */}}
+                />
+              </div>
+            )}
+
             {/* Content Area: Table or Kanban */}
             {viewMode === 'table' ? (
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                   <thead className="border-b border-border">
                     <tr>
-                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted" />
+                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                          className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                        />
+                      </th>
                       <ColHeader className="sticky top-0 z-30 bg-gray-100 dark:bg-muted border-r border-border/50" style={{ left: 40 }}>
                         Deal
                       </ColHeader>
@@ -874,9 +922,10 @@ const Pipeline = () => {
                         const isStale = inactiveDays !== null && inactiveDays > 7;
                         const isLingering = daysInStage !== null && daysInStage > 14;
                         const tp = touchpoints[lead.id];
-                        const isSelected = detailDialogLead?.id === lead.id;
+                        const isDetailOpen = detailDialogLead?.id === lead.id;
+                        const isSelected = selectedLeadIds.has(lead.id);
 
-                        const stickyBg = isSelected
+                        const stickyBg = isDetailOpen || isSelected
                           ? 'bg-blue-50 dark:bg-blue-950 group-hover:bg-blue-100 dark:group-hover:bg-blue-900'
                           : 'bg-white dark:bg-card group-hover:bg-gray-50 dark:group-hover:bg-muted';
 
@@ -885,7 +934,7 @@ const Pipeline = () => {
                             key={lead.id}
                             onClick={() => handleRowClick(lead)}
                             className={`cursor-pointer transition-colors duration-100 group border-b border-border/60 last:border-b-0 ${
-                              isSelected
+                              isDetailOpen || isSelected
                                 ? 'bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-50/80 dark:hover:bg-blue-950/40'
                                 : rowIdx % 2 === 0
                                   ? 'bg-card hover:bg-muted/50'
@@ -894,18 +943,32 @@ const Pipeline = () => {
                           >
                             {/* Checkbox */}
                             <td className={`px-4 py-3 w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}>
-                              <div className={`h-4 w-4 rounded border-2 transition-colors ${
-                                isSelected ? 'border-blue-500 bg-blue-500' : 'border-border bg-card group-hover:border-muted-foreground/50'
-                              } flex items-center justify-center`}>
-                                {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                              </div>
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleLeadSelection(lead.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                              />
                             </td>
 
                             {/* Deal (sticky) */}
                             <td className={`px-4 py-3 overflow-hidden sticky z-[5] border-r border-border/50 transition-colors ${stickyBg}`} style={{ width: columnWidths.deal, left: 40 }}>
                               <div className="flex items-center gap-2.5">
-                                <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
-                                  {initial}
+                                <div className="relative shrink-0">
+                                  <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shadow-sm`}>
+                                    {initial}
+                                  </div>
+                                  {assignedName && (
+                                    <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full ring-2 ring-white dark:ring-card overflow-hidden">
+                                      {assignedAvatar ? (
+                                        <img src={assignedAvatar} alt={assignedName} className="h-full w-full object-cover" />
+                                      ) : (
+                                        <div className={`h-full w-full ${assignedColor} flex items-center justify-center text-white text-[7px] font-bold`}>
+                                          {assignedInitial}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5">
@@ -1086,6 +1149,8 @@ const Pipeline = () => {
                           title={config.title}
                           color={config.color}
                           touchpoints={touchpoints}
+                          teamMemberMap={teamMemberMap}
+                          teamAvatarMap={teamAvatarMap}
                           onLeadClick={(lead) => setDetailDialogLead(lead)}
                         />
                       );

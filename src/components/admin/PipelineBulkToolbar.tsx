@@ -6,28 +6,28 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowRight, MoreHorizontal, Trash2, X, Tag, User, ChevronDown, Layers } from 'lucide-react';
+import { MoreHorizontal, Pencil, ExternalLink, Trash2, Layers, Tag, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface TeamMember {
-  id: string;
-  name: string;
-}
 
 interface PipelineBulkToolbarProps {
   selectedCount: number;
+  totalCount: number;
   onClearSelection: () => void;
-  onMoveBoxes: () => void;
+  onEdit?: () => void;
+  onExport?: () => void;
+  onMoveBoxes?: () => void;
   onDeleteBoxes?: () => void;
   onAssignOwner?: (ownerId: string) => void;
-  teamMembers?: TeamMember[];
+  teamMembers?: { id: string; name: string }[];
   className?: string;
 }
 
 const PipelineBulkToolbar = ({
   selectedCount,
+  totalCount,
   onClearSelection,
+  onEdit,
+  onExport,
   onMoveBoxes,
   onDeleteBoxes,
   onAssignOwner,
@@ -39,53 +39,67 @@ const PipelineBulkToolbar = ({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 px-4 py-2 bg-slate-800 dark:bg-slate-900 text-white rounded-lg shadow-lg border border-slate-700",
+        "flex items-center gap-3 px-4 py-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700",
         className
       )}
     >
-      {/* Left side - selection info */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClearSelection}
-          className="h-7 w-7 p-0 text-white/70 hover:text-white hover:bg-white/10"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-        <span className="text-sm font-medium whitespace-nowrap">
-          {selectedCount} {selectedCount === 1 ? 'box' : 'boxes'} selected
-        </span>
-      </div>
+      {/* Count badge */}
+      <span className="inline-flex items-center px-3 py-1 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-sm font-semibold whitespace-nowrap">
+        {selectedCount} out of {totalCount.toLocaleString()}
+      </span>
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-2">
-        {/* Move to Stage/Pipeline */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onMoveBoxes}
-          className="text-white hover:bg-white/10 gap-1.5 h-8"
-        >
-          <Layers className="h-4 w-4" />
-          <span className="hidden sm:inline">Move</span>
-        </Button>
+      <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">selected</span>
 
-        {/* Assign Owner */}
-        {onAssignOwner && teamMembers.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/10 gap-1.5 h-8"
-              >
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">Assign</span>
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 bg-white dark:bg-slate-800 z-50">
+      {/* Separator */}
+      <div className="w-px h-5 bg-slate-200 dark:bg-slate-600" />
+
+      {/* Edit */}
+      {onEdit && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onEdit}
+          className="gap-1.5 h-8 rounded-full border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          Edit
+        </Button>
+      )}
+
+      {/* Export */}
+      {onExport && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onExport}
+          className="gap-1.5 h-8 rounded-full border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Export
+        </Button>
+      )}
+
+      {/* More Actions */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0 rounded-full border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48 z-50">
+          {onMoveBoxes && (
+            <DropdownMenuItem onClick={onMoveBoxes} className="cursor-pointer">
+              <Layers className="h-4 w-4 mr-2" />
+              Move boxes
+            </DropdownMenuItem>
+          )}
+          {onAssignOwner && teamMembers.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
               <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase">Assign to</div>
               {teamMembers.map((member) => (
                 <DropdownMenuItem
@@ -93,61 +107,34 @@ const PipelineBulkToolbar = ({
                   onClick={() => onAssignOwner(member.id)}
                   className="cursor-pointer"
                 >
+                  <User className="h-4 w-4 mr-2" />
                   {member.name}
                 </DropdownMenuItem>
               ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
-        {/* Delete */}
-        {onDeleteBoxes && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDeleteBoxes}
-            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 gap-1.5 h-8"
-          >
-            <Trash2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Delete</span>
-          </Button>
-        )}
-
-        {/* More Actions */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-white hover:bg-white/10"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-800 z-50">
-            <DropdownMenuItem onClick={onMoveBoxes} className="cursor-pointer">
-              <Layers className="h-4 w-4 mr-2" />
-              Move boxes
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" disabled>
-              <Tag className="h-4 w-4 mr-2" />
-              Add tags
-            </DropdownMenuItem>
-            {onDeleteBoxes && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={onDeleteBoxes}
-                  className="cursor-pointer text-red-600 focus:text-red-600"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete boxes
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+            </>
+          )}
+          <DropdownMenuItem className="cursor-pointer" disabled>
+            <Tag className="h-4 w-4 mr-2" />
+            Add tags
+          </DropdownMenuItem>
+          {onDeleteBoxes && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onDeleteBoxes}
+                className="cursor-pointer text-red-600 focus:text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete boxes
+              </DropdownMenuItem>
+            </>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onClearSelection} className="cursor-pointer">
+            Clear selection
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 };

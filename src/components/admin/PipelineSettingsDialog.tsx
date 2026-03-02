@@ -39,7 +39,7 @@ const PipelineSettingsPopover = ({ open, onOpenChange }: PipelineSettingsPopover
       <PopoverTrigger asChild>
         <button
           title="Pipeline settings"
-          className="flex items-center justify-center h-full px-2 bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
+          className="flex items-center justify-center h-full px-2 rounded-md text-muted-foreground hover:text-foreground transition-all"
         >
           <Settings2 className="h-3.5 w-3.5" />
         </button>

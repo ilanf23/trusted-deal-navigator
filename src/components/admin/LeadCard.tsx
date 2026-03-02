@@ -1,5 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Building2, Mail, Phone, Calendar, CheckCircle2, Clock, PhoneIncoming, PhoneOutgoing, MessageSquare, Maximize2 } from 'lucide-react';
@@ -18,6 +19,8 @@ interface Touchpoint {
 interface LeadCardProps {
   lead: Lead;
   touchpoint?: Touchpoint;
+  teamMemberMap?: Record<string, string>;
+  teamAvatarMap?: Record<string, string>;
   onClick?: () => void;
 }
 
@@ -70,7 +73,21 @@ const formatPhoneNumber = (phone: string | null | undefined): string => {
   return phone;
 };
 
-export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
+const AVATAR_COLORS = [
+  'bg-blue-600', 'bg-emerald-600', 'bg-violet-600', 'bg-rose-600',
+  'bg-amber-600', 'bg-cyan-600', 'bg-pink-600', 'bg-indigo-600',
+];
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+export const LeadCard = ({ lead, touchpoint, teamMemberMap, teamAvatarMap, onClick }: LeadCardProps) => {
+  const navigate = useNavigate();
   const {
     attributes,
     listeners,
@@ -133,13 +150,36 @@ export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {questionnaireCompleted 
+                  {questionnaireCompleted
                     ? `Questionnaire completed ${new Date(lead.questionnaire_completed_at!).toLocaleDateString()}`
                     : `Questionnaire sent ${new Date(lead.questionnaire_sent_at!).toLocaleDateString()}`
                   }
                 </TooltipContent>
               </Tooltip>
             )}
+            {/* Owner Avatar */}
+            {lead.assigned_to && teamMemberMap && (() => {
+              const ownerName = teamMemberMap[lead.assigned_to!];
+              const ownerAvatar = teamAvatarMap?.[lead.assigned_to!];
+              if (!ownerName) return null;
+              const ownerInitial = ownerName[0]?.toUpperCase();
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="h-5 w-5 rounded-full overflow-hidden shrink-0 shadow-sm">
+                      {ownerAvatar ? (
+                        <img src={ownerAvatar} alt={ownerName} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className={`h-full w-full ${getAvatarColor(ownerName)} flex items-center justify-center text-white text-[8px] font-bold`}>
+                          {ownerInitial}
+                        </div>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{ownerName}</TooltipContent>
+                </Tooltip>
+              );
+            })()}
           </div>
         </div>
         
@@ -151,14 +191,20 @@ export const LeadCard = ({ lead, touchpoint, onClick }: LeadCardProps) => {
         )}
 
         {lead.phone && (
-          <a
-            href={`tel:${lead.phone.replace(/\D/g, '')}`}
-            onClick={(e) => e.stopPropagation()}
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              const params = new URLSearchParams({ phone: lead.phone! });
+              if (lead.id) params.set('leadId', lead.id);
+              navigate(`/admin/calls?${params.toString()}`);
+            }}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-blue-600 transition-colors"
           >
             <Phone className="w-3 h-3" />
             <span className="truncate">{formatPhoneNumber(lead.phone)}</span>
-          </a>
+          </button>
         )}
 
         {/* Last Touchpoint Indicator */}

@@ -18,10 +18,12 @@ interface KanbanColumnProps {
   title: string;
   color: string;
   touchpoints?: Record<string, Touchpoint>;
+  teamMemberMap?: Record<string, string>;
+  teamAvatarMap?: Record<string, string>;
   onLeadClick?: (lead: Lead) => void;
 }
 
-export const KanbanColumn = ({ status, leads, title, color, touchpoints = {}, onLeadClick }: KanbanColumnProps) => {
+export const KanbanColumn = ({ status, leads, title, color, touchpoints = {}, teamMemberMap, teamAvatarMap, onLeadClick }: KanbanColumnProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
@@ -43,10 +45,12 @@ export const KanbanColumn = ({ status, leads, title, color, touchpoints = {}, on
       <ScrollArea className="flex-1 p-3">
         <div className="space-y-3 min-h-[100px]">
           {leads.map((lead) => (
-            <LeadCard 
-              key={lead.id} 
-              lead={lead} 
+            <LeadCard
+              key={lead.id}
+              lead={lead}
               touchpoint={touchpoints[lead.id]}
+              teamMemberMap={teamMemberMap}
+              teamAvatarMap={teamAvatarMap}
               onClick={() => onLeadClick?.(lead)}
             />
           ))}

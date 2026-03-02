@@ -1436,7 +1436,10 @@ const EmployeePipeline = () => {
           <div className="mb-4">
             <PipelineBulkToolbar
               selectedCount={selectedLeadIds.size}
+              totalCount={filteredLeads.length}
               onClearSelection={clearSelection}
+              onEdit={() => {/* TODO: bulk edit */}}
+              onExport={() => {/* TODO: export */}}
               onMoveBoxes={() => setMoveBoxesOpen(true)}
               onDeleteBoxes={() => setDeleteConfirmOpen(true)}
               onAssignOwner={handleBulkAssignOwner}
