@@ -605,12 +605,13 @@ export default function UnderwritingExpandedView() {
   const { data: leadFiles = [] } = useQuery({
     queryKey: ['lead-files', leadId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('lead_files' as any)
         .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false });
-      return (data ?? []) as LeadFile[];
+      if (error) throw error;
+      return (data ?? []) as unknown as LeadFile[];
     },
     enabled: !!leadId,
   });
@@ -618,14 +619,18 @@ export default function UnderwritingExpandedView() {
   const { data: activities = [] } = useQuery({
     queryKey: ['lead-activities', leadId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('lead_activities')
         .select('*')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false });
+      if (error) throw error;
       return data ?? [];
     },
     enabled: !!leadId,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000,
   });
 
   // ── Satellite table queries ──

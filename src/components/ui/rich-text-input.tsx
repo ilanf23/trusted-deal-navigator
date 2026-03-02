@@ -71,12 +71,6 @@ const RichTextEditor = ({
     onChange(html);
   }, [onChange]);
 
-  const exec = useCallback((command: string, val?: string) => {
-    restoreSelection();
-    editorRef.current?.focus();
-    document.execCommand(command, false, val);
-    emitChange();
-  }, [emitChange, restoreSelection]);
 
   const handleInput = useCallback(() => {
     emitChange();
@@ -107,6 +101,13 @@ const RichTextEditor = ({
       sel?.addRange(savedSelection.current);
     }
   }, []);
+
+  const exec = useCallback((command: string, val?: string) => {
+    restoreSelection();
+    editorRef.current?.focus();
+    document.execCommand(command, false, val);
+    emitChange();
+  }, [emitChange, restoreSelection]);
 
   const handleInsertLink = useCallback(() => {
     if (!linkUrl.trim()) return;

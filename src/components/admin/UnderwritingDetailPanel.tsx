@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   X, DollarSign, Maximize2, Building2, User, Mail, Phone,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase, Hash,
@@ -486,25 +486,33 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
   const { data: communications = [], isLoading: loadingComms } = useQuery({
     queryKey: ['lead-activity-timeline', 'communications', lead.id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('evan_communications')
         .select('id, communication_type, direction, content, duration_seconds, created_at')
         .eq('lead_id', lead.id)
         .order('created_at', { ascending: false });
+      if (error) throw error;
       return data || [];
     },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000,
   });
 
   const { data: activities = [], isLoading: loadingActivities } = useQuery({
     queryKey: ['lead-activity-timeline', 'activities', lead.id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('lead_activities')
         .select('id, activity_type, title, content, created_at')
         .eq('lead_id', lead.id)
         .order('created_at', { ascending: false });
+      if (error) throw error;
       return data || [];
     },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000,
   });
 
   const isLoading = loadingComms || loadingActivities;
