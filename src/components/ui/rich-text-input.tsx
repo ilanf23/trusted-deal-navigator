@@ -71,8 +71,6 @@ const RichTextEditor = ({
     onChange(html);
   }, [onChange]);
 
-<<<<<<< HEAD
-=======
   const saveSelection = useCallback(() => {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
@@ -95,7 +93,6 @@ const RichTextEditor = ({
     saveSelection();
     emitChange();
   }, [emitChange, restoreSelection, saveSelection]);
->>>>>>> d560fe7 (Add phone number formatting utility and update contact display in admin components)
 
   const handleInput = useCallback(() => {
     emitChange();
@@ -112,31 +109,8 @@ const RichTextEditor = ({
     emitChange();
   }, [emitChange]);
 
-<<<<<<< HEAD
-  const saveSelection = useCallback(() => {
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      savedSelection.current = sel.getRangeAt(0).cloneRange();
-    }
-  }, []);
 
-  const restoreSelection = useCallback(() => {
-    if (savedSelection.current) {
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(savedSelection.current);
-    }
-  }, []);
 
-  const exec = useCallback((command: string, val?: string) => {
-    restoreSelection();
-    editorRef.current?.focus();
-    document.execCommand(command, false, val);
-    emitChange();
-  }, [emitChange, restoreSelection]);
-
-=======
->>>>>>> d560fe7 (Add phone number formatting utility and update contact display in admin components)
   const handleInsertLink = useCallback(() => {
     if (!linkUrl.trim()) return;
     restoreSelection();
