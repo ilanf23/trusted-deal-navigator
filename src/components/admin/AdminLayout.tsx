@@ -25,7 +25,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full admin-portal bg-background overflow-x-hidden">
+      <div className="min-h-screen flex w-full admin-portal bg-background overflow-hidden">
         <AdminSidebar 
           onInboxToggle={() => setInboxOpen(!inboxOpen)} 
           inboxOpen={inboxOpen}
@@ -33,7 +33,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
           aiChatOpen={aiChatOpen}
         />
 
-        <main className="flex-1 flex flex-col min-h-screen w-full overflow-x-hidden">
+        <main className="flex-1 flex flex-col min-h-screen w-full overflow-x-auto">
           {/* Top Bar - responsive padding and layout */}
           <header className="h-14 md:h-16 flex items-center justify-between border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8">
             <div className="flex items-center gap-2 md:gap-5">
@@ -92,7 +92,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
           </header>
           
           {/* Main Content Area - responsive padding */}
-          <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-hidden">
+          <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-auto">
             <div className="max-w-[1800px] mx-auto">
               {children}
             </div>

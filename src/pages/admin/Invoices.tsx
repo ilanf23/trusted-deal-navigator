@@ -261,13 +261,13 @@ const AdminInvoices = () => {
                 No invoices found. Create your first invoice to get started.
               </div>
             ) : (
-              <Table>
+              <Table className="min-w-[700px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Invoice #</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Due Date</TableHead>
+                    <TableHead className="hidden md:table-cell">Due Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -278,7 +278,7 @@ const AdminInvoices = () => {
                       <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                       <TableCell>{getClientEmail(invoice.client_id)}</TableCell>
                       <TableCell>${Number(invoice.amount).toFixed(2)}</TableCell>
-                      <TableCell>{new Date(invoice.due_date).toLocaleDateString()}</TableCell>
+                      <TableCell className="hidden md:table-cell">{new Date(invoice.due_date).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Badge className={statusColors[invoice.status]}>
                           {invoice.status}

@@ -81,13 +81,13 @@ const AdminClients = () => {
                 No clients found. Clients will appear here once they sign up.
               </div>
             ) : (
-              <Table>
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Company</TableHead>
-                    <TableHead>Contact Person</TableHead>
-                    <TableHead>Phone</TableHead>
+                    <TableHead className="hidden md:table-cell">Contact Person</TableHead>
+                    <TableHead className="hidden md:table-cell">Phone</TableHead>
                     <TableHead>Joined</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -96,8 +96,8 @@ const AdminClients = () => {
                     <TableRow key={client.id}>
                       <TableCell className="font-medium">{client.email || '-'}</TableCell>
                       <TableCell>{client.company_name || '-'}</TableCell>
-                      <TableCell>{client.contact_person || '-'}</TableCell>
-                      <TableCell>{client.phone || '-'}</TableCell>
+                      <TableCell className="hidden md:table-cell">{client.contact_person || '-'}</TableCell>
+                      <TableCell className="hidden md:table-cell">{client.phone || '-'}</TableCell>
                       <TableCell>
                         {new Date(client.created_at).toLocaleDateString()}
                       </TableCell>

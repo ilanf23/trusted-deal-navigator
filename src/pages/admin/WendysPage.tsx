@@ -137,11 +137,11 @@ const WendysPage = () => {
               {clientFollowUps.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">No active follow-ups.</p>
               ) : (
-                <Table>
+                <Table className="min-w-[600px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Client</TableHead>
-                      <TableHead>Last Contact</TableHead>
+                      <TableHead className="hidden md:table-cell">Last Contact</TableHead>
                       <TableHead>Next Action</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Stage</TableHead>
@@ -151,7 +151,7 @@ const WendysPage = () => {
                     {clientFollowUps.map((item, index) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">{item.client}</TableCell>
-                        <TableCell>{item.lastContact}</TableCell>
+                        <TableCell className="hidden md:table-cell">{item.lastContact}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{item.nextAction}</TableCell>
                         <TableCell>
                           <Badge className={getPriorityColor(item.priority)}>{item.priority}</Badge>

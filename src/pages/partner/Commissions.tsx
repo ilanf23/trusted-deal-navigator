@@ -73,7 +73,7 @@ const PartnerCommissions = () => {
             {commissions.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No commissions yet.</p>
             ) : (
-              <Table>
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Referral</TableHead>

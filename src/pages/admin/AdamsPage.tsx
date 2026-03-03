@@ -137,12 +137,12 @@ const AdamsPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Lender</TableHead>
                     <TableHead className="text-right">Programs</TableHead>
-                    <TableHead className="text-right">Rate Range</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">Rate Range</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -156,7 +156,7 @@ const AdamsPage = () => {
                       <TableRow key={index}>
                         <TableCell className="font-medium">{lender.lender}</TableCell>
                         <TableCell className="text-right">{lender.activeDeals}</TableCell>
-                        <TableCell className="text-right">{lender.avgRate}</TableCell>
+                        <TableCell className="text-right hidden md:table-cell">{lender.avgRate}</TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(lender.status)}>{lender.status}</Badge>
                         </TableCell>
@@ -177,7 +177,7 @@ const AdamsPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>

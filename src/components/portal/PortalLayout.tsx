@@ -10,11 +10,11 @@ const PortalLayout = ({ children }: PortalLayoutProps) => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <PortalSidebar />
-        <main className="flex-1 bg-muted/30">
-          <header className="h-14 flex items-center border-b border-border bg-card px-4">
+        <main className="flex-1 bg-muted/30 overflow-x-auto">
+          <header className="h-14 flex items-center border-b border-border bg-card px-3 md:px-4">
             <SidebarTrigger />
           </header>
-          <div className="p-6">
+          <div className="p-3 sm:p-4 md:p-6">
             {children}
           </div>
         </main>

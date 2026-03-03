@@ -37,14 +37,14 @@ const PortalContracts = () => {
         <Card>
           <CardContent className="pt-6">
             {loading ? <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 animate-spin" /></div> : contracts.length === 0 ? <div className="text-center py-8 text-muted-foreground">No contracts yet.</div> : (
-              <Table>
-                <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+              <Table className="min-w-[500px]">
+                <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Status</TableHead><TableHead className="hidden sm:table-cell">Created</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {contracts.map((contract) => (
                     <TableRow key={contract.id}>
                       <TableCell className="font-medium">{contract.title}</TableCell>
                       <TableCell><Badge className={statusColors[contract.status]}>{contract.status}</Badge></TableCell>
-                      <TableCell>{new Date(contract.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{new Date(contract.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Button size="sm" onClick={() => navigate(`/portal/contracts/${contract.id}`)}><Eye className="w-4 h-4 mr-1" />View</Button>
                       </TableCell>

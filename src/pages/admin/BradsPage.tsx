@@ -133,12 +133,12 @@ const BradsPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Client</TableHead>
                     <TableHead className="text-right">Loan Amount</TableHead>
-                    <TableHead className="text-right">Potential Fee</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">Potential Fee</TableHead>
                     <TableHead>Stage</TableHead>
                     <TableHead className="text-right">Probability</TableHead>
                   </TableRow>
@@ -153,7 +153,7 @@ const BradsPage = () => {
                       <TableRow key={index}>
                         <TableCell className="font-medium">{deal.client}</TableCell>
                         <TableCell className="text-right">{deal.loanAmount}</TableCell>
-                        <TableCell className="text-right font-medium text-admin-teal">{deal.fee}</TableCell>
+                        <TableCell className="text-right font-medium text-admin-teal hidden md:table-cell">{deal.fee}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{deal.stage}</Badge>
                         </TableCell>

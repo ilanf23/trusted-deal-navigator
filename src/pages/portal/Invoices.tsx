@@ -33,14 +33,14 @@ const PortalInvoices = () => {
         <Card>
           <CardContent className="pt-6">
             {loading ? <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 animate-spin" /></div> : invoices.length === 0 ? <div className="text-center py-8 text-muted-foreground">No invoices yet.</div> : (
-              <Table>
-                <TableHeader><TableRow><TableHead>Invoice #</TableHead><TableHead>Amount</TableHead><TableHead>Due Date</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+              <Table className="min-w-[450px]">
+                <TableHeader><TableRow><TableHead>Invoice #</TableHead><TableHead>Amount</TableHead><TableHead className="hidden sm:table-cell">Due Date</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {invoices.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                       <TableCell>${Number(invoice.amount).toFixed(2)}</TableCell>
-                      <TableCell>{new Date(invoice.due_date).toLocaleDateString()}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{new Date(invoice.due_date).toLocaleDateString()}</TableCell>
                       <TableCell><Badge className={statusColors[invoice.status]}>{invoice.status}</Badge></TableCell>
                     </TableRow>
                   ))}

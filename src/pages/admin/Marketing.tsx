@@ -162,13 +162,13 @@ const AdminMarketing = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Marketing Analytics</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">Marketing Analytics</h1>
             <p className="text-muted-foreground">Track lead sources, conversion rates, and trends</p>
           </div>
           <Select value={selectedSource} onValueChange={setSelectedSource}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Filter by source" />
             </SelectTrigger>
@@ -182,7 +182,7 @@ const AdminMarketing = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-5">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Leads</CardTitle>
@@ -311,12 +311,12 @@ const AdminMarketing = () => {
             <CardDescription>Click on a source to view all leads from that channel</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Source</TableHead>
                   <TableHead className="text-right">Total Leads</TableHead>
-                  <TableHead className="text-right">Converted</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Converted</TableHead>
                   <TableHead className="text-right">Conversion Rate</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -331,7 +331,7 @@ const AdminMarketing = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">{source.value}</TableCell>
-                    <TableCell className="text-right">{source.converted}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell">{source.converted}</TableCell>
                     <TableCell className="text-right">
                       <Badge variant={source.converted / source.value >= 0.15 ? "default" : "secondary"}>
                         {source.value > 0 ? Math.round((source.converted / source.value) * 100) : 0}%
@@ -380,14 +380,14 @@ const AdminMarketing = () => {
               <CardDescription>{filteredLeadsBySource.length} leads from this source</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Company</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead className="hidden md:table-cell">Email</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead className="hidden md:table-cell">Created</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -395,11 +395,11 @@ const AdminMarketing = () => {
                     <TableRow key={lead.id}>
                       <TableCell className="font-medium">{lead.name}</TableCell>
                       <TableCell>{lead.company_name || '-'}</TableCell>
-                      <TableCell>{lead.email || '-'}</TableCell>
+                      <TableCell className="hidden md:table-cell">{lead.email || '-'}</TableCell>
                       <TableCell>
                         <Badge className={statusColors[lead.status]}>{lead.status}</Badge>
                       </TableCell>
-                      <TableCell>{new Date(lead.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="hidden md:table-cell">{new Date(lead.created_at).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

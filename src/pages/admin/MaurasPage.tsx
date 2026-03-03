@@ -155,14 +155,14 @@ const MaurasPage = () => {
               {processingQueue.length === 0 ? (
                 <p className="text-muted-foreground text-sm text-center py-8">No items in the processing queue.</p>
               ) : (
-                <Table>
+                <Table className="min-w-[600px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Client</TableHead>
                       <TableHead>Document Type</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Priority</TableHead>
-                      <TableHead className="text-right">Days</TableHead>
+                      <TableHead className="text-right hidden md:table-cell">Days</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -178,7 +178,7 @@ const MaurasPage = () => {
                             {item.priority}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">{item.daysInQueue}</TableCell>
+                        <TableCell className="text-right hidden md:table-cell">{item.daysInQueue}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
