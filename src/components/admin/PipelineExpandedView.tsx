@@ -542,11 +542,14 @@ export default function PipelineExpandedView() {
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !leadId) return;
-    // Reset the input so the same file can be re-selected
     e.target.value = '';
 
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error('File must be under 10MB');
+    console.log('[FileUpload] Pipeline: starting upload', { name: file.name, size: file.size, type: file.type });
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      console.error('[FileUpload] Pipeline: no active session', sessionError);
+      toast.error('You must be logged in to upload files. Please refresh and sign in again.');
       return;
     }
 
@@ -554,44 +557,47 @@ export default function PipelineExpandedView() {
     const filePath = `${leadId}/${Date.now()}_${file.name}`;
     const { error: uploadError } = await supabase.storage
       .from('lead-files')
-      .upload(filePath, file, { contentType: file.type });
+      .upload(filePath, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: true,
+      });
 
     if (uploadError) {
+      console.error('[FileUpload] Pipeline: storage upload error', uploadError);
       setUploadingFile(false);
-      toast.error('Failed to upload file');
+      const reason = uploadError.message?.includes('security')
+        ? 'Permission denied — check your login session'
+        : uploadError.message || 'Storage error';
+      toast.error(`Upload failed for ${file.name}: ${reason}`);
       return;
     }
-
-    const { data: urlData } = supabase.storage.from('lead-files').getPublicUrl(filePath);
-    const fileUrl = urlData?.publicUrl || filePath;
 
     const { error: dbError } = await supabase.from('lead_files').insert({
       lead_id: leadId,
       file_name: file.name,
-      file_url: fileUrl,
+      file_url: filePath,
       file_type: file.type || null,
       file_size: file.size,
     });
 
     setUploadingFile(false);
     if (dbError) {
-      toast.error('File uploaded but failed to save record');
+      console.error('[FileUpload] Pipeline: DB insert error', dbError);
+      const reason = dbError.message?.includes('row-level security')
+        ? 'Permission denied — admin role required'
+        : dbError.message || 'Database error';
+      toast.error(`Failed to save ${file.name}: ${reason}`);
+      await supabase.storage.from('lead-files').remove([filePath]);
       return;
     }
+    console.log('[FileUpload] Pipeline: upload success', { filePath });
     toast.success('File uploaded');
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-files', leadId] });
   }, [leadId, queryClient]);
 
   // ── File delete ──
   const handleDeleteFile = useCallback(async (file: LeadFile) => {
-    // Extract storage path from URL
-    const urlParts = file.file_url.split('/lead-files/');
-    const storagePath = urlParts.length > 1 ? decodeURIComponent(urlParts[urlParts.length - 1].split('?')[0]) : null;
-
-    if (storagePath) {
-      await supabase.storage.from('lead-files').remove([storagePath]);
-    }
-
+    await supabase.storage.from('lead-files').remove([file.file_url]);
     const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
     if (error) {
       toast.error('Failed to delete file');
@@ -600,6 +606,24 @@ export default function PipelineExpandedView() {
     toast.success('File deleted');
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-files', leadId] });
   }, [leadId, queryClient]);
+
+  // ── File download (signed URL) ──
+  const handleDownloadFile = useCallback(async (file: LeadFile) => {
+    const { data, error } = await supabase.storage
+      .from('lead-files')
+      .createSignedUrl(file.file_url, 60);
+    if (error || !data?.signedUrl) {
+      toast.error('Failed to generate download link');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = data.signedUrl;
+    a.download = file.file_name;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, []);
 
   // ── Queries ──
   const { data: lead, isLoading } = useQuery({
@@ -1821,16 +1845,13 @@ export default function PipelineExpandedView() {
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <a
-                        href={f.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
                         className="p-1 rounded hover:bg-muted"
                         title="Download"
                       >
                         <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </a>
+                      </button>
                       <button
                         onClick={() => handleDeleteFile(f)}
                         className="p-1 rounded hover:bg-muted"

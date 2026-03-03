@@ -695,8 +695,13 @@ export default function UnderwritingExpandedView() {
     // Reset the input so the same file can be re-selected
     e.target.value = '';
 
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error('File must be under 10MB');
+    console.log('[FileUpload] Underwriting: starting upload', { name: file.name, size: file.size, type: file.type });
+
+    // Auth check
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      console.error('[FileUpload] Underwriting: no active session', sessionError);
+      toast.error('You must be logged in to upload files. Please refresh and sign in again.');
       return;
     }
 
@@ -710,9 +715,12 @@ export default function UnderwritingExpandedView() {
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+      console.error('[FileUpload] Underwriting: storage upload error', uploadError);
       setUploadingFile(false);
-      toast.error('Failed to upload file');
+      const reason = uploadError.message?.includes('security')
+        ? 'Permission denied — check your login session'
+        : uploadError.message || 'Storage error';
+      toast.error(`Upload failed for ${file.name}: ${reason}`);
       return;
     }
 
@@ -726,9 +734,16 @@ export default function UnderwritingExpandedView() {
 
     setUploadingFile(false);
     if (dbError) {
-      toast.error('File uploaded but failed to save record');
+      console.error('[FileUpload] Underwriting: DB insert error', dbError);
+      const reason = dbError.message?.includes('row-level security')
+        ? 'Permission denied — admin role required'
+        : dbError.message || 'Database error';
+      toast.error(`Failed to save ${file.name}: ${reason}`);
+      // Clean up orphaned storage file
+      await supabase.storage.from('lead-files').remove([filePath]);
       return;
     }
+    console.log('[FileUpload] Underwriting: upload success', { filePath });
     toast.success('File uploaded');
     queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
   }, [leadId, queryClient]);
