@@ -1,13 +1,22 @@
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Loader2 } from 'lucide-react';
+import { Trash2, Loader2, Search, ChevronDown } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 export interface ChecklistItem {
   id: string;
   text: string;
   is_checked: boolean;
+}
+
+interface TemplateWithItems {
+  id: string;
+  name: string;
+  items: { text: string; position: number }[];
 }
 
 interface ChecklistBuilderProps {
@@ -33,12 +42,15 @@ export default function ChecklistBuilder({
   saving,
   onSaveAsTemplate,
 }: ChecklistBuilderProps) {
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templatePopoverOpen, setTemplatePopoverOpen] = useState(false);
+
   const checkedCount = items.filter((i) => i.is_checked).length;
   const total = items.length;
   const pct = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
 
   // Templates query
-  const { data: templates } = useQuery({
+  const { data: templates = [] } = useQuery<TemplateWithItems[]>({
     queryKey: ['checklist-templates'],
     queryFn: async () => {
       const { data: tmpl } = await supabase
@@ -58,6 +70,12 @@ export default function ChecklistBuilder({
       }));
     },
   });
+
+  const filteredTemplates = useMemo(() => {
+    const q = templateSearch.toLowerCase().trim();
+    if (!q) return templates;
+    return templates.filter((t) => t.name.toLowerCase().includes(q));
+  }, [templates, templateSearch]);
 
   const handleAddItem = () => {
     const text = newItemText.trim();
@@ -79,7 +97,7 @@ export default function ChecklistBuilder({
     onItemsChange(items.filter((i) => i.id !== id));
   };
 
-  const loadTemplate = (tmpl: { items: { text: string; position: number }[] }) => {
+  const loadTemplate = (tmpl: TemplateWithItems) => {
     onItemsChange(
       tmpl.items.map((ti) => ({
         id: crypto.randomUUID(),
@@ -87,6 +105,9 @@ export default function ChecklistBuilder({
         is_checked: false,
       }))
     );
+    onTitleChange(tmpl.name);
+    setTemplatePopoverOpen(false);
+    setTemplateSearch('');
   };
 
   return (
@@ -115,22 +136,53 @@ export default function ChecklistBuilder({
         </div>
       )}
 
-      {/* Template chips (shown when list is empty) */}
-      {items.length === 0 && templates && templates.length > 0 && (
-        <div className="space-y-1.5">
-          <span className="text-[11px] font-medium text-muted-foreground">Load from template:</span>
-          <div className="flex flex-wrap gap-1.5">
-            {templates.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => loadTemplate(t)}
-                className="inline-flex items-center px-2.5 py-1 text-[11px] font-medium rounded-full border border-border bg-muted/50 hover:bg-muted text-foreground transition-colors"
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Template search bar */}
+      {templates.length > 0 && (
+        <Popover open={templatePopoverOpen} onOpenChange={setTemplatePopoverOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs border border-dashed border-border rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors text-muted-foreground"
+            >
+              <Search className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1 text-left truncate">Search templates...</span>
+              <ChevronDown className="h-3 w-3 shrink-0" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" sideOffset={4}>
+            <div className="p-2 border-b border-border">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  value={templateSearch}
+                  onChange={(e) => setTemplateSearch(e.target.value)}
+                  placeholder="Search templates..."
+                  className="w-full text-xs bg-transparent pl-8 pr-3 py-1.5 outline-none placeholder:text-muted-foreground/50"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto p-1">
+              {filteredTemplates.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-muted-foreground">No templates found</div>
+              ) : (
+                filteredTemplates.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => loadTemplate(t)}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-md text-xs hover:bg-muted transition-colors",
+                      "flex items-center justify-between gap-2"
+                    )}
+                  >
+                    <span className="font-medium text-foreground truncate">{t.name}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{t.items.length} items</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
       )}
 
       {/* Item list */}

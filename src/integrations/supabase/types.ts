@@ -73,6 +73,33 @@ export type Database = {
           },
         ]
       }
+      activity_comments: {
+        Row: {
+          activity_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          activity_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          activity_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string
+        }
+        Relationships: []
+      }
       ai_conversation_messages: {
         Row: {
           content: string
@@ -509,6 +536,44 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      company_activities: {
+        Row: {
+          activity_type: string
+          company_id: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string | null
+        }
+        Insert: {
+          activity_type: string
+          company_id: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title?: string | null
+        }
+        Update: {
+          activity_type?: string
+          company_id?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_activities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contracts: {
         Row: {
@@ -2921,6 +2986,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      people_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          person_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          person_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          person_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
       }
       people_tasks: {
         Row: {

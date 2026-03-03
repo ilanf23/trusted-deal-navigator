@@ -848,7 +848,7 @@ const Pipeline = () => {
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
                 <CreateFilterDialog
                   teamMemberMap={teamMemberMap}
-                  stageConfig={stageConfig}
+                  stageConfig={Object.fromEntries(Object.entries(stageConfig).map(([k, v]) => [k, { label: v.title }]))}
                   onSave={(filter) => {
                     const id = `custom_${Date.now()}`;
                     setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);

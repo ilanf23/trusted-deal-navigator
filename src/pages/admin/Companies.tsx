@@ -1279,7 +1279,7 @@ const Companies = () => {
           {/* Right Detail Panel */}
           {selectedCompany && (
             <CompanyDetailPanel
-              company={selectedCompany}
+              company={selectedCompany as any}
               contactTypeConfig={contactTypeConfig}
               teamMemberMap={teamMemberMap}
               teamMembers={teamMembers}
@@ -1292,7 +1292,7 @@ const Companies = () => {
                 setSelectedCompany({ ...selectedCompany, contact_type: newType });
               }}
               onCompanyUpdate={(updatedCompany) => {
-                setSelectedCompany(updatedCompany);
+                setSelectedCompany(updatedCompany as any);
                 queryClient.invalidateQueries({ queryKey: ['companies-list'] });
               }}
             />
