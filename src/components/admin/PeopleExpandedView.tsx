@@ -1085,7 +1085,7 @@ export default function PeopleExpandedView() {
                     const typeInfo = ACTIVITY_TYPE_ICONS[act.activity_type] ?? ACTIVITY_TYPE_ICONS.note;
                     const IconComp = typeInfo.icon;
 
-                    // Handle type_change activities specially
+                    // Handle type_change activities specially (no expand/comments)
                     if (act.activity_type === 'type_change' && act.content) {
                       let fromType: string | null = null;
                       let toType: string | null = null;
@@ -1121,22 +1121,87 @@ export default function PeopleExpandedView() {
                       );
                     }
 
+                    const isExpanded = !!expandedActivities[act.id];
+                    const comments = activityCommentsMap[act.id] ?? [];
+                    const commentCount = comments.length;
+
                     return (
-                      <div key={act.id} className="flex gap-3 p-3 rounded-xl bg-card border border-border hover:border-border transition-colors">
-                        <div className={`h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 ${typeInfo.color}`}>
-                          <IconComp className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-xs font-semibold text-foreground">{act.title || act.activity_type}</span>
-                            <span className="text-[10px] text-muted-foreground">{formatShortDate(act.created_at)}</span>
+                      <div
+                        key={act.id}
+                        className={`rounded-xl bg-card border transition-colors ${isExpanded ? 'border-blue-200' : 'border-border hover:border-border'}`}
+                      >
+                        <button
+                          type="button"
+                          className="flex gap-3 p-3 w-full text-left cursor-pointer"
+                          onClick={() => setExpandedActivities((prev) => ({ ...prev, [act.id]: !prev[act.id] }))}
+                        >
+                          <div className={`h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 ${typeInfo.color}`}>
+                            <IconComp className="h-4 w-4" />
                           </div>
-                          {act.content && (
-                            <div className="text-xs text-muted-foreground line-clamp-3">
-                              <HtmlContent value={act.content} className="text-xs text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-semibold text-foreground">{act.title || act.activity_type}</span>
+                              <span className="text-[10px] text-muted-foreground">{formatShortDate(act.created_at)}</span>
+                              {commentCount > 0 && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                                  <MessageSquare className="h-2.5 w-2.5 mr-0.5" />{commentCount}
+                                </Badge>
+                              )}
                             </div>
+                            {act.content && (
+                              <div className={`text-xs text-muted-foreground ${isExpanded ? '' : 'line-clamp-3'}`}>
+                                <HtmlContent value={act.content} className="text-xs text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                           )}
-                        </div>
+                        </button>
+                        {isExpanded && (
+                          <div className="px-3 pb-3">
+                            <Separator className="mb-3" />
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Comments</span>
+                            {comments.length > 0 && (
+                              <div className="mt-2 space-y-2">
+                                {comments.map((c: any) => (
+                                  <div key={c.id} className="flex gap-2">
+                                    <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
+                                      {(c.created_by ?? '?')[0]?.toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-medium text-foreground">{c.created_by ?? 'Unknown'}</span>
+                                        <span className="text-[10px] text-muted-foreground">{formatShortDate(c.created_at)}</span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">{c.content}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
+                                {(teamMember?.name ?? '?')[0]?.toUpperCase()}
+                              </div>
+                              <input
+                                className="flex-1 text-xs bg-muted/50 border border-border rounded-md px-2 py-1 placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-300"
+                                placeholder="Add a comment..."
+                                value={commentTexts[act.id] ?? ''}
+                                onChange={(e) => setCommentTexts((prev) => ({ ...prev, [act.id]: e.target.value }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && (commentTexts[act.id] ?? '').trim()) {
+                                    handleSaveComment(act.id);
+                                  }
+                                }}
+                                disabled={savingComment === act.id}
+                              />
+                              {savingComment === act.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -1250,6 +1315,69 @@ export default function PeopleExpandedView() {
                 ) : (
                   <Badge variant="outline" className="text-[11px]">{person.contact_type}</Badge>
                 )}
+              </div>
+            </RelatedSection>
+
+            {/* Files */}
+            <RelatedSection
+              icon={<FileText className="h-3.5 w-3.5" />}
+              label="Files"
+              count={personFiles.length}
+              iconColor="text-orange-500"
+              onAdd={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <div className="space-y-1.5 py-1">
+                {personFiles.map((f) => (
+                  <div key={f.id} className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+                    <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">{f.file_name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <a
+                        href={f.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 rounded hover:bg-muted"
+                        title="Download"
+                      >
+                        <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                      </a>
+                      <button
+                        onClick={() => handleDeleteFile(f)}
+                        className="p-1 rounded hover:bg-muted"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {uploadingFile && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                    <Loader2 className="h-3 w-3 animate-spin text-orange-500" />
+                    Uploading...
+                  </div>
+                )}
+                {personFiles.length === 0 && !uploadingFile && (
+                  <p className="text-xs text-muted-foreground">No files</p>
+                )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                >
+                  + Upload file...
+                </button>
               </div>
             </RelatedSection>
 

@@ -12,6 +12,8 @@ import { isHtmlEmpty } from '@/lib/sanitize';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import ChecklistBuilder, { type ChecklistItem } from './ChecklistBuilder';
 import {
   X, DollarSign, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
@@ -149,6 +151,7 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   meeting: { icon: Users, color: 'text-blue-500' },
   note: { icon: Pencil, color: 'text-amber-500' },
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
+  checklist: { icon: CheckSquare, color: 'text-violet-500' },
 };
 
 /* ─── Stats Card (accent card style) ─── */
@@ -282,13 +285,24 @@ export default function UnderwritingExpandedView() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
+  const [activityTab, setActivityTab] = useState<'log' | 'note' | 'checklist'>('log');
 
   // Activity form state
   const [activityType, setActivityType] = useState('todo');
   const [activityNote, setActivityNote] = useState('');
   const [noteContent, setNoteContent] = useState('');
   const [savingActivity, setSavingActivity] = useState(false);
+
+  // Checklist builder state
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [checklistTabVisible, setChecklistTabVisible] = useState(false);
+  const [checklistTitle, setChecklistTitle] = useState('Checklist');
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [newItemText, setNewItemText] = useState('');
+  const [savingChecklist, setSavingChecklist] = useState(false);
+  const [showTemplateSaveDialog, setShowTemplateSaveDialog] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   // Task inline add state
   const [addingTask, setAddingTask] = useState(false);
@@ -406,6 +420,115 @@ export default function UnderwritingExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['lead-activities', leadId] });
     queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
   }, [leadId, activityTab, activityType, activityNote, noteContent, queryClient]);
+
+  // ── Save checklist ──
+  const handleSaveChecklist = useCallback(async () => {
+    if (!leadId || checklistItems.length === 0) return;
+    setSavingChecklist(true);
+
+    // Build plain-text content for the activity timeline
+    const lines = checklistItems.map(
+      (i) => `${i.is_checked ? '[x]' : '[ ]'} ${i.text}`
+    );
+    const content = `<strong>${checklistTitle}</strong><br/>${lines.join('<br/>')}`;
+
+    // 1. Insert lead_activities row
+    const { data: actData, error: actErr } = await supabase
+      .from('lead_activities')
+      .insert({
+        lead_id: leadId,
+        activity_type: 'checklist',
+        content,
+        title: checklistTitle || 'Checklist',
+      })
+      .select('id')
+      .single();
+
+    if (actErr || !actData) {
+      setSavingChecklist(false);
+      toast.error('Failed to save checklist');
+      return;
+    }
+
+    // 2. Insert lead_checklists row
+    const { data: clData, error: clErr } = await supabase
+      .from('lead_checklists')
+      .insert({
+        lead_id: leadId,
+        title: checklistTitle || 'Checklist',
+        created_by: teamMember?.name ?? null,
+        activity_id: actData.id,
+      })
+      .select('id')
+      .single();
+
+    if (clErr || !clData) {
+      setSavingChecklist(false);
+      toast.error('Failed to save checklist');
+      return;
+    }
+
+    // 3. Bulk insert items
+    const itemRows = checklistItems.map((item, idx) => ({
+      checklist_id: clData.id,
+      text: item.text,
+      is_checked: item.is_checked,
+      position: idx,
+    }));
+    await supabase.from('lead_checklist_items').insert(itemRows);
+
+    // 4. Stamp last_activity_at
+    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', leadId);
+
+    setSavingChecklist(false);
+    toast.success('Checklist saved');
+    // Reset builder
+    setChecklistTitle('Checklist');
+    setChecklistItems([]);
+    setNewItemText('');
+    setChecklistTabVisible(false);
+    setActivityTab('log');
+    queryClient.invalidateQueries({ queryKey: ['lead-activities', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
+  }, [leadId, checklistTitle, checklistItems, teamMember, queryClient]);
+
+  // ── Save checklist as template ──
+  const handleSaveAsTemplate = useCallback(async () => {
+    setShowTemplateSaveDialog(true);
+  }, []);
+
+  const handleConfirmSaveTemplate = useCallback(async () => {
+    if (!templateName.trim() || checklistItems.length === 0) return;
+    setSavingTemplate(true);
+
+    const { data: tmplData, error: tmplErr } = await supabase
+      .from('checklist_templates')
+      .insert({
+        name: templateName.trim(),
+        created_by: teamMember?.name ?? null,
+      })
+      .select('id')
+      .single();
+
+    if (tmplErr || !tmplData) {
+      setSavingTemplate(false);
+      toast.error('Failed to save template');
+      return;
+    }
+
+    const itemRows = checklistItems.map((item, idx) => ({
+      template_id: tmplData.id,
+      text: item.text,
+      position: idx,
+    }));
+    await supabase.from('checklist_template_items').insert(itemRows);
+
+    setSavingTemplate(false);
+    setShowTemplateSaveDialog(false);
+    setTemplateName('');
+    toast.success('Template saved');
+    queryClient.invalidateQueries({ queryKey: ['checklist-templates'] });
+  }, [templateName, checklistItems, teamMember, queryClient]);
 
   // ── Save activity comment ──
   const handleSaveComment = useCallback(async (activityId: string) => {
@@ -1037,19 +1160,48 @@ export default function UnderwritingExpandedView() {
   }
 
   return (
-    <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
+    <div data-full-bleed className="flex flex-col bg-background h-[calc(100vh-3.5rem)] md:overflow-hidden overflow-y-auto">
       {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border px-4 py-2 flex items-center">
+      <div className="shrink-0 border-b border-border px-4 py-2 flex items-center justify-between">
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
           <X className="h-4 w-4" />
         </Button>
+        <DropdownMenu open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+          <div
+            onMouseEnter={() => setAddMenuOpen(true)}
+            onMouseLeave={() => setAddMenuOpen(false)}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 px-3 gap-1.5 text-sm font-medium">
+                <Plus className="h-4 w-4" />
+                Add
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onMouseEnter={() => setAddMenuOpen(true)} onMouseLeave={() => setAddMenuOpen(false)}>
+              <DropdownMenuItem
+                onClick={() => {
+                  setAddMenuOpen(false);
+                  setChecklistTabVisible(true);
+                  setActivityTab('checklist');
+                  setChecklistTitle('Checklist');
+                  setChecklistItems([]);
+                  setNewItemText('');
+                }}
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Add a Checklist
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </div>
+        </DropdownMenu>
       </div>
 
       {/* ── 3-Column Body ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Details — fully editable */}
-        <ScrollArea className="w-[400px] shrink-0 border-r border-border bg-card">
+        <div className="w-full md:w-[400px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card md:overflow-y-hidden overflow-y-visible">
+        <ScrollArea className="md:h-full">
           <div className="px-6 py-6 space-y-6">
 
             {/* Primary Contact + Value */}
@@ -1337,11 +1489,12 @@ export default function UnderwritingExpandedView() {
             </div>
           </div>
         </ScrollArea>
+        </div>
 
         {/* CENTER: Activity */}
         <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
           {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-4 gap-3 px-5 py-3.5 border-b border-border bg-card">
+          <div className="shrink-0 grid grid-cols-2 md:grid-cols-4 gap-3 px-5 py-3.5 border-b border-border bg-card">
             <StatBox
               value={interactionCount}
               label="Interactions"
@@ -1403,9 +1556,22 @@ export default function UnderwritingExpandedView() {
               <Pencil className="h-3.5 w-3.5" />
               Create Note
             </button>
+            {checklistTabVisible && (
+              <button
+                className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  activityTab === 'checklist'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                }`}
+                onClick={() => setActivityTab('checklist')}
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+                Checklist
+              </button>
+            )}
           </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="md:flex-1">
             <div className="px-6 py-5">
               {activityTab === 'log' ? (
                 <div className="space-y-4">
@@ -1439,6 +1605,43 @@ export default function UnderwritingExpandedView() {
                       Save Activity
                     </Button>
                   </div>
+                </div>
+              ) : activityTab === 'checklist' ? (
+                <div className="space-y-4">
+                  <ChecklistBuilder
+                    title={checklistTitle}
+                    onTitleChange={setChecklistTitle}
+                    items={checklistItems}
+                    onItemsChange={setChecklistItems}
+                    newItemText={newItemText}
+                    onNewItemTextChange={setNewItemText}
+                    onSave={handleSaveChecklist}
+                    saving={savingChecklist}
+                    onSaveAsTemplate={handleSaveAsTemplate}
+                  />
+                  {/* Inline template save dialog */}
+                  {showTemplateSaveDialog && (
+                    <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                      <span className="text-xs font-semibold text-foreground">Save as Template</span>
+                      <input
+                        autoFocus
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && templateName.trim()) handleConfirmSaveTemplate(); if (e.key === 'Escape') { setShowTemplateSaveDialog(false); setTemplateName(''); } }}
+                        placeholder="Template name..."
+                        className="w-full text-xs bg-transparent border border-border rounded-lg px-3 py-2 outline-none focus:border-blue-500 transition-colors placeholder:text-muted-foreground/50"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setShowTemplateSaveDialog(false); setTemplateName(''); }}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7 px-3" onClick={handleConfirmSaveTemplate} disabled={savingTemplate || !templateName.trim()}>
+                          {savingTemplate && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1662,14 +1865,11 @@ export default function UnderwritingExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <div className="w-[260px] shrink-0 border-l border-border bg-card flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="w-full md:w-[260px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card flex flex-col">
+          <div className="px-4 py-3 border-b border-border">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Related</span>
-            <button className="h-6 w-6 rounded-md flex items-center justify-center text-primary hover:bg-primary/10 transition-colors border border-primary/30">
-              <Plus className="h-4 w-4" />
-            </button>
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="md:flex-1">
           <div className="py-4 px-1">
             {/* People */}
             <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length + relatedPeople.filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase())).length} onAdd={() => setAddingContact(true)}>

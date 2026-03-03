@@ -12,14 +12,15 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  X, ChevronDown, ChevronRight,
-  Users, Building2, FileText,
-  CalendarDays, Plus, Pencil, Activity, Clock, AlertCircle,
+  X, ChevronDown, ChevronRight, ChevronUp,
+  Users, Building2, FileText, CheckSquare,
+  CalendarDays, Plus, Pencil, Activity, Clock, AlertCircle, MessageSquare,
   User, Mail, Phone, Tag, Briefcase, Loader2,
   Globe, DollarSign, Check,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
 
@@ -74,6 +75,14 @@ function formatShortDate(dateStr: string | null): string {
   if (!dateStr) return '\u2014';
   try { return format(parseISO(dateStr), 'M/d/yyyy'); } catch { return '\u2014'; }
 }
+
+const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string }> = {
+  call: { icon: Phone, color: 'text-blue-500' },
+  email: { icon: Mail, color: 'text-emerald-500' },
+  meeting: { icon: Users, color: 'text-blue-500' },
+  note: { icon: Pencil, color: 'text-amber-500' },
+  todo: { icon: CheckSquare, color: 'text-muted-foreground' },
+};
 
 /* ─── Inline Save Hook (companies table) ─── */
 
@@ -450,10 +459,26 @@ export default function CompanyExpandedView() {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
 
-  // Notes editor state for middle column
+  // Activity form state
+  const [activityType, setActivityType] = useState('note');
+  const [activityNote, setActivityNote] = useState('');
   const [noteContent, setNoteContent] = useState('');
-  const [savingNote, setSavingNote] = useState(false);
+  const [savingActivity, setSavingActivity] = useState(false);
+
+  // Activity expand / comments state
+  const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
+  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [savingComment, setSavingComment] = useState<string | null>(null);
+
+  // Task inline add state
+  const [addingTask, setAddingTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [savingTask, setSavingTask] = useState(false);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+
+  const { teamMember } = useTeamMember();
 
   /* ── Field saved handler ── */
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
@@ -494,40 +519,77 @@ export default function CompanyExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['companies-list'] });
   }, [companyId, queryClient]);
 
-  /* ── Save note to notes field ── */
-  const handleSaveNote = useCallback(async () => {
+  /* ── Save activity ── */
+  const handleSaveActivity = useCallback(async () => {
     if (!companyId) return;
-    const content = noteContent.trim();
+    const rawContent = activityTab === 'log' ? activityNote : noteContent;
+    const content = rawContent.trim();
+    const type = activityTab === 'log' ? activityType : 'note';
     if (!content || isHtmlEmpty(content)) {
       toast.error('Please enter some content');
       return;
     }
-    setSavingNote(true);
-    // Append the new note to existing notes
-    const { data: current } = await supabase
-      .from('companies')
-      .select('notes')
-      .eq('id', companyId)
-      .single();
-    const existingNotes = (current as any)?.notes ?? '';
-    const timestamp = format(new Date(), 'MMM d, yyyy h:mm a');
-    const newEntry = `<p><strong>${timestamp}</strong></p>${content}`;
-    const updatedNotes = existingNotes
-      ? `${newEntry}<hr/>${existingNotes}`
-      : newEntry;
-    const { error } = await supabase
-      .from('companies')
-      .update({ notes: updatedNotes } as any)
-      .eq('id', companyId);
-    setSavingNote(false);
+    setSavingActivity(true);
+    const { error } = await supabase.from('company_activities').insert({
+      company_id: companyId,
+      activity_type: type,
+      content,
+      title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
+    });
+    setSavingActivity(false);
     if (error) {
-      toast.error('Failed to save note');
+      toast.error('Failed to save activity');
       return;
     }
-    toast.success('Note saved');
-    setNoteContent('');
+    // Update last_activity_at
+    await supabase.from('companies').update({ last_activity_at: new Date().toISOString() } as any).eq('id', companyId);
+    toast.success('Activity saved');
+    if (activityTab === 'log') setActivityNote('');
+    else setNoteContent('');
+    queryClient.invalidateQueries({ queryKey: ['company-activities', companyId] });
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
-  }, [companyId, noteContent, queryClient]);
+  }, [companyId, activityTab, activityType, activityNote, noteContent, queryClient]);
+
+  /* ── Save activity comment ── */
+  const handleSaveComment = useCallback(async (activityId: string) => {
+    const text = (commentTexts[activityId] ?? '').trim();
+    if (!text || !companyId) return;
+    setSavingComment(activityId);
+    const { error } = await supabase.from('activity_comments').insert({
+      activity_id: activityId,
+      lead_id: companyId,
+      content: text,
+      created_by: teamMember?.name ?? null,
+    });
+    setSavingComment(null);
+    if (error) {
+      toast.error('Failed to save comment');
+      return;
+    }
+    setCommentTexts((prev) => ({ ...prev, [activityId]: '' }));
+    queryClient.invalidateQueries({ queryKey: ['company-activity-comments', companyId] });
+  }, [companyId, commentTexts, teamMember, queryClient]);
+
+  /* ── Save task ── */
+  const handleSaveTask = useCallback(async () => {
+    if (!companyId || !newTaskTitle.trim()) return;
+    setSavingTask(true);
+    const { error } = await supabase.from('evan_tasks').insert({
+      title: newTaskTitle.trim(),
+      status: 'pending',
+      priority: 'medium',
+      description: `Related to company: ${companyId}`,
+    });
+    setSavingTask(false);
+    if (error) {
+      toast.error('Failed to create task');
+      return;
+    }
+    toast.success('Task created');
+    setNewTaskTitle('');
+    setAddingTask(false);
+    queryClient.invalidateQueries({ queryKey: ['company-tasks', companyId] });
+  }, [companyId, newTaskTitle, queryClient]);
 
   /* ── Queries ── */
 
@@ -587,6 +649,57 @@ export default function CompanyExpandedView() {
       return data ?? [];
     },
     enabled: !!company?.company_name,
+  });
+
+  // Company activities
+  const { data: activities = [] } = useQuery({
+    queryKey: ['company-activities', companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_activities')
+        .select('*')
+        .eq('company_id', companyId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!companyId,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000,
+  });
+
+  // Activity comments
+  const { data: activityCommentsMap = {} } = useQuery({
+    queryKey: ['company-activity-comments', companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('activity_comments')
+        .select('*')
+        .eq('lead_id', companyId!)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      const map: Record<string, typeof data> = {};
+      for (const c of data ?? []) {
+        (map[c.activity_id] ??= []).push(c);
+      }
+      return map;
+    },
+    enabled: !!companyId,
+  });
+
+  // Tasks (evan_tasks related to this company via description)
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['company-tasks', companyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('evan_tasks')
+        .select('id, title, status, priority')
+        .ilike('description', `%${companyId}%`)
+        .order('created_at', { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!companyId,
   });
 
   /* ── Loading state ── */
@@ -753,7 +866,7 @@ export default function CompanyExpandedView() {
           </div>
         </ScrollArea>
 
-        {/* MIDDLE: Activity / Notes */}
+        {/* MIDDLE: Activity */}
         <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
           {/* Stats Bar */}
           <div className="shrink-0 grid grid-cols-3 gap-3 px-5 py-3.5 border-b border-border bg-card">
@@ -786,60 +899,190 @@ export default function CompanyExpandedView() {
             />
           </div>
 
-          {/* Notes Editor */}
+          {/* Activity Tabs */}
           <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border px-6 py-2.5 bg-card">
-            <span className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow-sm shadow-blue-500/25">
+            <button
+              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
+                activityTab === 'log'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              }`}
+              onClick={() => setActivityTab('log')}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Log Activity
+            </button>
+            <button
+              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
+                activityTab === 'note'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              }`}
+              onClick={() => setActivityTab('note')}
+            >
               <Pencil className="h-3.5 w-3.5" />
-              Add Note
-            </span>
+              Create Note
+            </button>
           </div>
 
           <ScrollArea className="flex-1">
             <div className="px-6 py-5">
-              <div className="space-y-4">
-                <RichTextEditor
-                  value={noteContent}
-                  onChange={setNoteContent}
-                  placeholder="Write a note about this company..."
-                  minHeight="120px"
-                />
-                <div className="flex justify-end">
-                  <Button
-                    size="sm"
-                    onClick={handleSaveNote}
-                    disabled={savingNote || isHtmlEmpty(noteContent)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 rounded-lg"
-                  >
-                    {savingNote && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
-                    Save Note
-                  </Button>
-                </div>
-              </div>
-
-              {/* Existing notes display */}
-              {company.notes && (
-                <>
-                  <Separator className="my-6" />
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Existing Notes</h3>
-                  <div className="rounded-xl bg-card border border-border p-4">
-                    <HtmlContent value={company.notes} className="text-sm text-foreground" />
+              {activityTab === 'log' ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Select value={activityType} onValueChange={setActivityType}>
+                      <SelectTrigger className="h-8 w-[120px] text-xs rounded-lg border-border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="note" className="text-xs">Note</SelectItem>
+                        <SelectItem value="call" className="text-xs">Call</SelectItem>
+                        <SelectItem value="email" className="text-xs">Email</SelectItem>
+                        <SelectItem value="meeting" className="text-xs">Meeting</SelectItem>
+                        <SelectItem value="todo" className="text-xs">To Do</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                </>
+                  <RichTextEditor
+                    value={activityNote}
+                    onChange={setActivityNote}
+                    placeholder="Add a note..."
+                    minHeight="80px"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveActivity}
+                      disabled={savingActivity || isHtmlEmpty(activityNote)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 rounded-lg"
+                    >
+                      {savingActivity && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                      Save Activity
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <RichTextEditor
+                    value={noteContent}
+                    onChange={setNoteContent}
+                    placeholder="Write a note..."
+                    minHeight="120px"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveActivity}
+                      disabled={savingActivity || isHtmlEmpty(noteContent)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 rounded-lg"
+                    >
+                      {savingActivity && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                      Save Note
+                    </Button>
+                  </div>
+                </div>
               )}
 
-              {/* Activity placeholder */}
-              {!company.notes && (
-                <>
-                  <Separator className="my-6" />
+              {/* Earlier - Activity History */}
+              <Separator className="my-6" />
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
+              <div className="space-y-3">
+                {activities.length > 0 ? (
+                  activities.map((act: any) => {
+                    const typeInfo = ACTIVITY_TYPE_ICONS[act.activity_type] ?? ACTIVITY_TYPE_ICONS.note;
+                    const IconComp = typeInfo.icon;
+                    const isExpanded = !!expandedActivities[act.id];
+                    const comments = activityCommentsMap[act.id] ?? [];
+                    const commentCount = comments.length;
+                    return (
+                      <div
+                        key={act.id}
+                        className={`rounded-xl bg-card border transition-colors ${isExpanded ? 'border-blue-200' : 'border-border hover:border-border'}`}
+                      >
+                        <button
+                          type="button"
+                          className="flex gap-3 p-3 w-full text-left cursor-pointer"
+                          onClick={() => setExpandedActivities((prev) => ({ ...prev, [act.id]: !prev[act.id] }))}
+                        >
+                          <div className={`h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 ${typeInfo.color}`}>
+                            <IconComp className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-semibold text-foreground">{act.title || act.activity_type}</span>
+                              <span className="text-[10px] text-muted-foreground">{formatShortDate(act.created_at)}</span>
+                              {commentCount > 0 && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                                  <MessageSquare className="h-2.5 w-2.5 mr-0.5" />{commentCount}
+                                </Badge>
+                              )}
+                            </div>
+                            {act.content && (
+                              <div className={`text-xs text-muted-foreground ${isExpanded ? '' : 'line-clamp-3'}`}>
+                                <HtmlContent value={act.content} className="text-xs text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                          )}
+                        </button>
+                        {isExpanded && (
+                          <div className="px-3 pb-3">
+                            <Separator className="mb-3" />
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Comments</span>
+                            {comments.length > 0 && (
+                              <div className="mt-2 space-y-2">
+                                {comments.map((c: any) => (
+                                  <div key={c.id} className="flex gap-2">
+                                    <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
+                                      {(c.created_by ?? '?')[0]?.toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-medium text-foreground">{c.created_by ?? 'Unknown'}</span>
+                                        <span className="text-[10px] text-muted-foreground">{formatShortDate(c.created_at)}</span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">{c.content}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
+                                {(teamMember?.name ?? '?')[0]?.toUpperCase()}
+                              </div>
+                              <input
+                                className="flex-1 text-xs bg-muted/50 border border-border rounded-md px-2 py-1 placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-300"
+                                placeholder="Add a comment..."
+                                value={commentTexts[act.id] ?? ''}
+                                onChange={(e) => setCommentTexts((prev) => ({ ...prev, [act.id]: e.target.value }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && (commentTexts[act.id] ?? '').trim()) {
+                                    handleSaveComment(act.id);
+                                  }
+                                }}
+                                disabled={savingComment === act.id}
+                              />
+                              {savingComment === act.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
                   <div className="border border-dashed border-border rounded-xl py-10 flex flex-col items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
                       <Activity className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <p className="text-sm text-muted-foreground">No activity recorded yet</p>
-                    <p className="text-xs text-muted-foreground">Use the note editor above to add the first entry</p>
                   </div>
-                </>
-              )}
+                )}
+              </div>
             </div>
           </ScrollArea>
         </div>
@@ -897,6 +1140,78 @@ export default function CompanyExpandedView() {
                 {relatedDeals.length === 0 && (
                   <p className="text-xs text-muted-foreground">No related deals</p>
                 )}
+              </div>
+            </RelatedSection>
+
+            {/* Tasks */}
+            <RelatedSection
+              icon={<CheckSquare className="h-3.5 w-3.5" />}
+              label="Tasks"
+              count={tasks.filter((t: any) => t.status !== 'completed' && t.status !== 'done').length}
+              onAdd={() => setAddingTask(true)}
+            >
+              <div className="space-y-2 py-1">
+                {tasks.filter((t: any) => t.status !== 'completed' && t.status !== 'done').map((t: any) => (
+                  <div key={t.id} className="flex items-center gap-2 text-xs">
+                    <CheckSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                    <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
+                    {t.priority && (
+                      <Badge variant="outline" className={`text-[9px] px-1.5 py-0 rounded-full ${
+                        t.priority === 'high' ? 'border-red-200 text-red-600 bg-red-50' :
+                        t.priority === 'medium' ? 'border-amber-200 text-amber-600 bg-amber-50' :
+                        'border-border text-muted-foreground'
+                      }`}>
+                        {t.priority}
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+                {addingTask ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      autoFocus
+                      value={newTaskTitle}
+                      onChange={(e) => setNewTaskTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newTaskTitle.trim()) handleSaveTask();
+                        if (e.key === 'Escape') { setAddingTask(false); setNewTaskTitle(''); }
+                      }}
+                      placeholder="Task title..."
+                      disabled={savingTask}
+                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                    />
+                    {savingTask && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingTask(true)}
+                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                  >
+                    + Add task...
+                  </button>
+                )}
+                {/* Show completed tasks toggle */}
+                {(() => {
+                  const completedTasks = tasks.filter((t: any) => t.status === 'completed' || t.status === 'done');
+                  if (completedTasks.length === 0) return null;
+                  return (
+                    <>
+                      <button
+                        onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
+                      >
+                        {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        Show completed tasks ({completedTasks.length})
+                      </button>
+                      {showCompletedTasks && completedTasks.map((t: any) => (
+                        <div key={t.id} className="flex items-center gap-2 text-xs">
+                          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                          <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
+                        </div>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             </RelatedSection>
 

@@ -1354,21 +1354,8 @@ const Pipeline = () => {
                             {/* Deal (sticky) */}
                             <td className={`px-4 ${rowPad} overflow-hidden sticky z-[5] border-r border-border/50 transition-colors ${stickyBg}`} style={{ width: columnWidths.deal, left: 40 }}>
                               <div className="flex items-center gap-2.5">
-                                <div className="relative shrink-0">
-                                  <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shadow-sm`}>
-                                    {initial}
-                                  </div>
-                                  {assignedName && (
-                                    <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full ring-2 ring-white dark:ring-card overflow-hidden">
-                                      {assignedAvatar ? (
-                                        <img src={assignedAvatar} alt={assignedName} className="h-full w-full object-cover" />
-                                      ) : (
-                                        <div className={`h-full w-full ${assignedColor} flex items-center justify-center text-white text-[7px] font-bold`}>
-                                          {assignedInitial}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
+                                <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
+                                  {initial}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5">
