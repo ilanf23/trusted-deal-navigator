@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
+import { sanitizeFileName } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -554,7 +555,7 @@ export default function PipelineExpandedView() {
     }
 
     setUploadingFile(true);
-    const filePath = `${leadId}/${Date.now()}_${file.name}`;
+    const filePath = `${leadId}/${Date.now()}_${sanitizeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage
       .from('lead-files')
       .upload(filePath, file, {
