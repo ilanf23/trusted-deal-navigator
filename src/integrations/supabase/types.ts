@@ -409,6 +409,56 @@ export type Database = {
           },
         ]
       }
+      checklist_template_items: {
+        Row: {
+          id: string
+          position: number | null
+          template_id: string
+          text: string
+        }
+        Insert: {
+          id?: string
+          position?: number | null
+          template_id: string
+          text: string
+        }
+        Update: {
+          id?: string
+          position?: number | null
+          template_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           company_name: string
@@ -1363,6 +1413,76 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "lead_addresses_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_checklist_items: {
+        Row: {
+          checklist_id: string
+          created_at: string
+          id: string
+          is_checked: boolean | null
+          position: number | null
+          text: string
+        }
+        Insert: {
+          checklist_id: string
+          created_at?: string
+          id?: string
+          is_checked?: boolean | null
+          position?: number | null
+          text: string
+        }
+        Update: {
+          checklist_id?: string
+          created_at?: string
+          id?: string
+          is_checked?: boolean | null
+          position?: number | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_checklist_items_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "lead_checklists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_checklists: {
+        Row: {
+          activity_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string
+          title: string | null
+        }
+        Insert: {
+          activity_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id: string
+          title?: string | null
+        }
+        Update: {
+          activity_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_checklists_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
