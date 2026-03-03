@@ -737,45 +737,64 @@ export default function PeopleExpandedView() {
     const file = e.target.files?.[0];
     if (!file || !personId) return;
     e.target.value = '';
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error('File must be under 10MB');
+
+    console.log('[FileUpload] People: starting upload', { name: file.name, size: file.size, type: file.type });
+
+    // Auth check
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      console.error('[FileUpload] People: no active session', sessionError);
+      toast.error('You must be logged in to upload files. Please refresh and sign in again.');
       return;
     }
+
     setUploadingFile(true);
     const filePath = `${personId}/${Date.now()}_${file.name}`;
     const { error: uploadError } = await supabase.storage
       .from('people-files')
-      .upload(filePath, file, { contentType: file.type });
+      .upload(filePath, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: true,
+      });
     if (uploadError) {
+      console.error('[FileUpload] People: storage upload error', uploadError);
       setUploadingFile(false);
-      toast.error('Failed to upload file');
+      const reason = uploadError.message?.includes('security')
+        ? 'Permission denied — check your login session'
+        : uploadError.message || 'Storage error';
+      toast.error(`Upload failed for ${file.name}: ${reason}`);
       return;
     }
-    const { data: urlData } = supabase.storage.from('people-files').getPublicUrl(filePath);
-    const fileUrl = urlData?.publicUrl || filePath;
+
+    // Store relative path, NOT public URL
     const { error: dbError } = await supabase.from('people_files').insert({
       person_id: personId,
       file_name: file.name,
-      file_url: fileUrl,
+      file_url: filePath,
       file_type: file.type || null,
       file_size: file.size,
     });
     setUploadingFile(false);
     if (dbError) {
-      toast.error('File uploaded but failed to save record');
+      console.error('[FileUpload] People: DB insert error', dbError);
+      const reason = dbError.message?.includes('row-level security')
+        ? 'Permission denied — admin role required'
+        : dbError.message || 'Database error';
+      toast.error(`Failed to save ${file.name}: ${reason}`);
+      // Clean up orphaned storage file
+      await supabase.storage.from('people-files').remove([filePath]);
       return;
     }
+    console.log('[FileUpload] People: upload success', { filePath });
     toast.success('File uploaded');
     queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
   }, [personId, queryClient]);
 
   // ── File delete ──
   const handleDeleteFile = useCallback(async (file: PersonFile) => {
-    const urlParts = file.file_url.split('/people-files/');
-    const storagePath = urlParts.length > 1 ? decodeURIComponent(urlParts[urlParts.length - 1].split('?')[0]) : null;
-    if (storagePath) {
-      await supabase.storage.from('people-files').remove([storagePath]);
-    }
+    // file_url stores relative path directly
+    await supabase.storage.from('people-files').remove([file.file_url]);
+
     const { error } = await supabase.from('people_files').delete().eq('id', file.id);
     if (error) {
       toast.error('Failed to delete file');
@@ -784,6 +803,24 @@ export default function PeopleExpandedView() {
     toast.success('File deleted');
     queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
   }, [personId, queryClient]);
+
+  // ── File download (signed URL) ──
+  const handleDownloadFile = useCallback(async (file: PersonFile) => {
+    const { data, error } = await supabase.storage
+      .from('people-files')
+      .createSignedUrl(file.file_url, 60);
+    if (error || !data?.signedUrl) {
+      toast.error('Failed to generate download link');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = data.signedUrl;
+    a.download = file.file_name;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, []);
 
   // ── Person files query ──
   const { data: personFiles = [] } = useQuery({
@@ -1343,16 +1380,13 @@ export default function PeopleExpandedView() {
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <a
-                        href={f.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
                         className="p-1 rounded hover:bg-muted"
                         title="Download"
                       >
                         <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </a>
+                      </button>
                       <button
                         onClick={() => handleDeleteFile(f)}
                         className="p-1 rounded hover:bg-muted"
