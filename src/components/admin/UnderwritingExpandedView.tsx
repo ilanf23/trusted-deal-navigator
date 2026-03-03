@@ -14,6 +14,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ChecklistBuilder, { type ChecklistItem } from './ChecklistBuilder';
+import SavedChecklistCard, { type SavedChecklist } from './SavedChecklistCard';
 import {
   X, DollarSign, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
@@ -489,6 +490,7 @@ export default function UnderwritingExpandedView() {
     setChecklistTabVisible(false);
     setActivityTab('log');
     queryClient.invalidateQueries({ queryKey: ['lead-activities', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['lead-saved-checklists', leadId] });
     queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
   }, [leadId, checklistTitle, checklistItems, teamMember, queryClient]);
 
@@ -883,7 +885,31 @@ export default function UnderwritingExpandedView() {
     enabled: !!leadId,
   });
 
-  // ── Satellite table queries ──
+  // ── Saved checklists query ──
+  const { data: savedChecklists = [] } = useQuery<SavedChecklist[]>({
+    queryKey: ['lead-saved-checklists', leadId],
+    queryFn: async () => {
+      const { data: checklists, error: clErr } = await supabase
+        .from('lead_checklists')
+        .select('*')
+        .eq('lead_id', leadId!)
+        .order('created_at', { ascending: false });
+      if (clErr || !checklists || checklists.length === 0) return [];
+      const ids = checklists.map((c) => c.id);
+      const { data: items } = await supabase
+        .from('lead_checklist_items')
+        .select('*')
+        .in('checklist_id', ids)
+        .order('position');
+      return checklists.map((c) => ({
+        ...c,
+        items: (items ?? []).filter((i) => i.checklist_id === c.id),
+      }));
+    },
+    enabled: !!leadId,
+    refetchOnMount: 'always',
+  });
+
   const { data: leadEmails = [] } = useQuery({
     queryKey: ['lead-emails', leadId],
     queryFn: async () => {
@@ -1665,6 +1691,24 @@ export default function UnderwritingExpandedView() {
                 </div>
               )}
 
+              {/* Saved Checklists — persistent interactive cards */}
+              {savedChecklists.length > 0 && (
+                <>
+                  <Separator className="my-6" />
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Checklists</h3>
+                  <div className="space-y-3 mb-4">
+                    {savedChecklists.map((cl) => (
+                      <SavedChecklistCard
+                        key={cl.id}
+                        checklist={cl}
+                        formatDate={formatShortDate}
+                        leadId={leadId!}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
               {/* Earlier — Activity History + Email Threads */}
               <Separator className="my-6" />
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
@@ -1677,6 +1721,8 @@ export default function UnderwritingExpandedView() {
               <div className="space-y-3">
                 {timelineItems.length > 0 ? (
                   timelineItems.map((item) => {
+                    // Skip checklist activities — they're rendered above as interactive cards
+                    if (item.type === 'activity' && item.data?.activity_type === 'checklist') return null;
                     if (item.type === 'email_thread') {
                       const thread = item.data;
                       const isThreadExpanded = !!expandedThreads[thread.id];
