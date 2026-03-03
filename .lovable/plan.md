@@ -1,34 +1,58 @@
 
 
-## Plan: Fix File Upload Errors in Lead Files Section
+## Plan: Fix File Upload Across All Expanded Views
 
-### Root Cause Analysis
+### Root Cause Analysis — 3 Distinct Bugs Found
 
-The database schema, storage bucket, and RLS policies are all correctly configured. The likely failure points are:
+I traced the "Failed to upload file" error across all three expanded views and found **three separate root causes**:
 
-1. **`file_size` column is `integer` (32-bit)** — JS `File.size` returns bytes as a 64-bit number. Files larger than ~2GB would overflow, but even moderately large files could cause issues with certain Postgres drivers. Should be `bigint`.
+| View | Root Cause | Severity |
+|------|-----------|----------|
+| **PeopleExpandedView** | Uploads to storage bucket `people-files` which **does not exist** | Upload always fails |
+| **PipelineExpandedView** | Stores public URLs (via `getPublicUrl`) on a **private** bucket — URL is unusable. Also missing `upsert: true` and `contentType` fallback | Upload may succeed but download/preview breaks |
+| **UnderwritingExpandedView** | Better error handling already applied, but still shows generic "Failed to upload file" toast without reason | Partial fix from last iteration |
 
-2. **Error swallowing** — The current code logs errors to `console.error` but the toast messages are generic. If the storage upload succeeds but the DB insert fails (or vice versa), the user sees a vague error with no actionable info.
-
-3. **Potential auth/RLS issue** — If the user's session expired or they don't have the `admin` role, both the storage upload and the `lead_files` insert would fail with RLS violations. The code doesn't distinguish auth errors from other failures.
+Additionally: `people_files.file_size` column is `integer` (should be `bigint`), and **none** of the three handlers validate auth session before uploading.
 
 ### Changes
 
-**1. Database migration: Change `file_size` from `integer` to `bigint`**
-```sql
-ALTER TABLE public.lead_files ALTER COLUMN file_size TYPE bigint;
-```
+**1. Database Migration**
+- Create `people-files` storage bucket (private, matching `lead-files` pattern)
+- Add admin-only RLS policies on `storage.objects` for `people-files` bucket (INSERT, SELECT, UPDATE, DELETE)
+- Alter `people_files.file_size` from `integer` to `bigint`
 
-**2. Improve error handling in `LeadFilesSection.tsx`**
-- Add more descriptive error messages that surface the actual error text
-- Add a check for auth session before attempting upload
-- Ensure the toast shows the specific failure reason (e.g., "Permission denied" vs "Storage error")
-- Add a try/catch around the individual file loop that doesn't silently continue on DB errors
+**2. Fix PipelineExpandedView.tsx upload handler**
+- Add auth session check before upload
+- Add `upsert: true` and `contentType` fallback (`application/octet-stream`)
+- Store **relative file path** (not public URL) in `file_url` column
+- Fix delete handler to use `file_url` directly (no URL parsing needed)
+- Fix download to use `createSignedUrl` instead of raw `<a href>`
+- Add diagnostic `console.error` logging with actual error messages
+- Surface specific error reasons in toast
 
-**3. No new API or integration needed**
-The existing Supabase Storage + `lead_files` table approach is correct. This is a bug fix, not an architecture problem.
+**3. Fix PeopleExpandedView.tsx upload handler**
+- Same auth session check pattern
+- Add `upsert: true` and `contentType` fallback
+- Store relative path instead of public URL
+- Fix delete handler (same as Pipeline)
+- Fix download links to use signed URLs
+- Add diagnostics logging
+
+**4. Fix UnderwritingExpandedView.tsx upload handler**
+- Add auth session check (currently missing)
+- Surface actual `uploadError.message` in toast instead of generic text
+- Add diagnostics logging
+
+**5. Fix download links in all three expanded view templates**
+- Pipeline and People views currently render `<a href={f.file_url}>` which points to a public URL of a private bucket (broken)
+- Replace with `onClick` handler that generates a signed URL, matching the pattern already working in UnderwritingExpandedView
 
 ### Files to Modify
-- `supabase/migrations/` — new migration for `bigint` change
-- `src/components/admin/LeadFilesSection.tsx` — better error handling and auth check
+- `supabase/migrations/` — new migration (bucket + RLS + bigint)
+- `src/components/admin/PipelineExpandedView.tsx` — upload, delete, download handlers
+- `src/components/admin/PeopleExpandedView.tsx` — upload, delete, download handlers
+- `src/components/admin/UnderwritingExpandedView.tsx` — auth check + error surface
+
+### No New APIs or Integrations Needed
+The existing Supabase Storage architecture is correct. These are all implementation bugs in the upload/download handlers.
 
