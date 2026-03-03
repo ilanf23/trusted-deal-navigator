@@ -334,6 +334,11 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         if (item.url === '/superadmin') {
           return location.pathname === '/superadmin';
         }
+        // Handle query-param URLs (e.g. /admin/pipeline?view=potential)
+        if (item.url.includes('?')) {
+          const [itemPath, itemQuery] = item.url.split('?');
+          return location.pathname === itemPath && location.search === `?${itemQuery}`;
+        }
         return location.pathname.startsWith(item.url);
       });
       // Also check if the section's navigateOnClick matches
@@ -344,6 +349,18 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   };
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(getSectionOpenState);
+  // Re-sync open sections when route changes so navigating reveals the active item
+  useEffect(() => {
+    setOpenSections(prev => {
+      const next = getSectionOpenState();
+      // Merge: open newly active sections but don't close manually opened ones
+      const merged = { ...prev };
+      for (const key in next) {
+        if (next[key]) merged[key] = true;
+      }
+      return merged;
+    });
+  }, [location.pathname, location.search]);
   const [createPipelineOpen, setCreatePipelineOpen] = useState(false);
 
   const toggleSection = (sectionTitle: string) => {
@@ -354,6 +371,11 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   };
 
   const isActive = (path: string) => {
+    // Handle query-param URLs (e.g. /admin/pipeline?view=potential)
+    if (path.includes('?')) {
+      const [itemPath, itemQuery] = path.split('?');
+      return location.pathname === itemPath && location.search === `?${itemQuery}`;
+    }
     // Exact match for base routes like /superadmin or /admin/dashboard or /superadmin/ilan
     if (path === '/superadmin' || path === '/admin/dashboard' || path.match(/^\/superadmin\/[^/]+$/)) {
       return location.pathname === path;
@@ -368,6 +390,11 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
   const isRouteWithin = (url: string) => {
     if (url === '/superadmin') return location.pathname === '/superadmin';
+    // Handle query-param URLs
+    if (url.includes('?')) {
+      const [itemPath, itemQuery] = url.split('?');
+      return location.pathname === itemPath && location.search === `?${itemQuery}`;
+    }
     return location.pathname === url || location.pathname.startsWith(`${url}/`);
   };
 

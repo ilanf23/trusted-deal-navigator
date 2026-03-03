@@ -9,6 +9,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
 import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
+import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
+import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import {
   ArrowUpDown,
@@ -41,6 +43,7 @@ import {
   Phone,
   Briefcase,
   Link2,
+  Maximize2,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -226,6 +229,7 @@ function KanbanPersonCard({ person, isDragging, onClick }: {
   isDragging?: boolean;
   onClick: () => void;
 }) {
+  const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: person.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const avatarColor = getAvatarColor(person.name);
@@ -234,14 +238,20 @@ function KanbanPersonCard({ person, isDragging, onClick }: {
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
-        className="p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
+        className="group/card p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
         <div className="flex items-center gap-2 mb-1.5">
           <div className={`h-6 w-6 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
             {initial}
           </div>
-          <p className="text-sm font-semibold text-foreground leading-tight truncate">{person.name}</p>
+          <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{person.name}</p>
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate(`/admin/people/person/${person.id}`); }}
+            className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity"
+          >
+            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+          </button>
         </div>
         {person.title && (
           <p className="text-[11px] text-muted-foreground mb-0.5 truncate">{person.title}</p>
@@ -322,6 +332,10 @@ const People = () => {
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedPerson, setDraggedPerson] = useState<Person | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Custom filters
+  const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
 
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
@@ -366,6 +380,15 @@ const People = () => {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showColumnsMenu]);
+
+  // Close detail panel on Escape
+  useEffect(() => {
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape' && selectedPerson) setSelectedPerson(null);
+    }
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [selectedPerson]);
 
   const sortFieldLabel = SORT_FIELD_OPTIONS.find(o => o.value === sortField)?.label ?? sortField;
 
@@ -727,6 +750,7 @@ const People = () => {
                 </Select>
               </PopoverContent>
             </Popover>
+            <PipelineSettingsPopover open={settingsOpen} onOpenChange={setSettingsOpen} />
           </div>
 
           {/* Add Person button */}
@@ -770,7 +794,16 @@ const People = () => {
           >
             <div className="w-56">
               <div className="px-3 pt-3 pb-2 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Filters</span>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
+                <CreateFilterDialog
+                  teamMemberMap={teamMemberMap}
+                  stageConfig={contactTypeConfig}
+                  onSave={(filter) => {
+                    const id = `custom_${Date.now()}`;
+                    setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+                    toast.success(`Filter "${filter.filterName}" created`);
+                  }}
+                />
               </div>
 
               <nav className="flex-1 overflow-y-auto pb-4">
@@ -825,6 +858,30 @@ const People = () => {
                     </button>
                   );
                 })}
+
+                {/* Custom Filters */}
+                {customFilters.length > 0 && (
+                  <>
+                    <div className="px-3 pt-3 pb-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Custom</span>
+                    </div>
+                    {customFilters.map((cf) => {
+                      const isActive = activeFilter === cf.id;
+                      return (
+                        <button
+                          key={cf.id}
+                          onClick={() => setActiveFilter(cf.id)}
+                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
+                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          }`}
+                        >
+                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
+                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{cf.label}</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </nav>
             </div>
           </aside>
@@ -1119,10 +1176,19 @@ const People = () => {
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
-                                    {person.name}
-                                  </p>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
+                                      {person.name}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/contacts/people/${person.id}`); }}
+                                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                    >
+                                      <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                    </button>
+                                  </div>
                                   {person.title && (
                                     <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{person.title}</p>
                                   )}
@@ -1315,6 +1381,9 @@ const People = () => {
               teamMemberMap={teamMemberMap}
               teamMembers={teamMembers}
               onClose={() => setSelectedPerson(null)}
+              onExpand={() => {
+                navigate(`/admin/pipeline/contacts/people/${selectedPerson.id}`);
+              }}
               onContactTypeChange={(personId, newType) => {
                 contactTypeMutation.mutate({ personId, newType, oldType: selectedPerson.contact_type ?? 'Other' });
                 setSelectedPerson({ ...selectedPerson, contact_type: newType });

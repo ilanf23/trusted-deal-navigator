@@ -27,8 +27,6 @@ import { differenceInDays, parseISO, format } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 
 import {
-  UNDERWRITING_STATUSES,
-  stageConfig as canonicalStageConfig,
   EditableField,
   EditableSelectField,
   EditableContactRow,
@@ -81,6 +79,27 @@ interface LeadFile {
   uploaded_by: string | null;
   created_at: string;
 }
+
+// ── Pipeline stage config (7 stages) ──
+const PIPELINE_STATUSES: LeadStatus[] = [
+  'initial_review',
+  'moving_to_underwriting',
+  'onboarding',
+  'underwriting',
+  'ready_for_wu_approval',
+  'pre_approval_issued',
+  'won',
+];
+
+const pipelineStageConfig: Record<string, { title: string; color: string; bg: string; dot: string; pill: string }> = {
+  initial_review: { title: 'Initial Review', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800', dot: 'bg-blue-500', pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' },
+  moving_to_underwriting: { title: 'Moving to UW', color: 'text-cyan-700 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800', dot: 'bg-cyan-500', pill: 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300' },
+  onboarding: { title: 'Onboarding', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800', dot: 'bg-amber-500', pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' },
+  underwriting: { title: 'Underwriting', color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800', dot: 'bg-orange-500', pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' },
+  ready_for_wu_approval: { title: 'Ready for Approval', color: 'text-violet-700 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800', dot: 'bg-violet-500', pill: 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' },
+  pre_approval_issued: { title: 'Pre-Approval Issued', color: 'text-purple-700 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800', dot: 'bg-purple-500', pill: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300' },
+  won: { title: 'Won', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', dot: 'bg-emerald-500', pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' },
+};
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -278,7 +297,7 @@ function AddressBlock({ entry, onDelete }: { entry: LeadAddress; onDelete: (id: 
   );
 }
 
-export default function UnderwritingExpandedView() {
+export default function PipelineExpandedView() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -306,14 +325,6 @@ export default function UnderwritingExpandedView() {
   const [newContactTitle, setNewContactTitle] = useState('');
   const [savingContact, setSavingContact] = useState(false);
 
-  // Activity expand / comments state
-  const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
-  const [expandedThreads, setExpandedThreads] = useState<Record<string, boolean>>({});
-  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
-  const [savingComment, setSavingComment] = useState<string | null>(null);
-
-  const { teamMember } = useTeamMember();
-
   // Company inline add state (Related sidebar)
   const [addingCompany, setAddingCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState('');
@@ -324,11 +335,13 @@ export default function UnderwritingExpandedView() {
   const [newMilestoneName, setNewMilestoneName] = useState('');
   const [savingMilestone, setSavingMilestone] = useState(false);
 
-  // Waiting On inline add state (Related sidebar)
-  const [addingWaitingOn, setAddingWaitingOn] = useState(false);
-  const [newWaitingOwner, setNewWaitingOwner] = useState('');
-  const [newWaitingDesc, setNewWaitingDesc] = useState('');
-  const [savingWaitingOn, setSavingWaitingOn] = useState(false);
+  // Activity expand / comments state
+  const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
+  const [expandedThreads, setExpandedThreads] = useState<Record<string, boolean>>({});
+  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [savingComment, setSavingComment] = useState<string | null>(null);
+
+  const { teamMember } = useTeamMember();
 
   // Satellite table inline add state
   const [showAddEmail, setShowAddEmail] = useState(false);
@@ -356,14 +369,14 @@ export default function UnderwritingExpandedView() {
       return;
     }
     toast.success('Stage updated');
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
   }, [leadId, queryClient]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
     toast.success('Updated');
   }, [leadId, queryClient]);
 
@@ -371,8 +384,8 @@ export default function UnderwritingExpandedView() {
     if (!leadId) return;
     const { error } = await supabase.from('leads').update({ [field]: !currentVal }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
     toast.success('Updated');
   }, [leadId, queryClient]);
 
@@ -403,8 +416,8 @@ export default function UnderwritingExpandedView() {
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
-    queryClient.invalidateQueries({ queryKey: ['lead-activities', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-activities', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
   }, [leadId, activityTab, activityType, activityNote, noteContent, queryClient]);
 
   // ── Save activity comment ──
@@ -424,7 +437,7 @@ export default function UnderwritingExpandedView() {
       return;
     }
     setCommentTexts((prev) => ({ ...prev, [activityId]: '' }));
-    queryClient.invalidateQueries({ queryKey: ['activity-comments', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-activity-comments', leadId] });
   }, [leadId, commentTexts, teamMember, queryClient]);
 
   // ── Save task ──
@@ -445,7 +458,7 @@ export default function UnderwritingExpandedView() {
     toast.success('Task created');
     setNewTaskTitle('');
     setAddingTask(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-tasks', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-tasks', leadId] });
   }, [leadId, newTaskTitle, queryClient]);
 
   // ── Save contact (Related sidebar) ──
@@ -466,7 +479,7 @@ export default function UnderwritingExpandedView() {
     setNewContactName('');
     setNewContactTitle('');
     setAddingContact(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-contacts', leadId] });
   }, [leadId, newContactName, newContactTitle, queryClient]);
 
   // ── Save company (Related sidebar) ──
@@ -485,8 +498,8 @@ export default function UnderwritingExpandedView() {
     toast.success('Company updated');
     setNewCompanyName('');
     setAddingCompany(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
-    queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
   }, [leadId, newCompanyName, queryClient]);
 
   // ── Save milestone (Related sidebar) ──
@@ -506,7 +519,7 @@ export default function UnderwritingExpandedView() {
     toast.success('Milestone added');
     setNewMilestoneName('');
     setAddingMilestone(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-milestones', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-milestones', leadId] });
   }, [leadId, newMilestoneName, queryClient]);
 
   // ── Toggle milestone complete ──
@@ -522,42 +535,7 @@ export default function UnderwritingExpandedView() {
       toast.error('Failed to update milestone');
       return;
     }
-    queryClient.invalidateQueries({ queryKey: ['lead-milestones', leadId] });
-  }, [leadId, queryClient]);
-
-  // ── Save waiting on (Related sidebar) ──
-  const handleSaveWaitingOn = useCallback(async () => {
-    if (!leadId || !newWaitingOwner.trim()) return;
-    setSavingWaitingOn(true);
-    const { error } = await supabase.from('deal_waiting_on').insert({
-      lead_id: leadId,
-      owner: newWaitingOwner.trim(),
-      description: newWaitingDesc.trim() || null,
-    });
-    setSavingWaitingOn(false);
-    if (error) {
-      toast.error('Failed to add waiting on item');
-      return;
-    }
-    toast.success('Waiting on item added');
-    setNewWaitingOwner('');
-    setNewWaitingDesc('');
-    setAddingWaitingOn(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-waiting-on', leadId] });
-  }, [leadId, newWaitingOwner, newWaitingDesc, queryClient]);
-
-  // ── Resolve waiting on ──
-  const handleResolveWaitingOn = useCallback(async (itemId: string) => {
-    const { error } = await supabase
-      .from('deal_waiting_on')
-      .update({ resolved_at: new Date().toISOString() })
-      .eq('id', itemId);
-    if (error) {
-      toast.error('Failed to resolve item');
-      return;
-    }
-    toast.success('Resolved');
-    queryClient.invalidateQueries({ queryKey: ['lead-waiting-on', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-milestones', leadId] });
   }, [leadId, queryClient]);
 
   // ── File upload ──
@@ -576,22 +554,21 @@ export default function UnderwritingExpandedView() {
     const filePath = `${leadId}/${Date.now()}_${file.name}`;
     const { error: uploadError } = await supabase.storage
       .from('lead-files')
-      .upload(filePath, file, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: true,
-      });
+      .upload(filePath, file, { contentType: file.type });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
       setUploadingFile(false);
       toast.error('Failed to upload file');
       return;
     }
 
+    const { data: urlData } = supabase.storage.from('lead-files').getPublicUrl(filePath);
+    const fileUrl = urlData?.publicUrl || filePath;
+
     const { error: dbError } = await supabase.from('lead_files').insert({
       lead_id: leadId,
       file_name: file.name,
-      file_url: filePath,
+      file_url: fileUrl,
       file_type: file.type || null,
       file_size: file.size,
     });
@@ -602,13 +579,18 @@ export default function UnderwritingExpandedView() {
       return;
     }
     toast.success('File uploaded');
-    queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-files', leadId] });
   }, [leadId, queryClient]);
 
   // ── File delete ──
   const handleDeleteFile = useCallback(async (file: LeadFile) => {
-    // file_url stores the storage path directly
-    await supabase.storage.from('lead-files').remove([file.file_url]);
+    // Extract storage path from URL
+    const urlParts = file.file_url.split('/lead-files/');
+    const storagePath = urlParts.length > 1 ? decodeURIComponent(urlParts[urlParts.length - 1].split('?')[0]) : null;
+
+    if (storagePath) {
+      await supabase.storage.from('lead-files').remove([storagePath]);
+    }
 
     const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
     if (error) {
@@ -616,12 +598,12 @@ export default function UnderwritingExpandedView() {
       return;
     }
     toast.success('File deleted');
-    queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-lead-files', leadId] });
   }, [leadId, queryClient]);
 
   // ── Queries ──
   const { data: lead, isLoading } = useQuery({
-    queryKey: ['lead-expanded', leadId],
+    queryKey: ['pipeline-lead-expanded', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
@@ -649,7 +631,7 @@ export default function UnderwritingExpandedView() {
   }, [teamMembers]);
 
   const { data: interactionCount = 0 } = useQuery({
-    queryKey: ['lead-interactions', leadId],
+    queryKey: ['pipeline-lead-interactions', leadId],
     queryFn: async () => {
       const { count, error } = await supabase
         .from('evan_communications')
@@ -662,7 +644,7 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: contacts = [] } = useQuery({
-    queryKey: ['lead-contacts', leadId],
+    queryKey: ['pipeline-lead-contacts', leadId],
     queryFn: async () => {
       const { data } = await supabase.from('lead_contacts').select('*').eq('lead_id', leadId!);
       return data ?? [];
@@ -671,7 +653,7 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: tasks = [] } = useQuery({
-    queryKey: ['lead-tasks', leadId],
+    queryKey: ['pipeline-lead-tasks', leadId],
     queryFn: async () => {
       const { data } = await supabase
         .from('evan_tasks')
@@ -684,7 +666,7 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: milestones = [] } = useQuery({
-    queryKey: ['lead-milestones', leadId],
+    queryKey: ['pipeline-lead-milestones', leadId],
     queryFn: async () => {
       const { data } = await supabase
         .from('deal_milestones')
@@ -696,22 +678,8 @@ export default function UnderwritingExpandedView() {
     enabled: !!leadId,
   });
 
-  const { data: waitingOn = [] } = useQuery({
-    queryKey: ['lead-waiting-on', leadId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('deal_waiting_on')
-        .select('id, owner, description, due_date, resolved_at')
-        .eq('lead_id', leadId!)
-        .is('resolved_at', null)
-        .order('created_at', { ascending: false });
-      return data ?? [];
-    },
-    enabled: !!leadId,
-  });
-
   const { data: leadFiles = [] } = useQuery({
-    queryKey: ['lead-files', leadId],
+    queryKey: ['pipeline-lead-files', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lead_files')
@@ -725,7 +693,7 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: activities = [] } = useQuery({
-    queryKey: ['lead-activities', leadId],
+    queryKey: ['pipeline-lead-activities', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lead_activities')
@@ -743,7 +711,7 @@ export default function UnderwritingExpandedView() {
 
   // ── Activity comments query ──
   const { data: activityCommentsMap = {} } = useQuery({
-    queryKey: ['activity-comments', leadId],
+    queryKey: ['pipeline-activity-comments', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('activity_comments')
@@ -762,7 +730,7 @@ export default function UnderwritingExpandedView() {
 
   // ── Satellite table queries ──
   const { data: leadEmails = [] } = useQuery({
-    queryKey: ['lead-emails', leadId],
+    queryKey: ['pipeline-lead-emails', leadId],
     queryFn: async () => {
       const { data } = await supabase.from('lead_emails').select('*').eq('lead_id', leadId!);
       return (data || []) as LeadEmail[];
@@ -770,54 +738,27 @@ export default function UnderwritingExpandedView() {
     enabled: !!leadId,
   });
 
-  const COMMON_DOMAINS = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com'];
-
-  // Related people from `people` table — matched by company name or business email domain
-  const { data: relatedPeople = [] } = useQuery({
-    queryKey: ['lead-related-people', lead?.company_name, lead?.email, leadEmails],
+  const { data: leadPhones = [] } = useQuery({
+    queryKey: ['pipeline-lead-phones', leadId],
     queryFn: async () => {
-      if (!lead) return [];
-      const results: { id: string; name: string; title: string | null; email: string | null; phone: string | null; company_name: string | null }[] = [];
-
-      // Match by company name
-      if (lead.company_name) {
-        const { data } = await supabase
-          .from('people')
-          .select('id, name, title, email, phone, company_name')
-          .eq('company_name', lead.company_name)
-          .order('name')
-          .limit(20);
-        if (data) results.push(...data);
-      }
-
-      // Collect all business email domains from lead email + lead_emails
-      const allEmails = [lead.email, ...leadEmails.map(e => e.email)].filter(Boolean) as string[];
-      const domains = new Set<string>();
-      for (const email of allEmails) {
-        const domain = email.split('@')[1]?.toLowerCase();
-        if (domain && !COMMON_DOMAINS.includes(domain)) domains.add(domain);
-      }
-
-      // Match by email domain
-      for (const domain of domains) {
-        const { data } = await supabase
-          .from('people')
-          .select('id, name, title, email, phone, company_name')
-          .ilike('email', `%@${domain}`)
-          .limit(20);
-        if (data) results.push(...data);
-      }
-
-      // Deduplicate by id
-      const seen = new Set<string>();
-      return results.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', leadId!);
+      return (data || []) as LeadPhone[];
     },
-    enabled: !!lead,
+    enabled: !!leadId,
+  });
+
+  const { data: leadAddresses = [] } = useQuery({
+    queryKey: ['pipeline-lead-addresses', leadId],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', leadId!);
+      return (data || []) as LeadAddress[];
+    },
+    enabled: !!leadId,
   });
 
   // ── Gmail email queries ──
   const { data: gmailConnection } = useQuery({
-    queryKey: ['gmail-connection-for-lead'],
+    queryKey: ['gmail-connection-for-pipeline-lead'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return null;
@@ -840,7 +781,7 @@ export default function UnderwritingExpandedView() {
   }, [lead, leadEmails]);
 
   const { data: gmailEmails = [], isLoading: gmailEmailsLoading } = useQuery({
-    queryKey: ['lead-gmail-emails', leadId, leadEmailAddresses],
+    queryKey: ['pipeline-lead-gmail-emails', leadId, leadEmailAddresses],
     queryFn: async () => {
       if (!gmailConnection || leadEmailAddresses.length === 0) return [];
       const { data: { session } } = await supabase.auth.getSession();
@@ -891,7 +832,6 @@ export default function UnderwritingExpandedView() {
         }
       }
     });
-    // Sort messages within each thread oldest-first (chronological conversation order)
     for (const thread of threadMap.values()) {
       thread.messages.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }
@@ -908,24 +848,6 @@ export default function UnderwritingExpandedView() {
     return items.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
   }, [activities, allEmailThreads]);
 
-  const { data: leadPhones = [] } = useQuery({
-    queryKey: ['lead-phones', leadId],
-    queryFn: async () => {
-      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', leadId!);
-      return (data || []) as LeadPhone[];
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: leadAddresses = [] } = useQuery({
-    queryKey: ['lead-addresses', leadId],
-    queryFn: async () => {
-      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', leadId!);
-      return (data || []) as LeadAddress[];
-    },
-    enabled: !!leadId,
-  });
-
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
@@ -934,7 +856,7 @@ export default function UnderwritingExpandedView() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-emails', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-lead-emails', leadId] });
       setNewEmail('');
       setShowAddEmail(false);
       toast.success('Email added');
@@ -947,7 +869,7 @@ export default function UnderwritingExpandedView() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-emails', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-lead-emails', leadId] });
       toast.success('Email removed');
     },
   });
@@ -959,7 +881,7 @@ export default function UnderwritingExpandedView() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-phones', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-lead-phones', leadId] });
       setNewPhone('');
       setShowAddPhone(false);
       toast.success('Phone added');
@@ -972,7 +894,7 @@ export default function UnderwritingExpandedView() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-phones', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-lead-phones', leadId] });
       toast.success('Phone removed');
     },
   });
@@ -991,7 +913,7 @@ export default function UnderwritingExpandedView() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-addresses', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-lead-addresses', leadId] });
       setNewAddressLine1('');
       setNewAddressCity('');
       setNewAddressState('');
@@ -1008,7 +930,7 @@ export default function UnderwritingExpandedView() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-addresses', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-lead-addresses', leadId] });
       toast.success('Address removed');
     },
   });
@@ -1028,12 +950,12 @@ export default function UnderwritingExpandedView() {
   const daysInStage = daysSince(lead.updated_at);
   const inactiveDays = daysSince(lead.last_activity_at);
   const lastContacted = formatShortDate(lead.last_activity_at);
-  const stageCfg = canonicalStageConfig[lead.status];
+  const stageCfg = pipelineStageConfig[lead.status];
   const inactiveColor = (inactiveDays ?? 0) > 30 ? 'text-red-600' : 'text-amber-600';
   const ownerOptions = teamMembers.map((m) => ({ value: m.id, label: m.name }));
 
   function goBack() {
-    navigate(-1);
+    navigate('/admin/pipeline');
   }
 
   return (
@@ -1113,16 +1035,16 @@ export default function UnderwritingExpandedView() {
                   </div>
                   <Select value={lead.status} onValueChange={(v) => handleStageChange(v as LeadStatus)}>
                     <SelectTrigger className={`h-8 w-full text-[13px] rounded-lg ${stageCfg?.bg ?? 'bg-muted'} ${stageCfg?.color ?? 'text-foreground'} border-border shadow-none px-2.5 gap-1`}>
-                      <SelectValue>{stageCfg?.label ?? lead.status}</SelectValue>
+                      <SelectValue>{stageCfg?.title ?? lead.status}</SelectValue>
                     </SelectTrigger>
                     <SelectContent className="min-w-[220px]">
-                      {UNDERWRITING_STATUSES.map((s) => {
-                        const cfg = canonicalStageConfig[s];
+                      {PIPELINE_STATUSES.map((s) => {
+                        const cfg = pipelineStageConfig[s];
                         return (
                           <SelectItem key={s} value={s} className="text-[13px]">
                             <div className="flex items-center gap-2">
                               <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
-                              {cfg?.label ?? s}
+                              {cfg?.title ?? s}
                             </div>
                           </SelectItem>
                         );
@@ -1289,14 +1211,6 @@ export default function UnderwritingExpandedView() {
               <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Excluded lender names from CLX agreement..." onSaved={handleFieldSaved} />
             </div>
 
-            {/* #UW */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">#UW</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
-                <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="UW Number" value={lead.uw_number ?? ''} field="uw_number" leadId={lead.id} onSaved={handleFieldSaved} />
-              </div>
-            </div>
-
             {/* Client Working with Other Lenders */}
             <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between px-4 py-3.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
               <div className="flex items-center gap-2">
@@ -1329,7 +1243,7 @@ export default function UnderwritingExpandedView() {
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-muted/50">
-                <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Underwriting" />
+                <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Pipeline" />
                 <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
                 <ReadOnlyField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? '\u2014'} />
                 <ReadOnlyField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value="\u2014" />
@@ -1482,7 +1396,6 @@ export default function UnderwritingExpandedView() {
                           key={`email-${thread.id}`}
                           className={`rounded-xl bg-card border transition-colors ${isThreadExpanded ? 'border-emerald-200' : 'border-border hover:border-border'}`}
                         >
-                          {/* Clickable header */}
                           <button
                             type="button"
                             className="flex gap-3 p-3 w-full text-left cursor-pointer"
@@ -1511,8 +1424,6 @@ export default function UnderwritingExpandedView() {
                               <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                             )}
                           </button>
-
-                          {/* Expanded: thread messages */}
                           {isThreadExpanded && (
                             <div className="px-3 pb-3">
                               <Separator className="mb-3" />
@@ -1557,7 +1468,7 @@ export default function UnderwritingExpandedView() {
                       );
                     }
 
-                    // Activity card (unchanged)
+                    // Activity card with comment threading
                     const act = item.data;
                     const typeInfo = ACTIVITY_TYPE_ICONS[act.activity_type] ?? ACTIVITY_TYPE_ICONS.note;
                     const IconComp = typeInfo.icon;
@@ -1569,7 +1480,6 @@ export default function UnderwritingExpandedView() {
                         key={act.id}
                         className={`rounded-xl bg-card border transition-colors ${isExpanded ? 'border-blue-200' : 'border-border hover:border-border'}`}
                       >
-                        {/* Clickable header */}
                         <button
                           type="button"
                           className="flex gap-3 p-3 w-full text-left cursor-pointer"
@@ -1600,15 +1510,13 @@ export default function UnderwritingExpandedView() {
                             <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                           )}
                         </button>
-
-                        {/* Expanded: comments section */}
                         {isExpanded && (
                           <div className="px-3 pb-3">
                             <Separator className="mb-3" />
                             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Comments</span>
                             {comments.length > 0 && (
                               <div className="mt-2 space-y-2">
-                                {comments.map((c) => (
+                                {comments.map((c: any) => (
                                   <div key={c.id} className="flex gap-2">
                                     <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
                                       {(c.created_by ?? '?')[0]?.toUpperCase()}
@@ -1624,14 +1532,13 @@ export default function UnderwritingExpandedView() {
                                 ))}
                               </div>
                             )}
-                            {/* Comment input */}
                             <div className="flex items-center gap-2 mt-2">
                               <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
                                 {(teamMember?.name ?? '?')[0]?.toUpperCase()}
                               </div>
                               <input
                                 className="flex-1 text-xs bg-muted/50 border border-border rounded-md px-2 py-1 placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-300"
-                                placeholder="Add a comment…"
+                                placeholder="Add a comment..."
                                 value={commentTexts[act.id] ?? ''}
                                 onChange={(e) => setCommentTexts((prev) => ({ ...prev, [act.id]: e.target.value }))}
                                 onKeyDown={(e) => {
@@ -1662,17 +1569,11 @@ export default function UnderwritingExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <div className="w-[260px] shrink-0 border-l border-border bg-card flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Related</span>
-            <button className="h-6 w-6 rounded-md flex items-center justify-center text-primary hover:bg-primary/10 transition-colors border border-primary/30">
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-          <ScrollArea className="flex-1">
+        <ScrollArea className="w-[260px] shrink-0 border-l border-border bg-card">
           <div className="py-4 px-1">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
             {/* People */}
-            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length + relatedPeople.filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase())).length} onAdd={() => setAddingContact(true)}>
+            <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} onAdd={() => setAddingContact(true)}>
               <div className="space-y-2 py-1">
                 {contacts.map((c) => (
                   <div key={c.id} className="text-xs text-foreground flex items-center gap-2">
@@ -1683,7 +1584,7 @@ export default function UnderwritingExpandedView() {
                     {c.title && <span className="text-muted-foreground">· {c.title}</span>}
                   </div>
                 ))}
-                {contacts.length === 0 && !addingContact && relatedPeople.length === 0 && (
+                {contacts.length === 0 && !addingContact && (
                   <p className="text-xs text-muted-foreground">No contacts</p>
                 )}
                 {addingContact ? (
@@ -1720,32 +1621,6 @@ export default function UnderwritingExpandedView() {
                   >
                     + Add person...
                   </button>
-                )}
-                {/* Related people from people table */}
-                {relatedPeople.filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase())).length > 0 && (
-                  <>
-                    <div className="border-t border-border mt-2 pt-2">
-                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Related</span>
-                    </div>
-                    {relatedPeople
-                      .filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase()))
-                      .map((rp) => (
-                        <div key={rp.id} className="text-xs text-foreground flex items-center gap-2">
-                          <div className="h-5 w-5 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-400 shrink-0">
-                            {rp.name[0]?.toUpperCase()}
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-1">
-                              <span className="font-medium truncate">{rp.name}</span>
-                              {rp.title && <span className="text-muted-foreground truncate">· {rp.title}</span>}
-                            </div>
-                            {rp.company_name && (
-                              <span className="text-[10px] text-muted-foreground/70 truncate">{rp.company_name}</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                  </>
                 )}
               </div>
             </RelatedSection>
@@ -1872,6 +1747,56 @@ export default function UnderwritingExpandedView() {
               </div>
             </RelatedSection>
 
+            {/* Milestones */}
+            <RelatedSection
+              icon={<Flag className="h-3.5 w-3.5" />}
+              label="Milestones"
+              count={milestones.length}
+              onAdd={() => setAddingMilestone(true)}
+            >
+              <div className="space-y-2 py-1">
+                {milestones.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center gap-2 text-xs cursor-pointer"
+                    onClick={() => handleToggleMilestone(m.id, m.completed)}
+                  >
+                    <CheckSquare className={`h-3.5 w-3.5 shrink-0 ${m.completed ? 'text-emerald-500' : 'text-muted-foreground/50'}`} />
+                    <span className={`flex-1 truncate font-medium ${m.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                      {m.milestone_name}
+                    </span>
+                  </div>
+                ))}
+                {milestones.length === 0 && !addingMilestone && (
+                  <p className="text-xs text-muted-foreground">No milestones</p>
+                )}
+                {addingMilestone ? (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      autoFocus
+                      value={newMilestoneName}
+                      onChange={(e) => setNewMilestoneName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newMilestoneName.trim()) handleSaveMilestone(milestones.length);
+                        if (e.key === 'Escape') { setAddingMilestone(false); setNewMilestoneName(''); }
+                      }}
+                      placeholder="Milestone name..."
+                      disabled={savingMilestone}
+                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                    />
+                    {savingMilestone && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingMilestone(true)}
+                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                  >
+                    + Add milestone...
+                  </button>
+                )}
+              </div>
+            </RelatedSection>
+
             {/* Files */}
             <RelatedSection
               icon={<FileText className="h-3.5 w-3.5" />}
@@ -1896,29 +1821,16 @@ export default function UnderwritingExpandedView() {
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const { data, error } = await supabase.storage
-                            .from('lead-files')
-                            .createSignedUrl(f.file_url, 60);
-                          if (error || !data?.signedUrl) {
-                            toast.error('Failed to generate download link');
-                            return;
-                          }
-                          const a = document.createElement('a');
-                          a.href = data.signedUrl;
-                          a.download = f.file_name;
-                          a.target = '_blank';
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                        }}
+                      <a
+                        href={f.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
                         className="p-1 rounded hover:bg-muted"
                         title="Download"
                       >
                         <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </button>
+                      </a>
                       <button
                         onClick={() => handleDeleteFile(f)}
                         className="p-1 rounded hover:bg-muted"
@@ -1961,13 +1873,12 @@ export default function UnderwritingExpandedView() {
             <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1}>
               <div className="text-xs py-1">
                 <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
-                  {stageCfg?.label ?? lead.status}
+                  {stageCfg?.title ?? lead.status}
                 </Badge>
               </div>
             </RelatedSection>
           </div>
-          </ScrollArea>
-        </div>
+        </ScrollArea>
       </div>
     </div>
   );

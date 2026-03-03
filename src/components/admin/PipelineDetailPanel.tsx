@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  X, Maximize2, Building2, User, Mail, Phone, PhoneCall,
+  X, DollarSign, Maximize2, Building2, User, Mail, Phone, PhoneCall, Hash,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase,
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Flag, Layers,
 } from 'lucide-react';
@@ -42,6 +42,8 @@ interface PipelineDetailPanelProps {
   stageConfig: Record<string, StageConfigEntry>;
   teamMemberMap: Record<string, string>;
   teamMembers?: TeamMember[];
+  formatValue?: (v: number) => string;
+  fakeValue?: (id: string) => number;
   onClose: () => void;
   onExpand?: () => void;
   onStageChange?: (leadId: string, newStatus: LeadStatus) => void;
@@ -883,6 +885,8 @@ export default function PipelineDetailPanel({
   stageConfig,
   teamMemberMap,
   teamMembers = [],
+  formatValue,
+  fakeValue,
   onClose,
   onExpand,
   onStageChange,
@@ -893,6 +897,7 @@ export default function PipelineDetailPanel({
   const queryClient = useQueryClient();
   const stageCfg = stageConfig[lead.status];
   const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? '\u2014') : '\u2014';
+  const dealValue = fakeValue ? fakeValue(lead.id) : null;
   const initial = lead.name[0]?.toUpperCase() ?? '?';
   const gradient = getAvatarGradient(lead.name);
   const daysInStage = daysSince(lead.updated_at);
@@ -940,6 +945,12 @@ export default function PipelineDetailPanel({
               </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
+              {dealValue != null && formatValue && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-800">
+                  <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatValue(dealValue)}</span>
+                </div>
+              )}
               {onExpand && (
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Expand full view" onClick={onExpand}>
                   <Maximize2 className="h-3.5 w-3.5" />
@@ -1067,6 +1078,7 @@ export default function PipelineDetailPanel({
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Deal Details</span>
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
                 <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Pipeline" />
+                <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="CLX File" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
                 {ownerOptions.length > 0 ? (
                   <EditableSelectField
                     icon={<User className="h-3.5 w-3.5" />}
@@ -1082,6 +1094,9 @@ export default function PipelineDetailPanel({
                   <EditableField icon={<User className="h-3.5 w-3.5" />} label="Owned By" value={assignedName} field="assigned_to" leadId={lead.id} onSaved={handleFieldSaved} />
                 )}
                 <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? ''} field="source" leadId={lead.id} onSaved={handleFieldSaved} />
+                {dealValue != null && formatValue && (
+                  <ReadOnlyField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={formatValue(dealValue)} />
+                )}
                 <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
               </div>
             </div>

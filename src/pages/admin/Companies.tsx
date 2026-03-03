@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
@@ -7,11 +8,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
+import CompanyDetailPanel, { contactTypeConfigDefault } from '@/components/admin/CompanyDetailPanel';
+import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
+import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import {
-  ArrowUpDown, Search, PanelLeft, Filter, Settings2, ChevronDown, Plus,
+  ArrowUpDown, Search, AlignJustify, PanelLeft, Filter, Settings2, ChevronDown, Plus,
   Building2, Tag, Check, X, LayoutGrid, Table2, FileSearch,
-  PanelRightOpen, Sparkles, Loader2, Download, PlusCircle, Globe,
+  PanelRightOpen, Sparkles, Loader2, Download, PlusCircle, Globe, Maximize2,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -164,6 +168,7 @@ function KanbanCompanyCard({ company, isDragging, onClick }: {
   isDragging?: boolean;
   onClick: () => void;
 }) {
+  const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: company.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const avatarColor = getAvatarColor(company.company_name);
@@ -172,14 +177,20 @@ function KanbanCompanyCard({ company, isDragging, onClick }: {
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
-        className="p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
+        className="group/card p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
         <div className="flex items-center gap-2 mb-1.5">
           <div className={`h-6 w-6 rounded-md ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
             {initial}
           </div>
-          <p className="text-sm font-semibold text-foreground leading-tight truncate">{company.company_name}</p>
+          <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{company.company_name}</p>
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate(`/admin/companies/company/${company.id}`); }}
+            className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity"
+          >
+            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+          </button>
         </div>
         {company.contact_name && (
           <p className="text-[11px] text-muted-foreground mb-0.5 truncate">{company.contact_name}</p>
@@ -244,6 +255,7 @@ function KanbanDropColumn({ contactType, label, color, companies, draggedId, onC
 
 const Companies = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // ── Core state ──
   const [activeFilter, setActiveFilter] = useState<string>('all');
@@ -254,10 +266,15 @@ const Companies = () => {
 
   // ── Toolbar state ──
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedCompany, setDraggedCompany] = useState<Company | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Custom filters
+  const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
 
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
@@ -266,14 +283,22 @@ const Companies = () => {
   });
 
   const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    company: 200, phone: 130, contact: 140, tasks: 55, website: 150,
-    contactType: 130, emailDomain: 140, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+    company: 200, phone: 130, contact: 140, tasks: 80, website: 150,
+    contactType: 120, emailDomain: 140, lastContacted: 120, interactions: 90, inactiveDays: 90, tags: 100,
   }), []);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     try {
       const saved = localStorage.getItem('companies-column-widths');
-      if (saved) return { ...DEFAULT_COLUMN_WIDTHS, ...JSON.parse(saved) };
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, number>;
+        // Enforce minimum widths so saved narrow values don't cause overlap
+        const merged = { ...DEFAULT_COLUMN_WIDTHS };
+        for (const key of Object.keys(parsed)) {
+          merged[key] = Math.max(parsed[key], DEFAULT_COLUMN_WIDTHS[key] ?? 60);
+        }
+        return merged;
+      }
     } catch {}
     return DEFAULT_COLUMN_WIDTHS;
   });
@@ -299,6 +324,15 @@ const Companies = () => {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showColumnsMenu]);
+
+  // Close detail panel on Escape
+  useEffect(() => {
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape' && selectedCompany) setSelectedCompany(null);
+    }
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [selectedCompany]);
 
   const sortFieldLabel = SORT_FIELD_OPTIONS.find(o => o.value === sortField)?.label ?? sortField;
 
@@ -420,6 +454,24 @@ const Companies = () => {
     },
   });
 
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['team-members-companies'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id, name, avatar_url')
+        .order('name');
+      if (error) throw error;
+      return data as { id: string; name: string; avatar_url: string | null }[];
+    },
+  });
+
+  const teamMemberMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of teamMembers) map[m.id] = m.name;
+    return map;
+  }, [teamMembers]);
+
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: companies.length };
     for (const type of CONTACT_TYPES) {
@@ -482,6 +534,9 @@ const Companies = () => {
   function handleRowClick(company: Company) {
     setSelectedCompany(company);
   }
+
+  // Row padding based on density
+  const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
 
   const ColHeader = ({
     colKey,
@@ -588,6 +643,7 @@ const Companies = () => {
                 </Select>
               </PopoverContent>
             </Popover>
+            <PipelineSettingsPopover open={settingsOpen} onOpenChange={setSettingsOpen} />
           </div>
 
           {/* Add Company button */}
@@ -631,7 +687,16 @@ const Companies = () => {
           >
             <div className="w-56">
               <div className="px-3 pt-3 pb-2 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Filters</span>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
+                <CreateFilterDialog
+                  teamMemberMap={teamMemberMap}
+                  stageConfig={contactTypeConfig}
+                  onSave={(filter) => {
+                    const id = `custom_${Date.now()}`;
+                    setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+                    toast.success(`Filter "${filter.filterName}" created`);
+                  }}
+                />
               </div>
 
               <nav className="flex-1 overflow-y-auto pb-4">
@@ -686,6 +751,30 @@ const Companies = () => {
                     </button>
                   );
                 })}
+
+                {/* Custom Filters */}
+                {customFilters.length > 0 && (
+                  <>
+                    <div className="px-3 pt-3 pb-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Custom</span>
+                    </div>
+                    {customFilters.map((cf) => {
+                      const isActive = activeFilter === cf.id;
+                      return (
+                        <button
+                          key={cf.id}
+                          onClick={() => setActiveFilter(cf.id)}
+                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
+                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          }`}
+                        >
+                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
+                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{cf.label}</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </nav>
             </div>
           </aside>
@@ -727,6 +816,15 @@ const Companies = () => {
               </div>
 
               <div className="flex items-center gap-0.5">
+                {/* Row density toggle */}
+                <button
+                  onClick={() => setRowDensity(d => d === 'comfortable' ? 'compact' : 'comfortable')}
+                  title={`Row density: ${rowDensity}`}
+                  className={iconBtn(rowDensity === 'compact')}
+                >
+                  <AlignJustify className={`h-3.5 w-3.5 ${rowDensity === 'compact' ? 'text-blue-600' : ''}`} />
+                </button>
+
                 {searchOpen && (
                   <Input
                     autoFocus
@@ -968,10 +1066,19 @@ const Companies = () => {
                                 <div className={`h-7 w-7 rounded-md ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
-                                    {company.company_name}
-                                  </p>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
+                                      {company.company_name}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/contacts/companies/${company.id}`); }}
+                                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                    >
+                                      <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -1168,6 +1275,28 @@ const Companies = () => {
               </DndContext>
             )}
           </main>
+
+          {/* Right Detail Panel */}
+          {selectedCompany && (
+            <CompanyDetailPanel
+              company={selectedCompany}
+              contactTypeConfig={contactTypeConfig}
+              teamMemberMap={teamMemberMap}
+              teamMembers={teamMembers}
+              onClose={() => setSelectedCompany(null)}
+              onExpand={() => {
+                navigate(`/admin/pipeline/contacts/companies/${selectedCompany.id}`);
+              }}
+              onContactTypeChange={(companyId, newType) => {
+                contactTypeMutation.mutate({ companyId, newType, oldType: selectedCompany.contact_type ?? 'Other' });
+                setSelectedCompany({ ...selectedCompany, contact_type: newType });
+              }}
+              onCompanyUpdate={(updatedCompany) => {
+                setSelectedCompany(updatedCompany);
+                queryClient.invalidateQueries({ queryKey: ['companies-list'] });
+              }}
+            />
+          )}
         </div>
       </div>
 

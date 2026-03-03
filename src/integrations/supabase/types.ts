@@ -73,6 +73,48 @@ export type Database = {
           },
         ]
       }
+      activity_comments: {
+        Row: {
+          activity_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          activity_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          activity_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_comments_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "lead_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_comments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_conversation_messages: {
         Row: {
           content: string

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
-  X, Maximize2, Building2, User, Mail, Phone, Globe,
+  X, Maximize2, Building2, User, Mail, Phone, Globe, ArrowRight,
   Tag, FileText, Clock, ChevronRight, Briefcase,
   Pencil, Check, Loader2, MessageSquare, Users, ChevronDown, Layers,
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import { formatPhoneNumber } from './InlineEditableFields';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { differenceInDays, parseISO, format } from 'date-fns';
+import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
 // ── Company type ──
 interface Company {
@@ -414,17 +414,117 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
   );
 }
 
+// ── Timeline icon config ──
+const TIMELINE_ICON_CONFIG: Record<string, { icon: React.ReactNode; dotColor: string }> = {
+  call: { icon: <Phone className="h-3 w-3" />, dotColor: 'bg-blue-500 text-white' },
+  sms: { icon: <MessageSquare className="h-3 w-3" />, dotColor: 'bg-emerald-500 text-white' },
+  email: { icon: <Mail className="h-3 w-3" />, dotColor: 'bg-amber-500 text-white' },
+  comment: { icon: <MessageSquare className="h-3 w-3" />, dotColor: 'bg-slate-500 text-white' },
+};
+
 // ── Activity Tab Content ──
-function ActivityTabContent() {
+function ActivityTabContent({ company }: { company: Company }) {
+  // First get lead IDs that match this company, then get communications for those leads
+  const { data: communications = [], isLoading } = useQuery({
+    queryKey: ['company-activity-timeline', company.company_name],
+    queryFn: async () => {
+      // Find leads associated with this company
+      const { data: leads } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('company_name', company.company_name);
+      if (!leads || leads.length === 0) return [];
+      const leadIds = leads.map((l) => l.id);
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('id, communication_type, direction, content, duration_seconds, created_at')
+        .in('lead_id', leadIds)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000,
+  });
+
+  const timelineItems = useMemo(() => {
+    return communications.map((c) => {
+      const typeLabel = c.communication_type === 'sms' ? 'SMS' : c.communication_type === 'call' ? 'Call' : 'Email';
+      const dirLabel = c.direction === 'inbound' ? 'Inbound' : 'Outbound';
+      return {
+        id: c.id,
+        type: c.communication_type,
+        title: `${dirLabel} ${typeLabel}`,
+        content: c.content,
+        createdAt: c.created_at,
+        direction: c.direction,
+        durationSeconds: c.duration_seconds,
+      };
+    });
+  }, [communications]);
+
+  if (isLoading) {
+    return (
+      <div className="px-5 py-4 space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex gap-3">
+            <Skeleton className="h-7 w-7 rounded-full shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3.5 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="px-5 py-4">
-      <div className="py-10 flex flex-col items-center justify-center text-center">
-        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
-          <Clock className="h-5 w-5 text-muted-foreground" />
+      {timelineItems.length === 0 ? (
+        <div className="py-10 flex flex-col items-center justify-center text-center">
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
+            <Clock className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground">No activity recorded yet</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Communications will appear here</p>
         </div>
-        <p className="text-sm font-medium text-muted-foreground">No activity recorded yet</p>
-        <p className="text-xs text-muted-foreground mt-0.5">Activities will appear here</p>
-      </div>
+      ) : (
+        <div className="relative">
+          <div className="absolute left-[13px] top-2 bottom-2 w-px bg-border" />
+          <div className="space-y-0.5">
+            {timelineItems.map((item) => {
+              const iconCfg = TIMELINE_ICON_CONFIG[item.type] ?? TIMELINE_ICON_CONFIG.comment;
+              return (
+                <div key={item.id} className="flex gap-3 py-2.5 relative">
+                  <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 z-10 ${iconCfg.dotColor}`}>
+                    {iconCfg.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-[13px] font-semibold text-foreground leading-tight">{item.title}</p>
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+                        {formatDistanceToNow(parseISO(item.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
+
+                    {item.content && (
+                      <p className="text-[12px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{item.content}</p>
+                    )}
+
+                    {item.type === 'call' && item.durationSeconds != null && item.durationSeconds > 0 && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {Math.floor(item.durationSeconds / 60)}m {item.durationSeconds % 60}s
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -769,7 +869,7 @@ export default function CompanyDetailPanel({
 
       {activeTab === 'activity' && (
         <ScrollArea className="flex-1">
-          <ActivityTabContent />
+          <ActivityTabContent company={company} />
         </ScrollArea>
       )}
 

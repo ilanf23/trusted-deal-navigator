@@ -1,24 +1,35 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
-import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
-import { KanbanColumn } from '@/components/admin/KanbanColumn';
+import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
+import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   ArrowUpDown,
   Search,
+  AlignJustify,
   PanelLeft,
   Filter,
   Settings2,
   ChevronDown,
+  Plus,
+  DollarSign,
   Check,
   X,
   LayoutGrid,
@@ -28,11 +39,15 @@ import {
   Building2,
   Flame,
   Maximize2,
+  Download,
+  PlusCircle,
 } from 'lucide-react';
 import {
-  DndContext, DragEndEvent,
-  PointerSensor, useSensor, useSensors, closestCenter,
+  DndContext, DragEndEvent, DragOverlay, DragStartEvent,
+  PointerSensor, useSensor, useSensors, closestCenter, useDroppable,
 } from '@dnd-kit/core';
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { toast } from 'sonner';
 import { differenceInDays, parseISO, format } from 'date-fns';
 
@@ -100,6 +115,13 @@ const AVATAR_COLORS = [
   'bg-orange-500', 'bg-pink-500',
 ];
 
+const FILTER_OPTIONS = [
+  { id: 'all', label: 'All Deals', group: 'top' },
+  { id: 'my_open', label: 'My Open Deals', group: 'public' },
+  { id: 'won', label: 'Won Deals', group: 'public' },
+  { id: 'lost', label: 'Lost Deals', group: 'public' },
+];
+
 function getAvatarColor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -126,19 +148,50 @@ function formatShortDate(dateStr: string | null): string {
   }
 }
 
+function seededRand(seed: string, index: number): number {
+  let h = index * 2654435761;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+    h ^= h >>> 16;
+  }
+  return Math.abs(h) / 0xffffffff;
+}
+
+const VALUE_BUCKETS = [25000, 50000, 75000, 100000, 150000, 200000, 250000, 350000, 500000, 750000];
+
+function fakeValue(id: string): number {
+  return VALUE_BUCKETS[Math.floor(seededRand(id, 1) * VALUE_BUCKETS.length)];
+}
+
+function formatValue(v: number): string {
+  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function fakeTasks(id: string): number {
+  return Math.floor(seededRand(id, 2) * 9);
+}
+
+function fakeInteractions(id: string): number {
+  return Math.floor(seededRand(id, 3) * 26);
+}
+
 type SortField = 'name' | 'company_name' | 'status' | 'last_activity_at' | 'assigned_to' | 'updated_at';
 type SortDir = 'asc' | 'desc';
 
-type ColumnKey = 'company' | 'contact' | 'ownedBy' | 'stage' | 'daysInStage' | 'lastTouchpoint' | 'lastContacted' | 'inactiveDays' | 'tags';
+type ColumnKey = 'company' | 'contact' | 'value' | 'ownedBy' | 'tasks' | 'stage' | 'daysInStage' | 'stageUpdated' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
 
 const COLUMN_LABELS: Record<ColumnKey, string> = {
   company: 'Company',
   contact: 'Contact',
+  value: 'Value',
   ownedBy: 'Owner',
+  tasks: 'Tasks',
   stage: 'Stage',
   daysInStage: 'Days in Stage',
-  lastTouchpoint: 'Last Touchpoint',
+  stageUpdated: 'Stage Updated',
   lastContacted: 'Last Contacted',
+  interactions: 'Interactions',
   inactiveDays: 'Inactive Days',
   tags: 'Tags',
 };
@@ -152,8 +205,113 @@ const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
   { value: 'updated_at', label: 'Updated' },
 ];
 
+// ── Kanban sub-components ──
+function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
+  lead: Lead;
+  teamMemberMap: Record<string, string>;
+  isDragging?: boolean;
+  onClick: () => void;
+}) {
+  const navigate = useNavigate();
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
+  const avatarColor = getAvatarColor(lead.name);
+  const initial = lead.name[0]?.toUpperCase() ?? '?';
+  const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? null) : null;
+  const dealValue = fakeValue(lead.id);
+  const daysInStage = daysSince(lead.updated_at);
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <Card
+        className="group/card p-3 cursor-grab active:cursor-grabbing shadow-sm border border-border/60 hover:shadow-md transition-shadow bg-card"
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+      >
+        <div className="flex items-center gap-2 mb-1.5">
+          <div className={`h-6 w-6 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+            {initial}
+          </div>
+          <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{lead.name}</p>
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lead/${lead.id}`); }}
+            className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity"
+          >
+            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+          </button>
+        </div>
+        {lead.company_name && (
+          <p className="text-[11px] text-muted-foreground mb-1 truncate">{lead.company_name}</p>
+        )}
+        <div className="flex items-center justify-between mt-1.5">
+          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+            {formatValue(dealValue)}
+          </span>
+          {daysInStage !== null && (
+            <span className={`text-[10px] font-medium ${daysInStage > 14 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
+              {daysInStage}d
+            </span>
+          )}
+        </div>
+        {assignedName && (
+          <p className="text-[10px] text-muted-foreground mt-1">{assignedName}</p>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedId, onLeadClick, onAdd }: {
+  status: string;
+  label: string;
+  color: string;
+  leads: Lead[];
+  teamMemberMap: Record<string, string>;
+  draggedId: string | null;
+  onLeadClick: (lead: Lead) => void;
+  onAdd?: () => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: status });
+  const totalVal = leads.reduce((sum, l) => sum + fakeValue(l.id), 0);
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col w-64 shrink-0 rounded-xl transition-colors ${isOver ? 'bg-blue-50/70 dark:bg-blue-950/30' : 'bg-muted/30'}`}
+    >
+      <div className="px-3 py-2.5 flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full shrink-0 ${color}`} />
+        <span className="text-xs font-semibold text-foreground truncate">{label}</span>
+        <span className="text-[11px] text-muted-foreground font-medium ml-auto">{leads.length}</span>
+        {onAdd && (
+          <button onClick={onAdd} className="text-muted-foreground hover:text-foreground">
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      <div className="px-2 pb-1">
+        <span className="text-[10px] text-muted-foreground font-medium">{formatValue(totalVal)}</span>
+      </div>
+      <ScrollArea className="flex-1 px-2 pb-2">
+        <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {leads.map((lead) => (
+              <KanbanDealCard
+                key={lead.id}
+                lead={lead}
+                teamMemberMap={teamMemberMap}
+                isDragging={lead.id === draggedId}
+                onClick={() => onLeadClick(lead)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </ScrollArea>
+    </div>
+  );
+}
+
 const Pipeline = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Core state
   const [activeFilter, setActiveFilter] = useState<string>('all');
@@ -165,22 +323,33 @@ const Pipeline = () => {
 
   // Toolbar state
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [ownerFiltersOpen, setOwnerFiltersOpen] = useState(true);
+  const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
+
+  // Custom filters
+  const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
+
+  // Add Opportunity state
+  const [addOpportunityOpen, setAddOpportunityOpen] = useState(false);
+  const [addOpportunityStage, setAddOpportunityStage] = useState<LeadStatus>('initial_review');
+  const [newOpp, setNewOpp] = useState({ name: '', company_name: '', email: '', phone: '' });
 
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
-    company: true, contact: true, ownedBy: true, stage: true,
-    daysInStage: true, lastTouchpoint: true, lastContacted: true,
-    inactiveDays: true, tags: true,
+    company: true, contact: true, value: true, ownedBy: true, tasks: true,
+    stage: true, daysInStage: true, stageUpdated: true, lastContacted: true,
+    interactions: true, inactiveDays: true, tags: true,
   });
 
   const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    deal: 200, company: 140, contact: 120, ownedBy: 100,
-    stage: 160, daysInStage: 65, lastTouchpoint: 140,
-    lastContacted: 110, inactiveDays: 75, tags: 120,
+    deal: 200, company: 130, contact: 110, value: 90, ownedBy: 80,
+    tasks: 55, stage: 160, daysInStage: 55, stageUpdated: 85,
+    lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
   }), []);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
@@ -215,6 +384,15 @@ const Pipeline = () => {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showColumnsMenu]);
+
+  // Close detail panel on Escape
+  useEffect(() => {
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape' && detailDialogLead) setDetailDialogLead(null);
+    }
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [detailDialogLead]);
 
   function clearAllFilters() {
     setActiveFilter('all');
@@ -317,6 +495,92 @@ const Pipeline = () => {
     },
   });
 
+  // Create opportunity mutation
+  const createOpportunityMutation = useMutation({
+    mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; status: LeadStatus }) => {
+      const evanMember = teamMembers.find(m => m.name === 'Evan');
+      const { data: lead, error } = await supabase
+        .from('leads')
+        .insert({
+          name: data.name,
+          company_name: data.company_name || null,
+          email: data.email || null,
+          phone: data.phone || null,
+          status: data.status,
+          assigned_to: evanMember?.id || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return lead;
+    },
+    onSuccess: (lead) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+      setAddOpportunityOpen(false);
+      setNewOpp({ name: '', company_name: '', email: '', phone: '' });
+      toast.success(`"${lead.name}" added to ${stageConfig[lead.status]?.title ?? lead.status}`);
+      setDetailDialogLead(lead);
+    },
+    onError: () => {
+      toast.error('Failed to create opportunity');
+    },
+  });
+
+  const handleCreateOpportunity = () => {
+    if (!newOpp.name.trim()) {
+      toast.error('Opportunity name is required');
+      return;
+    }
+    createOpportunityMutation.mutate({ ...newOpp, status: addOpportunityStage });
+  };
+
+  const openAddDialog = (stage?: LeadStatus) => {
+    setAddOpportunityStage(stage ?? 'initial_review');
+    setNewOpp({ name: '', company_name: '', email: '', phone: '' });
+    setAddOpportunityOpen(true);
+  };
+
+  // Task and interaction count queries
+  const { data: taskCountMap = {} } = useQuery({
+    queryKey: ['pipeline-task-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lead_tasks')
+        .select('lead_id')
+        .in('lead_id', leads.map((l) => l.id));
+      if (error) return {} as Record<string, number>;
+      const counts: Record<string, number> = {};
+      for (const row of data) {
+        if (row.lead_id) counts[row.lead_id] = (counts[row.lead_id] ?? 0) + 1;
+      }
+      return counts;
+    },
+    enabled: leads.length > 0,
+  });
+
+  const { data: interactionCountMap = {} } = useQuery({
+    queryKey: ['pipeline-interaction-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('lead_id')
+        .in('lead_id', leads.map((l) => l.id));
+      if (error) return {} as Record<string, number>;
+      const counts: Record<string, number> = {};
+      for (const row of data) {
+        if (row.lead_id) counts[row.lead_id] = (counts[row.lead_id] ?? 0) + 1;
+      }
+      return counts;
+    },
+    enabled: leads.length > 0,
+  });
+
+  // Total value
+  const totalValue = useMemo(
+    () => leads.reduce((sum, l) => sum + fakeValue(l.id), 0),
+    [leads]
+  );
+
   // Filter counts
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: leads.length };
@@ -335,13 +599,21 @@ const Pipeline = () => {
     let result = leads;
 
     if (activeFilter !== 'all') {
-      if ((statusOrder as string[]).includes(activeFilter)) {
+      if (activeFilter === 'my_open') {
+        result = result.filter((l) => l.status !== 'won');
+      } else if (activeFilter === 'won') {
+        result = result.filter((l) => l.status === 'won');
+      } else if (activeFilter === 'lost') {
+        result = result.filter(() => false); // No lost status in pipeline
+      } else if ((statusOrder as string[]).includes(activeFilter)) {
         result = result.filter((l) => l.status === activeFilter);
       } else if (activeFilter.startsWith('owner_')) {
         const ownerId = activeFilter.replace('owner_', '');
         result = result.filter((l) => l.assigned_to === ownerId);
       } else if (activeFilter === 'unassigned') {
         result = result.filter((l) => !l.assigned_to);
+      } else if (activeFilter.startsWith('custom_')) {
+        // Custom filter logic - placeholder
       }
     }
 
@@ -374,16 +646,29 @@ const Pipeline = () => {
     return grouped;
   }, [filteredAndSorted]);
 
+  function handleDragStart(event: DragStartEvent) {
+    const lead = filteredAndSorted.find(l => l.id === event.active.id);
+    setDraggedLead(lead ?? null);
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setDraggedLead(null);
     const { active, over } = event;
-    if (!over) return;
-    const leadId = active.id as string;
-    const newStatus = over.id as LeadStatus;
-    const lead = leads.find((l) => l.id === leadId);
-    if (lead && lead.status !== newStatus) {
-      updateStatusMutation.mutate({ leadId, newStatus });
-    }
+    if (!over || active.id === over.id) return;
+
+    const targetStatus = statusOrder.find(s => s === over.id)
+      ?? filteredAndSorted.find(l => l.id === over.id)?.status;
+
+    if (!targetStatus) return;
+
+    const lead = filteredAndSorted.find(l => l.id === active.id);
+    if (!lead || lead.status === targetStatus) return;
+
+    updateStatusMutation.mutate({ leadId: lead.id, newStatus: targetStatus });
   };
+
+  // Row padding based on density
+  const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
 
   function handleRowClick(lead: Lead) {
     setDetailDialogLead(lead);
@@ -516,7 +801,37 @@ const Pipeline = () => {
                 </Select>
               </PopoverContent>
             </Popover>
+            <PipelineSettingsPopover open={settingsOpen} onOpenChange={setSettingsOpen} />
           </div>
+
+          {/* Add Opportunity button */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="group relative h-9 pl-4 pr-3 text-[13px] font-semibold rounded-full shrink-0 flex items-center gap-2 text-white overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+                style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
+                <span>Add Opportunity</span>
+                <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-xl border border-border bg-popover">
+              <DropdownMenuItem
+                onClick={() => openAddDialog()}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-foreground hover:bg-muted focus:bg-muted transition-colors"
+              >
+                <PlusCircle className="h-4 w-4 text-muted-foreground" />
+                Add Opportunity
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-foreground hover:bg-muted focus:bg-muted transition-colors"
+              >
+                <Download className="h-4 w-4 text-muted-foreground" />
+                Import Opportunities
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Body: Sidebar + Table */}
@@ -529,24 +844,34 @@ const Pipeline = () => {
             }`}
           >
             <div className="w-56">
-              <div className="px-3 pt-3 pb-2">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Filters</span>
+              <div className="px-3 pt-3 pb-2 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
+                <CreateFilterDialog
+                  teamMemberMap={teamMemberMap}
+                  stageConfig={stageConfig}
+                  onSave={(filter) => {
+                    const id = `custom_${Date.now()}`;
+                    setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+                    toast.success(`Filter "${filter.filterName}" created`);
+                  }}
+                />
               </div>
 
               <nav className="flex-1 overflow-y-auto pb-4">
-                {/* All Deals */}
-                {(() => {
-                  const isActive = activeFilter === 'all';
-                  const count = filterCounts['all'] ?? 0;
+                {/* Top-level filters */}
+                {FILTER_OPTIONS.filter(o => o.group === 'top').map((opt) => {
+                  const isActive = activeFilter === opt.id;
+                  const count = filterCounts[opt.id] ?? 0;
                   return (
                     <button
-                      onClick={() => setActiveFilter('all')}
+                      key={opt.id}
+                      onClick={() => setActiveFilter(opt.id)}
                       className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
                         isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
                       {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                      <span className={`text-[13px] font-medium truncate ${isActive ? 'text-blue-700 dark:text-blue-400' : ''}`}>All Deals</span>
+                      <span className={`text-[13px] font-medium truncate ${isActive ? 'text-blue-700 dark:text-blue-400' : ''}`}>{opt.label}</span>
                       {count > 0 && (
                         <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
                           {count}
@@ -554,7 +879,38 @@ const Pipeline = () => {
                       )}
                     </button>
                   );
-                })()}
+                })}
+
+                {/* Public section */}
+                <button
+                  onClick={() => setPublicFiltersOpen(v => !v)}
+                  className="w-full px-3 pt-3 pb-1 flex items-center justify-between group"
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Public</span>
+                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : '-rotate-90'}`} />
+                </button>
+
+                {publicFiltersOpen && FILTER_OPTIONS.filter(o => o.group === 'public').map((opt) => {
+                  const isActive = activeFilter === opt.id;
+                  const count = filterCounts[opt.id] ?? 0;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setActiveFilter(opt.id)}
+                      className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
+                        isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
+                      <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{opt.label}</span>
+                      {count > 0 && (
+                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
 
                 {/* By Stage */}
                 <button
@@ -657,6 +1013,30 @@ const Pipeline = () => {
                     })()}
                   </>
                 )}
+
+                {/* Custom Filters */}
+                {customFilters.length > 0 && (
+                  <>
+                    <div className="px-3 pt-3 pb-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Custom</span>
+                    </div>
+                    {customFilters.map((cf) => {
+                      const isActive = activeFilter === cf.id;
+                      return (
+                        <button
+                          key={cf.id}
+                          onClick={() => setActiveFilter(cf.id)}
+                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
+                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          }`}
+                        >
+                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
+                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{cf.label}</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </nav>
             </div>
           </aside>
@@ -682,6 +1062,11 @@ const Pipeline = () => {
                     # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'deal' : 'deals'}
                   </span>
                 )}
+                {!isLoading && (
+                  <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
+                    ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                )}
 
                 {isNonDefaultSort && (
                   <span className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md px-2 h-7">
@@ -700,6 +1085,15 @@ const Pipeline = () => {
 
               {/* Right group */}
               <div className="flex items-center gap-0.5">
+
+                {/* Row density toggle */}
+                <button
+                  onClick={() => setRowDensity(d => d === 'comfortable' ? 'compact' : 'comfortable')}
+                  title={`Row density: ${rowDensity}`}
+                  className={iconBtn(rowDensity === 'compact')}
+                >
+                  <AlignJustify className={`h-3.5 w-3.5 ${rowDensity === 'compact' ? 'text-blue-600' : ''}`} />
+                </button>
 
                 {searchOpen && (
                   <Input
@@ -847,11 +1241,14 @@ const Pipeline = () => {
                       </ColHeader>
                       <ColHeader colKey="company" className="sticky top-0 z-10 bg-white dark:bg-card">Company</ColHeader>
                       <ColHeader colKey="contact" className="sticky top-0 z-10 bg-white dark:bg-card">Contact</ColHeader>
+                      <ColHeader colKey="value" className="sticky top-0 z-10 bg-white dark:bg-card">Value</ColHeader>
                       <ColHeader colKey="ownedBy" className="sticky top-0 z-10 bg-white dark:bg-card">Owner</ColHeader>
+                      <ColHeader colKey="tasks" className="sticky top-0 z-10 bg-white dark:bg-card">Tasks</ColHeader>
                       <ColHeader colKey="stage" className="sticky top-0 z-10 bg-white dark:bg-card">Stage</ColHeader>
                       <ColHeader colKey="daysInStage" className="sticky top-0 z-10 bg-white dark:bg-card">Days</ColHeader>
-                      <ColHeader colKey="lastTouchpoint" className="sticky top-0 z-10 bg-white dark:bg-card">Last Touchpoint</ColHeader>
+                      <ColHeader colKey="stageUpdated" className="sticky top-0 z-10 bg-white dark:bg-card">Updated</ColHeader>
                       <ColHeader colKey="lastContacted" className="sticky top-0 z-10 bg-white dark:bg-card">Contacted</ColHeader>
+                      <ColHeader colKey="interactions" className="sticky top-0 z-10 bg-white dark:bg-card">Activity</ColHeader>
                       <ColHeader colKey="inactiveDays" className="sticky top-0 z-10 bg-white dark:bg-card">Dormant</ColHeader>
                       <ColHeader colKey="tags" className="sticky top-0 z-10 bg-white dark:bg-card">Tags</ColHeader>
                       <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-white dark:bg-card" />
@@ -873,18 +1270,21 @@ const Pipeline = () => {
                           </td>
                           {columnVisibility.company && <td className="px-4 py-3.5" style={{ width: columnWidths.company }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
                           {columnVisibility.contact && <td className="px-4 py-3.5" style={{ width: columnWidths.contact }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.value && <td className="px-4 py-3.5" style={{ width: columnWidths.value }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
                           {columnVisibility.ownedBy && <td className="px-4 py-3.5" style={{ width: columnWidths.ownedBy }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.tasks && <td className="px-4 py-3.5" style={{ width: columnWidths.tasks }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
                           {columnVisibility.stage && <td className="px-4 py-3.5" style={{ width: columnWidths.stage }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
                           {columnVisibility.daysInStage && <td className="px-4 py-3.5" style={{ width: columnWidths.daysInStage }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.lastTouchpoint && <td className="px-4 py-3.5" style={{ width: columnWidths.lastTouchpoint }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
+                          {columnVisibility.stageUpdated && <td className="px-4 py-3.5" style={{ width: columnWidths.stageUpdated }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
                           {columnVisibility.lastContacted && <td className="px-4 py-3.5" style={{ width: columnWidths.lastContacted }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.interactions && <td className="px-4 py-3.5" style={{ width: columnWidths.interactions }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
                           {columnVisibility.inactiveDays && <td className="px-4 py-3.5" style={{ width: columnWidths.inactiveDays }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
                           {columnVisibility.tags && <td className="px-4 py-3.5" style={{ width: columnWidths.tags }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
                         </tr>
                       ))
                     ) : filteredAndSorted.length === 0 ? (
                       <tr>
-                        <td colSpan={12}>
+                        <td colSpan={15}>
                           <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
                               <FileSearch className="h-6 w-6 text-muted-foreground" />
@@ -942,7 +1342,7 @@ const Pipeline = () => {
                             }`}
                           >
                             {/* Checkbox */}
-                            <td className={`px-4 py-3 w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}>
+                            <td className={`px-4 ${rowPad} w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}>
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => toggleLeadSelection(lead.id)}
@@ -952,7 +1352,7 @@ const Pipeline = () => {
                             </td>
 
                             {/* Deal (sticky) */}
-                            <td className={`px-4 py-3 overflow-hidden sticky z-[5] border-r border-border/50 transition-colors ${stickyBg}`} style={{ width: columnWidths.deal, left: 40 }}>
+                            <td className={`px-4 ${rowPad} overflow-hidden sticky z-[5] border-r border-border/50 transition-colors ${stickyBg}`} style={{ width: columnWidths.deal, left: 40 }}>
                               <div className="flex items-center gap-2.5">
                                 <div className="relative shrink-0">
                                   <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shadow-sm`}>
@@ -977,7 +1377,7 @@ const Pipeline = () => {
                                     </p>
                                     <button
                                       type="button"
-                                      onClick={(e) => { e.stopPropagation(); setDetailDialogLead(lead); }}
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lead/${lead.id}`); }}
                                       className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                     >
                                       <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
@@ -992,7 +1392,7 @@ const Pipeline = () => {
 
                             {/* Company */}
                             {columnVisibility.company && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.company }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.company }}>
                                 {lead.company_name ? (
                                   <div className="flex items-center gap-2">
                                     <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
@@ -1008,14 +1408,23 @@ const Pipeline = () => {
 
                             {/* Contact */}
                             {columnVisibility.contact && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.contact }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.contact }}>
                                 <span className="text-[13px] text-foreground/80 truncate block max-w-[110px]">{lead.name}</span>
+                              </td>
+                            )}
+
+                            {/* Value */}
+                            {columnVisibility.value && (
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.value }}>
+                                <span className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                                  {formatValue(fakeValue(lead.id))}
+                                </span>
                               </td>
                             )}
 
                             {/* Owner */}
                             {columnVisibility.ownedBy && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.ownedBy }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.ownedBy }}>
                                 {assignedName && assignedInitial ? (
                                   <div className="flex items-center gap-2">
                                     {assignedAvatar ? (
@@ -1033,9 +1442,18 @@ const Pipeline = () => {
                               </td>
                             )}
 
+                            {/* Tasks */}
+                            {columnVisibility.tasks && (
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tasks }}>
+                                <span className="text-[12px] text-muted-foreground tabular-nums">
+                                  {taskCountMap[lead.id] ?? fakeTasks(lead.id)}
+                                </span>
+                              </td>
+                            )}
+
                             {/* Stage */}
                             {columnVisibility.stage && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.stage }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage }}>
                                 {stageCfg ? (
                                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${stageCfg.pill}`}>
                                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
@@ -1049,7 +1467,7 @@ const Pipeline = () => {
 
                             {/* Days in Stage */}
                             {columnVisibility.daysInStage && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.daysInStage }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysInStage }}>
                                 {daysInStage !== null ? (
                                   <span className={`inline-flex items-center gap-1 text-[12px] font-medium ${
                                     isLingering ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
@@ -1063,30 +1481,32 @@ const Pipeline = () => {
                               </td>
                             )}
 
-                            {/* Last Touchpoint */}
-                            {columnVisibility.lastTouchpoint && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.lastTouchpoint }}>
-                                {tp ? (
-                                  <div className="min-w-0">
-                                    <span className="text-[12px] text-foreground/80 capitalize">{tp.direction} {tp.type}</span>
-                                    <p className="text-[11px] text-muted-foreground tabular-nums">{formatShortDate(tp.date)}</p>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground/40">—</span>
-                                )}
+                            {/* Stage Updated */}
+                            {columnVisibility.stageUpdated && (
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stageUpdated }}>
+                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(lead.updated_at)}</span>
                               </td>
                             )}
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.lastContacted }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lastContacted }}>
                                 <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(lead.last_activity_at)}</span>
+                              </td>
+                            )}
+
+                            {/* Interactions */}
+                            {columnVisibility.interactions && (
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.interactions }}>
+                                <span className="text-[12px] text-muted-foreground tabular-nums">
+                                  {interactionCountMap[lead.id] ?? fakeInteractions(lead.id)}
+                                </span>
                               </td>
                             )}
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.inactiveDays }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.inactiveDays }}>
                                 {isStale ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
                                     {inactiveDays}d
@@ -1101,7 +1521,7 @@ const Pipeline = () => {
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.tags }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tags }}>
                                 {lead.tags && lead.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {lead.tags.slice(0, 2).map((tag) => (
@@ -1120,7 +1540,7 @@ const Pipeline = () => {
                             )}
 
                             {/* Detail arrow */}
-                            <td className="px-2 py-3 w-10">
+                            <td className={`px-2 ${rowPad} w-10`}>
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isSelected
                                   ? 'text-blue-500'
@@ -1136,43 +1556,181 @@ const Pipeline = () => {
               </div>
             ) : (
               /* Kanban View */
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              >
                 <div className="flex-1 overflow-auto p-4">
                   <div className="flex gap-4 h-full min-h-[500px]">
                     {statusOrder.map((status) => {
                       const config = stageConfig[status];
+                      const columnLeads = filteredAndSorted.filter(l => l.status === status);
                       return (
-                        <KanbanColumn
+                        <KanbanDropColumn
                           key={status}
                           status={status}
-                          leads={leadsByStatus[status] || []}
-                          title={config.title}
-                          color={config.color}
-                          touchpoints={touchpoints}
+                          label={config.title}
+                          color={config.dot}
+                          leads={columnLeads}
                           teamMemberMap={teamMemberMap}
-                          teamAvatarMap={teamAvatarMap}
+                          draggedId={draggedLead?.id ?? null}
                           onLeadClick={(lead) => setDetailDialogLead(lead)}
+                          onAdd={() => openAddDialog(status)}
                         />
                       );
                     })}
                   </div>
                 </div>
+                <DragOverlay>
+                  {draggedLead ? (
+                    <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className={`h-5 w-5 rounded-full ${getAvatarColor(draggedLead.name)} flex items-center justify-center text-white text-[10px] font-bold`}>
+                          {draggedLead.name[0]?.toUpperCase()}
+                        </div>
+                        <p className="text-sm font-semibold text-foreground truncate">{draggedLead.name}</p>
+                      </div>
+                      {draggedLead.company_name && (
+                        <p className="text-[11px] text-muted-foreground">{draggedLead.company_name}</p>
+                      )}
+                    </Card>
+                  ) : null}
+                </DragOverlay>
               </DndContext>
             )}
           </main>
-        </div>
 
-        {/* Lead Detail Dialog */}
-        {detailDialogLead && (
-          <LeadDetailDialog
-            lead={detailDialogLead}
-            open={!!detailDialogLead}
-            onOpenChange={(open) => {
-              if (!open) setDetailDialogLead(null);
-            }}
-          />
-        )}
+          {/* Right Detail Panel */}
+          {detailDialogLead && (
+            <PipelineDetailPanel
+              lead={detailDialogLead}
+              stageConfig={stageConfig}
+              teamMemberMap={teamMemberMap}
+              teamMembers={teamMembers}
+              formatValue={formatValue}
+              fakeValue={fakeValue}
+              onClose={() => setDetailDialogLead(null)}
+              onExpand={() => {
+                navigate(`/admin/pipeline/lead/${detailDialogLead.id}`);
+              }}
+              onStageChange={(leadId, newStatus) => {
+                updateStatusMutation.mutate({ leadId, newStatus });
+              }}
+              onLeadUpdate={(updatedLead) => {
+                setDetailDialogLead(updatedLead);
+                queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+              }}
+            />
+          )}
+        </div>
       </div>
+
+      {/* Add Opportunity Dialog */}
+      <Dialog open={addOpportunityOpen} onOpenChange={setAddOpportunityOpen}>
+        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
+          <div className="px-6 pt-6 pb-4" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}>
+            <DialogHeader>
+              <DialogTitle className="text-white text-lg font-bold flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
+                  <Plus className="h-4 w-4 text-white" />
+                </div>
+                New Opportunity
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-wrap gap-1.5 mt-4">
+              {statusOrder.map((status) => {
+                const cfg = stageConfig[status];
+                const isActive = addOpportunityStage === status;
+                return (
+                  <button
+                    key={status}
+                    onClick={() => setAddOpportunityStage(status)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'bg-white text-slate-800 shadow-md scale-105 dark:bg-white/90 dark:text-slate-900'
+                        : 'bg-white/15 text-white/90 hover:bg-white/25'
+                    }`}
+                  >
+                    <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 ${isActive ? cfg.dot : 'bg-white/60'}`} />
+                    {cfg.title}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="px-6 py-5 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="opp-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Opportunity Name <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="opp-name"
+                placeholder="e.g. Riverside Plaza Acquisition"
+                value={newOpp.name}
+                onChange={(e) => setNewOpp(prev => ({ ...prev, name: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter' && newOpp.name.trim()) handleCreateOpportunity(); }}
+                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="opp-company" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</Label>
+              <Input
+                id="opp-company"
+                placeholder="Company name"
+                value={newOpp.company_name}
+                onChange={(e) => setNewOpp(prev => ({ ...prev, company_name: e.target.value }))}
+                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="opp-email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</Label>
+                <Input
+                  id="opp-email"
+                  placeholder="email@example.com"
+                  type="email"
+                  value={newOpp.email}
+                  onChange={(e) => setNewOpp(prev => ({ ...prev, email: e.target.value }))}
+                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="opp-phone" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone</Label>
+                <Input
+                  id="opp-phone"
+                  placeholder="(555) 123-4567"
+                  type="tel"
+                  value={newOpp.phone}
+                  onChange={(e) => setNewOpp(prev => ({ ...prev, phone: e.target.value }))}
+                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="px-6 py-4 bg-muted/50 border-t border-border flex items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAddOpportunityOpen(false)}
+              className="h-9 px-4 rounded-xl text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleCreateOpportunity}
+              disabled={createOpportunityMutation.isPending}
+              className="h-9 px-5 rounded-xl font-semibold"
+              style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)' }}
+            >
+              {createOpportunityMutation.isPending ? 'Creating...' : 'Create Opportunity'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </EvanLayout>
   );
 };

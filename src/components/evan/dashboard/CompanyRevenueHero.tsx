@@ -1,10 +1,9 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import {
-  Target, Activity, TrendingUp, TrendingDown, Loader2, DollarSign,
-  AlertTriangle, CheckCircle2, BarChart3, Zap,
+  TrendingUp, TrendingDown, Loader2,
+  AlertTriangle, CheckCircle2,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -322,113 +321,64 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
   return (
     <Card className="border border-border bg-card shadow-sm overflow-hidden">
       {/* Health Status Bar */}
-      <div className={cn("px-4 md:px-6 py-2.5 flex items-center justify-between border-b", health.bg, health.border)}>
-        <div className="flex items-center gap-2">
-          <HealthIcon className={cn("h-4 w-4", health.text)} />
-          <span className={cn("text-sm font-semibold", health.text)}>{health.label}</span>
-          <span className="text-xs text-muted-foreground">
-            {kpis.confidenceLevel}% confidence
-          </span>
-        </div>
-        <div className="hidden sm:flex items-center gap-2">
-          <Badge variant="outline" className={cn("text-xs", health.text, health.border)}>
-            Forecast: {formatCurrency(kpis.forecastTotal)}
-          </Badge>
-        </div>
+      <div className={cn("px-4 md:px-6 py-2 flex items-center gap-3 border-b", health.bg, health.border)}>
+        <HealthIcon className={cn("h-3.5 w-3.5", health.text)} />
+        <span className={cn("text-xs font-semibold", health.text)}>{health.label}</span>
+        <span className="text-[11px] text-muted-foreground">{kpis.confidenceLevel}% confidence</span>
+        <span className="text-[11px] text-muted-foreground">·</span>
+        <span className={cn("text-[11px] font-medium", health.text)}>Forecast: {formatCurrency(kpis.forecastTotal)}</span>
       </div>
 
       <CardContent className="p-6 md:p-8 lg:p-10">
-        {/* KPI Badges Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-6">
-          {[
-            { label: 'Growth Rate', value: `${kpis.growthRate >= 0 ? '+' : ''}${kpis.growthRate}%`, sub: 'Period trend', icon: kpis.growthRate >= 0 ? TrendingUp : TrendingDown, color: kpis.growthRate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500' },
-            { label: 'Forecast Accuracy', value: `${kpis.forecastAccuracy}%`, sub: 'Actual vs projected', icon: Activity, color: 'text-purple-500' },
-            { label: 'Goal Confidence', value: `${kpis.confidenceLevel}%`, sub: 'Hitting $1.5M', icon: Target, color: kpis.confidenceLevel >= 65 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500' },
-            { label: 'Revenue Gap', value: formatCurrency(kpis.revenueGap), sub: 'To $1.5M goal', icon: BarChart3, color: 'text-muted-foreground' },
-            { label: 'Pipeline Value', value: formatCurrency(kpis.pipelineWeightedRevenue), sub: 'Weighted by stage', icon: Zap, color: 'text-amber-500' },
-            { label: 'Best Case', value: formatCurrency(kpis.forecastBest), sub: 'Optimistic forecast', icon: DollarSign, color: 'text-primary' },
-          ].map((kpi) => (
-            <div key={kpi.label} className="p-2.5 rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <kpi.icon className={cn("h-3 w-3", kpi.color)} />
-                <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">{kpi.label}</span>
-              </div>
-              <p className="text-base font-bold text-foreground">{kpi.value}</p>
-              <p className="text-[10px] text-muted-foreground">{kpi.sub}</p>
+        {/* Revenue header row */}
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+              2026 Revenue Goal
+            </p>
+            <div className="flex items-baseline gap-3 mt-1.5">
+              <span className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
+                {formatCurrency(kpis.totalRevenue)}
+              </span>
+              <span className="text-xl md:text-2xl font-light text-muted-foreground">/ $1.5M</span>
             </div>
-          ))}
-        </div>
-
-        {/* Top section */}
-        <div className="flex flex-col lg:flex-row lg:items-start gap-8 lg:gap-12">
-          {/* Left - Revenue Overview */}
-          <div className="flex-shrink-0 lg:w-[340px] flex flex-col justify-between space-y-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                2026 Revenue Goal
+            <div className="mt-3 max-w-sm">
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(100, kpis.goalProgress)}%`, backgroundColor: COLORS.revenue }}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {kpis.goalProgress}% of annual goal · {formatCurrency(remaining)} to go
               </p>
-              <div className="flex items-baseline gap-3 mt-2">
-                <span className="text-5xl md:text-6xl font-extrabold tracking-tight text-foreground">
-                  {formatCurrency(kpis.totalRevenue)}
-                </span>
-                <span className="text-2xl md:text-3xl font-light text-muted-foreground">/ $1.5M</span>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mt-5">
-                <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(100, kpis.goalProgress)}%`, backgroundColor: COLORS.revenue }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  {kpis.goalProgress}% of annual goal
-                </p>
-              </div>
-            </div>
-
-            {/* Momentum message */}
-            <div className="bg-muted/50 border border-border rounded-xl p-4">
-              {kpis.totalRevenue >= COMPANY_GOAL * 0.8 ? (
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-foreground">On fire! 🔥</p>
-                    <p className="text-xs text-muted-foreground">Keep this momentum going</p>
-                  </div>
-                </div>
-              ) : kpis.totalRevenue >= COMPANY_GOAL * 0.5 ? (
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                    <Target className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-foreground">Halfway there!</p>
-                    <p className="text-xs text-muted-foreground">{formatCurrency(remaining)} to go</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-muted">
-                    <Activity className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-foreground">Building momentum</p>
-                    <p className="text-xs text-muted-foreground">{formatCurrency(remaining)} to reach goal</p>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Right - Chart */}
-          <div className="flex-1 min-w-0 bg-white dark:bg-card border border-[#E5E7EB] dark:border-border rounded-xl shadow-sm p-3 md:p-5" style={{ borderRadius: 12, fontFamily: 'Inter, sans-serif' }}>
+          {/* Inline KPIs */}
+          <div className="flex items-center divide-x divide-border rounded-lg border border-border bg-muted/30">
+            <div className="px-5 py-2.5 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Forecast</p>
+              <p className="text-sm font-bold text-foreground mt-0.5">{formatCurrency(kpis.forecastTotal)}</p>
+            </div>
+            <div className="px-5 py-2.5 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Pipeline</p>
+              <p className="text-sm font-bold text-foreground mt-0.5">{formatCurrency(kpis.pipelineWeightedRevenue)}</p>
+            </div>
+            <div className="px-5 py-2.5 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Growth</p>
+              <p className={cn("text-sm font-bold mt-0.5", kpis.growthRate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
+                {kpis.growthRate >= 0 ? '+' : ''}{kpis.growthRate}%
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Chart — full width */}
+        <div className="bg-card dark:bg-slate-900/50 border border-border/60 rounded-xl shadow-sm p-3 md:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <div className="flex items-center gap-3">
-                <p className="text-[13px] font-semibold" style={{ color: '#111827', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[13px] font-semibold text-foreground">
                   {chartPeriod === 'ytd' ? 'Revenue Breakdown' : chartPeriod === 'qtd' ? 'Quarter to Date' : 'Daily Revenue (MTD)'}
                 </p>
                 <Tabs value={chartPeriod} onValueChange={(v) => setChartPeriod(v as TimePeriod)}>
@@ -437,8 +387,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                       <TabsTrigger
                         key={tab}
                         value={tab}
-                        className="text-[11px] px-3 py-0.5 h-5 rounded-full font-medium data-[state=active]:bg-[#1D4ED8] data-[state=active]:text-white data-[state=inactive]:bg-transparent data-[state=inactive]:text-[#6B7280] border-0 shadow-none"
-                        style={{ fontFamily: 'Inter, sans-serif' }}
+                        className="text-[11px] px-3 py-0.5 h-5 rounded-full font-medium data-[state=active]:bg-[#1D4ED8] data-[state=active]:text-white data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground border-0 shadow-none"
                       >
                         {tab.toUpperCase()}
                       </TabsTrigger>
@@ -447,7 +396,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                 </Tabs>
               </div>
               {/* Interactive Legend */}
-              <div className="flex items-center gap-3 flex-wrap" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="flex items-center gap-3 flex-wrap">
                 {[
                   { key: 'revenue' as const, label: 'Revenue', color: '#3B82F6', type: 'bar' },
                   { key: 'cumulative' as const, label: 'Cumulative', color: '#F97316', type: 'line' },
@@ -471,7 +420,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
                     ) : (
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                     )}
-                    <span className="text-[11px] font-medium" style={{ color: '#374151' }}>{label}</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
                   </button>
                 ))}
               </div>
@@ -681,38 +630,37 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
               </ResponsiveContainer>
             </div>
           </div>
-        </div>
 
-        {/* Stats Footer - 6 stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-8 pt-6 border-t border-border">
-          <div className="bg-muted/40 rounded-lg p-4">
+        {/* Stats Footer — cohesive data strip */}
+        <div className="flex items-start divide-x divide-border mt-8 pt-6 border-t border-border">
+          <div className="flex-1 px-4 first:pl-0">
             <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">{stats.revenueLabel}</p>
-            <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{formatCurrency(stats.totalRevenue)}</p>
+            <p className="text-xl font-bold mt-1 text-foreground">{formatCurrency(stats.totalRevenue)}</p>
             <p className="text-xs text-muted-foreground">{stats.goalProgress}% of goal</p>
           </div>
-          <div className="bg-muted/40 rounded-lg p-4">
+          <div className="flex-1 px-4">
             <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">{stats.avgLabel}</p>
-            <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{formatCurrency(stats.avgPerPoint)}</p>
+            <p className="text-xl font-bold mt-1 text-foreground">{formatCurrency(stats.avgPerPoint)}</p>
             <p className="text-xs text-muted-foreground">{stats.activePoints} active {stats.pointLabel}</p>
           </div>
-          <div className="bg-muted/40 rounded-lg p-4">
+          <div className="flex-1 px-4">
             <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">{stats.bestPointLabel}</p>
-            <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{stats.bestLabel}</p>
+            <p className="text-xl font-bold mt-1 text-foreground">{stats.bestLabel}</p>
             <p className="text-xs text-muted-foreground">{formatCurrency(stats.bestValue)}</p>
           </div>
-          <div className="bg-muted/40 rounded-lg p-4">
+          <div className="flex-1 px-4">
             <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">Deals Closed</p>
-            <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{stats.totalDeals}</p>
+            <p className="text-xl font-bold mt-1 text-foreground">{stats.totalDeals}</p>
             <p className="text-xs text-muted-foreground">Avg: {formatCurrency(stats.avgDealSize)}</p>
           </div>
-          <div className="bg-muted/40 rounded-lg p-4">
+          <div className="flex-1 px-4">
             <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">Forecast</p>
-            <p className="text-xl md:text-2xl font-bold mt-1 text-foreground">{formatCurrency(kpis.forecastTotal)}</p>
+            <p className="text-xl font-bold mt-1 text-foreground">{formatCurrency(kpis.forecastTotal)}</p>
             <p className="text-xs text-muted-foreground">End-of-year projected</p>
           </div>
-          <div className="bg-muted/40 rounded-lg p-4">
+          <div className="flex-1 px-4 last:pr-0">
             <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">Growth Rate</p>
-            <p className={cn("text-xl md:text-2xl font-bold mt-1", kpis.growthRate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
+            <p className={cn("text-xl font-bold mt-1", kpis.growthRate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
               {kpis.growthRate >= 0 ? '+' : ''}{kpis.growthRate}%
             </p>
             <p className="text-xs text-muted-foreground">Period trend</p>

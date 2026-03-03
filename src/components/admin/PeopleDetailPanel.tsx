@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  X, Maximize2, Building2, User, Mail, Phone,
+  X, Maximize2, Building2, User, Mail, Phone, PhoneCall,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase,
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Layers,
   Link2,
@@ -405,10 +406,38 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
   );
 }
 
+// ── Timeline icon config ──
+const TIMELINE_ICON_CONFIG: Record<string, { icon: React.ReactNode; dotColor: string }> = {
+  type_change: { icon: <ArrowRight className="h-3 w-3" />, dotColor: 'bg-blue-500 text-white' },
+  call: { icon: <Phone className="h-3 w-3" />, dotColor: 'bg-blue-500 text-white' },
+  sms: { icon: <MessageSquare className="h-3 w-3" />, dotColor: 'bg-emerald-500 text-white' },
+  email: { icon: <Mail className="h-3 w-3" />, dotColor: 'bg-amber-500 text-white' },
+  comment: { icon: <MessageSquare className="h-3 w-3" />, dotColor: 'bg-slate-500 text-white' },
+};
+
 // ── Activity Tab Content ──
 function ActivityTabContent({ person, contactTypeConfig }: { person: Person; contactTypeConfig: Record<string, ContactTypeConfigEntry> }) {
-  const { data: activities = [], isLoading } = useQuery({
-    queryKey: ['people-activity-timeline', person.id],
+  const { data: communications = [], isLoading: loadingComms } = useQuery({
+    queryKey: ['people-activity-timeline', 'communications', person.id, person.phone],
+    queryFn: async () => {
+      if (!person.phone) return [];
+      const digits = person.phone.replace(/\D/g, '');
+      if (!digits) return [];
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('id, communication_type, direction, content, duration_seconds, created_at')
+        .eq('phone_number', digits)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000,
+  });
+
+  const { data: activities = [], isLoading: loadingActivities } = useQuery({
+    queryKey: ['people-activity-timeline', 'activities', person.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('people_activities')
@@ -417,7 +446,56 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
         .order('created_at', { ascending: false });
       return data || [];
     },
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000,
   });
+
+  const isLoading = loadingComms || loadingActivities;
+
+  interface TimelineItem {
+    id: string;
+    type: string;
+    title: string;
+    content: string | null;
+    createdAt: string;
+    source: 'communication' | 'activity';
+    direction?: string;
+    durationSeconds?: number | null;
+  }
+
+  const timelineItems = useMemo<TimelineItem[]>(() => {
+    const items: TimelineItem[] = [];
+
+    for (const c of communications) {
+      const typeLabel = c.communication_type === 'sms' ? 'SMS' : c.communication_type === 'call' ? 'Call' : 'Email';
+      const dirLabel = c.direction === 'inbound' ? 'Inbound' : 'Outbound';
+      items.push({
+        id: c.id,
+        type: c.communication_type,
+        title: `${dirLabel} ${typeLabel}`,
+        content: c.content,
+        createdAt: c.created_at,
+        source: 'communication',
+        direction: c.direction,
+        durationSeconds: c.duration_seconds,
+      });
+    }
+
+    for (const a of activities) {
+      items.push({
+        id: a.id,
+        type: a.activity_type,
+        title: a.title ?? a.activity_type,
+        content: a.content,
+        createdAt: a.created_at,
+        source: 'activity',
+      });
+    }
+
+    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return items;
+  }, [communications, activities]);
 
   if (isLoading) {
     return (
@@ -437,7 +515,7 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
 
   return (
     <div className="px-5 py-4">
-      {activities.length === 0 ? (
+      {timelineItems.length === 0 ? (
         <div className="py-10 flex flex-col items-center justify-center text-center">
           <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
             <Clock className="h-5 w-5 text-muted-foreground" />
@@ -449,10 +527,12 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
         <div className="relative">
           <div className="absolute left-[13px] top-2 bottom-2 w-px bg-border" />
           <div className="space-y-0.5">
-            {activities.map((item) => {
+            {timelineItems.map((item) => {
+              const iconCfg = TIMELINE_ICON_CONFIG[item.type] ?? TIMELINE_ICON_CONFIG.comment;
+
               let fromType: string | null = null;
               let toType: string | null = null;
-              if (item.activity_type === 'type_change' && item.content) {
+              if (item.type === 'type_change' && item.content) {
                 try {
                   const parsed = JSON.parse(item.content);
                   fromType = parsed.from;
@@ -462,18 +542,18 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
 
               return (
                 <div key={item.id} className="flex gap-3 py-2.5 relative">
-                  <div className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 z-10 bg-blue-500 text-white">
-                    <ArrowRight className="h-3 w-3" />
+                  <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 z-10 ${iconCfg.dotColor}`}>
+                    {iconCfg.icon}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-[13px] font-semibold text-foreground leading-tight">{item.title ?? item.activity_type}</p>
+                      <p className="text-[13px] font-semibold text-foreground leading-tight">{item.title}</p>
                       <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
-                        {formatDistanceToNow(parseISO(item.created_at), { addSuffix: true })}
+                        {formatDistanceToNow(parseISO(item.createdAt), { addSuffix: true })}
                       </span>
                     </div>
 
-                    {item.activity_type === 'type_change' && fromType && toType && (
+                    {item.type === 'type_change' && fromType && toType && (
                       <div className="flex items-center gap-1.5 mt-1.5">
                         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${contactTypeConfig[fromType]?.pill ?? 'bg-muted text-muted-foreground'}`}>
                           {contactTypeConfig[fromType]?.label ?? fromType}
@@ -485,8 +565,14 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
                       </div>
                     )}
 
-                    {item.activity_type !== 'type_change' && item.content && (
+                    {item.type !== 'type_change' && item.content && (
                       <p className="text-[12px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{item.content}</p>
+                    )}
+
+                    {item.type === 'call' && item.durationSeconds != null && item.durationSeconds > 0 && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {Math.floor(item.durationSeconds / 60)}m {item.durationSeconds % 60}s
+                      </p>
                     )}
                   </div>
                 </div>
@@ -638,6 +724,7 @@ export default function PeopleDetailPanel({
   onPersonUpdate,
 }: PeopleDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'related'>('details');
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const typeCfg = contactTypeConfig[person.contact_type ?? 'Other'];
   const initial = person.name[0]?.toUpperCase() ?? '?';
@@ -767,7 +854,20 @@ export default function PeopleDetailPanel({
               <div className="space-y-1.5">
                 <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={person.name} field="name" personId={person.id} placeholder="Name" onSaved={handleFieldSaved} />
                 <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={person.email ?? ''} field="email" personId={person.id} placeholder="Add email..." onSaved={handleFieldSaved} />
-                <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={person.phone ?? ''} field="phone" personId={person.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+                <div className="flex items-center gap-1">
+                  <div className="flex-1 min-w-0">
+                    <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={person.phone ?? ''} field="phone" personId={person.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+                  </div>
+                  {person.phone && (
+                    <button
+                      onClick={() => navigate(`/admin/calls?phone=${encodeURIComponent(person.phone!.replace(/\D/g, ''))}`)}
+                      title="Call this number"
+                      className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                    >
+                      <PhoneCall className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
                 <EditableContactRow icon={<Link2 className="h-3.5 w-3.5" />} value={person.linkedin ?? ''} field="linkedin" personId={person.id} placeholder="Add LinkedIn..." onSaved={handleFieldSaved} />
               </div>
             </div>
@@ -808,6 +908,16 @@ export default function PeopleDetailPanel({
         <ScrollArea className="flex-1">
           <RelatedTabContent person={person} contactTypeConfig={contactTypeConfig} />
         </ScrollArea>
+      )}
+
+      {/* Footer */}
+      {onExpand && (
+        <div className="shrink-0 px-5 py-3 border-t border-border">
+          <button onClick={onExpand} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
+            Open full record
+            <Maximize2 className="h-3 w-3" />
+          </button>
+        </div>
       )}
     </aside>
   );

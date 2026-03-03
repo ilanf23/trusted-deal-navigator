@@ -12,17 +12,48 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  X, ChevronDown, ChevronRight,
-  Users, Building2, CheckSquare,
+  X, ChevronDown, ChevronRight, ChevronUp,
+  Users, Building2, CheckSquare, FileText,
   CalendarDays, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle,
   User, Mail, Phone, Tag, Briefcase, Loader2,
-  Linkedin, Check,
+  Linkedin, Check, Upload, Download, Trash2,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
+import { useTeamMember } from '@/hooks/useTeamMember';
+import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
+
+interface PersonFile {
+  id: string;
+  person_id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(fileType: string | null): string {
+  if (!fileType) return '\u{1F4C4}';
+  if (fileType.startsWith('image/')) return '\u{1F5BC}\uFE0F';
+  if (fileType === 'application/pdf') return '\u{1F4D5}';
+  if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv')) return '\u{1F4CA}';
+  if (fileType.includes('word') || fileType.includes('document')) return '\u{1F4DD}';
+  if (fileType.includes('zip') || fileType.includes('compressed')) return '\u{1F4E6}';
+  return '\u{1F4C4}';
+}
 
 // ── Person type ──
 interface Person {
@@ -528,9 +559,80 @@ export default function PeopleExpandedView() {
   const [savingTask, setSavingTask] = useState(false);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
+  // File upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  // Activity expand / comments state
+  const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
+  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [savingComment, setSavingComment] = useState<string | null>(null);
+
+  const { teamMember } = useTeamMember();
+
+  // ── Queries (defined before callbacks that reference query results) ──
+  const { data: person, isLoading } = useQuery({
+    queryKey: ['person-expanded', personId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('people')
+        .select('*')
+        .eq('id', personId!)
+        .single();
+      if (error) throw error;
+      return data as Person;
+    },
+    enabled: !!personId,
+  });
+
+  const { data: activities = [] } = useQuery({
+    queryKey: ['person-activities', personId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('people_activities')
+        .select('*')
+        .eq('person_id', personId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!personId,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 10000,
+  });
+
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['person-tasks', personId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('people_tasks')
+        .select('id, title, status, due_date')
+        .eq('person_id', personId!)
+        .order('created_at', { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!personId,
+  });
+
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['team-members'],
+    queryFn: async () => {
+      const { data } = await supabase.from('team_members').select('id, name').eq('is_active', true);
+      return (data || []) as { id: string; name: string }[];
+    },
+  });
+
+  const teamMemberMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of teamMembers) map[m.id] = m.name;
+    return map;
+  }, [teamMembers]);
+
   // ── Contact type change handler ──
   const handleContactTypeChange = useCallback(async (newType: string) => {
     if (!personId) return;
+    const currentType = person?.contact_type ?? null;
     const { error } = await supabase
       .from('people')
       .update({ contact_type: newType })
@@ -547,10 +649,10 @@ export default function PeopleExpandedView() {
       person_id: personId,
       activity_type: 'type_change',
       title: 'Contact type changed',
-      content: JSON.stringify({ from: person?.contact_type, to: newType }),
+      content: JSON.stringify({ from: currentType, to: newType }),
     });
     queryClient.invalidateQueries({ queryKey: ['person-activities', personId] });
-  }, [personId, queryClient]);
+  }, [personId, person?.contact_type, queryClient]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
@@ -610,64 +712,112 @@ export default function PeopleExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['person-tasks', personId] });
   }, [personId, newTaskTitle, queryClient]);
 
-  // ── Queries ──
-  const { data: person, isLoading } = useQuery({
-    queryKey: ['person-expanded', personId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('people')
-        .select('*')
-        .eq('id', personId!)
-        .single();
-      if (error) throw error;
-      return data as Person;
-    },
-    enabled: !!personId,
-  });
+  // ── Save activity comment ──
+  const handleSaveComment = useCallback(async (activityId: string) => {
+    const text = (commentTexts[activityId] ?? '').trim();
+    if (!text || !personId) return;
+    setSavingComment(activityId);
+    const { error } = await supabase.from('activity_comments').insert({
+      activity_id: activityId,
+      lead_id: personId,
+      content: text,
+      created_by: teamMember?.name ?? null,
+    });
+    setSavingComment(null);
+    if (error) {
+      toast.error('Failed to save comment');
+      return;
+    }
+    setCommentTexts((prev) => ({ ...prev, [activityId]: '' }));
+    queryClient.invalidateQueries({ queryKey: ['person-activity-comments', personId] });
+  }, [personId, commentTexts, teamMember, queryClient]);
 
-  const { data: activities = [] } = useQuery({
-    queryKey: ['person-activities', personId],
+  // ── File upload ──
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !personId) return;
+    e.target.value = '';
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('File must be under 10MB');
+      return;
+    }
+    setUploadingFile(true);
+    const filePath = `${personId}/${Date.now()}_${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from('people-files')
+      .upload(filePath, file, { contentType: file.type });
+    if (uploadError) {
+      setUploadingFile(false);
+      toast.error('Failed to upload file');
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('people-files').getPublicUrl(filePath);
+    const fileUrl = urlData?.publicUrl || filePath;
+    const { error: dbError } = await supabase.from('people_files').insert({
+      person_id: personId,
+      file_name: file.name,
+      file_url: fileUrl,
+      file_type: file.type || null,
+      file_size: file.size,
+    });
+    setUploadingFile(false);
+    if (dbError) {
+      toast.error('File uploaded but failed to save record');
+      return;
+    }
+    toast.success('File uploaded');
+    queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
+  }, [personId, queryClient]);
+
+  // ── File delete ──
+  const handleDeleteFile = useCallback(async (file: PersonFile) => {
+    const urlParts = file.file_url.split('/people-files/');
+    const storagePath = urlParts.length > 1 ? decodeURIComponent(urlParts[urlParts.length - 1].split('?')[0]) : null;
+    if (storagePath) {
+      await supabase.storage.from('people-files').remove([storagePath]);
+    }
+    const { error } = await supabase.from('people_files').delete().eq('id', file.id);
+    if (error) {
+      toast.error('Failed to delete file');
+      return;
+    }
+    toast.success('File deleted');
+    queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
+  }, [personId, queryClient]);
+
+  // ── Person files query ──
+  const { data: personFiles = [] } = useQuery({
+    queryKey: ['person-files', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('people_activities')
-        .select('*')
+        .from('people_files')
+        .select('id, person_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
         .eq('person_id', personId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!personId,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchInterval: 10000,
-  });
-
-  const { data: tasks = [] } = useQuery({
-    queryKey: ['person-tasks', personId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('people_tasks')
-        .select('id, title, status, due_date')
-        .eq('person_id', personId!)
-        .order('created_at', { ascending: false });
-      return data ?? [];
+      return (data ?? []) as unknown as PersonFile[];
     },
     enabled: !!personId,
   });
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
+  // ── Activity comments query ──
+  const { data: activityCommentsMap = {} } = useQuery({
+    queryKey: ['person-activity-comments', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('team_members').select('id, name').eq('is_active', true);
-      return (data || []) as { id: string; name: string }[];
+      const { data, error } = await supabase
+        .from('activity_comments')
+        .select('*')
+        .eq('lead_id', personId!)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      const map: Record<string, typeof data> = {};
+      for (const c of data ?? []) {
+        (map[c.activity_id] ??= []).push(c);
+      }
+      return map;
     },
+    enabled: !!personId,
   });
-
-  const teamMemberMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const m of teamMembers) map[m.id] = m.name;
-    return map;
-  }, [teamMembers]);
 
   if (isLoading || !person) {
     return (

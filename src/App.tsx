@@ -49,6 +49,9 @@ import Underwriting from "./pages/admin/Underwriting";
 import People from "./pages/admin/People";
 import Companies from "./pages/admin/Companies";
 import UnderwritingExpandedView from "./components/admin/UnderwritingExpandedView";
+import PipelineExpandedView from "./components/admin/PipelineExpandedView";
+import PeopleExpandedView from "./components/admin/PeopleExpandedView";
+import CompanyExpandedView from "./components/admin/CompanyExpandedView";
 import Tasks from "./pages/admin/Tasks";
 import Calls from "./pages/admin/Calls";
 import Gmail from "./pages/admin/Gmail";
@@ -170,6 +173,9 @@ const App = () => (
                 <Route path="/admin/pipeline/contacts/people" element={<AdminRoute><People /></AdminRoute>} />
                 <Route path="/admin/pipeline/contacts/companies" element={<AdminRoute><Companies /></AdminRoute>} />
                 <Route path="/admin/pipeline/underwriting/lead/:leadId" element={<AdminRoute><UnderwritingExpandedView /></AdminRoute>} />
+                <Route path="/admin/pipeline/lead/:leadId" element={<AdminRoute><PipelineExpandedView /></AdminRoute>} />
+                <Route path="/admin/pipeline/contacts/people/:personId" element={<AdminRoute><PeopleExpandedView /></AdminRoute>} />
+                <Route path="/admin/pipeline/contacts/companies/:companyId" element={<AdminRoute><CompanyExpandedView /></AdminRoute>} />
                 <Route path="/admin/tasks" element={<AdminRoute><Tasks /></AdminRoute>} />
                 <Route path="/admin/calls" element={<AdminRoute><Calls /></AdminRoute>} />
                 <Route path="/admin/lender-programs" element={<AdminRoute><LenderPrograms /></AdminRoute>} />
