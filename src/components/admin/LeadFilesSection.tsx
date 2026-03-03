@@ -16,7 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, sanitizeFileName } from '@/lib/utils';
 
 interface LeadFile {
   id: string;
@@ -104,8 +104,8 @@ export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
     try {
       for (const file of filesToUpload) {
         try {
-          const fileExt = file.name.split('.').pop();
-          const filePath = `${leadId}/${crypto.randomUUID()}.${fileExt}`;
+          const safeName = sanitizeFileName(file.name);
+          const filePath = `${leadId}/${crypto.randomUUID()}_${safeName}`;
 
           const { error: uploadError } = await supabase.storage
             .from('lead-files')
