@@ -408,7 +408,7 @@ const Underwriting = () => {
   });
 
   const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    opportunity: 200, company: 130, contact: 110, value: 90, ownedBy: 80,
+    opportunity: 280, company: 130, contact: 110, value: 90, ownedBy: 80,
     tasks: 55, stage: 150, daysInStage: 55, stageUpdated: 85,
     lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
   }), []);
@@ -1366,7 +1366,7 @@ const Underwriting = () => {
                                     <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
                                       <Building2 className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[13px] text-foreground/80 truncate max-w-[110px]">{lead.company_name}</span>
+                                    <span className="text-[13px] text-foreground/80 truncate">{lead.company_name}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground/40">—</span>

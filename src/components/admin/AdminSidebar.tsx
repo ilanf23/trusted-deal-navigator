@@ -85,14 +85,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   const scrollRef = useRef<HTMLDivElement>(null);
   const savedScrollTop = useRef(0);
 
+  // No-op: sidebar should stay open when navigating between pages
   const closeMobileMenu = useCallback(() => {
-    if (isMobile) {
-      if (scrollRef.current) {
-        savedScrollTop.current = scrollRef.current.scrollTop;
-      }
-      setOpenMobile(false);
-    }
-  }, [isMobile, setOpenMobile]);
+    // Intentionally empty – the user closes the sidebar manually
+  }, []);
 
   // Restore scroll position when mobile sheet reopens
   useEffect(() => {

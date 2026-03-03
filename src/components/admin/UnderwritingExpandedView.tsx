@@ -157,18 +157,15 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
 };
 
 /* ─── Stats Card (accent card style) ─── */
-function StatBox({ value, label, icon, bg, border, valueColor, iconBg }: {
+function StatBox({ value, label, bg, border, valueColor }: {
   value: string | number;
   label: string;
-  icon: React.ReactNode;
   bg: string;
   border: string;
   valueColor: string;
-  iconBg: string;
 }) {
   return (
-    <div className={`relative flex flex-col gap-0.5 rounded-lg px-3.5 py-2.5 border-2 ${bg} ${border} min-w-0 flex-1 shadow-sm`}>
-      <span className={`absolute top-2 right-2.5 h-6 w-6 rounded-full flex items-center justify-center ${iconBg}`}>{icon}</span>
+    <div className={`flex flex-col gap-0.5 rounded-lg px-3.5 py-2.5 border-2 ${bg} ${border} min-w-0 flex-1 shadow-sm`}>
       <span className={`text-xl font-extrabold tabular-nums leading-tight ${valueColor}`}>{value}</span>
       <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
     </div>
@@ -319,11 +316,15 @@ export default function UnderwritingExpandedView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
 
-  // Contact inline add state (Related sidebar)
+  // Contact search-to-add state (Related sidebar)
   const [addingContact, setAddingContact] = useState(false);
-  const [newContactName, setNewContactName] = useState('');
-  const [newContactTitle, setNewContactTitle] = useState('');
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
   const [savingContact, setSavingContact] = useState(false);
+
+  // Contact inline edit state (Related sidebar)
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
+  const [editContactName, setEditContactName] = useState('');
+  const [editContactTitle, setEditContactTitle] = useState('');
 
   // Activity expand / comments state
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
@@ -492,7 +493,7 @@ export default function UnderwritingExpandedView() {
     setChecklistItems([]);
     setNewItemText('');
     setChecklistTabVisible(false);
-    setActivityTab('log');
+    setActivityTab('checklist');
     queryClient.invalidateQueries({ queryKey: ['lead-activities', leadId] });
     queryClient.invalidateQueries({ queryKey: ['lead-saved-checklists', leadId] });
     queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
@@ -577,14 +578,15 @@ export default function UnderwritingExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['lead-tasks', leadId] });
   }, [leadId, newTaskTitle, queryClient]);
 
-  // ── Save contact (Related sidebar) ──
-  const handleSaveContact = useCallback(async () => {
-    if (!leadId || !newContactName.trim()) return;
+  // ── Link existing person as contact (Related sidebar) ──
+  const handleLinkPerson = useCallback(async (person: { id: string; name: string; title: string | null; email?: string | null }) => {
+    if (!leadId) return;
     setSavingContact(true);
     const { error } = await supabase.from('lead_contacts').insert({
       lead_id: leadId,
-      name: newContactName.trim(),
-      title: newContactTitle.trim() || null,
+      name: person.name,
+      title: person.title || null,
+      email: person.email || null,
     });
     setSavingContact(false);
     if (error) {
@@ -592,11 +594,56 @@ export default function UnderwritingExpandedView() {
       return;
     }
     toast.success('Contact added');
-    setNewContactName('');
-    setNewContactTitle('');
+    setContactSearchQuery('');
     setAddingContact(false);
     queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
-  }, [leadId, newContactName, newContactTitle, queryClient]);
+  }, [leadId, queryClient]);
+
+  // ── Update contact (Related sidebar) ──
+  const updateContactMutation = useMutation({
+    mutationFn: async ({ contactId, name, title }: { contactId: string; name: string; title: string }) => {
+      const { error } = await supabase.from('lead_contacts').update({ name, title: title || null }).eq('id', contactId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+      toast.success('Contact updated');
+    },
+    onError: () => toast.error('Failed to update contact'),
+  });
+
+  // ── Delete contact (Related sidebar) ──
+  const deleteContactMutation = useMutation({
+    mutationFn: async (contactId: string) => {
+      const { error } = await supabase.from('lead_contacts').delete().eq('id', contactId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-contacts', leadId] });
+      toast.success('Contact removed');
+    },
+    onError: () => toast.error('Failed to remove contact'),
+  });
+
+  const handleStartEditContact = useCallback((contact: { id: string; name: string; title: string | null }) => {
+    setEditingContactId(contact.id);
+    setEditContactName(contact.name);
+    setEditContactTitle(contact.title || '');
+  }, []);
+
+  const handleSaveEditContact = useCallback(() => {
+    if (!editingContactId || !editContactName.trim()) return;
+    updateContactMutation.mutate({ contactId: editingContactId, name: editContactName.trim(), title: editContactTitle.trim() });
+    setEditingContactId(null);
+    setEditContactName('');
+    setEditContactTitle('');
+  }, [editingContactId, editContactName, editContactTitle, updateContactMutation]);
+
+  const handleCancelEditContact = useCallback(() => {
+    setEditingContactId(null);
+    setEditContactName('');
+    setEditContactTitle('');
+  }, []);
 
   // ── Save company (Related sidebar) ──
   const handleSaveCompany = useCallback(async () => {
@@ -997,6 +1044,23 @@ export default function UnderwritingExpandedView() {
       return data;
     },
     enabled: !!leadId,
+  });
+
+  // People search for adding contacts
+  const { data: peopleSearchResults = [] } = useQuery({
+    queryKey: ['people-search', contactSearchQuery],
+    queryFn: async () => {
+      const q = contactSearchQuery.trim();
+      if (!q) return [];
+      const { data } = await supabase
+        .from('people')
+        .select('id, name, title, email, company_name')
+        .ilike('name', `%${q}%`)
+        .order('name', { ascending: true })
+        .limit(20);
+      return (data || []).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    },
+    enabled: addingContact && contactSearchQuery.trim().length > 0,
   });
 
   const leadEmailAddresses = useMemo(() => {
@@ -1544,77 +1608,87 @@ export default function UnderwritingExpandedView() {
             <StatBox
               value={interactionCount}
               label="Interactions"
-              icon={<Activity className="h-3.5 w-3.5 text-blue-500" />}
               bg="bg-white dark:bg-slate-900/80"
               border="border-blue-500"
               valueColor="text-blue-700 dark:text-blue-400"
-              iconBg="bg-blue-100 dark:bg-blue-900/40"
             />
             <StatBox
               value={lastContacted}
               label="Last Contacted"
-              icon={<Clock className="h-3.5 w-3.5 text-slate-400" />}
               bg="bg-white dark:bg-slate-900/80"
               border="border-slate-400"
               valueColor="text-slate-700 dark:text-slate-300"
-              iconBg="bg-slate-100 dark:bg-slate-700/40"
             />
             <StatBox
               value={inactiveDays ?? '—'}
               label="Inactive Days"
-              icon={<AlertCircle className="h-3.5 w-3.5" />}
               bg="bg-white dark:bg-slate-900/80"
               border={(inactiveDays ?? 0) > 30 ? 'border-red-500' : 'border-amber-500'}
               valueColor={(inactiveDays ?? 0) > 30 ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}
-              iconBg={(inactiveDays ?? 0) > 30 ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}
             />
             <StatBox
               value={daysInStage ?? '—'}
               label="Days in Stage"
-              icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
               bg="bg-white dark:bg-slate-900/80"
               border="border-emerald-500"
               valueColor="text-emerald-700 dark:text-emerald-400"
-              iconBg="bg-emerald-100 dark:bg-emerald-900/40"
             />
           </div>
-          {/* Tabs */}
-          <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border px-6 py-2.5 bg-card">
-            <button
-              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activityTab === 'log'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-              onClick={() => setActivityTab('log')}
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              Log Activity
-            </button>
-            <button
-              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activityTab === 'note'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-              onClick={() => setActivityTab('note')}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Create Note
-            </button>
-            {checklistTabVisible && (
+          {/* Tabs — buttons on md+, dropdown on small screens */}
+          <div className="shrink-0 border-b border-border px-6 py-2.5 bg-card">
+            {/* Dropdown for small screens */}
+            <div className="sm:hidden">
+              <Select value={activityTab} onValueChange={(v) => setActivityTab(v as 'log' | 'note' | 'checklist')}>
+                <SelectTrigger className="h-9 w-full text-xs font-semibold rounded-lg border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="log" className="text-xs">Log Activity</SelectItem>
+                  <SelectItem value="note" className="text-xs">Create Note</SelectItem>
+                  {(checklistTabVisible || savedChecklists.length > 0) && (
+                    <SelectItem value="checklist" className="text-xs">Checklist</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Buttons for sm+ screens */}
+            <div className="hidden sm:flex items-center justify-center gap-2">
               <button
                 className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  activityTab === 'checklist'
+                  activityTab === 'log'
                     ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                 }`}
-                onClick={() => setActivityTab('checklist')}
+                onClick={() => setActivityTab('log')}
               >
-                <CheckSquare className="h-3.5 w-3.5" />
-                Checklist
+                <MessageSquare className="h-3.5 w-3.5" />
+                Log Activity
               </button>
-            )}
+              <button
+                className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  activityTab === 'note'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                }`}
+                onClick={() => setActivityTab('note')}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Create Note
+              </button>
+              {(checklistTabVisible || savedChecklists.length > 0) && (
+                <button
+                  className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    activityTab === 'checklist'
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                  }`}
+                  onClick={() => setActivityTab('checklist')}
+                >
+                  <CheckSquare className="h-3.5 w-3.5" />
+                  Checklist
+                </button>
+              )}
+            </div>
           </div>
 
           <ScrollArea className="md:flex-1">
@@ -1941,43 +2015,90 @@ export default function UnderwritingExpandedView() {
             <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length + relatedPeople.filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase())).length} onAdd={() => setAddingContact(true)}>
               <div className="space-y-2 py-1">
                 {contacts.map((c) => (
-                  <div key={c.id} className="text-xs text-foreground flex items-center gap-2">
-                    <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
-                      {c.name[0]?.toUpperCase()}
+                  editingContactId === c.id ? (
+                    <div key={c.id} className="space-y-1.5">
+                      <input
+                        autoFocus
+                        value={editContactName}
+                        onChange={(e) => setEditContactName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && editContactName.trim()) handleSaveEditContact();
+                          if (e.key === 'Escape') handleCancelEditContact();
+                        }}
+                        placeholder="Name (required)"
+                        className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                      />
+                      <input
+                        value={editContactTitle}
+                        onChange={(e) => setEditContactTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && editContactName.trim()) handleSaveEditContact();
+                          if (e.key === 'Escape') handleCancelEditContact();
+                        }}
+                        placeholder="Title (optional)"
+                        className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                      />
                     </div>
-                    <span className="font-medium">{c.name}</span>
-                    {c.title && <span className="text-muted-foreground">· {c.title}</span>}
-                  </div>
+                  ) : (
+                    <div key={c.id} className="text-xs text-foreground flex items-center gap-2 group cursor-pointer" onClick={() => handleStartEditContact(c)}>
+                      <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
+                        {c.name[0]?.toUpperCase()}
+                      </div>
+                      <span className="font-medium">{c.name}</span>
+                      {c.title && <span className="text-muted-foreground">· {c.title}</span>}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteContactMutation.mutate(c.id); }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                      >
+                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                      </button>
+                    </div>
+                  )
                 ))}
                 {contacts.length === 0 && !addingContact && relatedPeople.length === 0 && (
                   <p className="text-xs text-muted-foreground">No contacts</p>
                 )}
                 {addingContact ? (
-                  <div className="space-y-1.5 mt-1">
+                  <div className="relative mt-1">
                     <input
                       autoFocus
-                      value={newContactName}
-                      onChange={(e) => setNewContactName(e.target.value)}
+                      value={contactSearchQuery}
+                      onChange={(e) => setContactSearchQuery(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newContactName.trim()) handleSaveContact();
-                        if (e.key === 'Escape') { setAddingContact(false); setNewContactName(''); setNewContactTitle(''); }
+                        if (e.key === 'Escape') { setAddingContact(false); setContactSearchQuery(''); }
                       }}
-                      placeholder="Name (required)"
+                      placeholder="Search people..."
                       disabled={savingContact}
                       className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                     />
-                    <input
-                      value={newContactTitle}
-                      onChange={(e) => setNewContactTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newContactName.trim()) handleSaveContact();
-                        if (e.key === 'Escape') { setAddingContact(false); setNewContactName(''); setNewContactTitle(''); }
-                      }}
-                      placeholder="Title (optional)"
-                      disabled={savingContact}
-                      className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingContact && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+                    {savingContact && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
+                    {contactSearchQuery.trim().length > 0 && peopleSearchResults.length > 0 && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {peopleSearchResults
+                          .filter(p => !contacts.some(c => c.name.toLowerCase() === p.name.toLowerCase()))
+                          .map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => handleLinkPerson(p)}
+                            className="w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-muted/60 transition-colors"
+                          >
+                            <div className="h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[10px] font-bold text-blue-700 dark:text-blue-400 shrink-0">
+                              {p.name[0]?.toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="text-xs font-medium text-foreground">{p.name}</span>
+                              {p.title && <span className="text-xs text-muted-foreground ml-1">· {p.title}</span>}
+                              {p.company_name && <p className="text-[10px] text-muted-foreground truncate">{p.company_name}</p>}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {contactSearchQuery.trim().length > 0 && peopleSearchResults.filter(p => !contacts.some(c => c.name.toLowerCase() === p.name.toLowerCase())).length === 0 && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg px-2 py-2">
+                        <p className="text-xs text-muted-foreground">No matching people found</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button
