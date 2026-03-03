@@ -91,49 +91,65 @@ export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
     const filesToUpload = Array.from(fileList);
     if (filesToUpload.length === 0) return;
 
+    // Check auth session before attempting upload
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      toast.error('You must be logged in to upload files. Please refresh and sign in again.');
+      return;
+    }
+
     setUploading(true);
     let successCount = 0;
 
     try {
       for (const file of filesToUpload) {
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${leadId}/${crypto.randomUUID()}.${fileExt}`;
+        try {
+          const fileExt = file.name.split('.').pop();
+          const filePath = `${leadId}/${crypto.randomUUID()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('lead-files')
-          .upload(filePath, file, {
-            contentType: file.type || 'application/octet-stream',
-            upsert: true,
-          });
+          const { error: uploadError } = await supabase.storage
+            .from('lead-files')
+            .upload(filePath, file, {
+              contentType: file.type || 'application/octet-stream',
+              upsert: true,
+            });
 
-        if (uploadError) {
-          console.error('Storage upload error:', uploadError);
-          toast.error(`Failed to upload ${file.name}`);
-          continue;
+          if (uploadError) {
+            console.error('Storage upload error:', uploadError);
+            const reason = uploadError.message?.includes('security')
+              ? 'Permission denied — check your login session'
+              : uploadError.message || 'Storage error';
+            toast.error(`Upload failed for ${file.name}: ${reason}`);
+            continue;
+          }
+
+          const { error: dbError } = await supabase
+            .from('lead_files')
+            .insert({
+              lead_id: leadId,
+              file_name: file.name,
+              file_url: filePath,
+              file_type: file.type || null,
+              file_size: file.size,
+              uploaded_by: 'Admin',
+            });
+
+          if (dbError) {
+            console.error('DB insert error:', dbError);
+            const reason = dbError.message?.includes('row-level security')
+              ? 'Permission denied — admin role required'
+              : dbError.message || 'Database error';
+            toast.error(`Failed to save ${file.name}: ${reason}`);
+            // Clean up orphaned storage file
+            await supabase.storage.from('lead-files').remove([filePath]);
+            continue;
+          }
+
+          successCount++;
+        } catch (fileErr) {
+          console.error(`Unexpected error uploading ${file.name}:`, fileErr);
+          toast.error(`Unexpected error uploading ${file.name}`);
         }
-
-        const { data: urlData } = supabase.storage
-          .from('lead-files')
-          .getPublicUrl(filePath);
-
-        const { error: dbError } = await supabase
-          .from('lead_files')
-          .insert({
-            lead_id: leadId,
-            file_name: file.name,
-            file_url: filePath,
-            file_type: file.type || null,
-            file_size: file.size,
-            uploaded_by: 'Admin',
-          });
-
-        if (dbError) {
-          console.error('DB error:', dbError);
-          toast.error(`Failed to save ${file.name} metadata`);
-          continue;
-        }
-
-        successCount++;
       }
 
       if (successCount > 0) {
