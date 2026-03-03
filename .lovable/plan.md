@@ -1,52 +1,34 @@
 
 
-## Plan: Create Checklist Database Tables for Leads
+## Plan: Fix File Upload Errors in Lead Files Section
 
-The frontend code already references four tables that don't exist yet. I need to create all four with proper RLS policies.
+### Root Cause Analysis
 
-### Tables to Create
+The database schema, storage bucket, and RLS policies are all correctly configured. The likely failure points are:
 
-**1. `lead_checklists`** — one row per checklist attached to a lead
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | default `gen_random_uuid()` |
-| lead_id | uuid NOT NULL | references leads(id) on delete cascade |
-| title | text | default `'Checklist'` |
-| created_by | text | nullable |
-| activity_id | uuid | nullable (links to lead_activities) |
-| created_at | timestamptz | default `now()` |
+1. **`file_size` column is `integer` (32-bit)** — JS `File.size` returns bytes as a 64-bit number. Files larger than ~2GB would overflow, but even moderately large files could cause issues with certain Postgres drivers. Should be `bigint`.
 
-**2. `lead_checklist_items`** — individual checklist line items
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | default `gen_random_uuid()` |
-| checklist_id | uuid NOT NULL | references lead_checklists(id) on delete cascade |
-| text | text NOT NULL | |
-| is_checked | boolean | default `false` |
-| position | integer | default `0` |
-| created_at | timestamptz | default `now()` |
+2. **Error swallowing** — The current code logs errors to `console.error` but the toast messages are generic. If the storage upload succeeds but the DB insert fails (or vice versa), the user sees a vague error with no actionable info.
 
-**3. `checklist_templates`** — reusable templates
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | default `gen_random_uuid()` |
-| name | text NOT NULL | |
-| created_by | text | nullable |
-| created_at | timestamptz | default `now()` |
+3. **Potential auth/RLS issue** — If the user's session expired or they don't have the `admin` role, both the storage upload and the `lead_files` insert would fail with RLS violations. The code doesn't distinguish auth errors from other failures.
 
-**4. `checklist_template_items`** — items within a template
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | default `gen_random_uuid()` |
-| template_id | uuid NOT NULL | references checklist_templates(id) on delete cascade |
-| text | text NOT NULL | |
-| position | integer | default `0` |
+### Changes
 
-### RLS Policies
+**1. Database migration: Change `file_size` from `integer` to `bigint`**
+```sql
+ALTER TABLE public.lead_files ALTER COLUMN file_size TYPE bigint;
+```
 
-All four tables get admin-only access via `has_role(auth.uid(), 'admin')`, matching the existing pattern used throughout the project.
+**2. Improve error handling in `LeadFilesSection.tsx`**
+- Add more descriptive error messages that surface the actual error text
+- Add a check for auth session before attempting upload
+- Ensure the toast shows the specific failure reason (e.g., "Permission denied" vs "Storage error")
+- Add a try/catch around the individual file loop that doesn't silently continue on DB errors
 
-### No Frontend Changes Needed
+**3. No new API or integration needed**
+The existing Supabase Storage + `lead_files` table approach is correct. This is a bug fix, not an architecture problem.
 
-The code in `UnderwritingExpandedView.tsx` and `ChecklistBuilder.tsx` already queries these exact table/column names — once the tables exist, everything will work.
+### Files to Modify
+- `supabase/migrations/` — new migration for `bigint` change
+- `src/components/admin/LeadFilesSection.tsx` — better error handling and auth check
 
