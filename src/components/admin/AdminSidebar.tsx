@@ -328,22 +328,29 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   // Determine which sections should be open based on current route
   const getSectionOpenState = () => {
     const openSections: Record<string, boolean> = {};
+    const isUrlActive = (url: string) => {
+      if (url === '/superadmin') return location.pathname === '/superadmin';
+      if (url.includes('?')) {
+        const [itemPath, itemQuery] = url.split('?');
+        return location.pathname === itemPath && location.search === `?${itemQuery}`;
+      }
+      return location.pathname.startsWith(url);
+    };
     navSections.forEach((section) => {
       // Check if any item in the section matches the current route
-      const hasActiveItem = section.items.some((item) => {
-        if (item.url === '/superadmin') {
-          return location.pathname === '/superadmin';
-        }
-        // Handle query-param URLs (e.g. /admin/pipeline?view=potential)
-        if (item.url.includes('?')) {
-          const [itemPath, itemQuery] = item.url.split('?');
-          return location.pathname === itemPath && location.search === `?${itemQuery}`;
-        }
-        return location.pathname.startsWith(item.url);
-      });
+      const hasActiveItem = section.items.some((item) => isUrlActive(item.url));
       // Also check if the section's navigateOnClick matches
       const sectionNavigatesHere = section.navigateOnClick && location.pathname.startsWith(section.navigateOnClick);
       openSections[section.title] = hasActiveItem || !!sectionNavigatesHere;
+      // Also open item-level dropdowns when a sub-item matches the current route
+      section.items.forEach((item) => {
+        if (item.subItems) {
+          const hasActiveSub = item.subItems.some((sub) => isUrlActive(sub.url));
+          if (hasActiveSub || isUrlActive(item.url)) {
+            openSections[item.title] = true;
+          }
+        }
+      });
     });
     return openSections;
   };

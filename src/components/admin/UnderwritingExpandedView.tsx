@@ -296,6 +296,9 @@ export default function UnderwritingExpandedView() {
 
   // Checklist builder state
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openAddMenu = useCallback(() => { if (addMenuTimer.current) clearTimeout(addMenuTimer.current); setAddMenuOpen(true); }, []);
+  const closeAddMenu = useCallback(() => { addMenuTimer.current = setTimeout(() => setAddMenuOpen(false), 150); }, []);
   const [checklistTabVisible, setChecklistTabVisible] = useState(false);
   const [checklistTitle, setChecklistTitle] = useState('Checklist');
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
@@ -1192,33 +1195,34 @@ export default function UnderwritingExpandedView() {
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
           <X className="h-4 w-4" />
         </Button>
-        <DropdownMenu open={addMenuOpen} onOpenChange={setAddMenuOpen}>
-          <div
-            onMouseEnter={() => setAddMenuOpen(true)}
-            onMouseLeave={() => setAddMenuOpen(false)}
-          >
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 px-3 gap-1.5 text-sm font-medium">
-                <Plus className="h-4 w-4" />
-                Add
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onMouseEnter={() => setAddMenuOpen(true)} onMouseLeave={() => setAddMenuOpen(false)}>
-              <DropdownMenuItem
-                onClick={() => {
-                  setAddMenuOpen(false);
-                  setChecklistTabVisible(true);
-                  setActivityTab('checklist');
-                  setChecklistTitle('Checklist');
-                  setChecklistItems([]);
-                  setNewItemText('');
-                }}
-              >
-                <CheckSquare className="h-4 w-4 mr-2" />
-                Add a Checklist
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </div>
+        <DropdownMenu open={addMenuOpen} onOpenChange={setAddMenuOpen} modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 gap-1.5 text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0"
+              onMouseEnter={openAddMenu}
+              onMouseLeave={closeAddMenu}
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onMouseEnter={openAddMenu} onMouseLeave={closeAddMenu}>
+            <DropdownMenuItem
+              onClick={() => {
+                setAddMenuOpen(false);
+                setChecklistTabVisible(true);
+                setActivityTab('checklist');
+                setChecklistTitle('Checklist');
+                setChecklistItems([]);
+                setNewItemText('');
+              }}
+            >
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Add a Checklist
+            </DropdownMenuItem>
+          </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
