@@ -104,7 +104,7 @@ export function DropboxBrowser() {
   const [moveTarget, setMoveTarget] = useState<DropboxEntry | null>(null);
   const [moveDestination, setMoveDestination] = useState('');
 
-  const { data: listData, isLoading: listLoading, refetch } = useDropboxList(currentPath);
+  const { data: listData, isLoading: listLoading, refetch } = useDropboxList(currentPath, isConnected);
   const uploadMutation = useDropboxUpload();
   const createFolderMutation = useDropboxCreateFolder();
   const deleteMutation = useDropboxDelete();

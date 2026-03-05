@@ -33,11 +33,12 @@ async function invokeDropboxApi(action: string, body?: Record<string, unknown>) 
   return data;
 }
 
-export function useDropboxList(path: string) {
+export function useDropboxList(path: string, enabled = true) {
   return useQuery<ListResult>({
     queryKey: ['dropbox-files', path],
     queryFn: () => invokeDropboxApi('list', { path: path || '' }),
     staleTime: 30_000,
+    enabled,
   });
 }
 

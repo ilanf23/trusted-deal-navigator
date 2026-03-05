@@ -156,11 +156,11 @@ async function handleUpload(accessToken: string, body: any, supabase: any) {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      'Dropbox-API-Arg': JSON.stringify({
+      'Dropbox-API-Arg': new TextEncoder().encode(JSON.stringify({
         path,
         mode: 'add',
         autorename: true,
-      }),
+      })).reduce((acc, byte) => acc + String.fromCharCode(byte), ''),
       'Content-Type': 'application/octet-stream',
     },
     body: bytes,

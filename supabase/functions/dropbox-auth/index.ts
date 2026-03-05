@@ -130,6 +130,15 @@ Deno.serve(async (req) => {
         }),
       });
 
+      if (!tokenResponse.ok) {
+        const errText = await tokenResponse.text();
+        console.error('Token exchange HTTP error:', tokenResponse.status, errText);
+        return new Response(
+          JSON.stringify({ error: 'Failed to exchange authorization code with Dropbox' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
       const tokens = await tokenResponse.json();
 
       if (tokens.error) {
@@ -157,11 +166,36 @@ Deno.serve(async (req) => {
       }
 
       // Get user account info from Dropbox
-      const accountResponse = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
-      const account = await accountResponse.json();
+      let accountEmail: string | null = null;
+      let accountId: string | null = null;
+
+      try {
+        const accountResponse = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: null,
+        });
+
+        if (accountResponse.ok) {
+          const account = await accountResponse.json();
+          accountEmail = account.email || null;
+          accountId = account.account_id || null;
+        } else {
+          console.error('Dropbox get_current_account failed:', accountResponse.status, await accountResponse.text());
+        }
+      } catch (acctErr) {
+        console.error('Exception fetching Dropbox account info:', acctErr);
+      }
+
+      // Fallback: resolve email from the authenticated Supabase user
+      if (!accountEmail) {
+        const { data: userLookup } = await supabaseAdmin.auth.admin.getUserById(userId);
+        accountEmail = userLookup?.user?.email || `user-${userId.substring(0, 8)}@dropbox-connected`;
+        console.log('Used fallback email for Dropbox connection:', accountEmail);
+      }
 
       // Calculate token expiry
       const tokenExpiry = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
@@ -177,11 +211,11 @@ Deno.serve(async (req) => {
         .insert({
           user_id: userId,
           connected_by: teamMemberName,
-          email: account.email,
+          email: accountEmail,
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
           token_expiry: tokenExpiry,
-          account_id: account.account_id,
+          account_id: accountId,
         });
 
       if (insertError) {
@@ -193,7 +227,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, email: account.email }),
+        JSON.stringify({ success: true, email: accountEmail }),
         { headers: corsHeaders }
       );
     }
