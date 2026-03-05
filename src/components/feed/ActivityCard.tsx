@@ -11,6 +11,7 @@ interface ActivityCardProps {
   onViewLead?: (leadId: string) => void;
   isSelected?: boolean;
   onSelect?: (id: string) => void;
+  selectionActive?: boolean;
 }
 
 const avatarColors: Record<string, string> = {
@@ -75,7 +76,7 @@ const getTypeLabel = (type: FeedActivity['type']) => {
   }
 };
 
-const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead, isSelected, onSelect }: ActivityCardProps) => {
+const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead, isSelected, onSelect, selectionActive }: ActivityCardProps) => {
   const { toast } = useToast();
 
   const handleViewLead = (e: React.MouseEvent) => {
@@ -99,7 +100,7 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead, isSelected, 
     <div
       onClick={onToggle}
       className={cn(
-        'rounded-lg border mb-3 transition-all cursor-pointer',
+        'group/card rounded-lg border mb-3 transition-all cursor-pointer',
         isSelected
           ? 'bg-primary/5 ring-1 ring-primary/30 border-primary/30'
           : isExpanded
@@ -108,14 +109,15 @@ const ActivityCard = ({ activity, isExpanded, onToggle, onViewLead, isSelected, 
       )}
     >
       <div className="flex gap-3 p-3 sm:p-4">
-        {/* Selection checkbox */}
+        {/* Selection checkbox — visible on hover or when selection mode active */}
         <button
           onClick={handleCheckbox}
           className={cn(
             'flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all mt-1',
             isSelected
               ? 'bg-primary border-primary'
-              : 'border-muted-foreground/30 hover:border-primary/50'
+              : 'border-muted-foreground/30 hover:border-primary/50',
+            !isSelected && !selectionActive && 'opacity-0 group-hover/card:opacity-100'
           )}
         >
           {isSelected && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}

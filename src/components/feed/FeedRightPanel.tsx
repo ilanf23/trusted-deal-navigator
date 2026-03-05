@@ -28,7 +28,7 @@ const formatMeetingLabel = (startTime: string): string => {
   return `${format(date, 'MMM d')} at ${timeStr}`;
 };
 
-const FeedRightPanel = () => {
+const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
   const navigate = useNavigate();
   const { teamMember } = useTeamMember();
   const basePath = teamMember ? `/admin/${teamMember.name.toLowerCase()}` : '/admin/dashboard';
@@ -74,7 +74,7 @@ const FeedRightPanel = () => {
   const visibleMeetings = upcomingMeetings.filter((m) => !dismissedIds.includes(m.id));
 
   return (
-    <div className="w-[280px] min-w-[280px] 2xl:w-[300px] 2xl:min-w-[300px] bg-card border-l border-border h-full overflow-y-auto hidden xl:block">
+    <div className={isSheet ? "bg-card h-full overflow-y-auto" : "w-[280px] min-w-[280px] 2xl:w-[300px] 2xl:min-w-[300px] bg-card border-l border-border h-full overflow-y-auto hidden xl:block"}>
       <div className="p-4 space-y-5">
         {/* Due Tasks */}
         <div>

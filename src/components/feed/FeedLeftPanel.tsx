@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Activity, Phone, Mail, MessageSquare, StickyNote, CheckSquare, UserPlus } from 'lucide-react';
+import { Users, Phone, Mail, MessageSquare, StickyNote, CheckSquare, UserPlus } from 'lucide-react';
 
 interface TeamMember {
   id: string;
@@ -25,6 +25,15 @@ interface FeedLeftPanelProps {
   isSheet?: boolean;
 }
 
+const statRows = [
+  { icon: Phone, label: 'Calls', key: 'calls' as const, color: 'text-violet-500' },
+  { icon: Mail, label: 'Emails', key: 'emails' as const, color: 'text-red-500' },
+  { icon: MessageSquare, label: 'SMS', key: 'sms' as const, color: 'text-green-500' },
+  { icon: StickyNote, label: 'Notes', key: 'notes' as const, color: 'text-amber-500' },
+  { icon: CheckSquare, label: 'Tasks', key: 'tasks' as const, color: 'text-teal-500' },
+  { icon: UserPlus, label: 'New Leads', key: 'leads' as const, color: 'text-emerald-500' },
+];
+
 const FeedLeftPanel = ({
   selectedTeamMember,
   onTeamMemberSelect,
@@ -32,101 +41,106 @@ const FeedLeftPanel = ({
   activityCounts,
   isSheet,
 }: FeedLeftPanelProps) => {
+  const visibleMembers = teamMembers.filter(
+    (m) => !['adam', 'ilan', 'brad'].includes(m.name.toLowerCase())
+  );
+
   return (
-    <div className={cn(
-      'bg-card flex flex-col h-full overflow-hidden',
-      isSheet
-        ? 'w-full'
-        : 'w-[240px] min-w-[240px] 2xl:w-[270px] 2xl:min-w-[270px] border-r border-border'
-    )}>
-      {/* Team filter */}
-      <div className="p-3 space-y-1">
+    <div
+      className={cn(
+        'bg-card flex flex-col h-full overflow-hidden',
+        isSheet ? 'w-full' : 'w-[250px] min-w-[250px] border-r border-border'
+      )}
+    >
+      {/* Team Members */}
+      <div className="px-3 pt-4 pb-2">
+        <span className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Team
+        </span>
+      </div>
+
+      <div className="px-2 space-y-0.5">
         <button
           onClick={() => onTeamMemberSelect(null)}
           className={cn(
-            'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            'w-full flex items-center gap-3 px-2.5 py-2 rounded-md text-sm transition-colors',
             !selectedTeamMember
-              ? 'bg-primary/10 text-primary'
-              : 'text-foreground hover:bg-muted'
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           )}
         >
-          <div className="p-1.5 rounded-lg bg-muted">
+          <div
+            className={cn(
+              'w-8 h-8 rounded-full flex items-center justify-center',
+              !selectedTeamMember ? 'bg-primary/15' : 'bg-muted'
+            )}
+          >
             <Users className="w-4 h-4" />
           </div>
           All Team
         </button>
 
-        {teamMembers
-          .filter((m) => !['adam', 'ilan', 'brad'].includes(m.name.toLowerCase()))
-          .map((member) => (
+        {visibleMembers.map((member) => {
+          const isActive = selectedTeamMember === member.name;
+          return (
             <button
               key={member.id}
-              onClick={() =>
-                onTeamMemberSelect(
-                  selectedTeamMember === member.name ? null : member.name
-                )
-              }
+              onClick={() => onTeamMemberSelect(isActive ? null : member.name)}
               className={cn(
-                'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors',
-                selectedTeamMember === member.name
+                'w-full flex items-center gap-3 px-2.5 py-2 rounded-md text-sm transition-colors',
+                isActive
                   ? 'bg-primary/10 text-primary font-medium'
-                  : 'text-foreground hover:bg-muted'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
             >
-              <Avatar className="w-9 h-9">
+              <Avatar className="w-8 h-8">
                 {member.avatar_url && (
                   <AvatarImage src={member.avatar_url} alt={member.name} />
                 )}
-                <AvatarFallback className="bg-muted text-foreground text-sm font-semibold">
+                <AvatarFallback className="bg-muted text-foreground text-xs font-semibold">
                   {member.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               {member.name}
             </button>
-          ))}
+          );
+        })}
       </div>
 
-      <div className="mx-3 border-t border-border" />
+      {/* Divider */}
+      <div className="mx-4 my-3 border-t border-border" />
 
       {/* Activity Summary */}
-      <div className="p-3 flex-1 overflow-y-auto">
-        <div className="flex items-center gap-2 mb-3 px-3">
-          <Activity className="w-4 h-4 text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Activity Summary
-          </span>
-        </div>
+      <div className="px-3 pb-2">
+        <span className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Activity
+        </span>
+      </div>
 
+      <div className="px-4 space-y-3 flex-1 overflow-y-auto pb-4">
         {/* Totals */}
-        <div className="space-y-1.5 px-3 mb-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Last 30 days</span>
-            <span className="text-sm font-semibold text-foreground">{activityCounts.last30Days}</span>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-muted/60 px-3 py-2">
+            <p className="text-lg font-bold text-foreground leading-tight">{activityCounts.last30Days}</p>
+            <p className="text-[11px] text-muted-foreground">Last 30 days</p>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Total</span>
-            <span className="text-sm font-semibold text-foreground">{activityCounts.total}</span>
+          <div className="rounded-lg bg-muted/60 px-3 py-2">
+            <p className="text-lg font-bold text-foreground leading-tight">{activityCounts.total}</p>
+            <p className="text-[11px] text-muted-foreground">All time</p>
           </div>
         </div>
 
-        <div className="mx-3 border-t border-border mb-3" />
-
-        {/* Breakdown by type */}
-        <div className="space-y-1.5 px-3">
-          {[
-            { icon: Phone, label: 'Calls', count: activityCounts.calls, color: 'text-violet-400' },
-            { icon: Mail, label: 'Emails', count: activityCounts.emails, color: 'text-red-400' },
-            { icon: MessageSquare, label: 'SMS', count: activityCounts.sms, color: 'text-green-400' },
-            { icon: StickyNote, label: 'Notes', count: activityCounts.notes, color: 'text-amber-400' },
-            { icon: CheckSquare, label: 'Tasks', count: activityCounts.tasks, color: 'text-teal-400' },
-            { icon: UserPlus, label: 'New Leads', count: activityCounts.leads, color: 'text-emerald-400' },
-          ].map(({ icon: Icon, label, count, color }) => (
-            <div key={label} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+        {/* Breakdown */}
+        <div className="space-y-1">
+          {statRows.map(({ icon: Icon, label, key, color }) => (
+            <div key={key} className="flex items-center justify-between py-1.5 px-1">
+              <div className="flex items-center gap-2.5">
                 <Icon className={cn('w-3.5 h-3.5', color)} />
                 <span className="text-sm text-muted-foreground">{label}</span>
               </div>
-              <span className="text-sm font-semibold text-foreground">{count}</span>
+              <span className="text-sm font-semibold tabular-nums text-foreground">
+                {activityCounts[key]}
+              </span>
             </div>
           ))}
         </div>

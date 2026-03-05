@@ -38,6 +38,7 @@ const PipelineFeed = () => {
   }, [teamMember?.name]);
   const [searchQuery, setSearchQuery] = useState('');
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<any>(null);
 
   const handleViewLead = useCallback(async (leadId: string) => {
@@ -102,7 +103,7 @@ const PipelineFeed = () => {
 
   return (
     <EvanLayout>
-      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full pl-4 sm:pl-6 md:pl-10 lg:pl-14 bg-background">
+      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full bg-background">
         {/* Mobile Sheet drawer for left panel */}
         <Sheet open={leftPanelOpen} onOpenChange={setLeftPanelOpen}>
           <SheetContent side="left" className="p-0 w-[280px]">
@@ -116,6 +117,16 @@ const PipelineFeed = () => {
               activityCounts={activityCounts}
               isSheet
             />
+          </SheetContent>
+        </Sheet>
+
+        {/* Mobile Sheet drawer for right panel (due tasks & meetings) */}
+        <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen}>
+          <SheetContent side="right" className="p-0 w-[300px]">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Due Tasks & Meetings</SheetTitle>
+            </SheetHeader>
+            <FeedRightPanel isSheet />
           </SheetContent>
         </Sheet>
 
@@ -135,6 +146,7 @@ const PipelineFeed = () => {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onToggleLeftPanel={() => setLeftPanelOpen(true)}
+            onToggleRightPanel={() => setRightPanelOpen(true)}
             selectedTeamMember={selectedTeamMember}
             onViewLead={handleViewLead}
           />

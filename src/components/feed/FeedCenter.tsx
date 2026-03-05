@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
-import { Loader2, Users, Pencil, ExternalLink, MoreVertical, X } from 'lucide-react';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import { Loader2, Users, X, SquareCheckBig, CheckSquare, Copy, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import ActivityCard from './ActivityCard';
@@ -12,11 +12,12 @@ interface FeedCenterProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onToggleLeftPanel?: () => void;
+  onToggleRightPanel?: () => void;
   selectedTeamMember?: string | null;
   onViewLead?: (leadId: string) => void;
 }
 
-const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onToggleLeftPanel, selectedTeamMember, onViewLead }: FeedCenterProps) => {
+const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onToggleLeftPanel, onToggleRightPanel, selectedTeamMember, onViewLead }: FeedCenterProps) => {
   const [activeTab, setActiveTab] = useState<'all' | 'notes' | 'comms'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -67,50 +68,42 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
   };
 
   const hasSelection = selectedIds.size > 0;
+  const allFilteredIds = useMemo(() => filtered.map(a => a.id), [filtered]);
+  const allSelected = hasSelection && allFilteredIds.length > 0 && allFilteredIds.every(id => selectedIds.has(id));
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(allFilteredIds));
+  }, [allFilteredIds]);
 
   return (
     <div className="flex-1 min-w-0 bg-muted/50 flex flex-col h-full relative">
-      {/* Selection toolbar — shown when items are selected */}
-      {hasSelection ? (
-        <div className="bg-card border-b border-border px-3 sm:px-4 flex items-center h-[52px] gap-3">
-          <button
-            onClick={clearSelection}
-            className="flex-shrink-0 p-1 rounded-md hover:bg-muted transition-colors"
-          >
-            <X className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <span className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-semibold">
-            {selectedIds.size} out of {filtered.length}
-          </span>
-          <span className="text-sm font-medium text-foreground">selected</span>
-          <div className="w-px h-6 bg-border mx-1" />
-          <Button variant="outline" size="sm" className="gap-1.5 font-medium">
-            <Pencil className="w-3.5 h-3.5" />
-            Edit
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 font-medium">
-            <ExternalLink className="w-3.5 h-3.5" />
-            Export
-          </Button>
-          <button className="p-1.5 rounded-md hover:bg-muted transition-colors">
-            <MoreVertical className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
-      ) : (
-      /* Search bar */
+      {/* Search bar — always visible */}
       <div className="bg-card border-b border-border px-3 sm:px-4 pt-3 pb-0">
-        {/* Mobile filter button */}
-        {onToggleLeftPanel && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onToggleLeftPanel}
-            className="mb-2 lg:hidden flex items-center gap-2"
-          >
-            <Users className="w-4 h-4" />
-            {selectedTeamMember || 'All Team'}
-          </Button>
-        )}
+        {/* Mobile filter buttons */}
+        <div className="flex items-center gap-2 mb-2 xl:hidden">
+          {onToggleLeftPanel && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleLeftPanel}
+              className="flex items-center gap-2 lg:hidden"
+            >
+              <Users className="w-4 h-4" />
+              {selectedTeamMember || 'All Team'}
+            </Button>
+          )}
+          {onToggleRightPanel && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleRightPanel}
+              className="flex items-center gap-2"
+            >
+              <SquareCheckBig className="w-4 h-4" />
+              Tasks
+            </Button>
+          )}
+        </div>
 
         <div className="relative mb-3">
           <input
@@ -149,10 +142,9 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
           ))}
         </div>
       </div>
-      )}
 
       {/* Feed content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+      <div ref={scrollRef} className={cn("flex-1 overflow-y-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4", hasSelection && "pb-20")}>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -193,11 +185,62 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
                   onViewLead={onViewLead}
                   isSelected={selectedIds.has(activity.id)}
                   onSelect={toggleSelect}
+                  selectionActive={hasSelection}
                 />
               ))}
             </div>
           ))
         )}
+      </div>
+
+      {/* Floating selection bar */}
+      <div
+        className={cn(
+          'absolute bottom-4 left-3 right-3 sm:left-4 sm:right-4 lg:left-6 lg:right-6 z-10 transition-all duration-200',
+          hasSelection
+            ? 'translate-y-0 opacity-100'
+            : 'translate-y-4 opacity-0 pointer-events-none'
+        )}
+      >
+        <div className="bg-foreground text-background rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
+          <button
+            onClick={clearSelection}
+            className="flex-shrink-0 p-1 rounded-md hover:bg-background/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          <span className="text-sm font-semibold">
+            {selectedIds.size} selected
+          </span>
+
+          <div className="w-px h-5 bg-background/20 mx-1" />
+
+          <button
+            onClick={allSelected ? clearSelection : selectAll}
+            className="flex items-center gap-1.5 text-sm font-medium hover:bg-background/10 px-2 py-1 rounded-md transition-colors"
+          >
+            <CheckSquare className="w-3.5 h-3.5" />
+            {allSelected ? 'Deselect All' : 'Select All'}
+          </button>
+
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={clearSelection}
+              className="flex items-center gap-1.5 text-sm font-medium hover:bg-background/10 px-3 py-1.5 rounded-md transition-colors"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+            <button
+              onClick={clearSelection}
+              className="flex items-center gap-1.5 text-sm font-medium hover:bg-red-500/20 text-red-300 px-3 py-1.5 rounded-md transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Dismiss</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
