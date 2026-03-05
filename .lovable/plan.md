@@ -1,49 +1,25 @@
 
 
-## Plan: Sanitize File Names in Upload Handlers
+## Plan: Create Dropbox Database Infrastructure + Fix Build Error
 
-### Problem
-Three upload handlers embed `file.name` directly into the storage key. Filenames with spaces or special characters (e.g., `Screenshot 2026-02-27 at 12.13.05 PM.png`) cause storage rejection.
-
-`LeadFilesSection.tsx` already avoids this by using `crypto.randomUUID() + extension`, but the other three do not.
+### What's Missing
+The migration file `supabase/migrations/20260304_dropbox_tables.sql` exists in the repo but was **never executed**. The database has zero Dropbox tables. Additionally, `DropboxFilePicker.tsx` references the non-existent `dropbox_files` table, causing a TypeScript build error.
 
 ### Changes
 
-**1. Add `sanitizeFileName` utility to `src/lib/utils.ts`**
-```ts
-export function sanitizeFileName(name: string): string {
-  return name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9._-]/g, "");
-}
-```
+**1. Run the database migration** (via migration tool)
+Execute the SQL from the existing migration file to create:
+- `dropbox_connections` table (shared OAuth tokens, single row per company)
+- `dropbox_files` table (file metadata, text index, lead linking)
+- RLS policies restricting both tables to admin role
+- Indexes for path, lead, full-text search, and extraction status
 
-**2. Fix `PipelineExpandedView.tsx` (line 557)**
-```ts
-// Before
-const filePath = `${leadId}/${Date.now()}_${file.name}`;
-// After
-const filePath = `${leadId}/${Date.now()}_${sanitizeFileName(file.name)}`;
-```
+**2. Add secrets** (if not already present)
+The edge functions need `DROPBOX_APP_KEY` and `DROPBOX_APP_SECRET`. These are not in the current secrets list — will need to prompt for them.
 
-**3. Fix `UnderwritingExpandedView.tsx` (line 709)**
-Same pattern — wrap `file.name` with `sanitizeFileName()`.
+**3. Fix `DropboxFilePicker.tsx` build error**
+The query on line 70 uses `.from('dropbox_files')` which isn't in the auto-generated types yet. After the migration runs and types regenerate, this should resolve automatically. If not, cast with `as any` temporarily to unblock the build.
 
-**4. Fix `PeopleExpandedView.tsx` (line 752)**
-Same pattern — wrap `file.name` with `sanitizeFileName()`.
-
-**5. Fix `LeadFilesSection.tsx` (line 108)**
-Already safe (uses UUID), but for consistency, sanitize the extension:
-```ts
-const safeName = sanitizeFileName(file.name);
-const filePath = `${leadId}/${crypto.randomUUID()}_${safeName}`;
-```
-This also preserves the original filename in the path for easier debugging.
-
-### Files to Modify
-- `src/lib/utils.ts` — add `sanitizeFileName`
-- `src/components/admin/PipelineExpandedView.tsx` — import + use
-- `src/components/admin/UnderwritingExpandedView.tsx` — import + use
-- `src/components/admin/PeopleExpandedView.tsx` — import + use
-- `src/components/admin/LeadFilesSection.tsx` — import + use (consistency)
-
-No database or migration changes needed.
+### No Code File Changes Needed
+The migration creates all the infrastructure. The existing edge functions (`dropbox-auth`, `dropbox-api`, `dropbox-sync`) and hooks (`useDropbox`, `useDropboxConnection`) are already correctly written against these tables.
 
