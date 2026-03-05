@@ -68,6 +68,9 @@ export default function DropboxCallback() {
       }
 
       try {
+        // Wait for session to restore (safety net for popup windows)
+        await supabase.auth.getSession();
+
         const teamMemberName = localStorage.getItem('dropboxTeamMember') || undefined;
         const callbackUrl = getCallbackUrl();
 
