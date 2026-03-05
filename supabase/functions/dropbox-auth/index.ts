@@ -15,6 +15,13 @@ function isValidUUID(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 }
 
+const REQUIRED_SCOPES = [
+  'files.metadata.read',
+  'files.metadata.write',
+  'files.content.read',
+  'files.content.write',
+];
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -92,6 +99,7 @@ Deno.serve(async (req) => {
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('token_access_type', 'offline');
       authUrl.searchParams.set('state', userId!);
+      authUrl.searchParams.set('scope', REQUIRED_SCOPES.join(' '));
 
       return new Response(
         JSON.stringify({ authUrl: authUrl.toString() }),
@@ -130,6 +138,22 @@ Deno.serve(async (req) => {
           JSON.stringify({ error: tokens.error_description || 'Failed to exchange code' }),
           { status: 400, headers: corsHeaders }
         );
+      }
+
+      const grantedScopes = typeof tokens.scope === 'string'
+        ? tokens.scope.split(' ').filter(Boolean)
+        : [];
+
+      if (grantedScopes.length > 0) {
+        const missingScopes = REQUIRED_SCOPES.filter((scope) => !grantedScopes.includes(scope));
+        if (missingScopes.length > 0) {
+          return new Response(
+            JSON.stringify({
+              error: `Dropbox app is missing required scopes: ${missingScopes.join(', ')}. Update app permissions and reconnect.`,
+            }),
+            { status: 400, headers: corsHeaders }
+          );
+        }
       }
 
       // Get user account info from Dropbox
