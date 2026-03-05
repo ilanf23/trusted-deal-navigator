@@ -831,6 +831,128 @@ export type Database = {
           },
         ]
       }
+      dropbox_connections: {
+        Row: {
+          access_token: string
+          account_id: string | null
+          connected_by: string | null
+          created_at: string | null
+          cursor: string | null
+          email: string
+          id: string
+          last_sync_at: string | null
+          refresh_token: string
+          token_expiry: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          account_id?: string | null
+          connected_by?: string | null
+          created_at?: string | null
+          cursor?: string | null
+          email: string
+          id?: string
+          last_sync_at?: string | null
+          refresh_token: string
+          token_expiry: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          account_id?: string | null
+          connected_by?: string | null
+          created_at?: string | null
+          cursor?: string | null
+          email?: string
+          id?: string
+          last_sync_at?: string | null
+          refresh_token?: string
+          token_expiry?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dropbox_files: {
+        Row: {
+          content_hash: string | null
+          created_at: string | null
+          dropbox_id: string
+          dropbox_path: string
+          dropbox_path_display: string
+          dropbox_rev: string | null
+          extracted_at: string | null
+          extracted_text: string | null
+          extraction_error: string | null
+          extraction_status: string | null
+          id: string
+          is_folder: boolean
+          lead_id: string | null
+          lead_name: string | null
+          mime_type: string | null
+          modified_at: string | null
+          name: string
+          size: number | null
+          synced_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content_hash?: string | null
+          created_at?: string | null
+          dropbox_id: string
+          dropbox_path: string
+          dropbox_path_display: string
+          dropbox_rev?: string | null
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_status?: string | null
+          id?: string
+          is_folder?: boolean
+          lead_id?: string | null
+          lead_name?: string | null
+          mime_type?: string | null
+          modified_at?: string | null
+          name: string
+          size?: number | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content_hash?: string | null
+          created_at?: string | null
+          dropbox_id?: string
+          dropbox_path?: string
+          dropbox_path_display?: string
+          dropbox_rev?: string | null
+          extracted_at?: string | null
+          extracted_text?: string | null
+          extraction_error?: string | null
+          extraction_status?: string | null
+          id?: string
+          is_folder?: boolean
+          lead_id?: string | null
+          lead_name?: string | null
+          mime_type?: string | null
+          modified_at?: string | null
+          name?: string
+          size?: number | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dropbox_files_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_metadata: {
         Row: {
           created_at: string
