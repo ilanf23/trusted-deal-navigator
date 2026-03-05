@@ -24,7 +24,7 @@ import {
   User, Mail, Phone, PhoneCall, Hash, Tag, Briefcase, Loader2,
   Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download, Send,
 } from 'lucide-react';
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { differenceInDays, parseISO, format } from 'date-fns';
@@ -129,7 +129,7 @@ function fakeValue(id: string): number {
 }
 
 function formatValue(v: number): string {
-  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function daysSince(dateStr: string | null): number | null {
@@ -156,6 +156,88 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   checklist: { icon: CheckSquare, color: 'text-violet-500' },
 };
 
+/* ─── Activity Tab Bar (auto-collapses to dropdown when buttons overflow) ─── */
+function ActivityTabBar({
+  activityTab,
+  setActivityTab,
+  showChecklist,
+}: {
+  activityTab: 'log' | 'note' | 'checklist';
+  setActivityTab: (tab: 'log' | 'note' | 'checklist') => void;
+  showChecklist: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonsRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const buttons = buttonsRef.current;
+    if (!container || !buttons) return;
+
+    const check = () => {
+      // Compare the scroll width of the buttons row against the container width
+      setOverflowing(buttons.scrollWidth > container.clientWidth);
+    };
+
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [showChecklist]);
+
+  const activeBtn = 'bg-blue-600 text-white shadow-sm shadow-blue-500/25';
+  const inactiveBtn = 'text-muted-foreground hover:text-foreground hover:bg-muted/60';
+
+  return (
+    <div ref={containerRef} className="shrink-0 border-b border-border px-6 py-2.5 bg-card overflow-hidden">
+      {overflowing ? (
+        <Select value={activityTab} onValueChange={(v) => setActivityTab(v as 'log' | 'note' | 'checklist')}>
+          <SelectTrigger className="h-9 w-full text-xs font-semibold rounded-lg border-border">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="log" className="text-xs">Log Activity</SelectItem>
+            <SelectItem value="note" className="text-xs">Create Note</SelectItem>
+            {showChecklist && (
+              <SelectItem value="checklist" className="text-xs">Checklist</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+      ) : null}
+      {/* Always render buttons (hidden when overflowing) so we can measure them */}
+      <div
+        ref={buttonsRef}
+        className={`flex items-center justify-center gap-2 whitespace-nowrap ${overflowing ? 'invisible h-0 overflow-hidden' : ''}`}
+      >
+        <button
+          className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${activityTab === 'log' ? activeBtn : inactiveBtn}`}
+          onClick={() => setActivityTab('log')}
+        >
+          <MessageSquare className="h-3.5 w-3.5" />
+          Log Activity
+        </button>
+        <button
+          className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${activityTab === 'note' ? activeBtn : inactiveBtn}`}
+          onClick={() => setActivityTab('note')}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          Create Note
+        </button>
+        {showChecklist && (
+          <button
+            className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${activityTab === 'checklist' ? activeBtn : inactiveBtn}`}
+            onClick={() => setActivityTab('checklist')}
+          >
+            <CheckSquare className="h-3.5 w-3.5" />
+            Checklist
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Stats Card (accent card style) ─── */
 function StatBox({ value, label, bg, border, valueColor }: {
   value: string | number;
@@ -165,9 +247,9 @@ function StatBox({ value, label, bg, border, valueColor }: {
   valueColor: string;
 }) {
   return (
-    <div className={`flex flex-col gap-0.5 rounded-lg px-3.5 py-2.5 border-2 ${bg} ${border} min-w-0 flex-1 shadow-sm`}>
-      <span className={`text-xl font-extrabold tabular-nums leading-tight ${valueColor}`}>{value}</span>
-      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">{label}</span>
+    <div className={`flex flex-col gap-0.5 rounded-lg px-3.5 py-2.5 border-2 ${bg} ${border} min-w-0 flex-1 shadow-sm overflow-hidden`}>
+      <span className={`text-xl font-extrabold tabular-nums leading-tight truncate ${valueColor}`}>{value}</span>
+      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest truncate">{label}</span>
     </div>
   );
 }
@@ -1604,7 +1686,7 @@ export default function UnderwritingExpandedView() {
         {/* CENTER: Activity */}
         <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
           {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-2 md:grid-cols-4 gap-3 px-5 py-3.5 border-b border-border bg-card">
+          <div className="shrink-0 grid grid-cols-2 md:grid-cols-4 gap-3 px-5 py-3.5 border-b border-border bg-card overflow-hidden">
             <StatBox
               value={interactionCount}
               label="Interactions"
@@ -1634,62 +1716,12 @@ export default function UnderwritingExpandedView() {
               valueColor="text-emerald-700 dark:text-emerald-400"
             />
           </div>
-          {/* Tabs — buttons on md+, dropdown on small screens */}
-          <div className="shrink-0 border-b border-border px-6 py-2.5 bg-card">
-            {/* Dropdown for small screens */}
-            <div className="sm:hidden">
-              <Select value={activityTab} onValueChange={(v) => setActivityTab(v as 'log' | 'note' | 'checklist')}>
-                <SelectTrigger className="h-9 w-full text-xs font-semibold rounded-lg border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="log" className="text-xs">Log Activity</SelectItem>
-                  <SelectItem value="note" className="text-xs">Create Note</SelectItem>
-                  {(checklistTabVisible || savedChecklists.length > 0) && (
-                    <SelectItem value="checklist" className="text-xs">Checklist</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Buttons for sm+ screens */}
-            <div className="hidden sm:flex items-center justify-center gap-2">
-              <button
-                className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  activityTab === 'log'
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                }`}
-                onClick={() => setActivityTab('log')}
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                Log Activity
-              </button>
-              <button
-                className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  activityTab === 'note'
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                }`}
-                onClick={() => setActivityTab('note')}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Create Note
-              </button>
-              {(checklistTabVisible || savedChecklists.length > 0) && (
-                <button
-                  className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                    activityTab === 'checklist'
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                  }`}
-                  onClick={() => setActivityTab('checklist')}
-                >
-                  <CheckSquare className="h-3.5 w-3.5" />
-                  Checklist
-                </button>
-              )}
-            </div>
-          </div>
+          {/* Tabs — buttons when they fit, dropdown when they overflow */}
+          <ActivityTabBar
+            activityTab={activityTab}
+            setActivityTab={setActivityTab}
+            showChecklist={checklistTabVisible || savedChecklists.length > 0}
+          />
 
           <ScrollArea className="md:flex-1">
             <div className="px-6 py-5">
@@ -2282,7 +2314,7 @@ export default function UnderwritingExpandedView() {
                         {formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <div className="flex items-center gap-0.5 shrink-0">
                       <button
                         onClick={async (e) => {
                           e.stopPropagation();

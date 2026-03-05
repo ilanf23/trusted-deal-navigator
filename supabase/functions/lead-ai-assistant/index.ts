@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
@@ -192,10 +193,11 @@ serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const { action, leadContext, question } = await req.json() as {
+    const { action, leadContext, question, leadId } = await req.json() as {
       action: string;
       leadContext: LeadContext;
       question?: string;
+      leadId?: string;
     };
 
     // Validate action
@@ -221,7 +223,35 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const sanitizedContextStr = buildSanitizedContext(leadContext);
+    let sanitizedContextStr = buildSanitizedContext(leadContext);
+
+    // Fetch linked Dropbox files if leadId is provided
+    if (leadId) {
+      try {
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const { data: dropboxFiles } = await supabase
+          .from("dropbox_files")
+          .select("name, dropbox_path_display, extracted_text")
+          .eq("lead_id", leadId)
+          .eq("is_folder", false)
+          .limit(10);
+
+        if (dropboxFiles && dropboxFiles.length > 0) {
+          sanitizedContextStr += "\n--- Linked Dropbox Files ---\n";
+          for (const f of dropboxFiles) {
+            sanitizedContextStr += `File: ${sanitizeField(f.name)} (${sanitizeField(f.dropbox_path_display)})\n`;
+            if (f.extracted_text) {
+              sanitizedContextStr += `Content: ${sanitizeInput(f.extracted_text, 2000)}\n`;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch Dropbox files for lead context:", err);
+      }
+    }
 
     // Build action-specific system instructions and user prompt
     let actionInstructions = "";

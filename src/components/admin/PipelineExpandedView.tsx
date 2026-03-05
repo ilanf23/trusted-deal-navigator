@@ -145,7 +145,7 @@ function fakeValue(id: string): number {
 }
 
 function formatValue(v: number): string {
-  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function daysSince(dateStr: string | null): number | null {

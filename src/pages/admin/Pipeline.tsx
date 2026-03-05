@@ -165,7 +165,7 @@ function fakeValue(id: string): number {
 }
 
 function formatValue(v: number): string {
-  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function fakeTasks(id: string): number {
@@ -1064,7 +1064,7 @@ const Pipeline = () => {
                 )}
                 {!isLoading && (
                   <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
-                    ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
                 )}
 

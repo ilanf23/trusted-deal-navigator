@@ -223,7 +223,7 @@ function fakeValue(id: string): number {
 }
 
 function formatValue(v: number): string {
-  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function fakeTasks(id: string): number {
@@ -407,27 +407,25 @@ const Underwriting = () => {
     interactions: true, inactiveDays: true, tags: true,
   });
 
-  const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    opportunity: 280, company: 130, contact: 110, value: 90, ownedBy: 80,
-    tasks: 55, stage: 150, daysInStage: 55, stageUpdated: 85,
+  const MIN_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
+    opportunity: 220, company: 100, contact: 100, value: 80, ownedBy: 80,
+    tasks: 55, stage: 120, daysInStage: 55, stageUpdated: 85,
     lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
   }), []);
 
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+  // User-saved widths from manual column resizing
+  const [savedColumnWidths, setSavedColumnWidths] = useState<Record<string, number>>(() => {
     try {
-      const saved = localStorage.getItem('evan-underwriting-column-widths');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
-      }
+      const saved = localStorage.getItem('uw-col-widths-v2');
+      if (saved) return JSON.parse(saved);
     } catch {}
-    return DEFAULT_COLUMN_WIDTHS;
+    return {};
   });
 
   const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
-    setColumnWidths(prev => {
+    setSavedColumnWidths(prev => {
       const next = { ...prev, [columnId]: newWidth };
-      localStorage.setItem('evan-underwriting-column-widths', JSON.stringify(next));
+      localStorage.setItem('uw-col-widths-v2', JSON.stringify(next));
       return next;
     });
   }, []);
@@ -746,6 +744,56 @@ const Underwriting = () => {
     [leads]
   );
 
+  // Auto-fit column widths based on actual data content
+  const columnWidths = useMemo(() => {
+    const CHAR_W = 7.8; // approx px per char at 13px font
+    const CHAR_W_SM = 6.5; // approx px per char at 11px font
+    const CELL_PAD = 32; // px-4 each side
+
+    const maxTextW = (items: (string | null | undefined)[], charWidth = CHAR_W, extra = 0) => {
+      let max = 0;
+      for (const s of items) {
+        const len = (s ?? '').length;
+        if (len > max) max = len;
+      }
+      return Math.ceil(max * charWidth + CELL_PAD + extra);
+    };
+
+    const auto: Record<string, number> = {};
+
+    if (filteredAndSorted.length > 0) {
+      // Opportunity: avatar(28) + gap(10) + name + expand btn(20)
+      auto.opportunity = maxTextW(filteredAndSorted.map(l => l.name), CHAR_W, 58);
+      // Company: icon(24) + gap(8) + text
+      auto.company = maxTextW(filteredAndSorted.map(l => l.company_name), CHAR_W, 32);
+      // Contact: plain name text
+      auto.contact = maxTextW(filteredAndSorted.map(l => l.name));
+      // Value: formatted currency
+      auto.value = maxTextW(filteredAndSorted.map(l => formatValue(fakeValue(l.id))));
+      // Owner: avatar(24) + gap(8) + name
+      auto.ownedBy = maxTextW(
+        filteredAndSorted.map(l => teamMemberMap[l.assigned_to ?? ''] ?? ''),
+        CHAR_W, 32
+      );
+      // Stage: dot(6) + gap(6) + label + badge padding(20)
+      auto.stage = maxTextW(
+        filteredAndSorted.map(l => stageConfig[l.status]?.label ?? l.status),
+        CHAR_W_SM, 40
+      );
+    }
+
+    // Merge: minimums → auto-fit → user-saved overrides
+    const merged: Record<string, number> = { ...MIN_COLUMN_WIDTHS };
+    for (const key of Object.keys(merged)) {
+      if (auto[key] !== undefined) {
+        merged[key] = Math.max(merged[key], auto[key]);
+      }
+      if (savedColumnWidths[key] !== undefined) {
+        merged[key] = savedColumnWidths[key];
+      }
+    }
+    return merged;
+  }, [filteredAndSorted, teamMemberMap, savedColumnWidths, MIN_COLUMN_WIDTHS]);
 
   function handleColSort(field: SortField) {
     if (sortField === field) {
@@ -805,7 +853,7 @@ const Underwriting = () => {
 
   return (
     <EvanLayout>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
+      <div className="underwriting-font flex flex-col h-full min-h-0 overflow-hidden bg-background">
 
         {/* ── CRM-Style Header ── */}
         <div className="shrink-0 border-b border-border bg-background px-5 py-3 flex flex-wrap items-center gap-3">
@@ -1035,7 +1083,7 @@ const Underwriting = () => {
                 )}
                 {!isLoading && (
                   <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
-                    ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
                 )}
 
@@ -1377,7 +1425,7 @@ const Underwriting = () => {
                             {/* Contact */}
                             {columnVisibility.contact && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.contact }}>
-                                <span className="text-[13px] text-foreground/80 truncate block max-w-[100px]">{lead.name}</span>
+                                <span className="text-[13px] text-foreground/80 truncate block">{lead.name}</span>
                               </td>
                             )}
 
@@ -1400,7 +1448,7 @@ const Underwriting = () => {
                                         {assignedInitial}
                                       </div>
                                     )}
-                                    <span className="text-[13px] text-foreground/80 truncate max-w-[80px]">{assignedName}</span>
+                                    <span className="text-[13px] text-foreground/80 truncate">{assignedName}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground/40 text-[13px]">—</span>

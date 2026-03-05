@@ -623,6 +623,12 @@
     background: hsl(var(--muted-foreground) / 0.15);
   }
 
+  /* Underwriting pipeline: force sans-serif on every element */
+  .underwriting-font,
+  .underwriting-font * {
+    font-family: sans-serif !important;
+  }
+
   /* Full-bleed pages: remove padding and max-width from AdminLayout wrappers */
   .admin-portal main > div:has([data-full-bleed]) {
     padding: 0 !important;

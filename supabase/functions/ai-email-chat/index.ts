@@ -130,13 +130,34 @@ serve(async (req) => {
 `;
     }
 
+    // Fetch linked Dropbox files for additional context
+    let dropboxContext = "";
+    try {
+      const { data: dropboxFiles } = await supabase
+        .from("dropbox_files")
+        .select("name, dropbox_path_display, extracted_text")
+        .eq("lead_id", leadId)
+        .eq("is_folder", false)
+        .limit(5);
+
+      if (dropboxFiles && dropboxFiles.length > 0) {
+        dropboxContext = `\n## Linked Documents (from Dropbox)\n${dropboxFiles.map(f => {
+          const preview = f.extracted_text ? f.extracted_text.substring(0, 500) + '...' : 'No text extracted';
+          return `- **${f.name}**: ${preview}`;
+        }).join('\n')}\n`;
+      }
+    } catch (err) {
+      console.warn("Failed to fetch Dropbox files for email context:", err);
+    }
+
     const systemPrompt = `You are an expert commercial lending consultant AI assistant at Commercial Lending X. Your job is to help write personalized, compelling emails for leads based on their specific situation.
 
 ## Your Context
-You have access to complete lead data including their questionnaire responses, rate watch status, and contact history. Use this information to write highly personalized emails.
+You have access to complete lead data including their questionnaire responses, rate watch status, contact history, and linked documents. Use this information to write highly personalized emails.
 
 ## Lead Data
 ${leadContext}
+${dropboxContext}
 
 ## Guidelines
 1. **Be Personalized**: Reference specific details from the lead's data - their business type, loan amount, rates, etc.

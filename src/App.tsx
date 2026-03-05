@@ -75,6 +75,8 @@ import IlanTeamEvanNotes from "./pages/admin/IlanTeamEvanNotes";
 import UsersAndRoles from "./pages/admin/UsersAndRoles";
 import CalendarCallback from "./pages/admin/CalendarCallback";
 import SheetsCallback from "./pages/admin/SheetsCallback";
+import DropboxPage from "./pages/admin/Dropbox";
+import DropboxCallback from "./pages/admin/DropboxCallback";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
@@ -145,6 +147,8 @@ const App = () => (
                 <Route path="/superadmin/rate-watch" element={<AdminRateWatch />} />
                 <Route path="/superadmin/lender-programs" element={<LenderPrograms />} />
                 <Route path="/superadmin/tracking" element={<AdminTracking />} />
+                <Route path="/superadmin/dropbox" element={<DropboxPage />} />
+                <Route path="/superadmin/dropbox/callback" element={<DropboxCallback />} />
                 <Route path="/superadmin/inbox/callback" element={<AdminInboxCallback />} />
                 <Route path="/superadmin/calendar-callback" element={<CalendarCallback />} />
                 <Route path="/superadmin/sheets-callback" element={<SheetsCallback />} />
@@ -187,6 +191,8 @@ const App = () => (
                 <Route path="/admin/bug-reporting" element={<AdminRoute><BugReporting /></AdminRoute>} />
                 <Route path="/admin/messages" element={<AdminRoute><AdminMessages /></AdminRoute>} />
                 <Route path="/admin/rate-watch" element={<AdminRoute><AdminRateWatch /></AdminRoute>} />
+                <Route path="/admin/dropbox" element={<AdminRoute><DropboxPage /></AdminRoute>} />
+                <Route path="/admin/dropbox/callback" element={<DropboxCallback />} />
                 {/* Legacy redirects */}
                 <Route path="/admin/evan" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/evan/*" element={<Navigate to="/admin/dashboard" replace />} />

@@ -25,6 +25,7 @@ import {
   Plus,
   Crosshair,
   Rss,
+  HardDrive,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -144,6 +145,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         isLabel: true,
         items: [
           { title: 'Gmail', url: '/superadmin/ilan/gmail', icon: Mail },
+          { title: 'Dropbox', url: '/superadmin/dropbox', icon: HardDrive },
           { title: 'Bug Testing', url: '/superadmin/ilan/bugs', icon: Bug },
           { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
         ],
@@ -227,6 +229,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Invoices', url: '/superadmin/invoices', icon: Receipt },
           { title: 'Messages', url: '/superadmin/messages', icon: MessageSquare },
           { title: 'Bug Reporting', url: '/superadmin/bug-reporting', icon: Bug },
+          { title: 'Dropbox', url: '/superadmin/dropbox', icon: HardDrive },
           { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
         ],
       });
@@ -300,6 +303,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Calendar', url: '/admin/calendar', icon: Calendar },
           { title: 'Calls', url: '/admin/calls', icon: Phone },
           { title: 'Gmail', url: '/admin/gmail', icon: Mail },
+          { title: 'Dropbox', url: '/admin/dropbox', icon: HardDrive },
         ],
         noCollapse: true,
       });

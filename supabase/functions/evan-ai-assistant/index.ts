@@ -160,6 +160,24 @@ ${notes?.filter(n => n.is_pinned).map(n => `- ${n.content.substring(0, 200)}`).j
 ### Recent Notes
 ${notes?.slice(0, 5).map(n => `- ${new Date(n.created_at).toLocaleDateString()}: ${n.content.substring(0, 150)}${n.content.length > 150 ? '...' : ''}`).join('\n') || 'No recent notes'}
 `;
+
+      // Fetch Dropbox files linked to leads for AI context
+      const { data: dropboxFiles } = await supabase
+        .from("dropbox_files")
+        .select("name, dropbox_path_display, lead_id, lead_name, extracted_text, size, modified_at")
+        .not("lead_id", "is", null)
+        .eq("is_folder", false)
+        .order("modified_at", { ascending: false })
+        .limit(30);
+
+      if (dropboxFiles && dropboxFiles.length > 0) {
+        contextData += `\n### Dropbox Files Linked to Leads (${dropboxFiles.length} files)
+${dropboxFiles.map(f => {
+  const textPreview = f.extracted_text ? f.extracted_text.substring(0, 200) + '...' : 'No text extracted';
+  return `- **${f.name}** (${f.lead_name || 'Unknown lead'}): ${f.dropbox_path_display}${f.extracted_text ? `\n  Content preview: ${textPreview}` : ''}`;
+}).join('\n')}
+`;
+      }
     }
 
     const displayName = userName || 'Evan';
