@@ -21,32 +21,61 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: corsHeaders }
-      );
+    // Parse body first to determine action
+    const body = await req.json();
+    const { action, code, redirectUri, teamMemberName } = body;
+
+    // Actions that don't require user auth (popup may not have session restored)
+    const publicActions = ['exchangeCode', 'getStatus'];
+    const isPublicAction = publicActions.includes(action);
+
+    let userId: string | undefined;
+
+    if (!isPublicAction) {
+      // Require auth for connect, disconnect, getAuthUrl
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: 'Missing authorization header' }),
+          { status: 401, headers: corsHeaders }
+        );
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data: claimsData, error: claimsError } = await supabase.auth.getUser(token);
+      if (claimsError || !claimsData.user) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: corsHeaders }
+        );
+      }
+      userId = claimsData.user.id;
+    } else {
+      // For public actions, try to get userId from auth header if available (best effort)
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader) {
+        try {
+          const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+          });
+          const token = authHeader.replace('Bearer ', '');
+          const { data: claimsData } = await supabase.auth.getUser(token);
+          if (claimsData?.user) {
+            userId = claimsData.user.id;
+          }
+        } catch {
+          // Ignore - userId stays undefined for public actions
+        }
+      }
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Verify the user
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getUser(token);
-    if (claimsError || !claimsData.user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: corsHeaders }
-      );
-    }
-
-    const userId = claimsData.user.id;
-    const { action, code, redirectUri, teamMemberName } = await req.json();
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     if (action === 'getAuthUrl') {
       const authUrl = new URL('https://www.dropbox.com/oauth2/authorize');
@@ -54,7 +83,7 @@ Deno.serve(async (req) => {
       authUrl.searchParams.set('redirect_uri', redirectUri);
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('token_access_type', 'offline');
-      authUrl.searchParams.set('state', userId);
+      authUrl.searchParams.set('state', userId!);
 
       return new Response(
         JSON.stringify({ authUrl: authUrl.toString() }),
@@ -63,7 +92,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'exchangeCode') {
-      // Exchange authorization code for tokens
+      // Exchange authorization code for tokens — no user auth needed
       const tokenResponse = await fetch('https://api.dropboxapi.com/oauth2/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -96,12 +125,6 @@ Deno.serve(async (req) => {
       // Calculate token expiry
       const tokenExpiry = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-      // Use service role to insert (shared connection)
-      const supabaseAdmin = createClient(
-        supabaseUrl,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      );
-
       // Delete any existing connection (single shared row)
       await supabaseAdmin
         .from('dropbox_connections')
@@ -111,7 +134,7 @@ Deno.serve(async (req) => {
       const { error: insertError } = await supabaseAdmin
         .from('dropbox_connections')
         .insert({
-          user_id: userId,
+          user_id: userId || '00000000-0000-0000-0000-000000000000',
           connected_by: teamMemberName,
           email: account.email,
           access_token: tokens.access_token,
@@ -135,11 +158,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'disconnect') {
-      const supabaseAdmin = createClient(
-        supabaseUrl,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      );
-
       // Delete all rows (single shared connection)
       const { error } = await supabaseAdmin
         .from('dropbox_connections')
@@ -161,11 +179,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'getStatus') {
-      const supabaseAdmin = createClient(
-        supabaseUrl,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      );
-
       const { data, error } = await supabaseAdmin
         .from('dropbox_connections')
         .select('email, connected_by, last_sync_at')
