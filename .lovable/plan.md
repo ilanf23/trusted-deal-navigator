@@ -1,53 +1,44 @@
 
-Problem confirmed: the Dropbox OAuth exchange is failing in the backend with a foreign-key error, not at Dropbox. Recent logs show:
-- `dropbox_connections_user_id_fkey` violation
-- attempted `user_id = 00000000-0000-0000-0000-000000000000`
+Goal: restore reliable Dropbox connection first, then make Dropbox page actions (upload/folder ops) consistently work without generic failures.
 
-That means the popup callback is reaching `exchangeCode`, but when no auth session is present in the popup, the function inserts a placeholder UUID and fails.
+What I found (from code + backend logs):
+- Current failure is at OAuth token save, not at redirect:  
+  `null value in column "email" of relation "dropbox_connections" violates not-null constraint`
+- This happens in `dropbox-auth` after token exchange because account metadata is assumed valid and inserted without validating `get_current_account` success/shape.
+- The disconnected Dropbox screen is also firing `dropbox-api list` immediately, which creates noisy “Edge Function returned non-2xx status code” errors before a connection exists.
+- Earlier `dropbox-api` logs also show upload header encoding issues (`headers ... not a valid ByteString`) for some filenames/paths.
 
-Implementation plan
+Implementation plan:
 
-1) Fix user identity flow in OAuth callback
-- File: `src/pages/admin/DropboxCallback.tsx`
-- Parse `state` from the Dropbox callback URL (`?state=...`) in addition to `code`.
-- Send `state` to `dropbox-auth` during `exchangeCode`.
-- Keep `getSession()` as best-effort, but no longer depend on popup auth session to determine user id.
+1) Fix Dropbox connection handshake robustness (`supabase/functions/dropbox-auth/index.ts`)
+- Validate `tokenResponse.ok` before using token JSON.
+- Call `users/get_current_account` with explicit JSON request format; check `accountResponse.ok` and parse Dropbox error safely.
+- Resolve persisted identity fields safely:
+  - `account_id`: use account response, fallback to token payload if present.
+  - `email`: use account email when available; fallback to authenticated app user email (from verified user/admin lookup) if Dropbox omits it.
+- If no usable identifier can be resolved, return a clear 400 with actionable reconnect guidance (no DB insert attempt).
+- Keep `exchangeCode` public (popup-safe), keep other actions authenticated, and add explicit admin-role enforcement for connect/disconnect/status endpoints (company-wide connection hardening).
 
-2) Remove invalid UUID fallback in backend exchange
-- File: `supabase/functions/dropbox-auth/index.ts`
-- Make only `exchangeCode` public; keep `getStatus` authenticated again (to avoid exposing connection metadata).
-- In `exchangeCode`, resolve `effectiveUserId` as:
-  - authenticated user id (if auth header/session exists), else
-  - user id from OAuth `state`.
-- Validate `effectiveUserId` before insert (must be a valid UUID and correspond to a real app user/admin).
-- Replace:
-  - `user_id: userId || '00000000-0000-0000-0000-000000000000'`
-  with:
-  - `user_id: effectiveUserId`
-- If user id cannot be resolved, return a clear 400 error (no insert attempt).
+2) Prevent false Dropbox API calls while disconnected (frontend)
+- Update `useDropboxList` to support an `enabled` flag.
+- In `DropboxBrowser`, only run list query when `isConnected === true`.
+- This removes the immediate non-2xx toast on the “Connect Dropbox” screen and avoids confusing failure loops.
 
-3) Improve user-facing failure visibility
-- File: `src/pages/admin/DropboxCallback.tsx`
-- Surface backend error reason in the popup message (instead of generic “Failed to connect Dropbox”).
-- Emit `DROPBOX_ERROR` with a readable message so the opener can show a meaningful toast.
+3) Improve callback error surfacing (`src/pages/admin/DropboxCallback.tsx`)
+- Parse edge-function error payloads (not just generic invoke error text) so popup/parent receives the real reason (e.g., account metadata failure vs missing scope vs redirect mismatch).
+- Keep existing `DROPBOX_ERROR` propagation to parent + storage fallback.
 
-4) Improve parent-window feedback
-- File: `src/hooks/useDropboxConnection.ts`
-- Handle `DROPBOX_ERROR` messages in both `postMessage` and `storage` listeners.
-- Show `toast.error(...)` with the callback-provided message and keep status unchanged.
+4) Fix upload header compatibility for all filenames (`supabase/functions/dropbox-api/index.ts`)
+- Ensure `Dropbox-API-Arg` header is safely encoded for non-ASCII characters in paths/names to avoid Deno ByteString header failures.
+- Keep existing action handlers; this specifically stabilizes upload for real-world file names.
 
-Technical details (for implementation accuracy)
+5) Validate end-to-end after changes
+- Reconnect Dropbox from `/admin/dropbox` and confirm success state.
+- Confirm `dropbox_connections` row is created with valid `user_id`, token fields, and resolved account identity fields.
+- Verify UI actions: list, upload, new folder, rename/move, delete, temporary link.
+- Retest with at least one filename containing special characters.
+- Confirm no generic “non-2xx” toast appears on disconnected screen.
 
-- Root cause is deterministic from logs: FK failure on `dropbox_connections.user_id` during `exchangeCode`.
-- Current backend behavior allows public `exchangeCode`, but still needs a valid user id for required FK column.
-- OAuth `state` is already set in `getAuthUrl` (`state = userId`) and should be used as fallback identity channel for popup flows where local session restoration is unreliable.
-- No database migration needed; schema is correct (`user_id` should stay required).
-- Security hardening included: do not keep `getStatus` public.
-
-Validation checklist after implementation
-
-1. Start from `/admin/dropbox`, click Connect, approve in Dropbox.
-2. Popup should show Connected (not Failed), then close/redirect.
-3. `dropbox_connections` should contain one row with a real `user_id` (no zero UUID).
-4. Main Dropbox screen should display connected email and allow listing/sync.
-5. Re-test in both preview and published domains to confirm callback stability.
+Technical notes:
+- No schema migration required for this pass unless Dropbox account identity proves structurally unavailable across account types; if that appears during verification, fallback plan is a targeted migration to relax `dropbox_connections.email` nullability and render a non-email account label in UI.
+- Existing RLS posture for Dropbox tables is already admin-scoped; function-level admin checks will close remaining access gaps on shared connection actions.
