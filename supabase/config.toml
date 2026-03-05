@@ -59,3 +59,15 @@ verify_jwt = false
 
 [functions.manage-user-role]
 verify_jwt = false
+
+[functions.dropbox-auth]
+verify_jwt = false
+
+[functions.dropbox-api]
+verify_jwt = false
+
+[functions.dropbox-sync]
+verify_jwt = false
+
+[functions.dropbox-webhook]
+verify_jwt = false
