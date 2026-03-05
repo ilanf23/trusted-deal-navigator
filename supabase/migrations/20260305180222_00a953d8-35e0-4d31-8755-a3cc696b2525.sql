@@ -1,0 +1,1 @@
+DELETE FROM dropbox_connections WHERE id = '5d2d3c97-49f2-49d4-94cb-9b9d9e0fc0dd';
