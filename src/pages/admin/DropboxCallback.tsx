@@ -18,6 +18,7 @@ export default function DropboxCallback() {
     const handleCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
+      const state = urlParams.get('state'); // Contains userId from getAuthUrl
       const error = urlParams.get('error');
 
       const notifyParent = (data: { type: string; email?: string; error?: string }) => {
@@ -80,6 +81,7 @@ export default function DropboxCallback() {
             code,
             redirectUri: callbackUrl,
             teamMemberName,
+            stateUserId: state || undefined, // Pass OAuth state as fallback user_id
           },
         });
 
@@ -94,13 +96,18 @@ export default function DropboxCallback() {
           notifyParent({ type: 'DROPBOX_CONNECTED', email: data.email });
           setTimeout(closeOrRedirect, 1000);
         } else {
-          throw new Error(data.error || 'Failed to connect');
+          const errorMsg = data.error || 'Failed to connect';
+          setStatus('error');
+          setMessage(errorMsg);
+          notifyParent({ type: 'DROPBOX_ERROR', error: errorMsg });
+          setTimeout(closeOrRedirect, 1500);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Dropbox OAuth callback error:', err);
+        const errorMsg = err instanceof Error ? err.message : 'Failed to connect Dropbox';
         setStatus('error');
-        setMessage('Failed to connect Dropbox');
-        notifyParent({ type: 'DROPBOX_ERROR', error: String(err) });
+        setMessage(errorMsg);
+        notifyParent({ type: 'DROPBOX_ERROR', error: errorMsg });
         setTimeout(closeOrRedirect, 1500);
       }
     };

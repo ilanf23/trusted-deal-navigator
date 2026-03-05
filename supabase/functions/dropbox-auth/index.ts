@@ -10,6 +10,11 @@ const corsHeaders = {
 const DROPBOX_APP_KEY = Deno.env.get('DROPBOX_APP_KEY')!;
 const DROPBOX_APP_SECRET = Deno.env.get('DROPBOX_APP_SECRET')!;
 
+// Simple UUID v4 format check
+function isValidUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -23,18 +28,16 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Parse body first to determine action
     const body = await req.json();
-    const { action, code, redirectUri, teamMemberName } = body;
+    const { action, code, redirectUri, teamMemberName, stateUserId } = body;
 
-    // Actions that don't require user auth (popup may not have session restored)
-    const publicActions = ['exchangeCode', 'getStatus'];
-    const isPublicAction = publicActions.includes(action);
+    // Only exchangeCode is public (popup may not have session).
+    // All other actions require authentication.
+    const isPublicAction = action === 'exchangeCode';
 
     let userId: string | undefined;
 
     if (!isPublicAction) {
-      // Require auth for connect, disconnect, getAuthUrl
       const authHeader = req.headers.get('Authorization');
       if (!authHeader) {
         return new Response(
@@ -57,7 +60,7 @@ Deno.serve(async (req) => {
       }
       userId = claimsData.user.id;
     } else {
-      // For public actions, try to get userId from auth header if available (best effort)
+      // For exchangeCode: try auth header first, fall back to stateUserId
       const authHeader = req.headers.get('Authorization');
       if (authHeader) {
         try {
@@ -70,8 +73,13 @@ Deno.serve(async (req) => {
             userId = claimsData.user.id;
           }
         } catch {
-          // Ignore - userId stays undefined for public actions
+          // Auth failed in popup — expected, fall through to stateUserId
         }
+      }
+
+      // Fall back to the OAuth state parameter (contains userId set during getAuthUrl)
+      if (!userId && stateUserId && isValidUUID(stateUserId)) {
+        userId = stateUserId;
       }
     }
 
@@ -92,7 +100,16 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'exchangeCode') {
-      // Exchange authorization code for tokens — no user auth needed
+      // Validate we have a real user_id before attempting DB insert
+      if (!userId || !isValidUUID(userId)) {
+        console.error('exchangeCode: No valid user_id resolved. Auth header failed and no stateUserId provided.');
+        return new Response(
+          JSON.stringify({ error: 'Unable to identify user. Please try connecting again.' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      // Exchange authorization code for tokens
       const tokenResponse = await fetch('https://api.dropboxapi.com/oauth2/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -134,7 +151,7 @@ Deno.serve(async (req) => {
       const { error: insertError } = await supabaseAdmin
         .from('dropbox_connections')
         .insert({
-          user_id: userId || '00000000-0000-0000-0000-000000000000',
+          user_id: userId,
           connected_by: teamMemberName,
           email: account.email,
           access_token: tokens.access_token,
@@ -158,7 +175,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'disconnect') {
-      // Delete all rows (single shared connection)
       const { error } = await supabaseAdmin
         .from('dropbox_connections')
         .delete()
