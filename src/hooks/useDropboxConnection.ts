@@ -52,6 +52,8 @@ export function useDropboxConnection(): DropboxConnectionState {
         setConnectedBy(teamMember?.name || null);
         toast.success('Dropbox connected successfully');
         checkStatus();
+      } else if (event.data?.type === 'DROPBOX_ERROR') {
+        toast.error(event.data.error || 'Dropbox connection failed');
       }
     };
 
@@ -65,6 +67,8 @@ export function useDropboxConnection(): DropboxConnectionState {
             setConnectedBy(teamMember?.name || null);
             toast.success('Dropbox connected successfully');
             checkStatus();
+          } else if (result.type === 'DROPBOX_ERROR') {
+            toast.error(result.error || 'Dropbox connection failed');
           }
           localStorage.removeItem('dropbox-auth-result');
         } catch {
