@@ -425,11 +425,11 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify JWT using getClaims
+    // Verify JWT using getUser (getClaims can return null in edge environments)
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: authError } = await supabaseAnon.auth.getClaims(token);
+    const { data: userData, error: authError } = await supabaseAnon.auth.getUser(token);
 
-    if (authError || !claimsData?.claims) {
+    if (authError || !userData?.user) {
       console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
@@ -437,7 +437,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = userData.user.id;
 
     // Check admin role cache first
     const cachedRole = adminRoleCache.get(userId);
