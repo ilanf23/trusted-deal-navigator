@@ -88,7 +88,11 @@ export default function DropboxCallback() {
         localStorage.removeItem('dropboxCallbackUrl');
         localStorage.removeItem('dropboxTeamMember');
 
-        if (exchangeError) throw exchangeError;
+        if (exchangeError) {
+          // Try to extract detailed error from edge function response
+          const detailMsg = data?.error || exchangeError.message || 'Connection failed';
+          throw new Error(detailMsg);
+        }
 
         if (data.success) {
           setStatus('success');
