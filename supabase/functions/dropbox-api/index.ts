@@ -38,6 +38,26 @@ async function refreshDropboxToken(refreshToken: string): Promise<DropboxTokenRe
   return response.json();
 }
 
+function parseDropboxApiError(operation: string, errorText: string): string {
+  try {
+    const parsed = JSON.parse(errorText);
+    const requiredScope = parsed?.error?.required_scope;
+    const errorTag = parsed?.error?.['.tag'];
+
+    if (errorTag === 'missing_scope' && requiredScope) {
+      return `Dropbox app is missing required scope: ${requiredScope}. Update Dropbox app permissions and reconnect Dropbox.`;
+    }
+
+    if (parsed?.error_summary) {
+      return `Failed to ${operation}: ${parsed.error_summary}`;
+    }
+  } catch {
+    // non-JSON error response
+  }
+
+  return `Failed to ${operation}`;
+}
+
 async function getValidAccessToken(supabase: any): Promise<string> {
   const { data: connection, error } = await supabase
     .from('dropbox_connections')
@@ -107,7 +127,7 @@ async function handleList(accessToken: string, body: any) {
   if (!response.ok) {
     const error = await response.text();
     console.error('Dropbox list_folder error:', error);
-    throw new Error('Failed to list folder');
+    throw new Error(parseDropboxApiError('list folder', error));
   }
 
   const data = await response.json();
@@ -149,7 +169,7 @@ async function handleUpload(accessToken: string, body: any, supabase: any) {
   if (!response.ok) {
     const error = await response.text();
     console.error('Dropbox upload error:', error);
-    throw new Error('Failed to upload file');
+    throw new Error(parseDropboxApiError('upload file', error));
   }
 
   const metadata = await response.json();
@@ -195,7 +215,7 @@ async function handleGetTemporaryLink(accessToken: string, body: any) {
   if (!response.ok) {
     const error = await response.text();
     console.error('Dropbox get_temporary_link error:', error);
-    throw new Error('Failed to get temporary link');
+    throw new Error(parseDropboxApiError('get temporary link', error));
   }
 
   const data = await response.json();
@@ -225,7 +245,7 @@ async function handleMove(accessToken: string, body: any, supabase: any) {
   if (!response.ok) {
     const error = await response.text();
     console.error('Dropbox move_v2 error:', error);
-    throw new Error('Failed to move file');
+    throw new Error(parseDropboxApiError('move file', error));
   }
 
   const data = await response.json();
@@ -264,7 +284,7 @@ async function handleDelete(accessToken: string, body: any, supabase: any) {
   if (!response.ok) {
     const error = await response.text();
     console.error('Dropbox delete_v2 error:', error);
-    throw new Error('Failed to delete file');
+    throw new Error(parseDropboxApiError('delete file', error));
   }
 
   const data = await response.json();
@@ -300,7 +320,7 @@ async function handleCreateFolder(accessToken: string, body: any) {
   if (!response.ok) {
     const error = await response.text();
     console.error('Dropbox create_folder_v2 error:', error);
-    throw new Error('Failed to create folder');
+    throw new Error(parseDropboxApiError('create folder', error));
   }
 
   const data = await response.json();
