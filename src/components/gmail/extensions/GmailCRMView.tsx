@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Mail, Loader2, ChevronDown, RefreshCw, X, FileText } from 'lucide-react';
+import { Mail, Loader2, ChevronDown, RefreshCw, X, FileText, Unplug } from 'lucide-react';
 import { GmailTaskDialog } from '@/components/admin/GmailTaskDialog';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';

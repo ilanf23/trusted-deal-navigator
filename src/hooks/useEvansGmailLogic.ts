@@ -830,6 +830,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
   return {
     // Connection
     gmailConnection, connectionLoading, handleConnectGmail,
+    disconnectGmail: gmail.disconnectGmail,
 
     // Folders
     activeFolder, setActiveFolder, folderCounts,
