@@ -155,6 +155,17 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
                 </Button>
               </div>
             )}
+
+            {/* Disconnect Gmail */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto"
+              onClick={disconnectGmail}
+            >
+              <Unplug className="w-4 h-4 mr-1.5" />
+              Disconnect
+            </Button>
           </div>
 
           {/* Email List / Email View */}
