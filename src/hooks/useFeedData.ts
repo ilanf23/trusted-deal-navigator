@@ -5,6 +5,11 @@ import { STAGE_LABELS } from '@/constants/appConfig';
 
 export type FeedActivityType = 'lead_created' | 'lead_updated' | 'note' | 'call' | 'email' | 'sms' | 'task_created' | 'stage_change';
 
+export interface FeedChecklistItem {
+  text: string;
+  isChecked: boolean;
+}
+
 export interface FeedActivity {
   id: string;
   type: FeedActivityType;
@@ -21,6 +26,8 @@ export interface FeedActivity {
   direction?: string;
   /** Source section: 'lead', 'people', 'company' */
   source?: string;
+  checklistTitle?: string;
+  checklistItems?: FeedChecklistItem[];
 }
 
 const formatTime = (dateStr: string): string => {
@@ -54,6 +61,8 @@ export const useFeedData = () => {
         { data: people },
         { data: peopleActivities },
         { data: outboundEmails },
+        { data: checklists },
+        { data: checklistItems },
       ] = await Promise.all([
         // All leads (no pipeline filter — every pipeline)
         supabase
@@ -102,6 +111,16 @@ export const useFeedData = () => {
           .eq('status', 'sent')
           .order('sent_at', { ascending: false })
           .limit(200),
+        // Checklists linked to activities
+        supabase
+          .from('lead_checklists')
+          .select('id, title, activity_id')
+          .not('activity_id', 'is', null),
+        // Checklist items
+        supabase
+          .from('lead_checklist_items')
+          .select('id, checklist_id, text, is_checked, position')
+          .order('position', { ascending: true }),
       ]);
 
       // ── Build lookup maps ──
@@ -109,6 +128,25 @@ export const useFeedData = () => {
       const teamNameMap = new Map((teamMembers || []).map(tm => [tm.name.toLowerCase(), tm.avatar_url]));
       const leadMap = new Map((leads || []).map(l => [l.id, { name: l.name, company: l.company_name, status: l.status, assignedTo: l.assigned_to }]));
       const peopleMap = new Map((people || []).map(p => [p.id, { name: p.name, company: p.company_name, assignedTo: p.assigned_to }]));
+
+      // ── Build checklist map: activityId → { title, items[] } ──
+      const checklistByActivity = new Map<string, { title: string | null; items: FeedChecklistItem[] }>();
+      if (checklists?.length) {
+        const itemsByChecklist = new Map<string, FeedChecklistItem[]>();
+        for (const item of (checklistItems || [])) {
+          const arr = itemsByChecklist.get(item.checklist_id) || [];
+          arr.push({ text: item.text, isChecked: item.is_checked ?? false });
+          itemsByChecklist.set(item.checklist_id, arr);
+        }
+        for (const cl of checklists) {
+          if (cl.activity_id && itemsByChecklist.has(cl.id)) {
+            checklistByActivity.set(cl.activity_id, {
+              title: cl.title,
+              items: itemsByChecklist.get(cl.id)!,
+            });
+          }
+        }
+      }
 
       // Track lead_activities IDs to deduplicate against lead.notes
       const leadActivityLeadIds = new Set<string>();
@@ -128,6 +166,7 @@ export const useFeedData = () => {
         else if (at === 'task' || at === 'todo') type = 'task_created';
         else if (at === 'stage_change') type = 'stage_change';
 
+        const clData = checklistByActivity.get(la.id);
         activities.push({
           id: `la-${la.id}`,
           type,
@@ -142,6 +181,10 @@ export const useFeedData = () => {
           rawDate: new Date(la.created_at),
           stage: leadInfo?.status ? (STAGE_LABELS[leadInfo.status] || leadInfo.status) : undefined,
           source: 'lead',
+          ...(clData && {
+            checklistTitle: clData.title || undefined,
+            checklistItems: clData.items,
+          }),
         });
       }
 

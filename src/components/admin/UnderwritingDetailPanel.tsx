@@ -861,7 +861,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
 
       {/* Files */}
       <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={files.length} iconColor="text-orange-500">
-        <LeadFilesSection leadId={lead.id} />
+        <LeadFilesSection leadId={lead.id} leadName={lead.name} companyName={lead.company_name} />
       </RelatedSection>
 
       {/* Pipeline */}

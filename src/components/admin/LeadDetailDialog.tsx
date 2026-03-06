@@ -1854,7 +1854,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
 
                   {/* Files Tab */}
                   <TabsContent value="files" className="m-0 p-4">
-                    <LeadFilesSection leadId={lead.id} />
+                    <LeadFilesSection leadId={lead.id} leadName={lead.name} companyName={lead.company_name} />
                   </TabsContent>
 
                   {/* Comments Tab */}

@@ -103,10 +103,10 @@ const PipelineFeed = () => {
 
   return (
     <EvanLayout>
-      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full bg-background">
+      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full bg-muted/20">
         {/* Mobile Sheet drawer for left panel */}
         <Sheet open={leftPanelOpen} onOpenChange={setLeftPanelOpen}>
-          <SheetContent side="left" className="p-0 w-[280px]">
+          <SheetContent side="left" className="p-0 w-[280px] border-r-0">
             <SheetHeader className="sr-only">
               <SheetTitle>Team Filter</SheetTitle>
             </SheetHeader>
@@ -122,7 +122,7 @@ const PipelineFeed = () => {
 
         {/* Mobile Sheet drawer for right panel (due tasks & meetings) */}
         <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen}>
-          <SheetContent side="right" className="p-0 w-[300px]">
+          <SheetContent side="right" className="p-0 w-[300px] border-l-0">
             <SheetHeader className="sr-only">
               <SheetTitle>Due Tasks & Meetings</SheetTitle>
             </SheetHeader>

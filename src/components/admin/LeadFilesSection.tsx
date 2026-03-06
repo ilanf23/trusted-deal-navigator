@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { formatDistanceToNow } from 'date-fns';
 import { cn, sanitizeFileName } from '@/lib/utils';
+import { useDropboxAutoUpload } from '@/hooks/useDropboxAutoUpload';
 
 interface LeadFile {
   id: string;
@@ -31,6 +32,8 @@ interface LeadFile {
 
 interface LeadFilesSectionProps {
   leadId: string;
+  leadName?: string;
+  companyName?: string;
 }
 
 const FILE_ICONS: Record<string, typeof FileText> = {
@@ -65,7 +68,7 @@ function isImageFile(fileName: string): boolean {
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext);
 }
 
-export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
+export function LeadFilesSection({ leadId, leadName, companyName }: LeadFilesSectionProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -73,6 +76,21 @@ export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LeadFile | null>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  // Dropbox auto-sync: check connection status (cached 5min)
+  const { data: dropboxStatus } = useQuery({
+    queryKey: ['dropbox-connection-status'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('dropbox-auth', {
+        body: { action: 'getStatus' },
+      });
+      if (error) return { connected: false };
+      return { connected: data?.connected ?? false };
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!leadName,
+  });
+  const { syncToDropbox } = useDropboxAutoUpload(dropboxStatus?.connected ?? false);
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ['lead-files', leadId],
@@ -146,6 +164,11 @@ export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
           }
 
           successCount++;
+
+          // Fire-and-forget Dropbox sync
+          if (leadName) {
+            syncToDropbox(file, leadName, companyName || '', leadId).catch(() => {});
+          }
         } catch (fileErr) {
           console.error(`Unexpected error uploading ${file.name}:`, fileErr);
           toast.error(`Unexpected error uploading ${file.name}`);
@@ -155,12 +178,15 @@ export function LeadFilesSection({ leadId }: LeadFilesSectionProps) {
       if (successCount > 0) {
         toast.success(`${successCount} file${successCount > 1 ? 's' : ''} uploaded`);
         queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+        if (leadName && dropboxStatus?.connected) {
+          toast.info('Syncing to Dropbox...', { duration: 2000, id: 'dropbox-sync' });
+        }
       }
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [leadId, queryClient]);
+  }, [leadId, leadName, companyName, syncToDropbox, dropboxStatus, queryClient]);
 
   const deleteMutation = useMutation({
     mutationFn: async (file: LeadFile) => {

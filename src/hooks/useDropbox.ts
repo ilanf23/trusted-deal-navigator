@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface DropboxEntry {
-  '.tag': 'file' | 'folder';
+  '.tag': 'file' | 'folder' | 'deleted';
   id: string;
   name: string;
   path_lower: string;
@@ -24,7 +24,7 @@ interface ListResult {
   has_more: boolean;
 }
 
-async function invokeDropboxApi(action: string, body?: Record<string, unknown>) {
+export async function invokeDropboxApi(action: string, body?: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('dropbox-api', {
     body: { action, ...body },
   });
@@ -38,6 +38,56 @@ export function useDropboxList(path: string, enabled = true) {
     queryKey: ['dropbox-files', path],
     queryFn: () => invokeDropboxApi('list', { path: path || '' }),
     staleTime: 30_000,
+    enabled,
+  });
+}
+
+export function useDropboxListRecursive(enabled = false, includeDeleted = false, fileExtensions?: string[]) {
+  return useQuery<{ entries: DropboxEntry[] }>({
+    queryKey: ['dropbox-files-recursive', includeDeleted, fileExtensions ?? null],
+    queryFn: () => invokeDropboxApi('list-recursive', {
+      path: '',
+      include_deleted: includeDeleted,
+      ...(fileExtensions?.length ? { file_extensions: fileExtensions } : {}),
+    }),
+    staleTime: 300_000,
+    enabled,
+  });
+}
+
+const PHOTO_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'heic'];
+
+export function useDropboxPhotosFromDB(enabled = false) {
+  return useQuery<{ entries: DropboxEntry[] }>({
+    queryKey: ['dropbox-photos-db'],
+    queryFn: async () => {
+      const orFilter = PHOTO_EXTENSIONS.map(ext => `name.ilike.%.${ext}`).join(',');
+      const { data, error } = await supabase
+        .from('dropbox_files')
+        .select('*')
+        .eq('is_folder', false)
+        .or(orFilter)
+        .order('modified_at', { ascending: false })
+        .limit(1000);
+      if (error) throw new Error(error.message);
+      const entries: DropboxEntry[] = (data || []).map(row => ({
+        '.tag': 'file' as const,
+        id: row.dropbox_id,
+        name: row.name,
+        path_lower: row.dropbox_path,
+        path_display: row.dropbox_path_display,
+        size: row.size ?? undefined,
+        server_modified: row.modified_at ?? undefined,
+        rev: row.dropbox_rev ?? undefined,
+        content_hash: row.content_hash ?? undefined,
+        lead_id: row.lead_id ?? undefined,
+        lead_name: row.lead_name ?? undefined,
+        extraction_status: row.extraction_status ?? undefined,
+      }));
+      return { entries };
+    },
+    staleTime: 300_000,
+    gcTime: 600_000,
     enabled,
   });
 }

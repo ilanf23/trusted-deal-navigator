@@ -327,6 +327,175 @@ async function handleCreateFolder(accessToken: string, body: any) {
   return data.metadata;
 }
 
+function sanitizeDropboxPath(name: string): string {
+  return name.replace(/[/\\:*?"<>|]/g, '_').trim();
+}
+
+async function handleUploadToLeadFolder(accessToken: string, body: any, supabase: any) {
+  const { leadName, companyName, leadId, fileName, content } = body;
+
+  if (!leadName || !leadId || !fileName || !content) {
+    throw new Error('Missing required fields: leadName, leadId, fileName, content');
+  }
+
+  // Build folder name: "Company - Name" or just "Name" if no company
+  const sanitizedCompany = companyName ? sanitizeDropboxPath(companyName) : '';
+  const sanitizedLead = sanitizeDropboxPath(leadName);
+  const folderName = sanitizedCompany
+    ? `${sanitizedCompany} - ${sanitizedLead}`
+    : sanitizedLead;
+  const folderPath = `/Leads/${folderName}`;
+
+  // Create folder (ignore conflict if it already exists)
+  const folderResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ path: folderPath, autorename: false }),
+  });
+
+  if (!folderResponse.ok) {
+    const errorText = await folderResponse.text();
+    try {
+      const parsed = JSON.parse(errorText);
+      const pathTag = parsed?.error?.path?.['.tag'];
+      if (pathTag !== 'conflict') {
+        throw new Error(parseDropboxApiError('create lead folder', errorText));
+      }
+      // conflict = folder already exists, continue
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        throw new Error('Failed to create lead folder');
+      }
+      throw e;
+    }
+  }
+
+  // Upload file to the folder
+  const filePath = `${folderPath}/${fileName}`;
+  const binaryString = atob(content);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  const uploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Dropbox-API-Arg': new TextEncoder().encode(JSON.stringify({
+        path: filePath,
+        mode: 'add',
+        autorename: true,
+      })).reduce((acc, byte) => acc + String.fromCharCode(byte), ''),
+      'Content-Type': 'application/octet-stream',
+    },
+    body: bytes,
+  });
+
+  if (!uploadResponse.ok) {
+    const error = await uploadResponse.text();
+    console.error('Dropbox upload error:', error);
+    throw new Error(parseDropboxApiError('upload file to lead folder', error));
+  }
+
+  const metadata = await uploadResponse.json();
+
+  // Upsert into dropbox_files with lead association
+  await supabase
+    .from('dropbox_files')
+    .upsert(
+      {
+        dropbox_id: metadata.id,
+        dropbox_path: metadata.path_lower,
+        dropbox_path_display: metadata.path_display,
+        dropbox_rev: metadata.rev,
+        name: metadata.name,
+        is_folder: false,
+        size: metadata.size,
+        content_hash: metadata.content_hash,
+        modified_at: metadata.server_modified,
+        synced_at: new Date().toISOString(),
+        lead_id: leadId,
+        lead_name: leadName,
+      },
+      { onConflict: 'dropbox_id' }
+    );
+
+  return metadata;
+}
+
+async function handleListRecursive(accessToken: string, body: any) {
+  const path = body.path ?? '';
+  const includeDeleted = body.include_deleted ?? false;
+  const fileExtensions: string[] | undefined = body.file_extensions;
+  const maxEntries = 1000;
+
+  const payload: any = {
+    path,
+    recursive: true,
+    limit: 2000,
+    include_mounted_folders: true,
+    include_non_downloadable_files: false,
+  };
+  if (includeDeleted) {
+    payload.include_deleted = true;
+  }
+
+  const filterEntry = fileExtensions?.length
+    ? (entry: any) => {
+        if (entry['.tag'] !== 'file') return false;
+        const ext = entry.name.split('.').pop()?.toLowerCase() || '';
+        return fileExtensions.includes(ext);
+      }
+    : null;
+
+  const response = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Dropbox list_folder recursive error:', error);
+    throw new Error(parseDropboxApiError('list folder', error));
+  }
+
+  const data = await response.json();
+  let entries = filterEntry ? data.entries.filter(filterEntry) : data.entries;
+
+  // Continue fetching if there are more entries (up to maxEntries)
+  let cursor = data.cursor;
+  let hasMore = data.has_more;
+
+  while (hasMore && entries.length < maxEntries) {
+    const contResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder/continue', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ cursor }),
+    });
+
+    if (!contResponse.ok) break;
+
+    const contData = await contResponse.json();
+    const batch = filterEntry ? contData.entries.filter(filterEntry) : contData.entries;
+    entries = entries.concat(batch);
+    cursor = contData.cursor;
+    hasMore = contData.has_more;
+  }
+
+  return { entries };
+}
+
 async function handleLinkToLead(body: any, supabase: any) {
   const { fileId, leadId, leadName } = body;
 
@@ -547,6 +716,14 @@ Deno.serve(async (req) => {
 
       case 'create-folder':
         result = await handleCreateFolder(accessToken, body);
+        break;
+
+      case 'upload-to-lead-folder':
+        result = await handleUploadToLeadFolder(accessToken, body, supabaseAdmin);
+        break;
+
+      case 'list-recursive':
+        result = await handleListRecursive(accessToken, body);
         break;
 
       case 'link-to-lead':
