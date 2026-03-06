@@ -25,6 +25,7 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
     connectionLoading,
     gmailConnection,
     handleConnectGmail,
+    disconnectGmail,
     isGeneratingEmail,
     activeFolder, setActiveFolder,
     setSelectedEmailId,
