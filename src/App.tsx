@@ -193,6 +193,8 @@ const App = () => (
                 <Route path="/admin/rate-watch" element={<AdminRoute><AdminRateWatch /></AdminRoute>} />
                 <Route path="/admin/dropbox" element={<AdminRoute><DropboxPage /></AdminRoute>} />
                 <Route path="/admin/dropbox/callback" element={<DropboxCallback />} />
+                <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
+                <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
                 {/* Legacy redirects */}
                 <Route path="/admin/evan" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
