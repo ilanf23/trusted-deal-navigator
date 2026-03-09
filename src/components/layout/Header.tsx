@@ -34,7 +34,7 @@ const Header = () => {
     label: "Resources",
     href: "/resources"
   }];
-  return <header className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
+  return <header className="fixed top-0 left-0 right-0 z-50 bg-pink-500 backdrop-blur-md border-b border-border">
       <div className="w-full px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo - Left aligned */}
