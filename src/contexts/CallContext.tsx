@@ -675,10 +675,8 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // 4. Wait for device init to complete (best effort) then poll for SDK incoming event
+      // If device isn't available, we'll still connect optimistically after timeout
       const device = await deviceInitPromise ?? deviceRef.current;
-      if (!device) {
-        throw new Error('Could not connect. Please refresh the page and try again.');
-      }
 
       console.log('[CallContext] Call redirected, waiting for SDK incoming event (8s timeout, then optimistic)...');
       await new Promise<void>((resolve) => {
