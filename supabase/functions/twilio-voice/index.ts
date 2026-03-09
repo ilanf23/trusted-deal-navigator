@@ -7,7 +7,7 @@ const corsHeaders = {
   'Content-Type': 'application/xml',
 };
 
-// This endpoint handles TwiML for outbound calls
+// This endpoint handles TwiML for outbound calls and conference joins
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -33,6 +33,19 @@ Deno.serve(async (req) => {
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say>No phone number was provided. Please try again.</Say>
+</Response>`;
+      return new Response(twiml, { headers: corsHeaders });
+    }
+
+    // Handle conference: prefix — browser joining a conference bridge
+    if (toNumber.startsWith('conference:')) {
+      const conferenceName = toNumber.replace('conference:', '');
+      console.log(`[twilio-voice] Browser joining conference: ${conferenceName}`);
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial>
+    <Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="">${conferenceName}</Conference>
+  </Dial>
 </Response>`;
       return new Response(twiml, { headers: corsHeaders });
     }

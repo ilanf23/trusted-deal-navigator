@@ -1,77 +1,53 @@
 
+Problem confirmed: the Dropbox OAuth exchange is failing in the backend with a foreign-key error, not at Dropbox. Recent logs show:
+- `dropbox_connections_user_id_fkey` violation
+- attempted `user_id = 00000000-0000-0000-0000-000000000000`
 
-## Fix: Inbound Call Answering — Conference Bridge Approach
+That means the popup callback is reaching `exchangeCode`, but when no auth session is present in the popup, the function inserts a placeholder UUID and fails.
 
-### Root Cause
+Implementation plan
 
-The current fallback when the SDK doesn't fire `incoming` is circular and broken:
+1) Fix user identity flow in OAuth callback
+- File: `src/pages/admin/DropboxCallback.tsx`
+- Parse `state` from the Dropbox callback URL (`?state=...`) in addition to `code`.
+- Send `state` to `dropbox-auth` during `exchangeCode`.
+- Keep `getSession()` as best-effort, but no longer depend on popup auth session to determine user id.
 
-```text
-1. Caller → twilio-inbound → <Dial><Client>clx-admin</Client></Dial>
-2. SDK doesn't fire "incoming" (iframe sandbox limitation)
-3. User clicks Answer → no SDK call object
-4. Fallback: twilio-connect-call redirects call to twilio-voice?To=client:clx-admin
-5. twilio-voice generates <Dial><Client>clx-admin</Client></Dial> AGAIN
-6. SDK still can't receive → caller hears endless ringing beeps
-7. Frontend says "connected" optimistically after 8s, but NO audio flows
-```
+2) Remove invalid UUID fallback in backend exchange
+- File: `supabase/functions/dropbox-auth/index.ts`
+- Make only `exchangeCode` public; keep `getStatus` authenticated again (to avoid exposing connection metadata).
+- In `exchangeCode`, resolve `effectiveUserId` as:
+  - authenticated user id (if auth header/session exists), else
+  - user id from OAuth `state`.
+- Validate `effectiveUserId` before insert (must be a valid UUID and correspond to a real app user/admin).
+- Replace:
+  - `user_id: userId || '00000000-0000-0000-0000-000000000000'`
+  with:
+  - `user_id: effectiveUserId`
+- If user id cannot be resolved, return a clear 400 error (no insert attempt).
 
-The redirect re-dials the browser client the same way that already failed. The caller hears ringing forever and there's never actual audio.
+3) Improve user-facing failure visibility
+- File: `src/pages/admin/DropboxCallback.tsx`
+- Surface backend error reason in the popup message (instead of generic “Failed to connect Dropbox”).
+- Emit `DROPBOX_ERROR` with a readable message so the opener can show a meaningful toast.
 
-### Solution: Twilio Conference Bridge
+4) Improve parent-window feedback
+- File: `src/hooks/useDropboxConnection.ts`
+- Handle `DROPBOX_ERROR` messages in both `postMessage` and `storage` listeners.
+- Show `toast.error(...)` with the callback-provided message and keep status unchanged.
 
-Instead of re-dialing the browser, use a **Conference room** as a bridge. When the user clicks Answer:
+Technical details (for implementation accuracy)
 
-1. Redirect the inbound call into a named Conference room (caller joins, hears hold music briefly)
-2. Browser makes an **outbound** `Device.connect()` to join the same Conference
-3. Both parties are bridged — audio flows
+- Root cause is deterministic from logs: FK failure on `dropbox_connections.user_id` during `exchangeCode`.
+- Current backend behavior allows public `exchangeCode`, but still needs a valid user id for required FK column.
+- OAuth `state` is already set in `getAuthUrl` (`state = userId`) and should be used as fallback identity channel for popup flows where local session restoration is unreliable.
+- No database migration needed; schema is correct (`user_id` should stay required).
+- Security hardening included: do not keep `getStatus` public.
 
-Outbound `Device.connect()` works reliably because it doesn't require receiving an `incoming` event — it initiates from the browser side.
+Validation checklist after implementation
 
-### Changes
-
-**1. New edge function: `supabase/functions/twilio-conference/index.ts`**
-- Accepts a `conference` name parameter
-- Returns TwiML: `<Response><Dial><Conference>{name}</Conference></Dial></Response>`
-- Used by both the redirected inbound call AND the browser's outbound connection
-
-**2. Modify `supabase/functions/twilio-connect-call/index.ts`**
-- Generate a unique conference room name (e.g., `call-bridge-{callSid}`)
-- Redirect the inbound call to `twilio-conference?conference={name}` instead of `twilio-voice?To=client:clx-admin`
-- Return the conference name in the response so the frontend knows which room to join
-
-**3. Modify `supabase/functions/twilio-voice/index.ts`**
-- Add handling for `conference:` prefix in the `To` parameter
-- When `To=conference:{name}`, return `<Conference>{name}</Conference>` TwiML
-- This lets the browser's `Device.connect({ params: { To: 'conference:{name}' } })` join the same room
-
-**4. Modify `src/contexts/CallContext.tsx` — `answerCall` fallback path**
-- After `twilio-connect-call` succeeds and returns the conference name:
-  - Ensure device is initialized (parallel init already in place)
-  - Call `device.connect({ params: { To: 'conference:{conferenceName}' } })` to join the conference
-  - Wire up the returned Call object's events (`accept`, `disconnect`) normally
-  - Remove the broken "poll for SDK incoming event" logic
-  - Remove the optimistic connection (real audio will flow through the conference)
-
-### Technical Details
-
-```text
-BEFORE (broken):
-  Caller ──→ twilio-inbound ──→ <Dial><Client>clx-admin</Client>
-                                       ↓ (SDK fails)
-  Answer click ──→ twilio-connect-call ──→ redirect to twilio-voice
-                                              ↓
-                                         <Dial><Client>clx-admin</Client> (fails again)
-
-AFTER (conference bridge):
-  Caller ──→ twilio-inbound ──→ <Dial><Client>clx-admin</Client>
-                                       ↓ (SDK fails)
-  Answer click ──→ twilio-connect-call ──→ redirect caller into Conference "bridge-{sid}"
-                   ↓ (returns conference name)
-  Browser ──→ Device.connect({ To: "conference:bridge-{sid}" }) ──→ joins same Conference
-                   ↓
-  Both parties bridged — audio flows ✓
-```
-
-The Conference approach is the standard Twilio pattern for connecting two legs that can't directly dial each other. `Device.connect()` for outbound always works because the browser initiates it — no dependency on receiving an `incoming` event.
-
+1. Start from `/admin/dropbox`, click Connect, approve in Dropbox.
+2. Popup should show Connected (not Failed), then close/redirect.
+3. `dropbox_connections` should contain one row with a real `user_id` (no zero UUID).
+4. Main Dropbox screen should display connected email and allow listing/sync.
+5. Re-test in both preview and published domains to confirm callback stability.
