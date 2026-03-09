@@ -90,10 +90,5 @@ export const toRenderableHtml = (value: string) => {
 
 // Dynamic callback URL helper
 export const getGmailCallbackUrl = (pathPrefix: 'admin' | 'superadmin' = 'admin') => {
-  const host = window.location.hostname;
-  if (host.endsWith('.lovableproject.com')) {
-    const id = host.replace('.lovableproject.com', '');
-    return `https://id-preview--${id}.lovable.app/${pathPrefix}/inbox/callback`;
-  }
   return `${window.location.origin}/${pathPrefix}/inbox/callback`;
 };

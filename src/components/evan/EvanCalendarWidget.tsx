@@ -55,30 +55,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
-// OAuth cannot complete inside the embedded editor preview domain.
-// When running on *.lovableproject.com, redirect users to the standalone preview URL.
-const isEmbeddedLovablePreview = () => {
-  try {
-    return (
-      window.location.hostname.endsWith('.lovableproject.com') ||
-      window.self !== window.top
-    );
-  } catch {
-    // Accessing window.top can throw due to cross-origin restrictions
-    return true;
-  }
-};
-
-const getCanonicalOrigin = () => {
-  const host = window.location.hostname;
-  if (host.endsWith('.lovableproject.com')) {
-    const id = host.replace('.lovableproject.com', '');
-    return `https://id-preview--${id}.lovable.app`;
-  }
-  return window.location.origin;
-};
-
-const getCalendarCallbackUrl = () => `${getCanonicalOrigin()}/superadmin/calendar-callback`;
+const getCalendarCallbackUrl = () => `${window.location.origin}/superadmin/calendar-callback`;
 
 interface Appointment {
   id: string;
@@ -325,15 +302,6 @@ export const EvanCalendarWidget = () => {
 
   const connectCalendar = async () => {
     setIsConnecting(true);
-
-    // Google blocks OAuth inside the embedded editor preview (iframe); use standalone preview.
-    if (isEmbeddedLovablePreview()) {
-      const targetUrl = `${getCanonicalOrigin()}${window.location.pathname}${window.location.search}`;
-      window.open(targetUrl, '_blank', 'noopener,noreferrer');
-      toast.error('Open the standalone preview tab to connect Google Calendar.');
-      setIsConnecting(false);
-      return;
-    }
 
     // First, verify the user has an active session before doing anything
     const { data: { session } } = await supabase.auth.getSession();

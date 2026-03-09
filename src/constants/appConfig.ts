@@ -3,7 +3,7 @@
  * 
  * Keeps hardcoded identifiers out of component/service code.
  * For secrets (API keys, private emails used in edge functions),
- * use Lovable Cloud secrets instead — these are only for
+ * use Supabase secrets instead — these are only for
  * frontend-safe, non-secret configuration values.
  */
 

@@ -76,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Build the questionnaire URL
-    const appUrl = Deno.env.get("APP_URL") || "https://trusted-deal-navigator.lovable.app";
+    const appUrl = Deno.env.get("APP_URL") || "https://trusted-deal-navigator.vercel.app";
     const questionnaireUrl = `${appUrl}/questionnaire/${token}`;
 
     console.log(`Sending email to ${lead.email} with questionnaire URL: ${questionnaireUrl}`);
