@@ -7,7 +7,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature",
 };
 
-// ... keep existing code (ResendWebhookEvent interface)
+interface ResendWebhookEvent {
+  type: string;
+  created_at: string;
+  data: {
+    email_id: string;
+    from: string;
+    to: string[];
+    subject: string;
+    click?: { link: string };
+  };
+}
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests

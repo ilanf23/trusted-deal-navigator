@@ -3,7 +3,48 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ILAN_EMAIL } from "../_shared/constants.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
-// ... keep existing code (constants, corsHeaders, interfaces, helper functions)
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+const NEWSLETTER_FROM_EMAIL = Deno.env.get("NEWSLETTER_FROM_EMAIL") || "newsletter@commerciallendingx.com";
+
+interface SendNewsletterRequest {
+  campaignId: string;
+  recipientIds: string[];
+  subject: string;
+  content: string;
+  fromName?: string;
+}
+
+interface Recipient {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
+function getTrackingPixelUrl(campaignId: string, subscriberId: string): string {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  return `${supabaseUrl}/functions/v1/newsletter-track/open/${campaignId}/${subscriberId}`;
+}
+
+function wrapLinksForTracking(html: string, campaignId: string, subscriberId: string): string {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const trackBase = `${supabaseUrl}/functions/v1/newsletter-track/click/${campaignId}/${subscriberId}`;
+
+  return html.replace(
+    /href="(https?:\/\/[^"]+)"/g,
+    (_match: string, url: string) => {
+      // Don't wrap unsubscribe or tracking URLs
+      if (url.includes('newsletter-track') || url.includes('unsubscribe')) {
+        return `href="${url}"`;
+      }
+      return `href="${trackBase}?url=${encodeURIComponent(url)}"`;
+    }
+  );
+}
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests

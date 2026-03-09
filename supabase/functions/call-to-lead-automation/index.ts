@@ -8,7 +8,113 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ... keep existing code (interfaces and helper functions through line 153)
+interface RequestBody {
+  leadId: string;
+  communicationId: string;
+  leadName: string;
+  leadEmail?: string;
+  leadPhone: string;
+  transcript?: string;
+  callDirection: string;
+  callDate: string;
+}
+
+async function getEvanGmailAccessToken(supabase: ReturnType<typeof createClient>): Promise<{ accessToken: string; email: string } | null> {
+  try {
+    const { data: connections, error } = await supabase
+      .from('gmail_connections')
+      .select('access_token, email, refresh_token, token_expiry')
+      .limit(1);
+
+    if (error || !connections || connections.length === 0) {
+      return null;
+    }
+
+    const conn = connections[0];
+    const expiry = new Date(conn.token_expiry);
+    const now = new Date();
+
+    if (expiry.getTime() - now.getTime() > 5 * 60 * 1000) {
+      return { accessToken: conn.access_token, email: conn.email };
+    }
+
+    // Refresh the token
+    const clientId = Deno.env.get('GOOGLE_CLIENT_ID') || '';
+    const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
+
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: conn.refresh_token,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Gmail token refresh failed:', await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    const newExpiry = new Date(Date.now() + data.expires_in * 1000).toISOString();
+
+    await supabase
+      .from('gmail_connections')
+      .update({
+        access_token: data.access_token,
+        token_expiry: newExpiry,
+      })
+      .eq('email', conn.email);
+
+    return { accessToken: data.access_token, email: conn.email };
+  } catch (err) {
+    console.error('Error getting Gmail access token:', err);
+    return null;
+  }
+}
+
+async function createGmailDraft(
+  accessToken: string,
+  fromEmail: string,
+  toEmail: string,
+  subject: string,
+  body: string
+): Promise<boolean> {
+  try {
+    const rawEmail = [
+      `From: ${fromEmail}`,
+      `To: ${toEmail}`,
+      `Subject: ${subject}`,
+      'Content-Type: text/plain; charset=utf-8',
+      '',
+      body,
+    ].join('\r\n');
+
+    const encodedMessage = btoa(unescape(encodeURIComponent(rawEmail)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: { raw: encodedMessage },
+      }),
+    });
+
+    return response.ok;
+  } catch (err) {
+    console.error('Error creating Gmail draft:', err);
+    return false;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

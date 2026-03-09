@@ -102,6 +102,37 @@ function buildInboundTwiML(opts: InboundTwiMLOptions): string {
 
 
 // ---------------------------------------------------------------------------
+// Logging types (no-op persistence — we just console.log)
+// ---------------------------------------------------------------------------
+
+interface RoutingDecision {
+  clientIdentities: string[];
+  fallbackNumber: string | null;
+  dialTimeoutSeconds: number;
+  hasFallback: boolean;
+}
+
+interface ProviderBoundaryLog {
+  callFlowId: string;
+  callSid: string;
+  fromNumber: string;
+  toNumber: string;
+  webhookUrl: string;
+  httpStatus: number;
+  responseTimeMs: number;
+  responseBody: string;
+  webhookTimestamp: string;
+  rawParams?: Record<string, string>;
+  routingDecision: RoutingDecision;
+}
+
+async function persistProviderBoundaryLog(boundary: ProviderBoundaryLog): Promise<void> {
+  // No dedicated logging table — boundary is already console.logged above
+  // This function exists to prevent runtime ReferenceError
+  void boundary;
+}
+
+// ---------------------------------------------------------------------------
 // Inbound call handler:
 // - always returns TwiML fast
 // - all DB writes + alerts happen in background

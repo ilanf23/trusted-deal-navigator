@@ -12,7 +12,7 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET') || '';
 
 async function getValidAccessToken(
   connection: { access_token: string; refresh_token: string; token_expiry: string; user_id: string; id: string },
-  supabase: ReturnType<typeof createClient>
+  supabase: any
 ): Promise<string | null> {
   const expiry = new Date(connection.token_expiry);
   const now = new Date();
