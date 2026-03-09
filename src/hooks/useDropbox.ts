@@ -92,6 +92,15 @@ export function useDropboxPhotosFromDB(enabled = false) {
   });
 }
 
+export function useDropboxShared(enabled = false) {
+  return useQuery<{ entries: DropboxEntry[] }>({
+    queryKey: ['dropbox-shared'],
+    queryFn: () => invokeDropboxApi('list-shared'),
+    staleTime: 300_000,
+    enabled,
+  });
+}
+
 export function useDropboxUpload() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -27,7 +27,8 @@ export function useDropboxAutoUpload(enabled: boolean) {
         content,
       });
     } catch (err) {
-      console.warn('Dropbox auto-sync failed (non-blocking):', err);
+      console.warn('Dropbox auto-sync failed:', err);
+      throw err;
     }
   }, [enabled]);
 

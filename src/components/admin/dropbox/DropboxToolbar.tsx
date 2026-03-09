@@ -18,8 +18,6 @@ const SECTION_TITLES: Record<SidebarSection, string> = {
   'all-files': 'All files',
   'photos': 'Photos',
   'shared': 'Shared',
-  'file-requests': 'File requests',
-  'deleted': 'Deleted files',
 };
 
 interface DropboxToolbarProps {

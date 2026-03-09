@@ -427,6 +427,36 @@ async function handleUploadToLeadFolder(accessToken: string, body: any, supabase
   return metadata;
 }
 
+async function handleListShared(accessToken: string) {
+  const response = await fetch('https://api.dropboxapi.com/2/sharing/list_received_files', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ limit: 100 }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Dropbox list shared files error:', error);
+    throw new Error(parseDropboxApiError('list shared files', error));
+  }
+
+  const data = await response.json();
+  const entries = (data.entries || []).map((e: any) => ({
+    '.tag': 'file',
+    id: e.id,
+    name: e.name,
+    path_lower: e.path_lower || '',
+    path_display: e.path_display || e.name,
+    size: e.size,
+    server_modified: e.time_invited || e.server_modified,
+  }));
+
+  return { entries };
+}
+
 async function handleListRecursive(accessToken: string, body: any) {
   const path = body.path ?? '';
   const includeDeleted = body.include_deleted ?? false;
@@ -724,6 +754,10 @@ Deno.serve(async (req) => {
 
       case 'list-recursive':
         result = await handleListRecursive(accessToken, body);
+        break;
+
+      case 'list-shared':
+        result = await handleListShared(accessToken);
         break;
 
       case 'link-to-lead':

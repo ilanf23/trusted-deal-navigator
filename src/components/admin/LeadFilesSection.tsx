@@ -118,6 +118,7 @@ export function LeadFilesSection({ leadId, leadName, companyName }: LeadFilesSec
 
     setUploading(true);
     let successCount = 0;
+    const syncPromises: Promise<void>[] = [];
 
     try {
       for (const file of filesToUpload) {
@@ -165,9 +166,9 @@ export function LeadFilesSection({ leadId, leadName, companyName }: LeadFilesSec
 
           successCount++;
 
-          // Fire-and-forget Dropbox sync
+          // Collect Dropbox sync promise
           if (leadName) {
-            syncToDropbox(file, leadName, companyName || '', leadId).catch(() => {});
+            syncPromises.push(syncToDropbox(file, leadName, companyName || '', leadId));
           }
         } catch (fileErr) {
           console.error(`Unexpected error uploading ${file.name}:`, fileErr);
@@ -178,8 +179,27 @@ export function LeadFilesSection({ leadId, leadName, companyName }: LeadFilesSec
       if (successCount > 0) {
         toast.success(`${successCount} file${successCount > 1 ? 's' : ''} uploaded`);
         queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
-        if (leadName && dropboxStatus?.connected) {
-          toast.info('Syncing to Dropbox...', { duration: 2000, id: 'dropbox-sync' });
+
+        // Await Dropbox syncs in background, then invalidate cache + update toast
+        if (syncPromises.length > 0) {
+          toast.info('Syncing to Dropbox...', { duration: Infinity, id: 'dropbox-sync' });
+          Promise.allSettled(syncPromises).then((results) => {
+            const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+            const failed = results.length - succeeded;
+
+            // Invalidate Dropbox caches so DropboxBrowser picks up new files
+            queryClient.invalidateQueries({ queryKey: ['dropbox-files'] });
+            queryClient.invalidateQueries({ queryKey: ['dropbox-files-recursive'] });
+            queryClient.invalidateQueries({ queryKey: ['dropbox-photos-db'] });
+
+            if (failed === 0) {
+              toast.success(`Synced ${succeeded} file${succeeded > 1 ? 's' : ''} to Dropbox`, { id: 'dropbox-sync' });
+            } else if (succeeded > 0) {
+              toast.warning(`Synced ${succeeded}/${results.length} files to Dropbox`, { id: 'dropbox-sync' });
+            } else {
+              toast.error('Dropbox sync failed', { id: 'dropbox-sync' });
+            }
+          });
         }
       }
     } finally {

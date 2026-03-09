@@ -9,73 +9,19 @@ import {
   useDropboxMove,
   useDropboxGetLink,
   useDropboxSync,
+  useDropboxPhotosFromDB,
+  useDropboxShared,
   type DropboxEntry,
 } from '@/hooks/useDropbox';
+import { useDropboxStarred } from '@/components/admin/dropbox/useDropboxStarred';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  HardDrive,
-  Folder,
-  FileText,
-  Upload,
-  FolderPlus,
-  RefreshCw,
-  Trash2,
-  Download,
-  Pencil,
-  ArrowRight,
-  ChevronRight,
-  Home,
-  Loader2,
-  Search,
-  Unplug,
-  FileSpreadsheet,
-  Image,
-  File,
-  MoreHorizontal,
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
-
-function getFileIcon(name: string) {
-  const ext = name.split('.').pop()?.toLowerCase() || '';
-  if (['pdf', 'doc', 'docx', 'txt', 'md'].includes(ext)) return FileText;
-  if (['xls', 'xlsx', 'csv'].includes(ext)) return FileSpreadsheet;
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return Image;
-  return File;
-}
-
-function formatFileSize(bytes?: number): string {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+import { HardDrive, Loader2 } from 'lucide-react';
+import { DropboxHeader } from './dropbox/DropboxHeader';
+import { DropboxSidebar, type SidebarSection } from './dropbox/DropboxSidebar';
+import { DropboxToolbar, type ViewMode, type ActiveTab, type SortField, type SortDirection } from './dropbox/DropboxToolbar';
+import { DropboxFileList } from './dropbox/DropboxFileList';
+import { DropboxPreviewPanel } from './dropbox/DropboxPreviewPanel';
+import { DropboxDialogs } from './dropbox/DropboxDialogs';
 
 export function DropboxBrowser() {
   const { isOwner } = useTeamMember();
@@ -88,12 +34,28 @@ export function DropboxBrowser() {
     disconnect,
   } = useDropboxConnection();
 
+  // Navigation state
   const [currentPath, setCurrentPath] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeSection, setActiveSection] = useState<SidebarSection>('home');
+  const [selectedEntry, setSelectedEntry] = useState<DropboxEntry | null>(null);
 
-  // Dialogs
+  // View state
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('all');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Drag-drop state
+  const [dragOver, setDragOver] = useState(false);
+  const [draggingEntryId, setDraggingEntryId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+
+  // Inline rename state
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+
+  // Dialog state
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [renameOpen, setRenameOpen] = useState(false);
@@ -104,6 +66,10 @@ export function DropboxBrowser() {
   const [moveTarget, setMoveTarget] = useState<DropboxEntry | null>(null);
   const [moveDestination, setMoveDestination] = useState('');
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  // Hooks
   const { data: listData, isLoading: listLoading, refetch } = useDropboxList(currentPath, isConnected);
   const uploadMutation = useDropboxUpload();
   const createFolderMutation = useDropboxCreateFolder();
@@ -111,19 +77,24 @@ export function DropboxBrowser() {
   const moveMutation = useDropboxMove();
   const getLinkMutation = useDropboxGetLink();
   const syncMutation = useDropboxSync();
+  const { starredPaths, toggleStar, isStarred } = useDropboxStarred();
 
-  const entries = listData?.entries || [];
+  // Photos section data
+  const isPhotosSection = activeSection === 'photos';
+  const { data: photosData, isLoading: photosLoading } = useDropboxPhotosFromDB(isPhotosSection && isConnected);
 
-  // Sort: folders first, then files alphabetically
-  const sortedEntries = [...entries].sort((a, b) => {
-    if (a['.tag'] === 'folder' && b['.tag'] !== 'folder') return -1;
-    if (a['.tag'] !== 'folder' && b['.tag'] === 'folder') return 1;
-    return a.name.localeCompare(b.name);
-  });
+  // Shared section data
+  const isSharedSection = activeSection === 'shared';
+  const { data: sharedData, isLoading: sharedLoading } = useDropboxShared(isSharedSection && isConnected);
 
-  const filteredEntries = searchQuery
-    ? sortedEntries.filter((e) => e.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : sortedEntries;
+  const entries = isPhotosSection
+    ? (photosData?.entries || [])
+    : isSharedSection
+    ? (sharedData?.entries || [])
+    : (listData?.entries || []);
+
+  // Starred entries for sidebar
+  const starredEntries = (listData?.entries || []).filter((e) => isStarred(e.path_lower));
 
   // Breadcrumb parts
   const pathParts = currentPath
@@ -134,17 +105,22 @@ export function DropboxBrowser() {
       path: '/' + arr.slice(0, idx + 1).join('/'),
     }));
 
-  const navigateToFolder = (path: string) => {
+  // Navigation
+  const navigateToFolder = useCallback((path: string) => {
     setCurrentPath(path);
     setSearchQuery('');
-  };
+    setSelectedEntry(null);
+  }, []);
 
-  const handleEntryClick = (entry: DropboxEntry) => {
+  const handleEntryClick = useCallback((entry: DropboxEntry) => {
     if (entry['.tag'] === 'folder') {
       navigateToFolder(entry.path_lower);
+    } else {
+      setSelectedEntry(entry);
     }
-  };
+  }, [navigateToFolder]);
 
+  // Upload
   const handleUpload = useCallback(
     async (files: FileList | File[]) => {
       const fileArray = Array.from(files);
@@ -167,6 +143,7 @@ export function DropboxBrowser() {
     [handleUpload]
   );
 
+  // Folder operations
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
     const path = currentPath ? `${currentPath}/${newFolderName.trim()}` : `/${newFolderName.trim()}`;
@@ -176,13 +153,16 @@ export function DropboxBrowser() {
     refetch();
   };
 
+  // Delete
   const handleDelete = async () => {
     if (!deleteTarget) return;
     await deleteMutation.mutateAsync({ path: deleteTarget.path_lower });
+    if (selectedEntry?.id === deleteTarget.id) setSelectedEntry(null);
     setDeleteTarget(null);
     refetch();
   };
 
+  // Rename (dialog)
   const handleRename = async () => {
     if (!renameTarget || !renameName.trim()) return;
     const parentPath = renameTarget.path_lower.substring(0, renameTarget.path_lower.lastIndexOf('/'));
@@ -193,6 +173,30 @@ export function DropboxBrowser() {
     refetch();
   };
 
+  // Inline rename
+  const handleStartEditing = useCallback((entry: DropboxEntry) => {
+    setEditingEntryId(entry.id);
+    setEditingName(entry.name);
+  }, []);
+
+  const handleCommitRename = useCallback(async () => {
+    if (!editingEntryId || !editingName.trim()) return;
+    const entry = entries.find((e) => e.id === editingEntryId);
+    if (!entry) return;
+    const parentPath = entry.path_lower.substring(0, entry.path_lower.lastIndexOf('/'));
+    const newPath = `${parentPath}/${editingName.trim()}`;
+    await moveMutation.mutateAsync({ from_path: entry.path_lower, to_path: newPath });
+    setEditingEntryId(null);
+    setEditingName('');
+    refetch();
+  }, [editingEntryId, editingName, entries, moveMutation, refetch]);
+
+  const handleCancelEditing = useCallback(() => {
+    setEditingEntryId(null);
+    setEditingName('');
+  }, []);
+
+  // Move (dialog)
   const handleMove = async () => {
     if (!moveTarget || !moveDestination.trim()) return;
     const dest = moveDestination.startsWith('/') ? moveDestination : `/${moveDestination}`;
@@ -204,7 +208,8 @@ export function DropboxBrowser() {
     refetch();
   };
 
-  const handleDownload = async (entry: DropboxEntry) => {
+  // Download
+  const handleDownload = useCallback(async (entry: DropboxEntry) => {
     try {
       const data = await getLinkMutation.mutateAsync({ path: entry.path_lower });
       if (data.link) {
@@ -213,11 +218,81 @@ export function DropboxBrowser() {
     } catch {
       // toast handled by mutation
     }
-  };
+  }, [getLinkMutation]);
 
-  const handleSync = (mode: 'full-sync' | 'incremental-sync') => {
-    syncMutation.mutate({ mode });
-  };
+  // Sort toggle
+  const handleToggleSort = useCallback((field: SortField) => {
+    setSortField((prev) => {
+      if (prev === field) {
+        setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+      } else {
+        setSortDirection('asc');
+      }
+      return field;
+    });
+  }, []);
+
+  // Internal drag-drop (file to folder)
+  const handleEntryDragStart = useCallback((e: React.DragEvent, entry: DropboxEntry) => {
+    setDraggingEntryId(entry.id);
+    e.dataTransfer.setData('text/plain', entry.path_lower);
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const handleEntryDragEnd = useCallback(() => {
+    setDraggingEntryId(null);
+    setDragOverFolderId(null);
+  }, []);
+
+  const handleFolderDragOver = useCallback((e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverFolderId(folderId);
+  }, []);
+
+  const handleFolderDragLeave = useCallback((e: React.DragEvent) => {
+    e.stopPropagation();
+    setDragOverFolderId(null);
+  }, []);
+
+  const handleFolderDrop = useCallback(async (e: React.DragEvent, folderEntry: DropboxEntry) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverFolderId(null);
+    const fromPath = e.dataTransfer.getData('text/plain');
+    if (!fromPath || fromPath === folderEntry.path_lower) return;
+    const fileName = fromPath.split('/').pop() || '';
+    const toPath = `${folderEntry.path_lower}/${fileName}`;
+    await moveMutation.mutateAsync({ from_path: fromPath, to_path: toPath });
+    setDraggingEntryId(null);
+    refetch();
+  }, [moveMutation, refetch]);
+
+  // Rename/Move/Delete triggers from file list
+  const handleRenameClick = useCallback((entry: DropboxEntry) => {
+    setRenameTarget(entry);
+    setRenameName(entry.name);
+    setRenameOpen(true);
+  }, []);
+
+  const handleMoveClick = useCallback((entry: DropboxEntry) => {
+    setMoveTarget(entry);
+    setMoveDestination('');
+    setMoveOpen(true);
+  }, []);
+
+  const handleDeleteClick = useCallback((entry: DropboxEntry) => {
+    setDeleteTarget(entry);
+  }, []);
+
+  // Starred entry click from sidebar
+  const handleStarredEntryClick = useCallback((entry: DropboxEntry) => {
+    if (entry['.tag'] === 'folder') {
+      navigateToFolder(entry.path_lower);
+    } else {
+      setSelectedEntry(entry);
+    }
+  }, [navigateToFolder]);
 
   // Not connected state
   if (connectionLoading) {
@@ -259,340 +334,164 @@ export function DropboxBrowser() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <div className="flex items-center gap-3">
-          <HardDrive className="h-5 w-5 text-blue-500" />
-          <div>
-            <h1 className="text-lg font-semibold">Dropbox</h1>
-            <p className="text-xs text-muted-foreground">
-              {connectedEmail} {connectedBy && `(connected by ${connectedBy})`}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleSync('incremental-sync')}
-            disabled={syncMutation.isPending}
-          >
-            <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', syncMutation.isPending && 'animate-spin')} />
-            Sync
-          </Button>
-          {isOwner && (
-            <Button variant="ghost" size="sm" onClick={disconnect}>
-              <Unplug className="h-3.5 w-3.5 mr-1.5" />
-              Disconnect
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-1 flex-1 min-w-0 text-sm">
-          <button
-            onClick={() => navigateToFolder('')}
-            className="text-muted-foreground hover:text-foreground transition-colors flex items-center"
-          >
-            <Home className="h-3.5 w-3.5" />
-          </button>
-          {pathParts.map((part) => (
-            <span key={part.path} className="flex items-center gap-1">
-              <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
-              <button
-                onClick={() => navigateToFolder(part.path)}
-                className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[120px]"
-              >
-                {part.name}
-              </button>
-            </span>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="relative w-48">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter files..."
-            className="h-7 pl-7 text-xs"
-          />
-        </div>
-
-        {/* Actions */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Upload className="h-3 w-3 mr-1" />
-          Upload
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs"
-          onClick={() => {
-            setNewFolderName('');
-            setNewFolderOpen(true);
-          }}
-        >
-          <FolderPlus className="h-3 w-3 mr-1" />
-          New Folder
-        </Button>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files?.length) {
-              handleUpload(e.target.files);
-              e.target.value = '';
-            }
-          }}
-        />
-      </div>
-
-      {/* File List */}
-      <div
-        className={cn(
-          'flex-1 overflow-auto',
-          dragOver && 'bg-primary/5 ring-2 ring-primary/20 ring-inset'
-        )}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
+      <DropboxHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onNewFolder={() => {
+          setNewFolderName('');
+          setNewFolderOpen(true);
         }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-      >
-        {listLoading ? (
-          <div className="flex items-center justify-center p-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : filteredEntries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-            <Folder className="h-12 w-12 mb-3 opacity-30" />
-            <p className="text-sm">
-              {searchQuery ? 'No files match your search' : 'This folder is empty'}
-            </p>
-            <p className="text-xs mt-1">Drag & drop files here to upload</p>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {filteredEntries.map((entry) => {
-              const isFolder = entry['.tag'] === 'folder';
-              const Icon = isFolder ? Folder : getFileIcon(entry.name);
+        onUploadFiles={() => fileInputRef.current?.click()}
+        onUploadFolder={() => folderInputRef.current?.click()}
+        connectedEmail={connectedEmail}
+        isOwner={isOwner}
+        onDisconnect={disconnect}
+      />
 
-              return (
-                <div
-                  key={entry.id}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-2 hover:bg-muted/50 transition-colors group',
-                    isFolder && 'cursor-pointer'
-                  )}
-                  onClick={() => handleEntryClick(entry)}
-                >
-                  <Icon
-                    className={cn(
-                      'h-4 w-4 flex-shrink-0',
-                      isFolder ? 'text-blue-500' : 'text-muted-foreground'
-                    )}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate">{entry.name}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {!isFolder && entry.size !== undefined && (
-                        <span>{formatFileSize(entry.size)}</span>
-                      )}
-                      {entry.server_modified && (
-                        <span>
-                          {formatDistanceToNow(new Date(entry.server_modified), { addSuffix: true })}
-                        </span>
-                      )}
-                      {entry.lead_name && (
-                        <Badge variant="secondary" className="text-[10px] h-4 px-1">
-                          {entry.lead_name}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files?.length) {
+            handleUpload(e.target.files);
+            e.target.value = '';
+          }
+        }}
+      />
+      <input
+        ref={folderInputRef}
+        type="file"
+        multiple
+        // @ts-expect-error webkitdirectory is a non-standard attribute
+        webkitdirectory=""
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files?.length) {
+            handleUpload(e.target.files);
+            e.target.value = '';
+          }
+        }}
+      />
 
-                  {/* Actions */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {!isFolder && (
-                          <DropdownMenuItem onClick={() => handleDownload(entry)}>
-                            <Download className="h-3.5 w-3.5 mr-2" />
-                            Download
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setRenameTarget(entry);
-                            setRenameName(entry.name);
-                            setRenameOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5 mr-2" />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setMoveTarget(entry);
-                            setMoveDestination('');
-                            setMoveOpen(true);
-                          }}
-                        >
-                          <ArrowRight className="h-3.5 w-3.5 mr-2" />
-                          Move
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => setDeleteTarget(entry)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      {/* 3-column layout: sidebar | main | preview */}
+      <div className="flex flex-1 min-h-0">
+        {/* Left Sidebar */}
+        <DropboxSidebar
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+          onNavigateToRoot={() => navigateToFolder('')}
+          starredEntries={starredEntries}
+          onStarredEntryClick={handleStarredEntryClick}
+        />
 
-        {/* Upload overlay when dragging */}
-        {dragOver && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg p-8">
-              <Upload className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-sm text-primary font-medium">Drop files to upload</p>
-            </div>
-          </div>
+        {/* Center: Toolbar + File List */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <DropboxToolbar
+            currentPath={currentPath}
+            pathParts={pathParts}
+            onNavigate={navigateToFolder}
+            onUpload={() => fileInputRef.current?.click()}
+            onNewFolder={() => {
+              setNewFolderName('');
+              setNewFolderOpen(true);
+            }}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onToggleSort={handleToggleSort}
+            connectedEmail={connectedEmail}
+            activeSection={activeSection}
+          />
+
+          <DropboxFileList
+            entries={entries}
+            viewMode={viewMode}
+            activeTab={activeTab}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            searchQuery={searchQuery}
+            isLoading={isPhotosSection ? photosLoading : isSharedSection ? sharedLoading : listLoading}
+            isStarred={isStarred}
+            onToggleStar={toggleStar}
+            onEntryClick={handleEntryClick}
+            onDownload={handleDownload}
+            onRename={handleRenameClick}
+            onMove={handleMoveClick}
+            onDelete={handleDeleteClick}
+            dragOver={dragOver}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            draggingEntryId={draggingEntryId}
+            dragOverFolderId={dragOverFolderId}
+            onEntryDragStart={handleEntryDragStart}
+            onEntryDragEnd={handleEntryDragEnd}
+            onFolderDragOver={handleFolderDragOver}
+            onFolderDragLeave={handleFolderDragLeave}
+            onFolderDrop={handleFolderDrop}
+            uploadPending={uploadMutation.isPending}
+            editingEntryId={editingEntryId}
+            editingName={editingName}
+            onStartEditing={handleStartEditing}
+            onEditingNameChange={setEditingName}
+            onCommitRename={handleCommitRename}
+            onCancelEditing={handleCancelEditing}
+            renamePending={moveMutation.isPending}
+          />
+        </div>
+
+        {/* Right Preview Panel */}
+        {selectedEntry && selectedEntry['.tag'] !== 'folder' && (
+          <DropboxPreviewPanel
+            entry={selectedEntry}
+            onClose={() => setSelectedEntry(null)}
+            onDownload={handleDownload}
+            onDelete={(entry) => {
+              setDeleteTarget(entry);
+            }}
+            onRename={(entry) => {
+              setRenameTarget(entry);
+              setRenameName(entry.name);
+              setRenameOpen(true);
+            }}
+          />
         )}
       </div>
 
-      {/* Upload progress */}
-      {uploadMutation.isPending && (
-        <div className="px-4 py-2 border-t bg-muted/30 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Uploading...
-        </div>
-      )}
-
-      {/* New Folder Dialog */}
-      <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
-        <DialogContent className="sm:max-w-[360px]">
-          <DialogHeader>
-            <DialogTitle>New Folder</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            placeholder="Folder name"
-            autoFocus
-            onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNewFolderOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateFolder}
-              disabled={!newFolderName.trim() || createFolderMutation.isPending}
-            >
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rename Dialog */}
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="sm:max-w-[360px]">
-          <DialogHeader>
-            <DialogTitle>Rename</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={renameName}
-            onChange={(e) => setRenameName(e.target.value)}
-            placeholder="New name"
-            autoFocus
-            onKeyDown={(e) => e.key === 'Enter' && handleRename()}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleRename} disabled={!renameName.trim() || moveMutation.isPending}>
-              Rename
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Move Dialog */}
-      <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
-        <DialogContent className="sm:max-w-[360px]">
-          <DialogHeader>
-            <DialogTitle>Move "{moveTarget?.name}"</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={moveDestination}
-            onChange={(e) => setMoveDestination(e.target.value)}
-            placeholder="/destination/path"
-            autoFocus
-            onKeyDown={(e) => e.key === 'Enter' && handleMove()}
-          />
-          <p className="text-xs text-muted-foreground">
-            Enter the destination folder path (e.g., /Documents/Deals)
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMoveOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleMove} disabled={!moveDestination.trim() || moveMutation.isPending}>
-              Move
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{deleteTarget?.name}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will delete the {deleteTarget?.['.tag'] === 'folder' ? 'folder and all its contents' : 'file'} from Dropbox. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* All Dialogs */}
+      <DropboxDialogs
+        newFolderOpen={newFolderOpen}
+        onNewFolderOpenChange={setNewFolderOpen}
+        newFolderName={newFolderName}
+        onNewFolderNameChange={setNewFolderName}
+        onCreateFolder={handleCreateFolder}
+        createFolderPending={createFolderMutation.isPending}
+        renameOpen={renameOpen}
+        onRenameOpenChange={setRenameOpen}
+        renameName={renameName}
+        onRenameNameChange={setRenameName}
+        onRename={handleRename}
+        renamePending={moveMutation.isPending}
+        moveOpen={moveOpen}
+        onMoveOpenChange={setMoveOpen}
+        moveTarget={moveTarget}
+        moveDestination={moveDestination}
+        onMoveDestinationChange={setMoveDestination}
+        onMove={handleMove}
+        movePending={moveMutation.isPending}
+        deleteTarget={deleteTarget}
+        onDeleteTargetChange={setDeleteTarget}
+        onDelete={handleDelete}
+      />
     </div>
   );
 }
