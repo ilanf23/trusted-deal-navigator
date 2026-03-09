@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.dropbox-webhook]
 verify_jwt = false
+
+[functions.twilio-conference]
+verify_jwt = false

@@ -638,25 +638,27 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
         setActiveCall(callToAnswer);
       }
     } else {
-      // SDK didn't deliver the call — use REST API to redirect the call to our browser client
-      console.log('[CallContext] No SDK activeCall — using REST API to redirect call', incomingCall.call_sid);
+      // SDK didn't deliver the call — use Conference Bridge approach:
+      // 1. Redirect the inbound call into a conference room
+      // 2. Browser joins the same conference via Device.connect()
+      // This works because Device.connect() (outbound) doesn't need the SDK incoming event
+      console.log('[CallContext] No SDK activeCall — using Conference Bridge for call', incomingCall.call_sid);
 
-      // 1. Fire-and-forget: kick off device initialization in parallel (non-blocking)
-      //    so it's hopefully ready by the time the redirected call arrives
+      // 1. Ensure device is initialized (needed for Device.connect)
       const deviceInitPromise = initializeTwilioDevice().catch(err => {
-        console.error('[CallContext] Parallel device init failed:', err);
+        console.error('[CallContext] Device init failed:', err);
         return null;
       });
 
-      // 2. Get fresh session token for the edge function call
+      // 2. Get fresh session token
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) {
         throw new Error('Not authenticated');
       }
 
-      // 3. Immediately call twilio-connect-call REST API — no device registration gate
-      console.log('[CallContext] Calling twilio-connect-call immediately (no registration wait)');
+      // 3. Call twilio-connect-call — redirects inbound call into a conference room
+      console.log('[CallContext] Redirecting inbound call into conference room...');
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twilio-connect-call`,
         {
@@ -671,56 +673,69 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Failed to connect call');
+        throw new Error(err.error || 'Failed to redirect call to conference');
       }
 
-      // 4. Wait for device init to complete (best effort) then poll for SDK incoming event
-      // If device isn't available, we'll still connect optimistically after timeout
+      const { conferenceName } = await response.json();
+      console.log('[CallContext] Inbound call redirected to conference:', conferenceName);
+
+      // 4. Wait for device to be ready
       const device = await deviceInitPromise ?? deviceRef.current;
+      if (!device || device.state !== 'registered') {
+        // Last resort: wait briefly for device registration
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(resolve, 5000);
+          const check = setInterval(() => {
+            if (deviceRef.current?.state === 'registered') {
+              clearTimeout(timeout);
+              clearInterval(check);
+              resolve();
+            }
+          }, 200);
+        });
+      }
 
-      console.log('[CallContext] Call redirected, waiting for SDK incoming event (8s timeout, then optimistic)...');
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => {
-          clearInterval(checkActive);
-          // SDK didn't deliver the call within 8s — connect optimistically
-          // The Twilio REST API already redirected the call to our browser client,
-          // so audio is flowing even if the SDK can't surface the Call object
-          // (common in iframe sandbox environments like Lovable preview)
-          console.log('[CallContext] SDK poll timed out — connecting optimistically');
-          setIsConnected(true);
-          startCallTimer();
-          logCallEvent(incomingCall.call_sid, 'call_accepted_optimistic');
-          resolve();
-        }, 8000);
+      const readyDevice = deviceRef.current;
+      if (!readyDevice || readyDevice.state !== 'registered') {
+        throw new Error('Phone device not ready. Please try again.');
+      }
 
-        const checkActive = setInterval(() => {
-          const currentDevice = deviceRef.current;
-          const calls = Array.from(currentDevice?.calls?.values?.() || []);
-          if (calls.length > 0) {
-            const sdkCall = calls[0];
-            clearTimeout(timeout);
-            clearInterval(checkActive);
-            setActiveCall(sdkCall);
+      // 5. Browser joins the conference via Device.connect (outbound call to conference TwiML)
+      console.log('[CallContext] Browser joining conference:', conferenceName);
+      await logCallEvent(incomingCall.call_sid, 'conference_join_attempt', incomingCall.call_flow_id, { conferenceName });
 
-            sdkCall.accept();
+      const conferenceCall = await readyDevice.connect({
+        params: {
+          To: `conference:${conferenceName}`,
+        },
+      });
 
-            sdkCall.on('accept', () => {
-              setIsConnected(true);
-              startCallTimer();
-              logCallEvent(incomingCall.call_sid, 'call_accepted');
-            });
-            sdkCall.on('disconnect', () => {
-              logCallEvent(incomingCall.call_sid, 'call_disconnected');
-              handleCallEnd();
-            });
-            sdkCall.on('cancel', () => {
-              logCallEvent(incomingCall.call_sid, 'call_cancelled');
-              handleCallEnd();
-            });
+      setActiveCall(conferenceCall);
 
-            resolve();
-          }
-        }, 200);
+      // Wire up call events
+      conferenceCall.on('accept', () => {
+        console.log('[CallContext] ✅ Browser joined conference — audio bridge active');
+        setIsConnected(true);
+        startCallTimer();
+        logCallEvent(incomingCall.call_sid, 'conference_joined', incomingCall.call_flow_id);
+      });
+
+      conferenceCall.on('disconnect', () => {
+        console.log('[CallContext] Conference call disconnected');
+        logCallEvent(incomingCall.call_sid, 'call_disconnected', incomingCall.call_flow_id);
+        handleCallEnd();
+      });
+
+      conferenceCall.on('cancel', () => {
+        console.log('[CallContext] Conference call cancelled');
+        logCallEvent(incomingCall.call_sid, 'call_cancelled', incomingCall.call_flow_id);
+        handleCallEnd();
+      });
+
+      conferenceCall.on('error', (error) => {
+        console.error('[CallContext] Conference call error:', error);
+        logCallEvent(incomingCall.call_sid, 'conference_error', incomingCall.call_flow_id, { error: error.message });
+        handleCallEnd();
       });
     }
 

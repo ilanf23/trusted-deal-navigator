@@ -65,12 +65,15 @@ Deno.serve(async (req) => {
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!;
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 
-    // Build TwiML URL that will re-dial the browser client
-    const twimlUrl = `${supabaseUrl}/functions/v1/twilio-voice?To=client:clx-admin`;
+    // Generate a unique conference room name for this call
+    const conferenceName = `call-bridge-${callSid}`;
 
-    console.log(`[twilio-connect-call] Redirecting call ${callSid} to browser client`);
+    // Build TwiML URL that places the caller into the conference room
+    const twimlUrl = `${supabaseUrl}/functions/v1/twilio-conference?conference=${encodeURIComponent(conferenceName)}`;
 
-    // Use Twilio REST API to update the live call
+    console.log(`[twilio-connect-call] Redirecting call ${callSid} into conference: ${conferenceName}`);
+
+    // Use Twilio REST API to update the live call — redirect it into the conference
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${callSid}.json`;
     const basicAuth = btoa(`${accountSid}:${authToken}`);
 
@@ -96,9 +99,14 @@ Deno.serve(async (req) => {
     }
 
     const result = await twilioResponse.json();
-    console.log('[twilio-connect-call] Call redirected successfully:', result.sid);
+    console.log('[twilio-connect-call] Call redirected to conference successfully:', result.sid);
 
-    return new Response(JSON.stringify({ success: true, callSid: result.sid }), {
+    // Return the conference name so the frontend can join it
+    return new Response(JSON.stringify({ 
+      success: true, 
+      callSid: result.sid,
+      conferenceName: conferenceName,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
