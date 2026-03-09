@@ -7,7 +7,92 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-// ... keep existing code (fetchTwilioRecordingAsBlob, transcribeWithWhisper, addSpeakerLabels)
+async function fetchTwilioRecordingAsBlob(recordingUrl: string): Promise<Blob> {
+  const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!;
+  const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!;
+  const basicAuth = btoa(`${accountSid}:${authToken}`);
+
+  // Ensure we request the .mp3 format
+  let url = recordingUrl;
+  if (!url.endsWith('.mp3') && !url.endsWith('.wav')) {
+    url = url + '.mp3';
+  }
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Basic ${basicAuth}` },
+    redirect: 'follow',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch recording: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.blob();
+}
+
+async function transcribeWithWhisper(audioBlob: Blob): Promise<string> {
+  const openaiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openaiKey) {
+    throw new Error('OPENAI_API_KEY not configured');
+  }
+
+  const formData = new FormData();
+  formData.append('file', audioBlob, 'recording.mp3');
+  formData.append('model', 'whisper-1');
+  formData.append('response_format', 'text');
+
+  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${openaiKey}` },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Whisper transcription failed: ${err}`);
+  }
+
+  return await response.text();
+}
+
+async function addSpeakerLabels(rawTranscript: string, direction: string): Promise<string> {
+  const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!lovableApiKey) {
+    return rawTranscript;
+  }
+
+  try {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-flash-preview',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a transcript formatter. Add speaker labels to the following call transcript. The call direction is "${direction}". For inbound calls, the external caller speaks first. For outbound calls, our team member (Evan) speaks first. Label speakers as "Evan:" and "Caller:" on each line. Return ONLY the labeled transcript, no other text.`,
+          },
+          { role: 'user', content: rawTranscript },
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Speaker labeling failed:', await response.text());
+      return rawTranscript;
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || rawTranscript;
+  } catch (err) {
+    console.error('Speaker labeling error:', err);
+    return rawTranscript;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {

@@ -7,7 +7,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ... keep existing code (TRACKING_PIXEL, BOT_PATTERNS, isLikelyBot)
+// 1x1 transparent GIF pixel
+const TRACKING_PIXEL = new Uint8Array([
+  0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
+  0x80, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x21,
+  0xf9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00,
+  0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44,
+  0x01, 0x00, 0x3b,
+]);
+
+const BOT_PATTERNS = [
+  'googlebot', 'bingbot', 'yandex', 'baidu', 'duckduckbot',
+  'slurp', 'ia_archiver', 'facebookexternalhit', 'twitterbot',
+  'linkedinbot', 'embedly', 'quora link preview', 'showyoubot',
+  'outbrain', 'pinterest', 'applebot', 'semrushbot', 'ahrefs',
+  'mj12bot', 'dotbot', 'petalbot', 'bytespider',
+  'googleimageproxy', 'yandexmailproxy',
+];
+
+function isLikelyBot(userAgent: string | null): boolean {
+  if (!userAgent) return false;
+  const ua = userAgent.toLowerCase();
+  return BOT_PATTERNS.some((pattern) => ua.includes(pattern));
+}
 
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests

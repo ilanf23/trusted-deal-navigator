@@ -6,7 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ... keep existing code (SendSMSRequest, TwilioResponse interfaces)
+interface SendSMSRequest {
+  to: string;
+  message: string;
+  leadId?: string;
+}
+
+interface TwilioResponse {
+  sid?: string;
+  status?: string;
+  error_message?: string;
+  error_code?: number;
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests

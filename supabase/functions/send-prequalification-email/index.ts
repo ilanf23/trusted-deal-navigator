@@ -7,7 +7,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ... keep existing code (SendEmailRequest interface, generateToken, ILAN_EMAIL)
+interface SendEmailRequest {
+  leadId: string;
+}
+
+function generateToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+const ILAN_EMAIL = Deno.env.get("ILAN_EMAIL") || "ilan@maverich.ai";
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
