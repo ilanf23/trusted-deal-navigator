@@ -28,6 +28,8 @@ export interface FeedActivity {
   source?: string;
   checklistTitle?: string;
   checklistItems?: FeedChecklistItem[];
+  assignedToId: string | null;
+  phoneNumber: string | null;
 }
 
 const formatTime = (dateStr: string): string => {
@@ -67,7 +69,7 @@ export const useFeedData = () => {
         // All leads (no pipeline filter — every pipeline)
         supabase
           .from('leads')
-          .select('id, name, company_name, status, notes, created_at, updated_at, source, assigned_to')
+          .select('id, name, company_name, status, notes, created_at, updated_at, source, assigned_to, phone')
           .order('updated_at', { ascending: false })
           .limit(200),
         // Team members for name/avatar mapping
@@ -126,7 +128,7 @@ export const useFeedData = () => {
       // ── Build lookup maps ──
       const teamMap = new Map((teamMembers || []).map(tm => [tm.id, { name: tm.name, avatarUrl: tm.avatar_url }]));
       const teamNameMap = new Map((teamMembers || []).map(tm => [tm.name.toLowerCase(), tm.avatar_url]));
-      const leadMap = new Map((leads || []).map(l => [l.id, { name: l.name, company: l.company_name, status: l.status, assignedTo: l.assigned_to }]));
+      const leadMap = new Map((leads || []).map(l => [l.id, { name: l.name, company: l.company_name, status: l.status, assignedTo: l.assigned_to, phone: l.phone }]));
       const peopleMap = new Map((people || []).map(p => [p.id, { name: p.name, company: p.company_name, assignedTo: p.assigned_to }]));
 
       // ── Build checklist map: activityId → { title, items[] } ──
@@ -181,6 +183,8 @@ export const useFeedData = () => {
           rawDate: new Date(la.created_at),
           stage: leadInfo?.status ? (STAGE_LABELS[leadInfo.status] || leadInfo.status) : undefined,
           source: 'lead',
+          assignedToId: leadInfo?.assignedTo || null,
+          phoneNumber: leadInfo?.phone || null,
           ...(clData && {
             checklistTitle: clData.title || undefined,
             checklistItems: clData.items,
@@ -210,6 +214,8 @@ export const useFeedData = () => {
           rawDate: new Date(lead.updated_at),
           stage: STAGE_LABELS[lead.status] || lead.status,
           source: 'lead',
+          assignedToId: lead.assigned_to || null,
+          phoneNumber: lead.phone || null,
         });
       }
 
@@ -236,6 +242,8 @@ export const useFeedData = () => {
           rawDate: new Date(comm.created_at),
           direction: comm.direction,
           source: 'lead',
+          assignedToId: leadInfo?.assignedTo || null,
+          phoneNumber: comm.phone_number || leadInfo?.phone || null,
         });
       }
 
@@ -256,6 +264,8 @@ export const useFeedData = () => {
           time: formatTime(task.created_at),
           rawDate: new Date(task.created_at),
           source: 'lead',
+          assignedToId: leadInfo?.assignedTo || null,
+          phoneNumber: leadInfo?.phone || null,
         });
       }
 
@@ -279,6 +289,8 @@ export const useFeedData = () => {
           rawDate: new Date(sentDate),
           direction: 'outbound',
           source: 'lead',
+          assignedToId: leadInfo?.assignedTo || null,
+          phoneNumber: leadInfo?.phone || null,
         });
       }
 
@@ -305,6 +317,8 @@ export const useFeedData = () => {
           time: formatTime(pa.created_at),
           rawDate: new Date(pa.created_at),
           source: 'people',
+          assignedToId: personInfo?.assignedTo || null,
+          phoneNumber: null,
         });
       }
 
@@ -327,6 +341,8 @@ export const useFeedData = () => {
           time: formatTime(person.updated_at),
           rawDate: new Date(person.updated_at),
           source: 'people',
+          assignedToId: person.assigned_to || null,
+          phoneNumber: null,
         });
       }
 

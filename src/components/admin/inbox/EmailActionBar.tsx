@@ -216,7 +216,7 @@ export function EmailActionBar({
         : `Hi ${recipientName.split(' ')[0]},\n\nI wanted to check in on the status of ${dealName}. Could you please provide an update on where things stand?\n\nThank you for your time.\n\nBest regards,\nEvan`;
 
       const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=create-draft`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api?action=create-draft`,
         {
           method: 'POST',
           headers: {

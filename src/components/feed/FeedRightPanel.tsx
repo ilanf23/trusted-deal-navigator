@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInDays, isToday, isTomorrow } from 'date-fns';
-import { X, SquareCheckBig, Calendar } from 'lucide-react';
+import { X, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTeamMember } from '@/hooks/useTeamMember';
 
@@ -26,6 +26,12 @@ const formatMeetingLabel = (startTime: string): string => {
   const days = differenceInDays(date, new Date());
   if (days <= 6) return `${format(date, 'EEEE')} at ${timeStr}`;
   return `${format(date, 'MMM d')} at ${timeStr}`;
+};
+
+// Get current day/date for Copper-style header
+const getCurrentDateHeader = () => {
+  const now = new Date();
+  return format(now, 'EEEE, MMMM do');
 };
 
 const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
@@ -94,83 +100,111 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
   const visibleMeetings = upcomingMeetings.filter((m) => !dismissedIds.includes(m.id));
 
   return (
-    <div className={isSheet ? "bg-card h-full overflow-y-auto" : "w-[280px] min-w-[280px] 2xl:w-[300px] 2xl:min-w-[300px] bg-card border-l border-border/50 h-full overflow-y-auto hidden xl:block"}>
-      <div className="p-4 pt-5 space-y-5">
-        {/* Due Tasks */}
+    <div className={isSheet ? "bg-[#f7f5f3] h-full overflow-y-auto" : "w-[280px] min-w-[280px] 2xl:w-[300px] 2xl:min-w-[300px] bg-[#f7f5f3] border-l border-gray-200 h-full overflow-y-auto hidden xl:block"}>
+      <div className="p-5 space-y-5">
+        {/* Date header — Copper style */}
+        <div className="text-xs text-gray-500 font-medium">
+          {getCurrentDateHeader()}
+        </div>
+
+        {/* Keep things moving — Copper style */}
         <div>
-          <div className="flex items-center gap-2.5 mb-3.5">
-            <div className="p-1.5 rounded-lg bg-primary/8">
-              <SquareCheckBig className="w-4 h-4 text-primary/80" />
-            </div>
-            <h3 className="text-sm font-semibold text-foreground tracking-tight">Due Tasks</h3>
-            {visibleTasks.length > 0 && (
-              <span className="ml-auto text-[11px] font-medium text-muted-foreground/70 bg-muted/60 px-2 py-0.5 rounded-full tabular-nums">
-                {visibleTasks.length}
-              </span>
-            )}
-          </div>
-          {visibleTasks.length === 0 ? (
-            <p className="text-xs text-muted-foreground/60 pl-1 italic">No upcoming tasks</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">
+            Keep things moving
+          </p>
+
+          {visibleTasks.length === 0 && visibleMeetings.length === 0 ? (
+            <p className="text-xs text-gray-400 italic">No upcoming tasks or meetings</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
+              {/* Due Tasks */}
               {visibleTasks.map((task) => {
                 const dueInfo = formatDueLabel(task.due_date!);
                 return (
                   <div
                     key={task.id}
-                    onClick={() => navigate(getTaskRoute(task))}
-                    className="p-3 rounded-xl border border-border/50 bg-card hover:shadow-[0_2px_8px_-2px_rgb(0_0_0/0.06)] hover:border-border/80 transition-all duration-200 cursor-pointer relative group"
+                    className="bg-white rounded-lg p-4 shadow-sm relative group"
                   >
                     <button
                       onClick={(e) => dismiss(task.id, e)}
-                      className="absolute top-2 right-2 text-muted-foreground/40 hover:text-foreground p-0.5 opacity-0 group-hover:opacity-100 transition-all duration-150"
+                      className="absolute top-2.5 right-2.5 text-gray-300 hover:text-gray-500 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
-                    <p className="text-sm font-medium text-foreground truncate pr-5 tracking-tight">{task.title}</p>
-                    <p className={cn('text-xs mt-1.5', dueInfo.urgent ? 'text-destructive font-medium' : 'text-muted-foreground/70')}>
-                      {dueInfo.text}
+
+                    {/* Pink checkbox icon — Copper style */}
+                    <div className="flex items-start gap-3 mb-2.5">
+                      <div className="w-8 h-8 rounded bg-pink-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-4 h-4 text-pink-500" viewBox="0 0 16 16" fill="currentColor">
+                          <rect x="2" y="2" width="12" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                          <path d="M5 8l2.5 2.5L11 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-gray-800">
+                          You have a task {dueInfo.text}!
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-gray-500 mb-3 leading-relaxed pl-11">
+                      "{task.title}" is {dueInfo.text}!
                     </p>
+
+                    <div className="pl-11">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(getTaskRoute(task));
+                        }}
+                        className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors uppercase tracking-wide"
+                      >
+                        GET IT DONE
+                      </button>
+                    </div>
                   </div>
                 );
               })}
-            </div>
-          )}
-        </div>
 
-        <div className="h-px bg-gradient-to-r from-transparent via-border/50 to-transparent mx-1" />
-
-        {/* Upcoming Meetings */}
-        <div>
-          <div className="flex items-center gap-2.5 mb-3.5">
-            <div className="p-1.5 rounded-lg bg-primary/8">
-              <Calendar className="w-4 h-4 text-primary/80" />
-            </div>
-            <h3 className="text-sm font-semibold text-foreground tracking-tight">Meetings</h3>
-            {visibleMeetings.length > 0 && (
-              <span className="ml-auto text-[11px] font-medium text-muted-foreground/70 bg-muted/60 px-2 py-0.5 rounded-full tabular-nums">
-                {visibleMeetings.length}
-              </span>
-            )}
-          </div>
-          {visibleMeetings.length === 0 ? (
-            <p className="text-xs text-muted-foreground/60 pl-1 italic">No upcoming meetings</p>
-          ) : (
-            <div className="space-y-2">
+              {/* Upcoming Meetings */}
               {visibleMeetings.map((meeting) => (
                 <div
                   key={meeting.id}
-                  onClick={() => navigate(`${basePath}/calendar`)}
-                  className="p-3 rounded-xl border border-border/50 bg-card hover:shadow-[0_2px_8px_-2px_rgb(0_0_0/0.06)] hover:border-border/80 transition-all duration-200 cursor-pointer relative group"
+                  className="bg-white rounded-lg p-4 shadow-sm relative group"
                 >
                   <button
                     onClick={(e) => dismiss(meeting.id, e)}
-                    className="absolute top-2 right-2 text-muted-foreground/40 hover:text-foreground p-0.5 opacity-0 group-hover:opacity-100 transition-all duration-150"
+                    className="absolute top-2.5 right-2.5 text-gray-300 hover:text-gray-500 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
-                  <p className="text-sm font-medium text-foreground truncate pr-5 tracking-tight">{meeting.title}</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1.5">{formatMeetingLabel(meeting.start_time)}</p>
+
+                  <div className="flex items-start gap-3 mb-2.5">
+                    <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Calendar className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-gray-800">
+                        Upcoming meeting
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-500 mb-3 leading-relaxed pl-11">
+                    {meeting.title} — {formatMeetingLabel(meeting.start_time)}
+                  </p>
+
+                  <div className="pl-11">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`${basePath}/calendar`);
+                      }}
+                      className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors uppercase tracking-wide"
+                    >
+                      VIEW CALENDAR
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

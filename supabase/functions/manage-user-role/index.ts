@@ -48,12 +48,12 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Verify caller is admin
+    // Verify caller is admin or super_admin
     const { data: roleData } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', callerId)
-      .eq('role', 'admin')
+      .in('role', ['admin', 'super_admin'])
       .maybeSingle()
 
     if (!roleData) {
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const validRoles = ['admin', 'client', 'partner']
+    const validRoles = ['admin', 'super_admin', 'client', 'partner']
     if (!validRoles.includes(new_role)) {
       return new Response(
         JSON.stringify({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` }),

@@ -52,7 +52,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type AppRole = 'admin' | 'client' | 'partner';
+type AppRole = 'admin' | 'super_admin' | 'client' | 'partner';
 
 interface UserWithRole {
   user_id: string;
@@ -66,6 +66,12 @@ type SortField = 'email' | 'role' | 'created_at';
 type SortDirection = 'asc' | 'desc';
 
 const ROLE_CONFIG: Record<AppRole, { label: string; icon: typeof Shield; color: string; bgColor: string }> = {
+  super_admin: {
+    label: 'Super Admin',
+    icon: ShieldCheck,
+    color: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300',
+  },
   admin: {
     label: 'Admin',
     icon: Shield,
@@ -176,9 +182,10 @@ const UsersAndRoles = () => {
 
   // Stats
   const stats = useMemo(() => {
-    if (!users) return { total: 0, admins: 0, partners: 0, clients: 0 };
+    if (!users) return { total: 0, superAdmins: 0, admins: 0, partners: 0, clients: 0 };
     return {
       total: users.length,
+      superAdmins: users.filter((u) => u.role === 'super_admin').length,
       admins: users.filter((u) => u.role === 'admin').length,
       partners: users.filter((u) => u.role === 'partner').length,
       clients: users.filter((u) => u.role === 'client').length,
@@ -287,9 +294,10 @@ const UsersAndRoles = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { label: 'Total Users', value: stats.total, icon: Users, color: 'text-foreground' },
+          { label: 'Super Admins', value: stats.superAdmins, icon: ShieldCheck, color: 'text-amber-600 dark:text-amber-400' },
           { label: 'Admins', value: stats.admins, icon: Shield, color: 'text-blue-600 dark:text-blue-400' },
           { label: 'Partners', value: stats.partners, icon: Users, color: 'text-purple-600 dark:text-purple-400' },
           { label: 'Clients', value: stats.clients, icon: UserCog, color: 'text-emerald-600 dark:text-emerald-400' },
@@ -316,8 +324,9 @@ const UsersAndRoles = () => {
           }}
           className="w-full sm:w-auto"
         >
-          <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:flex">
+          <TabsList className="w-full sm:w-auto grid grid-cols-5 sm:flex">
             <TabsTrigger value="all" className="text-xs">All ({stats.total})</TabsTrigger>
+            <TabsTrigger value="super_admin" className="text-xs">Super ({stats.superAdmins})</TabsTrigger>
             <TabsTrigger value="admin" className="text-xs">Admins ({stats.admins})</TabsTrigger>
             <TabsTrigger value="partner" className="text-xs">Partners ({stats.partners})</TabsTrigger>
             <TabsTrigger value="client" className="text-xs">Clients ({stats.clients})</TabsTrigger>
@@ -342,7 +351,7 @@ const UsersAndRoles = () => {
         <div className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border">
           <span className="text-sm font-medium text-foreground">{selectedUsers.size} selected</span>
           <div className="flex gap-2 ml-auto">
-            {(['admin', 'partner', 'client'] as AppRole[]).map((role) => {
+            {(['super_admin', 'admin', 'partner', 'client'] as AppRole[]).map((role) => {
               const cfg = ROLE_CONFIG[role];
               return (
                 <Button
@@ -480,7 +489,7 @@ const UsersAndRoles = () => {
                           <div className="flex items-center justify-end gap-1">
                             {/* Quick role buttons */}
                             <div className="hidden group-hover:flex items-center gap-1 mr-1">
-                              {(['admin', 'partner', 'client'] as AppRole[]).map((role) => {
+                              {(['super_admin', 'admin', 'partner', 'client'] as AppRole[]).map((role) => {
                                 const cfg = ROLE_CONFIG[role];
                                 const Icon = cfg.icon;
                                 const isCurrent = u.role === role;
@@ -510,7 +519,7 @@ const UsersAndRoles = () => {
                                   <Pencil className="w-3.5 h-3.5 mr-2" /> Edit User
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                {(['admin', 'partner', 'client'] as AppRole[]).map((role) => {
+                                {(['super_admin', 'admin', 'partner', 'client'] as AppRole[]).map((role) => {
                                   const cfg = ROLE_CONFIG[role];
                                   const Icon = cfg.icon;
                                   return (
@@ -580,7 +589,7 @@ const UsersAndRoles = () => {
                             <Pencil className="w-3.5 h-3.5 mr-2" /> Edit User
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          {(['admin', 'partner', 'client'] as AppRole[]).map((role) => {
+                          {(['super_admin', 'admin', 'partner', 'client'] as AppRole[]).map((role) => {
                             const cfg = ROLE_CONFIG[role];
                             const Icon = cfg.icon;
                             return (

@@ -813,7 +813,7 @@ export default function PipelineExpandedView() {
       if (!session) return [];
       const searchQuery = leadEmailAddresses.map(email => `from:${email} OR to:${email}`).join(' OR ');
       const response = await fetch(
-        `https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=list&q=${encodeURIComponent(searchQuery)}&maxResults=50`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api?action=list&q=${encodeURIComponent(searchQuery)}&maxResults=50`,
         { headers: { 'Authorization': `Bearer ${session.access_token}` } }
       );
       if (!response.ok) return [];

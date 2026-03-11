@@ -4064,7 +4064,7 @@ export type Database = {
       is_team_owner: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "client" | "partner"
+      app_role: "admin" | "super_admin" | "client" | "partner"
       contract_status:
         | "draft"
         | "sent"
@@ -4238,7 +4238,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "client", "partner"],
+      app_role: ["admin", "super_admin", "client", "partner"],
       contract_status: [
         "draft",
         "sent",

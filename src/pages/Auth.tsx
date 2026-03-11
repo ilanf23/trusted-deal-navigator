@@ -36,7 +36,7 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-  const [signupRole, setSignupRole] = useState<'client' | 'partner'>('client');
+  const [signupRole, setSignupRole] = useState<'client' | 'partner' | 'admin' | 'super_admin'>('client');
 
   // Redirect if already logged in
   useEffect(() => {
@@ -122,8 +122,8 @@ const Auth = () => {
       return;
     }
 
-    const { error } = await signUp(signupEmail, signupPassword);
-    
+    const { error } = await signUp(signupEmail, signupPassword, { signup_role: signupRole });
+
     if (error) {
       if (error.message.includes('already registered')) {
         setError('An account with this email already exists. Please sign in instead.');
@@ -131,30 +131,6 @@ const Auth = () => {
         setError(error.message);
       }
     } else {
-      // If partner role selected, wait for session then update role
-      if (signupRole === 'partner') {
-        const waitForSession = async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            await supabase
-              .from('user_roles')
-              .update({ role: 'partner' as any })
-              .eq('user_id', session.user.id);
-          }
-        };
-        
-        await waitForSession();
-        
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (event === 'SIGNED_IN' && session?.user) {
-            await supabase
-              .from('user_roles')
-              .update({ role: 'partner' as any })
-              .eq('user_id', session.user.id);
-            subscription.unsubscribe();
-          }
-        });
-      }
       setSuccess('Account created successfully! You can now sign in.');
       setSignupEmail('');
       setSignupPassword('');
@@ -262,7 +238,7 @@ const Auth = () => {
                   <Label>I am signing up as</Label>
                   <RadioGroup
                     value={signupRole}
-                    onValueChange={(v) => setSignupRole(v as 'client' | 'partner')}
+                    onValueChange={(v) => setSignupRole(v as typeof signupRole)}
                     className="grid grid-cols-2 gap-3"
                   >
                     <Label
@@ -284,6 +260,26 @@ const Auth = () => {
                       <RadioGroupItem value="partner" id="role-partner" className="sr-only" />
                       <span className="font-medium text-sm">Partner</span>
                       <span className="text-xs text-muted-foreground text-center">Refer deals & earn</span>
+                    </Label>
+                    <Label
+                      htmlFor="role-admin"
+                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-3 cursor-pointer transition-colors ${
+                        signupRole === 'admin' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
+                      }`}
+                    >
+                      <RadioGroupItem value="admin" id="role-admin" className="sr-only" />
+                      <span className="font-medium text-sm">Admin</span>
+                      <span className="text-xs text-muted-foreground text-center">Team member</span>
+                    </Label>
+                    <Label
+                      htmlFor="role-super-admin"
+                      className={`flex flex-col items-center gap-1 rounded-lg border-2 p-3 cursor-pointer transition-colors ${
+                        signupRole === 'super_admin' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
+                      }`}
+                    >
+                      <RadioGroupItem value="super_admin" id="role-super-admin" className="sr-only" />
+                      <span className="font-medium text-sm">Super Admin</span>
+                      <span className="text-xs text-muted-foreground text-center">Owner access</span>
                     </Label>
                   </RadioGroup>
                 </div>

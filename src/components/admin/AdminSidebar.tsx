@@ -79,7 +79,7 @@ interface NavSection {
 const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: AdminSidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, user } = useAuth();
+  const { signOut, user, userRole } = useAuth();
   const { teamMember, isOwner, loading: teamLoading } = useTeamMember();
   const { state, isMobile, setOpenMobile, openMobile } = useSidebar();
   const isCollapsed = state === 'collapsed';
@@ -124,7 +124,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   const navSections: NavSection[] = useMemo(() => {
     const sections: NavSection[] = [];
 
-    if (isOwner) {
+    if (isOwner || userRole === 'super_admin') {
       sections.push({
         title: 'Dashboard',
         icon: LayoutDashboard,
@@ -233,7 +233,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
     }
 
     return sections;
-  }, [isOwner, teamMember]);
+  }, [isOwner, userRole, teamMember]);
 
   // Determine which sections should be open based on current route
   const getSectionOpenState = () => {

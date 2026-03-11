@@ -692,7 +692,7 @@ const EmployeePipeline = () => {
       };
 
       const aiResponse = await fetch(
-        'https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/generate-lead-email',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lead-email`,
         {
           method: 'POST',
           headers: {
@@ -746,7 +746,7 @@ const EmployeePipeline = () => {
       }));
 
       const response = await fetch(
-        'https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api?action=send-email',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api?action=send-email`,
         {
           method: 'POST',
           headers: {

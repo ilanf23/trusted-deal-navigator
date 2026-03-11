@@ -37,7 +37,7 @@ export function useGmail() {
     const authHeader = await getAuthHeader();
     if (!authHeader) throw new Error('Not authenticated');
 
-    const url = new URL(`https://pcwiwtajzqnayfwvqsbh.supabase.co/functions/v1/gmail-api`);
+    const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gmail-api`);
     url.searchParams.set('action', action);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {

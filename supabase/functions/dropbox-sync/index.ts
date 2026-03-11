@@ -510,8 +510,8 @@ Deno.serve(async (req) => {
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .eq('role', 'admin')
-      .single();
+      .in('role', ['admin', 'super_admin'])
+      .maybeSingle();
 
     if (!roleData) {
       return new Response(

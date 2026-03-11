@@ -715,8 +715,8 @@ Deno.serve(async (req) => {
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
-        .eq('role', 'admin')
-        .single();
+        .in('role', ['admin', 'super_admin'])
+        .maybeSingle();
       
       isAdmin = !!roleData;
       adminRoleCache.set(userId, { isAdmin, timestamp: Date.now() });

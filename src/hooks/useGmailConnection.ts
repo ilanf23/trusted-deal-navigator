@@ -20,7 +20,7 @@ interface UseGmailConnectionOptions {
   returnPath?: string;
 }
 
-const SUPABASE_URL = 'https://pcwiwtajzqnayfwvqsbh.supabase.co';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 function mapMessages(data: any): GmailEmail[] {
   return (data?.messages || []).map((msg: any) => ({
