@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 
@@ -29,13 +28,6 @@ interface FeedLeftPanelProps {
   filterCounts: Record<string, number>;
 }
 
-const avatarColors: Record<string, string> = {
-  E: 'bg-sky-500',
-  B: 'bg-blue-600',
-  M: 'bg-pink-500',
-  W: 'bg-emerald-500',
-};
-
 const filterOptions = [
   'Email',
   'Phone Call',
@@ -56,10 +48,6 @@ const FeedLeftPanel = ({
   onFiltersChange,
   filterCounts,
 }: FeedLeftPanelProps) => {
-  const allowedNames = ['evan', 'brad', 'maura', 'wendy'];
-  const visibleMembers = teamMembers.filter(
-    (m) => allowedNames.includes(m.name.toLowerCase())
-  );
   const [filterSearch, setFilterSearch] = useState('');
 
   const filteredOptions = filterOptions.filter(f =>
@@ -97,36 +85,6 @@ const FeedLeftPanel = ({
         </div>
       </div>
 
-      {/* Team member avatars row */}
-      <div className="px-5 pb-3 flex items-center gap-1.5">
-        {visibleMembers.map((member) => {
-          const isActive = selectedTeamMember === member.name;
-          const initial = member.name.charAt(0).toUpperCase();
-          return (
-            <button
-              key={member.id}
-              onClick={() => onTeamMemberSelect(isActive ? null : member.name)}
-              className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold transition-all',
-                avatarColors[initial] || 'bg-gray-400',
-                isActive && 'ring-2 ring-offset-1 ring-purple-500'
-              )}
-              title={member.name}
-            >
-              {member.avatar_url ? (
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={member.avatar_url} alt={member.name} />
-                  <AvatarFallback className={cn('text-white font-bold text-xs', avatarColors[initial] || 'bg-gray-400')}>
-                    {initial}
-                  </AvatarFallback>
-                </Avatar>
-              ) : (
-                initial
-              )}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Filter search */}
       <div className="px-4 pb-2">

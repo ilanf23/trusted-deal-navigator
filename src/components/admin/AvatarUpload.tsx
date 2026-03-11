@@ -288,7 +288,7 @@ export const AvatarUpload = ({
         onClick={() => setIsOpen(true)}
         className={`relative cursor-pointer ${className} group/avatar`}
       >
-        <Avatar className={`${sizeClasses[size]} ring-2 ring-sidebar-border transition-all group-hover/avatar:ring-sidebar-primary`}>
+        <Avatar className={`${sizeClasses[size]} border border-sidebar-border/50 transition-all group-hover/avatar:border-sidebar-foreground/40`}>
           <AvatarImage src={currentAvatarUrl || undefined} alt="Profile" />
           <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-base font-medium">
             {fallbackInitials}

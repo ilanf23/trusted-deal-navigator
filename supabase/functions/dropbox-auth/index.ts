@@ -200,11 +200,11 @@ Deno.serve(async (req) => {
       // Calculate token expiry
       const tokenExpiry = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-      // Delete any existing connection (single shared row)
+      // Delete only the current user's existing connection (per-user model)
       await supabaseAdmin
         .from('dropbox_connections')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+        .eq('user_id', userId);
 
       const { error: insertError } = await supabaseAdmin
         .from('dropbox_connections')
@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
       const { error } = await supabaseAdmin
         .from('dropbox_connections')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+        .eq('user_id', userId);
 
       if (error) {
         console.error('Failed to disconnect:', error);
@@ -256,8 +256,8 @@ Deno.serve(async (req) => {
       const { data, error } = await supabaseAdmin
         .from('dropbox_connections')
         .select('email, connected_by, last_sync_at')
-        .limit(1)
-        .single();
+        .eq('user_id', userId)
+        .maybeSingle();
 
       if (error || !data) {
         return new Response(
