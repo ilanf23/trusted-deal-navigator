@@ -124,97 +124,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   const navSections: NavSection[] = useMemo(() => {
     const sections: NavSection[] = [];
 
-    // Check if user is Ilan first (developer with special dashboard)
-    if (teamMember?.name.toLowerCase() === 'ilan') {
-      // Top-level pages (no section heading)
-      sections.push({
-        title: '',
-        icon: LayoutDashboard,
-        items: [
-          { title: 'WOP', url: '/admin/ilan', icon: Code2 },
-          { title: 'Module Tracker', url: '/admin/ilan/module-tracker', icon: ClipboardList },
-          { title: 'Users & Roles', url: '/admin/ilan/users-roles', icon: Users },
-        ],
-        noCollapse: true,
-      });
-
-      // Workspace section
-      sections.push({
-        title: 'Workspace',
-        icon: Mail,
-        isLabel: true,
-        items: [
-          { title: 'Gmail', url: '/admin/ilan/gmail', icon: Mail },
-          { title: 'Dropbox', url: '/admin/dropbox', icon: HardDrive },
-          { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Bug },
-          { title: 'Tracking', url: '/admin/tracking', icon: Crosshair },
-        ],
-        noCollapse: true,
-      });
-
-      // Pipeline & CRM section
-      sections.push({
-        title: 'Pipeline',
-        icon: Kanban,
-        isLabel: true,
-        items: [
-          { title: 'Pipeline', url: '/admin/pipeline', icon: Kanban },
-          { title: 'Pipeline Test', url: '/admin/pipeline-test', icon: Kanban },
-          { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
-          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
-          { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },
-          { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
-        ],
-        noCollapse: true,
-      });
-
-      // Clients & Billing section
-      sections.push({
-        title: 'Clients & Billing',
-        icon: Users,
-        isLabel: true,
-        items: [
-          { title: 'Clients', url: '/admin/clients', icon: Users },
-          { title: 'Contracts', url: '/admin/contracts', icon: FileText },
-          { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
-          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
-        ],
-        noCollapse: true,
-      });
-
-      // Marketing section
-      sections.push({
-        title: 'Marketing',
-        icon: BarChart3,
-        isLabel: true,
-        items: [
-          { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
-          { title: 'Analytics', url: '/admin/marketing', icon: BarChart3 },
-        ],
-        noCollapse: true,
-      });
-
-      // Team section
-      sections.push({
-        title: 'Team',
-        icon: Users,
-        isLabel: true,
-        items: [
-          { title: 'Team Performance', url: '/admin/ilan/dev', icon: BarChart3 },
-          {
-            title: 'Evan',
-            url: '/admin/ilan/team/evan',
-            icon: User,
-            subItems: [
-              { title: 'Notes', url: '/admin/ilan/team/evan/notes', icon: FileText },
-              { title: 'Dev Notes', url: '/admin/ilan/team/evan/dev-notes', icon: Code2 },
-              { title: 'Bug Reports', url: '/admin/ilan/team/evan/bugs', icon: Bug },
-            ],
-          },
-        ],
-        noCollapse: true,
-      });
-    } else if (isOwner) {
+    if (isOwner) {
       sections.push({
         title: 'Dashboard',
         icon: LayoutDashboard,
@@ -431,7 +341,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
     const founderUsers = ['ilan', 'brad', 'adam'];
     const isFounder = founderUsers.includes(teamMember.name.toLowerCase());
     
-    if (isFounder) return `/superadmin/${teamMember.name.toLowerCase()}`;
+    if (isFounder) return '/admin/dashboard';
     if (isOwner && !isFounder) return '/superadmin';
     return '/admin/dashboard';
   }, [isOwner, teamMember]);
