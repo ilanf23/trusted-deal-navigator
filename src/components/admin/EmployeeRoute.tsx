@@ -32,7 +32,7 @@ const EmployeeRoute = ({ children, employeeName }: EmployeeRouteProps) => {
 
   // Check if user can access this specific employee's dashboard
   if (!canAccessDashboard(employeeName)) {
-    const founderUsers = ['ilan', 'brad', 'adam'];
+    const founderUsers = ['brad', 'adam'];
     const isFounder = founderUsers.includes(teamMember.name.toLowerCase());
     const redirectPath = isFounder 
       ? `/superadmin/${teamMember.name.toLowerCase()}`

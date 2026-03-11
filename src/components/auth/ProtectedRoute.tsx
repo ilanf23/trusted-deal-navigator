@@ -32,9 +32,13 @@ const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: 
   }
 
   // If requireAdmin, redirect non-owner team members to their own dashboard
+  // But allow access if they're already on an /admin/ path (their own routes)
   if (requireAdmin && teamMember && !teamMember.is_owner) {
-    const redirectPath = `/admin/${teamMember.name.toLowerCase()}`;
-    return <Navigate to={redirectPath} replace />;
+    const isOnAdminPath = location.pathname.startsWith('/admin/');
+    if (!isOnAdminPath) {
+      const redirectPath = `/admin/${teamMember.name.toLowerCase()}`;
+      return <Navigate to={redirectPath} replace />;
+    }
   }
 
   // Redirect admins away from client portal

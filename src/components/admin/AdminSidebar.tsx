@@ -131,9 +131,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         title: '',
         icon: LayoutDashboard,
         items: [
-          { title: 'WOP', url: '/superadmin/ilan', icon: Code2 },
-          { title: 'Module Tracker', url: '/superadmin/ilan/module-tracker', icon: ClipboardList },
-          { title: 'Users & Roles', url: '/superadmin/ilan/users-roles', icon: Users },
+          { title: 'WOP', url: '/admin/ilan', icon: Code2 },
+          { title: 'Module Tracker', url: '/admin/ilan/module-tracker', icon: ClipboardList },
+          { title: 'Users & Roles', url: '/admin/ilan/users-roles', icon: Users },
         ],
         noCollapse: true,
       });
@@ -144,10 +144,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: Mail,
         isLabel: true,
         items: [
-          { title: 'Gmail', url: '/superadmin/ilan/gmail', icon: Mail },
-          { title: 'Dropbox', url: '/superadmin/dropbox', icon: HardDrive },
-          { title: 'Bug Testing', url: '/superadmin/ilan/bugs', icon: Bug },
-          { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
+          { title: 'Gmail', url: '/admin/ilan/gmail', icon: Mail },
+          { title: 'Dropbox', url: '/admin/dropbox', icon: HardDrive },
+          { title: 'Bug Testing', url: '/admin/ilan/bugs', icon: Bug },
+          { title: 'Tracking', url: '/admin/tracking', icon: Crosshair },
         ],
         noCollapse: true,
       });
@@ -158,12 +158,12 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: Kanban,
         isLabel: true,
         items: [
-          { title: 'Pipeline', url: '/superadmin/pipeline', icon: Kanban },
-          { title: 'Pipeline Test', url: '/superadmin/pipeline-test', icon: Kanban },
-          { title: 'CRM Board', url: '/superadmin/crm', icon: Kanban },
-          { title: 'Leads', url: '/superadmin/leads', icon: UserPlus },
-          { title: 'Lender Programs', url: '/superadmin/lender-programs', icon: Building2 },
-          { title: 'Rate Watch', url: '/superadmin/rate-watch', icon: TrendingDown },
+          { title: 'Pipeline', url: '/admin/pipeline', icon: Kanban },
+          { title: 'Pipeline Test', url: '/admin/pipeline-test', icon: Kanban },
+          { title: 'CRM Board', url: '/admin/crm', icon: Kanban },
+          { title: 'Leads', url: '/admin/leads', icon: UserPlus },
+          { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },
+          { title: 'Rate Watch', url: '/admin/rate-watch', icon: TrendingDown },
         ],
         noCollapse: true,
       });
@@ -174,10 +174,10 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: Users,
         isLabel: true,
         items: [
-          { title: 'Clients', url: '/superadmin/clients', icon: Users },
-          { title: 'Contracts', url: '/superadmin/contracts', icon: FileText },
-          { title: 'Invoices', url: '/superadmin/invoices', icon: Receipt },
-          { title: 'Messages', url: '/superadmin/messages', icon: MessageSquare },
+          { title: 'Clients', url: '/admin/clients', icon: Users },
+          { title: 'Contracts', url: '/admin/contracts', icon: FileText },
+          { title: 'Invoices', url: '/admin/invoices', icon: Receipt },
+          { title: 'Messages', url: '/admin/messages', icon: MessageSquare },
         ],
         noCollapse: true,
       });
@@ -188,8 +188,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: BarChart3,
         isLabel: true,
         items: [
-          { title: 'Newsletter', url: '/superadmin/newsletter', icon: Newspaper },
-          { title: 'Analytics', url: '/superadmin/marketing', icon: BarChart3 },
+          { title: 'Newsletter', url: '/admin/newsletter', icon: Newspaper },
+          { title: 'Analytics', url: '/admin/marketing', icon: BarChart3 },
         ],
         noCollapse: true,
       });
@@ -200,15 +200,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: Users,
         isLabel: true,
         items: [
-          { title: 'Team Performance', url: '/superadmin/ilan/dev', icon: BarChart3 },
-          { 
-            title: 'Evan', 
-            url: '/superadmin/ilan/team/evan', 
+          { title: 'Team Performance', url: '/admin/ilan/dev', icon: BarChart3 },
+          {
+            title: 'Evan',
+            url: '/admin/ilan/team/evan',
             icon: User,
             subItems: [
-              { title: 'Notes', url: '/superadmin/ilan/team/evan/notes', icon: FileText },
-              { title: 'Dev Notes', url: '/superadmin/ilan/team/evan/dev-notes', icon: Code2 },
-              { title: 'Bug Reports', url: '/superadmin/ilan/team/evan/bugs', icon: Bug },
+              { title: 'Notes', url: '/admin/ilan/team/evan/notes', icon: FileText },
+              { title: 'Dev Notes', url: '/admin/ilan/team/evan/dev-notes', icon: Code2 },
+              { title: 'Bug Reports', url: '/admin/ilan/team/evan/bugs', icon: Bug },
             ],
           },
         ],

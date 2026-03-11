@@ -195,6 +195,14 @@ const App = () => (
                 <Route path="/admin/dropbox/callback" element={<DropboxCallback />} />
                 <Route path="/admin/inbox/callback" element={<AdminInboxCallback />} />
                 <Route path="/admin/calendar-callback" element={<CalendarCallback />} />
+                <Route path="/admin/pipeline-test" element={<AdminRoute><EmployeePipeline /></AdminRoute>} />
+                <Route path="/admin/crm" element={<AdminRoute><EmployeePipeline /></AdminRoute>} />
+                <Route path="/admin/clients" element={<AdminRoute><AdminClients /></AdminRoute>} />
+                <Route path="/admin/contracts" element={<AdminRoute><AdminContracts /></AdminRoute>} />
+                <Route path="/admin/invoices" element={<AdminRoute><AdminInvoices /></AdminRoute>} />
+                <Route path="/admin/newsletter" element={<AdminRoute><AdminNewsletter /></AdminRoute>} />
+                <Route path="/admin/marketing" element={<AdminRoute><AdminMarketing /></AdminRoute>} />
+                <Route path="/admin/tracking" element={<AdminRoute><AdminTracking /></AdminRoute>} />
                 {/* Legacy redirects */}
                 <Route path="/admin/evan" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
@@ -208,6 +216,15 @@ const App = () => (
               <Route element={<AdminRouteLayout />}>
                 <Route path="/admin/maura" element={<EmployeeRoute employeeName="Maura"><MaurasPage /></EmployeeRoute>} />
                 <Route path="/admin/wendy" element={<EmployeeRoute employeeName="Wendy"><WendysPage /></EmployeeRoute>} />
+                <Route path="/admin/ilan" element={<EmployeeRoute employeeName="Ilan"><IlansPage /></EmployeeRoute>} />
+                <Route path="/admin/ilan/dev" element={<EmployeeRoute employeeName="Ilan"><TeamPerformance /></EmployeeRoute>} />
+                <Route path="/admin/ilan/bugs" element={<EmployeeRoute employeeName="Ilan"><BugTesting /></EmployeeRoute>} />
+                <Route path="/admin/ilan/gmail" element={<EmployeeRoute employeeName="Ilan"><IlansGmail /></EmployeeRoute>} />
+                <Route path="/admin/ilan/team/evan/bugs" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanBugs /></EmployeeRoute>} />
+                <Route path="/admin/ilan/team/evan/dev-notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanDevNotes /></EmployeeRoute>} />
+                <Route path="/admin/ilan/team/evan/notes" element={<EmployeeRoute employeeName="Ilan"><IlanTeamEvanNotes /></EmployeeRoute>} />
+                <Route path="/admin/ilan/module-tracker" element={<EmployeeRoute employeeName="Ilan"><ModuleTracker /></EmployeeRoute>} />
+                <Route path="/admin/ilan/users-roles" element={<EmployeeRoute employeeName="Ilan"><UsersAndRoles /></EmployeeRoute>} />
               </Route>
 
               {/* Legacy redirects for old /admin shared pages */}
