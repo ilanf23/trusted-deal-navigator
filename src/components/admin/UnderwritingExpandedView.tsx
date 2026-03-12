@@ -934,6 +934,22 @@ export default function UnderwritingExpandedView() {
     enabled: !!leadId,
   });
 
+  const { data: lastContactType = null } = useQuery({
+    queryKey: ['lead-last-contact-type', leadId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('communication_type')
+        .eq('lead_id', leadId!)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data.communication_type;
+    },
+    enabled: !!leadId,
+  });
+
   const { data: contacts = [] } = useQuery({
     queryKey: ['lead-contacts', leadId],
     queryFn: async () => {
@@ -1392,7 +1408,7 @@ export default function UnderwritingExpandedView() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Details — fully editable */}
-        <div className="w-full md:w-[400px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card md:overflow-y-hidden overflow-y-visible">
+        <div className="w-full md:w-[320px] xl:w-[400px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
         <ScrollArea className="md:h-full">
           <div className="px-6 py-6 space-y-6">
 
@@ -1684,9 +1700,9 @@ export default function UnderwritingExpandedView() {
         </div>
 
         {/* CENTER: Activity */}
-        <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-muted/20">
           {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-2 md:grid-cols-4 gap-3 px-5 py-3.5 border-b border-border bg-card overflow-hidden">
+          <div className="shrink-0 grid grid-cols-2 md:grid-cols-5 gap-3 px-5 py-3.5 border-b border-border bg-card overflow-hidden">
             <StatBox
               value={interactionCount}
               label="Interactions"
@@ -1700,6 +1716,13 @@ export default function UnderwritingExpandedView() {
               bg="bg-white dark:bg-slate-900/80"
               border="border-slate-400"
               valueColor="text-slate-700 dark:text-slate-300"
+            />
+            <StatBox
+              value={lastContactType ?? '—'}
+              label="Last Contact Of"
+              bg="bg-white dark:bg-slate-900/80"
+              border="border-purple-500"
+              valueColor="text-purple-700 dark:text-purple-400"
             />
             <StatBox
               value={inactiveDays ?? '—'}
@@ -2037,7 +2060,7 @@ export default function UnderwritingExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <div className="w-full md:w-[260px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card flex flex-col">
+        <div className="w-full md:w-[220px] xl:w-[260px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-border">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Related</span>
           </div>

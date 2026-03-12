@@ -18,6 +18,7 @@ import {
   getNextStepSuggestion,
 } from '@/components/gmail/EvanGmailFeatures';
 import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
+import { useGmailPeopleSync } from '@/hooks/useGmailPeopleSync';
 
 const EMAILS_PER_PAGE = 50;
 
@@ -496,6 +497,13 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
     return crmEmails.some(crmEmail => senderEmail === crmEmail.toLowerCase());
   }, [crmEmails]);
 
+  // People sync + CRM context
+  const { allPeople, findPersonForEmail, isInternalSender, getCRMContext } = useGmailPeopleSync({
+    allEmails,
+    allLeads,
+    findLeadForEmail,
+  });
+
   // Generate AI draft for moving deal forward
   const handleMoveForward = useCallback(async (email: GmailEmail) => {
     const lead = findLeadForEmail(email);
@@ -898,6 +906,9 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
     findLeadForEmail, isExternalEmail,
     getNextStepSuggestion,
     extractSenderName, extractEmailAddress,
+
+    // People / CRM context
+    allPeople, findPersonForEmail, isInternalSender, getCRMContext,
 
     // Raw gmail hook for reconnect etc
     gmail,

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, Reply, ReplyAll, Forward, ListTodo, User } from 'lucide-react';
+import { ChevronDown, Reply, ReplyAll, Forward, ListTodo, User, Users } from 'lucide-react';
 import InlineReplyBox from '@/components/admin/inbox/InlineReplyBox';
 import { GmailEmail, ThreadMessage, extractSenderName, extractEmailAddress, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import { mockThreadMessages } from '@/components/gmail/EvanGmailFeatures';
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { appendSignature } from '@/lib/email-signature';
 import { EvansGmailDealSidebar } from './EvansGmailDealSidebar';
+import { EvansGmailContactSidebar } from './EvansGmailContactSidebar';
 import type { EvansGmailLogic } from '@/hooks/useEvansGmailLogic';
 
 interface EvansGmailEmailDetailProps {
@@ -35,9 +36,12 @@ export function EvansGmailEmailDetail({ logic }: EvansGmailEmailDetailProps) {
     setTaskInitialTitle, setTaskInitialDescription, setTaskInitialLeadId,
     generatingDraftForId,
     emailTemplates,
+    getCRMContext,
   } = logic;
 
   if (!selectedEmail) return null;
+
+  const crm = getCRMContext(selectedEmail);
 
   const handleReplyAll = () => {
     const senderEmail = extractEmailAddress(selectedEmail.from);
@@ -90,6 +94,8 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
   const baseMessages = mockThreadMessages[selectedEmail.threadId] || [];
   const sentReplies = localReplies[threadKey] || [];
   const allMessages = [...baseMessages, ...sentReplies];
+
+  const showContactButton = crm.type === 'lead' || crm.type === 'person';
 
   const renderThreadMessage = (msg: ThreadMessage, index: number) => {
     const isFromEvan = msg.from.toLowerCase().includes('evan');
@@ -160,22 +166,55 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
               </Button>
             )}
 
-            {selectedLead && isExternalEmail(selectedEmail) && (
+            {showContactButton && (
               <Button
                 variant={showDealSidebar ? "secondary" : "outline"}
                 size="sm"
                 onClick={() => setShowDealSidebar(!showDealSidebar)}
                 className="gap-2 ml-2"
               >
-                <User className="w-4 h-4" />
-                {showDealSidebar ? 'Hide Lead Info' : 'Show Lead Info'}
+                {crm.type === 'lead' ? <User className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                {showDealSidebar
+                  ? (crm.type === 'lead' ? 'Hide Lead Info' : 'Hide Contact Info')
+                  : (crm.type === 'lead' ? 'Show Lead Info' : 'Show Contact Info')
+                }
               </Button>
             )}
           </div>
         </div>
         <ScrollArea className="flex-1">
           <div className="p-6">
-            <h1 className="text-xl font-semibold mb-6 leading-tight">{selectedEmail.subject}</h1>
+            <h1 className="text-xl font-semibold mb-2 leading-tight">{selectedEmail.subject}</h1>
+
+            {/* CRM Label Badge */}
+            {crm.type === 'lead' && crm.stageName && (
+              <div className="flex items-center gap-2 mb-4">
+                <span
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: crm.stageColor }}
+                />
+                <span
+                  className="text-xs px-2.5 py-1 rounded-full font-medium"
+                  style={{
+                    backgroundColor: `${crm.stageColor}20`,
+                    color: crm.stageColor,
+                  }}
+                >
+                  {crm.stageName}
+                </span>
+                {crm.pipelineName && (
+                  <span className="text-xs text-muted-foreground">in {crm.pipelineName}</span>
+                )}
+              </div>
+            )}
+            {crm.type === 'person' && (
+              <div className="flex items-center gap-2 mb-4">
+                <Users className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-blue-100 text-blue-700">
+                  {crm.person?.contact_type || 'Prospect'}
+                </span>
+              </div>
+            )}
 
             {/* Thread Messages */}
             {allMessages.length > 0 ? (
@@ -347,12 +386,20 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
         </ScrollArea>
       </div>
 
-      {/* Deal Summary Sidebar */}
-      {showDealSidebar && selectedLead && isExternalEmail(selectedEmail) && (
+      {/* Deal Summary Sidebar (leads) */}
+      {showDealSidebar && crm.type === 'lead' && selectedLead && (
         <EvansGmailDealSidebar
           selectedLead={selectedLead}
           selectedEmail={selectedEmail}
           logic={logic}
+        />
+      )}
+
+      {/* Contact Sidebar (people) */}
+      {showDealSidebar && crm.type === 'person' && crm.person && (
+        <EvansGmailContactSidebar
+          person={crm.person}
+          onClose={() => setShowDealSidebar(false)}
         />
       )}
     </div>

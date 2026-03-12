@@ -630,11 +630,11 @@
   }
 
   /* Full-bleed pages: remove padding and max-width from AdminLayout wrappers */
-  .admin-portal main > div:has([data-full-bleed]) {
+  .admin-portal main > div:not([data-split-view]):has([data-full-bleed]) {
     padding: 0 !important;
     overflow: visible !important;
   }
-  .admin-portal main > div > div:has([data-full-bleed]) {
+  .admin-portal main > div:not([data-split-view]) > div:has([data-full-bleed]) {
     max-width: none !important;
   }
   /* Keep AdminLayout header visible on full-bleed pages */

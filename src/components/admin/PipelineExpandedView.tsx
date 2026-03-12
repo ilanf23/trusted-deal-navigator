@@ -668,6 +668,22 @@ export default function PipelineExpandedView() {
     enabled: !!leadId,
   });
 
+  const { data: lastContactType = null } = useQuery({
+    queryKey: ['pipeline-lead-last-contact-type', leadId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('evan_communications')
+        .select('communication_type')
+        .eq('lead_id', leadId!)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data.communication_type;
+    },
+    enabled: !!leadId,
+  });
+
   const { data: contacts = [] } = useQuery({
     queryKey: ['pipeline-lead-contacts', leadId],
     queryFn: async () => {
@@ -996,7 +1012,8 @@ export default function PipelineExpandedView() {
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Details — fully editable */}
-        <ScrollArea className="w-[400px] shrink-0 border-r border-border bg-card">
+        <div className="w-[320px] xl:w-[400px] shrink-0 border-r border-border bg-card overflow-hidden">
+        <ScrollArea className="h-full">
           <div className="px-6 py-6 space-y-6">
 
             {/* Primary Contact + Value */}
@@ -1276,11 +1293,12 @@ export default function PipelineExpandedView() {
             </div>
           </div>
         </ScrollArea>
+        </div>
 
         {/* CENTER: Activity */}
-        <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-muted/20">
           {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-4 gap-3 px-5 py-3.5 border-b border-border bg-card">
+          <div className="shrink-0 grid grid-cols-5 gap-3 px-5 py-3.5 border-b border-border bg-card">
             <StatBox
               value={interactionCount}
               label="Interactions"
@@ -1298,6 +1316,15 @@ export default function PipelineExpandedView() {
               border="border-slate-400"
               valueColor="text-slate-700 dark:text-slate-300"
               iconBg="bg-slate-100 dark:bg-slate-700/40"
+            />
+            <StatBox
+              value={lastContactType ?? '—'}
+              label="Last Contact Of"
+              icon={<MessageSquare className="h-3.5 w-3.5 text-purple-500" />}
+              bg="bg-white dark:bg-slate-900/80"
+              border="border-purple-500"
+              valueColor="text-purple-700 dark:text-purple-400"
+              iconBg="bg-purple-100 dark:bg-purple-900/40"
             />
             <StatBox
               value={inactiveDays ?? '—'}
@@ -1594,7 +1621,8 @@ export default function PipelineExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <ScrollArea className="w-[260px] shrink-0 border-l border-border bg-card">
+        <div className="w-[220px] xl:w-[260px] shrink-0 border-l border-border bg-card overflow-hidden">
+        <ScrollArea className="h-full">
           <div className="py-4 px-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
             {/* People */}
@@ -1901,6 +1929,7 @@ export default function PipelineExpandedView() {
             </RelatedSection>
           </div>
         </ScrollArea>
+        </div>
       </div>
     </div>
   );

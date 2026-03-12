@@ -1,12 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Search } from 'lucide-react';
 import { useState } from 'react';
-
-interface TeamMember {
-  id: string;
-  name: string;
-  avatar_url?: string | null;
-}
 
 interface FeedLeftPanelProps {
   selectedTeamMember: string | null;
@@ -40,8 +33,6 @@ const filterOptions = [
 
 const FeedLeftPanel = ({
   selectedTeamMember,
-  onTeamMemberSelect,
-  teamMembers,
   activityCounts,
   isSheet,
   selectedFilters,
@@ -89,13 +80,12 @@ const FeedLeftPanel = ({
       {/* Filter search */}
       <div className="px-4 pb-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             placeholder="Search Filters"
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
-            className="w-full h-8 pl-8 pr-3 text-xs bg-gray-50 border border-gray-200 rounded-md text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-300 focus:border-purple-300"
+            className="w-full h-8 pl-3 pr-3 text-xs bg-gray-50 border border-gray-200 rounded-md text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-300 focus:border-purple-300"
           />
         </div>
       </div>

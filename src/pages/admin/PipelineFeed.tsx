@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useFeedData, type FeedActivityType } from '@/hooks/useFeedData';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { Search, Bell, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Bell, CheckCircle, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 
 const FILTER_TYPE_MAP: Record<string, FeedActivityType> = {
@@ -190,13 +190,12 @@ const PipelineFeed = () => {
         <div className="flex items-center gap-4 px-4 sm:px-6 h-12 border-b border-gray-200 bg-white flex-shrink-0">
           <h1 className="text-[15px] font-semibold text-gray-900 whitespace-nowrap">Feed</h1>
           <div className="flex-1 max-w-xl mx-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search by name, email, domain or phone number"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-8 pl-9 pr-4 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-300 focus:border-purple-300 transition-all"
+              className="w-full h-8 pl-3 pr-4 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-300 focus:border-purple-300 transition-all"
             />
           </div>
           <Popover>

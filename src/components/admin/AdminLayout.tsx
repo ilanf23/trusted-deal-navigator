@@ -3,19 +3,67 @@ import AdminSidebar from './AdminSidebar';
 import FloatingInbox from './FloatingInbox';
 import FloatingBugReport from './FloatingBugReport';
 import AIEmailAssistant from './AIEmailAssistant';
-import { Menu, Moon, Sun, Undo2, Loader2 } from 'lucide-react';
+import { Menu, Moon, Sun, Undo2, Loader2, Columns2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { UndoProvider, useUndo } from '@/contexts/UndoContext';
 import { useAIAssistant } from '@/contexts/AIAssistantContext';
+import { SplitViewProvider, useSplitView } from '@/contexts/SplitViewContext';
+import SplitViewContainer from './splitview/SplitViewContainer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, createContext, useContext } from 'react';
 
-const AdminLayoutMountedContext = createContext(false);
+export const AdminLayoutMountedContext = createContext(false);
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
+
+const SplitViewToggle = () => {
+  const { isActive, toggleSplitView } = useSplitView();
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSplitView}
+            className={`h-10 w-10 md:h-11 md:w-11 rounded-xl hidden lg:inline-flex ${
+              isActive ? 'bg-primary/10 text-primary' : ''
+            }`}
+          >
+            <Columns2 className="h-5 w-5 md:h-6 md:w-6" />
+            <span className="sr-only">Toggle split view</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isActive ? 'Exit Split View' : 'Split View'}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+const SplitViewContent = ({ children }: AdminLayoutProps) => {
+  const { isActive } = useSplitView();
+
+  if (isActive) {
+    return (
+      <div data-split-view className="flex-1 min-h-0 overflow-hidden relative">
+        <SplitViewContainer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-auto">
+      <div className="max-w-[1800px] mx-auto">
+        {children}
+      </div>
+    </div>
+  );
+};
 
 const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -33,7 +81,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
           aiChatOpen={aiChatOpen}
         />
 
-        <main className="flex-1 flex flex-col min-h-screen w-full overflow-x-auto">
+        <main className="flex-1 flex flex-col h-screen min-w-0 overflow-x-auto">
           {/* Top Bar - responsive padding and layout */}
           <header className="h-14 md:h-16 flex items-center justify-between border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8">
             <div className="flex items-center gap-2 md:gap-5">
@@ -77,6 +125,9 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
                 </Tooltip>
               </TooltipProvider>
 
+              {/* Split View Toggle */}
+              <SplitViewToggle />
+
               {/* Theme Toggle */}
               <Button
                 variant="ghost"
@@ -91,12 +142,8 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
             </div>
           </header>
           
-          {/* Main Content Area - responsive padding */}
-          <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-auto">
-            <div className="max-w-[1800px] mx-auto">
-              {children}
-            </div>
-          </div>
+          {/* Main Content Area */}
+          <SplitViewContent>{children}</SplitViewContent>
         </main>
         
         <FloatingInbox isOpen={inboxOpen} onClose={() => setInboxOpen(false)} />
@@ -123,7 +170,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   return (
     <AdminLayoutMountedContext.Provider value={true}>
       <UndoProvider>
-        <AdminLayoutContent>{children}</AdminLayoutContent>
+        <SplitViewProvider>
+          <AdminLayoutContent>{children}</AdminLayoutContent>
+        </SplitViewProvider>
       </UndoProvider>
     </AdminLayoutMountedContext.Provider>
   );

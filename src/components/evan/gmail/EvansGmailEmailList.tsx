@@ -1,18 +1,22 @@
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, ArrowRight, ArrowDown, Building, Clock, MessageSquare, Star, MoreHorizontal, MailOpen, ListTodo, FileText } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Loader2, ArrowRight, ArrowDown, Building, Clock, MessageSquare, Star, MailOpen, ListTodo, FileText, EyeOff, Eye, Users } from 'lucide-react';
+import { useHiddenThreads } from '@/hooks/useHiddenThreads';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { GmailEmail, extractSenderName } from '@/components/gmail/gmailHelpers';
 import { getNextStepSuggestion } from '@/components/gmail/EvanGmailFeatures';
 import { format, formatDistanceToNow } from 'date-fns';
 import { appendSignature } from '@/lib/email-signature';
 import type { EvansGmailLogic } from '@/hooks/useEvansGmailLogic';
+
+const contactTypeConfig: Record<string, { bg: string; text: string }> = {
+  Client: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  Prospect: { bg: 'bg-blue-100', text: 'text-blue-700' },
+  'Referral Partner': { bg: 'bg-amber-100', text: 'text-amber-700' },
+  Lender: { bg: 'bg-indigo-100', text: 'text-indigo-700' },
+  Other: { bg: 'bg-slate-100', text: 'text-slate-700' },
+};
 
 interface EvansGmailEmailListProps {
   logic: EvansGmailLogic;
@@ -27,7 +31,7 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
     readEmailIds,
     handleSelectEmail,
     handleMarkUnread,
-    isExternalEmail,
+    getCRMContext,
     findLeadForEmail,
     generatingDraftForId,
     handleMoveForward,
@@ -36,6 +40,9 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
     setTaskInitialDescription,
     setTaskInitialLeadId,
   } = logic;
+
+  const { teamMember } = useTeamMember();
+  const { isHiddenByMe, hideThread, unhideThread } = useHiddenThreads(teamMember?.id);
 
   return (
     <div className="h-full flex flex-col">
@@ -51,11 +58,12 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
         ) : (
           <div>
             {paginatedEmails.map((email) => {
-              const isExternal = isExternalEmail(email);
-              const lead = findLeadForEmail(email);
-              const stageName = lead?.pipeline_leads?.[0]?.pipeline_stages?.name;
-              const stageColor = lead?.pipeline_leads?.[0]?.pipeline_stages?.color;
+              const crm = getCRMContext(email);
+              const isElevated = crm.type === 'lead' || crm.type === 'person';
               const isRead = email.isRead || readEmailIds[email.id];
+
+              const contactType = crm.type === 'person' ? (crm.person?.contact_type || 'Prospect') : null;
+              const pillStyle = contactType ? (contactTypeConfig[contactType] || contactTypeConfig.Other) : null;
 
               return (
                 <div
@@ -65,7 +73,7 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                     !isRead
                       ? 'bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50'
                       : 'bg-white dark:bg-background hover:bg-muted/50'
-                  } ${isExternal ? 'py-5 px-4' : 'p-3'}`}
+                  } ${isElevated ? 'py-5 px-4' : 'p-3'}`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <button
@@ -74,61 +82,69 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                     >
                       <Star className="w-4 h-4 fill-amber-400" />
                     </button>
-                    <Avatar className={isExternal ? 'w-8 h-8' : 'w-6 h-6'}>
+                    <Avatar className={isElevated ? 'w-8 h-8' : 'w-6 h-6'}>
                       {email.senderPhoto && <AvatarImage src={email.senderPhoto} />}
-                      <AvatarFallback className={isExternal ? 'text-sm' : 'text-xs'}>
+                      <AvatarFallback className={isElevated ? 'text-sm' : 'text-xs'}>
                         {extractSenderName(email.from).charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className={`truncate ${!isRead ? 'font-semibold' : ''} ${isExternal ? 'text-base' : 'text-sm'}`}>
+                    <span className={`truncate ${!isRead ? 'font-semibold' : ''} ${isElevated ? 'text-base' : 'text-sm'}`}>
                       {extractSenderName(email.from)}
                     </span>
-                    {isExternal && stageName && (
+                    {/* Lead stage badge */}
+                    {crm.type === 'lead' && crm.stageName && (
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
                         style={{
-                          backgroundColor: stageColor ? `${stageColor}20` : 'hsl(var(--muted))',
-                          color: stageColor || 'hsl(var(--muted-foreground))'
+                          backgroundColor: crm.stageColor ? `${crm.stageColor}20` : 'hsl(var(--muted))',
+                          color: crm.stageColor || 'hsl(var(--muted-foreground))'
                         }}
                       >
-                        {stageName}
+                        {crm.stageName}
                       </span>
                     )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem onClick={() => handleMarkUnread(email.id)}>
-                          <MailOpen className="w-4 h-4 mr-2" />
-                          Mark as unread
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          const senderName = extractSenderName(email.from);
-                          setTaskInitialTitle(`Follow up: ${email.subject}`);
-                          setTaskInitialDescription(`From: ${senderName}\n\nEmail snippet: ${email.snippet}`);
-                          setTaskInitialLeadId(lead?.id || null);
-                          setTaskDialogOpen(true);
-                        }}>
-                          <ListTodo className="w-4 h-4 mr-2" />
-                          Add to do task
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Person contact type badge */}
+                    {crm.type === 'person' && pillStyle && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${pillStyle.bg} ${pillStyle.text}`}>
+                        {contactType}
+                      </span>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" title="Mark as unread" onClick={(e) => { e.stopPropagation(); handleMarkUnread(email.id); }}>
+                      <MailOpen className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" title="Add to do task" onClick={(e) => {
+                      e.stopPropagation();
+                      const senderName = extractSenderName(email.from);
+                      setTaskInitialTitle(`Follow up: ${email.subject}`);
+                      setTaskInitialDescription(`From: ${senderName}\n\nEmail snippet: ${email.snippet}`);
+                      setTaskInitialLeadId(crm.lead?.id || null);
+                      setTaskDialogOpen(true);
+                    }}>
+                      <ListTodo className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" title={isHiddenByMe(email.threadId) ? 'Unhide thread' : 'Hide from others'} onClick={(e) => {
+                      e.stopPropagation();
+                      if (isHiddenByMe(email.threadId)) {
+                        unhideThread(email.threadId);
+                      } else {
+                        hideThread(email.threadId);
+                      }
+                    }}>
+                      {isHiddenByMe(email.threadId) ? <EyeOff className="w-3.5 h-3.5 text-amber-500" /> : <Eye className="w-3.5 h-3.5" />}
+                    </Button>
                     <span className="flex-1" />
                     <span className="text-xs text-muted-foreground">
                       {format(new Date(email.date), 'MMM d')}
                     </span>
                   </div>
-                  <p className={`truncate ${!isRead ? 'font-medium' : ''} ${isExternal ? 'text-base mb-1' : 'text-sm'}`}>
+                  <p className={`truncate ${!isRead ? 'font-medium' : ''} ${isElevated ? 'text-base mb-1' : 'text-sm'}`}>
                     {email.subject}
                   </p>
-                  <p className={`text-muted-foreground mt-0.5 ${isExternal ? 'text-sm line-clamp-2' : 'text-xs truncate'}`}>
+                  <p className={`text-muted-foreground mt-0.5 ${isElevated ? 'text-sm line-clamp-2' : 'text-xs truncate'}`}>
                     {email.snippet}
                   </p>
-                  {isExternal && (
+                  {/* Lead-specific: Move Forward + metadata chips */}
+                  {crm.type === 'lead' && (
                     <div className="mt-2">
                       <Button
                         size="sm"
@@ -149,26 +165,26 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                       <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                         <ArrowDown className="w-3 h-3 flex-shrink-0 rotate-[-90deg]" />
                         <span className="italic">
-                          {getNextStepSuggestion(stageName, email.snippet, lead)}
+                          {getNextStepSuggestion(crm.stageName, email.snippet, crm.lead)}
                         </span>
                       </div>
-                      {lead && (
+                      {crm.lead && (
                         <div className="flex flex-wrap items-center gap-2 mt-2">
                           <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300">
                             <MessageSquare className="w-3 h-3 flex-shrink-0" />
                             <span>
-                              {lead.last_activity_at
-                                ? formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true })
-                                : formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })
+                              {crm.lead.last_activity_at
+                                ? formatDistanceToNow(new Date(crm.lead.last_activity_at), { addSuffix: true })
+                                : formatDistanceToNow(new Date(crm.lead.created_at), { addSuffix: true })
                               }
                             </span>
                           </div>
                           {(() => {
-                            const stageDate = lead.qualified_at
-                              ? new Date(lead.qualified_at)
-                              : lead.converted_at
-                                ? new Date(lead.converted_at)
-                                : new Date(lead.created_at);
+                            const stageDate = crm.lead.qualified_at
+                              ? new Date(crm.lead.qualified_at)
+                              : crm.lead.converted_at
+                                ? new Date(crm.lead.converted_at)
+                                : new Date(crm.lead.created_at);
                             return (
                               <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-xs font-medium text-amber-700 dark:text-amber-400">
                                 <Clock className="w-3 h-3 flex-shrink-0" />
@@ -177,7 +193,7 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                             );
                           })()}
                           {(() => {
-                            const response = lead.lead_responses?.[0];
+                            const response = crm.lead.lead_responses?.[0];
                             const loanAmount = Number(response?.loan_amount) || Number(response?.funding_amount) || 0;
                             if (loanAmount > 0) {
                               const formatted = loanAmount >= 1000000
