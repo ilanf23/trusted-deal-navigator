@@ -179,11 +179,23 @@ Deno.serve(async (req) => {
   const resolvedClients = clientIdentities.length ? clientIdentities : ['clx-admin'];
   const dialTimeoutSeconds = 45;
 
+  // CRITICAL: Prevent recursive loop — if the fallback number is the same as
+  // the Twilio phone number (toNumber), dialing it creates a new inbound call
+  // that triggers this function again, consuming concurrency and cancelling
+  // the browser client leg before it can ring.
+  const normalizePhone = (n: string) => n.replace(/\D/g, '').slice(-10);
+  const safeFallback =
+    fallbackNumber &&
+    normalizePhone(fallbackNumber) !== normalizePhone(toNumber) &&
+    normalizePhone(fallbackNumber) !== normalizePhone(callerId)
+      ? fallbackNumber
+      : '';
+
   const routingDecision: RoutingDecision = {
     clientIdentities: resolvedClients,
-    fallbackNumber: fallbackNumber || null,
+    fallbackNumber: safeFallback || null,
     dialTimeoutSeconds,
-    hasFallback: !!fallbackNumber,
+    hasFallback: !!safeFallback,
   };
 
   console.log(
@@ -201,7 +213,7 @@ Deno.serve(async (req) => {
     statusCallbackUrl,
     clientIdentities: resolvedClients,
     callerId: callerId || undefined,
-    fallbackNumber: fallbackNumber || undefined,
+    fallbackNumber: safeFallback || undefined,
   });
 
   const responseTimeMs = performance.now() - startedAt;

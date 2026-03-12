@@ -60,14 +60,14 @@ const PanelSkeleton = () => (
 );
 
 const SplitViewPanel = ({ side, pageKey }: SplitViewPanelProps) => {
-  const entry = pageRegistry.get(pageKey);
+  const entry = pageKey ? pageRegistry.get(pageKey) : null;
 
   if (!entry) {
     return (
       <div className="flex flex-col h-full">
         <PageSelector side={side} />
-        <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-          Page not found
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-sm gap-1.5">
+          {pageKey ? 'Page not found' : 'Select a page from the dropdown above'}
         </div>
       </div>
     );

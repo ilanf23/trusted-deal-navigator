@@ -159,3 +159,40 @@ export const pagesBySection = pages.reduce<Record<string, PageEntry[]>>(
 );
 
 export const allPages = pages;
+
+/**
+ * Maps URL path segments (after stripping /admin/<name>/ or /superadmin/<name>/ prefix)
+ * to a pageRegistry key.  Ordered longest-first so nested routes match before parents.
+ */
+const pathToKeyMap: [string, string][] = [
+  ['pipeline/feed', 'feed'],
+  ['pipeline/underwriting', 'underwriting'],
+  ['pipeline/contacts/people', 'people'],
+  ['pipeline/contacts/companies', 'companies'],
+  ['pipeline', 'pipeline'],
+  ['dashboard', 'dashboard'],
+  ['scorecard', 'scorecard'],
+  ['lender-programs', 'lender-programs'],
+  ['tasks', 'tasks'],
+  ['calendar', 'calendar'],
+  ['calls', 'calls'],
+  ['gmail', 'gmail'],
+  ['dropbox', 'dropbox'],
+  ['rate-watch', 'rate-watch'],
+  ['messages', 'messages'],
+  ['bug-reporting', 'bug-reporting'],
+];
+
+/** Resolve a full pathname (e.g. "/admin/pipeline/contacts/people") to a page key. */
+export function resolvePageKeyFromPath(pathname: string): string | null {
+  // Strip prefix: /admin/ (no name) or /superadmin/<name>/
+  const stripped = pathname
+    .replace(/^\/superadmin\/[^/]+\//, '')
+    .replace(/^\/admin\//, '');
+  for (const [segment, key] of pathToKeyMap) {
+    if (stripped === segment || stripped.startsWith(segment + '/')) {
+      return key;
+    }
+  }
+  return null;
+}

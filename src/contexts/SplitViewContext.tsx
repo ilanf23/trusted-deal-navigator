@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { resolvePageKeyFromPath } from '@/components/admin/splitview/pageRegistry';
 
 interface SplitViewState {
   isActive: boolean;
@@ -90,8 +91,16 @@ export const SplitViewProvider = ({ children }: { children: React.ReactNode }) =
   }, [state.isActive]);
 
   const toggleSplitView = useCallback(() => {
-    setState(prev => ({ ...prev, isActive: !prev.isActive }));
-  }, []);
+    setState(prev => {
+      if (prev.isActive) {
+        return { ...prev, isActive: false };
+      }
+      // Activating: resolve the current URL to a page key for the left panel
+      const currentKey = resolvePageKeyFromPath(location.pathname) ?? 'dashboard';
+      // Right panel starts blank — user picks the page
+      return { ...prev, isActive: true, leftPage: currentKey, rightPage: '' };
+    });
+  }, [location.pathname]);
 
   const exitSplitView = useCallback(() => {
     setState(prev => ({ ...prev, isActive: false }));

@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowRightLeft, Maximize2 } from 'lucide-react';
-import { pagesBySection, pageRegistry } from './pageRegistry';
+import { pagesBySection } from './pageRegistry';
 import { useSplitView } from '@/contexts/SplitViewContext';
 
 interface PageSelectorProps {
@@ -24,7 +24,6 @@ const PageSelector = ({ side }: PageSelectorProps) => {
 
   const currentPage = side === 'left' ? leftPage : rightPage;
   const setPage = side === 'left' ? setLeftPage : setRightPage;
-  const entry = pageRegistry.get(currentPage);
 
   const handleExpand = () => {
     // Exit split view — the current browser route stays as-is
@@ -33,12 +32,9 @@ const PageSelector = ({ side }: PageSelectorProps) => {
 
   return (
     <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border bg-muted/30">
-      <Select value={currentPage} onValueChange={setPage}>
+      <Select value={currentPage || undefined} onValueChange={setPage}>
         <SelectTrigger className="h-7 w-[180px] text-xs border-none bg-transparent shadow-none focus:ring-0 focus:ring-offset-0">
-          <div className="flex items-center gap-1.5">
-            {entry && <entry.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-            <SelectValue />
-          </div>
+          <SelectValue placeholder="Select a page..." />
         </SelectTrigger>
         <SelectContent>
           {sectionOrder.map(section => {
