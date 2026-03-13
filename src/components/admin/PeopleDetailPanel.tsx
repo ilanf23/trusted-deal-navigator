@@ -124,7 +124,7 @@ function useInlineSave(
     }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -274,7 +274,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', personId);
     setSaving(false);
@@ -348,7 +348,7 @@ function EditableNotes({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ notes: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -440,9 +440,9 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
     queryKey: ['people-activity-timeline', 'activities', person.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('people_activities')
+        .from('lead_activities')
         .select('id, activity_type, title, content, created_at')
-        .eq('person_id', person.id)
+        .eq('lead_id', person.id)
         .order('created_at', { ascending: false });
       return data || [];
     },
@@ -591,9 +591,10 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
     queryKey: ['people-related', 'tasks', person.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('people_tasks')
-        .select('id, title, status, due_date')
-        .eq('person_id', person.id)
+        .from('lead_activities')
+        .select('id, title, activity_type, content, created_at')
+        .eq('lead_id', person.id)
+        .eq('activity_type', 'task')
         .order('created_at', { ascending: false });
       return data || [];
     },
@@ -657,26 +658,20 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
             <p className="text-xs text-muted-foreground italic py-1">No tasks</p>
           ) : (
             <div className="space-y-1.5 pt-1">
-              {tasks.map((t) => {
-                const isCompleted = t.status === 'completed';
-                return (
-                  <div key={t.id} className={`flex items-center gap-2 ${isCompleted ? 'opacity-50' : ''}`}>
-                    <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
-                      isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/50 border-emerald-300 dark:border-emerald-700' : 'border-border'
-                    }`}>
-                      {isCompleted && <Check className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />}
+              {tasks.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded border flex items-center justify-center shrink-0 border-border">
                     </div>
-                    <span className={`text-[12px] truncate flex-1 ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                    <span className="text-[12px] truncate flex-1 text-foreground">
                       {t.title}
                     </span>
-                    {t.status && !isCompleted && (
-                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 rounded-full shrink-0">
-                        {t.status}
-                      </Badge>
+                    {t.created_at && (
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                        {formatDate(t.created_at)}
+                      </span>
                     )}
                   </div>
-                );
-              })}
+              ))}
             </div>
           )}
         </CollapsibleContent>
@@ -731,7 +726,7 @@ export default function PeopleDetailPanel({
   const gradient = getAvatarGradient(person.name);
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
-    queryClient.invalidateQueries({ queryKey: ['people-list'] });
+    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
     if (onPersonUpdate) {
       if (field === 'tags') {
         try {

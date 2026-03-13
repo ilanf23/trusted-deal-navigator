@@ -41,28 +41,16 @@ interface TeamMember {
 interface UnderwritingDetailPanelProps {
   lead: Lead;
   stageConfig: Record<string, StageConfigEntry>;
+  currentStageId?: string;
   teamMemberMap: Record<string, string>;
   teamMembers?: TeamMember[];
   formatValue: (v: number) => string;
   fakeValue: (id: string) => number;
   onClose: () => void;
   onExpand?: () => void;
-  onStageChange?: (leadId: string, newStatus: LeadStatus) => void;
+  onStageChange?: (leadId: string, newStatus: string) => void;
   onLeadUpdate?: (updatedLead: Lead) => void;
 }
-
-const UNDERWRITING_STATUSES: LeadStatus[] = [
-  'review_kill_keep',
-  'initial_review',
-  'waiting_on_needs_list',
-  'waiting_on_client',
-  'complete_files_for_review',
-  'need_structure_from_brad',
-  'maura_underwriting',
-  'brad_underwriting',
-  'uw_paused',
-  'ready_for_wu_approval',
-];
 
 function getAvatarGradient(name: string) {
   const gradients = [
@@ -887,6 +875,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
 export default function UnderwritingDetailPanel({
   lead,
   stageConfig,
+  currentStageId,
   teamMemberMap,
   teamMembers = [],
   formatValue,
@@ -899,13 +888,15 @@ export default function UnderwritingDetailPanel({
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'related'>('details');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const stageCfg = stageConfig[lead.status];
+  const stageKeys = useMemo(() => Object.keys(stageConfig), [stageConfig]);
+  const activeStageKey = currentStageId ?? lead.status;
+  const stageCfg = stageConfig[activeStageKey];
   const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? '\u2014') : '\u2014';
   const dealValue = fakeValue(lead.id);
   const initial = lead.name[0]?.toUpperCase() ?? '?';
   const gradient = getAvatarGradient(lead.name);
   const daysInStage = daysSince(lead.updated_at);
-  const currentStageIdx = UNDERWRITING_STATUSES.indexOf(lead.status as LeadStatus);
+  const currentStageIdx = stageKeys.indexOf(activeStageKey);
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
@@ -1011,14 +1002,14 @@ export default function UnderwritingDetailPanel({
               </div>
               {/* Progress dots */}
               <div className="flex items-center gap-0.5 mb-3">
-                {UNDERWRITING_STATUSES.map((status, idx) => {
-                  const cfg = stageConfig[status];
-                  const isCurrent = status === lead.status;
+                {stageKeys.map((stageKey, idx) => {
+                  const cfg = stageConfig[stageKey];
+                  const isCurrent = stageKey === activeStageKey;
                   const isPast = idx < currentStageIdx;
                   return (
                     <div
-                      key={status}
-                      title={cfg?.label ?? status}
+                      key={stageKey}
+                      title={cfg?.label ?? stageKey}
                       className={`flex-1 h-1.5 rounded-full transition-all ${
                         isCurrent ? `${cfg?.dot ?? 'bg-muted-foreground'} shadow-sm ring-2 ring-offset-1 ring-border` : isPast ? 'bg-blue-400' : 'bg-border'
                       }`}
@@ -1028,7 +1019,7 @@ export default function UnderwritingDetailPanel({
               </div>
               {/* Stage dropdown */}
               {onStageChange && (
-                <Select value={lead.status} onValueChange={(v) => onStageChange(lead.id, v as LeadStatus)}>
+                <Select value={activeStageKey} onValueChange={(v) => onStageChange(lead.id, v)}>
                   <SelectTrigger className="h-9 w-full text-xs border-border bg-card rounded-lg">
                     <div className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full shrink-0 ${stageCfg?.dot ?? 'bg-muted-foreground'}`} />
@@ -1036,7 +1027,7 @@ export default function UnderwritingDetailPanel({
                     </div>
                   </SelectTrigger>
                   <SelectContent>
-                    {UNDERWRITING_STATUSES.map((s) => {
+                    {stageKeys.map((s) => {
                       const cfg = stageConfig[s];
                       return (
                         <SelectItem key={s} value={s} className="text-xs">

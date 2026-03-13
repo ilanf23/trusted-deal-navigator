@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
-import FloatingAIChat from "@/components/admin/FloatingAIChat";
+import CLXAssistant from "@/components/ai/CLXAssistant";
 import { CallProvider } from "@/contexts/CallContext";
 import { IncomingCallPopup } from "@/components/evan/IncomingCallPopup";
 import { useEdgeFunctionWarmup } from "@/hooks/useEdgeFunctionWarmup";
@@ -46,10 +46,12 @@ import EmployeePipeline from "./pages/admin/EmployeePipeline";
 import Pipeline from "./pages/admin/Pipeline";
 import PipelineFeed from "./pages/admin/PipelineFeed";
 import Underwriting from "./pages/admin/Underwriting";
+import LenderManagement from "./pages/admin/LenderManagement";
 import People from "./pages/admin/People";
 import Companies from "./pages/admin/Companies";
 import UnderwritingExpandedView from "./components/admin/UnderwritingExpandedView";
 import PipelineExpandedView from "./components/admin/PipelineExpandedView";
+import LenderManagementExpandedView from "./components/admin/LenderManagementExpandedView";
 import PeopleExpandedView from "./components/admin/PeopleExpandedView";
 import CompanyExpandedView from "./components/admin/CompanyExpandedView";
 import Tasks from "./pages/admin/Tasks";
@@ -77,6 +79,7 @@ import CalendarCallback from "./pages/admin/CalendarCallback";
 import SheetsCallback from "./pages/admin/SheetsCallback";
 import DropboxPage from "./pages/admin/Dropbox";
 import DropboxCallback from "./pages/admin/DropboxCallback";
+import AIChanges from "./pages/admin/AIChanges";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
@@ -112,9 +115,8 @@ const App = () => (
           <Toaster />
           <Sonner />
           <AIAssistantProvider>
-            <FloatingAIChat />
-
             <BrowserRouter>
+              <CLXAssistant />
               <CallProvider>
               <Routes>
               <Route path="/" element={<PublicLayout><Index /></PublicLayout>} />
@@ -147,6 +149,7 @@ const App = () => (
                 <Route path="/superadmin/rate-watch" element={<AdminRateWatch />} />
                 <Route path="/superadmin/lender-programs" element={<LenderPrograms />} />
                 <Route path="/superadmin/tracking" element={<AdminTracking />} />
+                <Route path="/superadmin/ai-changes" element={<AIChanges />} />
                 <Route path="/superadmin/dropbox" element={<DropboxPage />} />
                 <Route path="/superadmin/dropbox/callback" element={<DropboxCallback />} />
                 <Route path="/superadmin/inbox/callback" element={<AdminInboxCallback />} />
@@ -174,9 +177,11 @@ const App = () => (
                 <Route path="/admin/pipeline" element={<AdminRoute><Pipeline /></AdminRoute>} />
                 <Route path="/admin/pipeline/feed" element={<AdminRoute><PipelineFeed /></AdminRoute>} />
                 <Route path="/admin/pipeline/underwriting" element={<AdminRoute><Underwriting /></AdminRoute>} />
+                <Route path="/admin/pipeline/lender-management" element={<AdminRoute><LenderManagement /></AdminRoute>} />
                 <Route path="/admin/pipeline/contacts/people" element={<AdminRoute><People /></AdminRoute>} />
                 <Route path="/admin/pipeline/contacts/companies" element={<AdminRoute><Companies /></AdminRoute>} />
                 <Route path="/admin/pipeline/underwriting/lead/:leadId" element={<AdminRoute><UnderwritingExpandedView /></AdminRoute>} />
+                <Route path="/admin/pipeline/lender-management/lead/:leadId" element={<AdminRoute><LenderManagementExpandedView /></AdminRoute>} />
                 <Route path="/admin/pipeline/lead/:leadId" element={<AdminRoute><PipelineExpandedView /></AdminRoute>} />
                 <Route path="/admin/pipeline/contacts/people/:personId" element={<AdminRoute><PeopleExpandedView /></AdminRoute>} />
                 <Route path="/admin/pipeline/contacts/companies/:companyId" element={<AdminRoute><CompanyExpandedView /></AdminRoute>} />

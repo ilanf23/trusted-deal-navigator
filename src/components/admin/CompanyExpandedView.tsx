@@ -42,6 +42,7 @@ interface Company {
   last_contacted: string | null;
   created_at: string;
   updated_at: string;
+  deals_count?: number;
 }
 
 /* ─── Constants ─── */
@@ -84,7 +85,12 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
 };
 
-/* ─── Inline Save Hook (companies table) ─── */
+/* ─── Inline Save Hook (leads table) ─── */
+
+// Map Company field names to leads table column names
+const FIELD_TO_COLUMN: Record<string, string> = {
+  contact_name: 'name',
+};
 
 function useInlineSave(
   companyId: string,
@@ -107,15 +113,22 @@ function useInlineSave(
       setEditing(false);
       return;
     }
+    // email_domain is derived from email, not a direct column
+    if (field === 'email_domain') {
+      toast.info('Email domain is derived from the lead email');
+      setEditing(false);
+      return;
+    }
     setSaving(true);
     const saveValue = transform ? transform(trimmed) : (trimmed || null);
+    const dbField = FIELD_TO_COLUMN[field] ?? field;
     const { error } = await supabase
-      .from('companies')
-      .update({ [field]: saveValue } as any)
+      .from('leads')
+      .update({ [dbField]: saveValue } as any)
       .eq('id', companyId);
     setSaving(false);
     if (error) {
-      console.error('CompanyExpandedView save error:', { field, companyId, saveValue, error });
+      console.error('CompanyExpandedView save error:', { field: dbField, companyId, saveValue, error });
       toast.error('Failed to save');
       return;
     }
@@ -265,7 +278,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('companies')
+      .from('leads')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', companyId);
     setSaving(false);
@@ -338,7 +351,7 @@ function EditableNotes({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('companies')
+      .from('leads')
       .update({ notes: trimmed || null } as any)
       .eq('id', companyId);
     setSaving(false);
@@ -483,7 +496,7 @@ export default function CompanyExpandedView() {
   /* ── Field saved handler ── */
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
-    queryClient.invalidateQueries({ queryKey: ['companies-list'] });
+    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
     toast.success('Updated');
   }, [companyId, queryClient]);
 
@@ -491,7 +504,7 @@ export default function CompanyExpandedView() {
   const handleContactTypeChange = useCallback(async (newType: string) => {
     if (!companyId) return;
     const { error } = await supabase
-      .from('companies')
+      .from('leads')
       .update({ contact_type: newType })
       .eq('id', companyId);
     if (error) {
@@ -500,14 +513,14 @@ export default function CompanyExpandedView() {
     }
     toast.success('Contact type updated');
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
-    queryClient.invalidateQueries({ queryKey: ['companies-list'] });
+    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
   }, [companyId, queryClient]);
 
   /* ── Owner change ── */
   const handleOwnerChange = useCallback(async (newOwner: string) => {
     if (!companyId) return;
     const { error } = await supabase
-      .from('companies')
+      .from('leads')
       .update({ assigned_to: newOwner || null } as any)
       .eq('id', companyId);
     if (error) {
@@ -516,7 +529,7 @@ export default function CompanyExpandedView() {
     }
     toast.success('Owner updated');
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
-    queryClient.invalidateQueries({ queryKey: ['companies-list'] });
+    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
   }, [companyId, queryClient]);
 
   /* ── Save activity ── */
@@ -542,7 +555,7 @@ export default function CompanyExpandedView() {
       return;
     }
     // Update last_activity_at
-    await supabase.from('companies').update({ last_activity_at: new Date().toISOString() } as any).eq('id', companyId);
+    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() } as any).eq('id', companyId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
@@ -596,13 +609,37 @@ export default function CompanyExpandedView() {
   const { data: company, isLoading } = useQuery({
     queryKey: ['company-expanded', companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('companies')
+      const { data: primaryLead, error } = await supabase
+        .from('leads')
         .select('*')
         .eq('id', companyId!)
         .single();
       if (error) throw error;
-      return data as unknown as Company;
+
+      // Get all leads with same company name for aggregate data
+      const { data: allLeads } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('company_name', primaryLead.company_name);
+
+      return {
+        id: primaryLead.id,
+        company_name: primaryLead.company_name || primaryLead.name,
+        contact_name: primaryLead.name,
+        phone: primaryLead.phone,
+        website: primaryLead.website,
+        email_domain: primaryLead.email ? primaryLead.email.split('@')[1] || null : null,
+        contact_type: primaryLead.contact_type,
+        tags: primaryLead.tags,
+        assigned_to: primaryLead.assigned_to,
+        notes: primaryLead.notes,
+        source: primaryLead.source,
+        last_activity_at: primaryLead.last_activity_at,
+        last_contacted: primaryLead.last_contacted ?? null,
+        created_at: primaryLead.created_at,
+        updated_at: primaryLead.updated_at,
+        deals_count: allLeads?.length || 1,
+      } as Company;
     },
     enabled: !!companyId,
   });
@@ -621,15 +658,16 @@ export default function CompanyExpandedView() {
     return map;
   }, [teamMembers]);
 
-  // Related people (people table where company_name matches)
+  // Related people (leads table where company_name matches, excluding current lead)
   const { data: relatedPeople = [] } = useQuery({
     queryKey: ['company-related-people', company?.company_name],
     queryFn: async () => {
       if (!company?.company_name) return [];
       const { data } = await supabase
-        .from('people')
+        .from('leads')
         .select('id, name, title, email, phone')
         .eq('company_name', company.company_name)
+        .neq('id', companyId!)
         .order('name');
       return data ?? [];
     },

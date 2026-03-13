@@ -1,7 +1,8 @@
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, Reply, ReplyAll, Forward, ListTodo, User, Users } from 'lucide-react';
+import { ChevronDown, Reply, ReplyAll, Forward, ListTodo, User, Users, Paperclip, FileText, FileImage, File, Download, Loader2 } from 'lucide-react';
 import InlineReplyBox from '@/components/admin/inbox/InlineReplyBox';
 import { GmailEmail, ThreadMessage, extractSenderName, extractEmailAddress, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import { mockThreadMessages } from '@/components/gmail/EvanGmailFeatures';
@@ -11,6 +12,108 @@ import { appendSignature } from '@/lib/email-signature';
 import { EvansGmailDealSidebar } from './EvansGmailDealSidebar';
 import { EvansGmailContactSidebar } from './EvansGmailContactSidebar';
 import type { EvansGmailLogic } from '@/hooks/useEvansGmailLogic';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(mimeType: string) {
+  if (mimeType.startsWith('image/')) return FileImage;
+  if (mimeType === 'application/pdf' || mimeType.includes('document') || mimeType.includes('text')) return FileText;
+  return File;
+}
+
+function AttachmentList({ attachments }: { attachments: GmailEmail['attachments'] }) {
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = useCallback(async (attachment: NonNullable<GmailEmail['attachments']>[number]) => {
+    if (!attachment.id) {
+      toast.error('Attachment not downloadable');
+      return;
+    }
+    setDownloadingId(attachment.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const params = new URLSearchParams({
+        action: 'get-attachment',
+        messageId: attachment.messageId,
+        attachmentId: attachment.id,
+      });
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/gmail-api?${params}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!response.ok) throw new Error('Failed to download attachment');
+      const result = await response.json();
+
+      // Gmail returns base64url encoded data — convert to standard base64
+      const base64 = result.data.replace(/-/g, '+').replace(/_/g, '/');
+      const byteChars = atob(base64);
+      const byteNumbers = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) {
+        byteNumbers[i] = byteChars.charCodeAt(i);
+      }
+      const blob = new Blob([byteNumbers], { type: attachment.type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = attachment.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Attachment download failed:', err);
+      toast.error('Failed to download file');
+    } finally {
+      setDownloadingId(null);
+    }
+  }, []);
+
+  if (!attachments || attachments.length === 0) return null;
+
+  return (
+    <div className="mt-4 pl-[52px]">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+        <Paperclip className="w-3.5 h-3.5" />
+        <span>{attachments.length} attachment{attachments.length > 1 ? 's' : ''}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {attachments.map((att) => {
+          const Icon = getFileIcon(att.type);
+          const isDownloading = downloadingId === att.id;
+          return (
+            <button
+              key={`${att.messageId}-${att.id}-${att.name}`}
+              onClick={() => handleDownload(att)}
+              disabled={isDownloading}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors text-left max-w-[240px] group"
+            >
+              <Icon className="w-5 h-5 flex-shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{att.name}</p>
+                <p className="text-xs text-muted-foreground">{formatFileSize(att.size)}</p>
+              </div>
+              {isDownloading ? (
+                <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin text-muted-foreground" />
+              ) : (
+                <Download className="w-4 h-4 flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface EvansGmailEmailDetailProps {
   logic: EvansGmailLogic;
@@ -270,6 +373,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                         ),
                       }}
                     />
+                    <AttachmentList attachments={selectedEmail.attachments} />
                   </div>
 
                   {/* Local replies for this thread */}

@@ -62,109 +62,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
+import { usePipelineStages } from '@/hooks/usePipelineStages';
+import { usePipelineLeads, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
+import { usePipelineMutations } from '@/hooks/usePipelineMutations';
+import { buildStageConfig } from '@/utils/pipelineStageConfig';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
-const UNDERWRITING_STATUSES: LeadStatus[] = [
-  'review_kill_keep',
-  'initial_review',
-  'waiting_on_needs_list',
-  'waiting_on_client',
-  'complete_files_for_review',
-  'need_structure_from_brad',
-  'maura_underwriting',
-  'brad_underwriting',
-  'uw_paused',
-  'ready_for_wu_approval',
-];
-
-const stageConfig: Record<string, { label: string; color: string; bg: string; dot: string; pill: string }> = {
-  review_kill_keep: {
-    label: 'Review Kill / Keep',
-    color: 'text-red-700 dark:text-red-400',
-    bg: 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800',
-    dot: 'bg-red-500',
-    pill: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300',
-  },
-  initial_review: {
-    label: 'Initial Review',
-    color: 'text-sky-700 dark:text-sky-400',
-    bg: 'bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800',
-    dot: 'bg-sky-500',
-    pill: 'bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300',
-  },
-  waiting_on_needs_list: {
-    label: 'Waiting on Needs List',
-    color: 'text-amber-700 dark:text-amber-400',
-    bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800',
-    dot: 'bg-amber-500',
-    pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
-  },
-  waiting_on_client: {
-    label: 'Waiting on Client',
-    color: 'text-orange-700 dark:text-orange-400',
-    bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800',
-    dot: 'bg-orange-500',
-    pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300',
-  },
-  complete_files_for_review: {
-    label: 'Complete Files for Review',
-    color: 'text-blue-700 dark:text-blue-400',
-    bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800',
-    dot: 'bg-blue-500',
-    pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
-  },
-  need_structure_from_brad: {
-    label: 'Need Structure from Brad',
-    color: 'text-indigo-700 dark:text-indigo-400',
-    bg: 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800',
-    dot: 'bg-indigo-500',
-    pill: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300',
-  },
-  maura_underwriting: {
-    label: 'Maura Underwriting',
-    color: 'text-pink-700 dark:text-pink-400',
-    bg: 'bg-pink-50 dark:bg-pink-950/50 border-pink-200 dark:border-pink-800',
-    dot: 'bg-pink-500',
-    pill: 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300',
-  },
-  brad_underwriting: {
-    label: 'Brad Underwriting',
-    color: 'text-teal-700 dark:text-teal-400',
-    bg: 'bg-teal-50 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800',
-    dot: 'bg-teal-500',
-    pill: 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
-  },
-  uw_paused: {
-    label: 'UW Paused',
-    color: 'text-slate-600 dark:text-slate-400',
-    bg: 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700',
-    dot: 'bg-slate-400',
-    pill: 'bg-slate-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300',
-  },
-  ready_for_wu_approval: {
-    label: 'Ready for WU Approval',
-    color: 'text-emerald-700 dark:text-emerald-400',
-    bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800',
-    dot: 'bg-emerald-500',
-    pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300',
-  },
-  won: {
-    label: 'Won',
-    color: 'text-green-700 dark:text-green-400',
-    bg: 'bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800',
-    dot: 'bg-green-500',
-    pill: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300',
-  },
-  lost: {
-    label: 'Lost',
-    color: 'text-red-700 dark:text-red-400',
-    bg: 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800',
-    dot: 'bg-red-500',
-    pill: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300',
-  },
-};
 
 const FILTER_OPTIONS = [
   { id: 'all', label: 'All Opportunities', group: 'top' },
@@ -256,7 +162,7 @@ type SortField = 'name' | 'company_name' | 'status' | 'last_activity_at' | 'assi
 type SortDir = 'asc' | 'desc';
 
 // Column visibility keys
-type ColumnKey = 'company' | 'contact' | 'value' | 'ownedBy' | 'tasks' | 'stage' | 'daysInStage' | 'stageUpdated' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
+type ColumnKey = 'company' | 'contact' | 'value' | 'ownedBy' | 'tasks' | 'status' | 'stage' | 'daysInStage' | 'stageUpdated' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
 
 const COLUMN_LABELS: Record<ColumnKey, string> = {
   company: 'Company',
@@ -264,6 +170,7 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   value: 'Value',
   ownedBy: 'Owned By',
   tasks: 'Tasks',
+  status: 'Status',
   stage: 'Stage',
   daysInStage: 'Days in Stage',
   stageUpdated: 'Stage Updated',
@@ -286,7 +193,6 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const avatarColor = getAvatarColor(lead.name);
   const initial = lead.name[0]?.toUpperCase() ?? '?';
-  const stageCfg = stageConfig[lead.status];
   const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? null) : null;
   const dealValue = fakeValue(lead.id);
   const daysInStage = daysSince(lead.updated_at);
@@ -329,14 +235,15 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
   );
 }
 
-function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedId, onLeadClick }: {
-  status: LeadStatus;
+function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedId, onLeadClick, onAdd }: {
+  status: string;
   label: string;
   color: string;
-  leads: Lead[];
+  leads: any[];
   teamMemberMap: Record<string, string>;
   draggedId: string | null;
-  onLeadClick: (lead: Lead) => void;
+  onLeadClick: (lead: any) => void;
+  onAdd?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -353,6 +260,11 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
         <span className="ml-auto text-[11px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
           {leads.length}
         </span>
+        {onAdd && (
+          <button onClick={onAdd} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors" title="Add opportunity">
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       <ScrollArea className="flex-1 px-2 pb-2">
         <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
@@ -382,6 +294,13 @@ const Underwriting = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Pipeline data from DB
+  const { data: pipeline } = useSystemPipelineByName('Underwriting');
+  const { data: stages = [] } = usePipelineStages(pipeline?.id);
+  const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineLeads(pipeline?.id);
+  const { moveLeadToStage, addLeadToPipeline } = usePipelineMutations(pipeline?.id);
+  const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
+
   // ── Core state ──
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -403,13 +322,13 @@ const Underwriting = () => {
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
     company: true, contact: true, value: true, ownedBy: true, tasks: true,
-    stage: true, daysInStage: true, stageUpdated: true, lastContacted: true,
+    status: true, stage: true, daysInStage: true, stageUpdated: true, lastContacted: true,
     interactions: true, inactiveDays: true, tags: true,
   });
 
   const MIN_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
     opportunity: 220, company: 100, contact: 100, value: 80, ownedBy: 80,
-    tasks: 55, stage: 120, daysInStage: 55, stageUpdated: 85,
+    tasks: 55, status: 100, stage: 120, daysInStage: 55, stageUpdated: 85,
     lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
   }), []);
 
@@ -465,62 +384,45 @@ const Underwriting = () => {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // ── Status update mutation for Kanban drag ──
-  const statusMutation = useMutation({
-    mutationFn: async ({ leadId, newStatus, oldStatus }: { leadId: string; newStatus: LeadStatus; oldStatus: LeadStatus }) => {
-      const { error } = await supabase
-        .from('leads')
-        .update({ status: newStatus })
-        .eq('id', leadId);
-      if (error) throw error;
-      // Log stage change activity
-      const fromLabel = stageConfig[oldStatus]?.label ?? oldStatus;
-      const toLabel = stageConfig[newStatus]?.label ?? newStatus;
-      await supabase.from('lead_activities').insert({
-        lead_id: leadId,
-        activity_type: 'stage_change',
-        title: `Moved from ${fromLabel} to ${toLabel}`,
-        content: JSON.stringify({ from: oldStatus, to: newStatus }),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['lead-activity-timeline'] });
-      toast.success('Deal moved successfully');
-    },
-    onError: () => {
-      toast.error('Failed to move deal');
-    },
-  });
+  // ── Stage move handler for Kanban drag ──
+  const handleStageMove = (leadId: string, newStageId: string) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+    const oldStageName = dynamicStageConfig[lead._stageId]?.title;
+    const newStageName = dynamicStageConfig[newStageId]?.title;
+    moveLeadToStage.mutate({
+      pipelineLeadId: lead._pipelineLeadId,
+      newStageId,
+      newStageName,
+      oldStageName,
+      leadId: lead.id,
+    });
+  };
 
   // ── Add Opportunity state ──
   const [addOpportunityOpen, setAddOpportunityOpen] = useState(false);
-  const [addOpportunityStage, setAddOpportunityStage] = useState<LeadStatus>('review_kill_keep');
+  const [addOpportunityStage, setAddOpportunityStage] = useState<string>('');
   const [newOpp, setNewOpp] = useState({ name: '', company_name: '', email: '', phone: '' });
 
   const createOpportunityMutation = useMutation({
-    mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; status: LeadStatus }) => {
+    mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; stageId: string }) => {
       const evanMember = teamMembers.find(m => m.name === 'Evan');
-      const { data: lead, error } = await supabase
-        .from('leads')
-        .insert({
+      const result = await addLeadToPipeline.mutateAsync({
+        leadData: {
           name: data.name,
-          company_name: data.company_name || null,
-          email: data.email || null,
-          phone: data.phone || null,
-          status: data.status,
+          company_name: data.company_name || undefined,
+          email: data.email || undefined,
+          phone: data.phone || undefined,
           assigned_to: evanMember?.id || null,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return lead;
+        },
+        stageId: data.stageId,
+      });
+      return result;
     },
     onSuccess: (lead) => {
-      queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
       setAddOpportunityOpen(false);
       setNewOpp({ name: '', company_name: '', email: '', phone: '' });
-      toast.success(`"${lead.name}" added to ${stageConfig[lead.status]?.label ?? lead.status}`);
+      toast.success(`"${lead.name}" added to ${dynamicStageConfig[addOpportunityStage]?.title ?? 'pipeline'}`);
       setSelectedLead(lead);
     },
     onError: () => {
@@ -533,11 +435,11 @@ const Underwriting = () => {
       toast.error('Opportunity name is required');
       return;
     }
-    createOpportunityMutation.mutate({ ...newOpp, status: addOpportunityStage });
+    createOpportunityMutation.mutate({ ...newOpp, stageId: addOpportunityStage });
   };
 
-  const openAddDialog = (stage?: LeadStatus) => {
-    setAddOpportunityStage(stage ?? 'review_kill_keep');
+  const openAddDialog = (stageId?: string) => {
+    setAddOpportunityStage(stageId ?? stages[0]?.id ?? '');
     setNewOpp({ name: '', company_name: '', email: '', phone: '' });
     setAddOpportunityOpen(true);
   };
@@ -552,15 +454,15 @@ const Underwriting = () => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const targetStatus = UNDERWRITING_STATUSES.find(s => s === over.id)
-      ?? filteredAndSorted.find(l => l.id === over.id)?.status;
+    const targetStageId = stages.find(s => s.id === over.id)?.id
+      ?? leads.find(l => l.id === over.id)?._stageId;
 
-    if (!targetStatus) return;
+    if (!targetStageId) return;
 
-    const lead = filteredAndSorted.find(l => l.id === active.id);
-    if (!lead || lead.status === targetStatus) return;
+    const lead = leads.find(l => l.id === active.id);
+    if (!lead || lead._stageId === targetStageId) return;
 
-    statusMutation.mutate({ leadId: lead.id, newStatus: targetStatus, oldStatus: lead.status as LeadStatus });
+    handleStageMove(lead.id, targetStageId);
   }
 
   // ── Queries ──
@@ -589,33 +491,8 @@ const Underwriting = () => {
     return map;
   }, [teamMembers]);
 
-  const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['underwriting-leads'],
-    queryFn: async () => {
-      // Query using DB-known enum values; new values will work once migration is run
-      const DB_KNOWN_UW_STATUSES: LeadStatus[] = [
-        'initial_review', 'moving_to_underwriting', 'underwriting',
-        'ready_for_wu_approval', 'pre_approval_issued',
-        'won', 'lost',
-      ];
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .in('status', [...new Set([...DB_KNOWN_UW_STATUSES, ...UNDERWRITING_STATUSES])])
-        .order('last_activity_at', { ascending: false });
-      // If query fails (new enum values not yet migrated), fall back to known values only
-      if (error) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('leads')
-          .select('*')
-          .in('status', DB_KNOWN_UW_STATUSES)
-          .order('last_activity_at', { ascending: false });
-        if (fallbackError) throw fallbackError;
-        return fallbackData as Lead[];
-      }
-      return data as Lead[];
-    },
-  });
+  const leads = pipelineLeadsList;
+  const isLoading = isPipelineLeadsLoading;
 
   const { data: taskCountMap = {} } = useQuery({
     queryKey: ['underwriting-task-counts'],
@@ -653,27 +530,27 @@ const Underwriting = () => {
 
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: leads.length };
-    for (const status of UNDERWRITING_STATUSES) {
-      counts[status] = leads.filter((l) => l.status === status).length;
+    for (const stage of stages) {
+      counts[stage.id] = leads.filter((l) => l._stageId === stage.id).length;
     }
     counts['my_open'] = leads.length;
     counts['open'] = leads.length;
     counts['following'] = 0;
-    counts['won'] = leads.filter(l => l.status === 'won' as LeadStatus).length;
-    counts['lost'] = leads.filter(l => l.status === 'lost' as LeadStatus).length;
+    counts['won'] = leads.filter(l => l.status === 'won' as any).length;
+    counts['lost'] = leads.filter(l => l.status === 'lost' as any).length;
     counts['brad_incoming'] = leads.filter(l => (l.assigned_to ?? '').toLowerCase().includes('brad') || teamMemberMap[l.assigned_to ?? '']?.toLowerCase().includes('brad')).length;
     counts['onboarding_2024'] = leads.filter(l => l.cohort_year === 2024).length;
     counts['onboarding_2025'] = leads.filter(l => l.cohort_year === 2025).length;
     counts['onboarding_2026'] = leads.filter(l => l.cohort_year === 2026).length;
     return counts;
-  }, [leads, teamMemberMap]);
+  }, [leads, teamMemberMap, stages]);
 
   const filteredAndSorted = useMemo(() => {
     let result = leads;
 
     if (activeFilter !== 'all') {
-      if ((UNDERWRITING_STATUSES as string[]).includes(activeFilter)) {
-        result = result.filter((l) => l.status === activeFilter);
+      if (stages.some(s => s.id === activeFilter)) {
+        result = result.filter((l) => l._stageId === activeFilter);
       } else if (activeFilter === 'won') {
         result = result.filter((l) => l.status === ('won' as LeadStatus));
       } else if (activeFilter === 'lost') {
@@ -777,7 +654,7 @@ const Underwriting = () => {
       );
       // Stage: dot(6) + gap(6) + label + badge padding(20)
       auto.stage = maxTextW(
-        filteredAndSorted.map(l => stageConfig[l.status]?.label ?? l.status),
+        filteredAndSorted.map(l => dynamicStageConfig[l._stageId]?.title ?? l.status),
         CHAR_W_SM, 40
       );
     }
@@ -968,7 +845,7 @@ const Underwriting = () => {
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
                 <CreateFilterDialog
                   teamMemberMap={teamMemberMap}
-                  stageConfig={stageConfig}
+                  stageConfig={dynamicStageConfig}
                   onSave={(filter) => {
                     const id = `custom_${Date.now()}`;
                     setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
@@ -1259,6 +1136,9 @@ const Underwriting = () => {
                       <ColHeader colKey="tasks" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Tasks
                       </ColHeader>
+                      <ColHeader colKey="status" className="sticky top-0 z-10 bg-white dark:bg-card">
+                        Status
+                      </ColHeader>
                       <ColHeader colKey="stage" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Stage
                       </ColHeader>
@@ -1302,6 +1182,7 @@ const Underwriting = () => {
                           {columnVisibility.value && <td className="px-4 py-3.5" style={{ width: columnWidths.value }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
                           {columnVisibility.ownedBy && <td className="px-4 py-3.5" style={{ width: columnWidths.ownedBy }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
                           {columnVisibility.tasks && <td className="px-4 py-3.5" style={{ width: columnWidths.tasks }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.status && <td className="px-4 py-3.5" style={{ width: columnWidths.status ?? 100 }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
                           {columnVisibility.stage && <td className="px-4 py-3.5" style={{ width: columnWidths.stage }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
                           {columnVisibility.daysInStage && <td className="px-4 py-3.5" style={{ width: columnWidths.daysInStage }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
                           {columnVisibility.stageUpdated && <td className="px-4 py-3.5" style={{ width: columnWidths.stageUpdated }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
@@ -1339,7 +1220,7 @@ const Underwriting = () => {
                       filteredAndSorted.map((lead, rowIdx) => {
                         const initial = lead.name[0]?.toUpperCase() ?? '?';
                         const avatarColor = getAvatarColor(lead.name);
-                        const stageCfg = stageConfig[lead.status];
+                        const stageCfg = dynamicStageConfig[lead._stageId];
                         const assignedName = lead.assigned_to
                           ? (teamMemberMap[lead.assigned_to] ?? null)
                           : null;
@@ -1469,16 +1350,23 @@ const Underwriting = () => {
                               </td>
                             )}
 
+                            {/* Status */}
+                            {columnVisibility.status && (
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status ?? 100 }}>
+                                <span className="text-[12px] text-muted-foreground">{lead.status}</span>
+                              </td>
+                            )}
+
                             {/* Stage */}
                             {columnVisibility.stage && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.stage }}>
                                 {stageCfg ? (
-                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${stageCfg.bg} ${stageCfg.color}`}>
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${stageCfg.bg} ${stageCfg.textColor}`}>
                                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
                                     {stageCfg.label}
                                   </span>
                                 ) : (
-                                  <span className="text-muted-foreground text-xs">{lead.status}</span>
+                                  <span className="text-muted-foreground text-xs">{lead._stageName ?? lead.status}</span>
                                 )}
                               </td>
                             )}
@@ -1586,19 +1474,20 @@ const Underwriting = () => {
               >
                 <div className="flex-1 overflow-auto p-4">
                   <div className="flex gap-4 h-full min-h-[500px]">
-                    {UNDERWRITING_STATUSES.map((status) => {
-                      const cfg = stageConfig[status];
-                      const columnLeads = filteredAndSorted.filter(l => l.status === status);
+                    {stages.map((stage) => {
+                      const config = dynamicStageConfig[stage.id];
+                      const columnLeads = filteredAndSorted.filter(l => l._stageId === stage.id);
                       return (
                         <KanbanDropColumn
-                          key={status}
-                          status={status}
-                          label={cfg?.label ?? status}
-                          color={cfg?.dot ?? 'bg-muted-foreground'}
+                          key={stage.id}
+                          status={stage.id}
+                          label={config?.title ?? stage.name}
+                          color={config?.dot ?? 'bg-gray-400'}
                           leads={columnLeads}
                           teamMemberMap={teamMemberMap}
                           draggedId={draggedLead?.id ?? null}
-                          onLeadClick={handleRowClick}
+                          onLeadClick={(lead) => handleRowClick(lead)}
+                          onAdd={() => openAddDialog(stage.id)}
                         />
                       );
                     })}
@@ -1627,7 +1516,8 @@ const Underwriting = () => {
           {selectedLead && (
             <UnderwritingDetailPanel
               lead={selectedLead}
-              stageConfig={stageConfig}
+              stageConfig={dynamicStageConfig}
+              currentStageId={(selectedLead as any)?._stageId}
               teamMemberMap={teamMemberMap}
               teamMembers={teamMembers}
               formatValue={formatValue}
@@ -1635,10 +1525,16 @@ const Underwriting = () => {
               onClose={() => setSelectedLead(null)}
               onExpand={() => navigate(`/admin/pipeline/underwriting/lead/${selectedLead.id}`)}
               onStageChange={(leadId, newStatus) => {
-                statusMutation.mutate({ leadId, newStatus, oldStatus: selectedLead.status as LeadStatus });
-                setSelectedLead({ ...selectedLead, status: newStatus });
+                // Find stage ID by matching the status name from the detail panel
+                const targetStage = stages.find(s => s.name === newStatus || s.id === newStatus);
+                if (targetStage) {
+                  handleStageMove(leadId, targetStage.id);
+                }
               }}
-              onLeadUpdate={(updatedLead) => setSelectedLead(updatedLead)}
+              onLeadUpdate={(updatedLead) => {
+                setSelectedLead(updatedLead);
+                queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+              }}
             />
           )}
         </div>
@@ -1661,21 +1557,21 @@ const Underwriting = () => {
             </DialogHeader>
             {/* Stage selector pills */}
             <div className="flex flex-wrap gap-1.5 mt-4">
-              {UNDERWRITING_STATUSES.map((status) => {
-                const cfg = stageConfig[status];
-                const isActive = addOpportunityStage === status;
+              {stages.map((stage) => {
+                const cfg = dynamicStageConfig[stage.id];
+                const isActive = addOpportunityStage === stage.id;
                 return (
                   <button
-                    key={status}
-                    onClick={() => setAddOpportunityStage(status)}
+                    key={stage.id}
+                    onClick={() => setAddOpportunityStage(stage.id)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
                       isActive
                         ? 'bg-white text-slate-800 shadow-md scale-105 dark:bg-white/90 dark:text-slate-900'
                         : 'bg-white/15 text-white/90 hover:bg-white/25'
                     }`}
                   >
-                    <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 ${isActive ? cfg.dot : 'bg-white/60'}`} />
-                    {cfg.label}
+                    <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 ${isActive ? (cfg?.dot ?? 'bg-white/60') : 'bg-white/60'}`} />
+                    {cfg?.title ?? stage.name}
                   </button>
                 );
               })}

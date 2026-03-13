@@ -28,7 +28,7 @@ import { formatPhoneNumber } from './InlineEditableFields';
 
 interface PersonFile {
   id: string;
-  person_id: string;
+  lead_id: string;
   file_name: string;
   file_url: string;
   file_type: string | null;
@@ -180,7 +180,7 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   type_change: { icon: Layers, color: 'text-violet-500' },
 };
 
-// ── Inline-save helper (for people table) ──
+// ── Inline-save helper (for leads table) ──
 function useInlineSave(
   personId: string,
   field: string,
@@ -203,7 +203,7 @@ function useInlineSave(
     }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -353,7 +353,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', personId);
     setSaving(false);
@@ -425,7 +425,7 @@ function EditableNotes({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ notes: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -576,7 +576,7 @@ export default function PeopleExpandedView() {
     queryKey: ['person-expanded', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('people')
+        .from('leads')
         .select('*')
         .eq('id', personId!)
         .single();
@@ -590,9 +590,9 @@ export default function PeopleExpandedView() {
     queryKey: ['person-activities', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('people_activities')
+        .from('lead_activities')
         .select('*')
-        .eq('person_id', personId!)
+        .eq('lead_id', personId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -607,9 +607,10 @@ export default function PeopleExpandedView() {
     queryKey: ['person-tasks', personId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('people_tasks')
-        .select('id, title, status, due_date')
-        .eq('person_id', personId!)
+        .from('lead_activities')
+        .select('id, title, content, created_at')
+        .eq('lead_id', personId!)
+        .eq('activity_type', 'task')
         .order('created_at', { ascending: false });
       return data ?? [];
     },
@@ -635,7 +636,7 @@ export default function PeopleExpandedView() {
     if (!personId) return;
     const currentType = person?.contact_type ?? null;
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ contact_type: newType })
       .eq('id', personId);
     if (error) {
@@ -644,10 +645,10 @@ export default function PeopleExpandedView() {
     }
     toast.success('Contact type updated');
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
-    queryClient.invalidateQueries({ queryKey: ['people-list'] });
+    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
     // Log an activity for the type change
-    await supabase.from('people_activities').insert({
-      person_id: personId,
+    await supabase.from('lead_activities').insert({
+      lead_id: personId,
       activity_type: 'type_change',
       title: 'Contact type changed',
       content: JSON.stringify({ from: currentType, to: newType }),
@@ -658,7 +659,7 @@ export default function PeopleExpandedView() {
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
-    queryClient.invalidateQueries({ queryKey: ['people-list'] });
+    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
     toast.success('Updated');
   }, [personId, queryClient]);
 
@@ -673,8 +674,8 @@ export default function PeopleExpandedView() {
       return;
     }
     setSavingActivity(true);
-    const { error } = await supabase.from('people_activities').insert({
-      person_id: personId,
+    const { error } = await supabase.from('lead_activities').insert({
+      lead_id: personId,
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -685,7 +686,7 @@ export default function PeopleExpandedView() {
       return;
     }
     // Update last_activity_at
-    await supabase.from('people').update({ last_activity_at: new Date().toISOString() }).eq('id', personId);
+    await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', personId);
     toast.success('Activity saved');
     if (activityTab === 'log') setActivityNote('');
     else setNoteContent('');
@@ -697,10 +698,11 @@ export default function PeopleExpandedView() {
   const handleSaveTask = useCallback(async () => {
     if (!personId || !newTaskTitle.trim()) return;
     setSavingTask(true);
-    const { error } = await supabase.from('people_tasks').insert({
-      person_id: personId,
+    const { error } = await supabase.from('lead_activities').insert({
+      lead_id: personId,
+      activity_type: 'task',
       title: newTaskTitle.trim(),
-      status: 'pending',
+      content: newTaskTitle.trim(),
     });
     setSavingTask(false);
     if (error) {
@@ -739,12 +741,12 @@ export default function PeopleExpandedView() {
     if (!file || !personId) return;
     e.target.value = '';
 
-    console.log('[FileUpload] People: starting upload', { name: file.name, size: file.size, type: file.type });
+    console.log('[FileUpload] Lead: starting upload', { name: file.name, size: file.size, type: file.type });
 
     // Auth check
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
-      console.error('[FileUpload] People: no active session', sessionError);
+      console.error('[FileUpload] Lead: no active session', sessionError);
       toast.error('You must be logged in to upload files. Please refresh and sign in again.');
       return;
     }
@@ -752,13 +754,13 @@ export default function PeopleExpandedView() {
     setUploadingFile(true);
     const filePath = `${personId}/${Date.now()}_${sanitizeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage
-      .from('people-files')
+      .from('lead-files')
       .upload(filePath, file, {
         contentType: file.type || 'application/octet-stream',
         upsert: true,
       });
     if (uploadError) {
-      console.error('[FileUpload] People: storage upload error', uploadError);
+      console.error('[FileUpload] Lead: storage upload error', uploadError);
       setUploadingFile(false);
       const reason = uploadError.message?.includes('security')
         ? 'Permission denied — check your login session'
@@ -768,8 +770,8 @@ export default function PeopleExpandedView() {
     }
 
     // Store relative path, NOT public URL
-    const { error: dbError } = await supabase.from('people_files').insert({
-      person_id: personId,
+    const { error: dbError } = await supabase.from('lead_files').insert({
+      lead_id: personId,
       file_name: file.name,
       file_url: filePath,
       file_type: file.type || null,
@@ -777,16 +779,16 @@ export default function PeopleExpandedView() {
     });
     setUploadingFile(false);
     if (dbError) {
-      console.error('[FileUpload] People: DB insert error', dbError);
+      console.error('[FileUpload] Lead: DB insert error', dbError);
       const reason = dbError.message?.includes('row-level security')
         ? 'Permission denied — admin role required'
         : dbError.message || 'Database error';
       toast.error(`Failed to save ${file.name}: ${reason}`);
       // Clean up orphaned storage file
-      await supabase.storage.from('people-files').remove([filePath]);
+      await supabase.storage.from('lead-files').remove([filePath]);
       return;
     }
-    console.log('[FileUpload] People: upload success', { filePath });
+    console.log('[FileUpload] Lead: upload success', { filePath });
     toast.success('File uploaded');
     queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
   }, [personId, queryClient]);
@@ -794,9 +796,9 @@ export default function PeopleExpandedView() {
   // ── File delete ──
   const handleDeleteFile = useCallback(async (file: PersonFile) => {
     // file_url stores relative path directly
-    await supabase.storage.from('people-files').remove([file.file_url]);
+    await supabase.storage.from('lead-files').remove([file.file_url]);
 
-    const { error } = await supabase.from('people_files').delete().eq('id', file.id);
+    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
     if (error) {
       toast.error('Failed to delete file');
       return;
@@ -808,7 +810,7 @@ export default function PeopleExpandedView() {
   // ── File download (signed URL) ──
   const handleDownloadFile = useCallback(async (file: PersonFile) => {
     const { data, error } = await supabase.storage
-      .from('people-files')
+      .from('lead-files')
       .createSignedUrl(file.file_url, 60);
     if (error || !data?.signedUrl) {
       toast.error('Failed to generate download link');
@@ -828,9 +830,9 @@ export default function PeopleExpandedView() {
     queryKey: ['person-files', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('people_files')
-        .select('id, person_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('person_id', personId!)
+        .from('lead_files')
+        .select('id, lead_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .eq('lead_id', personId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as PersonFile[];
@@ -871,8 +873,8 @@ export default function PeopleExpandedView() {
   const inactiveDays = daysSince(person.last_activity_at);
   const lastActivityDate = formatShortDate(person.last_activity_at);
   const totalTasks = tasks.length;
-  const pendingTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'done');
-  const completedTasks = tasks.filter(t => t.status === 'completed' || t.status === 'done');
+  const pendingTasks = tasks;
+  const completedTasks: typeof tasks = [];
   const assignedName = person.assigned_to ? (teamMemberMap[person.assigned_to] ?? '\u2014') : '\u2014';
 
   function goBack() {
@@ -1290,9 +1292,9 @@ export default function PeopleExpandedView() {
                   <div key={t.id} className="flex items-center gap-2 text-xs">
                     <CheckSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
                     <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
-                    {t.due_date && (
+                    {t.created_at && (
                       <span className="text-[10px] text-muted-foreground shrink-0">
-                        {formatShortDate(t.due_date)}
+                        {formatShortDate(t.created_at)}
                       </span>
                     )}
                   </div>

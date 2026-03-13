@@ -26,11 +26,12 @@ import {
   Crosshair,
   Rss,
   HardDrive,
+  Bot,
+  BrainCircuit,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import chatgptLogo from '@/assets/chatgpt-logo.png';
 import {
   Sidebar,
   SidebarContent,
@@ -141,6 +142,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Bug Reporting', url: '/superadmin/bug-reporting', icon: Bug },
           { title: 'Dropbox', url: '/superadmin/dropbox', icon: HardDrive },
           { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
+          { title: 'AI Changes', url: '/superadmin/ai-changes', icon: BrainCircuit },
         ],
       });
 
@@ -185,7 +187,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
             icon: Kanban,
             subItems: [
               { title: 'Underwriting', url: '/admin/pipeline/underwriting', icon: ClipboardList },
-              { title: 'Lender Management', url: '/admin/pipeline?view=lender-management', icon: Building2 },
+              { title: 'Lender Management', url: '/admin/pipeline/lender-management', icon: Building2 },
               { title: 'Potential', url: '/admin/pipeline?view=potential', icon: Crosshair },
             ],
           },
@@ -728,11 +730,11 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
                   }`}
                   onClick={onAIToggle}
                 >
-                  <img src={chatgptLogo} alt="AI" className="w-5 h-5 invert object-contain" />
+                  <Bot className="w-5 h-5" strokeWidth={1.75} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" className="bg-[hsl(224_20%_12%)] text-sidebar-foreground border-sidebar-border text-[12px] font-medium px-2.5 py-1.5 shadow-xl">
-                AI Assistant
+                CLX Assistant
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -745,8 +747,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               }`}
               onClick={onAIToggle}
             >
-              <img src={chatgptLogo} alt="AI" className="w-4 h-4 invert opacity-80" />
-              <span>AI Assistant</span>
+              <Bot className="w-4 h-4 opacity-80" strokeWidth={1.75} />
+              <span>CLX Assistant</span>
             </Button>
           )
         )}

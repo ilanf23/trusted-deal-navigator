@@ -43,8 +43,8 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
   const gmail = useGmailConnection({
     userKey,
     callbackPrefix,
-    maxResults: 50,
-    fetchPhotos: true,
+    maxResults: 100,
+    fetchPhotos: false,
     returnPath,
   });
   const { data: inboxData, isLoading: emailsLoading } = gmail.useEmails('in:inbox');
@@ -822,14 +822,15 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
     setIsRefreshing(true);
     setSelectedEmailId(null);
     await new Promise(resolve => setTimeout(resolve, 300));
-    await queryClient.invalidateQueries({ queryKey: ['gmail-emails'] });
-    await queryClient.invalidateQueries({ queryKey: ['gmail-connection'] });
-    await queryClient.invalidateQueries({ queryKey: ['crm-emails'] });
-    await queryClient.invalidateQueries({ queryKey: ['all-leads'] });
-    await queryClient.refetchQueries({ queryKey: ['gmail-emails'] });
+    await queryClient.invalidateQueries({ queryKey: [`${userKey}-gmail-emails`] });
+    await queryClient.invalidateQueries({ queryKey: [`${userKey}-gmail-connection`] });
+    await queryClient.invalidateQueries({ queryKey: [`${userKey}-gmail-count`] });
+    await queryClient.invalidateQueries({ queryKey: ['crm-lead-emails'] });
+    await queryClient.invalidateQueries({ queryKey: ['gmail-all-leads'] });
+    await queryClient.refetchQueries({ queryKey: [`${userKey}-gmail-emails`] });
     setIsRefreshing(false);
     toast.success('Emails refreshed');
-  }, [queryClient]);
+  }, [queryClient, userKey]);
 
   // Selected email + lead
   const selectedEmail = filteredEmails.find(e => e.id === selectedEmailId) || null;

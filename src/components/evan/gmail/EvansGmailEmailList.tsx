@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, ArrowRight, ArrowDown, Building, Clock, MessageSquare, Star, MailOpen, ListTodo, FileText, EyeOff, Eye, Users } from 'lucide-react';
+import { Loader2, ArrowRight, ArrowDown, Building, Clock, MessageSquare, Star, MailOpen, ListTodo, FileText, EyeOff, Eye, Users, Paperclip } from 'lucide-react';
 import { useHiddenThreads } from '@/hooks/useHiddenThreads';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { GmailEmail, extractSenderName } from '@/components/gmail/gmailHelpers';
@@ -133,6 +133,9 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                       {isHiddenByMe(email.threadId) ? <EyeOff className="w-3.5 h-3.5 text-amber-500" /> : <Eye className="w-3.5 h-3.5" />}
                     </Button>
                     <span className="flex-1" />
+                    {email.attachments && email.attachments.length > 0 && (
+                      <Paperclip className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    )}
                     <span className="text-xs text-muted-foreground">
                       {format(new Date(email.date), 'MMM d')}
                     </span>

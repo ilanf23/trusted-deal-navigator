@@ -38,7 +38,13 @@ function mapMessages(data: any): GmailEmail[] {
     isStarred: msg.labelIds?.includes('STARRED') || false,
     labels: msg.labelIds || [],
     senderPhoto: msg.senderPhoto || null,
-    attachments: msg.attachments || [],
+    attachments: (msg.attachments || []).map((a: any) => ({
+      id: a.id || '',
+      name: a.name || 'untitled',
+      type: a.type || 'application/octet-stream',
+      size: a.size || 0,
+      messageId: a.messageId || msg.id,
+    })),
   }));
 }
 
@@ -127,7 +133,8 @@ export function useGmailConnection(options: UseGmailConnectionOptions) {
         };
       },
       enabled: !!gmailConnection && enabled,
-      retry: false,
+      retry: 1,
+      staleTime: 30000, // 30s before refetch
     });
 
   // ── Folder count (lightweight, maxResults=1) ─────────────────────

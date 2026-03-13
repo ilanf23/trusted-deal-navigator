@@ -50,64 +50,15 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { toast } from 'sonner';
 import { differenceInDays, parseISO, format } from 'date-fns';
+import { useSystemPipelineByName } from '@/hooks/useSystemPipelineByName';
+import { usePipelineStages } from '@/hooks/usePipelineStages';
+import { usePipelineLeads, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
+import { usePipelineMutations } from '@/hooks/usePipelineMutations';
+import { buildStageConfig } from '@/utils/pipelineStageConfig';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
-const statusOrder: LeadStatus[] = [
-  'initial_review',
-  'moving_to_underwriting',
-  'onboarding',
-  'underwriting',
-  'ready_for_wu_approval',
-  'pre_approval_issued',
-  'won',
-];
-
-const stageConfig: Record<string, { title: string; color: string; dot: string; pill: string }> = {
-  initial_review: {
-    title: 'Initial Review',
-    color: 'bg-blue-600',
-    dot: 'bg-blue-500',
-    pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-  },
-  moving_to_underwriting: {
-    title: 'Moving to UW',
-    color: 'bg-cyan-600',
-    dot: 'bg-cyan-500',
-    pill: 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
-  },
-  onboarding: {
-    title: 'Onboarding',
-    color: 'bg-amber-600',
-    dot: 'bg-amber-500',
-    pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-  },
-  underwriting: {
-    title: 'Underwriting',
-    color: 'bg-orange-600',
-    dot: 'bg-orange-500',
-    pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800',
-  },
-  ready_for_wu_approval: {
-    title: 'Ready for Approval',
-    color: 'bg-violet-600',
-    dot: 'bg-violet-500',
-    pill: 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800',
-  },
-  pre_approval_issued: {
-    title: 'Pre-Approval Issued',
-    color: 'bg-purple-600',
-    dot: 'bg-purple-500',
-    pill: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
-  },
-  won: {
-    title: 'Won',
-    color: 'bg-emerald-600',
-    dot: 'bg-emerald-500',
-    pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-  },
-};
 
 const AVATAR_COLORS = [
   'bg-blue-500', 'bg-emerald-500', 'bg-blue-500', 'bg-amber-500',
@@ -179,7 +130,7 @@ function fakeInteractions(id: string): number {
 type SortField = 'name' | 'company_name' | 'status' | 'last_activity_at' | 'assigned_to' | 'updated_at';
 type SortDir = 'asc' | 'desc';
 
-type ColumnKey = 'company' | 'contact' | 'value' | 'ownedBy' | 'tasks' | 'stage' | 'daysInStage' | 'stageUpdated' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
+type ColumnKey = 'company' | 'contact' | 'value' | 'ownedBy' | 'tasks' | 'status' | 'stage' | 'daysInStage' | 'stageUpdated' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
 
 const COLUMN_LABELS: Record<ColumnKey, string> = {
   company: 'Company',
@@ -187,6 +138,7 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   value: 'Value',
   ownedBy: 'Owner',
   tasks: 'Tasks',
+  status: 'Status',
   stage: 'Stage',
   daysInStage: 'Days in Stage',
   stageUpdated: 'Stage Updated',
@@ -264,10 +216,10 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
   status: string;
   label: string;
   color: string;
-  leads: Lead[];
+  leads: any[];
   teamMemberMap: Record<string, string>;
   draggedId: string | null;
-  onLeadClick: (lead: Lead) => void;
+  onLeadClick: (lead: any) => void;
   onAdd?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
@@ -330,25 +282,25 @@ const Pipeline = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [ownerFiltersOpen, setOwnerFiltersOpen] = useState(true);
-  const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
+  const [draggedLead, setDraggedLead] = useState<FlatPipelineLead | null>(null);
 
   // Custom filters
   const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
 
   // Add Opportunity state
   const [addOpportunityOpen, setAddOpportunityOpen] = useState(false);
-  const [addOpportunityStage, setAddOpportunityStage] = useState<LeadStatus>('initial_review');
+  const [addOpportunityStage, setAddOpportunityStage] = useState<string>('');
   const [newOpp, setNewOpp] = useState({ name: '', company_name: '', email: '', phone: '' });
 
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
     company: true, contact: true, value: true, ownedBy: true, tasks: true,
-    stage: true, daysInStage: true, stageUpdated: true, lastContacted: true,
+    status: true, stage: true, daysInStage: true, stageUpdated: true, lastContacted: true,
     interactions: true, inactiveDays: true, tags: true,
   });
 
   const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
     deal: 200, company: 130, contact: 110, value: 90, ownedBy: 80,
-    tasks: 55, stage: 160, daysInStage: 55, stageUpdated: 85,
+    tasks: 55, status: 100, stage: 160, daysInStage: 55, stageUpdated: 85,
     lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
   }), []);
 
@@ -413,19 +365,15 @@ const Pipeline = () => {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  // Fetch leads
-  const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['pipeline-leads'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .in('status', statusOrder)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as Lead[];
-    },
-  });
+  // Pipeline data from DB
+  const { data: pipeline } = useSystemPipelineByName('Potential');
+  const { data: stages = [] } = usePipelineStages(pipeline?.id);
+  const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineLeads(pipeline?.id);
+  const { moveLeadToStage, addLeadToPipeline } = usePipelineMutations(pipeline?.id);
+  const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
+
+  const leads = pipelineLeadsList;
+  const isLoading = isPipelineLeadsLoading;
 
   // Fetch team members
   const { data: teamMembers = [] } = useQuery({
@@ -477,49 +425,41 @@ const Pipeline = () => {
     },
   });
 
-  // Update lead status mutation
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ leadId, newStatus }: { leadId: string; newStatus: LeadStatus }) => {
-      const { error } = await supabase
-        .from('leads')
-        .update({ status: newStatus })
-        .eq('id', leadId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
-      toast.success('Lead moved successfully');
-    },
-    onError: () => {
-      toast.error('Failed to move lead');
-    },
-  });
+  const handleStageMove = (leadId: string, newStageId: string) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+    const oldStageName = dynamicStageConfig[lead._stageId]?.title;
+    const newStageName = dynamicStageConfig[newStageId]?.title;
+    moveLeadToStage.mutate({
+      pipelineLeadId: lead._pipelineLeadId,
+      newStageId,
+      newStageName,
+      oldStageName,
+      leadId: lead.id,
+    });
+  };
 
   // Create opportunity mutation
   const createOpportunityMutation = useMutation({
-    mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; status: LeadStatus }) => {
+    mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; stageId: string }) => {
       const evanMember = teamMembers.find(m => m.name === 'Evan');
-      const { data: lead, error } = await supabase
-        .from('leads')
-        .insert({
+      const result = await addLeadToPipeline.mutateAsync({
+        leadData: {
           name: data.name,
-          company_name: data.company_name || null,
-          email: data.email || null,
-          phone: data.phone || null,
-          status: data.status,
+          company_name: data.company_name || undefined,
+          email: data.email || undefined,
+          phone: data.phone || undefined,
           assigned_to: evanMember?.id || null,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return lead;
+        },
+        stageId: data.stageId,
+      });
+      return result;
     },
     onSuccess: (lead) => {
-      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
       setAddOpportunityOpen(false);
       setNewOpp({ name: '', company_name: '', email: '', phone: '' });
-      toast.success(`"${lead.name}" added to ${stageConfig[lead.status]?.title ?? lead.status}`);
-      setDetailDialogLead(lead);
+      toast.success(`"${lead.name}" added to ${dynamicStageConfig[addOpportunityStage]?.title ?? 'pipeline'}`);
+      setDetailDialogLead(lead as any);
     },
     onError: () => {
       toast.error('Failed to create opportunity');
@@ -531,11 +471,11 @@ const Pipeline = () => {
       toast.error('Opportunity name is required');
       return;
     }
-    createOpportunityMutation.mutate({ ...newOpp, status: addOpportunityStage });
+    createOpportunityMutation.mutate({ ...newOpp, stageId: addOpportunityStage });
   };
 
-  const openAddDialog = (stage?: LeadStatus) => {
-    setAddOpportunityStage(stage ?? 'initial_review');
+  const openAddDialog = (stageId?: string) => {
+    setAddOpportunityStage(stageId ?? stages[0]?.id ?? '');
     setNewOpp({ name: '', company_name: '', email: '', phone: '' });
     setAddOpportunityOpen(true);
   };
@@ -584,15 +524,15 @@ const Pipeline = () => {
   // Filter counts
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: leads.length };
-    for (const status of statusOrder) {
-      counts[status] = leads.filter((l) => l.status === status).length;
+    for (const stage of stages) {
+      counts[stage.id] = leads.filter((l) => l._stageId === stage.id).length;
     }
     for (const tm of teamMembers) {
       counts[`owner_${tm.id}`] = leads.filter(l => l.assigned_to === tm.id).length;
     }
     counts['unassigned'] = leads.filter(l => !l.assigned_to).length;
     return counts;
-  }, [leads, teamMembers]);
+  }, [leads, teamMembers, stages]);
 
   // Filter and sort
   const filteredAndSorted = useMemo(() => {
@@ -605,8 +545,8 @@ const Pipeline = () => {
         result = result.filter((l) => l.status === 'won');
       } else if (activeFilter === 'lost') {
         result = result.filter(() => false); // No lost status in pipeline
-      } else if ((statusOrder as string[]).includes(activeFilter)) {
-        result = result.filter((l) => l.status === activeFilter);
+      } else if (stages.some(s => s.id === activeFilter)) {
+        result = result.filter((l) => l._stageId === activeFilter);
       } else if (activeFilter.startsWith('owner_')) {
         const ownerId = activeFilter.replace('owner_', '');
         result = result.filter((l) => l.assigned_to === ownerId);
@@ -635,16 +575,16 @@ const Pipeline = () => {
     });
 
     return result;
-  }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap]);
+  }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, stages]);
 
-  // Group leads by status for Kanban
-  const leadsByStatus = useMemo(() => {
-    const grouped: Record<string, Lead[]> = {};
-    for (const status of statusOrder) {
-      grouped[status] = filteredAndSorted.filter((l) => l.status === status);
+  // Group leads by stage for Kanban
+  const leadsByStage = useMemo(() => {
+    const grouped: Record<string, typeof leads> = {};
+    for (const stage of stages) {
+      grouped[stage.id] = filteredAndSorted.filter((l) => l._stageId === stage.id);
     }
     return grouped;
-  }, [filteredAndSorted]);
+  }, [filteredAndSorted, stages]);
 
   function handleDragStart(event: DragStartEvent) {
     const lead = filteredAndSorted.find(l => l.id === event.active.id);
@@ -656,21 +596,22 @@ const Pipeline = () => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const targetStatus = statusOrder.find(s => s === over.id)
-      ?? filteredAndSorted.find(l => l.id === over.id)?.status;
+    // Check if dropped on a stage column or on a lead in a stage
+    const targetStageId = stages.find(s => s.id === over.id)?.id
+      ?? leads.find(l => l.id === over.id)?._stageId;
 
-    if (!targetStatus) return;
+    if (!targetStageId) return;
 
-    const lead = filteredAndSorted.find(l => l.id === active.id);
-    if (!lead || lead.status === targetStatus) return;
+    const lead = leads.find(l => l.id === active.id);
+    if (!lead || lead._stageId === targetStageId) return;
 
-    updateStatusMutation.mutate({ leadId: lead.id, newStatus: targetStatus });
+    handleStageMove(lead.id, targetStageId);
   };
 
   // Row padding based on density
   const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
 
-  function handleRowClick(lead: Lead) {
+  function handleRowClick(lead: any) {
     setDetailDialogLead(lead);
   }
 
@@ -848,7 +789,7 @@ const Pipeline = () => {
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
                 <CreateFilterDialog
                   teamMemberMap={teamMemberMap}
-                  stageConfig={Object.fromEntries(Object.entries(stageConfig).map(([k, v]) => [k, { label: v.title }]))}
+                  stageConfig={Object.fromEntries(Object.entries(dynamicStageConfig).map(([k, v]) => [k, { label: v.title }]))}
                   onSave={(filter) => {
                     const id = `custom_${Date.now()}`;
                     setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
@@ -921,22 +862,22 @@ const Pipeline = () => {
                   <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : '-rotate-90'}`} />
                 </button>
 
-                {publicFiltersOpen && statusOrder.map((status) => {
-                  const isActive = activeFilter === status;
-                  const count = filterCounts[status] ?? 0;
-                  const cfg = stageConfig[status];
+                {publicFiltersOpen && stages.map((stage) => {
+                  const isActive = activeFilter === stage.id;
+                  const count = filterCounts[stage.id] ?? 0;
+                  const cfg = dynamicStageConfig[stage.id];
                   return (
                     <button
-                      key={status}
-                      onClick={() => setActiveFilter(status)}
+                      key={stage.id}
+                      onClick={() => setActiveFilter(stage.id)}
                       className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
                         isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
                       {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
                       <span className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${cfg.dot}`} />
-                        <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{cfg.title}</span>
+                        <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-gray-400'}`} />
+                        <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{stage.name}</span>
                       </span>
                       {count > 0 && (
                         <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
@@ -1244,6 +1185,7 @@ const Pipeline = () => {
                       <ColHeader colKey="value" className="sticky top-0 z-10 bg-white dark:bg-card">Value</ColHeader>
                       <ColHeader colKey="ownedBy" className="sticky top-0 z-10 bg-white dark:bg-card">Owner</ColHeader>
                       <ColHeader colKey="tasks" className="sticky top-0 z-10 bg-white dark:bg-card">Tasks</ColHeader>
+                      <ColHeader colKey="status" className="sticky top-0 z-10 bg-white dark:bg-card">Status</ColHeader>
                       <ColHeader colKey="stage" className="sticky top-0 z-10 bg-white dark:bg-card">Stage</ColHeader>
                       <ColHeader colKey="daysInStage" className="sticky top-0 z-10 bg-white dark:bg-card">Days</ColHeader>
                       <ColHeader colKey="stageUpdated" className="sticky top-0 z-10 bg-white dark:bg-card">Updated</ColHeader>
@@ -1273,6 +1215,7 @@ const Pipeline = () => {
                           {columnVisibility.value && <td className="px-4 py-3.5" style={{ width: columnWidths.value }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
                           {columnVisibility.ownedBy && <td className="px-4 py-3.5" style={{ width: columnWidths.ownedBy }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
                           {columnVisibility.tasks && <td className="px-4 py-3.5" style={{ width: columnWidths.tasks }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.status && <td className="px-4 py-3.5" style={{ width: columnWidths.status }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
                           {columnVisibility.stage && <td className="px-4 py-3.5" style={{ width: columnWidths.stage }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
                           {columnVisibility.daysInStage && <td className="px-4 py-3.5" style={{ width: columnWidths.daysInStage }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
                           {columnVisibility.stageUpdated && <td className="px-4 py-3.5" style={{ width: columnWidths.stageUpdated }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
@@ -1284,7 +1227,7 @@ const Pipeline = () => {
                       ))
                     ) : filteredAndSorted.length === 0 ? (
                       <tr>
-                        <td colSpan={15}>
+                        <td colSpan={16}>
                           <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
                               <FileSearch className="h-6 w-6 text-muted-foreground" />
@@ -1310,7 +1253,7 @@ const Pipeline = () => {
                       filteredAndSorted.map((lead, rowIdx) => {
                         const initial = lead.name[0]?.toUpperCase() ?? '?';
                         const avatarColor = getAvatarColor(lead.name);
-                        const stageCfg = stageConfig[lead.status];
+                        const stageCfg = dynamicStageConfig[lead._stageId];
                         const assignedName = lead.assigned_to
                           ? (teamMemberMap[lead.assigned_to] ?? null)
                           : null;
@@ -1438,6 +1381,13 @@ const Pipeline = () => {
                               </td>
                             )}
 
+                            {/* Status */}
+                            {columnVisibility.status && (
+                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status ?? 100 }}>
+                                <span className="text-[12px] text-muted-foreground">{lead.status}</span>
+                              </td>
+                            )}
+
                             {/* Stage */}
                             {columnVisibility.stage && (
                               <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage }}>
@@ -1551,20 +1501,20 @@ const Pipeline = () => {
               >
                 <div className="flex-1 overflow-auto p-4">
                   <div className="flex gap-4 h-full min-h-[500px]">
-                    {statusOrder.map((status) => {
-                      const config = stageConfig[status];
-                      const columnLeads = filteredAndSorted.filter(l => l.status === status);
+                    {stages.map((stage) => {
+                      const config = dynamicStageConfig[stage.id];
+                      const columnLeads = filteredAndSorted.filter(l => l._stageId === stage.id);
                       return (
                         <KanbanDropColumn
-                          key={status}
-                          status={status}
-                          label={config.title}
-                          color={config.dot}
+                          key={stage.id}
+                          status={stage.id}
+                          label={config?.title ?? stage.name}
+                          color={config?.dot ?? 'bg-gray-400'}
                           leads={columnLeads}
                           teamMemberMap={teamMemberMap}
                           draggedId={draggedLead?.id ?? null}
                           onLeadClick={(lead) => setDetailDialogLead(lead)}
-                          onAdd={() => openAddDialog(status)}
+                          onAdd={() => openAddDialog(stage.id)}
                         />
                       );
                     })}
@@ -1593,7 +1543,8 @@ const Pipeline = () => {
           {detailDialogLead && (
             <PipelineDetailPanel
               lead={detailDialogLead}
-              stageConfig={stageConfig}
+              stageConfig={Object.fromEntries(Object.entries(dynamicStageConfig).map(([k, v]) => [k, { title: v.title, color: v.color, dot: v.dot, pill: v.pill }]))}
+              currentStageId={(detailDialogLead as any)?._stageId}
               teamMemberMap={teamMemberMap}
               teamMembers={teamMembers}
               formatValue={formatValue}
@@ -1603,11 +1554,13 @@ const Pipeline = () => {
                 navigate(`/admin/pipeline/lead/${detailDialogLead.id}`);
               }}
               onStageChange={(leadId, newStatus) => {
-                updateStatusMutation.mutate({ leadId, newStatus });
+                // Find the stage ID for this status
+                const stageId = stages.find(s => s.name === newStatus || s.id === newStatus)?.id;
+                if (stageId) handleStageMove(leadId, stageId);
               }}
               onLeadUpdate={(updatedLead) => {
                 setDetailDialogLead(updatedLead);
-                queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+                queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
               }}
             />
           )}
@@ -1627,21 +1580,21 @@ const Pipeline = () => {
               </DialogTitle>
             </DialogHeader>
             <div className="flex flex-wrap gap-1.5 mt-4">
-              {statusOrder.map((status) => {
-                const cfg = stageConfig[status];
-                const isActive = addOpportunityStage === status;
+              {stages.map((stage) => {
+                const cfg = dynamicStageConfig[stage.id];
+                const isActive = addOpportunityStage === stage.id;
                 return (
                   <button
-                    key={status}
-                    onClick={() => setAddOpportunityStage(status)}
+                    key={stage.id}
+                    onClick={() => setAddOpportunityStage(stage.id)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
                       isActive
                         ? 'bg-white text-slate-800 shadow-md scale-105 dark:bg-white/90 dark:text-slate-900'
                         : 'bg-white/15 text-white/90 hover:bg-white/25'
                     }`}
                   >
-                    <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 ${isActive ? cfg.dot : 'bg-white/60'}`} />
-                    {cfg.title}
+                    <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 ${isActive ? (cfg?.dot ?? 'bg-white/60') : 'bg-white/60'}`} />
+                    {cfg?.title ?? stage.name}
                   </button>
                 );
               })}

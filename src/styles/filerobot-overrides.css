@@ -1,0 +1,178 @@
+/* ============================================================
+   Filerobot Image Editor — Dark Theme Overrides
+   ============================================================
+   Fixes:
+   1. Hides Filerobot's own save/close buttons (we use our own header)
+   2. Forces dark backgrounds on all Filerobot surfaces
+   3. Dark theme for dropdown/menu components (crop presets, zoom, etc.)
+   4. Resets .admin-portal CSS that cascades into Filerobot internals
+   ============================================================ */
+
+/* --- Section A: Hide Filerobot's save/close buttons --- */
+.FIE_topbar-save-button { display: none !important; }
+.FIE_topbar-close-button { display: none !important; }
+
+/* --- Section B: Dark theme for all Filerobot surfaces --- */
+.FIE_root {
+  background: #18181b !important;
+}
+
+.FIE_topbar {
+  background: #18181b !important;
+  border-bottom: 1px solid #3f3f46 !important;
+}
+
+.FIE_main-container,
+.FIE_editor-content {
+  background: #18181b !important;
+}
+
+.FIE_tabs {
+  background: #18181b !important;
+  border-right: 1px solid #3f3f46 !important;
+  box-shadow: none !important;
+}
+
+.FIE_topbar-buttons-wrapper {
+  background: #18181b !important;
+}
+
+.FIE_tools-bar-wrapper,
+.FIE_tool-options-wrapper {
+  background: #1c1c1f !important;
+  border-color: #3f3f46 !important;
+}
+
+.FIE_carousel {
+  background: #18181b !important;
+}
+
+/* --- Section C: Dark theme for dropdowns/menus --- */
+/* Crop presets dropdown */
+.FIE_crop-presets-menu,
+.FIE_crop-presets-menu > div {
+  background-color: #27272a !important;
+  border: 1px solid #3f3f46 !important;
+  border-radius: 6px !important;
+}
+
+.FIE_crop-presets-menu [role="menuitem"] {
+  background-color: #27272a !important;
+  color: #fafafa !important;
+}
+
+.FIE_crop-presets-menu [role="menuitem"]:hover,
+.FIE_crop-presets-menu [role="menuitem"]:focus,
+.FIE_crop-presets-menu [role="menuitem"]:focus-within {
+  background-color: #3f3f46 !important;
+}
+
+/* Zoom menu */
+.FIE_topbar-zoom-menu,
+.FIE_topbar-zoom-menu > div {
+  background-color: #27272a !important;
+  border: 1px solid #3f3f46 !important;
+}
+
+.FIE_topbar-zoom-menu [role="menuitem"] {
+  background-color: #27272a !important;
+  color: #fafafa !important;
+}
+
+.FIE_topbar-zoom-menu [role="menuitem"]:hover,
+.FIE_topbar-zoom-menu [role="menuitem"]:focus {
+  background-color: #3f3f46 !important;
+}
+
+/* Annotation option popups */
+.FIE_annotation-option-popup,
+.FIE_annotation-option-popup > div {
+  background-color: #27272a !important;
+  border: 1px solid #3f3f46 !important;
+}
+
+/* Watermark padding popup */
+.FIE_watermark-padding-popup,
+.FIE_watermark-padding-popup > div {
+  background-color: #27272a !important;
+  border: 1px solid #3f3f46 !important;
+}
+
+/* Image tool gallery */
+.FIE_image-tool-gallery {
+  background-color: #27272a !important;
+  border: 1px solid #3f3f46 !important;
+}
+
+/* Generic: any Scaleflex UI Menu rendered inside Filerobot */
+.FIE_root [role="menu"] {
+  background-color: #27272a !important;
+}
+
+.FIE_root [role="menuitem"] {
+  color: #fafafa !important;
+}
+
+.FIE_root [role="menuitem"]:hover,
+.FIE_root [role="menuitem"]:focus {
+  background-color: #3f3f46 !important;
+}
+
+/* --- Section D: Reset .admin-portal CSS interference --- */
+/* The admin-portal has aggressive font-size / padding / border-radius
+   rules on p, span, label, button that cascade into Filerobot's
+   styled-components and distort its UI. Reset them inside .FIE_root. */
+.admin-portal .FIE_root button,
+.admin-portal .FIE_root input,
+.admin-portal .FIE_root p,
+.admin-portal .FIE_root span,
+.admin-portal .FIE_root label,
+.admin-portal .FIE_root select {
+  font-size: unset !important;
+  letter-spacing: unset !important;
+  padding: unset !important;
+  border-radius: unset !important;
+  line-height: unset !important;
+}
+
+/* Also reset for menus that may portal outside .FIE_root */
+.admin-portal .FIE_crop-presets-menu button,
+.admin-portal .FIE_crop-presets-menu p,
+.admin-portal .FIE_crop-presets-menu span,
+.admin-portal .FIE_crop-presets-menu label {
+  font-size: unset !important;
+  letter-spacing: unset !important;
+  padding: unset !important;
+  border-radius: unset !important;
+  line-height: unset !important;
+}
+
+@media (min-width: 768px) {
+  .admin-portal .FIE_root button,
+  .admin-portal .FIE_root input,
+  .admin-portal .FIE_root p,
+  .admin-portal .FIE_root span,
+  .admin-portal .FIE_root label,
+  .admin-portal .FIE_root select {
+    font-size: unset !important;
+    letter-spacing: unset !important;
+    padding: unset !important;
+    border-radius: unset !important;
+    line-height: unset !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-portal .FIE_root button,
+  .admin-portal .FIE_root input,
+  .admin-portal .FIE_root p,
+  .admin-portal .FIE_root span,
+  .admin-portal .FIE_root label,
+  .admin-portal .FIE_root select {
+    font-size: unset !important;
+    letter-spacing: unset !important;
+    padding: unset !important;
+    border-radius: unset !important;
+    line-height: unset !important;
+  }
+}

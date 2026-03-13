@@ -198,6 +198,22 @@ export function useDropboxLinkToLead() {
   });
 }
 
+export function useDropboxSaveEdited() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ path, content, mode }: { path: string; content: string; mode: 'overwrite' | 'add' }) => {
+      return invokeDropboxApi('upload', { path, content, mode });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dropbox-files'] });
+      toast.success('Image saved to Dropbox');
+    },
+    onError: (err: Error) => {
+      toast.error(`Save failed: ${err.message}`);
+    },
+  });
+}
+
 export function useDropboxSearch(query: string, leadId?: string) {
   return useQuery({
     queryKey: ['dropbox-search', query, leadId],

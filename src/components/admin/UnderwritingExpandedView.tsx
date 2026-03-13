@@ -1095,7 +1095,7 @@ export default function UnderwritingExpandedView() {
       // Match by company name
       if (lead.company_name) {
         const { data } = await supabase
-          .from('people')
+          .from('leads')
           .select('id, name, title, email, phone, company_name')
           .eq('company_name', lead.company_name)
           .order('name')
@@ -1114,7 +1114,7 @@ export default function UnderwritingExpandedView() {
       // Match by email domain
       for (const domain of domains) {
         const { data } = await supabase
-          .from('people')
+          .from('leads')
           .select('id, name, title, email, phone, company_name')
           .ilike('email', `%@${domain}`)
           .limit(20);
@@ -1151,7 +1151,7 @@ export default function UnderwritingExpandedView() {
       const q = contactSearchQuery.trim();
       if (!q) return [];
       const { data } = await supabase
-        .from('people')
+        .from('leads')
         .select('id, name, title, email, company_name')
         .ilike('name', `%${q}%`)
         .order('name', { ascending: true })

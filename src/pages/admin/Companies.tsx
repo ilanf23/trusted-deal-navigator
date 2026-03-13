@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAllPipelineLeads, DerivedCompany } from '@/hooks/useAllPipelineLeads';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,16 +38,17 @@ interface Company {
   company_name: string;
   phone: string | null;
   contact_name: string | null;
-  tasks_count: number;
   website: string | null;
   contact_type: string | null;
   email_domain: string | null;
-  last_contacted: string | null;
-  interactions_count: number;
-  inactive_days: number;
   tags: string[] | null;
+  assigned_to: string | null;
+  notes: string | null;
+  source: string | null;
+  last_activity_at: string | null;
   created_at: string;
   updated_at: string;
+  deals_count: number;
 }
 
 type ContactType = string;
@@ -111,27 +113,27 @@ const FILTER_OPTIONS = [
   { id: 'inactive', label: 'Inactive (30+ days)', group: 'public' },
 ];
 
-type SortField = 'company_name' | 'contact_name' | 'contact_type' | 'last_contacted' | 'updated_at';
+type SortField = 'company_name' | 'contact_name' | 'contact_type' | 'last_activity_at' | 'updated_at';
 type SortDir = 'asc' | 'desc';
 
 const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
-  { value: 'last_contacted', label: 'Last Contacted' },
+  { value: 'last_activity_at', label: 'Last Activity' },
   { value: 'company_name', label: 'Company' },
   { value: 'contact_name', label: 'Contact' },
   { value: 'contact_type', label: 'Contact Type' },
   { value: 'updated_at', label: 'Updated' },
 ];
 
-type ColumnKey = 'phone' | 'contact' | 'tasks' | 'website' | 'contactType' | 'emailDomain' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
+type ColumnKey = 'phone' | 'contact' | 'deals' | 'website' | 'contactType' | 'emailDomain' | 'lastActivity' | 'interactions' | 'inactiveDays' | 'tags';
 
 const COLUMN_LABELS: Record<ColumnKey, string> = {
   phone: 'Phone',
   contact: 'Contact',
-  tasks: 'Tasks',
+  deals: 'Deals',
   website: 'Website',
   contactType: 'Contact Type',
   emailDomain: 'Email Domain',
-  lastContacted: 'Last Contacted',
+  lastActivity: 'Last Activity',
   interactions: 'Interactions',
   inactiveDays: 'Inactive Days',
   tags: 'Tags',
@@ -260,7 +262,7 @@ const Companies = () => {
   // ── Core state ──
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<SortField>('last_contacted');
+  const [sortField, setSortField] = useState<SortField>('last_activity_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
@@ -278,13 +280,13 @@ const Companies = () => {
 
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
-    phone: true, contact: true, tasks: true, website: true, contactType: true,
-    emailDomain: true, lastContacted: true, interactions: true, inactiveDays: true, tags: true,
+    phone: true, contact: true, deals: true, website: true, contactType: true,
+    emailDomain: true, lastActivity: true, interactions: true, inactiveDays: true, tags: true,
   });
 
   const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
-    company: 200, phone: 130, contact: 140, tasks: 80, website: 150,
-    contactType: 120, emailDomain: 140, lastContacted: 120, interactions: 90, inactiveDays: 90, tags: 100,
+    company: 200, phone: 130, contact: 140, deals: 80, website: 150,
+    contactType: 120, emailDomain: 140, lastActivity: 120, interactions: 90, inactiveDays: 90, tags: 100,
   }), []);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
@@ -347,7 +349,7 @@ const Companies = () => {
   }
 
   const isFiltersActive = activeFilter !== 'all' || searchTerm.trim() !== '';
-  const isNonDefaultSort = sortField !== 'last_contacted' || sortDir !== 'desc';
+  const isNonDefaultSort = sortField !== 'last_activity_at' || sortDir !== 'desc';
 
   // ── DnD sensors ──
   const sensors = useSensors(
@@ -357,14 +359,17 @@ const Companies = () => {
   // ── Contact type update mutation for Kanban drag ──
   const contactTypeMutation = useMutation({
     mutationFn: async ({ companyId, newType }: { companyId: string; newType: string; oldType: string }) => {
+      // companyId is the first lead's ID; get company_name from it
+      const company = companies.find(c => c.id === companyId);
+      if (!company) throw new Error('Company not found');
       const { error } = await supabase
-        .from('companies')
+        .from('leads')
         .update({ contact_type: newType })
-        .eq('id', companyId);
+        .eq('company_name', company.company_name);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['companies-list'] });
+      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       toast.success('Contact type updated');
     },
     onError: () => {
@@ -379,23 +384,65 @@ const Companies = () => {
 
   const createCompanyMutation = useMutation({
     mutationFn: async (data: typeof newCompany) => {
-      const { data: company, error } = await supabase
-        .from('companies')
+      // Insert as a lead
+      const { data: lead, error } = await supabase
+        .from('leads')
         .insert({
+          name: data.contact_name || data.company_name,
           company_name: data.company_name,
-          contact_name: data.contact_name || null,
           phone: data.phone || null,
           website: data.website || null,
-          email_domain: data.email_domain || null,
+          email: data.email_domain ? `contact@${data.email_domain}` : null,
           contact_type: data.contact_type,
+          status: 'initial_review',
         })
         .select()
         .single();
       if (error) throw error;
-      return company as Company;
+
+      // Add to default (Potential) pipeline
+      const { data: pipeline } = await supabase
+        .from('pipelines')
+        .select('id')
+        .eq('is_main', true)
+        .maybeSingle();
+      if (pipeline) {
+        const { data: stage } = await supabase
+          .from('pipeline_stages')
+          .select('id')
+          .eq('pipeline_id', pipeline.id)
+          .order('position', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (stage) {
+          await supabase.from('pipeline_leads').insert({
+            lead_id: lead.id,
+            pipeline_id: pipeline.id,
+            stage_id: stage.id,
+          });
+        }
+      }
+
+      return {
+        id: lead.id,
+        company_name: data.company_name,
+        contact_name: data.contact_name || null,
+        phone: data.phone || null,
+        website: data.website || null,
+        email_domain: data.email_domain || null,
+        contact_type: data.contact_type,
+        tags: null,
+        assigned_to: null,
+        notes: null,
+        source: null,
+        last_activity_at: null,
+        created_at: lead.created_at,
+        updated_at: lead.updated_at,
+        deals_count: 1,
+      } as Company;
     },
     onSuccess: (company) => {
-      queryClient.invalidateQueries({ queryKey: ['companies-list'] });
+      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       setAddCompanyOpen(false);
       setNewCompany({ company_name: '', contact_name: '', phone: '', website: '', email_domain: '', contact_type: 'Prospect' });
       toast.success(`"${company.company_name}" added as ${company.contact_type}`);
@@ -442,17 +489,8 @@ const Companies = () => {
   }
 
   // ── Queries ──
-  const { data: companies = [], isLoading } = useQuery({
-    queryKey: ['companies-list'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .order('last_contacted', { ascending: false });
-      if (error) throw error;
-      return (data || []) as Company[];
-    },
-  });
+  const { companies: rawCompanies, isLoading } = useAllPipelineLeads();
+  const companies = rawCompanies as Company[];
 
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members-companies'],
@@ -478,10 +516,13 @@ const Companies = () => {
       counts[type] = companies.filter(c => c.contact_type === type).length;
     }
     counts['recently_contacted'] = companies.filter(c => {
-      const d = daysSince(c.last_contacted);
+      const d = daysSince(c.last_activity_at);
       return d !== null && d <= 7;
     }).length;
-    counts['inactive'] = companies.filter(c => c.inactive_days >= 30).length;
+    counts['inactive'] = companies.filter(c => {
+      const d = daysSince(c.last_activity_at);
+      return d !== null && d >= 30;
+    }).length;
     return counts;
   }, [companies]);
 
@@ -493,11 +534,14 @@ const Companies = () => {
         result = result.filter(c => c.contact_type === activeFilter);
       } else if (activeFilter === 'recently_contacted') {
         result = result.filter(c => {
-          const d = daysSince(c.last_contacted);
+          const d = daysSince(c.last_activity_at);
           return d !== null && d <= 7;
         });
       } else if (activeFilter === 'inactive') {
-        result = result.filter(c => c.inactive_days >= 30);
+        result = result.filter(c => {
+          const d = daysSince(c.last_activity_at);
+          return d !== null && d >= 30;
+        });
       }
     }
 
@@ -805,7 +849,7 @@ const Companies = () => {
                     <ArrowUpDown className="h-3 w-3 shrink-0" />
                     {sortFieldLabel} {sortDir === 'asc' ? '↑' : '↓'}
                     <button
-                      onClick={() => { setSortField('last_contacted'); setSortDir('desc'); }}
+                      onClick={() => { setSortField('last_activity_at'); setSortDir('desc'); }}
                       className="ml-0.5 text-blue-400 hover:text-blue-700"
                       title="Reset sort"
                     >
@@ -952,8 +996,8 @@ const Companies = () => {
                       <ColHeader colKey="contact" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Contact
                       </ColHeader>
-                      <ColHeader colKey="tasks" className="sticky top-0 z-10 bg-white dark:bg-card">
-                        Tasks
+                      <ColHeader colKey="deals" className="sticky top-0 z-10 bg-white dark:bg-card">
+                        Deals
                       </ColHeader>
                       <ColHeader colKey="website" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Website
@@ -964,8 +1008,8 @@ const Companies = () => {
                       <ColHeader colKey="emailDomain" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Email Domain
                       </ColHeader>
-                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10 bg-white dark:bg-card">
-                        Contacted
+                      <ColHeader colKey="lastActivity" className="sticky top-0 z-10 bg-white dark:bg-card">
+                        Last Activity
                       </ColHeader>
                       <ColHeader colKey="interactions" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Activity
@@ -992,11 +1036,11 @@ const Companies = () => {
                           </td>
                           {columnVisibility.phone && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-24 rounded" /></td>}
                           {columnVisibility.contact && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.tasks && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.deals && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-8 rounded" /></td>}
                           {columnVisibility.website && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-32 rounded" /></td>}
                           {columnVisibility.contactType && <td className="px-4 py-3.5"><Skeleton className="h-5 w-20 rounded-full" /></td>}
                           {columnVisibility.emailDomain && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-28 rounded" /></td>}
-                          {columnVisibility.lastContacted && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.lastActivity && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-20 rounded" /></td>}
                           {columnVisibility.interactions && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-8 rounded" /></td>}
                           {columnVisibility.inactiveDays && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-10 rounded" /></td>}
                           {columnVisibility.tags && <td className="px-4 py-3.5"><Skeleton className="h-3.5 w-16 rounded" /></td>}
@@ -1031,7 +1075,7 @@ const Companies = () => {
                         const initial = company.company_name[0]?.toUpperCase() ?? '?';
                         const avatarColor = getAvatarColor(company.company_name);
                         const typeCfg = contactTypeConfig[company.contact_type ?? 'Other'];
-                        const inactiveDaysVal = company.inactive_days;
+                        const inactiveDaysVal = daysSince(company.last_activity_at) ?? 0;
                         const isStale = inactiveDaysVal > 7;
                         const isSelected = selectedCompany?.id === company.id;
 
@@ -1105,12 +1149,12 @@ const Companies = () => {
                               </td>
                             )}
 
-                            {/* Tasks */}
-                            {columnVisibility.tasks && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.tasks }}>
-                                {company.tasks_count > 0 ? (
+                            {/* Deals */}
+                            {columnVisibility.deals && (
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.deals }}>
+                                {company.deals_count > 0 ? (
                                   <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-muted text-[11px] font-bold text-foreground/70">
-                                    {company.tasks_count}
+                                    {company.deals_count}
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground/40 text-[13px]">0</span>
@@ -1162,19 +1206,19 @@ const Companies = () => {
                               </td>
                             )}
 
-                            {/* Last Contacted */}
-                            {columnVisibility.lastContacted && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.lastContacted }}>
-                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(company.last_contacted)}</span>
+                            {/* Last Activity */}
+                            {columnVisibility.lastActivity && (
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.lastActivity }}>
+                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(company.last_activity_at)}</span>
                               </td>
                             )}
 
-                            {/* Interactions */}
+                            {/* Interactions (derived from deals_count) */}
                             {columnVisibility.interactions && (
                               <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.interactions }}>
-                                {company.interactions_count > 0 ? (
+                                {company.deals_count > 0 ? (
                                   <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                                    {company.interactions_count}
+                                    {company.deals_count}
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground/40 text-[13px]">0</span>
@@ -1293,7 +1337,7 @@ const Companies = () => {
               }}
               onCompanyUpdate={(updatedCompany) => {
                 setSelectedCompany(updatedCompany as any);
-                queryClient.invalidateQueries({ queryKey: ['companies-list'] });
+                queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
               }}
             />
           )}

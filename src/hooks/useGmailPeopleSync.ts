@@ -43,7 +43,7 @@ export function useGmailPeopleSync({ allEmails, allLeads, findLeadForEmail }: Us
     queryKey: ['gmail-people'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('people')
+        .from('leads')
         .select('id, name, email, contact_type, company_name, phone, title, notes, tags, linkedin, source, created_at, last_activity_at');
       return (data as Person[]) || [];
     },
@@ -136,20 +136,7 @@ export function useGmailPeopleSync({ allEmails, allLeads, findLeadForEmail }: Us
     if (unknownEmails.size === 0) return;
 
     const syncUnknownSenders = async () => {
-      // Insert into people table
-      const peopleRows = Array.from(unknownEmails.entries()).map(([email, name]) => ({
-        name,
-        email,
-        contact_type: 'Prospect',
-        source: 'gmail',
-      }));
-
-      const { error: peopleError } = await supabase.from('people').insert(peopleRows);
-      if (peopleError) {
-        console.error('[useGmailPeopleSync] Failed to insert people:', peopleError);
-      }
-
-      // Also create leads so they appear in pipeline
+      // Create leads so they appear in pipeline
       const defaults = await getDefaultPipelineStage();
 
       const leadRows = Array.from(unknownEmails.entries()).map(([email, name]) => ({

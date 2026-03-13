@@ -229,16 +229,27 @@ async function getMessage(accessToken: string, messageId: string, fetchPhoto: bo
       });
     }
 
-    // Get body content (prefer HTML if available)
+    // Get body content (prefer HTML if available) and collect attachments
     let plainBody = '';
     let htmlBody = '';
-    
-    function extractBody(part: any) {
+    const attachments: { id: string; name: string; type: string; size: number; messageId: string }[] = [];
+
+    function extractParts(part: any) {
       const mimeType = part?.mimeType;
       const data = part?.body?.data;
+      const attachmentId = part?.body?.attachmentId;
+      const filename = part?.filename;
 
-      // Only set the first found of each type; keep HTML if present.
-      if (mimeType === 'text/html' && data && !htmlBody) {
+      // Attachment: has an attachmentId or a filename with size > 0
+      if (attachmentId || (filename && part?.body?.size > 0)) {
+        attachments.push({
+          id: attachmentId || '',
+          name: filename || 'untitled',
+          type: mimeType || 'application/octet-stream',
+          size: part.body.size || 0,
+          messageId: message.id,
+        });
+      } else if (mimeType === 'text/html' && data && !htmlBody) {
         try {
           htmlBody = decodeBase64UrlToUtf8(data);
         } catch {
@@ -253,7 +264,7 @@ async function getMessage(accessToken: string, messageId: string, fetchPhoto: bo
       }
 
       if (part?.parts) {
-        part.parts.forEach(extractBody);
+        part.parts.forEach(extractParts);
       }
     }
     
@@ -269,7 +280,7 @@ async function getMessage(accessToken: string, messageId: string, fetchPhoto: bo
     }
 
     if (message.payload) {
-      extractBody(message.payload);
+      extractParts(message.payload);
     }
 
     // Extract sender email for photo lookup
@@ -297,6 +308,7 @@ async function getMessage(accessToken: string, messageId: string, fetchPhoto: bo
       body: htmlBody || plainBody,
       isUnread: message.labelIds?.includes('UNREAD'),
       senderPhoto,
+      attachments,
     };
   } catch (error) {
     console.error(`Error fetching message ${messageId}:`, error);
@@ -798,28 +810,35 @@ Deno.serve(async (req) => {
     // List messages
     if (action === 'list') {
       const query = url.searchParams.get('q') || '';
-      const maxResults = parseInt(url.searchParams.get('maxResults') || '20');
+      const maxResults = parseInt(url.searchParams.get('maxResults') || '50');
       const pageToken = url.searchParams.get('pageToken') || undefined;
       const fetchPhotos = url.searchParams.get('fetchPhotos') === 'true';
-      
+
       const messagesData = await listMessages(accessToken, query, maxResults, pageToken);
-      
-      // Batch messages to avoid rate limiting (max 10 concurrent requests)
-      const BATCH_SIZE = 10;
+
+      // Batch messages to avoid rate limiting (max 20 concurrent requests)
+      const BATCH_SIZE = 20;
       const messageIds = (messagesData.messages || []).map((m: any) => m.id);
       const messages: any[] = [];
-      
+      let droppedCount = 0;
+
       for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
         const batchIds = messageIds.slice(i, i + BATCH_SIZE);
         const batchResults = await Promise.all(
           batchIds.map((id: string) => getMessage(accessToken, id, fetchPhotos))
         );
-        messages.push(...batchResults.filter((m): m is NonNullable<typeof m> => m !== null));
-        
+        const validResults = batchResults.filter((m): m is NonNullable<typeof m> => m !== null);
+        droppedCount += batchResults.length - validResults.length;
+        messages.push(...validResults);
+
         // Small delay between batches to avoid rate limiting
         if (i + BATCH_SIZE < messageIds.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
+      }
+
+      if (droppedCount > 0) {
+        console.warn(`[gmail-api] Dropped ${droppedCount} messages that failed to fetch individually out of ${messageIds.length} total`);
       }
 
       return new Response(JSON.stringify({
@@ -827,6 +846,37 @@ Deno.serve(async (req) => {
         nextPageToken: messagesData.nextPageToken,
         resultSizeEstimate: messagesData.resultSizeEstimate || messages.length,
       }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Download a single attachment
+    if (action === 'get-attachment') {
+      const messageId = url.searchParams.get('messageId');
+      const attachmentId = url.searchParams.get('attachmentId');
+      if (!messageId || !attachmentId) {
+        return new Response(JSON.stringify({ error: 'messageId and attachmentId are required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const response = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('Gmail API error (get-attachment):', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch attachment' }), {
+          status: response.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const data = await response.json();
+      return new Response(JSON.stringify({ data: data.data, size: data.size }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

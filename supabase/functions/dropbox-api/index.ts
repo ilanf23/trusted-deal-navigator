@@ -139,7 +139,7 @@ async function handleList(accessToken: string, body: any) {
 }
 
 async function handleUpload(accessToken: string, body: any, supabase: any) {
-  const { path, content } = body;
+  const { path, content, mode: uploadMode } = body;
 
   if (!path || !content) {
     throw new Error('Missing path or content for upload');
@@ -152,14 +152,16 @@ async function handleUpload(accessToken: string, body: any, supabase: any) {
     bytes[i] = binaryString.charCodeAt(i);
   }
 
+  const dropboxMode = uploadMode === 'overwrite' ? 'overwrite' : 'add';
+
   const response = await fetch('https://content.dropboxapi.com/2/files/upload', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Dropbox-API-Arg': new TextEncoder().encode(JSON.stringify({
         path,
-        mode: 'add',
-        autorename: true,
+        mode: dropboxMode,
+        autorename: dropboxMode === 'add',
       })).reduce((acc, byte) => acc + String.fromCharCode(byte), ''),
       'Content-Type': 'application/octet-stream',
     },

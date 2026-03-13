@@ -96,7 +96,7 @@ export const useFeedData = () => {
           .limit(200),
         // People (contacts)
         supabase
-          .from('people')
+          .from('leads')
           .select('id, name, company_name, assigned_to, created_at, updated_at, notes')
           .order('updated_at', { ascending: false })
           .limit(100),

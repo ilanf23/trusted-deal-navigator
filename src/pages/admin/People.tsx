@@ -58,9 +58,10 @@ import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
+import { useAllPipelineLeads } from '@/hooks/useAllPipelineLeads';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
-// ── Person type (local, since people table isn't in auto-generated types yet) ──
+// ── Person type (mapped from leads table via pipeline_leads) ──
 interface Person {
   id: string;
   name: string;
@@ -77,6 +78,12 @@ interface Person {
   last_activity_at: string | null;
   created_at: string;
   updated_at: string;
+  website?: string | null;
+  _pipelineName?: string;
+  _stageName?: string;
+  _stageId?: string;
+  _pipelineId?: string;
+  _pipelineLeadId?: string;
 }
 
 type ContactType = string;
@@ -163,6 +170,9 @@ const FILTER_OPTIONS = [
   { id: 'Vendor', label: 'Vendors', group: 'public' },
   { id: 'recently_contacted', label: 'Recently Contacted', group: 'public' },
   { id: 'inactive', label: 'Inactive (30+ days)', group: 'public' },
+  { id: 'pipeline_potential', label: 'Potential Pipeline', group: 'pipeline' },
+  { id: 'pipeline_underwriting', label: 'Underwriting Pipeline', group: 'pipeline' },
+  { id: 'pipeline_lender', label: 'Lender Management Pipeline', group: 'pipeline' },
 ];
 
 type SortField = 'name' | 'company_name' | 'contact_type' | 'last_activity_at' | 'updated_at';
@@ -176,7 +186,7 @@ const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
   { value: 'updated_at', label: 'Updated' },
 ];
 
-type ColumnKey = 'title' | 'company' | 'tasks' | 'email' | 'contactType' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
+type ColumnKey = 'title' | 'company' | 'tasks' | 'email' | 'contactType' | 'pipeline' | 'lastContacted' | 'interactions' | 'inactiveDays' | 'tags';
 
 const COLUMN_LABELS: Record<ColumnKey, string> = {
   title: 'Title',
@@ -184,6 +194,7 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   tasks: 'Tasks',
   email: 'Email',
   contactType: 'Contact Type',
+  pipeline: 'Pipeline',
   lastContacted: 'Last Contacted',
   interactions: 'Interactions',
   inactiveDays: 'Inactive Days',
@@ -340,12 +351,12 @@ const People = () => {
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
     title: true, company: true, tasks: true, email: true, contactType: true,
-    lastContacted: true, interactions: true, inactiveDays: true, tags: true,
+    pipeline: true, lastContacted: true, interactions: true, inactiveDays: true, tags: true,
   });
 
   const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
     person: 200, title: 130, company: 130, tasks: 55, email: 170,
-    contactType: 130, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+    contactType: 130, pipeline: 180, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
   }), []);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
@@ -414,19 +425,19 @@ const People = () => {
   const contactTypeMutation = useMutation({
     mutationFn: async ({ personId, newType, oldType }: { personId: string; newType: string; oldType: string }) => {
       const { error } = await supabase
-        .from('people')
+        .from('leads')
         .update({ contact_type: newType })
         .eq('id', personId);
       if (error) throw error;
-      await supabase.from('people_activities').insert({
-        person_id: personId,
+      await supabase.from('lead_activities').insert({
+        lead_id: personId,
         activity_type: 'type_change',
         title: `Changed from ${oldType} to ${newType}`,
         content: JSON.stringify({ from: oldType, to: newType }),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['people-list'] });
+      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       toast.success('Contact type updated');
     },
     onError: () => {
@@ -441,8 +452,9 @@ const People = () => {
 
   const createPersonMutation = useMutation({
     mutationFn: async (data: { name: string; title: string; company_name: string; email: string; phone: string; contact_type: string }) => {
-      const { data: person, error } = await supabase
-        .from('people')
+      // Insert into leads
+      const { data: lead, error } = await supabase
+        .from('leads')
         .insert({
           name: data.name,
           title: data.title || null,
@@ -450,14 +462,39 @@ const People = () => {
           email: data.email || null,
           phone: data.phone || null,
           contact_type: data.contact_type,
+          status: 'initial_review',
         })
         .select()
         .single();
       if (error) throw error;
-      return person as Person;
+
+      // Add to default (Potential) pipeline
+      const { data: pipeline } = await supabase
+        .from('pipelines')
+        .select('id')
+        .eq('is_main', true)
+        .maybeSingle();
+      if (pipeline) {
+        const { data: stage } = await supabase
+          .from('pipeline_stages')
+          .select('id')
+          .eq('pipeline_id', pipeline.id)
+          .order('position', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (stage) {
+          await supabase.from('pipeline_leads').insert({
+            lead_id: lead.id,
+            pipeline_id: pipeline.id,
+            stage_id: stage.id,
+          });
+        }
+      }
+
+      return lead as Person;
     },
     onSuccess: (person) => {
-      queryClient.invalidateQueries({ queryKey: ['people-list'] });
+      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       setAddPersonOpen(false);
       setNewPerson({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect' });
       toast.success(`"${person.name}" added as ${person.contact_type}`);
@@ -521,29 +558,19 @@ const People = () => {
     return map;
   }, [teamMembers]);
 
-  const { data: people = [], isLoading } = useQuery({
-    queryKey: ['people-list'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('people')
-        .select('*')
-        .order('last_activity_at', { ascending: false });
-      if (error) throw error;
-      return (data || []) as Person[];
-    },
-  });
+  const { people, isLoading } = useAllPipelineLeads();
 
   const { data: taskCountMap = {} } = useQuery({
     queryKey: ['people-task-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('people_tasks')
-        .select('person_id')
-        .in('person_id', people.map((p) => p.id));
+        .from('lead_activities')
+        .select('lead_id')
+        .in('lead_id', people.map((p) => p.id));
       if (error) return {} as Record<string, number>;
       const counts: Record<string, number> = {};
       for (const row of data) {
-        if (row.person_id) counts[row.person_id] = (counts[row.person_id] ?? 0) + 1;
+        counts[row.lead_id] = (counts[row.lead_id] || 0) + 1;
       }
       return counts;
     },
@@ -554,13 +581,13 @@ const People = () => {
     queryKey: ['people-interaction-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('people_activities')
-        .select('person_id')
-        .in('person_id', people.map((p) => p.id));
+        .from('lead_activities')
+        .select('lead_id')
+        .in('lead_id', people.map((p) => p.id));
       if (error) return {} as Record<string, number>;
       const counts: Record<string, number> = {};
       for (const row of data) {
-        if (row.person_id) counts[row.person_id] = (counts[row.person_id] ?? 0) + 1;
+        counts[row.lead_id] = (counts[row.lead_id] || 0) + 1;
       }
       return counts;
     },
@@ -581,6 +608,10 @@ const People = () => {
       const d = daysSince(p.last_activity_at);
       return d !== null && d >= 30;
     }).length;
+    // Pipeline filter counts
+    counts['pipeline_potential'] = people.filter(p => p._pipelineName?.toLowerCase().includes('potential')).length;
+    counts['pipeline_underwriting'] = people.filter(p => p._pipelineName?.toLowerCase().includes('underwriting')).length;
+    counts['pipeline_lender'] = people.filter(p => p._pipelineName?.toLowerCase().includes('lender')).length;
     return counts;
   }, [people]);
 
@@ -600,6 +631,9 @@ const People = () => {
           const d = daysSince(p.last_activity_at);
           return d !== null && d >= 30;
         });
+      } else if (activeFilter.startsWith('pipeline_')) {
+        const pipelineKey = activeFilter.replace('pipeline_', '');
+        result = result.filter((p) => p._pipelineName?.toLowerCase().includes(pipelineKey));
       }
       // 'my_contacts' shows all for now
     }
@@ -859,6 +893,32 @@ const People = () => {
                   );
                 })}
 
+                {/* By Pipeline */}
+                <div className="px-3 pt-3 pb-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">By Pipeline</span>
+                </div>
+                {FILTER_OPTIONS.filter(o => o.group === 'pipeline').map((opt) => {
+                  const isActive = activeFilter === opt.id;
+                  const count = filterCounts[opt.id] ?? 0;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setActiveFilter(opt.id)}
+                      className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
+                        isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
+                      <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{opt.label}</span>
+                      {count > 0 && (
+                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+
                 {/* Custom Filters */}
                 {customFilters.length > 0 && (
                   <>
@@ -1070,6 +1130,9 @@ const People = () => {
                       <ColHeader colKey="contactType" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Type
                       </ColHeader>
+                      <ColHeader colKey="pipeline" className="sticky top-0 z-10 bg-white dark:bg-card">
+                        Pipeline
+                      </ColHeader>
                       <ColHeader colKey="lastContacted" className="sticky top-0 z-10 bg-white dark:bg-card">
                         Contacted
                       </ColHeader>
@@ -1104,6 +1167,7 @@ const People = () => {
                           {columnVisibility.tasks && <td className="px-4 py-3.5" style={{ width: columnWidths.tasks }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
                           {columnVisibility.email && <td className="px-4 py-3.5" style={{ width: columnWidths.email }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
                           {columnVisibility.contactType && <td className="px-4 py-3.5" style={{ width: columnWidths.contactType }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
+                          {columnVisibility.pipeline && <td className="px-4 py-3.5" style={{ width: columnWidths.pipeline }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
                           {columnVisibility.lastContacted && <td className="px-4 py-3.5" style={{ width: columnWidths.lastContacted }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
                           {columnVisibility.interactions && <td className="px-4 py-3.5" style={{ width: columnWidths.interactions }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
                           {columnVisibility.inactiveDays && <td className="px-4 py-3.5" style={{ width: columnWidths.inactiveDays }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
@@ -1112,7 +1176,7 @@ const People = () => {
                       ))
                     ) : filteredAndSorted.length === 0 ? (
                       <tr>
-                        <td colSpan={12}>
+                        <td colSpan={13}>
                           <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
                               <FileSearch className="h-6 w-6 text-muted-foreground" />
@@ -1253,6 +1317,22 @@ const People = () => {
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground text-xs">{person.contact_type}</span>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Pipeline / Stage */}
+                            {columnVisibility.pipeline && (
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.pipeline }}>
+                                {person._pipelineName ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400">
+                                    {person._pipelineName}
+                                    {person._stageName && (
+                                      <span className="text-purple-400 dark:text-purple-500 font-normal">{' > '}{person._stageName}</span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground/40">--</span>
                                 )}
                               </td>
                             )}

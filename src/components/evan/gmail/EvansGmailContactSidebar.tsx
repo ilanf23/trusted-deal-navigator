@@ -109,7 +109,7 @@ function usePersonInlineSave(
     }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -206,7 +206,7 @@ function EditableNotes({ value, personId, onSaved }: { value: string; personId: 
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ notes: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -274,7 +274,7 @@ function EditableTags({ tags, personId, onSaved }: { tags: string[]; personId: s
     if (newStr === currentStr) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', personId);
     setSaving(false);
@@ -343,7 +343,7 @@ export function EvansGmailContactSidebar({ person, onClose }: EvansGmailContactS
     setContactType(value);
     setSavingType(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ contact_type: value })
       .eq('id', person.id);
     setSavingType(false);

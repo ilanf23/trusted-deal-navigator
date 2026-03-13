@@ -109,7 +109,7 @@ function formatDate(dateStr: string | null): string {
   }
 }
 
-// ── Generic inline-save helper (companies table) ──
+// ── Generic inline-save helper (leads table) ──
 function useInlineSave(
   companyId: string,
   field: string,
@@ -131,9 +131,11 @@ function useInlineSave(
       return;
     }
     setSaving(true);
+    const fieldMap: Record<string, string> = { contact_name: 'name' };
+    const dbField = fieldMap[field] || field;
     const { error } = await supabase
-      .from('companies')
-      .update({ [field]: trimmed || null })
+      .from('leads')
+      .update({ [dbField]: trimmed || null })
       .eq('id', companyId);
     setSaving(false);
     if (error) {
@@ -282,7 +284,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('companies')
+      .from('leads')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', companyId);
     setSaving(false);
@@ -356,7 +358,7 @@ function EditableNotes({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('companies')
+      .from('leads')
       .update({ notes: trimmed || null } as any)
       .eq('id', companyId);
     setSaving(false);
@@ -535,7 +537,7 @@ function RelatedTabContent({ company, contactTypeConfig }: { company: Company; c
     queryKey: ['company-related-people', company.company_name],
     queryFn: async () => {
       const { data } = await supabase
-        .from('people')
+        .from('leads')
         .select('id, name, title, email, phone, contact_type')
         .eq('company_name', company.company_name)
         .order('name', { ascending: true });
@@ -651,7 +653,7 @@ export default function CompanyDetailPanel({
   const gradient = getAvatarGradient(company.company_name);
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
-    queryClient.invalidateQueries({ queryKey: ['companies-list'] });
+    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
     if (onCompanyUpdate) {
       if (field === 'tags') {
         try {
@@ -669,14 +671,14 @@ export default function CompanyDetailPanel({
   // Owner dropdown handler
   const handleOwnerChange = useCallback(async (newOwnerId: string) => {
     const { error } = await supabase
-      .from('companies')
-      .update({ assigned_to: newOwnerId || null } as any)
+      .from('leads')
+      .update({ assigned_to: newOwnerId || null })
       .eq('id', company.id);
     if (error) {
       toast.error('Failed to update owner');
       return;
     }
-    queryClient.invalidateQueries({ queryKey: ['companies-list'] });
+    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
     if (onCompanyUpdate) {
       onCompanyUpdate({ ...company, assigned_to: newOwnerId || null });
     }

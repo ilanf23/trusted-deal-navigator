@@ -16,7 +16,7 @@ export interface GmailEmail {
   isStarred?: boolean;
   labels?: string[];
   senderPhoto?: string | null;
-  attachments?: { name: string; type: string }[];
+  attachments?: { id: string; name: string; type: string; size: number; messageId: string }[];
 }
 
 export interface ThreadMessage {
