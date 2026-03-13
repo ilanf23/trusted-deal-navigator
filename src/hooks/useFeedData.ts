@@ -100,10 +100,10 @@ export const useFeedData = () => {
           .select('id, name, company_name, assigned_to, created_at, updated_at, notes')
           .order('updated_at', { ascending: false })
           .limit(100),
-        // People activities
+        // Lead activities
         supabase
-          .from('people_activities')
-          .select('id, activity_type, content, title, created_at, person_id')
+          .from('lead_activities')
+          .select('id, activity_type, content, title, created_at, lead_id')
           .order('created_at', { ascending: false })
           .limit(100),
         // Outbound emails (Gmail sent emails linked to leads)
@@ -296,7 +296,7 @@ export const useFeedData = () => {
 
       // ── 6. People Activities ──
       for (const pa of (peopleActivities || [])) {
-        const personInfo = peopleMap.get(pa.person_id);
+        const personInfo = peopleMap.get(pa.lead_id);
         let type: FeedActivityType = 'note';
         const at = pa.activity_type?.toLowerCase() || '';
         if (at === 'call') type = 'call';
@@ -323,7 +323,7 @@ export const useFeedData = () => {
       }
 
       // ── 7. People with notes (contacts that have notes but no dedicated activities) ──
-      const peopleWithActivities = new Set((peopleActivities || []).map(pa => pa.person_id));
+      const peopleWithActivities = new Set((peopleActivities || []).map(pa => pa.lead_id));
       for (const person of (people || [])) {
         if (!person.notes || peopleWithActivities.has(person.id)) continue;
         const assigneeInfo = person.assigned_to ? teamMap.get(person.assigned_to) : null;
