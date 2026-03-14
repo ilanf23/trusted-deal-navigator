@@ -67,10 +67,14 @@ const AVATAR_COLORS = [
 ];
 
 const FILTER_OPTIONS = [
-  { id: 'all', label: 'All Deals', group: 'top' },
-  { id: 'my_open', label: 'My Open Deals', group: 'public' },
-  { id: 'won', label: 'Won Deals', group: 'public' },
-  { id: 'lost', label: 'Lost Deals', group: 'public' },
+  { id: 'all', label: 'All Opportunities', group: 'top' },
+  { id: 'my_open', label: 'My Open Opportunities', group: 'public' },
+  { id: 'open', label: 'Open Opportunities', group: 'public' },
+  { id: 'following', label: "Opportunities I'm Following", group: 'public' },
+  { id: 'won', label: 'Won Opportunities', group: 'public' },
+  { id: 'closed_2025', label: 'Closed Loans 2025', group: 'public' },
+  { id: 'closed_2026', label: 'Closed Loans 2026', group: 'public' },
+  { id: 'weeklys', label: "Weekly's", group: 'public' },
 ];
 
 function getAvatarColor(name: string): string {
@@ -125,6 +129,21 @@ function fakeTasks(id: string): number {
 
 function fakeInteractions(id: string): number {
   return Math.floor(seededRand(id, 3) * 26);
+}
+
+function fakeIsFollowing(id: string): boolean {
+  return seededRand(id, 4) < 0.3;
+}
+
+function fakeClosedYear(id: string): number | null {
+  const r = seededRand(id, 5);
+  if (r < 0.15) return 2025;
+  if (r < 0.30) return 2026;
+  return null;
+}
+
+function fakeIsWeekly(id: string): boolean {
+  return seededRand(id, 6) < 0.25;
 }
 
 type SortField = 'name' | 'company_name' | 'status' | 'last_activity_at' | 'assigned_to' | 'updated_at';
@@ -281,7 +300,6 @@ const LenderManagement = () => {
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
-  const [ownerFiltersOpen, setOwnerFiltersOpen] = useState(true);
   const [draggedLead, setDraggedLead] = useState<FlatPipelineLead | null>(null);
 
   // Custom filters
@@ -527,34 +545,64 @@ const LenderManagement = () => {
     for (const stage of stages) {
       counts[stage.id] = leads.filter((l) => l._stageId === stage.id).length;
     }
-    for (const tm of teamMembers) {
-      counts[`owner_${tm.id}`] = leads.filter(l => l.assigned_to === tm.id).length;
-    }
-    counts['unassigned'] = leads.filter(l => !l.assigned_to).length;
+    counts['my_open'] = leads.length;
+    counts['open'] = leads.length;
+    counts['following'] = leads.filter(l => fakeIsFollowing(l.id)).length;
+    counts['won'] = leads.filter(l => l.status === 'won' as any).length;
+    counts['closed_2025'] = leads.filter(l => fakeClosedYear(l.id) === 2025).length;
+    counts['closed_2026'] = leads.filter(l => fakeClosedYear(l.id) === 2026).length;
+    counts['weeklys'] = leads.filter(l => fakeIsWeekly(l.id)).length;
     return counts;
-  }, [leads, teamMembers, stages]);
+  }, [leads, stages]);
 
   // Filter and sort
   const filteredAndSorted = useMemo(() => {
     let result = leads;
 
     if (activeFilter !== 'all') {
-      if (activeFilter === 'my_open') {
-        result = result.filter((l) => l.status !== 'won');
-      } else if (activeFilter === 'won') {
-        result = result.filter((l) => l.status === 'won');
-      } else if (activeFilter === 'lost') {
-        result = result.filter(() => false); // No lost status in pipeline
-      } else if (stages.some(s => s.id === activeFilter)) {
+      if (stages.some(s => s.id === activeFilter)) {
         result = result.filter((l) => l._stageId === activeFilter);
-      } else if (activeFilter.startsWith('owner_')) {
-        const ownerId = activeFilter.replace('owner_', '');
-        result = result.filter((l) => l.assigned_to === ownerId);
-      } else if (activeFilter === 'unassigned') {
-        result = result.filter((l) => !l.assigned_to);
+      } else if (activeFilter === 'won') {
+        result = result.filter((l) => l.status === ('won' as LeadStatus));
+      } else if (activeFilter === 'following') {
+        result = result.filter((l) => fakeIsFollowing(l.id));
+      } else if (activeFilter === 'closed_2025') {
+        result = result.filter((l) => fakeClosedYear(l.id) === 2025);
+      } else if (activeFilter === 'closed_2026') {
+        result = result.filter((l) => fakeClosedYear(l.id) === 2026);
+      } else if (activeFilter === 'weeklys') {
+        result = result.filter((l) => fakeIsWeekly(l.id));
       } else if (activeFilter.startsWith('custom_')) {
-        // Custom filter logic - placeholder
+        const cf = customFilters.find(f => f.id === activeFilter);
+        if (cf) {
+          const v = cf.values;
+          result = result.filter((l) => {
+            if (v.stage.length > 0 && !v.stage.includes(l.status)) return false;
+            if (v.status.length > 0 && !v.status.includes(l.status)) return false;
+            if (v.source.length > 0 && !v.source.includes(l.source ?? '')) return false;
+            if (v.ownedBy.length > 0 && !v.ownedBy.includes(l.assigned_to ?? '')) return false;
+
+            if (v.company.trim() && !(l.company_name ?? '').toLowerCase().includes(v.company.toLowerCase())) return false;
+            if (v.name.trim() && !l.name.toLowerCase().includes(v.name.toLowerCase())) return false;
+            if (v.uwNumber.trim() && !(l.uw_number ?? '').toLowerCase().includes(v.uwNumber.toLowerCase())) return false;
+
+            if (v.tags.trim()) {
+              const filterTags = v.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+              const leadTags = (l.tags ?? []).map(t => t.toLowerCase());
+              if (!filterTags.some(ft => leadTags.includes(ft))) return false;
+            }
+
+            if (v.clientWorkingWithOtherLenders && !l.client_other_lenders) return false;
+            if (v.weeklys && !l.flagged_for_weekly) return false;
+
+            if (v.dateAddedFrom && new Date(l.created_at) < v.dateAddedFrom) return false;
+            if (v.dateAddedTo && new Date(l.created_at) > v.dateAddedTo) return false;
+
+            return true;
+          });
+        }
       }
+      // 'my_open', 'open', 'following' show all for now
     }
 
     if (searchTerm.trim()) {
@@ -852,108 +900,6 @@ const LenderManagement = () => {
                     </button>
                   );
                 })}
-
-                {/* By Stage */}
-                <button
-                  onClick={() => setPublicFiltersOpen(v => !v)}
-                  className="w-full px-3 pt-3 pb-1 flex items-center justify-between group"
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">By Stage</span>
-                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : '-rotate-90'}`} />
-                </button>
-
-                {publicFiltersOpen && stages.map((stage) => {
-                  const isActive = activeFilter === stage.id;
-                  const count = filterCounts[stage.id] ?? 0;
-                  const cfg = dynamicStageConfig[stage.id];
-                  return (
-                    <button
-                      key={stage.id}
-                      onClick={() => setActiveFilter(stage.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                        isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      }`}
-                    >
-                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                      <span className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-gray-400'}`} />
-                        <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{stage.name}</span>
-                      </span>
-                      {count > 0 && (
-                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {/* By Owner */}
-                <button
-                  onClick={() => setOwnerFiltersOpen(v => !v)}
-                  className="w-full px-3 pt-3 pb-1 flex items-center justify-between group"
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">By Owner</span>
-                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${ownerFiltersOpen ? '' : '-rotate-90'}`} />
-                </button>
-
-                {ownerFiltersOpen && (
-                  <>
-                    {teamMembers.map((tm) => {
-                      const filterId = `owner_${tm.id}`;
-                      const isActive = activeFilter === filterId;
-                      const count = filterCounts[filterId] ?? 0;
-                      return (
-                        <button
-                          key={filterId}
-                          onClick={() => setActiveFilter(filterId)}
-                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                          }`}
-                        >
-                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="h-5 w-5 rounded-full overflow-hidden shrink-0">
-                              {tm.avatar_url ? (
-                                <img src={tm.avatar_url} alt={tm.name} className="h-full w-full object-cover" />
-                              ) : (
-                                <div className={`h-full w-full ${getAvatarColor(tm.name)} flex items-center justify-center text-white text-[8px] font-bold`}>
-                                  {tm.name[0]?.toUpperCase()}
-                                </div>
-                              )}
-                            </div>
-                            <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{tm.name}</span>
-                          </div>
-                          {count > 0 && (
-                            <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
-                              {count}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                    {(() => {
-                      const isActive = activeFilter === 'unassigned';
-                      const count = filterCounts['unassigned'] ?? 0;
-                      return (
-                        <button
-                          onClick={() => setActiveFilter('unassigned')}
-                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                          }`}
-                        >
-                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>Unassigned</span>
-                          {count > 0 && (
-                            <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
-                              {count}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })()}
-                  </>
-                )}
 
                 {/* Custom Filters */}
                 {customFilters.length > 0 && (

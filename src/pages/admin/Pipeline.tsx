@@ -17,7 +17,8 @@ import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/Creat
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
@@ -41,6 +42,7 @@ import {
   Maximize2,
   Download,
   PlusCircle,
+  Loader2,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -55,6 +57,7 @@ import { usePipelineStages } from '@/hooks/usePipelineStages';
 import { usePipelineLeads, type FlatPipelineLead } from '@/hooks/usePipelineLeads';
 import { usePipelineMutations } from '@/hooks/usePipelineMutations';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
+import { useTeamMember } from '@/hooks/useTeamMember';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -67,10 +70,20 @@ const AVATAR_COLORS = [
 ];
 
 const FILTER_OPTIONS = [
-  { id: 'all', label: 'All Deals', group: 'top' },
-  { id: 'my_open', label: 'My Open Deals', group: 'public' },
-  { id: 'won', label: 'Won Deals', group: 'public' },
-  { id: 'lost', label: 'Lost Deals', group: 'public' },
+  { id: 'all', label: 'All Opportunities', group: 'top' },
+  { id: 'my_open', label: 'My Open Opportunities', group: 'public' },
+  { id: 'open', label: 'Open Opportunities', group: 'public' },
+  { id: 'following', label: "Opportunities I'm Following", group: 'public' },
+  { id: 'won', label: 'Won Opportunities', group: 'public' },
+  { id: 'lost', label: 'Lost / Closed Opportunities', group: 'public' },
+  { id: 'brad_incoming', label: 'Brad Incoming Opportunities', group: 'public' },
+  { id: 'initial_review', label: 'Deals for Initial Review', group: 'public' },
+  { id: 'review_kill_keep', label: 'Deals Moving Towards Underwriting', group: 'public' },
+  { id: 'onboarding_2024', label: 'OnBoarding 2024 - Opp. into UW', group: 'public' },
+  { id: 'onboarding_2025', label: 'OnBoarding 2025 - Opp. into UW', group: 'public' },
+  { id: 'onboarding_2026', label: 'OnBoarding 2026 - Opp. into UW', group: 'public' },
+  { id: 'pre_approval_issued', label: 'Pre-Approval Letters Issued', group: 'public' },
+  { id: 'ready_for_wu_approval', label: "Write Up's Pending Approval", group: 'public' },
 ];
 
 function getAvatarColor(name: string): string {
@@ -109,22 +122,8 @@ function seededRand(seed: string, index: number): number {
   return Math.abs(h) / 0xffffffff;
 }
 
-const VALUE_BUCKETS = [25000, 50000, 75000, 100000, 150000, 200000, 250000, 350000, 500000, 750000];
-
-function fakeValue(id: string): number {
-  return VALUE_BUCKETS[Math.floor(seededRand(id, 1) * VALUE_BUCKETS.length)];
-}
-
 function formatValue(v: number): string {
   return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-function fakeTasks(id: string): number {
-  return Math.floor(seededRand(id, 2) * 9);
-}
-
-function fakeInteractions(id: string): number {
-  return Math.floor(seededRand(id, 3) * 26);
 }
 
 type SortField = 'name' | 'company_name' | 'status' | 'last_activity_at' | 'assigned_to' | 'updated_at';
@@ -158,9 +157,10 @@ const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
 ];
 
 // ── Kanban sub-components ──
-function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
+function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick }: {
   lead: Lead;
   teamMemberMap: Record<string, string>;
+  leadOwnerMap: Record<string, string>;
   isDragging?: boolean;
   onClick: () => void;
 }) {
@@ -169,8 +169,9 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const avatarColor = getAvatarColor(lead.name);
   const initial = lead.name[0]?.toUpperCase() ?? '?';
-  const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? null) : null;
-  const dealValue = fakeValue(lead.id);
+  const effectiveOwnerId = leadOwnerMap[lead.id] ?? lead.assigned_to;
+  const assignedName = effectiveOwnerId ? (teamMemberMap[effectiveOwnerId] ?? null) : null;
+  
   const daysInStage = daysSince(lead.updated_at);
 
   return (
@@ -194,16 +195,13 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
         {lead.company_name && (
           <p className="text-[11px] text-muted-foreground mb-1 truncate">{lead.company_name}</p>
         )}
-        <div className="flex items-center justify-between mt-1.5">
-          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-            {formatValue(dealValue)}
-          </span>
-          {daysInStage !== null && (
+        {daysInStage !== null && (
+          <div className="flex items-center justify-end mt-1.5">
             <span className={`text-[10px] font-medium ${daysInStage > 14 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
               {daysInStage}d
             </span>
-          )}
-        </div>
+          </div>
+        )}
         {assignedName && (
           <p className="text-[10px] text-muted-foreground mt-1">{assignedName}</p>
         )}
@@ -212,18 +210,19 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
   );
 }
 
-function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedId, onLeadClick, onAdd }: {
+function KanbanDropColumn({ status, label, color, leads, teamMemberMap, leadOwnerMap, draggedId, onLeadClick, onAdd }: {
   status: string;
   label: string;
   color: string;
   leads: any[];
   teamMemberMap: Record<string, string>;
+  leadOwnerMap: Record<string, string>;
   draggedId: string | null;
   onLeadClick: (lead: any) => void;
   onAdd?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
-  const totalVal = leads.reduce((sum, l) => sum + fakeValue(l.id), 0);
+  
   return (
     <div
       ref={setNodeRef}
@@ -240,7 +239,7 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
         )}
       </div>
       <div className="px-2 pb-1">
-        <span className="text-[10px] text-muted-foreground font-medium">{formatValue(totalVal)}</span>
+        <span className="text-[10px] text-muted-foreground font-medium">{leads.length} {leads.length === 1 ? 'deal' : 'deals'}</span>
       </div>
       <ScrollArea className="flex-1 px-2 pb-2">
         <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
@@ -250,6 +249,7 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
                 key={lead.id}
                 lead={lead}
                 teamMemberMap={teamMemberMap}
+                leadOwnerMap={leadOwnerMap}
                 isDragging={lead.id === draggedId}
                 onClick={() => onLeadClick(lead)}
               />
@@ -261,9 +261,12 @@ function KanbanDropColumn({ status, label, color, leads, teamMemberMap, draggedI
   );
 }
 
+const CLOSED_STATUSES: LeadStatus[] = ['won', 'lost', 'funded'];
+
 const Pipeline = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { teamMember: currentTeamMember } = useTeamMember();
 
   // Core state
   const [activeFilter, setActiveFilter] = useState<string>('all');
@@ -281,8 +284,14 @@ const Pipeline = () => {
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
-  const [ownerFiltersOpen, setOwnerFiltersOpen] = useState(true);
   const [draggedLead, setDraggedLead] = useState<FlatPipelineLead | null>(null);
+
+  // Bulk action state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [addTagsDialogOpen, setAddTagsDialogOpen] = useState(false);
+  const [bulkTagValue, setBulkTagValue] = useState('');
+  const [moveBoxesDialogOpen, setMoveBoxesDialogOpen] = useState(false);
+  const [moveBoxesTargetStage, setMoveBoxesTargetStage] = useState('');
 
   // Custom filters
   const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
@@ -369,7 +378,7 @@ const Pipeline = () => {
   const { data: pipeline } = useSystemPipelineByName('Potential');
   const { data: stages = [] } = usePipelineStages(pipeline?.id);
   const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineLeads(pipeline?.id);
-  const { moveLeadToStage, addLeadToPipeline } = usePipelineMutations(pipeline?.id);
+  const { moveLeadToStage, addLeadToPipeline, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline } = usePipelineMutations(pipeline?.id);
   const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
 
   const leads = pipelineLeadsList;
@@ -401,6 +410,30 @@ const Pipeline = () => {
     }
     return map;
   }, [teamMembers]);
+
+  // Deterministically assign a random owner to each lead that has no assigned_to
+  const leadOwnerMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (teamMembers.length === 0) return map;
+    for (const lead of leads) {
+      if (lead.assigned_to) {
+        map[lead.id] = lead.assigned_to;
+      } else {
+        const idx = Math.floor(seededRand(lead.id, 10) * teamMembers.length);
+        map[lead.id] = teamMembers[idx].id;
+      }
+    }
+    return map;
+  }, [leads, teamMembers]);
+
+  // Deterministic set of leads the current user is "following" (~25% of leads)
+  const followedLeadIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const lead of leads) {
+      if (seededRand(lead.id, 20) < 0.25) set.add(lead.id);
+    }
+    return set;
+  }, [leads]);
 
   // Fetch latest touchpoints
   const { data: touchpoints = {} } = useQuery({
@@ -515,45 +548,83 @@ const Pipeline = () => {
     enabled: leads.length > 0,
   });
 
-  // Total value
-  const totalValue = useMemo(
-    () => leads.reduce((sum, l) => sum + fakeValue(l.id), 0),
-    [leads]
-  );
-
   // Filter counts
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: leads.length };
     for (const stage of stages) {
       counts[stage.id] = leads.filter((l) => l._stageId === stage.id).length;
     }
-    for (const tm of teamMembers) {
-      counts[`owner_${tm.id}`] = leads.filter(l => l.assigned_to === tm.id).length;
-    }
-    counts['unassigned'] = leads.filter(l => !l.assigned_to).length;
+    const myId = currentTeamMember?.id;
+    counts['my_open'] = leads.filter(l => leadOwnerMap[l.id] === myId && !CLOSED_STATUSES.includes(l.status)).length;
+    counts['open'] = leads.filter(l => !CLOSED_STATUSES.includes(l.status)).length;
+    counts['following'] = leads.filter(l => followedLeadIds.has(l.id)).length;
+    counts['won'] = leads.filter(l => l.status === 'won' as any).length;
+    counts['lost'] = leads.filter(l => l.status === 'lost' as any || l.status === 'funded' as any).length;
+    counts['brad_incoming'] = leads.filter(l => {
+      const ownerId = leadOwnerMap[l.id];
+      return teamMemberMap[ownerId]?.toLowerCase().includes('brad');
+    }).length;
+    counts['onboarding_2024'] = leads.filter(l => l.cohort_year === 2024).length;
+    counts['onboarding_2025'] = leads.filter(l => l.cohort_year === 2025).length;
+    counts['onboarding_2026'] = leads.filter(l => l.cohort_year === 2026).length;
     return counts;
-  }, [leads, teamMembers, stages]);
+  }, [leads, teamMemberMap, stages, currentTeamMember, leadOwnerMap, followedLeadIds]);
 
   // Filter and sort
   const filteredAndSorted = useMemo(() => {
     let result = leads;
 
     if (activeFilter !== 'all') {
-      if (activeFilter === 'my_open') {
-        result = result.filter((l) => l.status !== 'won');
-      } else if (activeFilter === 'won') {
-        result = result.filter((l) => l.status === 'won');
-      } else if (activeFilter === 'lost') {
-        result = result.filter(() => false); // No lost status in pipeline
-      } else if (stages.some(s => s.id === activeFilter)) {
+      const myId = currentTeamMember?.id;
+      if (stages.some(s => s.id === activeFilter)) {
         result = result.filter((l) => l._stageId === activeFilter);
-      } else if (activeFilter.startsWith('owner_')) {
-        const ownerId = activeFilter.replace('owner_', '');
-        result = result.filter((l) => l.assigned_to === ownerId);
-      } else if (activeFilter === 'unassigned') {
-        result = result.filter((l) => !l.assigned_to);
+      } else if (activeFilter === 'my_open') {
+        result = result.filter((l) => leadOwnerMap[l.id] === myId && !CLOSED_STATUSES.includes(l.status));
+      } else if (activeFilter === 'open') {
+        result = result.filter((l) => !CLOSED_STATUSES.includes(l.status));
+      } else if (activeFilter === 'following') {
+        result = result.filter((l) => followedLeadIds.has(l.id));
+      } else if (activeFilter === 'won') {
+        result = result.filter((l) => l.status === ('won' as LeadStatus));
+      } else if (activeFilter === 'lost') {
+        result = result.filter((l) => l.status === ('lost' as LeadStatus) || l.status === ('funded' as LeadStatus));
       } else if (activeFilter.startsWith('custom_')) {
-        // Custom filter logic - placeholder
+        const cf = customFilters.find(f => f.id === activeFilter);
+        if (cf) {
+          const v = cf.values;
+          result = result.filter((l) => {
+            if (v.stage.length > 0 && !v.stage.includes(l.status)) return false;
+            if (v.status.length > 0 && !v.status.includes(l.status)) return false;
+            if (v.source.length > 0 && !v.source.includes(l.source ?? '')) return false;
+            if (v.ownedBy.length > 0 && !v.ownedBy.includes(leadOwnerMap[l.id] ?? '')) return false;
+
+            if (v.company.trim() && !(l.company_name ?? '').toLowerCase().includes(v.company.toLowerCase())) return false;
+            if (v.name.trim() && !l.name.toLowerCase().includes(v.name.toLowerCase())) return false;
+            if (v.uwNumber.trim() && !(l.uw_number ?? '').toLowerCase().includes(v.uwNumber.toLowerCase())) return false;
+
+            if (v.tags.trim()) {
+              const filterTags = v.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+              const leadTags = (l.tags ?? []).map(t => t.toLowerCase());
+              if (!filterTags.some(ft => leadTags.includes(ft))) return false;
+            }
+
+            if (v.clientWorkingWithOtherLenders && !l.client_other_lenders) return false;
+            if (v.weeklys && !l.flagged_for_weekly) return false;
+
+            if (v.dateAddedFrom && new Date(l.created_at) < v.dateAddedFrom) return false;
+            if (v.dateAddedTo && new Date(l.created_at) > v.dateAddedTo) return false;
+
+            return true;
+          });
+        }
+      } else if (activeFilter === 'brad_incoming') {
+        result = result.filter((l) => teamMemberMap[leadOwnerMap[l.id]]?.toLowerCase().includes('brad'));
+      } else if (activeFilter === 'onboarding_2024') {
+        result = result.filter((l) => l.cohort_year === 2024);
+      } else if (activeFilter === 'onboarding_2025') {
+        result = result.filter((l) => l.cohort_year === 2025);
+      } else if (activeFilter === 'onboarding_2026') {
+        result = result.filter((l) => l.cohort_year === 2026);
       }
     }
 
@@ -563,7 +634,7 @@ const Pipeline = () => {
         (l) =>
           l.name.toLowerCase().includes(q) ||
           (l.company_name ?? '').toLowerCase().includes(q) ||
-          (teamMemberMap[l.assigned_to ?? ''] ?? '').toLowerCase().includes(q)
+          (teamMemberMap[leadOwnerMap[l.id] ?? l.assigned_to ?? ''] ?? '').toLowerCase().includes(q)
       );
     }
 
@@ -575,7 +646,7 @@ const Pipeline = () => {
     });
 
     return result;
-  }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, stages]);
+  }, [leads, activeFilter, searchTerm, sortField, sortDir, teamMemberMap, stages, currentTeamMember, leadOwnerMap, followedLeadIds]);
 
   // Group leads by stage for Kanban
   const leadsByStage = useMemo(() => {
@@ -631,6 +702,121 @@ const Pipeline = () => {
 
   const selectAll = () => setSelectedLeadIds(new Set(filteredAndSorted.map(l => l.id)));
   const clearSelection = () => setSelectedLeadIds(new Set());
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (pipelineLeadIds: string[]) => {
+      const { error } = await supabase
+        .from('pipeline_leads')
+        .delete()
+        .in('id', pipelineLeadIds);
+      if (error) throw error;
+      return pipelineLeadIds;
+    },
+    onSuccess: (ids) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      toast.success(`${ids.length} lead(s) removed from pipeline`);
+      clearSelection();
+      setDeleteConfirmOpen(false);
+    },
+    onError: () => toast.error('Failed to delete leads'),
+  });
+
+  const handleBulkDelete = () => {
+    const pipelineLeadIds = filteredAndSorted
+      .filter(l => selectedLeadIds.has(l.id))
+      .map(l => (l as any)._pipelineLeadId as string)
+      .filter(Boolean);
+    if (pipelineLeadIds.length > 0) {
+      bulkDeleteMutation.mutate(pipelineLeadIds);
+    }
+  };
+
+  // Bulk assign owner mutation
+  const bulkAssignOwnerMutation = useMutation({
+    mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
+      const { error } = await supabase
+        .from('leads')
+        .update({ assigned_to: ownerId })
+        .in('id', leadIds);
+      if (error) throw error;
+      return { leadIds, ownerId };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      const ownerName = teamMemberMap[result.ownerId] || 'team member';
+      toast.success(`${result.leadIds.length} lead(s) assigned to ${ownerName}`);
+      clearSelection();
+    },
+    onError: () => toast.error('Failed to assign owner'),
+  });
+
+  const handleBulkAssignOwner = (ownerId: string) => {
+    bulkAssignOwnerMutation.mutate({ leadIds: Array.from(selectedLeadIds), ownerId });
+  };
+
+  // Bulk add tags mutation
+  const bulkAddTagsMutation = useMutation({
+    mutationFn: async ({ leadIds, tags }: { leadIds: string[]; tags: string[] }) => {
+      // Fetch current tags for selected leads
+      const { data: currentLeads, error: fetchError } = await supabase
+        .from('leads')
+        .select('id, tags')
+        .in('id', leadIds);
+      if (fetchError) throw fetchError;
+
+      // Update each lead, merging new tags with existing
+      for (const lead of (currentLeads || [])) {
+        const existingTags: string[] = (lead.tags as string[]) || [];
+        const mergedTags = Array.from(new Set([...existingTags, ...tags]));
+        const { error } = await supabase
+          .from('leads')
+          .update({ tags: mergedTags })
+          .eq('id', lead.id);
+        if (error) throw error;
+      }
+      return { count: leadIds.length, tags };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      toast.success(`Added ${result.tags.length} tag(s) to ${result.count} lead(s)`);
+      clearSelection();
+      setAddTagsDialogOpen(false);
+      setBulkTagValue('');
+    },
+    onError: () => toast.error('Failed to add tags'),
+  });
+
+  const handleBulkAddTags = () => {
+    const tags = bulkTagValue.split(',').map(t => t.trim()).filter(Boolean);
+    if (tags.length === 0) return;
+    bulkAddTagsMutation.mutate({ leadIds: Array.from(selectedLeadIds), tags });
+  };
+
+  // Bulk move boxes (stage change)
+  const handleBulkMoveBoxes = () => {
+    if (!moveBoxesTargetStage) return;
+    const targetStage = stages.find(s => s.id === moveBoxesTargetStage);
+    const leadsToMove = filteredAndSorted.filter(l => selectedLeadIds.has(l.id));
+    for (const lead of leadsToMove) {
+      const pipelineLeadId = (lead as any)._pipelineLeadId;
+      const currentStageId = (lead as any)._stageId;
+      if (pipelineLeadId && currentStageId !== moveBoxesTargetStage) {
+        const currentStage = stages.find(s => s.id === currentStageId);
+        moveLeadToStage.mutate({
+          pipelineLeadId,
+          newStageId: moveBoxesTargetStage,
+          newStageName: targetStage?.name,
+          oldStageName: currentStage?.name,
+          leadId: lead.id,
+        });
+      }
+    }
+    toast.success(`Moving ${leadsToMove.length} lead(s) to ${targetStage?.name || 'new stage'}`);
+    clearSelection();
+    setMoveBoxesDialogOpen(false);
+    setMoveBoxesTargetStage('');
+  };
 
   // Column header helper
   const ColHeader = ({
@@ -853,108 +1039,6 @@ const Pipeline = () => {
                   );
                 })}
 
-                {/* By Stage */}
-                <button
-                  onClick={() => setPublicFiltersOpen(v => !v)}
-                  className="w-full px-3 pt-3 pb-1 flex items-center justify-between group"
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">By Stage</span>
-                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : '-rotate-90'}`} />
-                </button>
-
-                {publicFiltersOpen && stages.map((stage) => {
-                  const isActive = activeFilter === stage.id;
-                  const count = filterCounts[stage.id] ?? 0;
-                  const cfg = dynamicStageConfig[stage.id];
-                  return (
-                    <button
-                      key={stage.id}
-                      onClick={() => setActiveFilter(stage.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                        isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      }`}
-                    >
-                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                      <span className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-gray-400'}`} />
-                        <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{stage.name}</span>
-                      </span>
-                      {count > 0 && (
-                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {/* By Owner */}
-                <button
-                  onClick={() => setOwnerFiltersOpen(v => !v)}
-                  className="w-full px-3 pt-3 pb-1 flex items-center justify-between group"
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">By Owner</span>
-                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${ownerFiltersOpen ? '' : '-rotate-90'}`} />
-                </button>
-
-                {ownerFiltersOpen && (
-                  <>
-                    {teamMembers.map((tm) => {
-                      const filterId = `owner_${tm.id}`;
-                      const isActive = activeFilter === filterId;
-                      const count = filterCounts[filterId] ?? 0;
-                      return (
-                        <button
-                          key={filterId}
-                          onClick={() => setActiveFilter(filterId)}
-                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                          }`}
-                        >
-                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="h-5 w-5 rounded-full overflow-hidden shrink-0">
-                              {tm.avatar_url ? (
-                                <img src={tm.avatar_url} alt={tm.name} className="h-full w-full object-cover" />
-                              ) : (
-                                <div className={`h-full w-full ${getAvatarColor(tm.name)} flex items-center justify-center text-white text-[8px] font-bold`}>
-                                  {tm.name[0]?.toUpperCase()}
-                                </div>
-                              )}
-                            </div>
-                            <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{tm.name}</span>
-                          </div>
-                          {count > 0 && (
-                            <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
-                              {count}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                    {(() => {
-                      const isActive = activeFilter === 'unassigned';
-                      const count = filterCounts['unassigned'] ?? 0;
-                      return (
-                        <button
-                          onClick={() => setActiveFilter('unassigned')}
-                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                          }`}
-                        >
-                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>Unassigned</span>
-                          {count > 0 && (
-                            <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
-                              {count}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })()}
-                  </>
-                )}
-
                 {/* Custom Filters */}
                 {customFilters.length > 0 && (
                   <>
@@ -1001,11 +1085,6 @@ const Pipeline = () => {
                 {!isLoading && (
                   <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
                     # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'deal' : 'deals'}
-                  </span>
-                )}
-                {!isLoading && (
-                  <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
-                    ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
                 )}
 
@@ -1158,8 +1237,11 @@ const Pipeline = () => {
                   selectedCount={selectedLeadIds.size}
                   totalCount={filteredAndSorted.length}
                   onClearSelection={clearSelection}
-                  onEdit={() => {/* TODO */}}
-                  onExport={() => {/* TODO */}}
+                  onDeleteBoxes={() => setDeleteConfirmOpen(true)}
+                  onAssignOwner={handleBulkAssignOwner}
+                  onAddTags={() => setAddTagsDialogOpen(true)}
+                  onMoveBoxes={() => setMoveBoxesDialogOpen(true)}
+                  teamMembers={teamMembers}
                 />
               </div>
             )}
@@ -1254,12 +1336,13 @@ const Pipeline = () => {
                         const initial = lead.name[0]?.toUpperCase() ?? '?';
                         const avatarColor = getAvatarColor(lead.name);
                         const stageCfg = dynamicStageConfig[lead._stageId];
-                        const assignedName = lead.assigned_to
-                          ? (teamMemberMap[lead.assigned_to] ?? null)
+                        const effectiveOwnerId = leadOwnerMap[lead.id] ?? lead.assigned_to;
+                        const assignedName = effectiveOwnerId
+                          ? (teamMemberMap[effectiveOwnerId] ?? null)
                           : null;
                         const assignedInitial = assignedName?.[0]?.toUpperCase() ?? null;
                         const assignedColor = assignedName ? getAvatarColor(assignedName) : '';
-                        const assignedAvatar = lead.assigned_to ? (teamAvatarMap[lead.assigned_to] ?? null) : null;
+                        const assignedAvatar = effectiveOwnerId ? (teamAvatarMap[effectiveOwnerId] ?? null) : null;
                         const daysInStage = daysSince(lead.updated_at);
                         const inactiveDays = daysSince(lead.last_activity_at);
                         const isStale = inactiveDays !== null && inactiveDays > 7;
@@ -1347,7 +1430,7 @@ const Pipeline = () => {
                             {columnVisibility.value && (
                               <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.value }}>
                                 <span className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                                  {formatValue(fakeValue(lead.id))}
+                                  —
                                 </span>
                               </td>
                             )}
@@ -1376,7 +1459,7 @@ const Pipeline = () => {
                             {columnVisibility.tasks && (
                               <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tasks }}>
                                 <span className="text-[12px] text-muted-foreground tabular-nums">
-                                  {taskCountMap[lead.id] ?? fakeTasks(lead.id)}
+                                  {taskCountMap[lead.id] ?? 0}
                                 </span>
                               </td>
                             )}
@@ -1436,7 +1519,7 @@ const Pipeline = () => {
                             {columnVisibility.interactions && (
                               <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.interactions }}>
                                 <span className="text-[12px] text-muted-foreground tabular-nums">
-                                  {interactionCountMap[lead.id] ?? fakeInteractions(lead.id)}
+                                  {interactionCountMap[lead.id] ?? 0}
                                 </span>
                               </td>
                             )}
@@ -1512,6 +1595,7 @@ const Pipeline = () => {
                           color={config?.dot ?? 'bg-gray-400'}
                           leads={columnLeads}
                           teamMemberMap={teamMemberMap}
+                          leadOwnerMap={leadOwnerMap}
                           draggedId={draggedLead?.id ?? null}
                           onLeadClick={(lead) => setDetailDialogLead(lead)}
                           onAdd={() => openAddDialog(stage.id)}
@@ -1548,7 +1632,7 @@ const Pipeline = () => {
               teamMemberMap={teamMemberMap}
               teamMembers={teamMembers}
               formatValue={formatValue}
-              fakeValue={fakeValue}
+              
               onClose={() => setDetailDialogLead(null)}
               onExpand={() => {
                 navigate(`/admin/pipeline/lead/${detailDialogLead.id}`);
@@ -1669,6 +1753,88 @@ const Pipeline = () => {
               {createOpportunityMutation.isPending ? 'Creating...' : 'Create Opportunity'}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedLeadIds.size} {selectedLeadIds.size === 1 ? 'lead' : 'leads'}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {selectedLeadIds.size === 1 ? 'this lead' : 'these leads'} from the pipeline. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {bulkDeleteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Add Tags Dialog */}
+      <Dialog open={addTagsDialogOpen} onOpenChange={setAddTagsDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Add Tags to {selectedLeadIds.size} Lead{selectedLeadIds.size !== 1 ? 's' : ''}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="bulk-tags" className="text-sm font-medium">Tags (comma-separated)</Label>
+            <Input
+              id="bulk-tags"
+              placeholder="e.g. hot lead, follow up, Q1"
+              value={bulkTagValue}
+              onChange={(e) => setBulkTagValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleBulkAddTags(); }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAddTagsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkAddTags} disabled={bulkAddTagsMutation.isPending || !bulkTagValue.trim()}>
+              {bulkAddTagsMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Apply Tags
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Move Boxes Dialog */}
+      <Dialog open={moveBoxesDialogOpen} onOpenChange={setMoveBoxesDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Move {selectedLeadIds.size} Lead{selectedLeadIds.size !== 1 ? 's' : ''} to Stage</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label className="text-sm font-medium">Target Stage</Label>
+            <Select value={moveBoxesTargetStage} onValueChange={setMoveBoxesTargetStage}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a stage" />
+              </SelectTrigger>
+              <SelectContent>
+                {stages.map((stage) => (
+                  <SelectItem key={stage.id} value={stage.id}>
+                    {dynamicStageConfig[stage.id]?.title || stage.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setMoveBoxesDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkMoveBoxes} disabled={!moveBoxesTargetStage || moveLeadToStage.isPending}>
+              {moveLeadToStage.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Move
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </EvanLayout>

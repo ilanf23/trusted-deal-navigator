@@ -95,5 +95,23 @@ export const usePipelineMutations = (pipelineId: string | undefined) => {
     },
   });
 
-  return { moveLeadToStage, addLeadToPipeline, removeLeadFromPipeline };
+  const bulkRemoveLeadsFromPipeline = useMutation({
+    mutationFn: async (pipelineLeadIds: string[]) => {
+      const { error } = await supabase
+        .from('pipeline_leads')
+        .delete()
+        .in('id', pipelineLeadIds);
+      if (error) throw error;
+      return pipelineLeadIds;
+    },
+    onSuccess: (ids) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipelineId] });
+      toast.success(`${ids.length} lead(s) removed from pipeline`);
+    },
+    onError: () => {
+      toast.error('Failed to remove leads');
+    },
+  });
+
+  return { moveLeadToStage, addLeadToPipeline, removeLeadFromPipeline, bulkRemoveLeadsFromPipeline };
 };

@@ -56,9 +56,12 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
 import { format, differenceInDays, parseISO } from 'date-fns';
@@ -298,7 +301,7 @@ const Underwriting = () => {
   const { data: pipeline } = useSystemPipelineByName('Underwriting');
   const { data: stages = [] } = usePipelineStages(pipeline?.id);
   const { leads: pipelineLeadsList, isLoading: isPipelineLeadsLoading } = usePipelineLeads(pipeline?.id);
-  const { moveLeadToStage, addLeadToPipeline } = usePipelineMutations(pipeline?.id);
+  const { moveLeadToStage, addLeadToPipeline, bulkRemoveLeadsFromPipeline } = usePipelineMutations(pipeline?.id);
   const dynamicStageConfig = useMemo(() => buildStageConfig(stages), [stages]);
 
   // ── Core state ──
@@ -307,7 +310,14 @@ const Underwriting = () => {
   const [sortField, setSortField] = useState<SortField>('last_activity_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+
+  // Bulk action state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [addTagsDialogOpen, setAddTagsDialogOpen] = useState(false);
+  const [bulkTagValue, setBulkTagValue] = useState('');
+  const [moveBoxesDialogOpen, setMoveBoxesDialogOpen] = useState(false);
+  const [moveBoxesTargetStage, setMoveBoxesTargetStage] = useState('');
 
   // ── Toolbar state ──
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
@@ -684,6 +694,136 @@ const Underwriting = () => {
   function handleRowClick(lead: Lead) {
     setSelectedLead(lead);
   }
+
+  // Selection helpers
+  const toggleLeadSelection = (leadId: string) => {
+    setSelectedLeadIds(prev => {
+      const next = new Set(prev);
+      if (next.has(leadId)) next.delete(leadId);
+      else next.add(leadId);
+      return next;
+    });
+  };
+
+  const isAllSelected = useMemo(() => {
+    return filteredAndSorted.length > 0 && filteredAndSorted.every(l => selectedLeadIds.has(l.id));
+  }, [filteredAndSorted, selectedLeadIds]);
+
+  const selectAll = () => setSelectedLeadIds(new Set(filteredAndSorted.map(l => l.id)));
+  const clearSelection = () => setSelectedLeadIds(new Set());
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (pipelineLeadIds: string[]) => {
+      const { error } = await supabase
+        .from('pipeline_leads')
+        .delete()
+        .in('id', pipelineLeadIds);
+      if (error) throw error;
+      return pipelineLeadIds;
+    },
+    onSuccess: (ids) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      toast.success(`${ids.length} lead(s) removed from pipeline`);
+      clearSelection();
+      setDeleteConfirmOpen(false);
+    },
+    onError: () => toast.error('Failed to delete leads'),
+  });
+
+  const handleBulkDelete = () => {
+    const pipelineLeadIds = filteredAndSorted
+      .filter(l => selectedLeadIds.has(l.id))
+      .map(l => (l as any)._pipelineLeadId as string)
+      .filter(Boolean);
+    if (pipelineLeadIds.length > 0) {
+      bulkDeleteMutation.mutate(pipelineLeadIds);
+    }
+  };
+
+  // Bulk assign owner mutation
+  const bulkAssignOwnerMutation = useMutation({
+    mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
+      const { error } = await supabase
+        .from('leads')
+        .update({ assigned_to: ownerId })
+        .in('id', leadIds);
+      if (error) throw error;
+      return { leadIds, ownerId };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      const ownerName = teamMemberMap[result.ownerId] || 'team member';
+      toast.success(`${result.leadIds.length} lead(s) assigned to ${ownerName}`);
+      clearSelection();
+    },
+    onError: () => toast.error('Failed to assign owner'),
+  });
+
+  const handleBulkAssignOwner = (ownerId: string) => {
+    bulkAssignOwnerMutation.mutate({ leadIds: Array.from(selectedLeadIds), ownerId });
+  };
+
+  // Bulk add tags mutation
+  const bulkAddTagsMutation = useMutation({
+    mutationFn: async ({ leadIds, tags }: { leadIds: string[]; tags: string[] }) => {
+      const { data: currentLeads, error: fetchError } = await supabase
+        .from('leads')
+        .select('id, tags')
+        .in('id', leadIds);
+      if (fetchError) throw fetchError;
+
+      for (const lead of (currentLeads || [])) {
+        const existingTags: string[] = (lead.tags as string[]) || [];
+        const mergedTags = Array.from(new Set([...existingTags, ...tags]));
+        const { error } = await supabase
+          .from('leads')
+          .update({ tags: mergedTags })
+          .eq('id', lead.id);
+        if (error) throw error;
+      }
+      return { count: leadIds.length, tags };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+      toast.success(`Added ${result.tags.length} tag(s) to ${result.count} lead(s)`);
+      clearSelection();
+      setAddTagsDialogOpen(false);
+      setBulkTagValue('');
+    },
+    onError: () => toast.error('Failed to add tags'),
+  });
+
+  const handleBulkAddTags = () => {
+    const tags = bulkTagValue.split(',').map(t => t.trim()).filter(Boolean);
+    if (tags.length === 0) return;
+    bulkAddTagsMutation.mutate({ leadIds: Array.from(selectedLeadIds), tags });
+  };
+
+  // Bulk move boxes (stage change)
+  const handleBulkMoveBoxes = () => {
+    if (!moveBoxesTargetStage) return;
+    const targetStage = stages.find(s => s.id === moveBoxesTargetStage);
+    const leadsToMove = filteredAndSorted.filter(l => selectedLeadIds.has(l.id));
+    for (const lead of leadsToMove) {
+      const pipelineLeadId = (lead as any)._pipelineLeadId;
+      const currentStageId = (lead as any)._stageId;
+      if (pipelineLeadId && currentStageId !== moveBoxesTargetStage) {
+        const currentStage = stages.find(s => s.id === currentStageId);
+        moveLeadToStage.mutate({
+          pipelineLeadId,
+          newStageId: moveBoxesTargetStage,
+          newStageName: targetStage?.name,
+          oldStageName: currentStage?.name,
+          leadId: lead.id,
+        });
+      }
+    }
+    toast.success(`Moving ${leadsToMove.length} lead(s) to ${targetStage?.name || 'new stage'}`);
+    clearSelection();
+    setMoveBoxesDialogOpen(false);
+    setMoveBoxesTargetStage('');
+  };
 
   // Row padding based on density
   const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
@@ -1111,13 +1251,35 @@ const Underwriting = () => {
               </div>
             </div>
 
+            {/* Bulk Selection Toolbar */}
+            {selectedLeadIds.size > 0 && (
+              <div className="mb-3">
+                <PipelineBulkToolbar
+                  selectedCount={selectedLeadIds.size}
+                  totalCount={filteredAndSorted.length}
+                  onClearSelection={clearSelection}
+                  onDeleteBoxes={() => setDeleteConfirmOpen(true)}
+                  onAssignOwner={handleBulkAssignOwner}
+                  onAddTags={() => setAddTagsDialogOpen(true)}
+                  onMoveBoxes={() => setMoveBoxesDialogOpen(true)}
+                  teamMembers={teamMembers}
+                />
+              </div>
+            )}
+
             {/* ── Content Area: Table or Kanban ── */}
             {viewMode === 'table' ? (
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                   <thead className="border-b border-border">
                     <tr>
-                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted" />
+                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                          className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                        />
+                      </th>
                       <ColHeader className="sticky top-0 z-30 bg-gray-100 dark:bg-muted border-r border-border/50" style={{ left: 40 }}>
                         Opportunity
                       </ColHeader>
@@ -1234,9 +1396,10 @@ const Underwriting = () => {
                         const isStale = inactiveDays !== null && inactiveDays > 7;
                         const isLingering = daysInStage !== null && daysInStage > 14;
                         const dealValue = fakeValue(lead.id);
-                        const isSelected = selectedLead?.id === lead.id;
+                        const isDetailSelected = selectedLead?.id === lead.id;
+                        const isBulkSelected = selectedLeadIds.has(lead.id);
 
-                        const stickyBg = isSelected
+                        const stickyBg = isDetailSelected
                           ? 'bg-blue-50 dark:bg-blue-950 group-hover:bg-blue-100 dark:group-hover:bg-blue-900'
                           : 'bg-white dark:bg-card group-hover:bg-gray-50 dark:group-hover:bg-muted';
 
@@ -1245,20 +1408,25 @@ const Underwriting = () => {
                             key={lead.id}
                             onClick={() => handleRowClick(lead)}
                             className={`cursor-pointer transition-colors duration-100 group border-b border-border/60 last:border-b-0 ${
-                              isSelected
+                              isDetailSelected
                                 ? 'bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-50/80 dark:hover:bg-blue-950/40'
-                                : rowIdx % 2 === 0
-                                  ? 'bg-card hover:bg-muted/50'
-                                  : 'bg-muted/30 hover:bg-muted/50'
+                                : isBulkSelected
+                                  ? 'bg-violet-50/60 dark:bg-violet-950/20 hover:bg-violet-50/80'
+                                  : rowIdx % 2 === 0
+                                    ? 'bg-card hover:bg-muted/50'
+                                    : 'bg-muted/30 hover:bg-muted/50'
                             }`}
                           >
                             {/* Checkbox */}
-                            <td className={`px-4 py-3 w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}>
-                              <div className={`h-4 w-4 rounded border-2 transition-colors ${
-                                isSelected ? 'border-blue-500 bg-blue-500' : 'border-border bg-card group-hover:border-muted-foreground/50'
-                              } flex items-center justify-center`}>
-                                {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                              </div>
+                            <td
+                              className={`px-4 py-3 w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}
+                              onClick={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                            >
+                              <Checkbox
+                                checked={isBulkSelected}
+                                onCheckedChange={() => toggleLeadSelection(lead.id)}
+                                className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                              />
                             </td>
 
                             {/* Opportunity */}
@@ -1452,7 +1620,7 @@ const Underwriting = () => {
                             {/* Detail arrow */}
                             <td className="px-2 py-3 w-10">
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
-                                isSelected
+                                isDetailSelected
                                   ? 'text-blue-500'
                                   : 'text-transparent group-hover:text-muted-foreground'
                               }`} />
@@ -1661,6 +1829,88 @@ const Underwriting = () => {
               )}
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedLeadIds.size} {selectedLeadIds.size === 1 ? 'lead' : 'leads'}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {selectedLeadIds.size === 1 ? 'this lead' : 'these leads'} from the pipeline. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {bulkDeleteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Add Tags Dialog */}
+      <Dialog open={addTagsDialogOpen} onOpenChange={setAddTagsDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Add Tags to {selectedLeadIds.size} Lead{selectedLeadIds.size !== 1 ? 's' : ''}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="bulk-tags-uw" className="text-sm font-medium">Tags (comma-separated)</Label>
+            <Input
+              id="bulk-tags-uw"
+              placeholder="e.g. hot lead, follow up, Q1"
+              value={bulkTagValue}
+              onChange={(e) => setBulkTagValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleBulkAddTags(); }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAddTagsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkAddTags} disabled={bulkAddTagsMutation.isPending || !bulkTagValue.trim()}>
+              {bulkAddTagsMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Apply Tags
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Move Boxes Dialog */}
+      <Dialog open={moveBoxesDialogOpen} onOpenChange={setMoveBoxesDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Move {selectedLeadIds.size} Lead{selectedLeadIds.size !== 1 ? 's' : ''} to Stage</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label className="text-sm font-medium">Target Stage</Label>
+            <Select value={moveBoxesTargetStage} onValueChange={setMoveBoxesTargetStage}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a stage" />
+              </SelectTrigger>
+              <SelectContent>
+                {stages.map((stage) => (
+                  <SelectItem key={stage.id} value={stage.id}>
+                    {dynamicStageConfig[stage.id]?.title || stage.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setMoveBoxesDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkMoveBoxes} disabled={!moveBoxesTargetStage || moveLeadToStage.isPending}>
+              {moveLeadToStage.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Move
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </EvanLayout>

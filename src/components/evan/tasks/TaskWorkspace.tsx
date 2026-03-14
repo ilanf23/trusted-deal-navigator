@@ -9,6 +9,8 @@ import { TaskDetailDialog } from './TaskDetailDialog';
 import { CompletedTasksSection } from './CompletedTasksSection';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { Button } from '@/components/ui/button';
+import { ShimmerButton } from '@/components/ui/shimmer-button';
+import { MovingBorderButton } from '@/components/ui/moving-border-button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useGmail } from '@/hooks/useGmail';
@@ -416,15 +418,19 @@ export const TaskWorkspace = () => {
     <div className="space-y-4 md:space-y-6">
 
       {/* Top Row - New Task + Search */}
-      <div className="flex items-center gap-3 sticky top-14 md:top-16 z-30 py-3 md:py-4 -mx-1 px-1 backdrop-blur-xl bg-background/80">
-        <Button 
+      <div className="flex items-center gap-3 py-3 md:py-4">
+        <ShimmerButton
           onClick={() => setIsNewTaskDialogOpen(true)}
-          className="h-9 md:h-10 px-3 md:px-5 rounded-full bg-foreground text-background hover:bg-foreground/90 font-medium shadow-lg shadow-foreground/10 transition-all duration-300 hover:shadow-xl hover:shadow-foreground/20 hover:scale-[1.02] text-sm md:text-base"
+          shimmerColor="#ffffff"
+          shimmerDuration="2.5s"
+          background="hsl(var(--primary))"
+          borderRadius="9999px"
+          className="h-9 md:h-10 px-3 md:px-5 flex-shrink-0 font-medium text-sm md:text-base shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30"
         >
           <Plus className="h-4 w-4 mr-1 md:mr-2" />
           <span className="hidden sm:inline">New Task</span>
           <span className="sm:hidden">Add</span>
-        </Button>
+        </ShimmerButton>
         
         <div className="relative flex-1 max-w-xs">
           <Input
@@ -549,17 +555,19 @@ export const TaskWorkspace = () => {
           
           {/* Clear Filters Button - only show when filters are active */}
           {(statusFilter !== 'all' || priorityFilter !== 'all') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 px-3 rounded-full text-xs text-muted-foreground hover:text-foreground"
+            <MovingBorderButton
+              borderRadius="9999px"
+              duration={4000}
+              containerClassName="h-9"
+              className="px-4 text-xs bg-slate-900/90 dark:bg-slate-900/90 border-slate-700"
+              borderClassName="bg-[radial-gradient(#ef4444_40%,transparent_60%)]"
               onClick={() => {
                 setStatusFilter('all');
                 setPriorityFilter('all');
               }}
             >
               Clear filters
-            </Button>
+            </MovingBorderButton>
           )}
         </div>
 

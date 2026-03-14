@@ -18,6 +18,7 @@ interface PipelineBulkToolbarProps {
   onMoveBoxes?: () => void;
   onDeleteBoxes?: () => void;
   onAssignOwner?: (ownerId: string) => void;
+  onAddTags?: () => void;
   teamMembers?: { id: string; name: string }[];
   className?: string;
 }
@@ -31,6 +32,7 @@ const PipelineBulkToolbar = ({
   onMoveBoxes,
   onDeleteBoxes,
   onAssignOwner,
+  onAddTags,
   teamMembers = [],
   className,
 }: PipelineBulkToolbarProps) => {
@@ -113,7 +115,7 @@ const PipelineBulkToolbar = ({
               ))}
             </>
           )}
-          <DropdownMenuItem className="cursor-pointer" disabled>
+          <DropdownMenuItem className="cursor-pointer" disabled={!onAddTags} onClick={onAddTags}>
             <Tag className="h-4 w-4 mr-2" />
             Add tags
           </DropdownMenuItem>
