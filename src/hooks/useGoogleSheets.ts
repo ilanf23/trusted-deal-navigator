@@ -62,13 +62,6 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
 
       popup.document.write('<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><p>Connecting to Google Sheets...</p></body></html>');
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        popup.close();
-        toast.error('Please sign in first');
-        return;
-      }
-
       const redirectUri = `${window.location.origin}${redirectPath || '/superadmin/sheets-callback'}`;
 
       const response = await supabase.functions.invoke('google-sheets-auth', {

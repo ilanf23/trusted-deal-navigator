@@ -5,6 +5,7 @@ import EvanLayout from '@/components/evan/EvanLayout';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Users,
@@ -123,14 +124,27 @@ const Scorecard = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(currentWeekMonth);
   const [selectedWeek, setSelectedWeek] = useState<string>(format(currentWeekStart, 'yyyy-MM-dd'));
   const [repFilter, setRepFilter] = useState<string>('me');
+  const [timeMode, setTimeMode] = useState<'week' | 'custom'>('week');
+  const [customStart, setCustomStart] = useState<string>(format(currentWeekStart, "yyyy-MM-dd'T'HH:mm"));
+  const [customEnd, setCustomEnd] = useState<string>(format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd'T'HH:mm"));
 
   const periodBoundaries = useMemo(() => {
+    if (timeMode === 'custom') {
+      const start = new Date(customStart);
+      const end = new Date(customEnd);
+      if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+        const fallbackStart = new Date(currentWeekStart);
+        fallbackStart.setHours(0, 0, 0, 0);
+        return { start: fallbackStart, end: endOfWeek(fallbackStart, { weekStartsOn: 1 }) };
+      }
+      return { start, end };
+    }
     const [year, month, day] = selectedWeek.split('-').map(Number);
     const weekStart = new Date(year, month - 1, day);
     weekStart.setHours(0, 0, 0, 0);
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     return { start: weekStart, end: weekEnd };
-  }, [selectedWeek]);
+  }, [selectedWeek, timeMode, customStart, customEnd, currentWeekStart]);
 
   const periodStart = periodBoundaries.start;
 
@@ -371,7 +385,9 @@ const Scorecard = () => {
 
   if (!metrics) return null;
 
-  const periodLabel = `${format(periodBoundaries.start, 'MMM d')} – ${format(periodBoundaries.end, 'MMM d, yyyy')}`;
+  const periodLabel = timeMode === 'custom'
+    ? `${format(periodBoundaries.start, 'MMM d, h:mm a')} – ${format(periodBoundaries.end, 'MMM d, yyyy h:mm a')}`
+    : `${format(periodBoundaries.start, 'MMM d')} – ${format(periodBoundaries.end, 'MMM d, yyyy')}`;
 
   return (
     <EvanLayout>
@@ -384,50 +400,86 @@ const Scorecard = () => {
             <p className="text-muted-foreground mt-1 text-sm">{periodLabel}</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:flex-wrap">
-            <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
-              <SelectTrigger className="h-9 w-full sm:w-[90px] text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:flex-wrap">
+              <Select value={timeMode} onValueChange={(v: 'week' | 'custom') => setTimeMode(v)}>
+                <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">Weekly</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
-              <SelectTrigger className="h-9 w-full sm:w-[120px] text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {monthOptions.map((month) => (
-                  <SelectItem key={month.value} value={month.value.toString()}>{month.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {timeMode === 'week' && (
+                <>
+                  <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
+                    <SelectTrigger className="h-9 w-full sm:w-[90px] text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {yearOptions.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-            <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-              <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm">
-                <Calendar className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {weekOptions.map((week) => (
-                  <SelectItem key={week.value} value={week.value}>{week.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
+                    <SelectTrigger className="h-9 w-full sm:w-[120px] text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {monthOptions.map((month) => (
+                        <SelectItem key={month.value} value={month.value.toString()}>{month.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-            <Select value={repFilter} onValueChange={setRepFilter}>
-              <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Company</SelectItem>
-                <SelectItem value="me">{teamMember?.name || 'Me'}</SelectItem>
-              </SelectContent>
-            </Select>
+                  <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                    <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm">
+                      <Calendar className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {weekOptions.map((week) => (
+                        <SelectItem key={week.value} value={week.value}>{week.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+
+              {timeMode === 'custom' && (
+                <>
+                  <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
+                    <Input
+                      type="datetime-local"
+                      value={customStart}
+                      onChange={(e) => setCustomStart(e.target.value)}
+                      className="h-9 text-sm w-full sm:w-auto"
+                    />
+                    <span className="text-xs text-muted-foreground shrink-0">to</span>
+                    <Input
+                      type="datetime-local"
+                      value={customEnd}
+                      onChange={(e) => setCustomEnd(e.target.value)}
+                      className="h-9 text-sm w-full sm:w-auto"
+                    />
+                  </div>
+                </>
+              )}
+
+              <Select value={repFilter} onValueChange={setRepFilter}>
+                <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Company</SelectItem>
+                  <SelectItem value="me">{teamMember?.name || 'Me'}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -447,7 +499,7 @@ const Scorecard = () => {
               icon={<UserPlus />}
               label="New Leads"
               value={metrics.newLeads}
-              sub="this week"
+              sub={timeMode === 'custom' ? 'this period' : 'this week'}
               colorClass="bg-violet-50 dark:bg-violet-950/40"
               iconColorClass="text-violet-600 dark:text-violet-400"
             />
@@ -455,7 +507,7 @@ const Scorecard = () => {
               icon={<Trophy />}
               label="Closed Won"
               value={metrics.closedWon}
-              sub="this week"
+              sub={timeMode === 'custom' ? 'this period' : 'this week'}
               colorClass="bg-emerald-50 dark:bg-emerald-950/40"
               iconColorClass="text-emerald-600 dark:text-emerald-400"
             />
@@ -463,7 +515,7 @@ const Scorecard = () => {
               icon={<AlertCircle />}
               label="Closed Lost"
               value={metrics.closedLost}
-              sub="this week"
+              sub={timeMode === 'custom' ? 'this period' : 'this week'}
               colorClass="bg-rose-50 dark:bg-rose-950/40"
               iconColorClass="text-rose-500 dark:text-rose-400"
             />
@@ -471,7 +523,7 @@ const Scorecard = () => {
               icon={<ArrowRightLeft />}
               label="Stage Moves"
               value={metrics.stageMovements}
-              sub="this week"
+              sub={timeMode === 'custom' ? 'this period' : 'this week'}
               colorClass="bg-amber-50 dark:bg-amber-950/40"
               iconColorClass="text-amber-600 dark:text-amber-400"
             />
@@ -565,7 +617,7 @@ const Scorecard = () => {
                 {metrics.recentMovements.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full min-h-[120px] text-center gap-2">
                     <ArrowRightLeft className="h-7 w-7 text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">No stage movements this week</p>
+                    <p className="text-sm text-muted-foreground">No stage movements {timeMode === 'custom' ? 'this period' : 'this week'}</p>
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-[180px] sm:max-h-[260px] overflow-y-auto pr-1">
