@@ -77,6 +77,34 @@ export default {
             dark: "hsl(var(--admin-orange-dark, 25 95% 43%))",
           },
         },
+        status: {
+          success: {
+            DEFAULT: "hsl(var(--status-success))",
+            light: "hsl(var(--status-success-light))",
+            foreground: "hsl(var(--status-success-foreground))",
+          },
+          warning: {
+            DEFAULT: "hsl(var(--status-warning))",
+            light: "hsl(var(--status-warning-light))",
+            foreground: "hsl(var(--status-warning-foreground))",
+          },
+          info: {
+            DEFAULT: "hsl(var(--status-info))",
+            light: "hsl(var(--status-info-light))",
+            foreground: "hsl(var(--status-info-foreground))",
+          },
+          error: {
+            DEFAULT: "hsl(var(--status-error))",
+            light: "hsl(var(--status-error-light))",
+            foreground: "hsl(var(--status-error-foreground))",
+          },
+        },
+        comm: {
+          "call-inbound": "hsl(var(--comm-call-inbound))",
+          "call-outbound": "hsl(var(--comm-call-outbound))",
+          email: "hsl(var(--comm-email))",
+          sms: "hsl(var(--comm-sms))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
