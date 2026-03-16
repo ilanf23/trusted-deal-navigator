@@ -2226,9 +2226,11 @@ export type Database = {
       leads: {
         Row: {
           about: string | null
+          actual_net_revenue: number | null
           assigned_to: string | null
           bank_relationships: string | null
           client_other_lenders: boolean
+          clx_agreement: boolean | null
           clx_file_name: string | null
           cohort_year: number | null
           company_name: string | null
@@ -2239,18 +2241,27 @@ export type Database = {
           deal_value: number | null
           description: string | null
           email: string | null
+          fee_percent: number | null
           flagged_for_weekly: boolean
           history: string | null
           id: string
           initial_nudge_created_at: string | null
+          invoice_amount: number | null
           known_as: string | null
           last_activity_at: string | null
+          lender_name: string | null
+          lender_type: string | null
           linkedin: string | null
+          loan_category: string | null
+          loan_stage: string | null
+          loss_reason: string | null
           name: string
+          net_revenue: number | null
           next_action: string | null
           notes: string | null
           opportunity_name: string | null
           phone: string | null
+          potential_revenue: number | null
           qualified_at: string | null
           questionnaire_completed_at: string | null
           questionnaire_sent_at: string | null
@@ -2258,22 +2269,33 @@ export type Database = {
           ratewatch_questionnaire_completed_at: string | null
           ratewatch_questionnaire_sent_at: string | null
           ratewatch_questionnaire_token: string | null
+          referral_source: string | null
+          rs_fee_percent: number | null
+          rs_revenue: number | null
+          sheets_last_synced_at: string | null
+          sheets_row_index: number | null
           sla_threshold_days: number | null
           source: string | null
           status: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
+          target_closing_date: string | null
           title: string | null
           twitter: string | null
           updated_at: string
           uw_number: string | null
+          volume_log_status: string | null
           waiting_on: string | null
           website: string | null
+          won: boolean | null
+          wu_date: string | null
         }
         Insert: {
           about?: string | null
+          actual_net_revenue?: number | null
           assigned_to?: string | null
           bank_relationships?: string | null
           client_other_lenders?: boolean
+          clx_agreement?: boolean | null
           clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
@@ -2284,18 +2306,27 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
+          fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
           linkedin?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
           name: string
+          net_revenue?: number | null
           next_action?: string | null
           notes?: string | null
           opportunity_name?: string | null
           phone?: string | null
+          potential_revenue?: number | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
@@ -2303,22 +2334,33 @@ export type Database = {
           ratewatch_questionnaire_completed_at?: string | null
           ratewatch_questionnaire_sent_at?: string | null
           ratewatch_questionnaire_token?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
+          target_closing_date?: string | null
           title?: string | null
           twitter?: string | null
           updated_at?: string
           uw_number?: string | null
+          volume_log_status?: string | null
           waiting_on?: string | null
           website?: string | null
+          won?: boolean | null
+          wu_date?: string | null
         }
         Update: {
           about?: string | null
+          actual_net_revenue?: number | null
           assigned_to?: string | null
           bank_relationships?: string | null
           client_other_lenders?: boolean
+          clx_agreement?: boolean | null
           clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
@@ -2329,18 +2371,27 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
+          fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
           linkedin?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
           name?: string
+          net_revenue?: number | null
           next_action?: string | null
           notes?: string | null
           opportunity_name?: string | null
           phone?: string | null
+          potential_revenue?: number | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
@@ -2348,16 +2399,25 @@ export type Database = {
           ratewatch_questionnaire_completed_at?: string | null
           ratewatch_questionnaire_sent_at?: string | null
           ratewatch_questionnaire_token?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
+          target_closing_date?: string | null
           title?: string | null
           twitter?: string | null
           updated_at?: string
           uw_number?: string | null
+          volume_log_status?: string | null
           waiting_on?: string | null
           website?: string | null
+          won?: boolean | null
+          wu_date?: string | null
         }
         Relationships: [
           {
@@ -2365,6 +2425,50 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_signals: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          lead_id: string
+          resolved_at: string | null
+          severity: string
+          signal_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id: string
+          resolved_at?: string | null
+          severity?: string
+          signal_type: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id?: string
+          resolved_at?: string | null
+          severity?: string
+          signal_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_signals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -3980,6 +4084,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      volume_log_sync_config: {
+        Row: {
+          column_mapping: Json
+          created_at: string
+          created_by: string | null
+          header_row: Json | null
+          id: string
+          last_pull_at: string | null
+          last_push_at: string | null
+          sheet_name: string | null
+          spreadsheet_id: string
+          updated_at: string
+        }
+        Insert: {
+          column_mapping?: Json
+          created_at?: string
+          created_by?: string | null
+          header_row?: Json | null
+          id?: string
+          last_pull_at?: string | null
+          last_push_at?: string | null
+          sheet_name?: string | null
+          spreadsheet_id: string
+          updated_at?: string
+        }
+        Update: {
+          column_mapping?: Json
+          created_at?: string
+          created_by?: string | null
+          header_row?: Json | null
+          id?: string
+          last_pull_at?: string | null
+          last_push_at?: string | null
+          sheet_name?: string | null
+          spreadsheet_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "volume_log_sync_config_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -40,6 +40,24 @@ interface LeadCustomFields {
   propertyType?: string;
 }
 
+interface VolumeLogFields {
+  volumeLogStatus?: string;
+  loanCategory?: string;
+  loanStage?: string;
+  won?: boolean;
+  lenderName?: string;
+  lenderType?: string;
+  feePercent?: number;
+  potentialRevenue?: number;
+  netRevenue?: number;
+  actualNetRevenue?: number;
+  targetClosingDate?: string;
+  wuDate?: string;
+  clxAgreement?: boolean;
+  referralSource?: string;
+  lossReason?: string;
+}
+
 interface LeadContext {
   name: string;
   email?: string;
@@ -52,6 +70,8 @@ interface LeadContext {
   communications?: LeadCommunication[];
   tasks?: LeadTask[];
   customFields?: LeadCustomFields;
+  volumeLog?: VolumeLogFields;
+  signals?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,6 +159,32 @@ function buildSanitizedContext(ctx: LeadContext): string {
     lines.push(`Loan Amount: ${sanitizeField(ctx.customFields.loanAmount)}`);
     lines.push(`Business Type: ${sanitizeField(ctx.customFields.businessType)}`);
     lines.push(`Property Type: ${sanitizeField(ctx.customFields.propertyType)}`);
+  }
+
+  if (ctx.volumeLog && typeof ctx.volumeLog === "object") {
+    lines.push("--- Volume Log / Deal Financials ---");
+    if (ctx.volumeLog.volumeLogStatus) lines.push(`Volume Log Status: ${sanitizeField(ctx.volumeLog.volumeLogStatus)}`);
+    if (ctx.volumeLog.loanCategory) lines.push(`Loan Category: ${sanitizeField(ctx.volumeLog.loanCategory)}`);
+    if (ctx.volumeLog.loanStage) lines.push(`Loan Stage: ${sanitizeField(ctx.volumeLog.loanStage)}`);
+    if (ctx.volumeLog.won !== undefined) lines.push(`Won: ${ctx.volumeLog.won ? 'Yes' : 'No'}`);
+    if (ctx.volumeLog.lenderName) lines.push(`Lender: ${sanitizeField(ctx.volumeLog.lenderName)}`);
+    if (ctx.volumeLog.lenderType) lines.push(`Lender Type: ${sanitizeField(ctx.volumeLog.lenderType)}`);
+    if (ctx.volumeLog.feePercent !== undefined) lines.push(`Fee %: ${ctx.volumeLog.feePercent}`);
+    if (ctx.volumeLog.potentialRevenue !== undefined) lines.push(`Potential Revenue: $${ctx.volumeLog.potentialRevenue}`);
+    if (ctx.volumeLog.netRevenue !== undefined) lines.push(`Net Revenue: $${ctx.volumeLog.netRevenue}`);
+    if (ctx.volumeLog.actualNetRevenue !== undefined) lines.push(`Actual Net Revenue: $${ctx.volumeLog.actualNetRevenue}`);
+    if (ctx.volumeLog.targetClosingDate) lines.push(`Target Closing Date: ${sanitizeField(ctx.volumeLog.targetClosingDate)}`);
+    if (ctx.volumeLog.wuDate) lines.push(`WU Date: ${sanitizeField(ctx.volumeLog.wuDate)}`);
+    if (ctx.volumeLog.clxAgreement !== undefined) lines.push(`CLX Agreement: ${ctx.volumeLog.clxAgreement ? 'Yes' : 'No'}`);
+    if (ctx.volumeLog.referralSource) lines.push(`Referral Source: ${sanitizeField(ctx.volumeLog.referralSource)}`);
+    if (ctx.volumeLog.lossReason) lines.push(`Loss Reason: ${sanitizeField(ctx.volumeLog.lossReason)}`);
+  }
+
+  if (Array.isArray(ctx.signals) && ctx.signals.length > 0) {
+    lines.push("--- Active Signals ---");
+    for (const s of ctx.signals) {
+      lines.push(`Signal: ${sanitizeField(s)}`);
+    }
   }
 
   if (Array.isArray(ctx.tasks) && ctx.tasks.length > 0) {

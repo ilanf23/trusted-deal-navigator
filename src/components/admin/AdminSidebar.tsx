@@ -21,6 +21,7 @@ import {
   Code2,
   Bug,
   ClipboardList,
+  FileSpreadsheet,
   Calendar,
   Plus,
   Crosshair,
@@ -28,6 +29,7 @@ import {
   HardDrive,
   Bot,
   BrainCircuit,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -142,6 +144,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Bug Reporting', url: '/superadmin/bug-reporting', icon: Bug },
           { title: 'Dropbox', url: '/superadmin/dropbox', icon: HardDrive },
           { title: 'Tracking', url: '/superadmin/tracking', icon: Crosshair },
+          { title: 'Volume Log', url: '/superadmin/volume-log', icon: ScrollText },
           { title: 'AI Changes', url: '/superadmin/ai-changes', icon: BrainCircuit },
         ],
       });
@@ -169,7 +172,15 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         icon: LayoutDashboard,
         items: [
           { title: 'Dashboard', url: '/admin/dashboard', icon: LayoutDashboard },
-          { title: 'Scorecard', url: '/admin/scorecard', icon: ClipboardList },
+          {
+            title: 'Scorecard',
+            url: '/admin/scorecard',
+            icon: ClipboardList,
+            subItems: [
+              { title: 'Touchpoints', url: '/admin/scorecard', icon: ClipboardList },
+              { title: 'Score Sheet', url: '/admin/scorecard/score-sheet', icon: FileSpreadsheet },
+            ],
+          },
         ],
         noCollapse: true,
       });
@@ -299,9 +310,8 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
     if (path === '/superadmin' || path === '/admin/dashboard' || path.match(/^\/superadmin\/[^/]+$/)) {
       return location.pathname === path;
     }
-    // For pipeline sub-items, use exact match to avoid multiple highlights
-    // e.g. /admin/pipeline should not match /admin/pipeline/feed
-    if (path.match(/\/pipeline$/)) {
+    // For pipeline and scorecard sub-items, use exact match to avoid multiple highlights
+    if (path.match(/\/(pipeline|scorecard)$/)) {
       return location.pathname === path;
     }
     return location.pathname.startsWith(path);

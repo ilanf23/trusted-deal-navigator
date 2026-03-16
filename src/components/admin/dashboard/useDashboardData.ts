@@ -57,14 +57,14 @@ export function useDashboardData(timePeriod: TimePeriod) {
     refetchOnMount: 'always' as const,
   });
 
-  // Company funded deals (existing)
+  // Company funded deals — always fetch YTD so both MTD and YTD are available
   const companyDealsQuery = useQuery({
-    queryKey: ['company-funded-deals', timePeriod],
+    queryKey: ['company-funded-deals'],
     queryFn: async () => {
       const { data } = await supabase
         .from('team_funded_deals')
-        .select('rep_name, fee_earned')
-        .gte('funded_at', periodStart.toISOString());
+        .select('rep_name, fee_earned, funded_at')
+        .gte('funded_at', startOfYear(now).toISOString());
       return data || [];
     },
     staleTime: 0,
@@ -202,6 +202,17 @@ export function useDashboardData(timePeriod: TimePeriod) {
     return { totalPrograms, withContact, recentContacts };
   }, [lenderQuery.data]);
 
+  // Derived company revenue — always available as both MTD and YTD
+  const companyRevenueData = useMemo(() => {
+    const deals = companyDealsQuery.data || [];
+    const ytd = deals.reduce((sum, d) => sum + Number(d.fee_earned), 0);
+    const monthStart = startOfMonth(now);
+    const mtd = deals
+      .filter(d => (d as any).funded_at && new Date((d as any).funded_at) >= monthStart)
+      .reduce((sum, d) => sum + Number(d.fee_earned), 0);
+    return { ytd, mtd };
+  }, [companyDealsQuery.data]);
+
   const isLoading = leadsQuery.isLoading || pipelineQuery.isLoading || fundedQuery.isLoading;
   const isFetching = leadsQuery.isFetching || pipelineQuery.isFetching || fundedQuery.isFetching;
 
@@ -209,7 +220,8 @@ export function useDashboardData(timePeriod: TimePeriod) {
     leadsData: leadsQuery.data,
     pipelineData: pipelineQuery.data,
     fundedLeads: fundedQuery.data,
-    companyDeals: companyDealsQuery.data,
+    companyRevenueYTD: companyRevenueData.ytd,
+    companyRevenueMTD: companyRevenueData.mtd,
     callsData,
     tasksData,
     scorecardData,

@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -91,7 +91,8 @@ Deno.serve(async (req) => {
     }
 
     const userId = claimsData.user.id;
-    const { action, spreadsheetId, sheetName, teamMemberName } = await req.json();
+    const body = await req.json();
+    const { action, spreadsheetId, sheetName, teamMemberName, range, values, rowValues } = body;
 
     const supabaseAdmin = createClient(
       supabaseUrl,
@@ -102,13 +103,13 @@ Deno.serve(async (req) => {
     let query = supabaseAdmin
       .from('sheets_connections')
       .select('*');
-    
+
     if (teamMemberName) {
       query = query.eq('team_member_name', teamMemberName);
     } else {
       query = query.eq('user_id', userId);
     }
-    
+
     const { data: connection, error: connError } = await query.single();
 
     if (connError || !connection) {
@@ -145,9 +146,9 @@ Deno.serve(async (req) => {
       }
 
       const driveData = await driveResponse.json();
-      
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           spreadsheets: driveData.files.map((f: { id: string; name: string; modifiedTime: string }) => ({
             id: f.id,
             name: f.name,
@@ -184,9 +185,9 @@ Deno.serve(async (req) => {
       }
 
       const sheetsData = await sheetsResponse.json();
-      
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           sheets: sheetsData.sheets.map((s: { properties: { sheetId: number; title: string } }) => ({
             id: s.properties.sheetId,
             title: s.properties.title
@@ -204,10 +205,10 @@ Deno.serve(async (req) => {
         );
       }
 
-      const range = sheetName ? `'${sheetName}'` : 'Sheet1';
-      
+      const sheetRange = sheetName ? `'${sheetName}'` : 'Sheet1';
+
       const dataResponse = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetRange)}`,
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
@@ -223,12 +224,137 @@ Deno.serve(async (req) => {
       }
 
       const dataResult = await dataResponse.json();
-      
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           values: dataResult.values || [],
           range: dataResult.range
         }),
+        { headers: corsHeaders }
+      );
+    }
+
+    // ── Write actions (require full spreadsheets scope) ──
+
+    if (action === 'updateCell') {
+      // Update a single cell: range like "'Sheet1'!A2", values like [["new value"]]
+      if (!spreadsheetId || !range) {
+        return new Response(
+          JSON.stringify({ error: 'spreadsheetId and range are required' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      const updateResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            range,
+            majorDimension: 'ROWS',
+            values: values || [[body.value ?? '']],
+          }),
+        }
+      );
+
+      if (!updateResponse.ok) {
+        const error = await updateResponse.text();
+        console.error('Sheets update cell error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update cell' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+
+      const result = await updateResponse.json();
+      return new Response(
+        JSON.stringify({ success: true, updatedCells: result.updatedCells }),
+        { headers: corsHeaders }
+      );
+    }
+
+    if (action === 'updateRow') {
+      // Update an entire row: range like "'Sheet1'!A5:Z5", rowValues is a flat array
+      if (!spreadsheetId || !range || !rowValues) {
+        return new Response(
+          JSON.stringify({ error: 'spreadsheetId, range, and rowValues are required' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      const updateResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            range,
+            majorDimension: 'ROWS',
+            values: [rowValues],
+          }),
+        }
+      );
+
+      if (!updateResponse.ok) {
+        const error = await updateResponse.text();
+        console.error('Sheets update row error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update row' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+
+      const result = await updateResponse.json();
+      return new Response(
+        JSON.stringify({ success: true, updatedCells: result.updatedCells }),
+        { headers: corsHeaders }
+      );
+    }
+
+    if (action === 'appendRow') {
+      // Append a new row to the end of the sheet
+      if (!spreadsheetId || !rowValues) {
+        return new Response(
+          JSON.stringify({ error: 'spreadsheetId and rowValues are required' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      const appendRange = sheetName ? `'${sheetName}'` : 'Sheet1';
+      const appendResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(appendRange)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            majorDimension: 'ROWS',
+            values: [rowValues],
+          }),
+        }
+      );
+
+      if (!appendResponse.ok) {
+        const error = await appendResponse.text();
+        console.error('Sheets append row error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to append row' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+
+      const result = await appendResponse.json();
+      return new Response(
+        JSON.stringify({ success: true, updatedRange: result.updates?.updatedRange }),
         { headers: corsHeaders }
       );
     }

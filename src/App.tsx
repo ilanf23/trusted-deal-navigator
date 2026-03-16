@@ -60,6 +60,7 @@ import Gmail from "./pages/admin/Gmail";
 import EmailTemplates from "./pages/admin/EmailTemplates";
 import Calendar from "./pages/admin/Calendar";
 import Scorecard from "./pages/admin/Scorecard";
+import ScoreSheet from "./pages/admin/ScoreSheet";
 import DevNotes from "./pages/admin/DevNotes";
 import ModuleTracker from "./pages/admin/ModuleTracker";
 import MaurasPage from "./pages/admin/MaurasPage";
@@ -80,6 +81,8 @@ import SheetsCallback from "./pages/admin/SheetsCallback";
 import DropboxPage from "./pages/admin/Dropbox";
 import DropboxCallback from "./pages/admin/DropboxCallback";
 import AIChanges from "./pages/admin/AIChanges";
+import LoanVolumeLog from "./pages/admin/LoanVolumeLog";
+import VolumeLogExpandedView from "./components/admin/VolumeLogExpandedView";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalContracts from "./pages/portal/Contracts";
 import PortalInvoices from "./pages/portal/Invoices";
@@ -149,6 +152,8 @@ const App = () => (
                 <Route path="/superadmin/rate-watch" element={<AdminRateWatch />} />
                 <Route path="/superadmin/lender-programs" element={<LenderPrograms />} />
                 <Route path="/superadmin/tracking" element={<AdminTracking />} />
+                <Route path="/superadmin/volume-log" element={<LoanVolumeLog />} />
+                <Route path="/superadmin/volume-log/lead/:leadId" element={<VolumeLogExpandedView />} />
                 <Route path="/superadmin/ai-changes" element={<AIChanges />} />
                 <Route path="/superadmin/dropbox" element={<DropboxPage />} />
                 <Route path="/superadmin/dropbox/callback" element={<DropboxCallback />} />
@@ -192,6 +197,8 @@ const App = () => (
                 <Route path="/admin/email-templates" element={<AdminRoute><EmailTemplates /></AdminRoute>} />
                 <Route path="/admin/calendar" element={<AdminRoute><Calendar /></AdminRoute>} />
                 <Route path="/admin/scorecard" element={<AdminRoute><Scorecard /></AdminRoute>} />
+                <Route path="/admin/scorecard/score-sheet" element={<AdminRoute><ScoreSheet /></AdminRoute>} />
+                <Route path="/admin/sheets-callback" element={<SheetsCallback />} />
                 <Route path="/admin/dev-notes" element={<AdminRoute><DevNotes /></AdminRoute>} />
                 <Route path="/admin/bug-reporting" element={<AdminRoute><BugReporting /></AdminRoute>} />
                 <Route path="/admin/messages" element={<AdminRoute><AdminMessages /></AdminRoute>} />

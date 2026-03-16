@@ -13,7 +13,7 @@ interface Sheet {
   title: string;
 }
 
-export const useGoogleSheets = (teamMemberName?: string) => {
+export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [connectedEmail, setConnectedEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,7 @@ export const useGoogleSheets = (teamMemberName?: string) => {
 
       popup.document.write('<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><p>Connecting to Google Sheets...</p></body></html>');
 
-      const redirectUri = `${window.location.origin}/superadmin/sheets-callback`;
+      const redirectUri = `${window.location.origin}${redirectPath || '/superadmin/sheets-callback'}`;
 
       const response = await supabase.functions.invoke('google-sheets-auth', {
         body: { action: 'getAuthUrl', redirectUri, teamMemberName }
@@ -173,6 +173,54 @@ export const useGoogleSheets = (teamMemberName?: string) => {
     }
   };
 
+  const updateCell = async (spreadsheetId: string, range: string, value: string) => {
+    try {
+      const response = await supabase.functions.invoke('google-sheets-api', {
+        body: { action: 'updateCell', spreadsheetId, range, value, teamMemberName }
+      });
+
+      if (response.error) throw response.error;
+      if (response.data?.error) throw new Error(response.data.error);
+
+      return response.data;
+    } catch (error) {
+      console.error('Error updating cell:', error);
+      throw error;
+    }
+  };
+
+  const updateRow = async (spreadsheetId: string, range: string, rowValues: string[]) => {
+    try {
+      const response = await supabase.functions.invoke('google-sheets-api', {
+        body: { action: 'updateRow', spreadsheetId, range, rowValues, teamMemberName }
+      });
+
+      if (response.error) throw response.error;
+      if (response.data?.error) throw new Error(response.data.error);
+
+      return response.data;
+    } catch (error) {
+      console.error('Error updating row:', error);
+      throw error;
+    }
+  };
+
+  const appendRow = async (spreadsheetId: string, rowValues: string[], sheetName?: string) => {
+    try {
+      const response = await supabase.functions.invoke('google-sheets-api', {
+        body: { action: 'appendRow', spreadsheetId, sheetName, rowValues, teamMemberName }
+      });
+
+      if (response.error) throw response.error;
+      if (response.data?.error) throw new Error(response.data.error);
+
+      return response.data;
+    } catch (error) {
+      console.error('Error appending row:', error);
+      throw error;
+    }
+  };
+
   return {
     isConnected,
     connectedEmail,
@@ -185,6 +233,9 @@ export const useGoogleSheets = (teamMemberName?: string) => {
     listSpreadsheets,
     getSheets,
     getData,
+    updateCell,
+    updateRow,
+    appendRow,
     checkConnection,
   };
 };

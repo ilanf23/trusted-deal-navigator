@@ -8,6 +8,8 @@ import { startOfYear, startOfMonth, eachMonthOfInterval, eachDayOfInterval, endO
 import { useDashboardData } from '@/components/admin/dashboard/useDashboardData';
 import { DashboardHeader } from '@/components/admin/dashboard/DashboardHeader';
 import { RevenueKPIStrip } from '@/components/admin/dashboard/RevenueKPIStrip';
+import { RevenueGoalCard } from '@/components/admin/dashboard/RevenueGoalCard';
+import { NextBestAction } from '@/components/admin/dashboard/NextBestAction';
 import { RevenueBreakdown } from '@/components/admin/dashboard/RevenueBreakdown';
 import { DealSourcesChart } from '@/components/admin/dashboard/DealSourcesChart';
 import { CommissionSection } from '@/components/admin/dashboard/CommissionSection';
@@ -54,7 +56,8 @@ const Dashboard = () => {
   const setCalcExtraDeals = useCallback((v: string) => { setCalcExtraDealsLocal(v); setPageState('dashboard', { calcExtraDeals: v }); }, [setPageState]);
 
   const {
-    leadsData, pipelineData, fundedLeads, companyDeals,
+    leadsData, pipelineData, fundedLeads,
+    companyRevenueYTD, companyRevenueMTD,
     callsData, tasksData, scorecardData, lenderData,
     isLoading, isFetching,
     callsLoading, tasksLoading, scorecardLoading, lenderLoading,
@@ -62,10 +65,6 @@ const Dashboard = () => {
 
   const evanId = teamMember?.id;
   const firstName = teamMember?.name || 'there';
-
-  // Company revenue for KPI strip
-  const companyRevenue = (companyDeals || []).reduce((sum, d) => sum + Number(d.fee_earned), 0);
-  const companyGoalPct = Math.min(100, (companyRevenue / ANNUAL_GOAL) * 100);
 
   // Metrics derived from leads/pipeline/funded data
   const metrics = useMemo(() => {
@@ -138,7 +137,7 @@ const Dashboard = () => {
   return (
     <EvanLayout>
       <div className="space-y-4 md:space-y-6">
-        {/* Row 1: Header */}
+        {/* 1. Header — greeting, date, time period selector */}
         <DashboardHeader
           firstName={firstName}
           timePeriod={timePeriod}
@@ -146,56 +145,66 @@ const Dashboard = () => {
           isFetching={isFetching}
         />
 
-        {/* Row 2: KPI Cards */}
+        {/* 2. KPI Strip — the 5 numbers that matter */}
         <RevenueKPIStrip
-          companyRevenue={companyRevenue}
-          companyGoalPct={companyGoalPct}
-          totalRevenue={metrics.totalRevenue}
-          totalDeals={metrics.totalDeals}
-          avgDealSize={metrics.avgDealSize}
+          mtdRevenue={companyRevenueMTD}
+          ytdRevenue={companyRevenueYTD}
           pipelineValue={metrics.pipelineValue}
           pipelineDeals={metrics.pipelineDeals}
+          totalDeals={metrics.totalDeals}
           winRate={metrics.winRate}
           formatCurrency={formatCurrency}
         />
 
-        {/* Row 3: Nudges (conditional) */}
-        <NudgesWidget evanId={evanId} />
+        {/* 3. Road to $1.5M — motivation & goal progress */}
+        <RevenueGoalCard
+          personalRevenue={metrics.totalRevenue}
+          companyRevenue={companyRevenueYTD}
+          goal={ANNUAL_GOAL}
+          formatCurrency={formatCurrency}
+        />
 
-        {/* Row 4: Top Actions */}
+        {/* 4. Revenue Analytics — graphs & breakdown */}
+        <CompanyRevenueHero chartPeriod={chartPeriod} setChartPeriod={setChartPeriod} />
+        <RevenueBreakdown timePeriod={timePeriod} periodTotal={periodTotal} formatCurrency={formatCurrency} />
+
+        {/* 5. Next Best Action — single focus card for productivity */}
+        <NextBestAction evanId={evanId} />
+
+        {/* 6. Top 10 Actions — the core of the OS */}
         <TopActions evanId={evanId} />
 
-        {/* Row 5: Company Revenue Hero */}
-        <CompanyRevenueHero chartPeriod={chartPeriod} setChartPeriod={setChartPeriod} />
+        {/* 7. Nudges — conditional follow-up reminders */}
+        <NudgesWidget evanId={evanId} />
 
-        {/* Row 6: Pipeline Health + Scorecard */}
+        {/* 8. Pipeline Health + Weekly Scorecard */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           <PipelineHealthWidget pipelineData={pipelineData} formatCurrency={formatCurrency} />
           <ScorecardMiniWidget scorecardData={scorecardData} isLoading={scorecardLoading} />
         </div>
 
-        {/* Row 7: Calls + Tasks + Lender Programs */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-          <CallsActivityWidget callsData={callsData} isLoading={callsLoading} />
+        {/* 9. Tasks Overview + Calls Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           <TasksOverviewWidget tasksData={tasksData} isLoading={tasksLoading} />
-          <LenderProgramsWidget lenderData={lenderData} isLoading={lenderLoading} />
+          <CallsActivityWidget callsData={callsData} isLoading={callsLoading} />
         </div>
 
-        {/* Row 8: Revenue Breakdown */}
-        <RevenueBreakdown timePeriod={timePeriod} periodTotal={periodTotal} formatCurrency={formatCurrency} />
+        {/* 10. Activity Feed — audit log */}
+        <ActivityFeed evanId={evanId} />
 
-        {/* Row 9: Deal Sources + Activity Feed */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-          <DealSourcesChart leadsData={leadsData} />
-          <div className="lg:col-span-2">
-            <ActivityFeed evanId={evanId} />
+        {/* 11. Tools & Resources */}
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-[0.08em] mb-4">
+            Tools & Resources
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+            <DealSourcesChart leadsData={leadsData} />
+            <LenderProgramsWidget lenderData={lenderData} isLoading={lenderLoading} />
+            <NewSignupsWidget />
           </div>
         </div>
 
-        {/* Row 10: New Signups */}
-        <NewSignupsWidget />
-
-        {/* Row 11: Commission Calculator */}
+        {/* 12. Commission Calculator */}
         <CommissionSection
           calcLoanAmount={calcLoanAmount}
           setCalcLoanAmount={setCalcLoanAmount}

@@ -30,6 +30,7 @@ import { Task } from '@/components/evan/tasks/types';
 import { LeadTodosSection } from '@/components/admin/LeadTodosSection';
 import { FormattedPhoneInput } from '@/components/admin/FormattedPhoneInput';
 import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
+import { LeadDealSheetTab } from '@/components/admin/LeadDealSheetTab';
 
 // Helper to format activity timestamps - show time if <24h, otherwise show date and time
 const formatActivityTimestamp = (date: Date | string) => {
@@ -1365,6 +1366,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                   <TabsTrigger value="all" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">All</TabsTrigger>
                   <TabsTrigger value="emails" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Emails</TabsTrigger>
                   <TabsTrigger value="lenders" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Lenders</TabsTrigger>
+                  <TabsTrigger value="deal-sheet" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Deal Sheet</TabsTrigger>
                   <TabsTrigger value="files" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Files</TabsTrigger>
                   <TabsTrigger value="comments" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Comments</TabsTrigger>
                   <TabsTrigger value="tasks" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-4 py-3 text-sm">Tasks</TabsTrigger>
@@ -1850,6 +1852,19 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                         </ScrollArea>
                       );
                     })()}
+                  </TabsContent>
+
+                  {/* Deal Sheet Tab */}
+                  <TabsContent value="deal-sheet" className="m-0">
+                    <ScrollArea className="h-[calc(100vh-280px)]">
+                      <LeadDealSheetTab
+                        lead={lead}
+                        onFieldSaved={(field, newValue) => {
+                          queryClient.invalidateQueries({ queryKey: ['volume-log-leads'] });
+                          queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
+                        }}
+                      />
+                    </ScrollArea>
                   </TabsContent>
 
                   {/* Files Tab */}
