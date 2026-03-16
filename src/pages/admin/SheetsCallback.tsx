@@ -28,14 +28,21 @@ const SheetsCallback = () => {
       }
 
       try {
-        const redirectUri = `${window.location.origin}/admin/sheets-callback`;
-        
+        const stateParam = searchParams.get('state');
+        let teamMemberName = '';
+        try {
+          const parsed = JSON.parse(stateParam || '{}');
+          teamMemberName = parsed.teamMemberName || '';
+        } catch { /* ignore */ }
+
+        const redirectUri = `${window.location.origin}${window.location.pathname}`;
+
         const response = await supabase.functions.invoke('google-sheets-auth', {
-          body: { 
-            action: 'exchangeCode', 
-            code, 
+          body: {
+            action: 'exchangeCode',
+            code,
             redirectUri,
-            teamMemberName: 'admin' 
+            teamMemberName
           }
         });
 

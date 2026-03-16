@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       authUrl.searchParams.set('scope', scopes);
       authUrl.searchParams.set('access_type', 'offline');
       authUrl.searchParams.set('prompt', 'consent');
-      authUrl.searchParams.set('state', `sheets_${userId}`);
+      authUrl.searchParams.set('state', JSON.stringify({ userId, teamMemberName: teamMemberName || '' }));
 
       return new Response(
         JSON.stringify({ authUrl: authUrl.toString() }),

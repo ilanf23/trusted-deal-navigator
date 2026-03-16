@@ -145,6 +145,26 @@
     --admin-orange: 25 95% 53%;
     --admin-orange-light: 25 95% 95%;
     --admin-orange-dark: 25 95% 43%;
+
+    /* Semantic Status Colors */
+    --status-success: 142 71% 45%;
+    --status-success-light: 142 76% 95%;
+    --status-success-foreground: 142 71% 29%;
+    --status-warning: 38 92% 50%;
+    --status-warning-light: 38 92% 95%;
+    --status-warning-foreground: 38 92% 30%;
+    --status-info: 199 89% 48%;
+    --status-info-light: 199 89% 95%;
+    --status-info-foreground: 199 89% 30%;
+    --status-error: 0 72% 51%;
+    --status-error-light: 0 72% 95%;
+    --status-error-foreground: 0 72% 35%;
+
+    /* Communication Type Colors */
+    --comm-call-inbound: 142 71% 45%;
+    --comm-call-outbound: 217 91% 50%;
+    --comm-email: 271 91% 50%;
+    --comm-sms: 187 92% 42%;
     
     /* Enterprise SaaS sidebar — Linear/Stripe palette */
     --sidebar-background: 224 20% 7%;
@@ -215,6 +235,26 @@
     --admin-orange: 25 95% 58%;
     --admin-orange-light: 25 40% 20%;
     --admin-orange-dark: 25 95% 68%;
+
+    /* Semantic Status Colors - Dark Mode */
+    --status-success: 142 71% 55%;
+    --status-success-light: 142 40% 15%;
+    --status-success-foreground: 142 71% 75%;
+    --status-warning: 38 92% 55%;
+    --status-warning-light: 38 40% 15%;
+    --status-warning-foreground: 38 92% 75%;
+    --status-info: 199 89% 55%;
+    --status-info-light: 199 40% 15%;
+    --status-info-foreground: 199 89% 75%;
+    --status-error: 0 72% 55%;
+    --status-error-light: 0 40% 15%;
+    --status-error-foreground: 0 72% 75%;
+
+    /* Communication Type Colors - Dark Mode */
+    --comm-call-inbound: 142 71% 55%;
+    --comm-call-outbound: 217 91% 60%;
+    --comm-email: 271 91% 60%;
+    --comm-sms: 187 92% 52%;
     
     /* Sidebar in dark mode — same enterprise palette (sidebar is always dark) */
     --sidebar-background: 224 20% 7%;
@@ -321,54 +361,36 @@
     line-height: 1.5;
   }
 
-  .admin-portal .text-\[11px\] {
-    font-size: 11px;
-  }
-
-  .admin-portal .text-\[12px\] {
-    font-size: 12px;
-  }
-
-  .admin-portal .text-\[13px\] {
-    font-size: 13px;
-  }
-
-  /* Tablet (md): 10% larger */
+  /* Tablet (md): slightly larger */
   @media (min-width: 768px) {
     .admin-portal {
-      font-size: 1.03125rem;
+      font-size: 1rem;
     }
     .admin-portal h1 { font-size: 1.875rem; }
     .admin-portal h2 { font-size: 1.5rem; }
     .admin-portal h3 { font-size: 1.25rem; }
-    .admin-portal h4 { font-size: 1.1rem; }
+    .admin-portal h4 { font-size: 1.125rem; }
     .admin-portal p,
     .admin-portal span:not(.sr-only):not([class*="text-["]),
-    .admin-portal label { font-size: 0.96rem; }
-    .admin-portal .text-xs { font-size: 0.825rem; }
-    .admin-portal .text-sm { font-size: 0.89rem; }
-    .admin-portal .text-\[11px\] { font-size: 12px; }
-    .admin-portal .text-\[12px\] { font-size: 13px; }
-    .admin-portal .text-\[13px\] { font-size: 14px; }
+    .admin-portal label { font-size: 0.9375rem; }
+    .admin-portal .text-xs { font-size: 0.8125rem; }
+    .admin-portal .text-sm { font-size: 0.875rem; }
   }
 
-  /* Desktop (lg+): full 25% larger */
+  /* Desktop (lg+): full size */
   @media (min-width: 1024px) {
     .admin-portal {
-      font-size: 1.1875rem;
+      font-size: 1rem;
     }
-    .admin-portal h1 { font-size: 2.34375rem; }
-    .admin-portal h2 { font-size: 1.71875rem; }
-    .admin-portal h3 { font-size: 1.40625rem; }
-    .admin-portal h4 { font-size: 1.25rem; }
+    .admin-portal h1 { font-size: 1.875rem; }
+    .admin-portal h2 { font-size: 1.5rem; }
+    .admin-portal h3 { font-size: 1.25rem; }
+    .admin-portal h4 { font-size: 1.125rem; }
     .admin-portal p,
     .admin-portal span:not(.sr-only):not([class*="text-["]),
-    .admin-portal label { font-size: 1.09375rem; }
-    .admin-portal .text-xs { font-size: 0.9375rem; }
-    .admin-portal .text-sm { font-size: 1.015625rem; }
-    .admin-portal .text-\[11px\] { font-size: 0.859375rem; }
-    .admin-portal .text-\[12px\] { font-size: 0.9375rem; }
-    .admin-portal .text-\[13px\] { font-size: 1.015625rem; }
+    .admin-portal label { font-size: 0.9375rem; }
+    .admin-portal .text-xs { font-size: 0.8125rem; }
+    .admin-portal .text-sm { font-size: 0.875rem; }
   }
 
   /* Apple-Style Cards - responsive */
@@ -391,7 +413,7 @@
   @media (min-width: 1024px) {
     .admin-portal [data-slot="card"],
     .apple-card {
-      border-radius: 1.25rem;
+      border-radius: 0.75rem;
     }
   }
 
@@ -411,10 +433,10 @@
 
   @media (min-width: 1024px) {
     .admin-portal [data-slot="card-header"] {
-      padding: 1.5625rem 1.875rem 0.9375rem;
+      padding: 1.25rem 1.5rem 0.75rem;
     }
     .admin-portal [data-slot="card-content"] {
-      padding: 1.25rem 1.875rem 1.875rem;
+      padding: 1rem 1.5rem 1.5rem;
     }
   }
 
@@ -442,15 +464,9 @@
   }
 
   @media (min-width: 768px) {
-    .admin-portal table { font-size: 0.89rem; }
+    .admin-portal table { font-size: 0.875rem; }
     .admin-portal th { font-size: 0.75rem; padding: 0.75rem 1rem; }
-    .admin-portal td { padding: 0.875rem 1rem; }
-  }
-
-  @media (min-width: 1024px) {
-    .admin-portal table { font-size: 1.015625rem; }
-    .admin-portal th { font-size: 0.859375rem; padding: 0.9375rem 1.25rem; }
-    .admin-portal td { padding: 1.09375rem 1.25rem; }
+    .admin-portal td { padding: 0.75rem 1rem; }
   }
 
   .admin-portal tbody tr {
@@ -487,9 +503,9 @@
     .admin-portal textarea,
     .admin-portal select,
     .admin-portal [role="combobox"] {
-      font-size: 1.09375rem;
-      border-radius: 0.78125rem;
-      padding: 0.78125rem 1.09375rem;
+      font-size: 0.875rem;
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
     }
   }
 
@@ -513,9 +529,9 @@
 
   @media (min-width: 1024px) {
     .admin-portal button {
-      font-size: 1.09375rem;
-      border-radius: 0.78125rem;
-      padding: 0.625rem 1.25rem;
+      font-size: 0.875rem;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
     }
   }
 
@@ -537,8 +553,8 @@
   @media (min-width: 1024px) {
     .admin-portal [data-slot="badge"],
     .apple-badge {
-      font-size: 0.859375rem;
-      padding: 0.3125rem 0.78125rem;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.625rem;
     }
   }
 
@@ -1038,4 +1054,16 @@ input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset !important;
   -webkit-text-fill-color: hsl(var(--foreground)) !important;
   transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
