@@ -185,6 +185,7 @@ const Scorecard = () => {
       return data;
     },
     enabled: repFilter === 'all' || !!evanMember?.id,
+    refetchInterval: 30_000,
   });
 
   const { data: communications } = useQuery({
@@ -198,6 +199,7 @@ const Scorecard = () => {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 30_000,
   });
 
   const { data: leadActivities } = useQuery({
@@ -211,6 +213,7 @@ const Scorecard = () => {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 30_000,
   });
 
   const { data: tasks } = useQuery({
@@ -224,6 +227,7 @@ const Scorecard = () => {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 30_000,
   });
 
   const { data: followUpEmails } = useQuery({
@@ -237,6 +241,7 @@ const Scorecard = () => {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 30_000,
   });
 
   const { data: rateWatchSignups } = useQuery({
@@ -250,6 +255,7 @@ const Scorecard = () => {
       if (error) throw error;
       return data;
     },
+    refetchInterval: 30_000,
   });
 
   const metrics = useMemo(() => {
@@ -260,7 +266,7 @@ const Scorecard = () => {
     const userLeadIds = new Set(allLeads.map(l => l.id));
 
     const scopedComms = repFilter === 'me'
-      ? (communications || []).filter(c => c.lead_id && userLeadIds.has(c.lead_id))
+      ? (communications || []).filter(c => !c.lead_id || userLeadIds.has(c.lead_id))
       : (communications || []);
 
     const scopedActivities = repFilter === 'me'
@@ -275,7 +281,7 @@ const Scorecard = () => {
       : (tasks || []);
 
     const scopedEmails = repFilter === 'me'
-      ? (followUpEmails || []).filter(e => e.lead_id && userLeadIds.has(e.lead_id))
+      ? (followUpEmails || []).filter(e => !e.lead_id || userLeadIds.has(e.lead_id))
       : (followUpEmails || []);
 
     const newLeadsThisPeriod = allLeads.filter((lead) => {
