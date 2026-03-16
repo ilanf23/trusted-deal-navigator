@@ -204,7 +204,7 @@ const Scorecard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_tasks')
-        .select('id, title, is_completed, lead_id, created_at, due_date, source')
+        .select('id, title, is_completed, lead_id, created_at, due_date, source, assignee_name')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
       if (error) throw error;
@@ -217,7 +217,7 @@ const Scorecard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('outbound_emails')
-        .select('id, source, created_at, status')
+        .select('id, source, created_at, status, lead_id')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
       if (error) throw error;
@@ -242,6 +242,28 @@ const Scorecard = () => {
     if (!allLeads) return null;
     const periodEnd = periodBoundaries.end;
 
+    // Scope all datasets to the current user's leads when repFilter='me'
+    const userLeadIds = new Set(allLeads.map(l => l.id));
+
+    const scopedComms = repFilter === 'me'
+      ? (communications || []).filter(c => c.lead_id && userLeadIds.has(c.lead_id))
+      : (communications || []);
+
+    const scopedActivities = repFilter === 'me'
+      ? (leadActivities || []).filter(a => userLeadIds.has(a.lead_id))
+      : (leadActivities || []);
+
+    const scopedTasks = repFilter === 'me'
+      ? (tasks || []).filter(t =>
+          (t.lead_id && userLeadIds.has(t.lead_id)) ||
+          (t.assignee_name && teamMember && t.assignee_name.toLowerCase() === teamMember.name.toLowerCase())
+        )
+      : (tasks || []);
+
+    const scopedEmails = repFilter === 'me'
+      ? (followUpEmails || []).filter(e => e.lead_id && userLeadIds.has(e.lead_id))
+      : (followUpEmails || []);
+
     const newLeadsThisPeriod = allLeads.filter((lead) => {
       const createdAt = new Date(lead.created_at);
       return createdAt >= periodStart && createdAt <= periodEnd;
@@ -259,30 +281,30 @@ const Scorecard = () => {
       return lead.status === 'lost' && updatedAt >= periodStart && updatedAt <= periodEnd;
     });
 
-    const calls = communications?.filter((c) => c.communication_type === 'call') || [];
-    const emails = communications?.filter((c) => c.communication_type === 'email') || [];
-    const sms = communications?.filter((c) => c.communication_type === 'sms') || [];
+    const calls = scopedComms.filter((c) => c.communication_type === 'call');
+    const emails = scopedComms.filter((c) => c.communication_type === 'email');
+    const sms = scopedComms.filter((c) => c.communication_type === 'sms');
     const inboundCalls = calls.filter((c) => c.direction === 'inbound');
     const outboundCalls = calls.filter((c) => c.direction === 'outbound');
-    const totalTouchpoints = communications?.length || 0;
+    const totalTouchpoints = scopedComms.length;
 
     const totalCallMinutes = calls.reduce((sum, call) =>
       sum + (call.duration_seconds || 0) / 60, 0
     );
 
     const uniqueLeadsContacted = new Set(
-      communications?.filter((c) => c.lead_id).map((c) => c.lead_id) || []
+      scopedComms.filter((c) => c.lead_id).map((c) => c.lead_id)
     ).size;
 
-    const stageChanges = leadActivities?.filter(
+    const stageChanges = scopedActivities.filter(
       (a) => a.activity_type === 'stage_change' || a.title?.includes('moved to')
-    ) || [];
+    );
 
-    const tasksCompleted = tasks?.filter((t) => t.is_completed).length || 0;
-    const tasksCreated = tasks?.length || 0;
-    const tasksOverdue = tasks?.filter(
+    const tasksCompleted = scopedTasks.filter((t) => t.is_completed).length;
+    const tasksCreated = scopedTasks.length;
+    const tasksOverdue = scopedTasks.filter(
       (t) => !t.is_completed && t.due_date && new Date(t.due_date) < now
-    ).length || 0;
+    ).length;
 
     const recentMovements = stageChanges.slice(0, 10).map((activity) => {
       const lead = allLeads.find((l) => l.id === activity.lead_id);
@@ -296,18 +318,18 @@ const Scorecard = () => {
     });
 
     const leadsNeedingAttention = activeLeads.filter((lead) => {
-      const lastTouchpoint = communications?.find((c) => c.lead_id === lead.id);
+      const lastTouchpoint = scopedComms.find((c) => c.lead_id === lead.id);
       if (!lastTouchpoint) return true;
       return differenceInDays(now, new Date(lastTouchpoint.created_at)) >= 7;
     }).slice(0, 10);
 
-    const followUpEmailsSent = followUpEmails?.filter(
+    const followUpEmailsSent = scopedEmails.filter(
       (e) => e.source?.toLowerCase().includes('follow') || e.source?.toLowerCase().includes('nudge') || e.source?.toLowerCase().includes('7day')
-    ).length || 0;
+    ).length;
 
-    const nudgeTasksCompleted = tasks?.filter(
+    const nudgeTasksCompleted = scopedTasks.filter(
       (t) => t.source === 'nudge' && t.is_completed
-    ).length || 0;
+    ).length;
 
     return {
       totalLeads: allLeads.length,
@@ -332,7 +354,7 @@ const Scorecard = () => {
       rateWatchSignups: rateWatchSignups?.length || 0,
       leadsNeedingAttention,
     };
-  }, [allLeads, communications, leadActivities, tasks, followUpEmails, rateWatchSignups, periodStart, periodBoundaries, now]);
+  }, [allLeads, communications, leadActivities, tasks, followUpEmails, rateWatchSignups, periodStart, periodBoundaries, now, repFilter, teamMember]);
 
   if (leadsLoading) {
     return (

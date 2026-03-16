@@ -53,13 +53,7 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
 
   const connect = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Please sign in first');
-        return;
-      }
-
-      // Open popup immediately to avoid blockers
+      // Open popup FIRST — must be synchronous with the user click or browsers block it
       const popup = window.open('about:blank', 'googleSheetsAuth', 'width=600,height=700,scrollbars=yes');
       if (!popup) {
         toast.error('Popup blocked. Please allow popups for this site.');
@@ -67,6 +61,13 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
       }
 
       popup.document.write('<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui"><p>Connecting to Google Sheets...</p></body></html>');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        popup.close();
+        toast.error('Please sign in first');
+        return;
+      }
 
       const redirectUri = `${window.location.origin}${redirectPath || '/superadmin/sheets-callback'}`;
 
