@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, CheckSquare, AlertTriangle, CalendarDays, Clock, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 
@@ -24,6 +25,7 @@ export const TasksOverviewWidget = ({ tasksData, isLoading }: TasksOverviewWidge
           <CardTitle className="text-base flex items-center gap-2">
             <CheckSquare className="h-4 w-4 text-primary" />
             Tasks Overview
+            <DbTableBadge tables={['evan_tasks']} />
           </CardTitle>
           <Link to="/admin/tasks">
             <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1">

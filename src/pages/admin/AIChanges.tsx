@@ -4,6 +4,7 @@ import AIChangesTable from '@/components/admin/ai-changes/AIChangesTable';
 import AIChangesFilters from '@/components/admin/ai-changes/AIChangesFilters';
 import AIChangeDetailPanel from '@/components/admin/ai-changes/AIChangeDetailPanel';
 import { useSearchParams } from 'react-router-dom';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 const AIChanges = () => {
   const [searchParams] = useSearchParams();
@@ -60,7 +61,10 @@ const AIChanges = () => {
   return (
     <div className="flex-1 p-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">AI Changes</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">AI Changes</h1>
+          <DbTableBadge tables={['ai_agent_changes']} />
+        </div>
         <p className="text-sm text-muted-foreground">
           Review and manage all changes made by the AI assistant
         </p>

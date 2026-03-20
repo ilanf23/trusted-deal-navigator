@@ -12,6 +12,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { LenderProgramAssistant } from '@/components/admin/LenderProgramAssistant';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import * as XLSX from 'xlsx';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 interface LenderRow {
   id: string;
@@ -779,7 +780,10 @@ const LenderPrograms = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground tracking-tight">Lender Programs</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold text-foreground tracking-tight">Lender Programs</h1>
+              <DbTableBadge tables={['lender_programs']} />
+            </div>
             <p className="text-sm text-muted-foreground mt-1">
               {rows.filter(r => r.lender_name.trim()).length} of 900 rows filled
             </p>

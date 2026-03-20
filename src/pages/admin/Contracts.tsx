@@ -13,6 +13,7 @@ import { Plus, Loader2, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 type Contract = Database['public']['Tables']['contracts']['Row'];
 type ContractStatus = Database['public']['Enums']['contract_status'];
@@ -143,7 +144,10 @@ const AdminContracts = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Contracts</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold">Contracts</h1>
+              <DbTableBadge tables={['contracts']} />
+            </div>
             <p className="text-muted-foreground">Create and manage client contracts</p>
           </div>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

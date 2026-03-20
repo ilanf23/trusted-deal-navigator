@@ -57,7 +57,7 @@ const SplitViewContent = ({ children }: AdminLayoutProps) => {
   }
 
   return (
-    <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-auto">
+    <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 animate-fade-in overflow-x-auto bg-muted/40">
       <div className="max-w-[1800px] mx-auto">
         {children}
       </div>

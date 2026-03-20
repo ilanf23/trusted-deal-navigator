@@ -15,6 +15,7 @@ import { format, parseISO } from 'date-fns';
 import { Bug, Plus, AlertCircle, Clock, CheckCircle2, ArrowLeft, ExternalLink, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 interface BugReport {
   id: string;
@@ -144,7 +145,10 @@ const BugTesting = () => {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight">Bug Testing</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-semibold tracking-tight">Bug Testing</h1>
+                <DbTableBadge tables={['bug_reports']} />
+              </div>
               <p className="text-muted-foreground mt-1">Track and manage bug reports from team members</p>
             </div>
           </div>

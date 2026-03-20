@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 interface ActiveCall {
   id: string;
@@ -540,7 +541,10 @@ const Calls = () => {
             <Phone className="h-6 w-6 text-muted-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Calls</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">Calls</h1>
+              <DbTableBadge tables={['active_calls']} />
+            </div>
             <p className="text-sm text-muted-foreground">Incoming call management & lender programs</p>
           </div>
           <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border text-sm text-muted-foreground">

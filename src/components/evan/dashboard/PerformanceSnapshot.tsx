@@ -70,14 +70,14 @@ export const PerformanceSnapshot = ({ evanId, timePeriod = 'ytd' }: PerformanceS
       });
 
       // Calculate revenue (2% broker fee on loan amount)
-      const revenueInPeriod = fundedDeals.reduce((sum, deal) => sum + (deal.loanAmount * 0.02), 0);
+      const revenueInPeriod = fundedDeals.reduce((sum, deal) => sum + (deal.loanAmount * 0.01), 0);
       
       // Pipeline deals (not funded)
       const pipelineDeals = mockDealData.filter(deal => deal.status !== 'funded');
       
       // Calculate weighted forecast
       const weightedForecast = pipelineDeals.reduce((sum, deal) => {
-        const fee = deal.loanAmount * 0.02;
+        const fee = deal.loanAmount * 0.01;
         const weight = stageWeights[deal.status] || 0.1;
         return sum + (fee * weight);
       }, 0);

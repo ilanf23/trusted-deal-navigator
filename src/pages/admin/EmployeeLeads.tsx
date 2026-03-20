@@ -21,6 +21,7 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
 import EvanLayout from '@/components/evan/EvanLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 type Communication = Database['public']['Tables']['evan_communications']['Row'];
 
@@ -346,7 +347,10 @@ const EmployeeLeads = () => {
       {/* Header Section */}
       <div className="flex items-start justify-between mb-6">
         <div className="animate-fade-in">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
+            <DbTableBadge tables={['leads']} />
+          </div>
           <p className="text-sm text-muted-foreground mt-1">
             {leads.length} total leads · {filteredLeads.length} showing
           </p>

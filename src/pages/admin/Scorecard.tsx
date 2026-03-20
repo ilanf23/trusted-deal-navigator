@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -402,7 +403,10 @@ const Scorecard = () => {
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Performance Scorecard</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Performance Scorecard</h1>
+              <DbTableBadge tables={['leads', 'evan_communications']} />
+            </div>
             <p className="text-muted-foreground mt-1 text-sm">{periodLabel}</p>
           </div>
 

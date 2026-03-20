@@ -3,14 +3,11 @@ import EvanLayout from '@/components/evan/EvanLayout';
 import { useEvanUIState } from '@/contexts/EvanUIStateContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { Loader2 } from 'lucide-react';
-import { startOfYear, startOfMonth, eachMonthOfInterval, eachDayOfInterval, endOfDay } from 'date-fns';
 
 import { useDashboardData } from '@/components/admin/dashboard/useDashboardData';
 import { DashboardHeader } from '@/components/admin/dashboard/DashboardHeader';
 import { RevenueKPIStrip } from '@/components/admin/dashboard/RevenueKPIStrip';
 import { RevenueGoalCard } from '@/components/admin/dashboard/RevenueGoalCard';
-import { NextBestAction } from '@/components/admin/dashboard/NextBestAction';
-import { RevenueBreakdown } from '@/components/admin/dashboard/RevenueBreakdown';
 import { DealSourcesChart } from '@/components/admin/dashboard/DealSourcesChart';
 import { CommissionSection } from '@/components/admin/dashboard/CommissionSection';
 import { NewSignupsWidget } from '@/components/admin/dashboard/NewSignupsWidget';
@@ -50,15 +47,15 @@ const Dashboard = () => {
   const [calcLoanAmount, setCalcLoanAmountLocal] = useState<string>(persisted.calcLoanAmount);
   const [calcExtraDeals, setCalcExtraDealsLocal] = useState<string>(persisted.calcExtraDeals);
 
-  const setTimePeriod = useCallback((v: TimePeriod) => { setTimePeriodLocal(v); setPageState('dashboard', { timePeriod: v }); }, [setPageState]);
+  const setTimePeriod = useCallback((v: TimePeriod) => { setTimePeriodLocal(v); setChartPeriodLocal(v); setPageState('dashboard', { timePeriod: v, chartPeriod: v }); }, [setPageState]);
   const setChartPeriod = useCallback((v: TimePeriod) => { setChartPeriodLocal(v); setPageState('dashboard', { chartPeriod: v }); }, [setPageState]);
   const setCalcLoanAmount = useCallback((v: string) => { setCalcLoanAmountLocal(v); setPageState('dashboard', { calcLoanAmount: v }); }, [setPageState]);
   const setCalcExtraDeals = useCallback((v: string) => { setCalcExtraDealsLocal(v); setPageState('dashboard', { calcExtraDeals: v }); }, [setPageState]);
 
   const {
     leadsData, pipelineData, fundedLeads,
-    companyRevenueYTD, companyRevenueMTD,
-    callsData, tasksData, scorecardData, lenderData,
+    companyRevenueYTD, companyRevenueMTD, confidence,
+    touchpointsData, tasksData, scorecardData, lenderData,
     isLoading, isFetching,
     callsLoading, tasksLoading, scorecardLoading, lenderLoading,
   } = useDashboardData(timePeriod);
@@ -75,7 +72,7 @@ const Dashboard = () => {
     const totalLoanVolume = fundedDealsWithAmount.reduce(
       (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0), 0
     );
-    const totalRevenue = totalLoanVolume * 0.02;
+    const totalRevenue = totalLoanVolume * 0.01;
     const totalDeals = fundedDealsWithAmount.length;
     const avgDealSize = totalDeals > 0 ? totalRevenue / totalDeals : 0;
 
@@ -83,7 +80,7 @@ const Dashboard = () => {
       (lead) => lead.lead_responses && lead.lead_responses.length > 0
     ) || [];
     const pipelineValue = pipelineLeadsWithAmount.reduce(
-      (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02, 0
+      (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.01, 0
     );
     const pipelineDeals = pipelineData?.length || 0;
 
@@ -93,33 +90,6 @@ const Dashboard = () => {
     return { totalRevenue, totalDeals, avgDealSize, pipelineValue, pipelineDeals, winRate };
   }, [leadsData, pipelineData, fundedLeads]);
 
-  // Period revenue total for RevenueBreakdown
-  const periodTotal = useMemo(() => {
-    const now = new Date();
-    const periodStart = timePeriod === 'ytd' ? startOfYear(now) : startOfMonth(now);
-
-    if (timePeriod === 'ytd') {
-      const months = eachMonthOfInterval({ start: startOfYear(now), end: now });
-      return months.reduce((total, month) => {
-        const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-        const periodFunded = fundedLeads?.filter((lead) => {
-          const convertedAt = lead.converted_at ? new Date(lead.converted_at) : null;
-          return convertedAt && convertedAt >= month && convertedAt <= monthEnd;
-        }) || [];
-        return total + periodFunded.reduce((sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02, 0);
-      }, 0);
-    } else {
-      const days = eachDayOfInterval({ start: periodStart, end: now });
-      return days.reduce((total, day) => {
-        const dayEnd = endOfDay(day);
-        const dayFunded = fundedLeads?.filter((lead) => {
-          const convertedAt = lead.converted_at ? new Date(lead.converted_at) : null;
-          return convertedAt && convertedAt >= day && convertedAt <= dayEnd;
-        }) || [];
-        return total + dayFunded.reduce((sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02, 0);
-      }, 0);
-    }
-  }, [fundedLeads, timePeriod]);
 
   if (isLoading) {
     return (
@@ -145,33 +115,34 @@ const Dashboard = () => {
           isFetching={isFetching}
         />
 
-        {/* 2. KPI Strip — the 5 numbers that matter */}
-        <RevenueKPIStrip
-          mtdRevenue={companyRevenueMTD}
-          ytdRevenue={companyRevenueYTD}
-          pipelineValue={metrics.pipelineValue}
-          pipelineDeals={metrics.pipelineDeals}
-          totalDeals={metrics.totalDeals}
-          winRate={metrics.winRate}
-          formatCurrency={formatCurrency}
-        />
+        {/* 2. Road to $1.5M + KPI Strip — unified hero card */}
+        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+          <RevenueGoalCard
+            timePeriod={timePeriod}
+            personalRevenue={metrics.totalRevenue}
+            companyRevenue={timePeriod === 'mtd' ? companyRevenueMTD : companyRevenueYTD}
+            goal={ANNUAL_GOAL}
+            confidence={confidence}
+            formatCurrency={formatCurrency}
+          />
+          <div className="border-t">
+            <RevenueKPIStrip
+              timePeriod={timePeriod}
+              mtdRevenue={companyRevenueMTD}
+              ytdRevenue={companyRevenueYTD}
+              pipelineValue={metrics.pipelineValue}
+              pipelineDeals={metrics.pipelineDeals}
+              totalDeals={metrics.totalDeals}
+              winRate={metrics.winRate}
+              formatCurrency={formatCurrency}
+            />
+          </div>
+        </div>
 
-        {/* 3. Road to $1.5M — motivation & goal progress */}
-        <RevenueGoalCard
-          personalRevenue={metrics.totalRevenue}
-          companyRevenue={companyRevenueYTD}
-          goal={ANNUAL_GOAL}
-          formatCurrency={formatCurrency}
-        />
+        {/* 4. Revenue Analytics */}
+        <CompanyRevenueHero chartPeriod={chartPeriod} setChartPeriod={setChartPeriod} confidence={confidence} />
 
-        {/* 4. Revenue Analytics — graphs & breakdown */}
-        <CompanyRevenueHero chartPeriod={chartPeriod} setChartPeriod={setChartPeriod} />
-        <RevenueBreakdown timePeriod={timePeriod} periodTotal={periodTotal} formatCurrency={formatCurrency} />
-
-        {/* 5. Next Best Action — single focus card for productivity */}
-        <NextBestAction evanId={evanId} />
-
-        {/* 6. Top 10 Actions — the core of the OS */}
+        {/* 5. Top 10 Actions — the core of the OS */}
         <TopActions evanId={evanId} />
 
         {/* 7. Nudges — conditional follow-up reminders */}
@@ -186,7 +157,7 @@ const Dashboard = () => {
         {/* 9. Tasks Overview + Calls Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           <TasksOverviewWidget tasksData={tasksData} isLoading={tasksLoading} />
-          <CallsActivityWidget callsData={callsData} isLoading={callsLoading} />
+          <CallsActivityWidget callsData={touchpointsData} isLoading={callsLoading} />
         </div>
 
         {/* 10. Activity Feed — audit log */}

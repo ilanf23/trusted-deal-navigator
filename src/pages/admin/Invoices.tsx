@@ -13,6 +13,7 @@ import { Plus, Loader2, Eye, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 type Invoice = Database['public']['Tables']['invoices']['Row'];
 type InvoiceStatus = Database['public']['Enums']['invoice_status'];
@@ -167,7 +168,10 @@ const AdminInvoices = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Invoices</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold">Invoices</h1>
+              <DbTableBadge tables={['invoices']} />
+            </div>
             <p className="text-muted-foreground">Create and manage client invoices</p>
           </div>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

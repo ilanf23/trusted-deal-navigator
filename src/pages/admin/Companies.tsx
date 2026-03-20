@@ -32,6 +32,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from 'sonner';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 interface Company {
   id: string;
@@ -629,6 +630,7 @@ const Companies = () => {
         <div className="shrink-0 border-b border-border bg-background px-5 py-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">Companies</h1>
+            <DbTableBadge tables={['leads']} />
           </div>
 
           {/* Connected toolbar — Table | Kanban | Sort */}

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 const SOURCE_COLORS = [
   'hsl(217, 91%, 50%)',
@@ -40,7 +41,7 @@ export const DealSourcesChart = ({ leadsData }: DealSourcesChartProps) => {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Deal Sources</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2">Deal Sources <DbTableBadge tables={['leads']} /></CardTitle>
         <CardDescription>Lead origin breakdown</CardDescription>
       </CardHeader>
       <CardContent>

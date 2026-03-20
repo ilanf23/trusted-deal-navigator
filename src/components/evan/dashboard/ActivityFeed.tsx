@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Activity, Phone, Mail, FileText, ArrowRight } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 interface ActivityFeedProps {
   evanId?: string;
@@ -89,6 +90,7 @@ export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
         <CardTitle className="flex items-center gap-2 text-lg">
           <Activity className="h-5 w-5 text-muted-foreground" />
           Activity Feed
+          <DbTableBadge tables={['evan_communications', 'evan_notes']} />
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">

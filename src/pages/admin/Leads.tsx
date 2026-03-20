@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -271,7 +272,10 @@ const AdminLeads = () => {
         {/* Header Section */}
         <div className="flex items-start justify-between mb-6">
           <div className="animate-fade-in">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
+              <DbTableBadge tables={['leads']} />
+            </div>
             <p className="text-sm text-muted-foreground mt-1">
               {leads.length} total leads · {filteredLeads.length} showing
             </p>

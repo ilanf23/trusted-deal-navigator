@@ -3,28 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
-const STAGE_COLORS: Record<string, string> = {
-  discovery: 'hsl(217, 91%, 60%)',
-  pre_qualification: 'hsl(217, 91%, 50%)',
-  document_collection: 'hsl(217, 91%, 40%)',
-  underwriting: 'hsl(30, 100%, 50%)',
-  approval: 'hsl(30, 100%, 45%)',
-  funded: 'hsl(142, 50%, 45%)',
-  lost: 'hsl(0, 72%, 51%)',
-};
-
-const STAGE_LABELS: Record<string, string> = {
-  discovery: 'Discovery',
-  pre_qualification: 'Pre-Qual',
-  document_collection: 'Docs',
-  underwriting: 'Underwriting',
-  approval: 'Approval',
-  funded: 'Funded',
-  lost: 'Lost',
-};
-
-const PIPELINE_ORDER = ['discovery', 'pre_qualification', 'document_collection', 'underwriting', 'approval'];
+const STAGE_CONFIG: { key: string; label: string; color: string; bg: string; text: string }[] = [
+  { key: 'discovery', label: 'Discovery', color: '#3B82F6', bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400' },
+  { key: 'pre_qualification', label: 'Pre-Qual', color: '#8B5CF6', bg: 'bg-violet-500/10', text: 'text-violet-600 dark:text-violet-400' },
+  { key: 'document_collection', label: 'Docs', color: '#06B6D4', bg: 'bg-cyan-500/10', text: 'text-cyan-600 dark:text-cyan-400' },
+  { key: 'underwriting', label: 'Underwriting', color: '#F59E0B', bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400' },
+  { key: 'approval', label: 'Approval', color: '#10B981', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' },
+];
 
 interface PipelineHealthWidgetProps {
   pipelineData: any[] | undefined;
@@ -32,8 +19,8 @@ interface PipelineHealthWidgetProps {
 }
 
 export const PipelineHealthWidget = ({ pipelineData, formatCurrency }: PipelineHealthWidgetProps) => {
-  const { stages, totalValue } = useMemo(() => {
-    if (!pipelineData) return { stages: [], totalValue: 0 };
+  const { stages, totalValue, totalDeals } = useMemo(() => {
+    if (!pipelineData) return { stages: [], totalValue: 0, totalDeals: 0 };
 
     const stageMap: Record<string, { count: number; amount: number }> = {};
     let total = 0;
@@ -42,25 +29,24 @@ export const PipelineHealthWidget = ({ pipelineData, formatCurrency }: PipelineH
       const status = lead.status;
       if (!stageMap[status]) stageMap[status] = { count: 0, amount: 0 };
       stageMap[status].count++;
-      const amt = (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02;
+      const amt = (lead.lead_responses?.[0]?.loan_amount || 0) * 0.01;
       stageMap[status].amount += amt;
       total += amt;
     });
 
-    const maxCount = Math.max(...Object.values(stageMap).map(s => s.count), 1);
+    const maxAmount = Math.max(...Object.values(stageMap).map(s => s.amount), 1);
 
-    const stageList = PIPELINE_ORDER
-      .filter(s => stageMap[s])
+    const stageList = STAGE_CONFIG
+      .filter(s => stageMap[s.key])
       .map(s => ({
-        key: s,
-        label: STAGE_LABELS[s] || s,
-        count: stageMap[s].count,
-        amount: stageMap[s].amount,
-        color: STAGE_COLORS[s] || '#94a3b8',
-        pct: Math.round((stageMap[s].count / maxCount) * 100),
+        ...s,
+        count: stageMap[s.key].count,
+        amount: stageMap[s.key].amount,
+        pct: Math.max(8, Math.round((stageMap[s.key].amount / maxAmount) * 100)),
       }));
 
-    return { stages: stageList, totalValue: total };
+    const deals = stageList.reduce((sum, s) => sum + s.count, 0);
+    return { stages: stageList, totalValue: total, totalDeals: deals };
   }, [pipelineData]);
 
   return (
@@ -70,6 +56,7 @@ export const PipelineHealthWidget = ({ pipelineData, formatCurrency }: PipelineH
           <CardTitle className="text-base flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-primary" />
             Pipeline Health
+            <DbTableBadge tables={['leads']} />
           </CardTitle>
           <Link to="/admin/pipeline">
             <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1">
@@ -82,29 +69,36 @@ export const PipelineHealthWidget = ({ pipelineData, formatCurrency }: PipelineH
         {stages.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm">No deals in pipeline</div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {stages.map((stage) => (
-              <div key={stage.key} className="flex items-center gap-3">
-                <span className="text-xs font-medium text-muted-foreground w-20 shrink-0 truncate">
-                  {stage.label}
-                </span>
-                <div className="flex-1 h-7 bg-muted/50 rounded-md overflow-hidden relative">
-                  <div
-                    className="h-full rounded-md transition-all duration-500"
-                    style={{ width: `${stage.pct}%`, backgroundColor: stage.color }}
-                  />
-                  <span className="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-foreground">
-                    {stage.count}
+              <div key={stage.key} className="group">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                    <span className="text-xs font-semibold text-foreground">{stage.label}</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">
+                      {stage.count} deals
+                    </span>
+                  </div>
+                  <span className={`text-xs font-bold ${stage.text}`}>
+                    {formatCurrency(stage.amount)}
                   </span>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground w-16 text-right shrink-0">
-                  {formatCurrency(stage.amount)}
-                </span>
+                <div className="h-2.5 w-full rounded-full bg-muted/80 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700 ease-out"
+                    style={{ width: `${stage.pct}%`, backgroundColor: stage.color }}
+                  />
+                </div>
               </div>
             ))}
-            <div className="flex items-center justify-between pt-3 border-t">
-              <span className="text-sm text-muted-foreground">Total Pipeline</span>
-              <span className="text-lg font-bold">{formatCurrency(totalValue)}</span>
+
+            <div className="flex items-center justify-between pt-3 mt-1 border-t">
+              <div>
+                <span className="text-sm font-medium text-muted-foreground">Total Pipeline</span>
+                <span className="text-xs text-muted-foreground ml-2">{totalDeals} deals</span>
+              </div>
+              <span className="text-xl font-bold text-foreground">{formatCurrency(totalValue)}</span>
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calculator } from 'lucide-react';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 interface CommissionSectionProps {
   calcLoanAmount: string;
@@ -23,7 +24,7 @@ export const CommissionSection = ({
   const commissionCalc = useMemo(() => {
     const loanAmount = parseFloat(calcLoanAmount) || 0;
     const extraDeals = parseInt(calcExtraDeals) || 0;
-    const baseCommission = loanAmount * 0.02;
+    const baseCommission = loanAmount * 0.01;
     const bonusMultiplier = 1 + (extraDeals * 0.10);
     const totalCommission = baseCommission * bonusMultiplier;
     const bonusAmount = totalCommission - baseCommission;
@@ -37,7 +38,7 @@ export const CommissionSection = ({
         <div className="flex items-center gap-2">
           <Calculator className="h-5 w-5 text-primary" />
           <div>
-            <CardTitle className="text-base">Commission Calculator</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">Commission Calculator <DbTableBadge tables={['leads']} /></CardTitle>
             <CardDescription>Estimate your earnings with bonus for extra deals</CardDescription>
           </div>
         </div>
@@ -71,7 +72,7 @@ export const CommissionSection = ({
           </div>
           <div className="md:col-span-2 grid grid-cols-3 gap-4">
             <div className="p-4 rounded-lg bg-muted/50 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Base Commission (2%)</p>
+              <p className="text-xs text-muted-foreground mb-1">Base Commission (1%)</p>
               <p className="text-xl font-bold">{formatCurrencyFull(commissionCalc.baseCommission)}</p>
             </div>
             <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 text-center">

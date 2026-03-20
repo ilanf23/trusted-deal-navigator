@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Building2, Users, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { Loader2 } from 'lucide-react';
 
 interface LenderProgramsWidgetProps {
@@ -21,6 +22,7 @@ export const LenderProgramsWidget = ({ lenderData, isLoading }: LenderProgramsWi
           <CardTitle className="text-base flex items-center gap-2">
             <Building2 className="h-4 w-4 text-primary" />
             Lender Programs
+            <DbTableBadge tables={['lender_programs']} />
           </CardTitle>
           <Link to="/admin/lender-programs">
             <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1">

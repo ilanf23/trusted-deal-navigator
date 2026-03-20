@@ -215,6 +215,22 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
     }
   };
 
+  const batchUpdateCells = async (spreadsheetId: string, updates: { range: string; value: string }[]) => {
+    try {
+      const response = await supabase.functions.invoke('google-sheets-api', {
+        body: { action: 'batchUpdateCells', spreadsheetId, updates, teamMemberName }
+      });
+
+      if (response.error) throw response.error;
+      if (response.data?.error) throw new Error(response.data.error);
+
+      return response.data;
+    } catch (error) {
+      console.error('Error batch updating cells:', error);
+      throw error;
+    }
+  };
+
   return {
     isConnected,
     connectedEmail,
@@ -230,6 +246,7 @@ export const useGoogleSheets = (teamMemberName?: string, redirectPath?: string) 
     updateCell,
     updateRow,
     appendRow,
+    batchUpdateCells,
     checkConnection,
   };
 };

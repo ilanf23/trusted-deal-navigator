@@ -1,8 +1,24 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfYear, startOfMonth, startOfWeek, endOfDay, addDays, eachDayOfInterval } from 'date-fns';
+import { startOfYear, startOfMonth, startOfWeek, endOfDay, addDays, eachDayOfInterval, getDaysInMonth, eachMonthOfInterval } from 'date-fns';
 import type { TimePeriod } from '@/pages/admin/Dashboard';
+
+const STAGE_WEIGHTS: Record<string, number> = {
+  discovery: 0.10,
+  pre_qualification: 0.25,
+  document_collection: 0.45,
+  underwriting: 0.65,
+  approval: 0.85,
+};
+
+export type ConfidenceData = {
+  score: number;
+  status: 'on-track' | 'at-risk' | 'below-target';
+  forecast: number;
+  pipelineWeighted: number;
+  growthRate: number;
+};
 
 const now = new Date();
 const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -57,28 +73,32 @@ export function useDashboardData(timePeriod: TimePeriod) {
     refetchOnMount: 'always' as const,
   });
 
-  // Company funded deals — always fetch YTD so both MTD and YTD are available
+  // Company funded deals — always fetch YTD from leads table (single source of truth)
   const companyDealsQuery = useQuery({
-    queryKey: ['company-funded-deals'],
+    queryKey: ['company-funded-deals-leads'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('team_funded_deals')
-        .select('rep_name, fee_earned, funded_at')
-        .gte('funded_at', startOfYear(now).toISOString());
-      return data || [];
+        .from('leads')
+        .select('id, name, converted_at, lead_responses(loan_amount)')
+        .eq('status', 'funded')
+        .gte('converted_at', startOfYear(now).toISOString());
+      return (data || []).map((d: any) => ({
+        rep_name: d.name,
+        fee_earned: (d.lead_responses?.[0]?.loan_amount || 0) * 0.01,
+        funded_at: d.converted_at,
+      }));
     },
     staleTime: 0,
     refetchOnMount: 'always' as const,
   });
 
-  // Calls this week (new)
-  const callsQuery = useQuery({
-    queryKey: ['dashboard-calls-this-week'],
+  // All touchpoints this week (calls, emails, texts, etc.)
+  const touchpointsQuery = useQuery({
+    queryKey: ['dashboard-touchpoints-this-week'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('evan_communications')
         .select('id, communication_type, direction, duration_seconds, created_at')
-        .eq('communication_type', 'call')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString())
         .order('created_at', { ascending: true });
@@ -141,27 +161,47 @@ export function useDashboardData(timePeriod: TimePeriod) {
     },
   });
 
-  // Derived calls data
-  const callsData = useMemo(() => {
-    const calls = callsQuery.data || [];
-    const total = calls.length;
-    const inbound = calls.filter(c => c.direction === 'inbound').length;
-    const outbound = calls.filter(c => c.direction === 'outbound').length;
+  // Derived touchpoints data
+  const touchpointsData = useMemo(() => {
+    const comms = touchpointsQuery.data || [];
+    const total = comms.length;
+    const calls = comms.filter(c => c.communication_type === 'call');
+    const emails = comms.filter(c => c.communication_type === 'email');
+    const texts = comms.filter(c => c.communication_type === 'text' || c.communication_type === 'sms');
+    const other = comms.filter(c => !['call', 'email', 'text', 'sms'].includes(c.communication_type || ''));
     const totalDuration = calls.reduce((sum, c) => sum + (c.duration_seconds || 0), 0);
+    const inbound = comms.filter(c => c.direction === 'inbound').length;
+    const outbound = comms.filter(c => c.direction === 'outbound').length;
 
-    // Daily breakdown for mini bar chart
+    // Daily breakdown for chart — stacked by type
     const days = eachDayOfInterval({ start: weekStart, end: now > weekEnd ? weekEnd : now });
-    const dailyCalls = days.map(day => {
+    const dailyTouchpoints = days.map(day => {
       const dayEnd = endOfDay(day);
-      const count = calls.filter(c => {
+      const dayComms = comms.filter(c => {
         const d = new Date(c.created_at);
         return d >= day && d <= dayEnd;
-      }).length;
-      return { day: day.toLocaleDateString('en-US', { weekday: 'short' }), count };
+      });
+      return {
+        day: day.toLocaleDateString('en-US', { weekday: 'short' }),
+        calls: dayComms.filter(c => c.communication_type === 'call').length,
+        emails: dayComms.filter(c => c.communication_type === 'email').length,
+        texts: dayComms.filter(c => c.communication_type === 'text' || c.communication_type === 'sms').length,
+        total: dayComms.length,
+      };
     });
 
-    return { total, inbound, outbound, totalDuration, dailyCalls };
-  }, [callsQuery.data]);
+    return {
+      total,
+      calls: calls.length,
+      emails: emails.length,
+      texts: texts.length,
+      other: other.length,
+      inbound,
+      outbound,
+      totalDuration,
+      dailyTouchpoints,
+    };
+  }, [touchpointsQuery.data]);
 
   // Derived tasks data
   const tasksData = useMemo(() => {
@@ -205,13 +245,81 @@ export function useDashboardData(timePeriod: TimePeriod) {
   // Derived company revenue — always available as both MTD and YTD
   const companyRevenueData = useMemo(() => {
     const deals = companyDealsQuery.data || [];
-    const ytd = deals.reduce((sum, d) => sum + Number(d.fee_earned), 0);
+    const ytd = deals.reduce((sum, d) => sum + d.fee_earned, 0);
     const monthStart = startOfMonth(now);
     const mtd = deals
-      .filter(d => (d as any).funded_at && new Date((d as any).funded_at) >= monthStart)
-      .reduce((sum, d) => sum + Number(d.fee_earned), 0);
+      .filter(d => d.funded_at && new Date(d.funded_at) >= monthStart)
+      .reduce((sum, d) => sum + d.fee_earned, 0);
     return { ytd, mtd };
   }, [companyDealsQuery.data]);
+
+  // Unified confidence score — period-aware, uses real pipeline + revenue data
+  const confidence: ConfidenceData = useMemo(() => {
+    const companyRevenue = timePeriod === 'mtd' ? companyRevenueData.mtd : companyRevenueData.ytd;
+    const ANNUAL_GOAL = 1500000;
+    const periodGoal = timePeriod === 'mtd' ? ANNUAL_GOAL / 12 : ANNUAL_GOAL;
+
+    // Pipeline weighted revenue from real pipeline data
+    const pipeline = pipelineQuery.data || [];
+    const pipelineWeighted = pipeline.reduce((sum, d) => {
+      const weight = STAGE_WEIGHTS[d.status] || 0.1;
+      const loanAmount = d.lead_responses?.[0]?.loan_amount || 0;
+      return sum + (loanAmount * 0.01 * weight);
+    }, 0);
+
+    // Pace: extrapolate current revenue to end of period
+    let forecast: number;
+    if (timePeriod === 'mtd') {
+      const dayOfMonth = now.getDate();
+      const daysInMonth = getDaysInMonth(now);
+      forecast = dayOfMonth > 0 ? (companyRevenue / dayOfMonth) * daysInMonth : 0;
+    } else {
+      const monthsElapsed = Math.max(0.1, now.getMonth() + now.getDate() / 30);
+      forecast = (companyRevenue / monthsElapsed) * 12;
+    }
+
+    // Growth momentum from company deals
+    const deals = companyDealsQuery.data || [];
+    let growthRate = 0;
+    if (timePeriod === 'ytd') {
+      const months = eachMonthOfInterval({ start: startOfYear(now), end: now });
+      const monthlyRevenues = months.map(month => {
+        const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+        return deals
+          .filter(d => {
+            const f = d.funded_at ? new Date(d.funded_at) : null;
+            return f && f >= month && f <= monthEnd;
+          })
+          .reduce((s, d) => s + Number(d.fee_earned), 0);
+      });
+      const active = monthlyRevenues.filter(r => r > 0);
+      if (active.length > 1) {
+        growthRate = Math.round(((active[active.length - 1] - active[0]) / Math.max(1, active[0])) * 100);
+      }
+    }
+
+    // Weighted confidence blend:
+    // 40% forecast trajectory — can we hit goal at current pace?
+    // 30% current progress — where are we vs where we should be?
+    // 20% pipeline strength — does pipeline cover the remaining gap?
+    // 10% growth momentum — are we accelerating or decelerating?
+    const forecastScore = Math.min(1, forecast / periodGoal);
+    const elapsedFraction = timePeriod === 'mtd'
+      ? now.getDate() / getDaysInMonth(now)
+      : (now.getMonth() + now.getDate() / 30) / 12;
+    const expectedRevenue = periodGoal * elapsedFraction;
+    const progressScore = expectedRevenue > 0 ? Math.min(1, companyRevenue / expectedRevenue) : 0;
+    const remainingGap = Math.max(0, periodGoal - companyRevenue);
+    const pipelineScore = remainingGap > 0 ? Math.min(1, pipelineWeighted / remainingGap) : 1;
+    const momentumScore = growthRate > 0 ? Math.min(1, growthRate / 100) : growthRate === 0 ? 0.5 : Math.max(0, 0.5 + growthRate / 200);
+
+    const raw = (forecastScore * 0.4) + (progressScore * 0.3) + (pipelineScore * 0.2) + (momentumScore * 0.1);
+    const score = Math.min(99, Math.max(1, Math.round(raw * 100)));
+    const status: ConfidenceData['status'] =
+      score >= 65 ? 'on-track' : score >= 40 ? 'at-risk' : 'below-target';
+
+    return { score, status, forecast, pipelineWeighted, growthRate };
+  }, [companyRevenueData, companyDealsQuery.data, pipelineQuery.data, timePeriod]);
 
   const isLoading = leadsQuery.isLoading || pipelineQuery.isLoading || fundedQuery.isLoading;
   const isFetching = leadsQuery.isFetching || pipelineQuery.isFetching || fundedQuery.isFetching;
@@ -222,13 +330,14 @@ export function useDashboardData(timePeriod: TimePeriod) {
     fundedLeads: fundedQuery.data,
     companyRevenueYTD: companyRevenueData.ytd,
     companyRevenueMTD: companyRevenueData.mtd,
-    callsData,
+    confidence,
+    touchpointsData,
     tasksData,
     scorecardData,
     lenderData,
     isLoading,
     isFetching,
-    callsLoading: callsQuery.isLoading,
+    callsLoading: touchpointsQuery.isLoading,
     tasksLoading: tasksQuery.isLoading,
     scorecardLoading: scorecardCommsQuery.isLoading || scorecardLeadsQuery.isLoading,
     lenderLoading: lenderQuery.isLoading,

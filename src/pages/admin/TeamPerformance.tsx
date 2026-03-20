@@ -245,7 +245,7 @@ const TeamPerformance = () => {
       (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0),
       0
     );
-    const totalRevenue = totalLoanVolume * 0.02;
+    const totalRevenue = totalLoanVolume * 0.01;
     const totalDeals = fundedDealsWithAmount.length;
     const avgDealSize = totalDeals > 0 ? totalRevenue / totalDeals : 0;
 
@@ -253,7 +253,7 @@ const TeamPerformance = () => {
       (lead) => lead.lead_responses && lead.lead_responses.length > 0
     ) || [];
     const pipelineValue = pipelineLeadsWithAmount.reduce(
-      (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02,
+      (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.01,
       0
     );
     const pipelineDeals = pipelineData?.length || 0;
@@ -317,7 +317,7 @@ const TeamPerformance = () => {
       }) || [];
 
       const revenue = monthlyFunded.reduce(
-        (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02,
+        (sum, lead) => sum + (lead.lead_responses?.[0]?.loan_amount || 0) * 0.01,
         0
       );
 
@@ -344,7 +344,7 @@ const TeamPerformance = () => {
         stageMap[stageName] = { count: 0, amount: 0, color: stageColor };
       }
       stageMap[stageName].count++;
-      stageMap[stageName].amount += (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02;
+      stageMap[stageName].amount += (lead.lead_responses?.[0]?.loan_amount || 0) * 0.01;
     });
 
     return Object.entries(stageMap).map(([name, data]) => ({

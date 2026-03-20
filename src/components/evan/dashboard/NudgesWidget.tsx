@@ -8,6 +8,7 @@ import { Bell, Loader2, Clock, ExternalLink, Zap } from 'lucide-react';
 import { differenceInDays, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { useEffect, useRef, useState } from 'react';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { useGmail } from '@/hooks/useGmail';
@@ -217,6 +218,7 @@ Evan`;
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   Leads Needing Follow-Up
+                  <DbTableBadge tables={['leads', 'evan_tasks']} />
                   {nudgeLeads.length > 0 && (
                     <Badge variant="destructive" className="text-xs">
                       {nudgeLeads.length}

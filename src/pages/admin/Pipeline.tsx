@@ -58,6 +58,7 @@ import { usePipelineLeads, type FlatPipelineLead } from '@/hooks/usePipelineLead
 import { usePipelineMutations } from '@/hooks/usePipelineMutations';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -280,7 +281,6 @@ const Pipeline = () => {
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [rowDensity, setRowDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
@@ -634,6 +634,8 @@ const Pipeline = () => {
         (l) =>
           l.name.toLowerCase().includes(q) ||
           (l.company_name ?? '').toLowerCase().includes(q) ||
+          (l.email ?? '').toLowerCase().includes(q) ||
+          (l.phone ?? '').toLowerCase().includes(q) ||
           (teamMemberMap[leadOwnerMap[l.id] ?? l.assigned_to ?? ''] ?? '').toLowerCase().includes(q)
       );
     }
@@ -864,9 +866,12 @@ const Pipeline = () => {
 
         {/* Header */}
         <div className="shrink-0 border-b border-border bg-background px-5 py-3 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2 shrink-0">
             <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">Pipeline</h1>
+            <DbTableBadge tables={['leads', 'pipeline_leads', 'pipeline_stages']} />
           </div>
+
+          <div className="flex-1 min-w-0" />
 
           {/* Table | Kanban | Sort toggle */}
           <div className="flex items-center h-7 gap-0.5 shrink-0">
@@ -959,6 +964,20 @@ const Pipeline = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+
+        {/* Search bar */}
+        <div className="shrink-0 px-5 py-2.5 border-b border-border bg-background">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="Search by name, email, domain or phone number"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full h-9 pl-9 pr-3 text-sm rounded-full bg-muted/50 border-transparent focus:border-border focus:bg-background placeholder:text-muted-foreground/60"
+            />
+          </div>
         </div>
 
         {/* Body: Sidebar + Table */}
@@ -1115,18 +1134,6 @@ const Pipeline = () => {
                   <AlignJustify className={`h-3.5 w-3.5 ${rowDensity === 'compact' ? 'text-blue-600' : ''}`} />
                 </button>
 
-                {searchOpen && (
-                  <Input
-                    autoFocus
-                    placeholder="Search deals, companies..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Escape') { setSearchTerm(''); setSearchOpen(false); } }}
-                    onBlur={() => { if (!searchTerm) setSearchOpen(false); }}
-                    className="h-7 w-52 text-xs mr-1 border-border bg-card"
-                  />
-                )}
-
                 {/* Sort */}
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1167,15 +1174,6 @@ const Pipeline = () => {
                     <Filter className="h-3.5 w-3.5" />
                   )}
                   {isFiltersActive && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600" />}
-                </button>
-
-                {/* Search toggle */}
-                <button
-                  onClick={() => setSearchOpen(v => !v)}
-                  title="Search deals"
-                  className={iconBtn(searchOpen || !!searchTerm)}
-                >
-                  <Search className={`h-3.5 w-3.5 ${(searchOpen || searchTerm) ? 'text-blue-600' : ''}`} />
                 </button>
 
                 {/* Column visibility */}

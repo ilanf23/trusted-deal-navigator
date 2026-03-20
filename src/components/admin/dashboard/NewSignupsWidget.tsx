@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Loader2, UserPlus } from 'lucide-react';
 import { useNewSignups } from '@/hooks/useNewSignups';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 export const NewSignupsWidget = () => {
   const { data: newSignups, isLoading: signupsLoading } = useNewSignups();
@@ -13,6 +14,7 @@ export const NewSignupsWidget = () => {
           <CardTitle className="text-lg flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
             New Signups This Week
+            <DbTableBadge tables={['profiles']} />
           </CardTitle>
           {newSignups && newSignups.length > 0 && (
             <Badge variant="secondary">{newSignups.length} new</Badge>

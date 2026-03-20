@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import {
   ComposedChart, Area, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ReferenceLine, ResponsiveContainer,
@@ -17,10 +18,12 @@ import {
 } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { TimePeriod } from '@/pages/admin/Dashboard';
+import type { ConfidenceData } from '@/components/admin/dashboard/useDashboardData';
 
 interface CompanyRevenueHeroProps {
   chartPeriod: TimePeriod;
   setChartPeriod: (v: TimePeriod) => void;
+  confidence?: ConfidenceData;
 }
 
 const STAGE_WEIGHTS: Record<string, number> = {
@@ -42,7 +45,7 @@ const COLORS = {
   belowTarget: '#EF4444',
 };
 
-export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyRevenueHeroProps) => {
+export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod, confidence: externalConfidence }: CompanyRevenueHeroProps) => {
   const COMPANY_GOAL = 1500000;
   const now = new Date();
 
@@ -57,22 +60,25 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
     setVisibleSeries(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  // Existing deals query
+  // Funded deals from leads table — single source of truth
   const { data: teamDeals = [], isLoading } = useQuery({
-    queryKey: ['company-revenue-hero'],
+    queryKey: ['company-revenue-hero-leads'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('team_funded_deals')
-        .select('rep_name, loan_amount, fee_earned, days_in_pipeline, funded_at')
-        .gte('funded_at', startOfYear(now).toISOString())
-        .order('funded_at', { ascending: true });
-      return (data || []).map((d: any) => ({
-        rep: d.rep_name,
-        loanAmount: Number(d.loan_amount),
-        fee: Number(d.fee_earned),
-        fundedAt: d.funded_at,
-        daysInPipeline: d.days_in_pipeline,
-      }));
+        .from('leads')
+        .select('id, name, converted_at, created_at, lead_responses(loan_amount)')
+        .eq('status', 'funded')
+        .gte('converted_at', startOfYear(now).toISOString())
+        .order('converted_at', { ascending: true });
+      return (data || []).map((d: any) => {
+        const loanAmount = d.lead_responses?.[0]?.loan_amount || 0;
+        return {
+          rep: d.name,
+          loanAmount,
+          fee: loanAmount * 0.01,
+          fundedAt: d.converted_at,
+        };
+      });
     },
   });
 
@@ -118,7 +124,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
     // Pipeline weighted forecast
     const pipelineWeightedRevenue = pipelineDeals.reduce((sum, d) => {
       const weight = STAGE_WEIGHTS[d.status] || 0.1;
-      return sum + (d.loanAmount * 0.02 * weight);
+      return sum + (d.loanAmount * 0.01 * weight);
     }, 0);
 
     // Average monthly revenue from active months
@@ -132,20 +138,10 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
     const forecastBest = forecastTotal * 1.2;
     const forecastConservative = forecastTotal * 0.8;
 
-    // Confidence level of reaching $1.5M goal
-    // Weighted blend: 40% forecast trajectory, 30% current pace, 20% pipeline strength, 10% growth momentum
-    const elapsedFraction = Math.max(0.01, (now.getMonth() + 1) / 12);
-    const annualizedPace = totalRevenue / elapsedFraction;
-    const paceScore = Math.min(1, annualizedPace / COMPANY_GOAL);
-    const forecastScore = Math.min(1, forecastTotal / COMPANY_GOAL);
-    const pipelineScore = Math.min(1, (totalRevenue + pipelineWeightedRevenue) / COMPANY_GOAL);
-    const growthMomentum = activeYtdMonths.length > 1
-      ? (activeYtdMonths[activeYtdMonths.length - 1].revenue > activeYtdMonths[Math.max(0, activeYtdMonths.length - 2)].revenue ? 1 : 0.5)
-      : 0.5;
-    const rawConfidence = (forecastScore * 0.4) + (paceScore * 0.3) + (pipelineScore * 0.2) + (growthMomentum * 0.1);
-    const confidenceLevel = Math.min(99, Math.max(1, Math.round(rawConfidence * 100)));
+    // Use unified confidence from useDashboardData (single source of truth)
+    const confidenceLevel = externalConfidence?.score ?? 50;
     const healthStatus: 'on-track' | 'at-risk' | 'below-target' =
-      confidenceLevel >= 65 ? 'on-track' : confidenceLevel >= 40 ? 'at-risk' : 'below-target';
+      externalConfidence?.status ?? (confidenceLevel >= 65 ? 'on-track' : confidenceLevel >= 40 ? 'at-risk' : 'below-target');
 
     // Growth rate
     const growthRate = activeYtdMonths.length > 1
@@ -336,6 +332,7 @@ export const CompanyRevenueHero = ({ chartPeriod, setChartPeriod }: CompanyReven
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
               2026 Revenue Goal
             </p>
+            <DbTableBadge tables={['leads']} />
             <div className="flex items-baseline gap-3 mt-1.5">
               <span className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
                 {formatCurrency(kpis.totalRevenue)}

@@ -1,0 +1,43 @@
+/* Google Sheets color overrides for FortuneSheet */
+.fortune-sheet-container .luckysheet-wa-editor {
+  background-color: #f9fbfd !important;
+}
+
+.fortune-sheet-container .luckysheet-cell-selected {
+  border-color: #1a73e8 !important;
+}
+
+.fortune-sheet-container .luckysheet-cols-h-cells,
+.fortune-sheet-container .luckysheet-cols-h-cells .luckysheet-cols-h-cells-c {
+  background-color: #f8f9fa !important;
+}
+
+.fortune-sheet-container .luckysheet-rows-h,
+.fortune-sheet-container .luckysheet-rows-h .luckysheet-rows-h-c {
+  background-color: #f8f9fa !important;
+}
+
+.fortune-sheet-container .luckysheet-grid-window {
+  background-color: #ffffff !important;
+}
+
+.fortune-sheet-container .luckysheet-sheet-area {
+  background-color: #f9fbfd !important;
+}
+
+.fortune-sheet-container .luckysheet-sheet-tab-active {
+  background-color: #ffffff !important;
+}
+
+/* Ensure toolbar buttons don't get reset by Tailwind */
+.fortune-sheet-container button {
+  all: revert;
+}
+
+.fortune-sheet-container select {
+  all: revert;
+}
+
+.fortune-sheet-container input {
+  all: revert;
+}

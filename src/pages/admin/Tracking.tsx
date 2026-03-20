@@ -35,6 +35,7 @@ import { Plus, CalendarIcon, Trash2, Filter, ArrowUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 type TrackingRecord = {
   id: string;
@@ -209,7 +210,10 @@ const Tracking = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Partner Referral Tracking</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-foreground">Partner Referral Tracking</h1>
+              <DbTableBadge tables={['partner_tracking']} />
+            </div>
             <p className="text-sm text-muted-foreground mt-1">Link and manage partner referrals for pipeline tracking</p>
           </div>
           <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>

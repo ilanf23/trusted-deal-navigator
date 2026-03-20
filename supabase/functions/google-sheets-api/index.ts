@@ -197,6 +197,69 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === 'getAllData') {
+      // Fetch all sheet tabs and their data in one go (2 Google API calls, 1 edge function call)
+      if (!spreadsheetId) {
+        return new Response(
+          JSON.stringify({ error: 'spreadsheetId is required' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      // Step 1: Get sheet metadata
+      const metaResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      if (!metaResponse.ok) {
+        const error = await metaResponse.text();
+        console.error('Sheets metadata error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to get spreadsheet metadata' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+
+      const metaData = await metaResponse.json();
+      const sheetTabs = metaData.sheets.map((s: { properties: { sheetId: number; title: string } }) => ({
+        id: s.properties.sheetId,
+        title: s.properties.title,
+      }));
+
+      // Step 2: Batch-get all sheets' data in one request
+      const ranges = sheetTabs.map((s: { title: string }) => `'${s.title}'`);
+      const rangesParam = ranges.map((r: string) => `ranges=${encodeURIComponent(r)}`).join('&');
+
+      const batchResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?${rangesParam}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      if (!batchResponse.ok) {
+        const error = await batchResponse.text();
+        console.error('Sheets batchGet error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to get spreadsheet data' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+
+      const batchData = await batchResponse.json();
+      const valueRanges = batchData.valueRanges || [];
+
+      const sheetsWithData = sheetTabs.map((tab: { id: number; title: string }, i: number) => ({
+        id: tab.id,
+        title: tab.title,
+        values: valueRanges[i]?.values || [],
+      }));
+
+      return new Response(
+        JSON.stringify({ sheets: sheetsWithData }),
+        { headers: corsHeaders }
+      );
+    }
+
     if (action === 'getData') {
       if (!spreadsheetId) {
         return new Response(
@@ -355,6 +418,49 @@ Deno.serve(async (req) => {
       const result = await appendResponse.json();
       return new Response(
         JSON.stringify({ success: true, updatedRange: result.updates?.updatedRange }),
+        { headers: corsHeaders }
+      );
+    }
+
+    if (action === 'batchUpdateCells') {
+      const { updates } = body;
+      if (!spreadsheetId || !updates || !Array.isArray(updates)) {
+        return new Response(
+          JSON.stringify({ error: 'spreadsheetId and updates array are required' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      const batchResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            valueInputOption: 'USER_ENTERED',
+            data: updates.map((u: { range: string; value: string }) => ({
+              range: u.range,
+              values: [[u.value]],
+            })),
+          }),
+        }
+      );
+
+      if (!batchResponse.ok) {
+        const error = await batchResponse.text();
+        console.error('Sheets batch update error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to batch update cells' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+
+      const result = await batchResponse.json();
+      return new Response(
+        JSON.stringify({ success: true, totalUpdatedCells: result.totalUpdatedCells }),
         { headers: corsHeaders }
       );
     }

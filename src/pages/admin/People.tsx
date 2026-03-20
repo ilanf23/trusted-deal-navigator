@@ -60,6 +60,7 @@ import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
 import { useAllPipelineLeads } from '@/hooks/useAllPipelineLeads';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 // ── Person type (mapped from leads table via pipeline_leads) ──
 interface Person {
@@ -722,6 +723,7 @@ const People = () => {
         <div className="shrink-0 border-b border-border bg-background px-5 py-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">People</h1>
+            <DbTableBadge tables={['leads']} />
           </div>
 
           {/* Connected toolbar — Table | Kanban | Sort */}

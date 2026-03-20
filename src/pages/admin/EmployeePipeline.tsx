@@ -24,6 +24,7 @@ import HelpTooltip from '@/components/ui/help-tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 // Import avatar images
 import andrewFosterAvatar from '@/assets/avatars/andrew-foster.jpg';
@@ -1194,6 +1195,7 @@ const EmployeePipeline = () => {
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-slate-400" />
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-400">Test</Badge>
+                <DbTableBadge tables={['leads', 'pipeline_leads']} />
                 {selectedPipeline && (
                   <div 
                     className="w-2 h-2 rounded-full flex-shrink-0" 

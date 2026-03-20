@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Kanban } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 interface PersonalPipelineProps {
   evanId?: string;
@@ -44,7 +45,7 @@ export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
         stageLeads.forEach(lead => {
           const loanAmount = (lead as any).lead_responses?.[0]?.loan_amount || 250000;
           totalAmount += loanAmount;
-          totalFees += loanAmount * 0.02;
+          totalFees += loanAmount * 0.01;
           
           const daysInStage = differenceInDays(today, new Date(lead.updated_at));
           totalDays += daysInStage;
@@ -92,6 +93,7 @@ export const PersonalPipeline = ({ evanId }: PersonalPipelineProps) => {
           <CardTitle className="flex items-center gap-2 text-lg">
             <Kanban className="h-5 w-5 text-muted-foreground" />
             My Pipeline
+            <DbTableBadge tables={['leads']} />
           </CardTitle>
           <div className="flex gap-2">
             <Badge variant="secondary">

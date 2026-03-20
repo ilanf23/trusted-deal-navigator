@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { DollarSign, TrendingUp, Clock, Target } from 'lucide-react';
 import { startOfMonth, endOfMonth, startOfYear } from 'date-fns';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 interface CommissionTrackerProps {
   evanId?: string;
@@ -42,11 +43,11 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
         .eq('assigned_to', evanId)
         .eq('status', 'approval');
 
-      // Calculate commissions (assume 2% fee, 25% commission split)
+      // Calculate commissions (1% fee, 25% commission split)
       const calculateCommission = (leads: any[]) => {
         return leads.reduce((sum, lead) => {
           const loanAmount = lead.lead_responses?.[0]?.loan_amount || 250000;
-          const fee = loanAmount * 0.02;
+          const fee = loanAmount * 0.01;
           const commission = fee * 0.25;
           return sum + commission;
         }, 0);
@@ -84,6 +85,7 @@ export const CommissionTracker = ({ evanId }: CommissionTrackerProps) => {
         <CardTitle className="flex items-center gap-2 text-lg">
           <DollarSign className="h-5 w-5 text-muted-foreground" />
           Commission Tracker
+          <DbTableBadge tables={['leads']} />
         </CardTitle>
       </CardHeader>
       <CardContent>

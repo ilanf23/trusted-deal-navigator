@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 interface Client {
   id: string;
@@ -56,7 +57,10 @@ const AdminClients = () => {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Clients</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold">Clients</h1>
+            <DbTableBadge tables={['profiles']} />
+          </div>
           <p className="text-muted-foreground">View and manage your clients</p>
         </div>
 

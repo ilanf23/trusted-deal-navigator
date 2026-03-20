@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Trophy, Phone, Mail, UserPlus, CheckSquare, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { Loader2 } from 'lucide-react';
 
 interface ScorecardMiniWidgetProps {
@@ -31,6 +32,7 @@ export const ScorecardMiniWidget = ({ scorecardData, isLoading }: ScorecardMiniW
           <CardTitle className="text-base flex items-center gap-2">
             <Trophy className="h-4 w-4 text-primary" />
             Weekly Scorecard
+            <DbTableBadge tables={['leads', 'evan_communications']} />
           </CardTitle>
           <Link to="/admin/scorecard">
             <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1">

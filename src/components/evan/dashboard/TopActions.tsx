@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Zap, 
@@ -38,6 +39,9 @@ interface ActionItem {
   dueDate?: string;
   status: string;
   loanAmount?: number;
+  phone?: string;
+  email?: string;
+  taskId?: string;
 }
 
 const ACTION_ICONS = {
@@ -145,6 +149,9 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
         dueDate: task.due_date || undefined,
         status: lead?.status || 'discovery',
         loanAmount: lead?.lead_responses?.[0]?.loan_amount || undefined,
+        phone: lead?.phone || undefined,
+        email: lead?.email || undefined,
+        taskId: task.id,
       });
     });
 
@@ -257,6 +264,8 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
         waitingTime: hoursSinceContact,
         status: lead.status,
         loanAmount: loanAmount || undefined,
+        phone: lead.phone || undefined,
+        email: lead.email || undefined,
       });
     });
 
@@ -306,6 +315,69 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     return { color: 'text-muted-foreground/60', label: 'Low' };
   };
 
+  // Build the deep-link URL based on action type and available contact info
+  const getActionUrl = (item: ActionItem): string => {
+    switch (item.actionType) {
+      case 'email':
+        if (item.leadId) {
+          const params = new URLSearchParams({ compose: 'true', leadId: item.leadId });
+          if (item.taskId) params.set('taskId', item.taskId);
+          return `/admin/gmail?${params.toString()}`;
+        }
+        if (item.email) return `/admin/gmail?compose=new&to=${encodeURIComponent(item.email)}`;
+        return '/admin/gmail';
+
+      case 'call':
+        if (item.phone) {
+          const params = new URLSearchParams({ phone: item.phone });
+          if (item.leadId) params.set('leadId', item.leadId);
+          return `/admin/calls?${params.toString()}`;
+        }
+        return '/admin/calls';
+
+      case 'document':
+        // Document requests are best handled via email with context
+        if (item.leadId) {
+          return `/admin/gmail?compose=true&leadId=${item.leadId}&template=follow_up`;
+        }
+        return '/admin/leads';
+
+      case 'close':
+        // Close actions → pipeline view for deal progression
+        if (item.phone) {
+          const params = new URLSearchParams({ phone: item.phone });
+          if (item.leadId) params.set('leadId', item.leadId);
+          return `/admin/calls?${params.toString()}`;
+        }
+        return '/admin/pipeline';
+
+      case 'follow_up':
+        // Tasks: use email with AI suggestions if lead exists, otherwise calls
+        if (item.leadId && item.taskId) {
+          return `/admin/gmail?compose=true&leadId=${item.leadId}&taskId=${item.taskId}`;
+        }
+        if (item.leadId) {
+          return `/admin/gmail?compose=true&leadId=${item.leadId}`;
+        }
+        return '/admin/leads';
+
+      default:
+        return '/admin/leads';
+    }
+  };
+
+  // Short label showing where the action link goes
+  const getDestinationLabel = (item: ActionItem): string => {
+    switch (item.actionType) {
+      case 'email': return 'Email';
+      case 'call': return 'Call';
+      case 'document': return 'Email';
+      case 'close': return item.phone ? 'Call' : 'Pipeline';
+      case 'follow_up': return 'Email';
+      default: return 'Open';
+    }
+  };
+
   const stageLabels: Record<string, string> = {
     discovery: 'Discovery',
     pre_qualification: 'Pre-Qual',
@@ -329,111 +401,117 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
   };
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Zap className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">Top 10 Actions Now</CardTitle>
-              <CardDescription className="text-xs">
-                Auto-ranked by deal close proximity, blocker severity & wait time
-              </CardDescription>
-            </div>
+    <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 md:px-6">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800">
+            <Zap className="h-4 w-4 text-slate-600 dark:text-slate-300" />
           </div>
-          <Badge variant="outline" className="text-xs">
-            {actions.length} actions
-          </Badge>
+          <h3 className="text-base font-bold">Top Actions</h3>
+          <DbTableBadge tables={['leads', 'evan_communications', 'evan_tasks']} />
+          <span className="text-xs text-muted-foreground">{actions.length} items</span>
         </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : actions.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-green-500" />
-            <p className="font-medium">All caught up!</p>
-            <p className="text-sm">No urgent actions needed right now</p>
-          </div>
-        ) : (
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-2">
-              {actions.map((item, index) => {
-                const Icon = ACTION_ICONS[item.actionType];
-                const urgency = getUrgencyIndicator(item.urgencyScore);
-                const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
+      </div>
 
-                return (
-                  <Link
-                    key={item.id}
-                    to={`/admin/leads?highlight=${item.leadId}`}
-                    className="block"
-                  >
-                    <div className="group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all cursor-pointer">
-                      {/* Rank number */}
-                      <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                        index < 3 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {index + 1}
-                      </div>
+      {/* Table header */}
+      <div className="grid grid-cols-[2rem_1fr_4rem_5rem_4.5rem] gap-3 px-5 md:px-6 py-2 border-t border-b bg-muted/30 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <span>#</span>
+        <span>Action</span>
+        <span className="text-right">Go to</span>
+        <span className="text-right">Stage</span>
+        <span className="text-right">Timing</span>
+      </div>
 
-                      {/* Action icon */}
-                      <div className={`flex-shrink-0 p-2 rounded-lg ${
-                        isOverdue ? 'bg-destructive/10 text-destructive' : 'bg-muted/50 ' + urgency.color
-                      }`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
+      {/* Content */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : actions.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
+          <p className="text-sm font-medium">All caught up!</p>
+        </div>
+      ) : (
+        <ScrollArea className="h-[420px]">
+          {actions.map((item, index) => {
+            const Icon = ACTION_ICONS[item.actionType];
+            const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
+            const destination = getDestinationLabel(item);
+            const DestIcon = destination === 'Email' ? Mail : destination === 'Call' ? Phone : ArrowRight;
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold truncate">
-                            {item.action}
-                          </p>
-                          {item.loanAmount && (
-                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 shrink-0">
-                              {formatCurrency(item.loanAmount)}
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-muted-foreground truncate">
-                            {item.leadName}
-                            {item.companyName && ` · ${item.companyName}`}
-                          </span>
-                        </div>
-                      </div>
+            return (
+              <Link
+                key={item.id}
+                to={getActionUrl(item)}
+                className="block"
+              >
+                <div className={`group grid grid-cols-[2rem_1fr_4rem_5rem_4.5rem] gap-3 items-center px-5 md:px-6 py-3 hover:bg-muted/40 transition-colors cursor-pointer ${
+                  index < actions.length - 1 ? 'border-b border-border/50' : ''
+                }`}>
+                  {/* Rank */}
+                  <span className={`text-xs font-bold ${
+                    index < 3 ? 'text-foreground' : 'text-muted-foreground'
+                  }`}>
+                    {index + 1}
+                  </span>
 
-                      {/* Right side metadata */}
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <Badge variant="secondary" className={`text-[10px] py-0 px-1.5 ${getStageColor(item.status)}`}>
-                          {stageLabels[item.status] || item.status}
-                        </Badge>
-                        
-                        {item.dueDate ? (
-                          <span className={`text-[10px] font-medium ${isOverdue ? 'text-destructive' : 'text-primary'}`}>
-                            {isOverdue ? 'Overdue' : format(new Date(item.dueDate), 'MMM d')}
-                          </span>
-                        ) : item.waitingTime > 0 ? (
-                          <span className="text-[10px] text-muted-foreground">
-                            {formatWaitingTime(item.waitingTime)}
-                          </span>
-                        ) : null}
-                      </div>
+                  {/* Action + lead info */}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`flex-shrink-0 p-1.5 rounded-md ${
+                      isOverdue
+                        ? 'bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400'
+                        : 'bg-muted/60 text-muted-foreground'
+                    }`}>
+                      <Icon className="h-3.5 w-3.5" />
                     </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        )}
-      </CardContent>
-    </Card>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate leading-tight">
+                        {item.action}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {item.leadName}
+                        {item.companyName && ` · ${item.companyName}`}
+                        {item.loanAmount ? ` · ${formatCurrency(item.loanAmount)}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Destination */}
+                  <div className="text-right">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                      <DestIcon className="h-3 w-3" />
+                      {destination}
+                    </span>
+                  </div>
+
+                  {/* Stage */}
+                  <div className="text-right">
+                    <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${getStageColor(item.status)}`}>
+                      {stageLabels[item.status] || item.status}
+                    </span>
+                  </div>
+
+                  {/* Timing */}
+                  <div className="text-right">
+                    {item.dueDate ? (
+                      <span className={`text-xs font-medium ${isOverdue ? 'text-red-500' : 'text-foreground'}`}>
+                        {isOverdue ? 'Overdue' : format(new Date(item.dueDate), 'MMM d')}
+                      </span>
+                    ) : item.waitingTime > 0 ? (
+                      <span className="text-xs text-muted-foreground">
+                        {formatWaitingTime(item.waitingTime)} ago
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </ScrollArea>
+      )}
+    </div>
   );
 };
 

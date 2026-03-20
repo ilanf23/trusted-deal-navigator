@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { differenceInDays, parseISO, format } from 'date-fns';
+import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -647,6 +648,7 @@ const LoanVolumeLog = () => {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">Loan Volume Log</h1>
+              <DbTableBadge tables={['leads']} />
               {!isLoading && (
                 <span className="text-[12px] text-muted-foreground bg-muted px-2 py-0.5 rounded-md font-medium tabular-nums">
                   {summaryStats.totalDeals} {summaryStats.totalDeals === 1 ? 'deal' : 'deals'}
