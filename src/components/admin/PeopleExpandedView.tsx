@@ -13,7 +13,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  X, ChevronDown, ChevronRight, ChevronUp,
+  ArrowLeft, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
   CalendarDays, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle,
@@ -1069,7 +1069,7 @@ export default function PeopleExpandedView() {
   const assignedName = person.assigned_to ? (teamMemberMap[person.assigned_to] ?? '\u2014') : '\u2014';
 
   function goBack() {
-    navigate('/admin/pipeline/contacts/people');
+    navigate(-1);
   }
 
   return (
@@ -1077,7 +1077,7 @@ export default function PeopleExpandedView() {
       {/* ── Header ── */}
       <div className="shrink-0 border-b border-border px-4 py-2 flex items-center">
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
-          <X className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
         </Button>
       </div>
 

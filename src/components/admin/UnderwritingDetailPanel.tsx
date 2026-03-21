@@ -4,7 +4,8 @@ import {
   X, DollarSign, Maximize2, Building2, User, Mail, Phone, PhoneCall,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase, Hash,
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Flag, Layers,
-  FolderOpen, AtSign, MapPin, Trash2, Send,
+  FolderOpen, AtSign, MapPin, Trash2, Send, Bookmark, Copy, MoreHorizontal,
+  CalendarDays, Eye, TrendingUp, Star, Globe,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
@@ -233,6 +234,50 @@ function EditableSelectField({
         </Select>
         {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
       </div>
+    </div>
+  );
+}
+
+// ── Copper-style underline field (label above, text below, bottom border) ──
+function CopperUnderlineField({
+  label, required, value, field, leadId, onSaved,
+}: {
+  label: string; required?: boolean; value: string; field: string;
+  leadId: string;
+  onSaved: (field: string, newValue: string) => void;
+}) {
+  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(leadId, field, value, onSaved);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  }, [editing]);
+
+  return (
+    <div>
+      <label className="text-sm text-muted-foreground block mb-2">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {editing ? (
+        <div className="border-b-2 border-blue-500 pb-1">
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
+            onBlur={save}
+            disabled={saving}
+            className="w-full text-base text-foreground bg-transparent outline-none px-1 py-1.5"
+          />
+          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 absolute right-1 top-1/2 -translate-y-1/2" />}
+        </div>
+      ) : (
+        <div onClick={() => setEditing(true)} className="border-b border-border pb-1 cursor-pointer group hover:border-muted-foreground transition-colors">
+          <p className="text-base text-foreground py-1.5 px-1 truncate">
+            {value || <span className="text-muted-foreground italic">—</span>}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -731,6 +776,7 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
 
 // ── Related Tab Content ──
 function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Record<string, StageConfigEntry> }) {
+  const navigate = useNavigate();
   const { data: contacts = [], isLoading: loadingContacts } = useQuery({
     queryKey: ['lead-related', 'contacts', lead.id],
     queryFn: async () => {
@@ -816,18 +862,52 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
         {contacts.length === 0 ? (
           <p className="text-xs text-muted-foreground italic py-1">No contacts added</p>
         ) : (
-          <div className="space-y-2 pt-1">
+          <div className="space-y-3 pt-1">
             {contacts.map((c) => (
-              <div key={c.id} className="flex items-center gap-2.5">
-                <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(c.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-                  {c.name[0]?.toUpperCase() ?? '?'}
+              <div key={c.id} className="flex items-start gap-2.5 group">
+                <div className={`h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[11px] font-bold text-gray-600 dark:text-gray-300 shrink-0 mt-0.5`}>
+                  {c.name.split(' ').map((n: string) => n[0]?.toUpperCase()).join('').slice(0, 2)}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[12px] font-medium text-foreground truncate leading-tight">
-                    {c.name}
-                    {c.is_primary && <span className="ml-1 text-[10px] text-blue-500 dark:text-blue-400 font-semibold">Primary</span>}
-                  </p>
-                  {c.title && <p className="text-[11px] text-muted-foreground truncate">{c.title}</p>}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p
+                      className="text-[12px] font-semibold text-foreground truncate leading-tight hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer"
+                      onClick={async () => {
+                        const { data } = await supabase
+                          .from('leads')
+                          .select('id')
+                          .ilike('name', c.name)
+                          .limit(1)
+                          .maybeSingle();
+                        if (data) {
+                          navigate(`/admin/pipeline/contacts/people/${data.id}`);
+                        } else {
+                          toast.info('No matching person record found');
+                        }
+                      }}
+                    >
+                      {c.name}
+                    </p>
+                    {c.is_primary && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-foreground font-medium shrink-0">
+                        <Bookmark className="h-3 w-3 fill-current" /> Primary
+                      </span>
+                    )}
+                  </div>
+                  {(c.title || lead.company_name) && (
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {c.title && <span className="text-blue-600 dark:text-blue-400">{c.title}</span>}
+                      {c.title && lead.company_name && ' at '}
+                      {lead.company_name && <span className="text-blue-600 dark:text-blue-400">{lead.company_name}</span>}
+                    </p>
+                  )}
+                  {(c.phone || c.email) && (
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                      {c.phone && <span>{c.phone}</span>}
+                      {c.phone && c.email && <span className="mx-1.5">|</span>}
+                      {c.email && <span>{c.email}</span>}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -1123,47 +1203,42 @@ export default function UnderwritingDetailPanel({
     <aside className="shrink-0 w-[380px] border-l border-border/60 bg-card flex flex-col h-full animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
       <div className="shrink-0">
-        <div className="h-1" style={{ background: 'linear-gradient(90deg, #6d28d9, #8b5cf6, #a78bfa)' }} />
-
-        <div className="px-5 pt-4 pb-4">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
-                {initial}
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-[15px] font-bold text-foreground truncate leading-tight">{lead.name}</h2>
-                {lead.company_name && (
-                  <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                    <Building2 className="h-3 w-3 shrink-0" />
-                    {lead.company_name}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-800">
-                <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatValue(dealValue)}</span>
-              </div>
-              {onExpand && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Expand full view" onClick={onExpand}>
-                  <Maximize2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onClose}>
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+        {/* Top control bar */}
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-1">
+            <Button className="bg-[#4a2b7a] hover:bg-[#3d2366] text-white rounded-full px-6 h-9 text-sm font-semibold shadow-sm">
+              Follow
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2.5">
-            {stageCfg && (
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${stageCfg.bg}`}>
-                <span className={`h-2 w-2 rounded-full ${stageCfg.dot}`} />
-                <span className={`text-xs font-semibold ${stageCfg.color}`}>{stageCfg.label}</span>
+        {/* Contact card */}
+        <div className="px-5 pt-5 pb-5">
+          <div className="flex items-start gap-4">
+            <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+              <DollarSign className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+            </div>
+            <div className="min-w-0 pt-0.5">
+              <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{lead.name}</h2>
+              <p className="text-sm text-muted-foreground mt-1 truncate">
+                {[lead.company_name, formatValue(dealValue)].filter(Boolean).join(' / ')}
+              </p>
+              <div className="mt-2.5">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm font-medium">
+                  <DollarSign className="h-3.5 w-3.5" />
+                  Opportunity
+                </span>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -1191,116 +1266,172 @@ export default function UnderwritingDetailPanel({
         <ScrollArea className="flex-1">
           <div className="px-5 py-4 space-y-5">
 
-            {/* Stage Progress */}
-            <div className="rounded-xl border border-border p-3.5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Stage Progress</span>
-                {daysInStage !== null && (
-                  <span className={`text-[11px] font-medium flex items-center gap-1 ${daysInStage > 14 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
-                    <Clock className="h-3 w-3" />
-                    {daysInStage}d in stage
-                  </span>
-                )}
+            {/* ── Copper CRM Field List ── */}
+
+            {/* Name */}
+            <CopperUnderlineField label="Name" required value={lead.name} field="name" leadId={lead.id} onSaved={handleFieldSaved} />
+
+            {/* Pipeline */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Pipeline</label>
+              <div className="border-b border-border pb-1">
+                <p className="text-base text-foreground py-1.5 px-1">Underwriting</p>
               </div>
-              {/* Progress dots */}
-              <div className="flex items-center gap-0.5 mb-3">
-                {stageKeys.map((stageKey, idx) => {
-                  const cfg = stageConfig[stageKey];
-                  const isCurrent = stageKey === activeStageKey;
-                  const isPast = idx < currentStageIdx;
-                  return (
-                    <div
-                      key={stageKey}
-                      title={cfg?.label ?? stageKey}
-                      className={`flex-1 h-1.5 rounded-full transition-all ${
-                        isCurrent ? `${cfg?.dot ?? 'bg-muted-foreground'} shadow-sm ring-2 ring-offset-1 ring-border` : isPast ? 'bg-blue-400' : 'bg-border'
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-              {/* Stage dropdown */}
-              {onStageChange && (
-                <Select value={activeStageKey} onValueChange={(v) => onStageChange(lead.id, v)}>
-                  <SelectTrigger className="h-9 w-full text-xs border-border bg-card rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full shrink-0 ${stageCfg?.dot ?? 'bg-muted-foreground'}`} />
+            </div>
+
+            {/* Stage */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Stage</label>
+              <div className="border-b border-border pb-1">
+                {onStageChange ? (
+                  <Select value={activeStageKey} onValueChange={(v) => onStageChange(lead.id, v)}>
+                    <SelectTrigger className="h-10 w-full text-base text-foreground border-0 bg-transparent shadow-none px-1 rounded-none">
                       <SelectValue>{stageCfg?.label ?? lead.status}</SelectValue>
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stageKeys.map((s) => {
-                      const cfg = stageConfig[s];
-                      return (
-                        <SelectItem key={s} value={s} className="text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stageKeys.map((s) => {
+                        const cfg = stageConfig[s];
+                        return (
+                          <SelectItem key={s} value={s} className="text-sm">
                             {cfg?.label ?? s}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Contact — all editable */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Contact</span>
-              <div className="space-y-1.5">
-                <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={lead.name} field="name" leadId={lead.id} placeholder="Name" onSaved={handleFieldSaved} />
-                <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={lead.email ?? ''} field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} />
-                <div className="flex items-center gap-1">
-                  <div className="flex-1 min-w-0">
-                    <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={lead.phone ?? ''} field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
-                  </div>
-                  {lead.phone && (
-                    <button
-                      onClick={() => navigate(`/admin/calls?phone=${encodeURIComponent(lead.phone!.replace(/\D/g, ''))}&leadId=${lead.id}`)}
-                      title="Call this number"
-                      className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
-                    >
-                      <PhoneCall className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Deal Details — all editable */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Deal Details</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
-                <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Underwriting" />
-                <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="CLX File" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
-                {ownerOptions.length > 0 ? (
-                  <EditableSelectField
-                    icon={<User className="h-3.5 w-3.5" />}
-                    label="Owned By"
-                    value={lead.assigned_to ?? ''}
-                    displayValue={assignedName}
-                    field="assigned_to"
-                    leadId={lead.id}
-                    options={ownerOptions}
-                    onSaved={handleFieldSaved}
-                  />
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <EditableField icon={<User className="h-3.5 w-3.5" />} label="Owned By" value={assignedName} field="assigned_to" leadId={lead.id} onSaved={handleFieldSaved} />
+                  <p className="text-base text-foreground py-1.5 px-1">{stageCfg?.label ?? lead.status}</p>
                 )}
-                <EditableField icon={<FileText className="h-3.5 w-3.5" />} label="UW Number" value={lead.uw_number ?? ''} field="uw_number" leadId={lead.id} onSaved={handleFieldSaved} />
-                <ReadOnlyField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={formatValue(dealValue)} />
-                <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? ''} field="source" leadId={lead.id} onSaved={handleFieldSaved} />
-                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
-                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Last Contacted" value={formatDate(lead.last_activity_at)} />
               </div>
             </div>
+
+            {/* CLX - File Name */}
+            <CopperUnderlineField label="CLX - File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
+
+            {/* Waiting On */}
+            <CopperUnderlineField label="Waiting On" value={(lead as any).waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} />
+
+            {/* Tags */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Tags</label>
+              <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
+            </div>
+
+            {/* Value */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Value</label>
+              <div className="border-b border-border pb-1">
+                <p className="text-base text-foreground py-1.5 px-1 tabular-nums">
+                  {lead.deal_value != null ? (
+                    <>{lead.deal_value.toLocaleString()}<br /><span className="text-sm text-muted-foreground">{formatValue(lead.deal_value)}</span></>
+                  ) : (
+                    <span className="text-muted-foreground italic">—</span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Description</label>
+              <EditableRichTextField value={(lead as any).description ?? ''} field="description" leadId={lead.id} placeholder="Add Description" onSaved={handleFieldSaved} />
+            </div>
+
+            {/* Primary Contact */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Primary Contact</label>
+              <div className="border-b border-border pb-3">
+                <div className="flex items-center gap-3 px-1 py-1.5">
+                  <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${getAvatarGradient(lead.name)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                    {lead.name[0]?.toUpperCase() ?? '?'}{lead.name.split(' ')[1]?.[0]?.toUpperCase() ?? ''}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-base text-foreground truncate">{lead.name}</p>
+                    {lead.title && <p className="text-xs text-muted-foreground truncate">{lead.title}</p>}
+                  </div>
+                </div>
+                {lead.phone && (
+                  <div className="flex items-center gap-2 px-1 py-1">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-foreground">{formatPhoneNumber(lead.phone)}</span>
+                  </div>
+                )}
+                {lead.email && (
+                  <div className="flex items-center gap-2 px-1 py-1">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-foreground">{lead.email}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Status / Created */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Created</label>
+              <div className="border-b border-border pb-1">
+                <p className="text-base text-foreground py-1.5 px-1">{formatDate(lead.created_at)}</p>
+              </div>
+            </div>
+
+            {/* Close Date */}
+            <CopperUnderlineField label="Close Date" value={(lead as any).close_date ? formatDate((lead as any).close_date) : ''} field="close_date" leadId={lead.id} onSaved={handleFieldSaved} />
+
+            {/* Loss Reason */}
+            <CopperUnderlineField label="Loss Reason" value={(lead as any).loss_reason ?? ''} field="loss_reason" leadId={lead.id} onSaved={handleFieldSaved} />
+
+            {/* Company */}
+            <CopperUnderlineField label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
+
+            {/* Owner */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Owner</label>
+              <div className="border-b border-border pb-1">
+                {ownerOptions.length > 0 ? (
+                  <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
+                    const { error } = await supabase.from('leads').update({ assigned_to: v || null }).eq('id', lead.id);
+                    if (!error) { handleFieldSaved('assigned_to', v); }
+                  }}>
+                    <SelectTrigger className="h-10 w-full text-base text-foreground border-0 bg-transparent shadow-none px-1 rounded-none">
+                      <SelectValue>{assignedName}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ownerOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-sm">{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-base text-foreground py-1.5 px-1">{assignedName}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Source */}
+            <CopperUnderlineField label="Source" value={lead.source ?? ''} field="source" leadId={lead.id} onSaved={handleFieldSaved} />
+
+            {/* Priority */}
+            <CopperUnderlineField label="Priority" value={(lead as any).priority ?? ''} field="priority" leadId={lead.id} onSaved={handleFieldSaved} />
+
+            {/* Win Percentage */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Win Percentage</label>
+              <div className="border-b border-border pb-1">
+                <p className="text-base text-foreground py-1.5 px-1 tabular-nums">
+                  {(lead as any).win_percentage != null ? (
+                    <>{(lead as any).win_percentage}<br /><span className="text-sm text-muted-foreground">{(lead as any).win_percentage}%</span></>
+                  ) : (
+                    <span className="text-muted-foreground italic">—</span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Visibility */}
+            <CopperUnderlineField label="Visibility" value={(lead as any).visibility ?? 'everyone'} field="visibility" leadId={lead.id} onSaved={handleFieldSaved} />
 
             {/* Email (satellite) */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Email</span>
+              <label className="text-sm text-muted-foreground block mb-2">Email</label>
               <div className="space-y-1">
                 {leadEmails.map((e) => (
                   <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
@@ -1309,9 +1440,7 @@ export default function UnderwritingDetailPanel({
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
                     <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newEmailType} onValueChange={setNewEmailType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="work" className="text-xs">Work</SelectItem>
                         <SelectItem value="personal" className="text-xs">Personal</SelectItem>
@@ -1320,14 +1449,14 @@ export default function UnderwritingDetailPanel({
                     <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
                   </div>
                 ) : (
-                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
+                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-1 py-1">+ Add Email</button>
                 )}
               </div>
             </div>
 
             {/* Phone (satellite) */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Phone</span>
+              <label className="text-sm text-muted-foreground block mb-2">Phone</label>
               <div className="space-y-1">
                 {leadPhones.map((p) => (
                   <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
@@ -1336,9 +1465,7 @@ export default function UnderwritingDetailPanel({
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
                     <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                     <Select value={newPhoneType} onValueChange={setNewPhoneType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="work" className="text-xs">Work</SelectItem>
                         <SelectItem value="personal" className="text-xs">Personal</SelectItem>
@@ -1348,14 +1475,14 @@ export default function UnderwritingDetailPanel({
                     <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
                   </div>
                 ) : (
-                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
+                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-1 py-1">+ Add Phone</button>
                 )}
               </div>
             </div>
 
             {/* Address (satellite) */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Address</span>
+              <label className="text-sm text-muted-foreground block mb-2">Address</label>
               <div className="space-y-1">
                 {leadAddresses.map((a) => (
                   <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
@@ -1383,27 +1510,64 @@ export default function UnderwritingDetailPanel({
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
+                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-1 py-1">+ Add Address</button>
                 )}
               </div>
             </div>
 
-            {/* Tags — editable */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Tags</span>
-              <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
-            </div>
-
             {/* About */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">About</span>
-              <EditableRichTextField value={lead.notes ?? ''} field="notes" leadId={lead.id} placeholder="Add notes about this lead..." onSaved={handleFieldSaved} />
+              <label className="text-sm text-muted-foreground block mb-2">About</label>
+              <EditableRichTextField value={lead.about ?? lead.notes ?? ''} field="about" leadId={lead.id} placeholder="Add About" onSaved={handleFieldSaved} />
+            </div>
+
+            {/* History */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">History</label>
+              <EditableRichTextField value={(lead as any).history ?? ''} field="history" leadId={lead.id} placeholder="Add History" onSaved={handleFieldSaved} />
             </div>
 
             {/* Bank Relationships */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Bank Relationships</span>
-              <EditableRichTextField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Excluded lender names from CLX agreement..." onSaved={handleFieldSaved} />
+              <label className="text-sm text-muted-foreground block mb-2">Bank Relationships</label>
+              <EditableRichTextField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Add Bank Relationships" onSaved={handleFieldSaved} />
+            </div>
+
+            {/* #UW */}
+            <CopperUnderlineField label="#UW" value={lead.uw_number ?? ''} field="uw_number" leadId={lead.id} onSaved={handleFieldSaved} />
+
+            {/* Client Working with Other Lenders */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Client Working with Other Lenders</label>
+              <div className="border-b border-border pb-1">
+                <button
+                  onClick={async () => {
+                    const newVal = !lead.client_other_lenders;
+                    const { error } = await supabase.from('leads').update({ client_other_lenders: newVal }).eq('id', lead.id);
+                    if (!error) handleFieldSaved('client_other_lenders', String(newVal));
+                  }}
+                  className="text-base text-foreground py-1.5 px-1 hover:text-blue-600 transition-colors"
+                >
+                  {lead.client_other_lenders ? 'Yes' : 'No'}
+                </button>
+              </div>
+            </div>
+
+            {/* Weekly's */}
+            <div>
+              <label className="text-sm text-muted-foreground block mb-2">Weekly's</label>
+              <div className="border-b border-border pb-1">
+                <button
+                  onClick={async () => {
+                    const newVal = !lead.flagged_for_weekly;
+                    const { error } = await supabase.from('leads').update({ flagged_for_weekly: newVal }).eq('id', lead.id);
+                    if (!error) handleFieldSaved('flagged_for_weekly', String(newVal));
+                  }}
+                  className="text-base text-foreground py-1.5 px-1 hover:text-blue-600 transition-colors"
+                >
+                  {lead.flagged_for_weekly ? 'Yes' : 'No'}
+                </button>
+              </div>
             </div>
           </div>
         </ScrollArea>
