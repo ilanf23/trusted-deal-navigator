@@ -10,6 +10,7 @@ import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
 import { sanitizeFileName } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/address-autocomplete';
@@ -19,12 +20,15 @@ import {
   CalendarDays, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle,
   User, Mail, Phone, PhoneCall, Tag, Briefcase, Loader2,
-  Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send, X, Copy,
+  Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send, X, Copy, Globe, Eye,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useGmailConnection } from '@/hooks/useGmailConnection';
+import { usePipelines } from '@/hooks/usePipelines';
+import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
 
@@ -76,6 +80,13 @@ interface Person {
   known_as: string | null;
   clx_file_name: string | null;
   bank_relationships: string | null;
+  website: string | null;
+  work_website: string | null;
+  twitter: string | null;
+  visibility: string | null;
+  last_contacted: string | null;
+  history: string | null;
+  description: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -110,35 +121,90 @@ interface PersonAddress {
 }
 
 // ── Contact type config ──
-const CONTACT_TYPES = [
-  'Client', 'Prospect', 'Referral Partner', 'Lender',
-  'Attorney', 'CPA', 'Vendor', 'Other',
+const DEFAULT_CONTACT_TYPES = [
+  'Potential Customer', 'Current Customer', 'Referral Source',
+  'Bank Relationship', 'Attorney', 'Other',
+];
+
+const COLOR_OPTIONS = [
+  { name: 'blue', dot: 'bg-blue-500', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800', pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' },
+  { name: 'emerald', dot: 'bg-emerald-500', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' },
+  { name: 'violet', dot: 'bg-violet-500', color: 'text-violet-700 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800', pill: 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' },
+  { name: 'amber', dot: 'bg-amber-500', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800', pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' },
+  { name: 'rose', dot: 'bg-rose-500', color: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', pill: 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300' },
+  { name: 'cyan', dot: 'bg-cyan-500', color: 'text-cyan-700 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800', pill: 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300' },
+  { name: 'orange', dot: 'bg-orange-500', color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800', pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' },
+  { name: 'pink', dot: 'bg-pink-500', color: 'text-pink-700 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-950/50 border-pink-200 dark:border-pink-800', pill: 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300' },
+  { name: 'slate', dot: 'bg-slate-500', color: 'text-slate-700 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800', pill: 'bg-slate-100 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300' },
+];
+
+interface CustomContactType { label: string; colorName: string; }
+
+const CUSTOM_TYPES_KEY = 'clx-custom-contact-types';
+
+function loadCustomContactTypes(): CustomContactType[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TYPES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveCustomContactTypes(types: CustomContactType[]) {
+  localStorage.setItem(CUSTOM_TYPES_KEY, JSON.stringify(types));
+}
+
+function buildContactTypeConfig(customTypes: CustomContactType[]) {
+  const config = { ...contactTypeConfig };
+  for (const ct of customTypes) {
+    const colorOpt = COLOR_OPTIONS.find(c => c.name === ct.colorName) ?? COLOR_OPTIONS[0];
+    config[ct.label] = {
+      label: ct.label,
+      color: colorOpt.color,
+      bg: colorOpt.bg,
+      dot: colorOpt.dot,
+      pill: colorOpt.pill,
+    };
+  }
+  return config;
+}
+
+function getAllContactTypes(customTypes: CustomContactType[]): string[] {
+  return [...DEFAULT_CONTACT_TYPES, ...customTypes.map(ct => ct.label)];
+}
+
+const SOURCE_OPTIONS = [
+  'Cold Call', 'Cold Outreach', 'Conference', 'Direct Mail',
+  'Email Campaign', 'Existing Client', 'Gmail', 'LinkedIn',
+  'Partner', 'Partner Referral', 'Partner Referral - Adam',
+  'Partner Referral - Brad', 'Rate Watch Import', 'Referral',
+  'Referral - Attorney', 'Referral - Broker', 'Referral - CPA',
+  'Referral - Wealth Advisor', 'Website', 'Website Inquiry',
 ];
 
 const contactTypeConfig: Record<string, { label: string; color: string; bg: string; dot: string; pill: string }> = {
-  Client: {
-    label: 'Client',
-    color: 'text-emerald-700 dark:text-emerald-400',
-    bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800',
-    dot: 'bg-emerald-500',
-    pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300',
-  },
-  Prospect: {
-    label: 'Prospect',
+  'Potential Customer': {
+    label: 'Potential Customer',
     color: 'text-blue-700 dark:text-blue-400',
     bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800',
     dot: 'bg-blue-500',
     pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
   },
-  'Referral Partner': {
-    label: 'Referral Partner',
+  'Current Customer': {
+    label: 'Current Customer',
+    color: 'text-emerald-700 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800',
+    dot: 'bg-emerald-500',
+    pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300',
+  },
+  'Referral Source': {
+    label: 'Referral Source',
     color: 'text-violet-700 dark:text-violet-400',
     bg: 'bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800',
     dot: 'bg-violet-500',
     pill: 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300',
   },
-  Lender: {
-    label: 'Lender',
+  'Bank Relationship': {
+    label: 'Bank Relationship',
     color: 'text-amber-700 dark:text-amber-400',
     bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800',
     dot: 'bg-amber-500',
@@ -151,20 +217,6 @@ const contactTypeConfig: Record<string, { label: string; color: string; bg: stri
     dot: 'bg-rose-500',
     pill: 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300',
   },
-  CPA: {
-    label: 'CPA',
-    color: 'text-cyan-700 dark:text-cyan-400',
-    bg: 'bg-cyan-50 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800',
-    dot: 'bg-cyan-500',
-    pill: 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300',
-  },
-  Vendor: {
-    label: 'Vendor',
-    color: 'text-orange-700 dark:text-orange-400',
-    bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800',
-    dot: 'bg-orange-500',
-    pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300',
-  },
   Other: {
     label: 'Other',
     color: 'text-slate-700 dark:text-slate-400',
@@ -172,6 +224,13 @@ const contactTypeConfig: Record<string, { label: string; color: string; bg: stri
     dot: 'bg-slate-500',
     pill: 'bg-slate-100 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300',
   },
+  // Legacy types (for existing data display)
+  Client: { label: 'Client', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', dot: 'bg-emerald-500', pill: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' },
+  Prospect: { label: 'Prospect', color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800', dot: 'bg-blue-500', pill: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' },
+  'Referral Partner': { label: 'Referral Partner', color: 'text-violet-700 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800', dot: 'bg-violet-500', pill: 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' },
+  Lender: { label: 'Lender', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800', dot: 'bg-amber-500', pill: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300' },
+  CPA: { label: 'CPA', color: 'text-cyan-700 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-800', dot: 'bg-cyan-500', pill: 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300' },
+  Vendor: { label: 'Vendor', color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800', dot: 'bg-orange-500', pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' },
 };
 
 // ── Helpers ──
@@ -203,6 +262,14 @@ function formatDate(dateStr: string | null): string {
 function formatShortDate(dateStr: string | null): string {
   if (!dateStr) return '\u2014';
   try { return format(parseISO(dateStr), 'M/d/yyyy'); } catch { return '\u2014'; }
+}
+
+function getPipelineLeadRoute(pipelineName: string, leadId: string): string {
+  switch (pipelineName) {
+    case 'Underwriting': return `/admin/pipeline/underwriting/lead/${leadId}`;
+    case 'Lender Management': return `/admin/pipeline/lender-management/lead/${leadId}`;
+    default: return `/admin/pipeline/lead/${leadId}`;
+  }
 }
 
 const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string }> = {
@@ -387,7 +454,7 @@ function EditableContactRow({
   );
 }
 
-// ── Editable Tags ──
+// ── Editable Tags (with autocomplete) ──
 function EditableTags({
   tags, personId, onSaved,
 }: {
@@ -395,21 +462,57 @@ function EditableTags({
   onSaved: (field: string, newValue: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(tags.join(', '));
+  const [draftTags, setDraftTags] = useState<string[]>(tags);
+  const [inputValue, setInputValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch all existing tags across leads
+  const { data: allExistingTags = [] } = useQuery({
+    queryKey: ['all-lead-tags'],
+    queryFn: async () => {
+      const { data } = await supabase.from('leads').select('tags').not('tags', 'is', null);
+      const tagSet = new Set<string>();
+      (data ?? []).forEach((row: any) => {
+        (row.tags ?? []).forEach((t: string) => tagSet.add(t));
+      });
+      return Array.from(tagSet).sort();
+    },
+    staleTime: 60000,
+  });
+
+  // Filtered suggestions
+  const suggestions = inputValue.length >= 1
+    ? allExistingTags
+        .filter(t => t.toLowerCase().includes(inputValue.toLowerCase()))
+        .filter(t => !draftTags.includes(t))
+        .slice(0, 8)
+    : [];
+
+  const showSuggestions = editing && suggestions.length > 0;
 
   useEffect(() => {
     if (editing) {
-      setDraft(tags.join(', '));
+      setDraftTags(tags);
+      setInputValue('');
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [editing, tags]);
 
-  const save = async () => {
-    const newTags = draft.split(',').map(t => t.trim()).filter(Boolean);
-    const currentStr = tags.join(',');
-    const newStr = newTags.join(',');
+  // Position dropdown
+  useEffect(() => {
+    if (!showSuggestions || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+  }, [showSuggestions, inputValue]);
+
+  const saveTags = async (newTags: string[]) => {
+    const currentStr = tags.sort().join(',');
+    const newStr = [...newTags].sort().join(',');
     if (newStr === currentStr) {
       setEditing(false);
       return;
@@ -428,22 +531,124 @@ function EditableTags({
     setEditing(false);
   };
 
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed || draftTags.includes(trimmed)) return;
+    setDraftTags(prev => [...prev, trimmed]);
+    setInputValue('');
+    setActiveIndex(-1);
+    inputRef.current?.focus();
+  };
+
+  const removeTag = (tag: string) => {
+    setDraftTags(prev => prev.filter(t => t !== tag));
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0 && suggestions[activeIndex]) {
+        addTag(suggestions[activeIndex]);
+      } else if (inputValue.trim()) {
+        addTag(inputValue);
+      }
+    } else if (e.key === 'Escape') {
+      saveTags(draftTags);
+    } else if (e.key === 'Backspace' && !inputValue && draftTags.length > 0) {
+      setDraftTags(prev => prev.slice(0, -1));
+    } else if (e.key === 'ArrowDown' && showSuggestions) {
+      e.preventDefault();
+      setActiveIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp' && showSuggestions) {
+      e.preventDefault();
+      setActiveIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    }
+  };
+
+  // Click outside to save
+  useEffect(() => {
+    if (!editing) return;
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        (!dropdownRef.current || !dropdownRef.current.contains(target))
+      ) {
+        saveTags(draftTags);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  });
+
   if (editing) {
     return (
-      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5">
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-          onBlur={save}
-          placeholder="tag1, tag2, tag3..."
-          disabled={saving}
-          className="w-full text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
-        />
-        <p className="text-[10px] text-muted-foreground mt-1">Comma-separated. Press Enter to save.</p>
-        {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
-      </div>
+      <>
+        <div ref={containerRef} className="rounded-lg bg-blue-50/50 border border-blue-100 p-2">
+          <div className="flex flex-wrap gap-1.5 items-center">
+            {draftTags.map((tag) => (
+              <span key={tag} className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-medium">
+                {tag}
+                <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors ml-0.5">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <input
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => { setInputValue(e.target.value); setActiveIndex(-1); }}
+              onKeyDown={handleKeyDown}
+              placeholder={draftTags.length === 0 ? 'Type to add tags...' : 'Add more...'}
+              disabled={saving}
+              className="flex-1 min-w-[80px] text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50 py-0.5"
+            />
+          </div>
+          <div className="flex items-center justify-between mt-1.5">
+            <p className="text-[10px] text-muted-foreground">Enter to add. Backspace to remove.</p>
+            <div className="flex items-center gap-1.5">
+              {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+              <button onClick={() => saveTags(draftTags)} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Suggestions dropdown via portal */}
+        {showSuggestions && createPortal(
+          <div
+            ref={dropdownRef}
+            style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+            className="z-[9999] bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-[240px] overflow-y-auto"
+          >
+            {suggestions.map((s, i) => {
+              // Highlight matching text
+              const idx = s.toLowerCase().indexOf(inputValue.toLowerCase());
+              const before = s.slice(0, idx);
+              const match = s.slice(idx, idx + inputValue.length);
+              const after = s.slice(idx + inputValue.length);
+
+              return (
+                <button
+                  key={s}
+                  onMouseDown={(e) => { e.preventDefault(); addTag(s); }}
+                  className={`flex items-center gap-2.5 w-full text-left px-3 py-2 text-[13px] transition-colors ${
+                    i === activeIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'
+                  }`}
+                >
+                  <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span>
+                    {before}<span className="font-semibold text-blue-600 dark:text-blue-400">{match}</span>{after}
+                  </span>
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
+      </>
     );
   }
 
@@ -570,15 +775,15 @@ function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; on
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.email_type}</span>
       <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{entry.email}</span>
-      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
         <Pencil className="h-3 w-3" />
       </button>
-      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-        <Trash2 className="h-3 w-3" />
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
+        <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -621,20 +826,20 @@ function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonP
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.phone_type}</span>
       <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{formatPhoneNumber(entry.phone_number)}</span>
       {onCall && (
-        <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
           <PhoneCall className="h-3 w-3" />
         </button>
       )}
-      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
         <Pencil className="h-3 w-3" />
       </button>
-      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-        <Trash2 className="h-3 w-3" />
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
+        <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -697,16 +902,16 @@ function AddressBlock({ entry, onDelete, onUpdate }: { entry: PersonAddress; onD
 
   const parts = [entry.address_line_1, entry.city, entry.state, entry.zip_code].filter(Boolean);
   return (
-    <div className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+    <div className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setEditing(true)}>
         <span className="text-[11px] text-muted-foreground uppercase font-medium">{entry.address_type}</span>
         <p className="text-[13px] text-foreground font-medium">{parts.join(', ') || '\u2014'}</p>
       </div>
-      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0 mt-0.5">
         <Pencil className="h-3 w-3" />
       </button>
-      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0 mt-0.5">
         <Trash2 className="h-3 w-3" />
       </button>
     </div>
@@ -782,6 +987,120 @@ function RelatedSection({ icon, label, count, iconColor, onAdd, children }: {
 }
 
 // ══════════════════════════════════════════════════
+// ── Customize Contact Types Panel ──
+// ══════════════════════════════════════════════════
+
+function CustomizeContactTypesPanel({
+  customTypes,
+  onUpdate,
+}: {
+  customTypes: CustomContactType[];
+  onUpdate: (types: CustomContactType[]) => void;
+}) {
+  const [newLabel, setNewLabel] = useState('');
+  const [newColor, setNewColor] = useState('blue');
+
+  const handleAdd = () => {
+    const label = newLabel.trim();
+    if (!label) return;
+    if (DEFAULT_CONTACT_TYPES.includes(label) || customTypes.some(ct => ct.label === label)) {
+      toast.error('Type already exists');
+      return;
+    }
+    onUpdate([...customTypes, { label, colorName: newColor }]);
+    setNewLabel('');
+    setNewColor('blue');
+    toast.success('Contact type added');
+  };
+
+  const handleRemove = (label: string) => {
+    onUpdate(customTypes.filter(ct => ct.label !== label));
+    toast.success('Contact type removed');
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Default types (read-only) */}
+      <div>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Default Types</span>
+        <div className="space-y-1">
+          {DEFAULT_CONTACT_TYPES.map((t) => {
+            const cfg = contactTypeConfig[t];
+            return (
+              <div key={t} className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
+                <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
+                <span className="text-sm text-foreground">{cfg?.label ?? t}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Custom types (removable) */}
+      {customTypes.length > 0 && (
+        <div>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Custom Types</span>
+          <div className="space-y-1">
+            {customTypes.map((ct) => {
+              const colorOpt = COLOR_OPTIONS.find(c => c.name === ct.colorName) ?? COLOR_OPTIONS[0];
+              return (
+                <div key={ct.label} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/40 group">
+                  <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${colorOpt.dot}`} />
+                  <span className="text-sm text-foreground flex-1">{ct.label}</span>
+                  <button
+                    onClick={() => handleRemove(ct.label)}
+                    className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Add new type */}
+      <div>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Add New Type</span>
+        <div className="space-y-3">
+          <input
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+            placeholder="Type name..."
+            className="w-full text-sm text-foreground bg-card border border-border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+          />
+          <div>
+            <span className="text-xs text-muted-foreground block mb-1.5">Color</span>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_OPTIONS.map((c) => (
+                <button
+                  key={c.name}
+                  onClick={() => setNewColor(c.name)}
+                  className={`h-6 w-6 rounded-full ${c.dot} transition-all ${
+                    newColor === c.name ? 'ring-2 ring-offset-2 ring-blue-500' : 'hover:scale-110'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleAdd}
+            disabled={!newLabel.trim()}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 rounded-lg w-full"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            Add Contact Type
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
 // ── Main Component ──
 // ══════════════════════════════════════════════════
 
@@ -792,10 +1111,22 @@ export default function PeopleExpandedView() {
   const [activityTab, setActivityTab] = useState<'log' | 'note' | 'email'>('log');
 
   // Activity form state
-  const [activityType, setActivityType] = useState('note');
+  const [activityType, setActivityType] = useState('todo');
   const [activityNote, setActivityNote] = useState('');
   const [noteContent, setNoteContent] = useState('');
   const [savingActivity, setSavingActivity] = useState(false);
+  const [activityDropdownOpen, setActivityDropdownOpen] = useState(false);
+
+  // Custom contact types
+  const [contactTypeDropdownOpen, setContactTypeDropdownOpen] = useState(false);
+  const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
+  const [visibilityDropdownOpen, setVisibilityDropdownOpen] = useState(false);
+  const [addingPipelineRecord, setAddingPipelineRecord] = useState(false);
+  const [selectedPipelineToAdd, setSelectedPipelineToAdd] = useState('');
+  const [customContactTypes, setCustomContactTypes] = useState<CustomContactType[]>(loadCustomContactTypes);
+  const [showCustomizeDialog, setShowCustomizeDialog] = useState(false);
+  const allContactTypes = useMemo(() => getAllContactTypes(customContactTypes), [customContactTypes]);
+  const fullContactTypeConfig = useMemo(() => buildContactTypeConfig(customContactTypes), [customContactTypes]);
 
   // Email compose state
   const [emailSubject, setEmailSubject] = useState('');
@@ -808,8 +1139,9 @@ export default function PeopleExpandedView() {
   // Task inline add state
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [savingTask, setSavingTask] = useState(false);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
 
   // Multi-value contact form state
   const [showAddEmail, setShowAddEmail] = useState(false);
@@ -873,12 +1205,11 @@ export default function PeopleExpandedView() {
     queryKey: ['person-tasks', personId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_activities')
-        .select('id, title, content, created_at')
+        .from('lead_tasks')
+        .select('*')
         .eq('lead_id', personId!)
-        .eq('activity_type', 'task')
         .order('created_at', { ascending: false });
-      return data ?? [];
+      return (data ?? []) as LeadTask[];
     },
     enabled: !!personId,
   });
@@ -1025,17 +1356,15 @@ export default function PeopleExpandedView() {
     }
   }, [person, personId, emailSubject, emailBody, sendingEmail, gmail.sendEmailMutation, queryClient]);
 
-  // ── Save task ──
+  // ── Save task inline (Enter key) ──
   const handleSaveTask = useCallback(async () => {
     if (!personId || !newTaskTitle.trim()) return;
-    setSavingTask(true);
-    const { error } = await supabase.from('lead_activities').insert({
+    const { error } = await supabase.from('lead_tasks').insert({
       lead_id: personId,
-      activity_type: 'task',
       title: newTaskTitle.trim(),
-      content: newTaskTitle.trim(),
+      status: 'pending',
+      activity_type: 'to_do',
     });
-    setSavingTask(false);
     if (error) {
       toast.error('Failed to create task');
       return;
@@ -1045,6 +1374,17 @@ export default function PeopleExpandedView() {
     setAddingTask(false);
     queryClient.invalidateQueries({ queryKey: ['person-tasks', personId] });
   }, [personId, newTaskTitle, queryClient]);
+
+  // ── Toggle task completion directly ──
+  const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
+    const isCompleting = !task.completed_at;
+    await supabase.from('lead_tasks').update({
+      completed_at: isCompleting ? new Date().toISOString() : null,
+      status: isCompleting ? 'completed' : 'pending',
+      updated_at: new Date().toISOString(),
+    }).eq('id', task.id);
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', personId] });
+  }, [personId, queryClient]);
 
   // ── Save activity comment ──
   const handleSaveComment = useCallback(async (activityId: string) => {
@@ -1190,6 +1530,63 @@ export default function PeopleExpandedView() {
     enabled: !!personId,
   });
 
+  // ── Pipeline records for this lead ──
+  const { data: pipelineRecords = [] } = useQuery({
+    queryKey: ['person-pipeline-records', personId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('pipeline_leads')
+        .select('id, pipeline_id, stage_id, added_at, updated_at, pipeline:pipelines(id, name), stage:pipeline_stages(id, name, color)')
+        .eq('lead_id', personId!)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        pipeline_id: string;
+        stage_id: string;
+        added_at: string;
+        updated_at: string;
+        pipeline: { id: string; name: string };
+        stage: { id: string; name: string; color: string | null };
+      }>;
+    },
+    enabled: !!personId,
+  });
+
+  const { data: allPipelines = [] } = usePipelines();
+
+  const availablePipelines = useMemo(() => {
+    const existingIds = new Set(pipelineRecords.map((r: any) => r.pipeline_id));
+    return allPipelines.filter((p: any) => !existingIds.has(p.id));
+  }, [allPipelines, pipelineRecords]);
+
+  const addToPipelineMutation = useMutation({
+    mutationFn: async (pipelineId: string) => {
+      const { data: stages, error: stagesError } = await (supabase as any)
+        .from('pipeline_stages')
+        .select('id')
+        .eq('pipeline_id', pipelineId)
+        .order('position')
+        .limit(1);
+      if (stagesError) throw stagesError;
+      if (!stages || stages.length === 0) throw new Error('Pipeline has no stages');
+
+      const { error: insertError } = await (supabase as any)
+        .from('pipeline_leads')
+        .insert({ pipeline_id: pipelineId, lead_id: personId!, stage_id: stages[0].id });
+      if (insertError) throw insertError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['person-pipeline-records', personId] });
+      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+      toast.success('Added to pipeline');
+      setAddingPipelineRecord(false);
+      setSelectedPipelineToAdd('');
+    },
+    onError: () => toast.error('Failed to add to pipeline'),
+  });
+
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
@@ -1294,12 +1691,12 @@ export default function PeopleExpandedView() {
 
   const initial = person.name[0]?.toUpperCase() ?? '?';
   const gradient = getAvatarGradient(person.name);
-  const typeCfg = contactTypeConfig[person.contact_type ?? 'Other'];
+  const typeCfg = fullContactTypeConfig[person.contact_type ?? 'Other'] ?? contactTypeConfig[person.contact_type ?? 'Other'];
   const inactiveDays = daysSince(person.last_activity_at);
   const lastActivityDate = formatShortDate(person.last_activity_at);
+  const pendingTasks = tasks.filter(t => !t.completed_at);
+  const completedTasks = tasks.filter(t => !!t.completed_at);
   const totalTasks = tasks.length;
-  const pendingTasks = tasks;
-  const completedTasks: typeof tasks = [];
   const assignedName = person.assigned_to ? (teamMemberMap[person.assigned_to] ?? '\u2014') : '\u2014';
 
   function goBack() {
@@ -1307,6 +1704,7 @@ export default function PeopleExpandedView() {
   }
 
   return (
+    <>
     <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
       {/* ── Header ── */}
       <div className="shrink-0 border-b border-border px-4 py-2 flex items-center">
@@ -1365,24 +1763,109 @@ export default function PeopleExpandedView() {
               {/* Contact Type */}
               <div>
                 <span className="text-xs font-medium text-muted-foreground block mb-1">Contact Type</span>
-                <Select value={person.contact_type ?? 'Other'} onValueChange={(v) => handleContactTypeChange(v)}>
-                  <SelectTrigger className="h-auto w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0">
-                    <SelectValue>{typeCfg?.label ?? person.contact_type}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[220px]">
-                    {CONTACT_TYPES.map((t) => {
-                      const cfg = contactTypeConfig[t];
-                      return (
-                        <SelectItem key={t} value={t} className="text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
-                            {cfg?.label ?? t}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <button
+                    onClick={() => setContactTypeDropdownOpen(!contactTypeDropdownOpen)}
+                    className="flex items-center gap-2 w-full text-sm font-medium text-foreground bg-transparent border-b border-border py-1.5 transition-colors hover:border-foreground/30"
+                  >
+                    {(() => {
+                      const CONTACT_TYPE_ICONS: Record<string, typeof User> = {
+                        'Potential Customer': User,
+                        'Current Customer': CheckSquare,
+                        'Referral Source': Users,
+                        'Bank Relationship': Building2,
+                        'Attorney': Briefcase,
+                        'Other': Tag,
+                      };
+                      const ct = person.contact_type ?? 'Other';
+                      const Icon = CONTACT_TYPE_ICONS[ct] ?? Tag;
+                      return <><Icon className="h-4 w-4 text-muted-foreground" />{typeCfg?.label ?? ct}</>;
+                    })()}
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-auto" />
+                  </button>
+
+                  {contactTypeDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setContactTypeDropdownOpen(false)} />
+                      <div className="absolute z-50 top-full left-0 mt-1.5 w-[280px] bg-popover border border-border rounded-xl shadow-lg overflow-hidden">
+                        <div className="py-1">
+                          {([
+                            { value: 'Potential Customer', label: 'Potential Customer', icon: User },
+                            { value: 'Current Customer', label: 'Current Customer', icon: CheckSquare },
+                            { value: 'Referral Source', label: 'Referral Source', icon: Users },
+                            { value: 'Bank Relationship', label: 'Bank Relationship', icon: Building2 },
+                            { value: 'Attorney', label: 'Attorney', icon: Briefcase },
+                            { value: 'Other', label: 'Other', icon: Tag },
+                          ] as const).map((opt) => {
+                            const Icon = opt.icon;
+                            return (
+                              <button
+                                key={opt.value}
+                                onClick={() => { handleContactTypeChange(opt.value); setContactTypeDropdownOpen(false); }}
+                                className={`flex items-center gap-3.5 w-full text-left px-4 py-3 text-sm transition-colors ${
+                                  person.contact_type === opt.value ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400' : 'text-foreground hover:bg-muted/50'
+                                }`}
+                              >
+                                <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+                                <span className="font-medium">{opt.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="border-t border-border">
+                          <button
+                            onClick={() => { setContactTypeDropdownOpen(false); setShowCustomizeDialog(true); }}
+                            className="flex items-center gap-3.5 w-full text-left px-4 py-3 text-sm text-blue-600 dark:text-blue-400 hover:bg-muted/50 transition-colors"
+                          >
+                            <Plus className="h-5 w-5 shrink-0" />
+                            <span className="font-medium">Customize Contact Types</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Source */}
+              <div>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Source</span>
+                <div className="relative">
+                  <button
+                    onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)}
+                    className="flex items-center gap-2 w-full text-sm font-medium text-foreground bg-transparent border-b border-border py-1.5 transition-colors hover:border-foreground/30"
+                  >
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    {person.source ?? 'Select source'}
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-auto" />
+                  </button>
+
+                  {sourceDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setSourceDropdownOpen(false)} />
+                      <div className="absolute z-50 top-full left-0 mt-1.5 w-[280px] max-h-[320px] overflow-y-auto bg-popover border border-border rounded-xl shadow-lg">
+                        <div className="py-1">
+                          {SOURCE_OPTIONS.map((s) => (
+                            <button
+                              key={s}
+                              onClick={async () => {
+                                const { error } = await supabase.from('leads').update({ source: s }).eq('id', person.id);
+                                if (error) { toast.error('Failed to update source'); return; }
+                                handleFieldSaved('source', s);
+                                setSourceDropdownOpen(false);
+                              }}
+                              className={`flex items-center gap-3.5 w-full text-left px-4 py-3 text-sm transition-colors ${
+                                person.source === s ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400' : 'text-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              <span className="font-medium">{s}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Owner */}
@@ -1473,6 +1956,72 @@ export default function PeopleExpandedView() {
                   </div>
                 </div>
               )}
+
+              {/* Twitter */}
+              <EditableField label="Twitter" value={person.twitter ?? ''} field="twitter" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Twitter" />
+
+              {/* Work Website */}
+              <EditableField label="Work Website" value={person.website ?? ''} field="website" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Work Website" />
+
+              {/* Work Website 2 */}
+              <EditableField label="Work Website 2" value={person.work_website ?? ''} field="work_website" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Work Website" />
+
+              {/* Visibility */}
+              <div>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Visibility</span>
+                <div className="relative">
+                  <button
+                    onClick={() => setVisibilityDropdownOpen(!visibilityDropdownOpen)}
+                    className="flex items-center gap-2 w-full text-sm font-medium text-foreground bg-transparent border-b border-border py-1.5 transition-colors hover:border-foreground/30"
+                  >
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    {person.visibility ?? 'Select visibility'}
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-auto" />
+                  </button>
+
+                  {visibilityDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setVisibilityDropdownOpen(false)} />
+                      <div className="absolute z-50 top-full left-0 mt-1.5 w-[280px] bg-popover border border-border rounded-xl shadow-lg">
+                        <div className="py-1">
+                          {(['Everyone', 'Teams', 'Individuals', 'Only Me', 'Record Owner Only'] as const).map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={async () => {
+                                const { error } = await supabase.from('leads').update({ visibility: opt }).eq('id', person.id);
+                                if (error) { toast.error('Failed to update visibility'); return; }
+                                handleFieldSaved('visibility', opt);
+                                setVisibilityDropdownOpen(false);
+                              }}
+                              className={`flex items-center gap-3.5 w-full text-left px-4 py-3 text-sm transition-colors ${
+                                person.visibility === opt ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400' : 'text-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              <span className="font-medium">{opt}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Last Contacted */}
+              <div>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Last Contacted</span>
+                <input
+                  type="date"
+                  value={person.last_contacted ? person.last_contacted.slice(0, 10) : ''}
+                  onChange={async (e) => {
+                    const val = e.target.value ? new Date(e.target.value).toISOString() : null;
+                    const { error } = await supabase.from('leads').update({ last_contacted: val }).eq('id', person.id);
+                    if (error) { toast.error('Failed to update'); return; }
+                    handleFieldSaved('last_contacted', val ?? '');
+                  }}
+                  className="w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-border px-0 py-1.5 outline-none focus:ring-0"
+                />
+              </div>
             </div>
 
             {/* Email */}
@@ -1585,6 +2134,18 @@ export default function PeopleExpandedView() {
               <EditableRichTextField value={person.notes ?? ''} personId={person.id} field="notes" onSaved={handleFieldSaved} placeholder="Background info about this contact..." />
             </div>
 
+            {/* Description */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Description</span>
+              <EditableRichTextField value={person.description ?? ''} personId={person.id} field="description" onSaved={handleFieldSaved} placeholder="Add a description..." />
+            </div>
+
+            {/* History */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">History</span>
+              <EditableRichTextField value={person.history ?? ''} personId={person.id} field="history" onSaved={handleFieldSaved} placeholder="Add history notes..." />
+            </div>
+
             {/* Bank Relationships */}
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Bank Relationships</span>
@@ -1605,100 +2166,103 @@ export default function PeopleExpandedView() {
         {/* CENTER: Activity */}
         <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
           {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-4 gap-3 px-5 py-3.5 border-b border-border bg-card">
-            <StatBox
-              value={lastActivityDate}
-              label="Last Contacted"
-              icon={<Clock className="h-3.5 w-3.5 text-slate-400" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-slate-400"
-              valueColor="text-slate-700 dark:text-slate-300"
-              iconBg="bg-slate-100 dark:bg-slate-700/40"
-            />
-            <StatBox
-              value={inactiveDays ?? '\u2014'}
-              label="Days Since Activity"
-              icon={<AlertCircle className="h-3.5 w-3.5" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border={(inactiveDays ?? 0) > 30 ? 'border-red-500' : 'border-amber-500'}
-              valueColor={(inactiveDays ?? 0) > 30 ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}
-              iconBg={(inactiveDays ?? 0) > 30 ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}
-            />
-            <StatBox
-              value={totalTasks}
-              label="Total Tasks"
-              icon={<CheckSquare className="h-3.5 w-3.5 text-emerald-500" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-emerald-500"
-              valueColor="text-emerald-700 dark:text-emerald-400"
-              iconBg="bg-emerald-100 dark:bg-emerald-900/40"
-            />
-            <StatBox
-              value={typeCfg?.label ?? person.contact_type ?? '\u2014'}
-              label="Contact Type"
-              icon={<Layers className="h-3.5 w-3.5 text-blue-500" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-blue-500"
-              valueColor="text-blue-700 dark:text-blue-400 text-sm"
-              iconBg="bg-blue-100 dark:bg-blue-900/40"
-            />
+          <div className="shrink-0 grid grid-cols-3 divide-x divide-border border-b border-border bg-card">
+            <div className="flex flex-col items-center justify-center py-4">
+              <span className="text-xl font-bold text-foreground">{activities.length}</span>
+              <span className="text-xs text-muted-foreground mt-0.5">Interactions</span>
+            </div>
+            <div className="flex flex-col items-center justify-center py-4">
+              <span className="text-xl font-bold text-foreground">{person.last_contacted ? format(parseISO(person.last_contacted), 'M/d/yyyy') : '—'}</span>
+              <span className="text-xs text-muted-foreground mt-0.5">Last Contacted</span>
+            </div>
+            <div className="flex flex-col items-center justify-center py-4">
+              <span className="text-xl font-bold text-foreground">{inactiveDays ?? '—'}</span>
+              <span className="text-xs text-muted-foreground mt-0.5">Inactive Days</span>
+            </div>
           </div>
 
-          {/* Activity Tabs */}
-          <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border px-6 py-2.5 bg-card">
-            <button
-              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activityTab === 'log'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-              onClick={() => setActivityTab('log')}
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              Log Activity
-            </button>
-            <button
-              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activityTab === 'note'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-              onClick={() => setActivityTab('note')}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Create Note
-            </button>
-            <button
-              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activityTab === 'email'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-              onClick={() => setActivityTab('email')}
-            >
-              <Mail className="h-3.5 w-3.5" />
-              Send Email
-            </button>
+          {/* Activity Tabs — underline style */}
+          <div className="shrink-0 flex items-stretch bg-card border-b border-border">
+            {([
+              { key: 'log' as const, label: 'Log Activity' },
+              { key: 'note' as const, label: 'Create Note' },
+              { key: 'email' as const, label: 'Send Email' },
+            ]).map((tab) => (
+              <button
+                key={tab.key}
+                className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
+                  activityTab === tab.key
+                    ? 'text-blue-700 dark:text-blue-400'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setActivityTab(tab.key)}
+              >
+                {tab.label}
+                {activityTab === tab.key && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-t-full" />
+                )}
+              </button>
+            ))}
           </div>
 
           <ScrollArea className="flex-1">
             <div className="px-6 py-5">
               {activityTab === 'log' && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Select value={activityType} onValueChange={setActivityType}>
-                      <SelectTrigger className="h-8 w-[120px] text-xs rounded-lg border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="note" className="text-xs">Note</SelectItem>
-                        <SelectItem value="call" className="text-xs">Call</SelectItem>
-                        <SelectItem value="email" className="text-xs">Email</SelectItem>
-                        <SelectItem value="meeting" className="text-xs">Meeting</SelectItem>
-                        <SelectItem value="todo" className="text-xs">To Do</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {/* Activity type dropdown */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setActivityDropdownOpen(!activityDropdownOpen)}
+                      className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border hover:bg-muted/40 transition-colors text-sm font-medium text-foreground"
+                    >
+                      {(() => {
+                        const types: Record<string, { label: string; icon: typeof CheckSquare }> = {
+                          todo: { label: 'To Do', icon: CheckSquare },
+                          call: { label: 'Phone Call', icon: Phone },
+                          meeting: { label: 'Meeting', icon: CalendarDays },
+                          email: { label: 'Email', icon: MessageSquare },
+                          follow_up: { label: 'Follow Up', icon: Users },
+                        };
+                        const t = types[activityType] ?? types.todo;
+                        const Icon = t.icon;
+                        return <><Icon className="h-4 w-4 text-muted-foreground" />{t.label}</>;
+                      })()}
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                    </button>
+
+                    {activityDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setActivityDropdownOpen(false)} />
+                        <div className="absolute z-50 top-full left-0 mt-1.5 w-[320px] bg-popover border border-border rounded-xl shadow-lg overflow-hidden">
+                          <div className="py-1">
+                            {([
+                              { value: 'todo', label: 'To Do', icon: CheckSquare },
+                              { value: 'call', label: 'Phone Call', icon: Phone },
+                              { value: 'meeting', label: 'Meeting', icon: CalendarDays },
+                              { value: 'email', label: 'Email', icon: MessageSquare },
+                              { value: 'follow_up', label: 'Follow Up', icon: Users },
+                            ] as const)
+                              .map((opt) => {
+                                const Icon = opt.icon;
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => { setActivityType(opt.value); setActivityDropdownOpen(false); }}
+                                    className={`flex items-center gap-3.5 w-full text-left px-4 py-3 text-sm transition-colors ${
+                                      activityType === opt.value ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400' : 'text-foreground hover:bg-muted/50'
+                                    }`}
+                                  >
+                                    <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+                                    <span className="font-medium">{opt.label}</span>
+                                  </button>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
+
                   <RichTextEditor
                     value={activityNote}
                     onChange={setActivityNote}
@@ -2005,44 +2569,35 @@ export default function PeopleExpandedView() {
               label="Tasks"
               count={pendingTasks.length}
               iconColor="text-emerald-500"
-              onAdd={() => setAddingTask(true)}
+              onAdd={() => { setEditingTask(null); setNewTaskTitle(''); setTaskDialogOpen(true); }}
             >
-              <div className="space-y-2 py-1">
+              <div className="space-y-1 py-1">
                 {pendingTasks.map((t) => (
-                  <div key={t.id} className="flex items-center gap-2 text-xs">
-                    <CheckSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1 py-1 -mx-1 transition-colors group"
+                    onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
+                  >
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
+                      className="shrink-0"
+                    >
+                      <div className="h-3.5 w-3.5 rounded-sm border border-muted-foreground/40 group-hover:border-emerald-400 transition-colors" />
+                    </button>
                     <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
-                    {t.created_at && (
+                    {t.due_date && (
                       <span className="text-[10px] text-muted-foreground shrink-0">
-                        {formatShortDate(t.created_at)}
+                        {formatShortDate(t.due_date)}
                       </span>
                     )}
                   </div>
                 ))}
-                {addingTask ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input
-                      autoFocus
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newTaskTitle.trim()) handleSaveTask();
-                        if (e.key === 'Escape') { setAddingTask(false); setNewTaskTitle(''); }
-                      }}
-                      placeholder="Task title..."
-                      disabled={savingTask}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingTask && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingTask(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add task...
-                  </button>
-                )}
+                <button
+                  onClick={() => { setEditingTask(null); setNewTaskTitle(''); setTaskDialogOpen(true); }}
+                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                >
+                  + Add task...
+                </button>
                 {/* Show completed tasks toggle */}
                 {completedTasks.length > 0 && (
                   <>
@@ -2054,26 +2609,21 @@ export default function PeopleExpandedView() {
                       Show completed tasks ({completedTasks.length})
                     </button>
                     {showCompletedTasks && completedTasks.map((t) => (
-                      <div key={t.id} className="flex items-center gap-2 text-xs">
-                        <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                      <div
+                        key={t.id}
+                        className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1 py-1 -mx-1 transition-colors"
+                        onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
+                      >
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
+                          className="shrink-0"
+                        >
+                          <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />
+                        </button>
                         <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
                       </div>
                     ))}
                   </>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Contact Type */}
-            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Contact Type" count={1} iconColor="text-blue-500">
-              <div className="py-1">
-                {typeCfg ? (
-                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${typeCfg.bg}`}>
-                    <span className={`h-2 w-2 rounded-full ${typeCfg.dot}`} />
-                    <span className={`text-[11px] font-semibold ${typeCfg.color}`}>{typeCfg.label}</span>
-                  </div>
-                ) : (
-                  <Badge variant="outline" className="text-[11px]">{person.contact_type}</Badge>
                 )}
               </div>
             </RelatedSection>
@@ -2138,6 +2688,81 @@ export default function PeopleExpandedView() {
               </div>
             </RelatedSection>
 
+            {/* Pipeline Records */}
+            <RelatedSection
+              icon={<Layers className="h-3.5 w-3.5" />}
+              label="Pipeline Records"
+              count={pipelineRecords.length}
+              iconColor="text-purple-500"
+              onAdd={() => setAddingPipelineRecord(true)}
+            >
+              <div className="space-y-1.5 py-1">
+                {pipelineRecords.map((rec: any) => (
+                  <button
+                    key={rec.id}
+                    onClick={() => navigate(getPipelineLeadRoute(rec.pipeline.name, personId!))}
+                    className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors w-full text-left group"
+                  >
+                    <div
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{ backgroundColor: rec.stage?.color || '#6b7280' }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">{rec.pipeline.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {rec.stage?.name} · {formatShortDate(rec.added_at)}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </button>
+                ))}
+
+                {addingPipelineRecord ? (
+                  <div className="space-y-1.5 mt-1">
+                    <Select value={selectedPipelineToAdd} onValueChange={setSelectedPipelineToAdd}>
+                      <SelectTrigger className="h-8 text-xs border-border">
+                        <SelectValue placeholder="Add Pipeline Record" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePipelines.map((p: any) => (
+                          <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs flex-1"
+                        disabled={!selectedPipelineToAdd || addToPipelineMutation.isPending}
+                        onClick={() => addToPipelineMutation.mutate(selectedPipelineToAdd)}
+                      >
+                        {addToPipelineMutation.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                        Add
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => { setAddingPipelineRecord(false); setSelectedPipelineToAdd(''); }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    {availablePipelines.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground italic">Already in all pipelines</p>
+                    )}
+                  </div>
+                ) : pipelineRecords.length === 0 ? (
+                  <button
+                    onClick={() => setAddingPipelineRecord(true)}
+                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                  >
+                    + Add Pipeline Record
+                  </button>
+                ) : null}
+              </div>
+            </RelatedSection>
+
             {/* Calendar Events */}
             <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0} iconColor="text-amber-500">
               <p className="text-xs text-muted-foreground py-1">No events</p>
@@ -2146,5 +2771,44 @@ export default function PeopleExpandedView() {
         </ScrollArea>
       </div>
     </div>
+
+    {/* Customize Contact Types Dialog */}
+    <Dialog open={showCustomizeDialog} onOpenChange={setShowCustomizeDialog}>
+      <DialogContent className="sm:max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle>Customize Contact Types</DialogTitle>
+        </DialogHeader>
+        <CustomizeContactTypesPanel
+          customTypes={customContactTypes}
+          onUpdate={(types) => {
+            setCustomContactTypes(types);
+            saveCustomContactTypes(types);
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+
+    {/* Task Detail Dialog */}
+    {personId && (
+      <PeopleTaskDetailDialog
+        task={editingTask}
+        open={taskDialogOpen}
+        onClose={() => {
+          setTaskDialogOpen(false);
+          setEditingTask(null);
+          setAddingTask(false);
+          setNewTaskTitle('');
+        }}
+        leadId={personId}
+        leadName={person?.name ?? ''}
+        teamMembers={teamMembers}
+        currentUserName={teamMember?.name ?? null}
+        initialTitle={editingTask ? undefined : newTaskTitle}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['person-tasks', personId] });
+        }}
+      />
+    )}
+    </>
   );
 }

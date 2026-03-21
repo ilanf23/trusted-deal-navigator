@@ -2213,6 +2213,7 @@ export type Database = {
       }
       lead_tasks: {
         Row: {
+          activity_type: string | null
           assigned_to: string | null
           completed_at: string | null
           created_at: string
@@ -2227,6 +2228,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activity_type?: string | null
           assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
@@ -2241,6 +2243,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activity_type?: string | null
           assigned_to?: string | null
           completed_at?: string | null
           created_at?: string

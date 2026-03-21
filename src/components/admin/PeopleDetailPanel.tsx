@@ -16,9 +16,11 @@ import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/ad
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
+import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
 // ── Person type ──
@@ -470,15 +472,15 @@ function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; on
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.email_type}</span>
       <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{entry.email}</span>
-      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
         <Pencil className="h-3 w-3" />
       </button>
-      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-        <Trash2 className="h-3 w-3" />
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
+        <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -521,20 +523,20 @@ function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonP
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.phone_type}</span>
       <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{formatPhoneNumber(entry.phone_number)}</span>
       {onCall && (
-        <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
           <PhoneCall className="h-3 w-3" />
         </button>
       )}
-      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
         <Pencil className="h-3 w-3" />
       </button>
-      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-        <Trash2 className="h-3 w-3" />
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0">
+        <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -597,16 +599,16 @@ function AddressBlock({ entry, onDelete, onUpdate }: { entry: PersonAddress; onD
 
   const parts = [entry.address_line_1, entry.city, entry.state, entry.zip_code].filter(Boolean);
   return (
-    <div className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+    <div className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group/row">
       <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setEditing(true)}>
         <span className="text-[11px] text-muted-foreground uppercase font-medium">{entry.address_type}</span>
         <p className="text-[13px] text-foreground font-medium">{parts.join(', ') || '\u2014'}</p>
       </div>
-      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0 mt-0.5">
         <Pencil className="h-3 w-3" />
       </button>
-      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover/row:opacity-100 transition-all shrink-0 mt-0.5">
         <Trash2 className="h-3 w-3" />
       </button>
     </div>
@@ -794,18 +796,44 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
 
 // ── Related Tab Content ──
 function RelatedTabContent({ person, contactTypeConfig }: { person: Person; contactTypeConfig: Record<string, ContactTypeConfigEntry> }) {
+  const queryClient = useQueryClient();
+  const { teamMember } = useTeamMember();
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
-    queryKey: ['people-related', 'tasks', person.id],
+    queryKey: ['person-tasks', person.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_activities')
-        .select('id, title, activity_type, content, created_at')
+        .from('lead_tasks')
+        .select('*')
         .eq('lead_id', person.id)
-        .eq('activity_type', 'task')
         .order('created_at', { ascending: false });
-      return data || [];
+      return (data || []) as LeadTask[];
     },
   });
+
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['team-members'],
+    queryFn: async () => {
+      const { data } = await supabase.from('team_members').select('id, name').eq('is_active', true);
+      return (data || []) as { id: string; name: string }[];
+    },
+  });
+
+  const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
+    const isCompleting = !task.completed_at;
+    await supabase.from('lead_tasks').update({
+      completed_at: isCompleting ? new Date().toISOString() : null,
+      status: isCompleting ? 'completed' : 'pending',
+      updated_at: new Date().toISOString(),
+    }).eq('id', task.id);
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', person.id] });
+  }, [person.id, queryClient]);
+
+  const pendingTasks = tasks.filter(t => !t.completed_at);
+  const completedTasks = tasks.filter(t => !!t.completed_at);
 
   if (loadingTasks) {
     return (
@@ -857,32 +885,87 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
             <span className="text-emerald-500"><CheckSquare className="h-3.5 w-3.5" /></span> Tasks
           </span>
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-muted text-muted-foreground">
-            {tasks.length}
+            {pendingTasks.length}
           </Badge>
         </CollapsibleTrigger>
         <CollapsibleContent className="pl-6 pb-2">
-          {tasks.length === 0 ? (
+          {pendingTasks.length === 0 && completedTasks.length === 0 ? (
             <p className="text-xs text-muted-foreground italic py-1">No tasks</p>
           ) : (
-            <div className="space-y-1.5 pt-1">
-              {tasks.map((t) => (
-                  <div key={t.id} className="flex items-center gap-2">
-                    <div className="h-4 w-4 rounded border flex items-center justify-center shrink-0 border-border">
-                    </div>
-                    <span className="text-[12px] truncate flex-1 text-foreground">
-                      {t.title}
+            <div className="space-y-1 pt-1">
+              {pendingTasks.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded-md px-1 py-0.5 -mx-1 transition-colors group"
+                  onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
+                >
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
+                    className="shrink-0"
+                  >
+                    <div className="h-4 w-4 rounded border border-border group-hover:border-emerald-400 transition-colors" />
+                  </button>
+                  <span className="text-[12px] truncate flex-1 text-foreground">
+                    {t.title}
+                  </span>
+                  {t.due_date && (
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                      {formatDate(t.due_date)}
                     </span>
-                    {t.created_at && (
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                        {formatDate(t.created_at)}
-                      </span>
-                    )}
-                  </div>
+                  )}
+                </div>
               ))}
+              {completedTasks.length > 0 && (
+                <>
+                  <button
+                    onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
+                  >
+                    {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                    Completed ({completedTasks.length})
+                  </button>
+                  {showCompletedTasks && completedTasks.map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded-md px-1 py-0.5 -mx-1 transition-colors"
+                      onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
+                    >
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
+                        className="shrink-0"
+                      >
+                        <CheckSquare className="h-4 w-4 text-emerald-500" />
+                      </button>
+                      <span className="text-[12px] truncate flex-1 text-muted-foreground line-through">
+                        {t.title}
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
+              <button
+                onClick={() => { setEditingTask(null); setTaskDialogOpen(true); }}
+                className="text-[11px] text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+              >
+                + Add task...
+              </button>
             </div>
           )}
         </CollapsibleContent>
       </Collapsible>
+
+      <PeopleTaskDetailDialog
+        task={editingTask}
+        open={taskDialogOpen}
+        onClose={() => { setTaskDialogOpen(false); setEditingTask(null); }}
+        leadId={person.id}
+        leadName={person.name}
+        teamMembers={teamMembers}
+        currentUserName={teamMember?.name ?? null}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['person-tasks', person.id] });
+        }}
+      />
 
       {/* Contact Type */}
       <Collapsible defaultOpen>
