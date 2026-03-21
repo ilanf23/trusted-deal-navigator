@@ -759,7 +759,7 @@ export default function UnderwritingExpandedView() {
 
   const handleOpenPersonPanel = useCallback(async (personName: string) => {
     const { data } = await supabase
-      .from('people')
+      .from('leads')
       .select('*')
       .ilike('name', personName)
       .limit(1)
@@ -1466,22 +1466,6 @@ export default function UnderwritingExpandedView() {
           </div>
         </div>
 
-        {/* Primary Contact */}
-        <div className="px-6 pb-5 pt-1 flex items-center gap-4">
-          <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
-            <DollarSign className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xl font-semibold text-foreground truncate">{lead.name}</p>
-            <p className="text-sm text-muted-foreground truncate">
-              {lead.company_name}{lead.company_name && dealValue ? ' / ' : ''}{dealValue ? formatValue(dealValue) : ''}
-            </p>
-            <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/60 w-fit">
-              <DollarSign className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
-              <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Opportunity</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ── 3-Column Body ── */}
@@ -1510,8 +1494,6 @@ export default function UnderwritingExpandedView() {
                 </div>
               </div>
             </div>
-
-            {/* ── Copper CRM Field List ── */}
 
             {/* Name */}
             <div>

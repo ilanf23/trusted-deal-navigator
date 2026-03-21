@@ -371,7 +371,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
         <Link to={homeUrl} className={`flex items-center justify-center group ${isCollapsed ? '' : 'relative z-10 -mt-6 -mb-10'}`}>
           {isCollapsed ? (
             <div className="w-12 h-12 rounded-xl bg-sidebar-accent flex items-center justify-center shadow-sm">
-              <span className="text-sidebar-accent-foreground font-extrabold text-lg tracking-tight">CX</span>
+              <span className="text-sidebar-accent-foreground font-extrabold text-lg tracking-tight">CLX</span>
             </div>
           ) : (
             <img

@@ -13,6 +13,7 @@ import { sanitizeFileName } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/address-autocomplete';
 import {
   X, DollarSign, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
@@ -20,21 +21,15 @@ import {
   MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
   User, Mail, Phone, PhoneCall, Hash, Tag, Briefcase, Loader2,
   Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download, Send,
+  Copy, MoreHorizontal, Check,
 } from 'lucide-react';
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 
 import {
-  EditableField,
-  EditableSelectField,
-  EditableContactRow,
-  EditableTags,
-  EditableNotes,
-  EditableNotesField,
-  ReadOnlyField,
   formatPhoneNumber,
 } from './InlineEditableFields';
 
@@ -170,6 +165,265 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   note: { icon: Pencil, color: 'text-amber-500' },
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
 };
+
+/* ─── CRM-style inline-save helper (for stacked label fields) ─── */
+function useCrmInlineSave(
+  leadId: string,
+  field: string,
+  currentValue: string,
+  onSaved: (field: string, newValue: string) => void,
+) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(currentValue);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (editing) setDraft(currentValue);
+  }, [editing, currentValue]);
+
+  const save = useCallback(async () => {
+    const trimmed = draft.trim();
+    if (trimmed === currentValue) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from('leads')
+      .update({ [field]: trimmed || null })
+      .eq('id', leadId);
+    setSaving(false);
+    if (error) {
+      toast.error('Failed to save');
+      return;
+    }
+    onSaved(field, trimmed);
+    setEditing(false);
+  }, [draft, currentValue, field, leadId, onSaved]);
+
+  const cancel = useCallback(() => {
+    setDraft(currentValue);
+    setEditing(false);
+  }, [currentValue]);
+
+  return { editing, setEditing, draft, setDraft, saving, save, cancel };
+}
+
+/* ─── CRM Editable Field (label above value) ─── */
+function CrmEditableField({
+  label, value, field, leadId, onSaved, placeholder, required, copyable, noLabel,
+}: {
+  label: string; value: string; field: string;
+  leadId: string;
+  onSaved: (field: string, newValue: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  copyable?: boolean;
+  noLabel?: boolean;
+}) {
+  const { editing, setEditing, draft, setDraft, saving, save, cancel } = useCrmInlineSave(leadId, field, value, onSaved);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) setTimeout(() => inputRef.current?.focus(), 0);
+  }, [editing]);
+
+  if (editing) {
+    return (
+      <div>
+        {!noLabel && label && (
+          <span className="text-xs font-medium text-muted-foreground block mb-1">
+            {label}
+            {required && <span className="text-red-500 ml-0.5">*</span>}
+          </span>
+        )}
+        <div className="flex items-center gap-1.5">
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
+            onBlur={save}
+            disabled={saving}
+            placeholder={placeholder}
+            className="w-full text-sm font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+          />
+          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={() => setEditing(true)} className="cursor-pointer group">
+      {!noLabel && label && (
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            {label}
+            {required && <span className="text-red-500 ml-0.5">*</span>}
+          </span>
+          {copyable && value && (
+            <button
+              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(value); toast.success('Copied'); }}
+              className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+      <span className={`text-sm font-medium block ${value ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+        {value || placeholder || '\u2014'}
+      </span>
+    </div>
+  );
+}
+
+/* ─── CRM Editable Rich Text Field ─── */
+function CrmEditableRichTextField({
+  value, leadId, field, onSaved, placeholder,
+}: {
+  value: string; leadId: string; field: string;
+  onSaved: (field: string, newValue: string) => void;
+  placeholder?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (editing) setDraft(value);
+  }, [editing, value]);
+
+  const save = useCallback(async () => {
+    const trimmed = draft.trim();
+    if (trimmed === value) { setEditing(false); return; }
+    setSaving(true);
+    const { error } = await supabase
+      .from('leads')
+      .update({ [field]: trimmed || null })
+      .eq('id', leadId);
+    setSaving(false);
+    if (error) { toast.error('Failed to save'); return; }
+    onSaved(field, trimmed);
+    setEditing(false);
+  }, [draft, value, field, leadId, onSaved]);
+
+  if (editing) {
+    return (
+      <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-3">
+        <RichTextEditor
+          value={draft}
+          onChange={setDraft}
+          placeholder={placeholder || "Add content..."}
+          minHeight="60px"
+          disabled={saving}
+        />
+        <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-blue-100">
+          {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+          <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">Cancel</button>
+          <button onClick={save} disabled={saving} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
+            <Check className="h-3 w-3" />Save
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={() => setEditing(true)} className="rounded-lg border border-border p-3 cursor-pointer hover:border-border hover:bg-muted/50 transition-all group">
+      {value ? (
+        <HtmlContent value={value} />
+      ) : (
+        <p className="text-[13px] text-muted-foreground italic">{placeholder || "Click to add content..."}</p>
+      )}
+      <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Pencil className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[11px] text-muted-foreground">Click to edit</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── CRM Editable Tags ─── */
+function CrmEditableTags({
+  tags, leadId, onSaved,
+}: {
+  tags: string[]; leadId: string;
+  onSaved: (field: string, newValue: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(tags.join(', '));
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(tags.join(', '));
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [editing, tags]);
+
+  const save = async () => {
+    const newTags = draft.split(',').map(t => t.trim()).filter(Boolean);
+    const currentStr = tags.join(',');
+    const newStr = newTags.join(',');
+    if (newStr === currentStr) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from('leads')
+      .update({ tags: newTags.length > 0 ? newTags : null })
+      .eq('id', leadId);
+    setSaving(false);
+    if (error) {
+      toast.error('Failed to save');
+      return;
+    }
+    onSaved('tags', newStr);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 rounded-lg bg-blue-50/50 border border-blue-100 px-3 py-1.5">
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(tags.join(', ')); setEditing(false); } }}
+          onBlur={save}
+          disabled={saving}
+          placeholder="tag1, tag2, ..."
+          className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
+        />
+        {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={() => setEditing(true)} className="cursor-pointer group">
+      {tags.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {tags.map((tag) => (
+            <Badge key={tag} variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 font-medium">
+              {tag}
+            </Badge>
+          ))}
+          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs text-muted-foreground italic">No tags</p>
+          <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ─── Stats Card (accent card style) ─── */
 function StatBox({ value, label, icon, bg, border, valueColor, iconBg }: {
@@ -1001,82 +1255,98 @@ export default function PipelineExpandedView() {
 
   return (
     <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
-      {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border px-4 py-2 flex items-center">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
       {/* ── 3-Column Body ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* LEFT: Details — fully editable */}
-        <div className="w-[320px] xl:w-[400px] shrink-0 border-r border-border bg-card overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="px-6 py-6 space-y-6">
+        {/* LEFT: Details — CRM-style contact panel */}
+        <div className="w-[320px] xl:w-[400px] shrink-0 border-r border-border bg-card overflow-hidden flex flex-col">
+          {/* Purple accent bar */}
+          <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-600 shrink-0" />
 
-            {/* Primary Contact + Value */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Primary Contact</span>
-              <div className="rounded-2xl bg-gradient-to-b from-card to-muted/20 dark:to-muted/10 border border-border/60 shadow-sm p-5">
-                <div className="flex items-start gap-3.5">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md shadow-blue-500/20 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-bold text-white">{initial}</span>
-                  </div>
-                  <div className="min-w-0 space-y-1">
-                    <p className="text-base font-bold tracking-tight text-foreground truncate">{lead.name}</p>
-                    {lead.company_name && (
-                      <p className="text-[13px] text-muted-foreground truncate">{lead.company_name}</p>
-                    )}
-                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{formatValue(dealValue)}</p>
-                    <div className="flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-lg bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/60 w-fit">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Opportunity</span>
-                    </div>
-                  </div>
+          {/* Action bar */}
+          <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-border">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
+              <X className="h-4 w-4" />
+            </Button>
+            <div className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-medium"
+              onClick={() => navigate(`/admin/gmail?compose=new${lead.email ? `&to=${encodeURIComponent(lead.email)}` : ''}`)}
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Email
+            </Button>
+            <Button
+              variant={lead.flagged_for_weekly ? 'default' : 'outline'}
+              size="sm"
+              className={`h-8 gap-1.5 text-xs font-medium ${lead.flagged_for_weekly ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''}`}
+              onClick={() => handleBooleanToggle('flagged_for_weekly', lead.flagged_for_weekly)}
+            >
+              <Flag className="h-3.5 w-3.5" />
+              {lead.flagged_for_weekly ? 'Following' : 'Follow'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={() => { navigator.clipboard.writeText(lead.name); toast.success('Name copied'); }}
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => toast.info('More options coming soon')}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Scrollable content */}
+          <ScrollArea className="flex-1">
+            <div className="px-6 py-6 space-y-6">
+
+              {/* ── Contact Card Header ── */}
+              <div className="flex items-start gap-4">
+                <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                  <span className="text-lg font-bold text-gray-500 dark:text-gray-400">
+                    {lead.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
+                  </span>
                 </div>
-                <Separator className="!my-4 opacity-50" />
-                <div className="space-y-1">
-                  {lead.phone ? (
-                    <button
-                      onClick={() => navigate(`/admin/calls?phone=${encodeURIComponent(lead.phone!.replace(/\D/g, ''))}&leadId=${lead.id}`)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors group cursor-pointer w-full"
-                    >
-                      <Phone className="h-3.5 w-3.5 text-muted-foreground group-hover:text-green-600 shrink-0" />
-                      <span className="text-[13px] text-foreground font-medium truncate flex-1 text-left">{formatPhoneNumber(lead.phone)}</span>
-                      <PhoneCall className="h-3.5 w-3.5 text-green-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                    </button>
-                  ) : (
-                    <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value="" field="phone" leadId={lead.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+                <div className="min-w-0 pt-0.5">
+                  <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{lead.name}</h2>
+                  {lead.company_name && (
+                    <p className="text-sm text-muted-foreground mt-0.5 truncate">{lead.company_name}</p>
                   )}
-                  {lead.email ? (
-                    <button
-                      onClick={() => navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(lead.email!)}`)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group cursor-pointer w-full"
-                    >
-                      <Mail className="h-3.5 w-3.5 text-muted-foreground group-hover:text-blue-600 shrink-0" />
-                      <span className="text-[13px] text-foreground font-medium truncate flex-1 text-left">{lead.email}</span>
-                      <Send className="h-3.5 w-3.5 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                    </button>
-                  ) : (
-                    <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value="" field="email" leadId={lead.id} placeholder="Add email..." onSaved={handleFieldSaved} />
-                  )}
+                  <div className="mt-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
+                      <DollarSign className="h-3 w-3" />
+                      Opportunity
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Deal Info (editable — white box) */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Deal Info</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
-                <div className="px-3 py-2 space-y-1.5">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Layers className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium text-muted-foreground">Stage</span>
-                  </div>
+              {/* ── Copper-style Fields ── */}
+              <div className="space-y-5">
+                {/* Name */}
+                <CrmEditableField label="Name" value={lead.name} field="name" leadId={lead.id} onSaved={handleFieldSaved} required copyable />
+
+                {/* Company */}
+                <CrmEditableField label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Company" />
+
+                {/* Known As (Nick Name) */}
+                <CrmEditableField label="Known As (Nick Name)" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Known As (Nick Name)" />
+
+                {/* CLX - File Name */}
+                <CrmEditableField label="CLX - File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add CLX - File Name" />
+
+                {/* Title */}
+                <CrmEditableField label="Title" value={lead.opportunity_name ?? ''} field="opportunity_name" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Title" />
+
+                {/* Stage */}
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground block mb-1">Stage</span>
                   <Select value={lead.status} onValueChange={(v) => handleStageChange(v as LeadStatus)}>
-                    <SelectTrigger className={`h-8 w-full text-[13px] rounded-lg ${stageCfg?.bg ?? 'bg-muted'} ${stageCfg?.color ?? 'text-foreground'} border-border shadow-none px-2.5 gap-1`}>
+                    <SelectTrigger className={`h-auto w-full text-sm font-medium bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0 ${stageCfg?.color ?? 'text-foreground'}`}>
                       <SelectValue>{stageCfg?.title ?? lead.status}</SelectValue>
                     </SelectTrigger>
                     <SelectContent className="min-w-[220px]">
@@ -1094,205 +1364,279 @@ export default function PipelineExpandedView() {
                     </SelectContent>
                   </Select>
                 </div>
-                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<Clock className="h-3.5 w-3.5" />} label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} />
-              </div>
-            </div>
 
-            {/* Tags */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Tags</span>
-              <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
-            </div>
+                {/* Contact Type */}
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground block mb-1">Contact Type</span>
+                  <Select value={lead.contact_type ?? ''} onValueChange={async (v) => {
+                    const { error } = await supabase.from('leads').update({ contact_type: v || null }).eq('id', lead.id);
+                    if (error) { toast.error('Failed to save'); return; }
+                    handleFieldSaved('contact_type', v);
+                  }}>
+                    <SelectTrigger className="h-auto w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0">
+                      <SelectValue>{CONTACT_TYPE_OPTIONS.find(o => o.value === lead.contact_type)?.label ?? lead.contact_type ?? '\u2014'}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="min-w-[220px]">
+                      {CONTACT_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-[13px]">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {/* Description */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Description</span>
-              <EditableNotesField value={lead.description ?? ''} field="description" leadId={lead.id} placeholder={"Deal referred by ____\nLoan Amount $____M\nAdditional deal/collateral details..."} onSaved={handleFieldSaved} />
-            </div>
-
-            {/* Details (editable — white box) */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Details</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
-                <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
-                {ownerOptions.length > 0 ? (
-                  <EditableSelectField
-                    icon={<User className="h-3.5 w-3.5" />}
-                    label="Owner"
-                    value={lead.assigned_to ?? ''}
-                    displayValue={assignedName}
-                    field="assigned_to"
-                    leadId={lead.id}
-                    options={ownerOptions}
-                    onSaved={handleFieldSaved}
-                  />
-                ) : (
-                  <EditableField icon={<User className="h-3.5 w-3.5" />} label="Owner" value={assignedName} field="assigned_to" leadId={lead.id} onSaved={handleFieldSaved} />
-                )}
-                <EditableField icon={<Briefcase className="h-3.5 w-3.5" />} label="Opportunity Name" value={lead.opportunity_name ?? ''} field="opportunity_name" leadId={lead.id} onSaved={handleFieldSaved} />
-                <EditableSelectField
-                  icon={<Users className="h-3.5 w-3.5" />}
-                  label="Contact Type"
-                  value={lead.contact_type ?? ''}
-                  displayValue={CONTACT_TYPE_OPTIONS.find(o => o.value === lead.contact_type)?.label ?? lead.contact_type ?? '\u2014'}
-                  field="contact_type"
-                  leadId={lead.id}
-                  options={CONTACT_TYPE_OPTIONS}
-                  onSaved={handleFieldSaved}
-                />
-                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} />
-              </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Email</span>
-              <div className="space-y-1">
-                {leadEmails.map((e) => (
-                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
-                ))}
-                {showAddEmail ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
-                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <Select value={newEmailType} onValueChange={setNewEmailType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="work" className="text-xs">Work</SelectItem>
-                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
-                )}
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Phone</span>
-              <div className="space-y-1">
-                {leadPhones.map((p) => (
-                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
-                ))}
-                {showAddPhone ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
-                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <Select value={newPhoneType} onValueChange={setNewPhoneType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="work" className="text-xs">Work</SelectItem>
-                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                        <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
-                )}
-              </div>
-            </div>
-
-            {/* Address */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Address</span>
-              <div className="space-y-1">
-                {leadAddresses.map((a) => (
-                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
-                ))}
-                {showAddAddress ? (
-                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
-                    <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                    <div className="flex gap-1.5">
-                      <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                    </div>
+                {/* Owner */}
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground block mb-1">Owner</span>
+                  {assignedName ? (
                     <div className="flex items-center justify-between">
-                      <Select value={newAddressType} onValueChange={setNewAddressType}>
-                        <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
+                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{assignedName}</span>
+                      <button
+                        onClick={async () => {
+                          await supabase.from('leads').update({ assigned_to: null }).eq('id', lead.id);
+                          handleFieldSaved('assigned_to', '');
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : ownerOptions.length > 0 ? (
+                    <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
+                      const { error } = await supabase.from('leads').update({ assigned_to: v || null }).eq('id', lead.id);
+                      if (error) { toast.error('Failed to save'); return; }
+                      handleFieldSaved('assigned_to', v);
+                    }}>
+                      <SelectTrigger className="h-auto w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0">
+                        <SelectValue placeholder="Add Owner" />
+                      </SelectTrigger>
+                      <SelectContent className="min-w-[200px]">
+                        {ownerOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} className="text-[13px]">{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <CrmEditableField label="" value="" field="assigned_to" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Owner" noLabel />
+                  )}
+                </div>
+
+                {/* Waiting On */}
+                <CrmEditableField label="Waiting On" value={lead.waiting_on ?? ''} field="waiting_on" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Waiting On" />
+
+                {/* Work Email */}
+                {lead.email ? (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground block mb-1">Work Email</span>
+                    <div className="flex items-center justify-between">
+                      <a href={`mailto:${lead.email}`} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate">{lead.email}</a>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(lead.email!); toast.success('Email copied'); }}
+                        className="text-muted-foreground hover:text-foreground shrink-0 ml-2"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <CrmEditableField label="Work Email" value="" field="email" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Email" />
+                )}
+
+                {/* Phone */}
+                {lead.phone ? (
+                  <div>
+                    <span className="text-xs font-medium text-muted-foreground block mb-1">Phone</span>
+                    <button
+                      onClick={() => navigate(`/admin/calls?phone=${encodeURIComponent(lead.phone!.replace(/\D/g, ''))}&leadId=${lead.id}`)}
+                      className="text-sm font-medium text-foreground hover:text-blue-600 transition-colors"
+                    >
+                      {formatPhoneNumber(lead.phone)}
+                    </button>
+                  </div>
+                ) : (
+                  <CrmEditableField label="Phone" value="" field="phone" leadId={lead.id} onSaved={handleFieldSaved} placeholder="Add Phone" />
+                )}
+              </div>
+
+              {/* ── Description ── */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Description</span>
+                <CrmEditableRichTextField value={lead.description ?? ''} leadId={lead.id} field="description" onSaved={handleFieldSaved} placeholder={"Deal referred by ____\nLoan Amount $____M\nAdditional deal/collateral details..."} />
+              </div>
+
+              {/* ── Tags ── */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Tags</span>
+                <CrmEditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
+              </div>
+
+              {/* ── Email List ── */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Email</span>
+                <div className="space-y-1">
+                  {leadEmails.map((e) => (
+                    <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
+                  ))}
+                  {showAddEmail ? (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                      <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                      <Select value={newEmailType} onValueChange={setNewEmailType}>
+                        <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="business" className="text-xs">Business</SelectItem>
-                          <SelectItem value="home" className="text-xs">Home</SelectItem>
+                          <SelectItem value="work" className="text-xs">Work</SelectItem>
+                          <SelectItem value="personal" className="text-xs">Personal</SelectItem>
                         </SelectContent>
                       </Select>
+                      <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Phone List ── */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Phone</span>
+                <div className="space-y-1">
+                  {leadPhones.map((p) => (
+                    <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
+                  ))}
+                  {showAddPhone ? (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                      <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                      <Select value={newPhoneType} onValueChange={setNewPhoneType}>
+                        <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="work" className="text-xs">Work</SelectItem>
+                          <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+                          <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Address ── */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Address</span>
+                <div className="space-y-1">
+                  {leadAddresses.map((a) => (
+                    <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
+                  ))}
+                  {showAddAddress ? (
+                    <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                      <AddressAutocompleteInput
+                        value={newAddressLine1}
+                        onChange={setNewAddressLine1}
+                        onSelect={(parsed: ParsedAddress) => {
+                          setNewAddressLine1(parsed.address_line_1);
+                          setNewAddressCity(parsed.city);
+                          setNewAddressState(parsed.state);
+                          setNewAddressZip(parsed.zip_code);
+                        }}
+                        placeholder="Start typing an address..."
+                        autoFocus
+                        className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300"
+                      />
                       <div className="flex gap-1.5">
-                        <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
-                        <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
+                        <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                        <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                        <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Select value={newAddressType} onValueChange={setNewAddressType}>
+                          <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="business" className="text-xs">Business</SelectItem>
+                            <SelectItem value="home" className="text-xs">Home</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
+                          <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
+                        </div>
                       </div>
                     </div>
+                  ) : (
+                    <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
+                  )}
+                </div>
+              </div>
+
+              {/* ── About ── */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">About</span>
+                <CrmEditableRichTextField value={lead.about ?? ''} leadId={lead.id} field="about" onSaved={handleFieldSaved} placeholder="Details from initial contact..." />
+              </div>
+
+              {/* ── History ── */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">History</span>
+                <CrmEditableRichTextField value={lead.history ?? ''} leadId={lead.id} field="history" onSaved={handleFieldSaved} placeholder="Old CRM carryover info..." />
+              </div>
+
+              {/* ── Bank Relationships ── */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Bank Relationships</span>
+                <CrmEditableRichTextField value={lead.bank_relationships ?? ''} leadId={lead.id} field="bank_relationships" onSaved={handleFieldSaved} placeholder="Excluded lender names from CLX agreement..." />
+              </div>
+
+              {/* Client Working with Other Lenders */}
+              <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between px-4 py-3.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Client Working with Other Lenders</span>
+                </div>
+                <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.client_other_lenders ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
+                  <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.client_other_lenders ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Notes</span>
+                <CrmEditableRichTextField value={lead.notes ?? ''} leadId={lead.id} field="notes" onSaved={handleFieldSaved} placeholder="Add notes..." />
+              </div>
+
+              {/* Fixed (read-only info) */}
+              <div>
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Pipeline</span>
+                    <span className="text-sm font-medium text-foreground">Pipeline</span>
                   </div>
-                ) : (
-                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
-                )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Created</span>
+                    <span className="text-sm font-medium text-foreground">{formatDate(lead.created_at)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Source</span>
+                    <span className="text-sm font-medium text-foreground">{lead.source ?? '\u2014'}</span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* About */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">About</span>
-              <EditableNotesField value={lead.about ?? ''} field="about" leadId={lead.id} placeholder="Details from initial contact..." onSaved={handleFieldSaved} />
+              {/* + Add new field */}
+              <button
+                onClick={() => toast.info('Custom fields coming soon')}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-2 border-t border-border w-full justify-center mt-2"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add new field
+              </button>
             </div>
-
-            {/* History */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">History</span>
-              <EditableNotesField value={lead.history ?? ''} field="history" leadId={lead.id} placeholder="Old CRM carryover info..." onSaved={handleFieldSaved} />
-            </div>
-
-            {/* Bank Relationships */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Bank Relationships</span>
-              <EditableNotesField value={lead.bank_relationships ?? ''} field="bank_relationships" leadId={lead.id} placeholder="Excluded lender names from CLX agreement..." onSaved={handleFieldSaved} />
-            </div>
-
-            {/* Client Working with Other Lenders */}
-            <div onClick={() => handleBooleanToggle('client_other_lenders', lead.client_other_lenders)} className="flex items-center justify-between px-4 py-3.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
-              <div className="flex items-center gap-2">
-                <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">Client Working with Other Lenders</span>
-              </div>
-              <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.client_other_lenders ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
-                <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.client_other_lenders ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </div>
-            </div>
-
-            {/* Weekly's */}
-            <div onClick={() => handleBooleanToggle('flagged_for_weekly', lead.flagged_for_weekly)} className="flex items-center justify-between px-4 py-3.5 rounded-lg border border-border hover:bg-muted/40 transition-colors cursor-pointer">
-              <div className="flex items-center gap-2">
-                <Flag className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">Weekly's</span>
-              </div>
-              <div className={`h-5 w-9 rounded-full transition-colors relative ${lead.flagged_for_weekly ? 'bg-blue-500' : 'bg-muted-foreground/30'}`}>
-                <div className={`h-4 w-4 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${lead.flagged_for_weekly ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Notes</span>
-              <EditableNotes value={lead.notes ?? ''} leadId={lead.id} onSaved={handleFieldSaved} />
-            </div>
-
-            {/* Fixed (read-only info) */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-muted/50">
-                <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Pipeline" />
-                <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
-                <ReadOnlyField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={lead.source ?? '\u2014'} />
-                <ReadOnlyField icon={<Eye className="h-3.5 w-3.5" />} label="Visibility" value="\u2014" />
-              </div>
-            </div>
-          </div>
-        </ScrollArea>
+          </ScrollArea>
         </div>
 
         {/* CENTER: Activity */}

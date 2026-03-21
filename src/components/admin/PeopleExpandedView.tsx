@@ -12,17 +12,19 @@ import { sanitizeFileName } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/address-autocomplete';
 import {
   ArrowLeft, ChevronDown, ChevronRight, ChevronUp,
   Users, Building2, CheckSquare, FileText,
   CalendarDays, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle,
   User, Mail, Phone, PhoneCall, Tag, Briefcase, Loader2,
-  Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send,
+  Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send, X, Copy,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useGmailConnection } from '@/hooks/useGmailConnection';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
 
@@ -80,7 +82,7 @@ interface Person {
 
 interface PersonEmail {
   id: string;
-  person_id: string;
+  lead_id: string;
   email: string;
   email_type: string;
   is_primary: boolean;
@@ -88,7 +90,7 @@ interface PersonEmail {
 
 interface PersonPhone {
   id: string;
-  person_id: string;
+  lead_id: string;
   phone_number: string;
   phone_type: string;
   is_primary: boolean;
@@ -96,7 +98,7 @@ interface PersonPhone {
 
 interface PersonAddress {
   id: string;
-  person_id: string;
+  lead_id: string;
   address_type: string;
   address_line_1: string | null;
   address_line_2: string | null;
@@ -257,11 +259,15 @@ function useInlineSave(
 
 // ── Editable field row ──
 function EditableField({
-  icon, label, value, field, personId, onSaved,
+  icon, label, value, field, personId, onSaved, placeholder, required, copyable, noLabel,
 }: {
-  icon: React.ReactNode; label: string; value: string; field: string;
+  icon?: React.ReactNode; label: string; value: string; field: string;
   personId: string;
   onSaved: (field: string, newValue: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  copyable?: boolean;
+  noLabel?: boolean;
 }) {
   const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(personId, field, value, onSaved);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -272,12 +278,14 @@ function EditableField({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50/50">
-        <div className="flex items-center gap-2 text-blue-400 shrink-0">
-          {icon}
-          <span className="text-xs font-medium text-blue-500">{label}</span>
-        </div>
-        <div className="flex-1 flex items-center gap-1.5 justify-end">
+      <div>
+        {!noLabel && label && (
+          <span className="text-xs font-medium text-muted-foreground block mb-1">
+            {label}
+            {required && <span className="text-red-500 ml-0.5">*</span>}
+          </span>
+        )}
+        <div className="flex items-center gap-1.5">
           <input
             ref={inputRef}
             value={draft}
@@ -285,7 +293,8 @@ function EditableField({
             onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
             onBlur={save}
             disabled={saving}
-            className="w-full text-right text-[13px] font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
+            placeholder={placeholder}
+            className="w-full text-sm font-medium text-foreground bg-card border border-blue-200 dark:border-blue-800 rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
           />
           {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
         </div>
@@ -294,28 +303,38 @@ function EditableField({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className="flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors cursor-pointer group">
-      <div className="flex items-center gap-2 text-muted-foreground shrink-0">
-        {icon}
-        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{label}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span className="text-[13px] text-right truncate font-medium text-foreground">
-          {value || '\u2014'}
-        </span>
-        <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-      </div>
+    <div onClick={() => setEditing(true)} className="cursor-pointer group">
+      {!noLabel && label && (
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            {label}
+            {required && <span className="text-red-500 ml-0.5">*</span>}
+          </span>
+          {copyable && value && (
+            <button
+              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(value); toast.success('Copied'); }}
+              className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+      <span className={`text-sm font-medium block ${value ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+        {value || placeholder || '\u2014'}
+      </span>
     </div>
   );
 }
 
 // ── Editable Contact Row ──
 function EditableContactRow({
-  icon, value, field, personId, placeholder, onSaved,
+  icon, value, field, personId, placeholder, onSaved, allowClear = false,
 }: {
   icon: React.ReactNode; value: string; field: string;
   personId: string; placeholder: string;
   onSaved: (field: string, newValue: string) => void;
+  allowClear?: boolean;
 }) {
   const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(personId, field, value, onSaved);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -323,6 +342,13 @@ function EditableContactRow({
   useEffect(() => {
     if (editing) setTimeout(() => inputRef.current?.focus(), 0);
   }, [editing]);
+
+  const handleClear = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { error } = await supabase.from('leads').update({ [field]: null }).eq('id', personId);
+    if (error) { toast.error('Failed to clear'); return; }
+    onSaved(field, '');
+  };
 
   if (editing) {
     return (
@@ -352,6 +378,11 @@ function EditableContactRow({
         {displayValue || placeholder}
       </span>
       <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+      {allowClear && value && (
+        <button onClick={handleClear} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+          <Trash2 className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
@@ -504,12 +535,48 @@ function EditableRichTextField({
 }
 
 // ── Contact Email Row ──
-function ContactEmailRow({ entry, onDelete }: { entry: PersonEmail; onDelete: (id: string) => void }) {
+function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; onDelete: (id: string) => void; onUpdate: (id: string, data: { email?: string; email_type?: string }) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.email);
+  const [draftType, setDraftType] = useState(entry.email_type);
+
+  useEffect(() => { setDraft(entry.email); setDraftType(entry.email_type); }, [entry.email, entry.email_type]);
+
+  const save = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    if (trimmed !== entry.email || draftType !== entry.email_type) {
+      onUpdate(entry.id, { email: trimmed, email_type: draftType });
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+        <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+        <Select value={draftType} onValueChange={setDraftType}>
+          <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="work" className="text-xs">Work</SelectItem>
+            <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+          </SelectContent>
+        </Select>
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.email); setDraftType(entry.email_type); setEditing(false); } }} className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+        <button onClick={save} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 shrink-0"><Check className="h-3 w-3" /></button>
+        <button onClick={() => { setDraft(entry.email); setDraftType(entry.email_type); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.email_type}</span>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{entry.email}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{entry.email}</span>
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <Pencil className="h-3 w-3" />
+      </button>
       <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
         <Trash2 className="h-3 w-3" />
       </button>
@@ -518,17 +585,54 @@ function ContactEmailRow({ entry, onDelete }: { entry: PersonEmail; onDelete: (i
 }
 
 // ── Contact Phone Row ──
-function ContactPhoneRow({ entry, onDelete, onCall }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
+function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void; onUpdate: (id: string, data: { phone_number?: string; phone_type?: string }) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.phone_number);
+  const [draftType, setDraftType] = useState(entry.phone_type);
+
+  useEffect(() => { setDraft(entry.phone_number); setDraftType(entry.phone_type); }, [entry.phone_number, entry.phone_type]);
+
+  const save = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    if (trimmed !== entry.phone_number || draftType !== entry.phone_type) {
+      onUpdate(entry.id, { phone_number: trimmed, phone_type: draftType });
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+        <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+        <Select value={draftType} onValueChange={setDraftType}>
+          <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="work" className="text-xs">Work</SelectItem>
+            <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+            <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
+          </SelectContent>
+        </Select>
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.phone_number); setDraftType(entry.phone_type); setEditing(false); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+        <button onClick={save} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 shrink-0"><Check className="h-3 w-3" /></button>
+        <button onClick={() => { setDraft(entry.phone_number); setDraftType(entry.phone_type); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.phone_type}</span>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{formatPhoneNumber(entry.phone_number)}</span>
       {onCall && (
         <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
           <PhoneCall className="h-3 w-3" />
         </button>
       )}
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <Pencil className="h-3 w-3" />
+      </button>
       <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
         <Trash2 className="h-3 w-3" />
       </button>
@@ -537,15 +641,71 @@ function ContactPhoneRow({ entry, onDelete, onCall }: { entry: PersonPhone; onDe
 }
 
 // ── Address Block ──
-function AddressBlock({ entry, onDelete }: { entry: PersonAddress; onDelete: (id: string) => void }) {
+function AddressBlock({ entry, onDelete, onUpdate }: { entry: PersonAddress; onDelete: (id: string) => void; onUpdate: (id: string, data: Partial<PersonAddress>) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [line1, setLine1] = useState(entry.address_line_1 ?? '');
+  const [city, setCity] = useState(entry.city ?? '');
+  const [state, setState] = useState(entry.state ?? '');
+  const [zip, setZip] = useState(entry.zip_code ?? '');
+  const [addrType, setAddrType] = useState(entry.address_type);
+
+  useEffect(() => {
+    setLine1(entry.address_line_1 ?? ''); setCity(entry.city ?? '');
+    setState(entry.state ?? ''); setZip(entry.zip_code ?? ''); setAddrType(entry.address_type);
+  }, [entry]);
+
+  const save = () => {
+    if (!line1.trim()) return;
+    onUpdate(entry.id, {
+      address_line_1: line1.trim(), city: city.trim() || null, state: state.trim() || null,
+      zip_code: zip.trim() || null, address_type: addrType,
+    });
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setLine1(entry.address_line_1 ?? ''); setCity(entry.city ?? '');
+    setState(entry.state ?? ''); setZip(entry.zip_code ?? ''); setAddrType(entry.address_type);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+        <input autoFocus value={line1} onChange={(e) => setLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+        <div className="flex gap-1.5">
+          <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+          <input value={state} onChange={(e) => setState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+          <input value={zip} onChange={(e) => setZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+        </div>
+        <div className="flex items-center justify-between">
+          <Select value={addrType} onValueChange={setAddrType}>
+            <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="business" className="text-xs">Business</SelectItem>
+              <SelectItem value="home" className="text-xs">Home</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex gap-1.5">
+            <button onClick={cancel} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
+            <button onClick={save} disabled={!line1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const parts = [entry.address_line_1, entry.city, entry.state, entry.zip_code].filter(Boolean);
   return (
     <div className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setEditing(true)}>
         <span className="text-[11px] text-muted-foreground uppercase font-medium">{entry.address_type}</span>
-        <p className="text-[13px] text-foreground font-medium">{parts.join(', ') || '—'}</p>
+        <p className="text-[13px] text-foreground font-medium">{parts.join(', ') || '\u2014'}</p>
       </div>
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
+        <Pencil className="h-3 w-3" />
+      </button>
       <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
         <Trash2 className="h-3 w-3" />
       </button>
@@ -629,13 +789,21 @@ export default function PeopleExpandedView() {
   const { personId } = useParams<{ personId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
+  const [activityTab, setActivityTab] = useState<'log' | 'note' | 'email'>('log');
 
   // Activity form state
   const [activityType, setActivityType] = useState('note');
   const [activityNote, setActivityNote] = useState('');
   const [noteContent, setNoteContent] = useState('');
   const [savingActivity, setSavingActivity] = useState(false);
+
+  // Email compose state
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [emailCc, setEmailCc] = useState('');
+  const [emailBcc, setEmailBcc] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Task inline add state
   const [addingTask, setAddingTask] = useState(false);
@@ -667,6 +835,7 @@ export default function PeopleExpandedView() {
   const [savingComment, setSavingComment] = useState<string | null>(null);
 
   const { teamMember } = useTeamMember();
+  const gmail = useGmailConnection({ userKey: 'people-expanded' });
 
   // ── Queries (defined before callbacks that reference query results) ──
   const { data: person, isLoading } = useQuery({
@@ -687,9 +856,9 @@ export default function PeopleExpandedView() {
     queryKey: ['person-activities', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('people_activities')
+        .from('lead_activities')
         .select('*')
-        .eq('person_id', personId!)
+        .eq('lead_id', personId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -704,9 +873,9 @@ export default function PeopleExpandedView() {
     queryKey: ['person-tasks', personId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('people_activities')
+        .from('lead_activities')
         .select('id, title, content, created_at')
-        .eq('person_id', personId!)
+        .eq('lead_id', personId!)
         .eq('activity_type', 'task')
         .order('created_at', { ascending: false });
       return data ?? [];
@@ -718,7 +887,7 @@ export default function PeopleExpandedView() {
   const { data: personEmails = [] } = useQuery({
     queryKey: ['person-emails', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('people_emails').select('*').eq('person_id', personId!);
+      const { data } = await supabase.from('lead_emails').select('*').eq('lead_id', personId!);
       return (data || []) as PersonEmail[];
     },
     enabled: !!personId,
@@ -727,7 +896,7 @@ export default function PeopleExpandedView() {
   const { data: personPhones = [] } = useQuery({
     queryKey: ['person-phones', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('people_phones').select('*').eq('person_id', personId!);
+      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', personId!);
       return (data || []) as PersonPhone[];
     },
     enabled: !!personId,
@@ -736,7 +905,7 @@ export default function PeopleExpandedView() {
   const { data: personAddresses = [] } = useQuery({
     queryKey: ['person-addresses', personId],
     queryFn: async () => {
-      const { data } = await supabase.from('people_addresses').select('*').eq('person_id', personId!);
+      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', personId!);
       return (data || []) as PersonAddress[];
     },
     enabled: !!personId,
@@ -771,8 +940,8 @@ export default function PeopleExpandedView() {
     toast.success('Contact type updated');
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
     // Log an activity for the type change
-    await supabase.from('people_activities').insert({
-      person_id: personId,
+    await supabase.from('lead_activities').insert({
+      lead_id: personId,
       activity_type: 'type_change',
       title: 'Contact type changed',
       content: JSON.stringify({ from: currentType, to: newType }),
@@ -798,8 +967,8 @@ export default function PeopleExpandedView() {
       return;
     }
     setSavingActivity(true);
-    const { error } = await supabase.from('people_activities').insert({
-      person_id: personId,
+    const { error } = await supabase.from('lead_activities').insert({
+      lead_id: personId,
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -818,12 +987,50 @@ export default function PeopleExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
   }, [personId, activityTab, activityType, activityNote, noteContent, queryClient]);
 
+  // ── Send email ──
+  const handleSendEmail = useCallback(async () => {
+    if (!person?.email || sendingEmail) return;
+    if (isHtmlEmpty(emailBody)) {
+      toast.error('Please enter a message');
+      return;
+    }
+    setSendingEmail(true);
+    try {
+      await gmail.sendEmailMutation.mutateAsync({
+        to: person.email,
+        subject: emailSubject || '(No Subject)',
+        body: emailBody,
+      });
+      toast.success('Email sent');
+      setEmailSubject('');
+      setEmailBody('');
+      setEmailCc('');
+      setEmailBcc('');
+      // Log as activity
+      if (personId) {
+        await supabase.from('lead_activities').insert({
+          lead_id: personId,
+          activity_type: 'email',
+          title: `Email: ${emailSubject || '(No Subject)'}`,
+          content: emailBody,
+        });
+        await supabase.from('leads').update({ last_activity_at: new Date().toISOString() }).eq('id', personId);
+        queryClient.invalidateQueries({ queryKey: ['person-activities', personId] });
+        queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send email');
+    } finally {
+      setSendingEmail(false);
+    }
+  }, [person, personId, emailSubject, emailBody, sendingEmail, gmail.sendEmailMutation, queryClient]);
+
   // ── Save task ──
   const handleSaveTask = useCallback(async () => {
     if (!personId || !newTaskTitle.trim()) return;
     setSavingTask(true);
-    const { error } = await supabase.from('people_activities').insert({
-      person_id: personId,
+    const { error } = await supabase.from('lead_activities').insert({
+      lead_id: personId,
       activity_type: 'task',
       title: newTaskTitle.trim(),
       content: newTaskTitle.trim(),
@@ -894,8 +1101,8 @@ export default function PeopleExpandedView() {
     }
 
     // Store relative path, NOT public URL
-    const { error: dbError } = await supabase.from('people_files' as any).insert({
-      person_id: personId,
+    const { error: dbError } = await supabase.from('lead_files').insert({
+      lead_id: personId,
       file_name: file.name,
       file_url: filePath,
       file_type: file.type || null,
@@ -922,7 +1129,7 @@ export default function PeopleExpandedView() {
     // file_url stores relative path directly
     await supabase.storage.from('lead-files').remove([file.file_url]);
 
-    const { error } = await supabase.from('people_files' as any).delete().eq('id', file.id);
+    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
     if (error) {
       toast.error('Failed to delete file');
       return;
@@ -954,9 +1161,9 @@ export default function PeopleExpandedView() {
     queryKey: ['person-files', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('people_files' as any)
-        .select('id, person_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('person_id', personId!)
+        .from('lead_files')
+        .select('id, lead_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .eq('lead_id', personId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as PersonFile[];
@@ -986,7 +1193,7 @@ export default function PeopleExpandedView() {
   // ── Satellite table mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('people_emails').insert({ person_id: personId!, email, email_type: newEmailType });
+      const { error } = await supabase.from('lead_emails').insert({ lead_id: personId!, email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
@@ -995,7 +1202,7 @@ export default function PeopleExpandedView() {
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('people_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('lead_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); toast.success('Email removed'); },
@@ -1004,7 +1211,7 @@ export default function PeopleExpandedView() {
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('people_phones').insert({ person_id: personId!, phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('lead_phones').insert({ lead_id: personId!, phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
@@ -1013,7 +1220,7 @@ export default function PeopleExpandedView() {
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('people_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('lead_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); toast.success('Phone removed'); },
@@ -1022,8 +1229,8 @@ export default function PeopleExpandedView() {
 
   const addAddressMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('people_addresses').insert({
-        person_id: personId!,
+      const { error } = await supabase.from('lead_addresses').insert({
+        lead_id: personId!,
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -1043,11 +1250,38 @@ export default function PeopleExpandedView() {
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('people_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('lead_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', personId] }); toast.success('Address removed'); },
     onError: () => toast.error('Failed to remove address'),
+  });
+
+  const updateEmailMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { email?: string; email_type?: string } }) => {
+      const { error } = await supabase.from('lead_emails').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); toast.success('Email updated'); },
+    onError: () => toast.error('Failed to update email'),
+  });
+
+  const updatePhoneMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { phone_number?: string; phone_type?: string } }) => {
+      const { error } = await supabase.from('lead_phones').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); toast.success('Phone updated'); },
+    onError: () => toast.error('Failed to update phone'),
+  });
+
+  const updateAddressMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<PersonAddress> }) => {
+      const { error } = await supabase.from('lead_addresses').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', personId] }); toast.success('Address updated'); },
+    onError: () => toast.error('Failed to update address'),
   });
 
   if (isLoading || !person) {
@@ -1088,53 +1322,52 @@ export default function PeopleExpandedView() {
         <ScrollArea className="w-[400px] shrink-0 border-r border-border bg-card">
           <div className="px-6 py-6 space-y-6">
 
-            {/* Primary Contact Card */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Contact</span>
-              <div className="rounded-2xl bg-gradient-to-b from-card to-muted/20 dark:to-muted/10 border border-border/60 shadow-sm p-5">
-                <div className="flex items-start gap-3.5">
-                  <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${gradient} shadow-md shadow-blue-500/20 flex items-center justify-center shrink-0`}>
-                    <span className="text-sm font-bold text-white">{initial}</span>
-                  </div>
-                  <div className="min-w-0 space-y-1">
-                    <p className="text-base font-bold tracking-tight text-foreground truncate">{person.name}</p>
-                    {person.title && (
-                      <p className="text-[13px] text-muted-foreground truncate">{person.title}</p>
-                    )}
-                    {person.company_name && (
-                      <p className="text-[13px] text-muted-foreground truncate flex items-center gap-1">
-                        <Building2 className="h-3 w-3 shrink-0" />
-                        {person.company_name}
-                      </p>
-                    )}
-                    {typeCfg && (
-                      <div className={`flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-lg border ${typeCfg.bg} w-fit`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${typeCfg.dot} shrink-0`} />
-                        <span className={`text-xs font-medium ${typeCfg.color}`}>{typeCfg.label}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <Separator className="!my-4 opacity-50" />
-                <div className="space-y-1">
-                  <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={person.name} field="name" personId={person.id} placeholder="Name" onSaved={handleFieldSaved} />
-                  <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={person.email ?? ''} field="email" personId={person.id} placeholder="Add email..." onSaved={handleFieldSaved} />
-                  <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={person.phone ?? ''} field="phone" personId={person.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
-                  <EditableContactRow icon={<Linkedin className="h-3.5 w-3.5" />} value={person.linkedin ?? ''} field="linkedin" personId={person.id} placeholder="Add LinkedIn..." onSaved={handleFieldSaved} />
+            {/* ── Contact Card Header ── */}
+            <div className="flex items-start gap-4">
+              <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                <span className="text-lg font-bold text-gray-500 dark:text-gray-400">
+                  {person.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
+                </span>
+              </div>
+              <div className="min-w-0 pt-0.5">
+                <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{person.name}</h2>
+                {(person.title || person.company_name) && (
+                  <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                    {[person.title, person.company_name].filter(Boolean).join(' at ')}
+                  </p>
+                )}
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
+                    <User className="h-3 w-3" />
+                    Person
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Contact Type Selector */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Contact Type</span>
-              <div className="rounded-lg border border-border p-3">
+            {/* ── Copper-style Fields ── */}
+            <div className="space-y-5">
+              {/* Name */}
+              <EditableField label="Name" value={person.name} field="name" personId={person.id} onSaved={handleFieldSaved} required copyable />
+
+              {/* Company */}
+              <EditableField label="Company" value={person.company_name ?? ''} field="company_name" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Company" />
+
+              {/* Known As (Nick Name) */}
+              <EditableField label="Known As (Nick Name)" value={person.known_as ?? ''} field="known_as" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Known As (Nick Name)" />
+
+              {/* CLX - File Name */}
+              <EditableField label="CLX - File Name" value={person.clx_file_name ?? ''} field="clx_file_name" personId={person.id} onSaved={handleFieldSaved} placeholder="Add CLX - File Name" />
+
+              {/* Title */}
+              <EditableField label="Title" value={person.title ?? ''} field="title" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Title" />
+
+              {/* Contact Type */}
+              <div>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Contact Type</span>
                 <Select value={person.contact_type ?? 'Other'} onValueChange={(v) => handleContactTypeChange(v)}>
-                  <SelectTrigger className={`h-9 w-full text-xs rounded-lg ${typeCfg?.bg ?? 'bg-muted'} ${typeCfg?.color ?? 'text-foreground'} border-border shadow-none px-2.5 gap-1`}>
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full shrink-0 ${typeCfg?.dot ?? 'bg-muted-foreground'}`} />
-                      <SelectValue>{typeCfg?.label ?? person.contact_type}</SelectValue>
-                    </div>
+                  <SelectTrigger className="h-auto w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0">
+                    <SelectValue>{typeCfg?.label ?? person.contact_type}</SelectValue>
                   </SelectTrigger>
                   <SelectContent className="min-w-[220px]">
                     {CONTACT_TYPES.map((t) => {
@@ -1151,21 +1384,95 @@ export default function PeopleExpandedView() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Details (editable) */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Details</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
-                <EditableField icon={<Briefcase className="h-3.5 w-3.5" />} label="Title" value={person.title ?? ''} field="title" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={person.company_name ?? ''} field="company_name" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={person.known_as ?? ''} field="known_as" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={person.clx_file_name ?? ''} field="clx_file_name" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={person.source ?? ''} field="source" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Assigned To" value={assignedName} field="assigned_to" personId={person.id} onSaved={handleFieldSaved} />
-                <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(person.created_at)} />
-                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Updated" value={formatDate(person.updated_at)} />
+              {/* Owner */}
+              <div>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Owner</span>
+                {assignedName ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{assignedName}</span>
+                    <button
+                      onClick={async () => {
+                        await supabase.from('leads').update({ assigned_to: null }).eq('id', person.id);
+                        handleFieldSaved('assigned_to', '');
+                      }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <EditableField label="" value="" field="assigned_to" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Owner" noLabel />
+                )}
               </div>
+
+              {/* Work Email */}
+              {person.email && (
+                <div className="group/field">
+                  <span className="text-xs font-medium text-muted-foreground block mb-1">Work Email</span>
+                  <div className="flex items-center justify-between">
+                    <a href={`mailto:${person.email}`} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate">{person.email}</a>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(person.email!); toast.success('Email copied'); }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const { error } = await supabase.from('leads').update({ email: null }).eq('id', person.id);
+                          if (error) { toast.error('Failed to clear'); return; }
+                          handleFieldSaved('email', '');
+                        }}
+                        className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover/field:opacity-100 transition-all"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Phone */}
+              {person.phone && (
+                <div className="group/field">
+                  <span className="text-xs font-medium text-muted-foreground block mb-1">Phone</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">{formatPhoneNumber(person.phone)}</span>
+                    <button
+                      onClick={async () => {
+                        const { error } = await supabase.from('leads').update({ phone: null }).eq('id', person.id);
+                        if (error) { toast.error('Failed to clear'); return; }
+                        handleFieldSaved('phone', '');
+                      }}
+                      className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover/field:opacity-100 transition-all shrink-0 ml-2"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* LinkedIn */}
+              {person.linkedin && (
+                <div className="group/field">
+                  <span className="text-xs font-medium text-muted-foreground block mb-1">LinkedIn</span>
+                  <div className="flex items-center justify-between">
+                    <a href={person.linkedin.startsWith('http') ? person.linkedin : `https://${person.linkedin}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate block">{person.linkedin}</a>
+                    <button
+                      onClick={async () => {
+                        const { error } = await supabase.from('leads').update({ linkedin: null }).eq('id', person.id);
+                        if (error) { toast.error('Failed to clear'); return; }
+                        handleFieldSaved('linkedin', '');
+                      }}
+                      className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover/field:opacity-100 transition-all shrink-0 ml-2"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Email */}
@@ -1173,7 +1480,7 @@ export default function PeopleExpandedView() {
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Email</span>
               <div className="space-y-1">
                 {personEmails.map((e) => (
-                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
+                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} onUpdate={(id, data) => updateEmailMutation.mutate({ id, data })} />
                 ))}
                 {showAddEmail ? (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
@@ -1198,7 +1505,7 @@ export default function PeopleExpandedView() {
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Phone</span>
               <div className="space-y-1">
                 {personPhones.map((p) => (
-                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)} />
+                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)} onUpdate={(id, data) => updatePhoneMutation.mutate({ id, data })} />
                 ))}
                 {showAddPhone ? (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
@@ -1224,11 +1531,23 @@ export default function PeopleExpandedView() {
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Address</span>
               <div className="space-y-1">
                 {personAddresses.map((a) => (
-                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
+                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} onUpdate={(id, data) => updateAddressMutation.mutate({ id, data })} />
                 ))}
                 {showAddAddress ? (
                   <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
-                    <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    <AddressAutocompleteInput
+                      value={newAddressLine1}
+                      onChange={setNewAddressLine1}
+                      onSelect={(parsed: ParsedAddress) => {
+                        setNewAddressLine1(parsed.address_line_1);
+                        setNewAddressCity(parsed.city);
+                        setNewAddressState(parsed.state);
+                        setNewAddressZip(parsed.zip_code);
+                      }}
+                      placeholder="Start typing an address..."
+                      autoFocus
+                      className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300"
+                    />
                     <div className="flex gap-1.5">
                       <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
                       <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
@@ -1272,16 +1591,14 @@ export default function PeopleExpandedView() {
               <EditableRichTextField value={person.bank_relationships ?? ''} personId={person.id} field="bank_relationships" onSaved={handleFieldSaved} placeholder="Excluded lender names from CLX agreement..." />
             </div>
 
-            {/* Fixed (read-only) */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Fixed</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-muted/50">
-                <ReadOnlyField icon={<Layers className="h-3.5 w-3.5" />} label="Type" value={typeCfg?.label ?? person.contact_type ?? '\u2014'} />
-                <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(person.created_at)} />
-                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Last Contacted" value={formatShortDate(person.last_activity_at)} />
-                <ReadOnlyField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={person.source ?? '\u2014'} />
-              </div>
-            </div>
+            {/* + Add new field */}
+            <button
+              onClick={() => toast.info('Custom fields coming soon')}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-2 border-t border-border w-full justify-center mt-2"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add new field
+            </button>
           </div>
         </ScrollArea>
 
@@ -1351,11 +1668,22 @@ export default function PeopleExpandedView() {
               <Pencil className="h-3.5 w-3.5" />
               Create Note
             </button>
+            <button
+              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
+                activityTab === 'email'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              }`}
+              onClick={() => setActivityTab('email')}
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Send Email
+            </button>
           </div>
 
           <ScrollArea className="flex-1">
             <div className="px-6 py-5">
-              {activityTab === 'log' ? (
+              {activityTab === 'log' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Select value={activityType} onValueChange={setActivityType}>
@@ -1389,7 +1717,9 @@ export default function PeopleExpandedView() {
                     </Button>
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {activityTab === 'note' && (
                 <div className="space-y-4">
                   <RichTextEditor
                     value={noteContent}
@@ -1409,6 +1739,101 @@ export default function PeopleExpandedView() {
                     </Button>
                   </div>
                 </div>
+              )}
+
+              {activityTab === 'email' && (
+                !gmail.gmailConnection ? (
+                  <div className="flex flex-col items-center justify-center py-10 space-y-3">
+                    <Mail className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Connect your Gmail to send emails</p>
+                    <Button size="sm" onClick={gmail.connectGmail} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 rounded-lg">
+                      Connect Gmail
+                    </Button>
+                  </div>
+                ) : (
+                  <div>
+                    {/* Show CC / BCC */}
+                    <div className="flex justify-end mb-3">
+                      <button
+                        onClick={() => setShowCcBcc(!showCcBcc)}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {showCcBcc ? 'Hide' : 'Show'} <span className="underline">CC</span> / <span className="underline">BCC</span>
+                      </button>
+                    </div>
+
+                    {/* Compose card */}
+                    <div className="rounded-xl border border-border overflow-hidden bg-card">
+                      {/* To row */}
+                      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border">
+                        <span className="text-sm text-muted-foreground shrink-0">To</span>
+                        <div className="inline-flex items-center gap-1.5 bg-muted/60 rounded-full px-3 py-1">
+                          <span className="h-5 w-5 rounded-full bg-amber-400 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                            {person.name[0]?.toUpperCase()}
+                          </span>
+                          <span className="text-sm font-medium text-foreground">{person.name}</span>
+                        </div>
+                      </div>
+
+                      {/* CC row */}
+                      {showCcBcc && (
+                        <>
+                          <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-border">
+                            <span className="text-sm text-muted-foreground shrink-0 w-7">CC</span>
+                            <input
+                              value={emailCc}
+                              onChange={(e) => setEmailCc(e.target.value)}
+                              placeholder="email@example.com"
+                              className="flex-1 text-sm text-foreground bg-transparent outline-none placeholder:text-muted-foreground/40"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-border">
+                            <span className="text-sm text-muted-foreground shrink-0 w-7">BCC</span>
+                            <input
+                              value={emailBcc}
+                              onChange={(e) => setEmailBcc(e.target.value)}
+                              placeholder="email@example.com"
+                              className="flex-1 text-sm text-foreground bg-transparent outline-none placeholder:text-muted-foreground/40"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {/* Subject row */}
+                      <div className="flex items-center px-4 py-2.5 border-b border-border">
+                        <input
+                          value={emailSubject}
+                          onChange={(e) => setEmailSubject(e.target.value)}
+                          placeholder="Subject"
+                          className="flex-1 text-sm text-foreground bg-transparent outline-none placeholder:text-muted-foreground/40"
+                        />
+                      </div>
+
+                      {/* Message body */}
+                      <div className="px-1 py-1">
+                        <RichTextEditor
+                          value={emailBody}
+                          onChange={setEmailBody}
+                          placeholder="Message"
+                          minHeight="200px"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Send button */}
+                    <div className="flex justify-end mt-4">
+                      <Button
+                        size="sm"
+                        onClick={handleSendEmail}
+                        disabled={sendingEmail || isHtmlEmpty(emailBody) || !person.email}
+                        className="bg-violet-400 hover:bg-violet-500 text-white text-xs px-5 py-2 rounded-lg"
+                      >
+                        {sendingEmail && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                        Send
+                      </Button>
+                    </div>
+                  </div>
+                )
               )}
 
               {/* Earlier - Activity History */}

@@ -763,22 +763,10 @@ export default function CompanyExpandedView() {
   return (
     <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
       {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border px-4 py-2 flex items-center gap-3">
+      <div className="shrink-0 border-b border-border px-4 py-2 flex items-center">
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
           <X className="h-4 w-4" />
         </Button>
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 shadow-sm flex items-center justify-center shrink-0">
-            <span className="text-xs font-bold text-white">{initial}</span>
-          </div>
-          <span className="text-sm font-bold text-foreground truncate">{company.company_name}</span>
-          {typeCfg && (
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${typeCfg.bg} ${typeCfg.color}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${typeCfg.dot}`} />
-              {typeCfg.label}
-            </span>
-          )}
-        </div>
       </div>
 
       {/* ── 3-Column Body ── */}
@@ -788,35 +776,33 @@ export default function CompanyExpandedView() {
         <ScrollArea className="w-[400px] shrink-0 border-r border-border bg-card">
           <div className="px-6 py-6 space-y-6">
 
-            {/* Company Card */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Company</span>
-              <div className="rounded-2xl bg-gradient-to-b from-card to-muted/20 dark:to-muted/10 border border-border/60 shadow-sm p-5">
-                <div className="flex items-start gap-3.5">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-md shadow-indigo-500/20 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-bold text-white">{initial}</span>
-                  </div>
-                  <div className="min-w-0 space-y-1 flex-1">
-                    <p className="text-base font-bold tracking-tight text-foreground truncate">{company.company_name}</p>
-                    {company.contact_name && (
-                      <p className="text-[13px] text-muted-foreground truncate">{company.contact_name}</p>
-                    )}
-                    {typeCfg && (
-                      <div className={`flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-lg border w-fit ${typeCfg.bg}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${typeCfg.dot} shrink-0`} />
-                        <span className={`text-xs font-medium ${typeCfg.color}`}>{typeCfg.label}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <Separator className="!my-4 opacity-50" />
-                <div className="space-y-1">
-                  <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={company.contact_name ?? ''} field="contact_name" companyId={company.id} placeholder="Add contact name..." onSaved={handleFieldSaved} />
-                  <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={company.phone ?? ''} field="phone" companyId={company.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
-                  <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={company.email_domain ?? ''} field="email_domain" companyId={company.id} placeholder="Add email domain..." onSaved={handleFieldSaved} />
-                  <EditableContactRow icon={<Globe className="h-3.5 w-3.5" />} value={company.website ?? ''} field="website" companyId={company.id} placeholder="Add website..." onSaved={handleFieldSaved} />
-                </div>
+            {/* ── Contact Card Header ── */}
+            <div className="flex items-start gap-4">
+              <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                <Building2 className="h-6 w-6 text-gray-500 dark:text-gray-400" />
               </div>
+              <div className="min-w-0 pt-0.5">
+                <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{company.company_name}</h2>
+                {company.contact_name && (
+                  <p className="text-sm text-muted-foreground mt-1 truncate">{company.contact_name}</p>
+                )}
+                {typeCfg && (
+                  <div className="mt-2.5">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${typeCfg.bg} ${typeCfg.color}`}>
+                      <span className={`h-2 w-2 rounded-full ${typeCfg.dot}`} />
+                      {typeCfg.label}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Contact Details */}
+            <div className="space-y-1">
+              <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={company.contact_name ?? ''} field="contact_name" companyId={company.id} placeholder="Add contact name..." onSaved={handleFieldSaved} />
+              <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={company.phone ?? ''} field="phone" companyId={company.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+              <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={company.email_domain ?? ''} field="email_domain" companyId={company.id} placeholder="Add email domain..." onSaved={handleFieldSaved} />
+              <EditableContactRow icon={<Globe className="h-3.5 w-3.5" />} value={company.website ?? ''} field="website" companyId={company.id} placeholder="Add website..." onSaved={handleFieldSaved} />
             </div>
 
             {/* Details */}

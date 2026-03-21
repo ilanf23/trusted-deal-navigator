@@ -9,7 +9,9 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
 import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
+import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import {
@@ -335,6 +337,7 @@ const People = () => {
   const [sortField, setSortField] = useState<SortField>('last_activity_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [selectedPersonIds, setSelectedPersonIds] = useState<Set<string>>(new Set());
 
   // ── Toolbar state ──
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
@@ -676,6 +679,22 @@ const People = () => {
   function handleRowClick(person: Person) {
     setSelectedPerson(person);
   }
+
+  const togglePersonSelection = (personId: string) => {
+    setSelectedPersonIds(prev => {
+      const next = new Set(prev);
+      if (next.has(personId)) next.delete(personId);
+      else next.add(personId);
+      return next;
+    });
+  };
+
+  const isAllSelected = useMemo(() => {
+    return filteredAndSorted.length > 0 && filteredAndSorted.every(p => selectedPersonIds.has(p.id));
+  }, [filteredAndSorted, selectedPersonIds]);
+
+  const selectAll = () => setSelectedPersonIds(new Set(filteredAndSorted.map(p => p.id)));
+  const clearSelection = () => setSelectedPersonIds(new Set());
 
   const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
 
@@ -1102,13 +1121,32 @@ const People = () => {
               </div>
             </div>
 
+            {/* ── Bulk Selection Toolbar ── */}
+            {selectedPersonIds.size > 0 && (
+              <div className="px-4 py-2 border-b border-border bg-muted/30">
+                <PipelineBulkToolbar
+                  selectedCount={selectedPersonIds.size}
+                  totalCount={filteredAndSorted.length}
+                  onClearSelection={clearSelection}
+                  onEdit={() => toast.info('Bulk edit coming soon')}
+                  onExport={() => toast.info('Export coming soon')}
+                />
+              </div>
+            )}
+
             {/* ── Content Area: Table or Kanban ── */}
             {viewMode === 'table' ? (
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
                   <thead className="border-b border-border">
                     <tr>
-                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted" />
+                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                          className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                        />
+                      </th>
                       <ColHeader className="sticky top-0 z-30 bg-gray-100 dark:bg-muted border-r border-border/50" style={{ left: 40 }}>
                         Person
                       </ColHeader>
@@ -1204,31 +1242,39 @@ const People = () => {
                         const interactionCount = interactionCountMap[person.id] ?? 0;
                         const inactiveDays = daysSince(person.last_activity_at);
                         const isStale = inactiveDays !== null && inactiveDays > 7;
-                        const isSelected = selectedPerson?.id === person.id;
+                        const isDetailSelected = selectedPerson?.id === person.id;
+                        const isBulkSelected = selectedPersonIds.has(person.id);
 
-                        const stickyBg = isSelected
+                        const stickyBg = isDetailSelected
                           ? 'bg-blue-50 dark:bg-blue-950 group-hover:bg-blue-100 dark:group-hover:bg-blue-900'
-                          : 'bg-white dark:bg-card group-hover:bg-gray-50 dark:group-hover:bg-muted';
+                          : isBulkSelected
+                            ? 'bg-violet-50 dark:bg-violet-950/30 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/40'
+                            : 'bg-white dark:bg-card group-hover:bg-gray-50 dark:group-hover:bg-muted';
 
                         return (
                           <tr
                             key={person.id}
                             onClick={() => handleRowClick(person)}
                             className={`cursor-pointer transition-colors duration-100 group border-b border-border/60 last:border-b-0 ${
-                              isSelected
+                              isDetailSelected
                                 ? 'bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-50/80 dark:hover:bg-blue-950/40'
-                                : rowIdx % 2 === 0
-                                  ? 'bg-card hover:bg-muted/50'
-                                  : 'bg-muted/30 hover:bg-muted/50'
+                                : isBulkSelected
+                                  ? 'bg-violet-50/60 dark:bg-violet-950/20 hover:bg-violet-50/80'
+                                  : rowIdx % 2 === 0
+                                    ? 'bg-card hover:bg-muted/50'
+                                    : 'bg-muted/30 hover:bg-muted/50'
                             }`}
                           >
                             {/* Checkbox */}
-                            <td className={`px-4 py-3 w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}>
-                              <div className={`h-4 w-4 rounded border-2 transition-colors ${
-                                isSelected ? 'border-blue-500 bg-blue-500' : 'border-border bg-card group-hover:border-muted-foreground/50'
-                              } flex items-center justify-center`}>
-                                {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                              </div>
+                            <td
+                              className={`px-4 py-3 w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}
+                              onClick={(e) => { e.stopPropagation(); togglePersonSelection(person.id); }}
+                            >
+                              <Checkbox
+                                checked={isBulkSelected}
+                                onCheckedChange={() => togglePersonSelection(person.id)}
+                                className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                              />
                             </td>
 
                             {/* Person (sticky) */}
@@ -1392,7 +1438,7 @@ const People = () => {
                             {/* Detail arrow */}
                             <td className="px-2 py-3 w-10">
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
-                                isSelected
+                                isDetailSelected
                                   ? 'text-blue-500'
                                   : 'text-transparent group-hover:text-muted-foreground'
                               }`} />

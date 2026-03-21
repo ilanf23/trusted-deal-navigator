@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/address-autocomplete';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
@@ -43,13 +44,13 @@ interface Person {
 }
 
 interface PersonEmail {
-  id: string; person_id: string; email: string; email_type: string; is_primary: boolean;
+  id: string; lead_id: string; email: string; email_type: string; is_primary: boolean;
 }
 interface PersonPhone {
-  id: string; person_id: string; phone_number: string; phone_type: string; is_primary: boolean;
+  id: string; lead_id: string; phone_number: string; phone_type: string; is_primary: boolean;
 }
 interface PersonAddress {
-  id: string; person_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean;
+  id: string; lead_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean;
 }
 
 interface ContactTypeConfigEntry {
@@ -137,7 +138,7 @@ function useInlineSave(
     }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -213,11 +214,12 @@ function EditableField({
 
 // ── Editable Contact Row ──
 function EditableContactRow({
-  icon, value, field, personId, placeholder, onSaved,
+  icon, value, field, personId, placeholder, onSaved, allowClear = false,
 }: {
   icon: React.ReactNode; value: string; field: string;
   personId: string; placeholder: string;
   onSaved: (field: string, newValue: string) => void;
+  allowClear?: boolean;
 }) {
   const { editing, setEditing, draft, setDraft, saving, save, cancel } = useInlineSave(personId, field, value, onSaved);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -225,6 +227,13 @@ function EditableContactRow({
   useEffect(() => {
     if (editing) setTimeout(() => inputRef.current?.focus(), 0);
   }, [editing]);
+
+  const handleClear = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { error } = await supabase.from('leads').update({ [field]: null }).eq('id', personId);
+    if (error) { toast.error('Failed to clear'); return; }
+    onSaved(field, '');
+  };
 
   if (editing) {
     return (
@@ -254,6 +263,11 @@ function EditableContactRow({
         {displayValue || placeholder}
       </span>
       <Pencil className="h-3 w-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+      {allowClear && value && (
+        <button onClick={handleClear} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+          <Trash2 className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
@@ -287,7 +301,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', personId);
     setSaving(false);
@@ -362,7 +376,7 @@ function EditableRichTextField({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('people')
+      .from('leads')
       .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -421,12 +435,48 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
 }
 
 // ── Contact Email Row ──
-function ContactEmailRow({ entry, onDelete }: { entry: PersonEmail; onDelete: (id: string) => void }) {
+function ContactEmailRow({ entry, onDelete, onUpdate }: { entry: PersonEmail; onDelete: (id: string) => void; onUpdate: (id: string, data: { email?: string; email_type?: string }) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.email);
+  const [draftType, setDraftType] = useState(entry.email_type);
+
+  useEffect(() => { setDraft(entry.email); setDraftType(entry.email_type); }, [entry.email, entry.email_type]);
+
+  const save = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    if (trimmed !== entry.email || draftType !== entry.email_type) {
+      onUpdate(entry.id, { email: trimmed, email_type: draftType });
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+        <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+        <Select value={draftType} onValueChange={setDraftType}>
+          <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="work" className="text-xs">Work</SelectItem>
+            <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+          </SelectContent>
+        </Select>
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.email); setDraftType(entry.email_type); setEditing(false); } }} className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+        <button onClick={save} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 shrink-0"><Check className="h-3 w-3" /></button>
+        <button onClick={() => { setDraft(entry.email); setDraftType(entry.email_type); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.email_type}</span>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{entry.email}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{entry.email}</span>
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <Pencil className="h-3 w-3" />
+      </button>
       <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
         <Trash2 className="h-3 w-3" />
       </button>
@@ -435,17 +485,54 @@ function ContactEmailRow({ entry, onDelete }: { entry: PersonEmail; onDelete: (i
 }
 
 // ── Contact Phone Row ──
-function ContactPhoneRow({ entry, onDelete, onCall }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
+function ContactPhoneRow({ entry, onDelete, onCall, onUpdate }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void; onUpdate: (id: string, data: { phone_number?: string; phone_type?: string }) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.phone_number);
+  const [draftType, setDraftType] = useState(entry.phone_type);
+
+  useEffect(() => { setDraft(entry.phone_number); setDraftType(entry.phone_type); }, [entry.phone_number, entry.phone_type]);
+
+  const save = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    if (trimmed !== entry.phone_number || draftType !== entry.phone_type) {
+      onUpdate(entry.id, { phone_number: trimmed, phone_type: draftType });
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+        <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+        <Select value={draftType} onValueChange={setDraftType}>
+          <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="work" className="text-xs">Work</SelectItem>
+            <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+            <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
+          </SelectContent>
+        </Select>
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setDraft(entry.phone_number); setDraftType(entry.phone_type); setEditing(false); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+        <button onClick={save} className="h-5 w-5 rounded flex items-center justify-center text-blue-600 hover:bg-blue-100 shrink-0"><Check className="h-3 w-3" /></button>
+        <button onClick={() => { setDraft(entry.phone_number); setDraftType(entry.phone_type); setEditing(false); }} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"><X className="h-3 w-3" /></button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.phone_type}</span>
-      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1 cursor-pointer" onClick={() => setEditing(true)}>{formatPhoneNumber(entry.phone_number)}</span>
       {onCall && (
         <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
           <PhoneCall className="h-3 w-3" />
         </button>
       )}
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <Pencil className="h-3 w-3" />
+      </button>
       <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
         <Trash2 className="h-3 w-3" />
       </button>
@@ -454,15 +541,71 @@ function ContactPhoneRow({ entry, onDelete, onCall }: { entry: PersonPhone; onDe
 }
 
 // ── Address Block ──
-function AddressBlock({ entry, onDelete }: { entry: PersonAddress; onDelete: (id: string) => void }) {
+function AddressBlock({ entry, onDelete, onUpdate }: { entry: PersonAddress; onDelete: (id: string) => void; onUpdate: (id: string, data: Partial<PersonAddress>) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [line1, setLine1] = useState(entry.address_line_1 ?? '');
+  const [city, setCity] = useState(entry.city ?? '');
+  const [state, setState] = useState(entry.state ?? '');
+  const [zip, setZip] = useState(entry.zip_code ?? '');
+  const [addrType, setAddrType] = useState(entry.address_type);
+
+  useEffect(() => {
+    setLine1(entry.address_line_1 ?? ''); setCity(entry.city ?? '');
+    setState(entry.state ?? ''); setZip(entry.zip_code ?? ''); setAddrType(entry.address_type);
+  }, [entry]);
+
+  const save = () => {
+    if (!line1.trim()) return;
+    onUpdate(entry.id, {
+      address_line_1: line1.trim(), city: city.trim() || null, state: state.trim() || null,
+      zip_code: zip.trim() || null, address_type: addrType,
+    });
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setLine1(entry.address_line_1 ?? ''); setCity(entry.city ?? '');
+    setState(entry.state ?? ''); setZip(entry.zip_code ?? ''); setAddrType(entry.address_type);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+        <input autoFocus value={line1} onChange={(e) => setLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+        <div className="flex gap-1.5">
+          <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+          <input value={state} onChange={(e) => setState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+          <input value={zip} onChange={(e) => setZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+        </div>
+        <div className="flex items-center justify-between">
+          <Select value={addrType} onValueChange={setAddrType}>
+            <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="business" className="text-xs">Business</SelectItem>
+              <SelectItem value="home" className="text-xs">Home</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex gap-1.5">
+            <button onClick={cancel} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
+            <button onClick={save} disabled={!line1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const parts = [entry.address_line_1, entry.city, entry.state, entry.zip_code].filter(Boolean);
   return (
     <div className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
       <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setEditing(true)}>
         <span className="text-[11px] text-muted-foreground uppercase font-medium">{entry.address_type}</span>
         <p className="text-[13px] text-foreground font-medium">{parts.join(', ') || '\u2014'}</p>
       </div>
+      <button onClick={() => setEditing(true)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-blue-500 hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
+        <Pencil className="h-3 w-3" />
+      </button>
       <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
         <Trash2 className="h-3 w-3" />
       </button>
@@ -805,7 +948,7 @@ export default function PeopleDetailPanel({
   const { data: personEmails = [] } = useQuery({
     queryKey: ['person-emails', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('people_emails').select('*').eq('person_id', person.id);
+      const { data } = await supabase.from('lead_emails').select('*').eq('lead_id', person.id);
       return (data || []) as PersonEmail[];
     },
   });
@@ -813,7 +956,7 @@ export default function PeopleDetailPanel({
   const { data: personPhones = [] } = useQuery({
     queryKey: ['person-phones', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('people_phones').select('*').eq('person_id', person.id);
+      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', person.id);
       return (data || []) as PersonPhone[];
     },
   });
@@ -821,7 +964,7 @@ export default function PeopleDetailPanel({
   const { data: personAddresses = [] } = useQuery({
     queryKey: ['person-addresses', person.id],
     queryFn: async () => {
-      const { data } = await supabase.from('people_addresses').select('*').eq('person_id', person.id);
+      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', person.id);
       return (data || []) as PersonAddress[];
     },
   });
@@ -829,7 +972,7 @@ export default function PeopleDetailPanel({
   // ── Satellite mutations ──
   const addEmailMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.from('people_emails').insert({ person_id: person.id, email, email_type: newEmailType });
+      const { error } = await supabase.from('lead_emails').insert({ lead_id: person.id, email, email_type: newEmailType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
@@ -838,7 +981,7 @@ export default function PeopleDetailPanel({
 
   const deleteEmailMutation = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase.from('people_emails').delete().eq('id', emailId);
+      const { error } = await supabase.from('lead_emails').delete().eq('id', emailId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); toast.success('Email removed'); },
@@ -847,7 +990,7 @@ export default function PeopleDetailPanel({
 
   const addPhoneMutation = useMutation({
     mutationFn: async (phone: string) => {
-      const { error } = await supabase.from('people_phones').insert({ person_id: person.id, phone_number: phone, phone_type: newPhoneType });
+      const { error } = await supabase.from('lead_phones').insert({ lead_id: person.id, phone_number: phone, phone_type: newPhoneType });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
@@ -856,7 +999,7 @@ export default function PeopleDetailPanel({
 
   const deletePhoneMutation = useMutation({
     mutationFn: async (phoneId: string) => {
-      const { error } = await supabase.from('people_phones').delete().eq('id', phoneId);
+      const { error } = await supabase.from('lead_phones').delete().eq('id', phoneId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); toast.success('Phone removed'); },
@@ -865,8 +1008,8 @@ export default function PeopleDetailPanel({
 
   const addAddressMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('people_addresses').insert({
-        person_id: person.id,
+      const { error } = await supabase.from('lead_addresses').insert({
+        lead_id: person.id,
         address_line_1: newAddressLine1.trim(),
         city: newAddressCity.trim() || null,
         state: newAddressState.trim() || null,
@@ -886,11 +1029,38 @@ export default function PeopleDetailPanel({
 
   const deleteAddressMutation = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase.from('people_addresses').delete().eq('id', addressId);
+      const { error } = await supabase.from('lead_addresses').delete().eq('id', addressId);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', person.id] }); toast.success('Address removed'); },
     onError: () => toast.error('Failed to remove address'),
+  });
+
+  const updateEmailMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { email?: string; email_type?: string } }) => {
+      const { error } = await supabase.from('lead_emails').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); toast.success('Email updated'); },
+    onError: () => toast.error('Failed to update email'),
+  });
+
+  const updatePhoneMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { phone_number?: string; phone_type?: string } }) => {
+      const { error } = await supabase.from('lead_phones').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); toast.success('Phone updated'); },
+    onError: () => toast.error('Failed to update phone'),
+  });
+
+  const updateAddressMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<PersonAddress> }) => {
+      const { error } = await supabase.from('lead_addresses').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', person.id] }); toast.success('Address updated'); },
+    onError: () => toast.error('Failed to update address'),
   });
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
@@ -1016,10 +1186,10 @@ export default function PeopleDetailPanel({
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Contact</span>
               <div className="space-y-1.5">
                 <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={person.name} field="name" personId={person.id} placeholder="Name" onSaved={handleFieldSaved} />
-                <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={person.email ?? ''} field="email" personId={person.id} placeholder="Add email..." onSaved={handleFieldSaved} />
+                <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={person.email ?? ''} field="email" personId={person.id} placeholder="Add email..." onSaved={handleFieldSaved} allowClear />
                 <div className="flex items-center gap-1">
                   <div className="flex-1 min-w-0">
-                    <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={person.phone ?? ''} field="phone" personId={person.id} placeholder="Add phone..." onSaved={handleFieldSaved} />
+                    <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={person.phone ?? ''} field="phone" personId={person.id} placeholder="Add phone..." onSaved={handleFieldSaved} allowClear />
                   </div>
                   {person.phone && (
                     <button
@@ -1031,7 +1201,7 @@ export default function PeopleDetailPanel({
                     </button>
                   )}
                 </div>
-                <EditableContactRow icon={<Link2 className="h-3.5 w-3.5" />} value={person.linkedin ?? ''} field="linkedin" personId={person.id} placeholder="Add LinkedIn..." onSaved={handleFieldSaved} />
+                <EditableContactRow icon={<Link2 className="h-3.5 w-3.5" />} value={person.linkedin ?? ''} field="linkedin" personId={person.id} placeholder="Add LinkedIn..." onSaved={handleFieldSaved} allowClear />
               </div>
             </div>
 
@@ -1041,7 +1211,7 @@ export default function PeopleDetailPanel({
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
                 <EditableField icon={<Briefcase className="h-3.5 w-3.5" />} label="Title" value={person.title ?? ''} field="title" personId={person.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={person.company_name ?? ''} field="company_name" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={person.known_as ?? ''} field="known_as" personId={person.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Nickname" value={person.known_as ?? ''} field="known_as" personId={person.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={person.clx_file_name ?? ''} field="clx_file_name" personId={person.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={person.source ?? ''} field="source" personId={person.id} onSaved={handleFieldSaved} />
                 <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Last Contacted" value={formatDate(person.last_activity_at)} />
@@ -1060,7 +1230,7 @@ export default function PeopleDetailPanel({
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Email</span>
               <div className="space-y-1">
                 {personEmails.map((e) => (
-                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
+                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} onUpdate={(id, data) => updateEmailMutation.mutate({ id, data })} />
                 ))}
                 {showAddEmail ? (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
@@ -1085,7 +1255,7 @@ export default function PeopleDetailPanel({
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Phone</span>
               <div className="space-y-1">
                 {personPhones.map((p) => (
-                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)} />
+                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)} onUpdate={(id, data) => updatePhoneMutation.mutate({ id, data })} />
                 ))}
                 {showAddPhone ? (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
@@ -1111,11 +1281,23 @@ export default function PeopleDetailPanel({
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Address</span>
               <div className="space-y-1">
                 {personAddresses.map((a) => (
-                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
+                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} onUpdate={(id, data) => updateAddressMutation.mutate({ id, data })} />
                 ))}
                 {showAddAddress ? (
                   <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
-                    <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    <AddressAutocompleteInput
+                      value={newAddressLine1}
+                      onChange={setNewAddressLine1}
+                      onSelect={(parsed: ParsedAddress) => {
+                        setNewAddressLine1(parsed.address_line_1);
+                        setNewAddressCity(parsed.city);
+                        setNewAddressState(parsed.state);
+                        setNewAddressZip(parsed.zip_code);
+                      }}
+                      placeholder="Start typing an address..."
+                      autoFocus
+                      className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300"
+                    />
                     <div className="flex gap-1.5">
                       <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
                       <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
