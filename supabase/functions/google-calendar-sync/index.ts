@@ -219,14 +219,14 @@ Deno.serve(async (req) => {
             if (!event.start?.dateTime) continue;
 
             const { data: existing } = await supabase
-              .from('evan_appointments')
+              .from('appointments')
               .select('id')
               .eq('google_event_id', event.id)
               .single();
 
             if (existing) {
               await supabase
-                .from('evan_appointments')
+                .from('appointments')
                 .update({
                   title: event.summary || 'Untitled Event',
                   description: event.description || null,
@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
               totalUpdated++;
             } else {
               await supabase
-                .from('evan_appointments')
+                .from('appointments')
                 .insert({
                   title: event.summary || 'Untitled Event',
                   description: event.description || null,
@@ -315,7 +315,7 @@ Deno.serve(async (req) => {
 
     if (action === 'syncAppointment') {
       const { data: appointment, error: apptError } = await supabase
-        .from('evan_appointments')
+        .from('appointments')
         .select('*')
         .eq('id', appointmentId)
         .single();
@@ -331,7 +331,7 @@ Deno.serve(async (req) => {
 
       if (eventId) {
         await supabase
-          .from('evan_appointments')
+          .from('appointments')
           .update({
             google_event_id: eventId,
             google_calendar_id: connection.calendar_id,
@@ -354,7 +354,7 @@ Deno.serve(async (req) => {
 
     if (action === 'syncAll') {
       const { data: appointments, error: apptError } = await supabase
-        .from('evan_appointments')
+        .from('appointments')
         .select('*')
         .or('sync_status.is.null,sync_status.eq.pending')
         .gte('start_time', new Date().toISOString());
@@ -373,7 +373,7 @@ Deno.serve(async (req) => {
         const eventId = await syncToGoogle(accessToken, appointment, connection.calendar_id);
         if (eventId) {
           await supabase
-            .from('evan_appointments')
+            .from('appointments')
             .update({
               google_event_id: eventId,
               google_calendar_id: connection.calendar_id,
@@ -384,7 +384,7 @@ Deno.serve(async (req) => {
           synced++;
         } else {
           await supabase
-            .from('evan_appointments')
+            .from('appointments')
             .update({ sync_status: 'failed' })
             .eq('id', appointment.id);
           failed++;
@@ -411,14 +411,14 @@ Deno.serve(async (req) => {
         if (!event.start?.dateTime) continue;
 
         const { data: existing } = await supabase
-          .from('evan_appointments')
+          .from('appointments')
           .select('id')
           .eq('google_event_id', event.id)
           .single();
 
         if (existing) {
           await supabase
-            .from('evan_appointments')
+            .from('appointments')
             .update({
               title: event.summary || 'Untitled Event',
               description: event.description || null,
@@ -431,7 +431,7 @@ Deno.serve(async (req) => {
           updated++;
         } else {
           await supabase
-            .from('evan_appointments')
+            .from('appointments')
             .insert({
               title: event.summary || 'Untitled Event',
               description: event.description || null,

@@ -10,6 +10,7 @@ export interface Task {
   status: string | null;
   estimated_hours: number | null;
   assignee_name: string | null;
+  team_member_id: string | null;
   group_name: string | null;
   tags: string[] | null;
   lead_id: string | null;

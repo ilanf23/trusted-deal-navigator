@@ -231,7 +231,7 @@ export const EvanCalendarWidget = () => {
       const { start, end } = getDateRange();
       
       const { data, error } = await supabase
-        .from('evan_appointments')
+        .from('appointments')
         .select('*')
         .gte('start_time', start.toISOString())
         .lte('start_time', end.toISOString())
@@ -248,7 +248,7 @@ export const EvanCalendarWidget = () => {
       const { start, end } = getDateRange();
       
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, due_date, is_completed, priority, status, lead:leads(name, company_name)')
         .not('due_date', 'is', null)
         .gte('due_date', start.toISOString())
@@ -268,7 +268,7 @@ export const EvanCalendarWidget = () => {
       const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
       
       const { error } = await supabase
-        .from('evan_appointments')
+        .from('appointments')
         .insert({
           title: newAppointment.title,
           start_time: startTime.toISOString(),
@@ -289,7 +289,7 @@ export const EvanCalendarWidget = () => {
   const deleteAppointment = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('evan_appointments')
+        .from('appointments')
         .delete()
         .eq('id', id);
       if (error) throw error;

@@ -217,12 +217,12 @@ const Calls = () => {
     refetchInterval: 30000,
   });
 
-  // Fetch call history from evan_communications
+  // Fetch call history from communications
   const { data: callHistory = [], isLoading: historyLoading } = useQuery({
     queryKey: ['evan-call-history'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select(`
           *,
           leads (
@@ -357,7 +357,7 @@ const Calls = () => {
       // Update the call record to link to this lead
       if (selectedCallForLead) {
         await supabase
-          .from('evan_communications')
+          .from('communications')
           .update({ lead_id: lead.id })
           .eq('id', selectedCallForLead.id);
       }
@@ -428,7 +428,7 @@ const Calls = () => {
         
         // Re-fetch the updated call to get fresh data
         const { data: updatedComm } = await supabase
-          .from('evan_communications')
+          .from('communications')
           .select('id, lead_id, transcript, direction, created_at, phone_number, leads(name, email, phone)')
           .eq('id', call.id)
           .single();

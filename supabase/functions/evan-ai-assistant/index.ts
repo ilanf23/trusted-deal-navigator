@@ -136,7 +136,7 @@ async function executeAction(
         if (teamMemberId) taskData.assignee_id = teamMemberId;
 
         const { data: task, error: taskErr } = await supabase
-          .from("evan_tasks")
+          .from("tasks")
           .insert(taskData)
           .select("id")
           .single();
@@ -150,7 +150,7 @@ async function executeAction(
           user_id: userId,
           team_member_id: teamMemberId,
           mode,
-          target_table: "evan_tasks",
+          target_table: "tasks",
           target_id: task.id,
           operation: "insert",
           old_values: null,
@@ -168,7 +168,7 @@ async function executeAction(
         if (!taskId) return { success: false, description: "Missing taskId" };
 
         const { data: current } = await supabase
-          .from("evan_tasks")
+          .from("tasks")
           .select("*")
           .eq("id", taskId)
           .single();
@@ -176,7 +176,7 @@ async function executeAction(
         if (!current) return { success: false, description: "Task not found" };
 
         const { error } = await supabase
-          .from("evan_tasks")
+          .from("tasks")
           .update({ is_completed: true, status: "completed" })
           .eq("id", taskId);
 
@@ -187,7 +187,7 @@ async function executeAction(
           user_id: userId,
           team_member_id: teamMemberId,
           mode,
-          target_table: "evan_tasks",
+          target_table: "tasks",
           target_id: taskId,
           operation: "update",
           old_values: { is_completed: false, status: current.status },
@@ -208,7 +208,7 @@ async function executeAction(
         if (leadId) noteData.lead_id = leadId;
 
         const { data: note, error } = await supabase
-          .from("evan_notes")
+          .from("notes")
           .insert(noteData)
           .select("id")
           .single();
@@ -220,7 +220,7 @@ async function executeAction(
           user_id: userId,
           team_member_id: teamMemberId,
           mode,
-          target_table: "evan_notes",
+          target_table: "notes",
           target_id: note.id,
           operation: "insert",
           old_values: null,
@@ -246,7 +246,7 @@ async function executeAction(
         };
 
         const { data: comm, error } = await supabase
-          .from("evan_communications")
+          .from("communications")
           .insert(commData)
           .select("id")
           .single();
@@ -258,7 +258,7 @@ async function executeAction(
           user_id: userId,
           team_member_id: teamMemberId,
           mode,
-          target_table: "evan_communications",
+          target_table: "communications",
           target_id: comm.id,
           operation: "insert",
           old_values: null,
@@ -605,7 +605,7 @@ async function handleAgentAction(req: Request, body: Record<string, any>) {
 
     const { data: leads } = await leadsQuery;
     const { data: tasks } = await supabase
-      .from("evan_tasks")
+      .from("tasks")
       .select("id, title, status, priority, due_date, is_completed, lead_id")
       .eq("is_completed", false)
       .limit(30);
@@ -840,7 +840,7 @@ serve(async (req) => {
 
       // Fetch pending tasks
       const { data: tasks } = await supabase
-        .from("evan_tasks")
+        .from("tasks")
         .select("id, title, description, status, priority, due_date, is_completed, lead_id, tags, assignee_name")
         .eq("is_completed", false)
         .order("due_date", { ascending: true })
@@ -848,21 +848,21 @@ serve(async (req) => {
 
       // Fetch recent communications WITH TRANSCRIPTS
       const { data: communications } = await supabase
-        .from("evan_communications")
+        .from("communications")
         .select("id, lead_id, communication_type, direction, created_at, content, duration_seconds, transcript, status, phone_number")
         .order("created_at", { ascending: false })
         .limit(50);
 
       // Fetch notes
       const { data: notes } = await supabase
-        .from("evan_notes")
+        .from("notes")
         .select("id, content, is_pinned, created_at")
         .order("created_at", { ascending: false })
         .limit(20);
 
       // Fetch upcoming appointments
       const { data: appointments } = await supabase
-        .from("evan_appointments")
+        .from("appointments")
         .select("id, title, start_time, end_time, description, lead_id, appointment_type")
         .gte("start_time", new Date().toISOString())
         .order("start_time", { ascending: true })

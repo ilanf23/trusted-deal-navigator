@@ -72,7 +72,14 @@ export const useAIChanges = (filters?: UseAIChangesFilters) => {
         q = q.eq('status', filters.status);
       }
       if (filters?.targetTable) {
-        q = q.eq('target_table', filters.targetTable);
+        // Match both new and legacy table names for historical records
+        const tableNameMap: Record<string, string[]> = {
+          tasks: ['tasks', 'evan_tasks'],
+          notes: ['notes', 'evan_notes'],
+          communications: ['communications', 'evan_communications'],
+        };
+        const names = tableNameMap[filters.targetTable] || [filters.targetTable];
+        q = q.in('target_table', names);
       }
 
       const { data, error } = await q;

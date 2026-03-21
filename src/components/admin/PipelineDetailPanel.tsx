@@ -4,6 +4,7 @@ import {
   X, DollarSign, Maximize2, Building2, User, Mail, Phone, PhoneCall, Hash,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase,
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Flag, Layers,
+  FolderOpen, AtSign, MapPin, Trash2,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
@@ -16,7 +17,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
@@ -36,6 +37,10 @@ interface TeamMember {
   name: string;
   avatar_url: string | null;
 }
+
+interface LeadEmail { id: string; lead_id: string; email: string; email_type: string; is_primary: boolean; }
+interface LeadPhone { id: string; lead_id: string; phone_number: string; phone_type: string; is_primary: boolean; }
+interface LeadAddress { id: string; lead_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
 
 interface PipelineDetailPanelProps {
   lead: Lead;
@@ -360,11 +365,11 @@ function EditableTags({
   );
 }
 
-// ── Editable Notes ──
-function EditableNotes({
-  value, leadId, onSaved,
+// ── Editable Rich Text Field (generic) ──
+function EditableRichTextField({
+  value, leadId, field, onSaved, placeholder = 'Click to add...',
 }: {
-  value: string; leadId: string;
+  value: string; leadId: string; field: string; placeholder?: string;
   onSaved: (field: string, newValue: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -383,13 +388,13 @@ function EditableNotes({
     setSaving(true);
     const { error } = await supabase
       .from('leads')
-      .update({ notes: trimmed || null })
+      .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
-    onSaved('notes', trimmed);
+    onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, value, leadId, onSaved]);
+  }, [draft, value, field, leadId, onSaved]);
 
   if (editing) {
     return (
@@ -397,7 +402,7 @@ function EditableNotes({
         <RichTextEditor
           value={draft}
           onChange={setDraft}
-          placeholder="Add notes..."
+          placeholder={placeholder}
           minHeight="60px"
           disabled={saving}
         />
@@ -417,7 +422,7 @@ function EditableNotes({
       {value ? (
         <HtmlContent value={value} />
       ) : (
-        <p className="text-[13px] text-muted-foreground italic">Click to add notes...</p>
+        <p className="text-[13px] text-muted-foreground italic">{placeholder}</p>
       )}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <Pencil className="h-3 w-3 text-muted-foreground" />
@@ -436,6 +441,72 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
       <span className="text-[13px] font-medium text-foreground text-right truncate">{value}</span>
+    </div>
+  );
+}
+
+// ── Contact Email Row ──
+function ContactEmailRow({ entry, onDelete }: { entry: LeadEmail; onDelete: (id: string) => void }) {
+  const navigate = useNavigate();
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+      <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
+        {entry.email_type}
+      </Badge>
+      <button
+        onClick={(e) => { e.stopPropagation(); navigate(`/admin/gmail?compose=new&to=${encodeURIComponent(entry.email)}`); }}
+        className="text-[13px] text-foreground font-medium truncate flex-1 text-left hover:underline hover:text-blue-600 transition-colors"
+      >
+        {entry.email}
+      </button>
+      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+      </button>
+    </div>
+  );
+}
+
+// ── Contact Phone Row ──
+function ContactPhoneRow({ entry, onDelete, onCall }: { entry: LeadPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+      <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize shrink-0">
+        {entry.phone_type}
+      </Badge>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
+      {onCall && (
+        <button onClick={() => onCall(entry.phone_number)} title="Call this number" className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <PhoneCall className="h-3 w-3 text-green-600 hover:text-green-700" />
+        </button>
+      )}
+      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+      </button>
+    </div>
+  );
+}
+
+// ── Address Block ──
+function AddressBlock({ entry, onDelete }: { entry: LeadAddress; onDelete: (id: string) => void }) {
+  const parts = [entry.address_line_1, entry.address_line_2].filter(Boolean);
+  const cityLine = [entry.city, entry.state, entry.zip_code].filter(Boolean).join(', ');
+  return (
+    <div className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-muted/40 transition-colors group">
+      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        {parts.map((p, i) => (
+          <p key={i} className="text-[13px] text-foreground font-medium truncate">{p}</p>
+        ))}
+        {cityLine && <p className="text-[12px] text-muted-foreground truncate">{cityLine}</p>}
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-full capitalize mt-1">
+          {entry.address_type}
+        </Badge>
+      </div>
+      <button onClick={() => onDelete(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+      </button>
     </div>
   );
 }
@@ -479,7 +550,7 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
     queryKey: ['lead-activity-timeline', 'communications', lead.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id, communication_type, direction, content, duration_seconds, created_at')
         .eq('lead_id', lead.id)
         .order('created_at', { ascending: false });
@@ -668,7 +739,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
     queryKey: ['lead-related', 'tasks', lead.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, status, is_completed, due_date')
         .eq('lead_id', lead.id)
         .order('is_completed', { ascending: true })
@@ -916,6 +987,135 @@ export default function PipelineDetailPanel({
 
   const ownerOptions = teamMembers.map((m) => ({ value: m.id, label: m.name }));
 
+  // ── Add-form state ──
+  const [showAddEmail, setShowAddEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newEmailType, setNewEmailType] = useState('work');
+  const [showAddPhone, setShowAddPhone] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [newPhoneType, setNewPhoneType] = useState('work');
+  const [showAddAddress, setShowAddAddress] = useState(false);
+  const [newAddressLine1, setNewAddressLine1] = useState('');
+  const [newAddressCity, setNewAddressCity] = useState('');
+  const [newAddressState, setNewAddressState] = useState('');
+  const [newAddressZip, setNewAddressZip] = useState('');
+  const [newAddressType, setNewAddressType] = useState('business');
+
+  // ── Satellite table queries ──
+  const { data: leadEmails = [] } = useQuery({
+    queryKey: ['lead-emails', lead?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_emails').select('*').eq('lead_id', lead.id);
+      return (data || []) as LeadEmail[];
+    },
+    enabled: !!lead,
+  });
+
+  const { data: leadPhones = [] } = useQuery({
+    queryKey: ['lead-phones', lead?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_phones').select('*').eq('lead_id', lead.id);
+      return (data || []) as LeadPhone[];
+    },
+    enabled: !!lead,
+  });
+
+  const { data: leadAddresses = [] } = useQuery({
+    queryKey: ['lead-addresses', lead?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_addresses').select('*').eq('lead_id', lead.id);
+      return (data || []) as LeadAddress[];
+    },
+    enabled: !!lead,
+  });
+
+  // ── Satellite table mutations ──
+  const addEmailMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const { error } = await supabase.from('lead_emails').insert({ lead_id: lead.id, email, email_type: newEmailType });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] });
+      setNewEmail('');
+      setShowAddEmail(false);
+      toast.success('Email added');
+    },
+    onError: () => toast.error('Failed to add email'),
+  });
+
+  const deleteEmailMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      const { error } = await supabase.from('lead_emails').delete().eq('id', emailId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-emails', lead?.id] });
+      toast.success('Email removed');
+    },
+  });
+
+  const addPhoneMutation = useMutation({
+    mutationFn: async (phone: string) => {
+      const { error } = await supabase.from('lead_phones').insert({ lead_id: lead.id, phone_number: phone, phone_type: newPhoneType });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead?.id] });
+      setNewPhone('');
+      setShowAddPhone(false);
+      toast.success('Phone added');
+    },
+    onError: () => toast.error('Failed to add phone'),
+  });
+
+  const deletePhoneMutation = useMutation({
+    mutationFn: async (phoneId: string) => {
+      const { error } = await supabase.from('lead_phones').delete().eq('id', phoneId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead?.id] });
+      toast.success('Phone removed');
+    },
+  });
+
+  const addAddressMutation = useMutation({
+    mutationFn: async () => {
+      if (!newAddressLine1.trim()) return;
+      const { error } = await supabase.from('lead_addresses').insert({
+        lead_id: lead.id,
+        address_line_1: newAddressLine1.trim(),
+        city: newAddressCity.trim() || null,
+        state: newAddressState.trim() || null,
+        zip_code: newAddressZip.trim() || null,
+        address_type: newAddressType,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead?.id] });
+      setNewAddressLine1('');
+      setNewAddressCity('');
+      setNewAddressState('');
+      setNewAddressZip('');
+      setShowAddAddress(false);
+      toast.success('Address added');
+    },
+    onError: () => toast.error('Failed to add address'),
+  });
+
+  const deleteAddressMutation = useMutation({
+    mutationFn: async (addressId: string) => {
+      const { error } = await supabase.from('lead_addresses').delete().eq('id', addressId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead?.id] });
+      toast.success('Address removed');
+    },
+  });
+
   return (
     <aside className="shrink-0 w-[380px] border-l border-border/60 bg-card flex flex-col h-full animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
@@ -1072,7 +1272,8 @@ export default function PipelineDetailPanel({
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Deal Details</span>
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
                 <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Pipeline" />
-                <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="CLX File" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} />
                 {ownerOptions.length > 0 ? (
                   <EditableSelectField
                     icon={<User className="h-3.5 w-3.5" />}
@@ -1092,6 +1293,7 @@ export default function PipelineDetailPanel({
                   <ReadOnlyField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={formatValue(dealValue)} />
                 )}
                 <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
+                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Last Contacted" value={formatDate(lead.last_activity_at)} />
               </div>
             </div>
 
@@ -1101,10 +1303,106 @@ export default function PipelineDetailPanel({
               <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
             </div>
 
-            {/* Notes -- editable */}
+            {/* Email */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Notes</span>
-              <EditableNotes value={lead.notes ?? ''} leadId={lead.id} onSaved={handleFieldSaved} />
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Email</span>
+              <div className="space-y-1">
+                {leadEmails.map((e) => (
+                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
+                ))}
+                {showAddEmail ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <Select value={newEmailType} onValueChange={setNewEmailType}>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="work" className="text-xs">Work</SelectItem>
+                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
+                )}
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Phone</span>
+              <div className="space-y-1">
+                {leadPhones.map((p) => (
+                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
+                ))}
+                {showAddPhone ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <Select value={newPhoneType} onValueChange={setNewPhoneType}>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="work" className="text-xs">Work</SelectItem>
+                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+                        <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
+                )}
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Address</span>
+              <div className="space-y-1">
+                {leadAddresses.map((a) => (
+                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
+                ))}
+                {showAddAddress ? (
+                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                    <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    <div className="flex gap-1.5">
+                      <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                      <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                      <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Select value={newAddressType} onValueChange={setNewAddressType}>
+                        <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="business" className="text-xs">Business</SelectItem>
+                          <SelectItem value="home" className="text-xs">Home</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
+                        <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
+                )}
+              </div>
+            </div>
+
+            {/* About */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">About</span>
+              <EditableRichTextField value={lead.notes ?? ''} leadId={lead.id} field="notes" onSaved={handleFieldSaved} placeholder="Background info about this contact..." />
+            </div>
+
+            {/* Bank Relationships */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Bank Relationships</span>
+              <EditableRichTextField value={lead.bank_relationships ?? ''} leadId={lead.id} field="bank_relationships" onSaved={handleFieldSaved} placeholder="Excluded lender names from CLX agreement..." />
             </div>
           </div>
         </ScrollArea>

@@ -91,6 +91,11 @@ interface Lead {
   website: string | null;
   linkedin: string | null;
   twitter: string | null;
+  clx_file_name: string | null;
+  bank_relationships: string | null;
+  last_activity_at: string | null;
+  history: string | null;
+  description: string | null;
 }
 
 interface LeadPhone {
@@ -270,6 +275,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     other: [] as string[],
     about: '',
     tags: [] as string[],
+    clxFileName: '',
+    bankRelationships: '',
   });
 
   // Notes state
@@ -283,6 +290,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const [socialOpen, setSocialOpen] = useState(true);
   const [tagsOpen, setTagsOpen] = useState(true);
   const [aboutOpen, setAboutOpen] = useState(true);
+  const [bankRelOpen, setBankRelOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [emailThreadsOpen, setEmailThreadsOpen] = useState(true);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
@@ -369,6 +377,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         other: [],
         about: lead.about || '',
         tags: lead.tags || [],
+        clxFileName: lead.clx_file_name || '',
+        bankRelationships: lead.bank_relationships || '',
       });
       setNotesContent(leadResponseData?.purpose_of_loan || lead.notes || '');
       setAiSummary(null);
@@ -471,9 +481,9 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-tasks', lead?.id],
     queryFn: async () => {
       if (!lead) return [];
-      // Query from evan_tasks which has richer data (descriptions, etc)
+      // Query from tasks which has richer data (descriptions, etc)
       const { data } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, description, due_date, status, priority, estimated_hours')
         .eq('lead_id', lead.id)
         .order('created_at', { ascending: false });
@@ -564,7 +574,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['lead-communications', lead?.id],
     queryFn: async () => {
       if (!lead) return [];
-      const { data } = await supabase.from('evan_communications').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false });
+      const { data } = await supabase.from('communications').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false });
       return (data || []) as Communication[];
     },
     enabled: !!lead && open,
@@ -863,6 +873,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         twitter: updates.twitter ?? contactInfo.twitter,
         about: updates.about ?? contactInfo.about,
         tags: updates.tags ?? contactInfo.tags,
+        clx_file_name: updates.clxFileName ?? contactInfo.clxFileName,
+        bank_relationships: updates.bankRelationships ?? contactInfo.bankRelationships,
       }).eq('id', lead.id);
       if (error) throw error;
     },
@@ -966,8 +978,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       });
       if (leadTaskError) throw leadTaskError;
       
-      // Also add to evan_tasks so it appears in Evan's Tasks page
-      const { error: evanTaskError } = await supabase.from('evan_tasks').insert({
+      // Also add to tasks so it appears in Evan's Tasks page
+      const { error: evanTaskError } = await supabase.from('tasks').insert({
         title,
         description: `Task for ${lead.name}${lead.company_name ? ` (${lead.company_name})` : ''}`,
         due_date: dueDate || null,
@@ -976,6 +988,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         lead_id: lead.id,
         source: 'lead',
         assignee_name: 'Evan',
+        team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
       });
       if (evanTaskError) throw evanTaskError;
     },
@@ -993,7 +1006,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     mutationFn: async ({ id, updates }: { id: string; updates: { status?: string } }) => {
       const isDone = updates.status === 'done' || updates.status === 'completed';
       const { error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .update({ 
           status: updates.status,
           is_completed: isDone,
@@ -2264,6 +2277,16 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                           </SelectContent>
                         </Select>
                       </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">CLX File Name</p>
+                        <Input
+                          value={contactInfo.clxFileName}
+                          onChange={(e) => setContactInfo(p => ({ ...p, clxFileName: e.target.value }))}
+                          onBlur={() => updateContactInfo.mutate({ clxFileName: contactInfo.clxFileName })}
+                          className="h-8 text-sm border-0 border-b border-border rounded-none px-0 focus-visible:ring-0 focus-visible:border-blue-600"
+                          placeholder="CLX file name"
+                        />
+                      </div>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
@@ -2646,11 +2669,32 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                     <ChevronDown className={cn("w-4 h-4 text-muted-foreground ml-auto transition-transform", !aboutOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-3 pl-6">
-                    <Textarea 
+                    <Textarea
                       value={contactInfo.about}
                       onChange={(e) => setContactInfo(p => ({ ...p, about: e.target.value }))}
                       onBlur={() => updateContactInfo.mutate({ about: contactInfo.about })}
                       placeholder="Background info about this contact..."
+                      className="min-h-[80px] text-sm border-border resize-none"
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator />
+
+                {/* Bank Relationships Section */}
+                <Collapsible open={bankRelOpen} onOpenChange={setBankRelOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded px-2 -mx-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                    <Handshake className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Bank Relationships</span>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground ml-auto transition-transform", !bankRelOpen && "-rotate-90")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-3 pl-6">
+                    <Textarea
+                      value={contactInfo.bankRelationships}
+                      onChange={(e) => setContactInfo(p => ({ ...p, bankRelationships: e.target.value }))}
+                      onBlur={() => updateContactInfo.mutate({ bankRelationships: contactInfo.bankRelationships })}
+                      placeholder="Excluded lender names from CLX agreement..."
                       className="min-h-[80px] text-sm border-border resize-none"
                     />
                   </CollapsibleContent>
@@ -2881,6 +2925,14 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                         </p>
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Last Contacted</p>
+                        <p className="text-sm text-foreground">
+                          {lead.last_activity_at ? format(new Date(lead.last_activity_at), 'MMM d') : '—'}
+                        </p>
+                      </div>
+                    </div>
                   </CollapsibleContent>
                 </Collapsible>
               </div>
@@ -2913,8 +2965,8 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
             return;
           }
           
-          // Also add to evan_tasks so it appears in Tasks page
-          const { error: evanTaskError } = await supabase.from('evan_tasks').insert({
+          // Also add to tasks so it appears in Tasks page
+          const { error: evanTaskError } = await supabase.from('tasks').insert({
             title: task.title || '',
             description: task.description || `Task for ${lead.name}${lead.company_name ? ` (${lead.company_name})` : ''}`,
             due_date: task.due_date || null,
@@ -2923,6 +2975,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
             lead_id: lead.id,
             source: 'lead',
             assignee_name: task.assignee_name || 'Evan',
+            team_member_id: (task as any).team_member_id || '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
             estimated_hours: task.estimated_hours || null,
           });
           if (evanTaskError) {

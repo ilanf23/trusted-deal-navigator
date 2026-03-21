@@ -10,7 +10,7 @@ const Tasks = () => {
         <div className="pb-4">
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-semibold tracking-tight">Tasks</h1>
-            <DbTableBadge tables={['evan_tasks']} />
+            <DbTableBadge tables={['tasks']} />
           </div>
           <p className="text-muted-foreground mt-1">Manage your work</p>
         </div>

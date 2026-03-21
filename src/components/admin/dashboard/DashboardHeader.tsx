@@ -26,7 +26,7 @@ export const DashboardHeader = ({ firstName, timePeriod, setTimePeriod, isFetchi
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight">{greeting}</h1>
-          <DbTableBadge tables={['leads', 'active_calls', 'evan_tasks']} />
+          <DbTableBadge tables={['leads', 'active_calls', 'tasks']} />
         </div>
         <p className="text-base md:text-lg text-muted-foreground mt-1.5">
           {format(now, 'EEEE, MMMM d')}

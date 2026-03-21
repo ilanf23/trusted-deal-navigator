@@ -89,7 +89,7 @@ const CRMBoard = () => {
       
       const leadIds = leads.map(l => l.id);
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('lead_id, communication_type, direction, created_at')
         .in('lead_id', leadIds)
         .order('created_at', { ascending: false });

@@ -880,7 +880,7 @@ export const CallProvider = ({ children }: { children: ReactNode }) => {
       });
 
       // Log the call to communications
-      await supabase.from('evan_communications').insert({
+      await supabase.from('communications').insert({
         lead_id: leadId || null,
         communication_type: 'call',
         direction: 'outbound',

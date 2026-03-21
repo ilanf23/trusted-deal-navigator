@@ -98,7 +98,151 @@ export type Database = {
           id?: string
           lead_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "activity_comments_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "lead_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_comments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_agent_batches: {
+        Row: {
+          conversation_id: string | null
+          created_at: string | null
+          id: string
+          mode: string
+          prompt_summary: string | null
+          status: string
+          total_changes: number | null
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          mode: string
+          prompt_summary?: string | null
+          status?: string
+          total_changes?: number | null
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          mode?: string
+          prompt_summary?: string | null
+          status?: string
+          total_changes?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_batches_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_agent_changes: {
+        Row: {
+          ai_reasoning: string | null
+          batch_id: string | null
+          batch_order: number | null
+          conversation_id: string | null
+          created_at: string | null
+          description: string
+          id: string
+          mode: string
+          model_used: string | null
+          new_values: Json
+          old_values: Json | null
+          operation: string
+          status: string
+          target_id: string
+          target_table: string
+          team_member_id: string | null
+          undone_at: string | null
+          undone_by: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_reasoning?: string | null
+          batch_id?: string | null
+          batch_order?: number | null
+          conversation_id?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          mode: string
+          model_used?: string | null
+          new_values: Json
+          old_values?: Json | null
+          operation: string
+          status?: string
+          target_id: string
+          target_table: string
+          team_member_id?: string | null
+          undone_at?: string | null
+          undone_by?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_reasoning?: string | null
+          batch_id?: string | null
+          batch_order?: number | null
+          conversation_id?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          mode?: string
+          model_used?: string | null
+          new_values?: Json
+          old_values?: Json | null
+          operation?: string
+          status?: string
+          target_id?: string
+          target_table?: string
+          team_member_id?: string | null
+          undone_at?: string | null
+          undone_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_changes_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agent_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_agent_changes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_agent_changes_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_conversation_messages: {
         Row: {
@@ -106,6 +250,8 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          message_type: string | null
+          metadata: Json | null
           role: string
         }
         Insert: {
@@ -113,6 +259,8 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          message_type?: string | null
+          metadata?: Json | null
           role: string
         }
         Update: {
@@ -120,6 +268,8 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          message_type?: string | null
+          metadata?: Json | null
           role?: string
         }
         Relationships: [
@@ -136,6 +286,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          mode: string | null
           title: string | null
           updated_at: string
           user_id: string | null
@@ -143,6 +294,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          mode?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string | null
@@ -150,11 +302,81 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          mode?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Relationships: []
+      }
+      appointments: {
+        Row: {
+          appointment_type: string | null
+          created_at: string
+          description: string | null
+          end_time: string | null
+          google_calendar_id: string | null
+          google_event_id: string | null
+          id: string
+          lead_id: string | null
+          start_time: string
+          sync_status: string | null
+          synced_at: string | null
+          team_member_id: string | null
+          team_member_name: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_type?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          lead_id?: string | null
+          start_time: string
+          sync_status?: string | null
+          synced_at?: string | null
+          team_member_id?: string | null
+          team_member_name?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_type?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          lead_id?: string | null
+          start_time?: string
+          sync_status?: string | null
+          synced_at?: string | null
+          team_member_id?: string | null
+          team_member_name?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evan_appointments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bug_reports: {
         Row: {
@@ -424,6 +646,13 @@ export type Database = {
             foreignKeyName: "call_rating_notifications_communication_id_fkey"
             columns: ["communication_id"]
             isOneToOne: false
+            referencedRelation: "communications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_rating_notifications_communication_id_fkey"
+            columns: ["communication_id"]
+            isOneToOne: false
             referencedRelation: "evan_communications"
             referencedColumns: ["id"]
           },
@@ -438,20 +667,29 @@ export type Database = {
       }
       checklist_template_items: {
         Row: {
+          assigned_to: string | null
+          created_at: string
+          due_date: string | null
           id: string
-          position: number | null
+          position: number
           template_id: string
           text: string
         }
         Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          due_date?: string | null
           id?: string
-          position?: number | null
+          position?: number
           template_id: string
           text: string
         }
         Update: {
+          assigned_to?: string | null
+          created_at?: string
+          due_date?: string | null
           id?: string
-          position?: number | null
+          position?: number
           template_id?: string
           text?: string
         }
@@ -485,6 +723,72 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      communications: {
+        Row: {
+          call_sid: string | null
+          communication_type: string
+          content: string | null
+          created_at: string
+          direction: string
+          duration_seconds: number | null
+          id: string
+          lead_id: string | null
+          phone_number: string | null
+          recording_sid: string | null
+          recording_url: string | null
+          status: string | null
+          team_member_id: string | null
+          transcript: string | null
+        }
+        Insert: {
+          call_sid?: string | null
+          communication_type: string
+          content?: string | null
+          created_at?: string
+          direction: string
+          duration_seconds?: number | null
+          id?: string
+          lead_id?: string | null
+          phone_number?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          status?: string | null
+          team_member_id?: string | null
+          transcript?: string | null
+        }
+        Update: {
+          call_sid?: string | null
+          communication_type?: string
+          content?: string | null
+          created_at?: string
+          direction?: string
+          duration_seconds?: number | null
+          id?: string
+          lead_id?: string | null
+          phone_number?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          status?: string | null
+          team_member_id?: string | null
+          transcript?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evan_communications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       companies: {
         Row: {
@@ -536,44 +840,6 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
-      }
-      company_activities: {
-        Row: {
-          activity_type: string
-          company_id: string
-          content: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          title: string | null
-        }
-        Insert: {
-          activity_type: string
-          company_id: string
-          content?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          title?: string | null
-        }
-        Update: {
-          activity_type?: string
-          company_id?: string
-          content?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          title?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "company_activities_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       contracts: {
         Row: {
@@ -1105,295 +1371,6 @@ export type Database = {
           },
         ]
       }
-      evan_appointments: {
-        Row: {
-          appointment_type: string | null
-          created_at: string
-          description: string | null
-          end_time: string | null
-          google_calendar_id: string | null
-          google_event_id: string | null
-          id: string
-          lead_id: string | null
-          start_time: string
-          sync_status: string | null
-          synced_at: string | null
-          team_member_name: string | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          appointment_type?: string | null
-          created_at?: string
-          description?: string | null
-          end_time?: string | null
-          google_calendar_id?: string | null
-          google_event_id?: string | null
-          id?: string
-          lead_id?: string | null
-          start_time: string
-          sync_status?: string | null
-          synced_at?: string | null
-          team_member_name?: string | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          appointment_type?: string | null
-          created_at?: string
-          description?: string | null
-          end_time?: string | null
-          google_calendar_id?: string | null
-          google_event_id?: string | null
-          id?: string
-          lead_id?: string | null
-          start_time?: string
-          sync_status?: string | null
-          synced_at?: string | null
-          team_member_name?: string | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "evan_appointments_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      evan_communications: {
-        Row: {
-          call_sid: string | null
-          communication_type: string
-          content: string | null
-          created_at: string
-          direction: string
-          duration_seconds: number | null
-          id: string
-          lead_id: string | null
-          phone_number: string | null
-          recording_sid: string | null
-          recording_url: string | null
-          status: string | null
-          transcript: string | null
-        }
-        Insert: {
-          call_sid?: string | null
-          communication_type: string
-          content?: string | null
-          created_at?: string
-          direction: string
-          duration_seconds?: number | null
-          id?: string
-          lead_id?: string | null
-          phone_number?: string | null
-          recording_sid?: string | null
-          recording_url?: string | null
-          status?: string | null
-          transcript?: string | null
-        }
-        Update: {
-          call_sid?: string | null
-          communication_type?: string
-          content?: string | null
-          created_at?: string
-          direction?: string
-          duration_seconds?: number | null
-          id?: string
-          lead_id?: string | null
-          phone_number?: string | null
-          recording_sid?: string | null
-          recording_url?: string | null
-          status?: string | null
-          transcript?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "evan_communications_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      evan_notes: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          is_pinned: boolean
-          updated_at: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          is_pinned?: boolean
-          updated_at?: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          is_pinned?: boolean
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      evan_task_activities: {
-        Row: {
-          activity_type: string
-          content: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          mentioned_users: string[] | null
-          new_value: string | null
-          old_value: string | null
-          task_id: string
-        }
-        Insert: {
-          activity_type: string
-          content?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          mentioned_users?: string[] | null
-          new_value?: string | null
-          old_value?: string | null
-          task_id: string
-        }
-        Update: {
-          activity_type?: string
-          content?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          mentioned_users?: string[] | null
-          new_value?: string | null
-          old_value?: string | null
-          task_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "evan_task_activities_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "evan_tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      evan_task_files: {
-        Row: {
-          created_at: string
-          file_name: string
-          file_size: number | null
-          file_type: string | null
-          file_url: string
-          id: string
-          task_id: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          file_name: string
-          file_size?: number | null
-          file_type?: string | null
-          file_url: string
-          id?: string
-          task_id: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          file_name?: string
-          file_size?: number | null
-          file_type?: string | null
-          file_url?: string
-          id?: string
-          task_id?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "evan_task_files_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "evan_tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      evan_tasks: {
-        Row: {
-          assignee_name: string | null
-          created_at: string
-          description: string | null
-          due_date: string | null
-          estimated_hours: number | null
-          group_name: string | null
-          id: string
-          is_completed: boolean
-          lead_id: string | null
-          priority: string | null
-          source: string | null
-          status: string | null
-          tags: string[] | null
-          task_type: string | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          assignee_name?: string | null
-          created_at?: string
-          description?: string | null
-          due_date?: string | null
-          estimated_hours?: number | null
-          group_name?: string | null
-          id?: string
-          is_completed?: boolean
-          lead_id?: string | null
-          priority?: string | null
-          source?: string | null
-          status?: string | null
-          tags?: string[] | null
-          task_type?: string | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          assignee_name?: string | null
-          created_at?: string
-          description?: string | null
-          due_date?: string | null
-          estimated_hours?: number | null
-          group_name?: string | null
-          id?: string
-          is_completed?: boolean
-          lead_id?: string | null
-          priority?: string | null
-          source?: string | null
-          status?: string | null
-          tags?: string[] | null
-          task_type?: string | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "evan_tasks_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       gmail_connections: {
         Row: {
           access_token: string
@@ -1426,6 +1403,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      hidden_email_threads: {
+        Row: {
+          created_at: string | null
+          hidden_by: string
+          id: string
+          thread_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          hidden_by: string
+          id?: string
+          thread_id: string
+        }
+        Update: {
+          created_at?: string | null
+          hidden_by?: string
+          id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hidden_email_threads_hidden_by_fkey"
+            columns: ["hidden_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_items: {
         Row: {
@@ -1609,27 +1615,33 @@ export type Database = {
       }
       lead_checklist_items: {
         Row: {
+          assigned_to: string | null
           checklist_id: string
           created_at: string
+          due_date: string | null
           id: string
-          is_checked: boolean | null
-          position: number | null
+          is_checked: boolean
+          position: number
           text: string
         }
         Insert: {
+          assigned_to?: string | null
           checklist_id: string
           created_at?: string
+          due_date?: string | null
           id?: string
-          is_checked?: boolean | null
-          position?: number | null
+          is_checked?: boolean
+          position?: number
           text: string
         }
         Update: {
+          assigned_to?: string | null
           checklist_id?: string
           created_at?: string
+          due_date?: string | null
           id?: string
-          is_checked?: boolean | null
-          position?: number | null
+          is_checked?: boolean
+          position?: number
           text?: string
         }
         Relationships: [
@@ -1649,7 +1661,7 @@ export type Database = {
           created_by: string | null
           id: string
           lead_id: string
-          title: string | null
+          title: string
         }
         Insert: {
           activity_id?: string | null
@@ -1657,7 +1669,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           lead_id: string
-          title?: string | null
+          title?: string
         }
         Update: {
           activity_id?: string | null
@@ -1665,11 +1677,47 @@ export type Database = {
           created_by?: string | null
           id?: string
           lead_id?: string
-          title?: string | null
+          title?: string
         }
         Relationships: [
           {
+            foreignKeyName: "lead_checklists_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "lead_activities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lead_checklists_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_companies: {
+        Row: {
+          company_name: string
+          created_at: string | null
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string | null
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string | null
+          id?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_companies_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
@@ -2226,11 +2274,9 @@ export type Database = {
       leads: {
         Row: {
           about: string | null
-          actual_net_revenue: number | null
           assigned_to: string | null
           bank_relationships: string | null
           client_other_lenders: boolean
-          clx_agreement: boolean | null
           clx_file_name: string | null
           cohort_year: number | null
           company_name: string | null
@@ -2241,27 +2287,18 @@ export type Database = {
           deal_value: number | null
           description: string | null
           email: string | null
-          fee_percent: number | null
           flagged_for_weekly: boolean
           history: string | null
           id: string
           initial_nudge_created_at: string | null
-          invoice_amount: number | null
           known_as: string | null
           last_activity_at: string | null
-          lender_name: string | null
-          lender_type: string | null
           linkedin: string | null
-          loan_category: string | null
-          loan_stage: string | null
-          loss_reason: string | null
           name: string
-          net_revenue: number | null
           next_action: string | null
           notes: string | null
           opportunity_name: string | null
           phone: string | null
-          potential_revenue: number | null
           qualified_at: string | null
           questionnaire_completed_at: string | null
           questionnaire_sent_at: string | null
@@ -2269,33 +2306,22 @@ export type Database = {
           ratewatch_questionnaire_completed_at: string | null
           ratewatch_questionnaire_sent_at: string | null
           ratewatch_questionnaire_token: string | null
-          referral_source: string | null
-          rs_fee_percent: number | null
-          rs_revenue: number | null
-          sheets_last_synced_at: string | null
-          sheets_row_index: number | null
           sla_threshold_days: number | null
           source: string | null
           status: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
-          target_closing_date: string | null
           title: string | null
           twitter: string | null
           updated_at: string
           uw_number: string | null
-          volume_log_status: string | null
           waiting_on: string | null
           website: string | null
-          won: boolean | null
-          wu_date: string | null
         }
         Insert: {
           about?: string | null
-          actual_net_revenue?: number | null
           assigned_to?: string | null
           bank_relationships?: string | null
           client_other_lenders?: boolean
-          clx_agreement?: boolean | null
           clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
@@ -2306,27 +2332,18 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
-          fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
-          invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
-          lender_name?: string | null
-          lender_type?: string | null
           linkedin?: string | null
-          loan_category?: string | null
-          loan_stage?: string | null
-          loss_reason?: string | null
           name: string
-          net_revenue?: number | null
           next_action?: string | null
           notes?: string | null
           opportunity_name?: string | null
           phone?: string | null
-          potential_revenue?: number | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
@@ -2334,33 +2351,22 @@ export type Database = {
           ratewatch_questionnaire_completed_at?: string | null
           ratewatch_questionnaire_sent_at?: string | null
           ratewatch_questionnaire_token?: string | null
-          referral_source?: string | null
-          rs_fee_percent?: number | null
-          rs_revenue?: number | null
-          sheets_last_synced_at?: string | null
-          sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
-          target_closing_date?: string | null
           title?: string | null
           twitter?: string | null
           updated_at?: string
           uw_number?: string | null
-          volume_log_status?: string | null
           waiting_on?: string | null
           website?: string | null
-          won?: boolean | null
-          wu_date?: string | null
         }
         Update: {
           about?: string | null
-          actual_net_revenue?: number | null
           assigned_to?: string | null
           bank_relationships?: string | null
           client_other_lenders?: boolean
-          clx_agreement?: boolean | null
           clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
@@ -2371,27 +2377,18 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
-          fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
-          invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
-          lender_name?: string | null
-          lender_type?: string | null
           linkedin?: string | null
-          loan_category?: string | null
-          loan_stage?: string | null
-          loss_reason?: string | null
           name?: string
-          net_revenue?: number | null
           next_action?: string | null
           notes?: string | null
           opportunity_name?: string | null
           phone?: string | null
-          potential_revenue?: number | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
@@ -2399,25 +2396,16 @@ export type Database = {
           ratewatch_questionnaire_completed_at?: string | null
           ratewatch_questionnaire_sent_at?: string | null
           ratewatch_questionnaire_token?: string | null
-          referral_source?: string | null
-          rs_fee_percent?: number | null
-          rs_revenue?: number | null
-          sheets_last_synced_at?: string | null
-          sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
-          target_closing_date?: string | null
           title?: string | null
           twitter?: string | null
           updated_at?: string
           uw_number?: string | null
-          volume_log_status?: string | null
           waiting_on?: string | null
           website?: string | null
-          won?: boolean | null
-          wu_date?: string | null
         }
         Relationships: [
           {
@@ -2425,50 +2413,6 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_signals: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          lead_id: string
-          resolved_at: string | null
-          severity: string
-          signal_type: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          lead_id: string
-          resolved_at?: string | null
-          severity?: string
-          signal_type: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          lead_id?: string
-          resolved_at?: string | null
-          severity?: string
-          signal_type?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_signals_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -2690,6 +2634,39 @@ export type Database = {
         }
         Relationships: []
       }
+      new_signups: {
+        Row: {
+          client_email: string | null
+          client_name: string
+          company_name: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          signed_up_at: string
+          source: string | null
+        }
+        Insert: {
+          client_email?: string | null
+          client_name: string
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          signed_up_at?: string
+          source?: string | null
+        }
+        Update: {
+          client_email?: string | null
+          client_name?: string
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          signed_up_at?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       newsletter_campaign_events: {
         Row: {
           campaign_id: string
@@ -2855,6 +2832,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_pinned: boolean
+          team_member_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          team_member_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          team_member_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       outbound_emails: {
         Row: {
@@ -3115,68 +3127,73 @@ export type Database = {
       people: {
         Row: {
           assigned_to: string | null
+          bank_relationships: string | null
+          clx_file_name: string | null
           company_name: string | null
           contact_type: string | null
           created_at: string
           email: string | null
           id: string
-          inactive_days: number
-          interactions_count: number
+          known_as: string | null
           last_activity_at: string | null
-          last_contacted: string | null
           linkedin: string | null
           name: string
           notes: string | null
           phone: string | null
           source: string | null
           tags: string[] | null
-          tasks_count: number
           title: string | null
           updated_at: string
         }
         Insert: {
           assigned_to?: string | null
+          bank_relationships?: string | null
+          clx_file_name?: string | null
           company_name?: string | null
           contact_type?: string | null
           created_at?: string
           email?: string | null
           id?: string
-          inactive_days?: number
-          interactions_count?: number
+          known_as?: string | null
           last_activity_at?: string | null
-          last_contacted?: string | null
           linkedin?: string | null
           name: string
           notes?: string | null
           phone?: string | null
           source?: string | null
           tags?: string[] | null
-          tasks_count?: number
           title?: string | null
           updated_at?: string
         }
         Update: {
           assigned_to?: string | null
+          bank_relationships?: string | null
+          clx_file_name?: string | null
           company_name?: string | null
           contact_type?: string | null
           created_at?: string
           email?: string | null
           id?: string
-          inactive_days?: number
-          interactions_count?: number
+          known_as?: string | null
           last_activity_at?: string | null
-          last_contacted?: string | null
           linkedin?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
           source?: string | null
           tags?: string[] | null
-          tasks_count?: number
           title?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "people_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_activities: {
         Row: {
@@ -3213,65 +3230,162 @@ export type Database = {
           },
         ]
       }
-      people_files: {
+      people_addresses: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          address_type: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          person_id: string
+          state: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          address_type?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          person_id: string
+          state?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          address_type?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          person_id?: string
+          state?: string | null
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_addresses_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_emails: {
         Row: {
           created_at: string
-          file_name: string
-          file_size: number | null
-          file_type: string | null
-          file_url: string
+          email: string
+          email_type: string | null
           id: string
+          is_primary: boolean | null
           person_id: string
-          uploaded_by: string | null
         }
         Insert: {
           created_at?: string
-          file_name: string
-          file_size?: number | null
-          file_type?: string | null
-          file_url: string
+          email: string
+          email_type?: string | null
           id?: string
+          is_primary?: boolean | null
           person_id: string
-          uploaded_by?: string | null
         }
         Update: {
           created_at?: string
-          file_name?: string
-          file_size?: number | null
-          file_type?: string | null
-          file_url?: string
+          email?: string
+          email_type?: string | null
           id?: string
+          is_primary?: boolean | null
           person_id?: string
-          uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "people_emails_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_phones: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          person_id: string
+          phone_number: string
+          phone_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          person_id: string
+          phone_number: string
+          phone_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          person_id?: string
+          phone_number?: string
+          phone_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_phones_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_tasks: {
         Row: {
+          assigned_to: string | null
           created_at: string
           due_date: string | null
           id: string
           person_id: string
-          status: string
+          status: string | null
           title: string
         }
         Insert: {
+          assigned_to?: string | null
           created_at?: string
           due_date?: string | null
           id?: string
           person_id: string
-          status?: string
+          status?: string | null
           title: string
         }
         Update: {
+          assigned_to?: string | null
           created_at?: string
           due_date?: string | null
           id?: string
           person_id?: string
-          status?: string
+          status?: string | null
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "people_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "people_tasks_person_id_fkey"
             columns: ["person_id"]
@@ -3551,6 +3665,7 @@ export type Database = {
           icon: string | null
           id: string
           is_main: boolean | null
+          is_system: boolean
           name: string
           owner_id: string
           template_type: string | null
@@ -3563,6 +3678,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_main?: boolean | null
+          is_system?: boolean
           name: string
           owner_id: string
           template_type?: string | null
@@ -3575,6 +3691,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_main?: boolean | null
+          is_system?: boolean
           name?: string
           owner_id?: string
           template_type?: string | null
@@ -3689,7 +3806,6 @@ export type Database = {
           rate_type: string | null
           re_location: string | null
           seeking_to_improve: string | null
-          status_override: string | null
           target_rate: number
           updated_at: string
           variable_index_spread: string | null
@@ -3720,7 +3836,6 @@ export type Database = {
           rate_type?: string | null
           re_location?: string | null
           seeking_to_improve?: string | null
-          status_override?: string | null
           target_rate: number
           updated_at?: string
           variable_index_spread?: string | null
@@ -3751,7 +3866,6 @@ export type Database = {
           rate_type?: string | null
           re_location?: string | null
           seeking_to_improve?: string | null
-          status_override?: string | null
           target_rate?: number
           updated_at?: string
           variable_index_spread?: string | null
@@ -3945,6 +4059,200 @@ export type Database = {
         }
         Relationships: []
       }
+      task_activities: {
+        Row: {
+          activity_type: string
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          mentioned_users: string[] | null
+          new_value: string | null
+          old_value: string | null
+          task_id: string
+          team_member_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mentioned_users?: string[] | null
+          new_value?: string | null
+          old_value?: string | null
+          task_id: string
+          team_member_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mentioned_users?: string[] | null
+          new_value?: string | null
+          old_value?: string | null
+          task_id?: string
+          team_member_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_task_activities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "evan_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evan_task_activities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_activities_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          task_id: string
+          team_member_id: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          task_id: string
+          team_member_id?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          task_id?: string
+          team_member_id?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_task_files_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "evan_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evan_task_files_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_files_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assignee_name: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          estimated_hours: number | null
+          group_name: string | null
+          id: string
+          is_completed: boolean
+          lead_id: string | null
+          priority: string | null
+          source: string | null
+          status: string | null
+          tags: string[] | null
+          task_type: string | null
+          team_member_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_name?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          group_name?: string | null
+          id?: string
+          is_completed?: boolean
+          lead_id?: string | null
+          priority?: string | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
+          task_type?: string | null
+          team_member_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_name?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          group_name?: string | null
+          id?: string
+          is_completed?: boolean
+          lead_id?: string | null
+          priority?: string | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
+          task_type?: string | null
+          team_member_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_funded_deals: {
         Row: {
           created_at: string
@@ -4085,55 +4393,372 @@ export type Database = {
         }
         Relationships: []
       }
-      volume_log_sync_config: {
+    }
+    Views: {
+      evan_appointments: {
         Row: {
-          column_mapping: Json
-          created_at: string
-          created_by: string | null
-          header_row: Json | null
-          id: string
-          last_pull_at: string | null
-          last_push_at: string | null
-          sheet_name: string | null
-          spreadsheet_id: string
-          updated_at: string
+          appointment_type: string | null
+          created_at: string | null
+          description: string | null
+          end_time: string | null
+          google_calendar_id: string | null
+          google_event_id: string | null
+          id: string | null
+          lead_id: string | null
+          start_time: string | null
+          sync_status: string | null
+          synced_at: string | null
+          team_member_id: string | null
+          team_member_name: string | null
+          title: string | null
+          updated_at: string | null
         }
         Insert: {
-          column_mapping?: Json
-          created_at?: string
-          created_by?: string | null
-          header_row?: Json | null
-          id?: string
-          last_pull_at?: string | null
-          last_push_at?: string | null
-          sheet_name?: string | null
-          spreadsheet_id: string
-          updated_at?: string
+          appointment_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string | null
+          lead_id?: string | null
+          start_time?: string | null
+          sync_status?: string | null
+          synced_at?: string | null
+          team_member_id?: string | null
+          team_member_name?: string | null
+          title?: string | null
+          updated_at?: string | null
         }
         Update: {
-          column_mapping?: Json
-          created_at?: string
-          created_by?: string | null
-          header_row?: Json | null
-          id?: string
-          last_pull_at?: string | null
-          last_push_at?: string | null
-          sheet_name?: string | null
-          spreadsheet_id?: string
-          updated_at?: string
+          appointment_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string | null
+          lead_id?: string | null
+          start_time?: string | null
+          sync_status?: string | null
+          synced_at?: string | null
+          team_member_id?: string | null
+          team_member_name?: string | null
+          title?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "volume_log_sync_config_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: "appointments_team_member_id_fkey"
+            columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evan_appointments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
       }
-    }
-    Views: {
+      evan_communications: {
+        Row: {
+          call_sid: string | null
+          communication_type: string | null
+          content: string | null
+          created_at: string | null
+          direction: string | null
+          duration_seconds: number | null
+          id: string | null
+          lead_id: string | null
+          phone_number: string | null
+          recording_sid: string | null
+          recording_url: string | null
+          status: string | null
+          team_member_id: string | null
+          transcript: string | null
+        }
+        Insert: {
+          call_sid?: string | null
+          communication_type?: string | null
+          content?: string | null
+          created_at?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          id?: string | null
+          lead_id?: string | null
+          phone_number?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          status?: string | null
+          team_member_id?: string | null
+          transcript?: string | null
+        }
+        Update: {
+          call_sid?: string | null
+          communication_type?: string | null
+          content?: string | null
+          created_at?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          id?: string | null
+          lead_id?: string | null
+          phone_number?: string | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          status?: string | null
+          team_member_id?: string | null
+          transcript?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evan_communications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evan_notes: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string | null
+          is_pinned: boolean | null
+          team_member_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_pinned?: boolean | null
+          team_member_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_pinned?: boolean | null
+          team_member_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evan_task_activities: {
+        Row: {
+          activity_type: string | null
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string | null
+          mentioned_users: string[] | null
+          new_value: string | null
+          old_value: string | null
+          task_id: string | null
+          team_member_id: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          mentioned_users?: string[] | null
+          new_value?: string | null
+          old_value?: string | null
+          task_id?: string | null
+          team_member_id?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          mentioned_users?: string[] | null
+          new_value?: string | null
+          old_value?: string | null
+          task_id?: string | null
+          team_member_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_task_activities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "evan_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evan_task_activities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_activities_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evan_task_files: {
+        Row: {
+          created_at: string | null
+          file_name: string | null
+          file_size: number | null
+          file_type: string | null
+          file_url: string | null
+          id: string | null
+          task_id: string | null
+          team_member_id: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string | null
+          task_id?: string | null
+          team_member_id?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string | null
+          task_id?: string | null
+          team_member_id?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_task_files_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "evan_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evan_task_files_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_files_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evan_tasks: {
+        Row: {
+          assignee_name: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          estimated_hours: number | null
+          group_name: string | null
+          id: string | null
+          is_completed: boolean | null
+          lead_id: string | null
+          priority: string | null
+          source: string | null
+          status: string | null
+          tags: string[] | null
+          task_type: string | null
+          team_member_id: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assignee_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          group_name?: string | null
+          id?: string | null
+          is_completed?: boolean | null
+          lead_id?: string | null
+          priority?: string | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
+          task_type?: string | null
+          team_member_id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assignee_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          group_name?: string | null
+          id?: string | null
+          is_completed?: boolean | null
+          lead_id?: string | null
+          priority?: string | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
+          task_type?: string | null
+          team_member_id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evan_tasks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_pipeline_metrics: {
         Row: {
           deal_count: number | null
@@ -4215,7 +4840,7 @@ export type Database = {
       is_team_owner: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "super_admin" | "client" | "partner"
+      app_role: "admin" | "client" | "partner" | "super_admin"
       contract_status:
         | "draft"
         | "sent"
@@ -4232,7 +4857,6 @@ export type Database = {
         | "cancelled"
       lead_status:
         | "discovery"
-        | "questionnaire"
         | "pre_qualification"
         | "document_collection"
         | "underwriting"
@@ -4245,6 +4869,7 @@ export type Database = {
         | "ready_for_wu_approval"
         | "pre_approval_issued"
         | "won"
+        | "questionnaire"
         | "review_kill_keep"
         | "waiting_on_needs_list"
         | "waiting_on_client"
@@ -4389,7 +5014,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "super_admin", "client", "partner"],
+      app_role: ["admin", "client", "partner", "super_admin"],
       contract_status: [
         "draft",
         "sent",
@@ -4408,7 +5033,6 @@ export const Constants = {
       ],
       lead_status: [
         "discovery",
-        "questionnaire",
         "pre_qualification",
         "document_collection",
         "underwriting",
@@ -4421,6 +5045,7 @@ export const Constants = {
         "ready_for_wu_approval",
         "pre_approval_issued",
         "won",
+        "questionnaire",
         "review_kill_keep",
         "waiting_on_needs_list",
         "waiting_on_client",
@@ -4443,3 +5068,4 @@ export const Constants = {
     },
   },
 } as const
+

@@ -980,7 +980,7 @@ Deno.serve(async (req) => {
         if (body.leadId) {
           try {
             const { error: commError } = await supabaseAdmin
-              .from('evan_communications')
+              .from('communications')
               .insert({
                 lead_id: body.leadId,
                 communication_type: 'email',

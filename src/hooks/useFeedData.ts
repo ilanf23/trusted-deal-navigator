@@ -78,13 +78,13 @@ export const useFeedData = () => {
           .select('id, name, avatar_url'),
         // Communications (calls, emails, SMS)
         supabase
-          .from('evan_communications')
+          .from('communications')
           .select('id, communication_type, direction, content, created_at, lead_id, phone_number')
           .order('created_at', { ascending: false })
           .limit(200),
         // Tasks
         supabase
-          .from('evan_tasks')
+          .from('tasks')
           .select('id, title, created_at, lead_id, assignee_name, status')
           .order('created_at', { ascending: false })
           .limit(100),

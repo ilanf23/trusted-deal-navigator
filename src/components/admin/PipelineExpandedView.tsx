@@ -445,7 +445,7 @@ export default function PipelineExpandedView() {
   const handleSaveTask = useCallback(async () => {
     if (!leadId || !newTaskTitle.trim()) return;
     setSavingTask(true);
-    const { error } = await supabase.from('evan_tasks').insert({
+    const { error } = await supabase.from('tasks').insert({
       lead_id: leadId,
       title: newTaskTitle.trim(),
       status: 'pending',
@@ -659,7 +659,7 @@ export default function PipelineExpandedView() {
     queryKey: ['pipeline-lead-interactions', leadId],
     queryFn: async () => {
       const { count, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id', { count: 'exact', head: true })
         .eq('lead_id', leadId!);
       if (error) return 0;
@@ -672,7 +672,7 @@ export default function PipelineExpandedView() {
     queryKey: ['pipeline-lead-last-contact-type', leadId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('communication_type')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false })
@@ -697,7 +697,7 @@ export default function PipelineExpandedView() {
     queryKey: ['pipeline-lead-tasks', leadId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, status, priority')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false });

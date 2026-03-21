@@ -115,7 +115,7 @@ export const useBradsDashboard = () => {
     queryKey: ['brad-meetings'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_appointments')
+        .from('appointments')
         .select('*')
         .ilike('team_member_name', 'brad')
         .gte('start_time', new Date().toISOString())

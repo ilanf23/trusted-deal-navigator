@@ -46,7 +46,7 @@ export const QuickActions = ({ evanId }: QuickActionsProps) => {
     
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('evan_communications').insert({
+      const { error } = await supabase.from('communications').insert({
         communication_type: 'call',
         direction: 'outbound',
         phone_number: callData.phoneNumber,
@@ -75,7 +75,7 @@ export const QuickActions = ({ evanId }: QuickActionsProps) => {
     
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('evan_notes').insert({
+      const { error } = await supabase.from('notes').insert({
         content: noteContent,
       });
 

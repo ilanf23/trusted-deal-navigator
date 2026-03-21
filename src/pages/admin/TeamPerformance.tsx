@@ -168,7 +168,7 @@ const TeamPerformance = () => {
     queryKey: ['evan-tasks-summary'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, status, is_completed, due_date, priority');
       if (error) throw error;
       return data;
@@ -180,7 +180,7 @@ const TeamPerformance = () => {
     queryKey: ['evan-communications-summary', timePeriod],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id, communication_type, created_at, duration_seconds, direction, phone_number, transcript, lead_id')
         .gte('created_at', periodStart.toISOString())
         .order('created_at', { ascending: false });

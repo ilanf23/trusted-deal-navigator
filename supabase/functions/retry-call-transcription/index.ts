@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: comm, error: commErr } = await adminSupabase
-      .from('evan_communications')
+      .from('communications')
       .select('id, communication_type, recording_url, transcript, call_sid, direction')
       .eq('id', communicationId)
       .single();
@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
     const transcript = await addSpeakerLabels(rawTranscript, direction);
 
     const { error: updateErr } = await adminSupabase
-      .from('evan_communications')
+      .from('communications')
       .update({ transcript })
       .eq('id', comm.id);
 

@@ -3,6 +3,7 @@ import {
   X, Maximize2, Building2, User, Mail, Phone, Globe, ArrowRight,
   Tag, FileText, Clock, ChevronRight, Briefcase,
   Pencil, Check, Loader2, MessageSquare, Users, ChevronDown, Layers,
+  FolderOpen, AtSign, MapPin, Trash2,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
@@ -14,7 +15,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
@@ -32,6 +33,9 @@ interface Company {
   notes: string | null;
   source: string | null;
   last_activity_at: string | null;
+  known_as: string | null;
+  clx_file_name: string | null;
+  bank_relationships: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -336,12 +340,13 @@ function EditableTags({
   );
 }
 
-// ── Editable Notes ──
-function EditableNotes({
-  value, companyId, onSaved,
+// ── Editable Rich Text Field ──
+function EditableRichTextField({
+  value, companyId, field, onSaved, placeholder = 'Click to add...',
 }: {
-  value: string; companyId: string;
+  value: string; companyId: string; field: string;
   onSaved: (field: string, newValue: string) => void;
+  placeholder?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -359,13 +364,13 @@ function EditableNotes({
     setSaving(true);
     const { error } = await supabase
       .from('leads')
-      .update({ notes: trimmed || null } as any)
+      .update({ [field]: trimmed || null } as any)
       .eq('id', companyId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
-    onSaved('notes', trimmed);
+    onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, value, companyId, onSaved]);
+  }, [draft, value, field, companyId, onSaved]);
 
   if (editing) {
     return (
@@ -373,7 +378,7 @@ function EditableNotes({
         <RichTextEditor
           value={draft}
           onChange={setDraft}
-          placeholder="Add notes..."
+          placeholder={placeholder}
           minHeight="60px"
           disabled={saving}
         />
@@ -393,7 +398,7 @@ function EditableNotes({
       {value ? (
         <HtmlContent value={value} />
       ) : (
-        <p className="text-[13px] text-muted-foreground italic">Click to add notes...</p>
+        <p className="text-[13px] text-muted-foreground italic">{placeholder}</p>
       )}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <Pencil className="h-3 w-3 text-muted-foreground" />
@@ -438,7 +443,7 @@ function ActivityTabContent({ company }: { company: Company }) {
       if (!leads || leads.length === 0) return [];
       const leadIds = leads.map((l) => l.id);
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id, communication_type, direction, content, duration_seconds, created_at')
         .in('lead_id', leadIds)
         .order('created_at', { ascending: false });
@@ -849,7 +854,10 @@ export default function CompanyDetailPanel({
             <div>
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Details</span>
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
+                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={company.known_as ?? ''} field="known_as" companyId={company.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={company.clx_file_name ?? ''} field="clx_file_name" companyId={company.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={company.source ?? ''} field="source" companyId={company.id} onSaved={handleFieldSaved} />
+                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Last Contacted" value={formatDate(company.last_activity_at)} />
                 <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Created" value={formatDate(company.created_at)} />
               </div>
             </div>
@@ -860,10 +868,16 @@ export default function CompanyDetailPanel({
               <EditableTags tags={company.tags ?? []} companyId={company.id} onSaved={handleFieldSaved} />
             </div>
 
-            {/* Notes */}
+            {/* About */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Notes</span>
-              <EditableNotes value={company.notes ?? ''} companyId={company.id} onSaved={handleFieldSaved} />
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">About</span>
+              <EditableRichTextField value={company.notes ?? ''} companyId={company.id} field="notes" onSaved={handleFieldSaved} placeholder="Background info about this company..." />
+            </div>
+
+            {/* Bank Relationships */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Bank Relationships</span>
+              <EditableRichTextField value={company.bank_relationships ?? ''} companyId={company.id} field="bank_relationships" onSaved={handleFieldSaved} placeholder="Excluded lender names from CLX agreement..." />
             </div>
           </div>
         </ScrollArea>

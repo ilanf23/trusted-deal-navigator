@@ -193,7 +193,7 @@ const Scorecard = () => {
     queryKey: ['scorecard-communications', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id, communication_type, direction, created_at, lead_id, duration_seconds')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
@@ -221,7 +221,7 @@ const Scorecard = () => {
     queryKey: ['scorecard-tasks', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, is_completed, lead_id, created_at, due_date, source, assignee_name')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
@@ -277,6 +277,7 @@ const Scorecard = () => {
     const scopedTasks = repFilter === 'me'
       ? (tasks || []).filter(t =>
           (t.lead_id && userLeadIds.has(t.lead_id)) ||
+          (t.team_member_id && teamMember && t.team_member_id === teamMember.id) ||
           (t.assignee_name && teamMember && t.assignee_name.toLowerCase() === teamMember.name.toLowerCase())
         )
       : (tasks || []);
@@ -405,7 +406,7 @@ const Scorecard = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Performance Scorecard</h1>
-              <DbTableBadge tables={['leads', 'evan_communications']} />
+              <DbTableBadge tables={['leads', 'communications']} />
             </div>
             <p className="text-muted-foreground mt-1 text-sm">{periodLabel}</p>
           </div>

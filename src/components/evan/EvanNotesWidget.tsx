@@ -24,7 +24,7 @@ export const EvanNotesWidget = () => {
     queryKey: ['evan-notes'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .select('*')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
@@ -36,7 +36,7 @@ export const EvanNotesWidget = () => {
   const addNote = useMutation({
     mutationFn: async (content: string) => {
       const { error } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .insert({ content });
       if (error) throw error;
     },
@@ -52,7 +52,7 @@ export const EvanNotesWidget = () => {
   const togglePin = useMutation({
     mutationFn: async ({ id, is_pinned }: { id: string; is_pinned: boolean }) => {
       const { error } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .update({ is_pinned })
         .eq('id', id);
       if (error) throw error;
@@ -63,7 +63,7 @@ export const EvanNotesWidget = () => {
   const deleteNote = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .delete()
         .eq('id', id);
       if (error) throw error;

@@ -671,7 +671,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
       if (originatingTaskId) {
         console.log(`[${flowId}] Marking task ${originatingTaskId} as complete`);
         try {
-          await supabase.from('evan_tasks').update({
+          await supabase.from('tasks').update({
             status: 'done', is_completed: true, updated_at: new Date().toISOString()
           }).eq('id', originatingTaskId);
           await supabase.from('lead_tasks').update({
@@ -802,7 +802,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
       }
 
       if (originatingTaskId) {
-        await supabase.from('evan_tasks').update({ status: 'done', is_completed: true }).eq('id', originatingTaskId);
+        await supabase.from('tasks').update({ status: 'done', is_completed: true }).eq('id', originatingTaskId);
         await supabase.from('lead_tasks').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', originatingTaskId);
         queryClient.invalidateQueries({ queryKey: ['evan-tasks'] });
         queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });

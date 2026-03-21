@@ -23,7 +23,6 @@ import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   ArrowUpDown,
-  Search,
   AlignJustify,
   PanelLeft,
   Filter,
@@ -440,7 +439,7 @@ const Pipeline = () => {
     queryKey: ['pipeline-touchpoints'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('lead_id, communication_type, direction, created_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -535,7 +534,7 @@ const Pipeline = () => {
     queryKey: ['pipeline-interaction-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('lead_id')
         .in('lead_id', leads.map((l) => l.id));
       if (error) return {} as Record<string, number>;
@@ -564,9 +563,13 @@ const Pipeline = () => {
       const ownerId = leadOwnerMap[l.id];
       return teamMemberMap[ownerId]?.toLowerCase().includes('brad');
     }).length;
+    counts['initial_review'] = leads.filter(l => l.status === ('initial_review' as LeadStatus)).length;
+    counts['review_kill_keep'] = leads.filter(l => l.status === ('review_kill_keep' as LeadStatus)).length;
     counts['onboarding_2024'] = leads.filter(l => l.cohort_year === 2024).length;
     counts['onboarding_2025'] = leads.filter(l => l.cohort_year === 2025).length;
     counts['onboarding_2026'] = leads.filter(l => l.cohort_year === 2026).length;
+    counts['pre_approval_issued'] = leads.filter(l => l.status === ('pre_approval_issued' as LeadStatus)).length;
+    counts['ready_for_wu_approval'] = leads.filter(l => l.status === ('ready_for_wu_approval' as LeadStatus)).length;
     return counts;
   }, [leads, teamMemberMap, stages, currentTeamMember, leadOwnerMap, followedLeadIds]);
 
@@ -617,6 +620,14 @@ const Pipeline = () => {
             return true;
           });
         }
+      } else if (activeFilter === 'initial_review') {
+        result = result.filter((l) => l.status === ('initial_review' as LeadStatus));
+      } else if (activeFilter === 'review_kill_keep') {
+        result = result.filter((l) => l.status === ('review_kill_keep' as LeadStatus));
+      } else if (activeFilter === 'pre_approval_issued') {
+        result = result.filter((l) => l.status === ('pre_approval_issued' as LeadStatus));
+      } else if (activeFilter === 'ready_for_wu_approval') {
+        result = result.filter((l) => l.status === ('ready_for_wu_approval' as LeadStatus));
       } else if (activeFilter === 'brad_incoming') {
         result = result.filter((l) => teamMemberMap[leadOwnerMap[l.id]]?.toLowerCase().includes('brad'));
       } else if (activeFilter === 'onboarding_2024') {
@@ -636,6 +647,15 @@ const Pipeline = () => {
           (l.company_name ?? '').toLowerCase().includes(q) ||
           (l.email ?? '').toLowerCase().includes(q) ||
           (l.phone ?? '').toLowerCase().includes(q) ||
+          (l.title ?? '').toLowerCase().includes(q) ||
+          (l.source ?? '').toLowerCase().includes(q) ||
+          (l.contact_type ?? '').toLowerCase().includes(q) ||
+          (l.known_as ?? '').toLowerCase().includes(q) ||
+          (l.linkedin ?? '').toLowerCase().includes(q) ||
+          (l.website ?? '').toLowerCase().includes(q) ||
+          (l.uw_number ?? '').toLowerCase().includes(q) ||
+          (l.lender_name ?? '').toLowerCase().includes(q) ||
+          (l.tags ?? []).some(t => t.toLowerCase().includes(q)) ||
           (teamMemberMap[leadOwnerMap[l.id] ?? l.assigned_to ?? ''] ?? '').toLowerCase().includes(q)
       );
     }
@@ -968,16 +988,13 @@ const Pipeline = () => {
 
         {/* Search bar */}
         <div className="shrink-0 px-5 py-2.5 border-b border-border bg-background">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              type="text"
-              placeholder="Search by name, email, domain or phone number"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 text-sm rounded-full bg-muted/50 border-transparent focus:border-border focus:bg-background placeholder:text-muted-foreground/60"
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder="Search by name, email, domain or phone number"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-9 px-3 text-sm rounded-full bg-muted/50 border-transparent focus:border-border focus:bg-background placeholder:text-muted-foreground/60"
+          />
         </div>
 
         {/* Body: Sidebar + Table */}

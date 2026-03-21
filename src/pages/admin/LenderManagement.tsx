@@ -22,7 +22,6 @@ import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   ArrowUpDown,
-  Search,
   AlignJustify,
   PanelLeft,
   Filter,
@@ -425,7 +424,7 @@ const LenderManagement = () => {
     queryKey: ['lm-touchpoints'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('lead_id, communication_type, direction, created_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -520,7 +519,7 @@ const LenderManagement = () => {
     queryKey: ['lm-interaction-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('lead_id')
         .in('lead_id', leads.map((l) => l.id));
       if (error) return {} as Record<string, number>;
@@ -613,6 +612,15 @@ const LenderManagement = () => {
           (l.company_name ?? '').toLowerCase().includes(q) ||
           (l.email ?? '').toLowerCase().includes(q) ||
           (l.phone ?? '').toLowerCase().includes(q) ||
+          (l.title ?? '').toLowerCase().includes(q) ||
+          (l.source ?? '').toLowerCase().includes(q) ||
+          (l.contact_type ?? '').toLowerCase().includes(q) ||
+          (l.known_as ?? '').toLowerCase().includes(q) ||
+          (l.linkedin ?? '').toLowerCase().includes(q) ||
+          (l.website ?? '').toLowerCase().includes(q) ||
+          (l.uw_number ?? '').toLowerCase().includes(q) ||
+          (l.lender_name ?? '').toLowerCase().includes(q) ||
+          (l.tags ?? []).some(t => t.toLowerCase().includes(q)) ||
           (teamMemberMap[l.assigned_to ?? ''] ?? '').toLowerCase().includes(q)
       );
     }
@@ -830,16 +838,13 @@ const LenderManagement = () => {
 
         {/* Search bar */}
         <div className="shrink-0 px-5 py-2.5 border-b border-border bg-background">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              type="text"
-              placeholder="Search by name, email, domain or phone number"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 text-sm rounded-full bg-muted/50 border-transparent focus:border-border focus:bg-background placeholder:text-muted-foreground/60"
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder="Search by name, email, domain or phone number"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-9 px-3 text-sm rounded-full bg-muted/50 border-transparent focus:border-border focus:bg-background placeholder:text-muted-foreground/60"
+          />
         </div>
 
         {/* Body: Sidebar + Table */}

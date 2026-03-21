@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAllPipelineLeads, DerivedCompany } from '@/hooks/useAllPipelineLeads';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import {
-  ArrowUpDown, Search, AlignJustify, PanelLeft, Filter, Settings2, ChevronDown, Plus,
+  ArrowUpDown, AlignJustify, PanelLeft, Filter, Settings2, ChevronDown, Plus,
   Building2, Tag, Check, X, LayoutGrid, Table2, FileSearch,
   PanelRightOpen, Sparkles, Loader2, Download, PlusCircle, Globe, Maximize2,
 } from 'lucide-react';
@@ -47,6 +47,9 @@ interface Company {
   notes: string | null;
   source: string | null;
   last_activity_at: string | null;
+  known_as: string | null;
+  clx_file_name: string | null;
+  bank_relationships: string | null;
   created_at: string;
   updated_at: string;
   deals_count: number;
@@ -273,7 +276,6 @@ const Companies = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedCompany, setDraggedCompany] = useState<Company | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Custom filters
@@ -342,7 +344,6 @@ const Companies = () => {
   function clearAllFilters() {
     setActiveFilter('all');
     setSearchTerm('');
-    setSearchOpen(false);
   }
 
   function toggleColumn(key: ColumnKey) {
@@ -437,6 +438,9 @@ const Companies = () => {
         notes: null,
         source: null,
         last_activity_at: null,
+        known_as: null,
+        clx_file_name: null,
+        bank_relationships: null,
         created_at: lead.created_at,
         updated_at: lead.updated_at,
         deals_count: 1,
@@ -552,7 +556,12 @@ const Companies = () => {
         c.company_name.toLowerCase().includes(q) ||
         (c.contact_name ?? '').toLowerCase().includes(q) ||
         (c.email_domain ?? '').toLowerCase().includes(q) ||
-        (c.website ?? '').toLowerCase().includes(q)
+        (c.website ?? '').toLowerCase().includes(q) ||
+        (c.phone ?? '').toLowerCase().includes(q) ||
+        (c.source ?? '').toLowerCase().includes(q) ||
+        (c.contact_type ?? '').toLowerCase().includes(q) ||
+        (c.notes ?? '').toLowerCase().includes(q) ||
+        (c.tags ?? []).some(t => t.toLowerCase().includes(q))
       );
     }
 
@@ -722,6 +731,17 @@ const Companies = () => {
           </DropdownMenu>
         </div>
 
+        {/* Search bar */}
+        <div className="shrink-0 px-5 py-2.5 border-b border-border bg-background">
+          <Input
+            type="text"
+            placeholder="Search by name, email, domain or phone number"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-9 px-3 text-sm rounded-full bg-muted/50 border-transparent focus:border-border focus:bg-background placeholder:text-muted-foreground/60"
+          />
+        </div>
+
         {/* ── Body: Sidebar + Table ── */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
 
@@ -871,17 +891,6 @@ const Companies = () => {
                   <AlignJustify className={`h-3.5 w-3.5 ${rowDensity === 'compact' ? 'text-blue-600' : ''}`} />
                 </button>
 
-                {searchOpen && (
-                  <Input
-                    autoFocus
-                    placeholder="Search companies, contacts..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Escape') { setSearchTerm(''); setSearchOpen(false); } }}
-                    onBlur={() => { if (!searchTerm) setSearchOpen(false); }}
-                    className="h-7 w-52 text-xs mr-1 border-border bg-card"
-                  />
-                )}
 
                 <Popover>
                   <PopoverTrigger asChild>
@@ -921,14 +930,6 @@ const Companies = () => {
                     <Filter className="h-3.5 w-3.5" />
                   )}
                   {isFiltersActive && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600" />}
-                </button>
-
-                <button
-                  onClick={() => setSearchOpen(v => !v)}
-                  title="Search companies"
-                  className={iconBtn(searchOpen || !!searchTerm)}
-                >
-                  <Search className={`h-3.5 w-3.5 ${(searchOpen || searchTerm) ? 'text-blue-600' : ''}`} />
                 </button>
 
                 <div className="relative" ref={columnsMenuRef}>

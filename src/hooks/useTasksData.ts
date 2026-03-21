@@ -12,7 +12,7 @@ export const useTasksData = () => {
     queryKey: ['evan-tasks-full'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('*, lead:leads(id, name, company_name, email, phone)')
         .order('due_date', { ascending: true, nullsFirst: false });
       if (error) throw error;
@@ -22,11 +22,12 @@ export const useTasksData = () => {
 
   const addTask = useMutation({
     mutationFn: async (task: Partial<Task>) => {
-      const { data, error } = await supabase.from('evan_tasks').insert({
+      const { data, error } = await supabase.from('tasks').insert({
         title: task.title || 'New Task',
         status: task.status || 'todo',
         priority: task.priority || 'medium',
         assignee_name: task.assignee_name || 'Evan',
+        team_member_id: (task as any).team_member_id || null,
         due_date: task.due_date,
         group_name: task.group_name || 'To Do',
         estimated_hours: task.estimated_hours,
@@ -48,7 +49,7 @@ export const useTasksData = () => {
         registerUndo({
           label: `Created task "${data.title}"`,
           execute: async () => {
-            const { error } = await supabase.from('evan_tasks').delete().eq('id', data.id);
+            const { error } = await supabase.from('tasks').delete().eq('id', data.id);
             if (error) throw error;
             queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
             toast.success('Task creation undone');
@@ -63,17 +64,17 @@ export const useTasksData = () => {
     mutationFn: async ({ id, updates, logActivity = true, skipUndo = false }: { id: string; updates: Partial<Task>; logActivity?: boolean; skipUndo?: boolean }) => {
       // Get current task data for undo
       const { data: currentTask } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('*')
         .eq('id', id)
         .single();
       
-      const { error } = await supabase.from('evan_tasks').update(updates).eq('id', id);
+      const { error } = await supabase.from('tasks').update(updates).eq('id', id);
       if (error) throw error;
       
       // Log activity for status changes
       if (logActivity && updates.status) {
-        await supabase.from('evan_task_activities').insert({
+        await supabase.from('task_activities').insert({
           task_id: id,
           activity_type: 'status_change',
           old_value: currentTask?.status || '',
@@ -99,11 +100,12 @@ export const useTasksData = () => {
         registerUndo({
           label,
           execute: async () => {
-            const { error } = await supabase.from('evan_tasks').update({
+            const { error } = await supabase.from('tasks').update({
               status: result.currentTask.status,
               priority: result.currentTask.priority,
               due_date: result.currentTask.due_date,
               assignee_name: result.currentTask.assignee_name,
+              team_member_id: result.currentTask.team_member_id,
               description: result.currentTask.description,
               title: result.currentTask.title,
             }).eq('id', result.currentTask.id);
@@ -121,12 +123,12 @@ export const useTasksData = () => {
     mutationFn: async (id: string) => {
       // Get task data before deleting for undo
       const { data: taskToDelete } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('*')
         .eq('id', id)
         .single();
       
-      const { error } = await supabase.from('evan_tasks').delete().eq('id', id);
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
       if (error) throw error;
       
       return taskToDelete;
@@ -141,12 +143,13 @@ export const useTasksData = () => {
           label: `Deleted "${deletedTask.title}"`,
           execute: async () => {
             // Restore the deleted task
-            const { error } = await supabase.from('evan_tasks').insert({
+            const { error } = await supabase.from('tasks').insert({
               id: deletedTask.id,
               title: deletedTask.title,
               status: deletedTask.status,
               priority: deletedTask.priority,
               assignee_name: deletedTask.assignee_name,
+              team_member_id: deletedTask.team_member_id,
               due_date: deletedTask.due_date,
               group_name: deletedTask.group_name,
               estimated_hours: deletedTask.estimated_hours,
@@ -169,7 +172,7 @@ export const useTasksData = () => {
 
   const addComment = useMutation({
     mutationFn: async ({ taskId, content }: { taskId: string; content: string }) => {
-      const { data, error } = await supabase.from('evan_task_activities').insert({
+      const { data, error } = await supabase.from('task_activities').insert({
         task_id: taskId,
         activity_type: 'comment',
         content,
@@ -187,7 +190,7 @@ export const useTasksData = () => {
         registerUndo({
           label: 'Added comment',
           execute: async () => {
-            const { error } = await supabase.from('evan_task_activities').delete().eq('id', data.id);
+            const { error } = await supabase.from('task_activities').delete().eq('id', data.id);
             if (error) throw error;
             queryClient.invalidateQueries({ queryKey: ['evan-task-activities'] });
             toast.success('Comment removed');
@@ -214,7 +217,7 @@ export const useTaskActivities = (taskId: string | null) => {
     queryFn: async () => {
       if (!taskId) return [];
       const { data, error } = await supabase
-        .from('evan_task_activities')
+        .from('task_activities')
         .select('*')
         .eq('task_id', taskId)
         .order('created_at', { ascending: false });

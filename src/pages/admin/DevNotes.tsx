@@ -41,7 +41,7 @@ const automations: Automation[] = [
     actions: [
       'AI analyzes call transcript',
       'Generates call rating (1-10)',
-      'Creates follow-up task in evan_tasks',
+      'Creates follow-up task in tasks',
       'Drafts personalized email in Gmail',
       'Sends rating notification to Adam & Brad',
       'Stores rating in call_rating_notifications table',
@@ -73,7 +73,7 @@ const automations: Automation[] = [
       'Records all calls automatically',
       'Transcribes calls using Twilio/AI',
       'Associates calls with leads by phone number',
-      'Stores communications in evan_communications',
+      'Stores communications in communications',
     ],
     edgeFunctions: ['twilio-token', 'twilio-call', 'twilio-inbound', 'twilio-voice', 'twilio-call-status', 'twilio-transcription', 'retry-call-transcription'],
     status: 'active',

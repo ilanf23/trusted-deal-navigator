@@ -37,7 +37,7 @@ const IlanTeamEvanNotes = () => {
     queryKey: ['evan-notes-ilan-view'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .select('*')
         .order('is_pinned', { ascending: false })
         .order('updated_at', { ascending: false });
@@ -51,7 +51,7 @@ const IlanTeamEvanNotes = () => {
   const createMutation = useMutation({
     mutationFn: async (content: string) => {
       const { error } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .insert({ content });
       if (error) throw error;
     },
@@ -67,7 +67,7 @@ const IlanTeamEvanNotes = () => {
   const updateMutation = useMutation({
     mutationFn: async ({ id, content }: { id: string; content: string }) => {
       const { error } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .update({ content })
         .eq('id', id);
       if (error) throw error;
@@ -84,7 +84,7 @@ const IlanTeamEvanNotes = () => {
   const togglePinMutation = useMutation({
     mutationFn: async ({ id, isPinned }: { id: string; isPinned: boolean }) => {
       const { error } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .update({ is_pinned: !isPinned })
         .eq('id', id);
       if (error) throw error;
@@ -99,7 +99,7 @@ const IlanTeamEvanNotes = () => {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .delete()
         .eq('id', id);
       if (error) throw error;

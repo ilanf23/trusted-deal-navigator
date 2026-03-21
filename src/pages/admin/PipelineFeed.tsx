@@ -62,7 +62,7 @@ const PipelineFeed = () => {
     queryKey: ['feed-overdue-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, due_date, lead_id')
         .eq('status', 'pending')
         .lt('due_date', new Date().toISOString())

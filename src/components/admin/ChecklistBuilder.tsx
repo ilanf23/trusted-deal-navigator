@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Loader2, Search, ChevronDown } from 'lucide-react';
+import { Trash2, Loader2, ChevronDown } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
@@ -144,20 +144,18 @@ export default function ChecklistBuilder({
               type="button"
               className="w-full flex items-center gap-2 px-3 py-2 text-xs border border-dashed border-border rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors text-muted-foreground"
             >
-              <Search className="h-3.5 w-3.5 shrink-0" />
               <span className="flex-1 text-left truncate">Search templates...</span>
               <ChevronDown className="h-3 w-3 shrink-0" />
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" sideOffset={4}>
             <div className="p-2 border-b border-border">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <div>
                 <input
                   value={templateSearch}
                   onChange={(e) => setTemplateSearch(e.target.value)}
                   placeholder="Search templates..."
-                  className="w-full text-xs bg-transparent pl-8 pr-3 py-1.5 outline-none placeholder:text-muted-foreground/50"
+                  className="w-full text-xs bg-transparent px-3 py-1.5 outline-none placeholder:text-muted-foreground/50"
                   autoFocus
                 />
               </div>

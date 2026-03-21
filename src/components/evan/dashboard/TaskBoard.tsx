@@ -61,7 +61,7 @@ export const TaskBoard = () => {
     queryKey: ['evan-tasks-board'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('*')
         .order('due_date', { ascending: true })
         .order('created_at', { ascending: false });
@@ -72,12 +72,13 @@ export const TaskBoard = () => {
 
   const addTask = useMutation({
     mutationFn: async ({ title, dueDate }: { title: string; dueDate: string }) => {
-      const { error } = await supabase.from('evan_tasks').insert({
+      const { error } = await supabase.from('tasks').insert({
         title,
         due_date: dueDate,
         status: 'todo',
         priority: '3',
         assignee_name: 'Evan',
+        team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
       });
       if (error) throw error;
     },
@@ -92,7 +93,7 @@ export const TaskBoard = () => {
 
   const updateTask = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Task> }) => {
-      const { error } = await supabase.from('evan_tasks').update(updates).eq('id', id);
+      const { error } = await supabase.from('tasks').update(updates).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['evan-tasks-board'] }),
@@ -103,12 +104,12 @@ export const TaskBoard = () => {
     mutationFn: async (id: string) => {
       // Get task data before deleting (for undo)
       const { data: taskToDelete } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('*')
         .eq('id', id)
         .single();
       
-      const { error } = await supabase.from('evan_tasks').delete().eq('id', id);
+      const { error } = await supabase.from('tasks').delete().eq('id', id);
       if (error) throw error;
       
       return taskToDelete;
@@ -123,12 +124,13 @@ export const TaskBoard = () => {
         registerUndo({
           label: `Deleted "${deletedTask.title}"`,
           execute: async () => {
-            const { error } = await supabase.from('evan_tasks').insert({
+            const { error } = await supabase.from('tasks').insert({
               id: deletedTask.id,
               title: deletedTask.title,
               status: deletedTask.status,
               priority: deletedTask.priority,
               assignee_name: deletedTask.assignee_name,
+              team_member_id: deletedTask.team_member_id,
               due_date: deletedTask.due_date,
               description: deletedTask.description,
               is_completed: deletedTask.is_completed,

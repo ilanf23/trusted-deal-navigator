@@ -25,7 +25,7 @@ export const TasksOverviewWidget = ({ tasksData, isLoading }: TasksOverviewWidge
           <CardTitle className="text-base flex items-center gap-2">
             <CheckSquare className="h-4 w-4 text-primary" />
             Tasks Overview
-            <DbTableBadge tables={['evan_tasks']} />
+            <DbTableBadge tables={['tasks']} />
           </CardTitle>
           <Link to="/admin/tasks">
             <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1">

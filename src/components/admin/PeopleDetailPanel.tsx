@@ -4,7 +4,7 @@ import {
   X, Maximize2, Building2, User, Mail, Phone, PhoneCall,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase,
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Layers,
-  Link2,
+  Link2, FolderOpen, AtSign, MapPin, Trash2,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
@@ -16,7 +16,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
@@ -35,8 +35,21 @@ interface Person {
   linkedin: string | null;
   source: string | null;
   last_activity_at: string | null;
+  known_as: string | null;
+  clx_file_name: string | null;
+  bank_relationships: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface PersonEmail {
+  id: string; person_id: string; email: string; email_type: string; is_primary: boolean;
+}
+interface PersonPhone {
+  id: string; person_id: string; phone_number: string; phone_type: string; is_primary: boolean;
+}
+interface PersonAddress {
+  id: string; person_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean;
 }
 
 interface ContactTypeConfigEntry {
@@ -124,7 +137,7 @@ function useInlineSave(
     }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('people')
       .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
@@ -274,7 +287,7 @@ function EditableTags({
     }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
+      .from('people')
       .update({ tags: newTags.length > 0 ? newTags : null })
       .eq('id', personId);
     setSaving(false);
@@ -326,12 +339,13 @@ function EditableTags({
   );
 }
 
-// ── Editable Notes ──
-function EditableNotes({
-  value, personId, onSaved,
+// ── Editable Rich Text Field ──
+function EditableRichTextField({
+  value, personId, field, onSaved, placeholder = 'Click to add...',
 }: {
-  value: string; personId: string;
+  value: string; personId: string; field: string;
   onSaved: (field: string, newValue: string) => void;
+  placeholder?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -348,14 +362,14 @@ function EditableNotes({
     if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     const { error } = await supabase
-      .from('leads')
-      .update({ notes: trimmed || null })
+      .from('people')
+      .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
-    onSaved('notes', trimmed);
+    onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, value, personId, onSaved]);
+  }, [draft, value, field, personId, onSaved]);
 
   if (editing) {
     return (
@@ -363,7 +377,7 @@ function EditableNotes({
         <RichTextEditor
           value={draft}
           onChange={setDraft}
-          placeholder="Add notes..."
+          placeholder={placeholder}
           minHeight="60px"
           disabled={saving}
         />
@@ -383,7 +397,7 @@ function EditableNotes({
       {value ? (
         <HtmlContent value={value} />
       ) : (
-        <p className="text-[13px] text-muted-foreground italic">Click to add notes...</p>
+        <p className="text-[13px] text-muted-foreground italic">{placeholder}</p>
       )}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <Pencil className="h-3 w-3 text-muted-foreground" />
@@ -406,6 +420,56 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
   );
 }
 
+// ── Contact Email Row ──
+function ContactEmailRow({ entry, onDelete }: { entry: PersonEmail; onDelete: (id: string) => void }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+      <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.email_type}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1">{entry.email}</span>
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ── Contact Phone Row ──
+function ContactPhoneRow({ entry, onDelete, onCall }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+      <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.phone_type}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
+      {onCall && (
+        <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+          <PhoneCall className="h-3 w-3" />
+        </button>
+      )}
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ── Address Block ──
+function AddressBlock({ entry, onDelete }: { entry: PersonAddress; onDelete: (id: string) => void }) {
+  const parts = [entry.address_line_1, entry.city, entry.state, entry.zip_code].filter(Boolean);
+  return (
+    <div className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <span className="text-[11px] text-muted-foreground uppercase font-medium">{entry.address_type}</span>
+        <p className="text-[13px] text-foreground font-medium">{parts.join(', ') || '\u2014'}</p>
+      </div>
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
 // ── Timeline icon config ──
 const TIMELINE_ICON_CONFIG: Record<string, { icon: React.ReactNode; dotColor: string }> = {
   type_change: { icon: <ArrowRight className="h-3 w-3" />, dotColor: 'bg-blue-500 text-white' },
@@ -424,7 +488,7 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
       const digits = person.phone.replace(/\D/g, '');
       if (!digits) return [];
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id, communication_type, direction, content, duration_seconds, created_at')
         .eq('phone_number', digits)
         .order('created_at', { ascending: false });
@@ -719,11 +783,115 @@ export default function PeopleDetailPanel({
   onPersonUpdate,
 }: PeopleDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'related'>('details');
+  const [showAddEmail, setShowAddEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newEmailType, setNewEmailType] = useState('work');
+  const [showAddPhone, setShowAddPhone] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [newPhoneType, setNewPhoneType] = useState('work');
+  const [showAddAddress, setShowAddAddress] = useState(false);
+  const [newAddressLine1, setNewAddressLine1] = useState('');
+  const [newAddressCity, setNewAddressCity] = useState('');
+  const [newAddressState, setNewAddressState] = useState('');
+  const [newAddressZip, setNewAddressZip] = useState('');
+  const [newAddressType, setNewAddressType] = useState('business');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const typeCfg = contactTypeConfig[person.contact_type ?? 'Other'];
   const initial = person.name[0]?.toUpperCase() ?? '?';
   const gradient = getAvatarGradient(person.name);
+
+  // ── Satellite queries ──
+  const { data: personEmails = [] } = useQuery({
+    queryKey: ['person-emails', person.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('people_emails').select('*').eq('person_id', person.id);
+      return (data || []) as PersonEmail[];
+    },
+  });
+
+  const { data: personPhones = [] } = useQuery({
+    queryKey: ['person-phones', person.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('people_phones').select('*').eq('person_id', person.id);
+      return (data || []) as PersonPhone[];
+    },
+  });
+
+  const { data: personAddresses = [] } = useQuery({
+    queryKey: ['person-addresses', person.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('people_addresses').select('*').eq('person_id', person.id);
+      return (data || []) as PersonAddress[];
+    },
+  });
+
+  // ── Satellite mutations ──
+  const addEmailMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const { error } = await supabase.from('people_emails').insert({ person_id: person.id, email, email_type: newEmailType });
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
+    onError: () => toast.error('Failed to add email'),
+  });
+
+  const deleteEmailMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      const { error } = await supabase.from('people_emails').delete().eq('id', emailId);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', person.id] }); toast.success('Email removed'); },
+    onError: () => toast.error('Failed to remove email'),
+  });
+
+  const addPhoneMutation = useMutation({
+    mutationFn: async (phone: string) => {
+      const { error } = await supabase.from('people_phones').insert({ person_id: person.id, phone_number: phone, phone_type: newPhoneType });
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
+    onError: () => toast.error('Failed to add phone'),
+  });
+
+  const deletePhoneMutation = useMutation({
+    mutationFn: async (phoneId: string) => {
+      const { error } = await supabase.from('people_phones').delete().eq('id', phoneId);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', person.id] }); toast.success('Phone removed'); },
+    onError: () => toast.error('Failed to remove phone'),
+  });
+
+  const addAddressMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('people_addresses').insert({
+        person_id: person.id,
+        address_line_1: newAddressLine1.trim(),
+        city: newAddressCity.trim() || null,
+        state: newAddressState.trim() || null,
+        zip_code: newAddressZip.trim() || null,
+        address_type: newAddressType,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['person-addresses', person.id] });
+      setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip('');
+      setNewAddressType('business'); setShowAddAddress(false);
+      toast.success('Address added');
+    },
+    onError: () => toast.error('Failed to add address'),
+  });
+
+  const deleteAddressMutation = useMutation({
+    mutationFn: async (addressId: string) => {
+      const { error } = await supabase.from('people_addresses').delete().eq('id', addressId);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', person.id] }); toast.success('Address removed'); },
+    onError: () => toast.error('Failed to remove address'),
+  });
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
@@ -873,7 +1041,10 @@ export default function PeopleDetailPanel({
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
                 <EditableField icon={<Briefcase className="h-3.5 w-3.5" />} label="Title" value={person.title ?? ''} field="title" personId={person.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={person.company_name ?? ''} field="company_name" personId={person.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={person.known_as ?? ''} field="known_as" personId={person.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={person.clx_file_name ?? ''} field="clx_file_name" personId={person.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={person.source ?? ''} field="source" personId={person.id} onSaved={handleFieldSaved} />
+                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Last Contacted" value={formatDate(person.last_activity_at)} />
                 <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Created" value={formatDate(person.created_at)} />
               </div>
             </div>
@@ -884,10 +1055,102 @@ export default function PeopleDetailPanel({
               <EditableTags tags={person.tags ?? []} personId={person.id} onSaved={handleFieldSaved} />
             </div>
 
-            {/* Notes */}
+            {/* Email */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Notes</span>
-              <EditableNotes value={person.notes ?? ''} personId={person.id} onSaved={handleFieldSaved} />
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Email</span>
+              <div className="space-y-1">
+                {personEmails.map((e) => (
+                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
+                ))}
+                {showAddEmail ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <Select value={newEmailType} onValueChange={setNewEmailType}>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="work" className="text-xs">Work</SelectItem>
+                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
+                )}
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Phone</span>
+              <div className="space-y-1">
+                {personPhones.map((p) => (
+                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)} />
+                ))}
+                {showAddPhone ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <Select value={newPhoneType} onValueChange={setNewPhoneType}>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="work" className="text-xs">Work</SelectItem>
+                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+                        <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
+                )}
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Address</span>
+              <div className="space-y-1">
+                {personAddresses.map((a) => (
+                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
+                ))}
+                {showAddAddress ? (
+                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                    <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    <div className="flex gap-1.5">
+                      <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                      <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                      <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Select value={newAddressType} onValueChange={setNewAddressType}>
+                        <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="business" className="text-xs">Business</SelectItem>
+                          <SelectItem value="home" className="text-xs">Home</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
+                        <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
+                )}
+              </div>
+            </div>
+
+            {/* About */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">About</span>
+              <EditableRichTextField value={person.notes ?? ''} personId={person.id} field="notes" onSaved={handleFieldSaved} placeholder="Background info about this contact..." />
+            </div>
+
+            {/* Bank Relationships */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Bank Relationships</span>
+              <EditableRichTextField value={person.bank_relationships ?? ''} personId={person.id} field="bank_relationships" onSaved={handleFieldSaved} placeholder="Excluded lender names from CLX agreement..." />
             </div>
           </div>
         </ScrollArea>

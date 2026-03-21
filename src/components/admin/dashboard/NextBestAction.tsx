@@ -39,7 +39,7 @@ export const NextBestAction = ({ evanId }: NextBestActionProps) => {
 
       // First: overdue task with an associated lead
       const { data: overdueTasks } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, due_date, priority, lead_id')
         .eq('is_completed', false)
         .lt('due_date', new Date().toISOString())
@@ -137,7 +137,7 @@ export const NextBestAction = ({ evanId }: NextBestActionProps) => {
           <h2 className="text-lg md:text-xl font-bold text-foreground">
             {nextAction.action}
           </h2>
-          <DbTableBadge tables={['evan_tasks', 'leads']} />
+          <DbTableBadge tables={['tasks', 'leads']} />
         </div>
 
         <div className="flex items-center gap-3 mt-3 flex-wrap">

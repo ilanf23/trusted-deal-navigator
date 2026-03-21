@@ -70,7 +70,7 @@ export function useLoanVolumeLog() {
     queryFn: async () => {
       if (leadIds.length === 0) return {};
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('lead_id, created_at')
         .in('lead_id', leadIds)
         .order('created_at', { ascending: false });

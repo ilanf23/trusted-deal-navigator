@@ -219,7 +219,7 @@ Respond with a JSON object (no markdown) with these exact fields:
     taskDueDate.setDate(taskDueDate.getDate() + 1); // Due tomorrow
 
     const { data: task, error: taskError } = await supabase
-      .from('evan_tasks')
+      .from('tasks')
       .insert({
         title: `Follow up with ${leadName}`,
         description: `📞 New lead from call on ${callDate}
@@ -240,6 +240,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
         due_date: taskDueDate.toISOString(),
         group_name: 'To Do',
         assignee_name: 'Evan',
+        team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
         tags: ['follow-up', 'new-lead', 'phone-call'],
       })
       .select()
@@ -251,7 +252,7 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
       console.log("Task created:", task.id);
 
       // Add activity log for the task
-      await supabase.from('evan_task_activities').insert({
+      await supabase.from('task_activities').insert({
         task_id: task.id,
         activity_type: 'created',
         content: `Auto-generated from call with ${leadName}`,

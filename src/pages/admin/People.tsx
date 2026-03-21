@@ -14,7 +14,6 @@ import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/Creat
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import {
   ArrowUpDown,
-  Search,
   PanelLeft,
   Filter,
   Settings2,
@@ -343,7 +342,6 @@ const People = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedPerson, setDraggedPerson] = useState<Person | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Custom filters
@@ -407,7 +405,6 @@ const People = () => {
   function clearAllFilters() {
     setActiveFilter('all');
     setSearchTerm('');
-    setSearchOpen(false);
   }
 
   function toggleColumn(key: ColumnKey) {
@@ -646,7 +643,13 @@ const People = () => {
           p.name.toLowerCase().includes(q) ||
           (p.company_name ?? '').toLowerCase().includes(q) ||
           (p.email ?? '').toLowerCase().includes(q) ||
-          (p.title ?? '').toLowerCase().includes(q)
+          (p.phone ?? '').toLowerCase().includes(q) ||
+          (p.title ?? '').toLowerCase().includes(q) ||
+          (p.source ?? '').toLowerCase().includes(q) ||
+          (p.contact_type ?? '').toLowerCase().includes(q) ||
+          (p.linkedin ?? '').toLowerCase().includes(q) ||
+          (p.website ?? '').toLowerCase().includes(q) ||
+          (p.tags ?? []).some(t => t.toLowerCase().includes(q))
       );
     }
 
@@ -819,6 +822,17 @@ const People = () => {
           </DropdownMenu>
         </div>
 
+        {/* Search bar */}
+        <div className="shrink-0 px-5 py-2.5 border-b border-border bg-background">
+          <Input
+            type="text"
+            placeholder="Search by name, email, domain or phone number"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-9 px-3 text-sm rounded-full bg-muted/50 border-transparent focus:border-border focus:bg-background placeholder:text-muted-foreground/60"
+          />
+        </div>
+
         {/* ── Body: Sidebar + Table ── */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
 
@@ -985,17 +999,6 @@ const People = () => {
               </div>
 
               <div className="flex items-center gap-0.5">
-                {searchOpen && (
-                  <Input
-                    autoFocus
-                    placeholder="Search contacts, companies..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Escape') { setSearchTerm(''); setSearchOpen(false); } }}
-                    onBlur={() => { if (!searchTerm) setSearchOpen(false); }}
-                    className="h-7 w-52 text-xs mr-1 border-border bg-card"
-                  />
-                )}
 
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1046,14 +1049,6 @@ const People = () => {
                   {isFiltersActive && (
                     <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600" />
                   )}
-                </button>
-
-                <button
-                  onClick={() => setSearchOpen(v => !v)}
-                  title="Search contacts"
-                  className={iconBtn(searchOpen || !!searchTerm)}
-                >
-                  <Search className={`h-3.5 w-3.5 ${(searchOpen || searchTerm) ? 'text-blue-600' : ''}`} />
                 </button>
 
                 <div className="relative" ref={columnsMenuRef}>

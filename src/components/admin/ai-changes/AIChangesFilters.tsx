@@ -69,9 +69,9 @@ const AIChangesFilters = ({ filters, onFiltersChange, batchFilter }: AIChangesFi
         <SelectContent>
           <SelectItem value="all">All Tables</SelectItem>
           <SelectItem value="leads">Leads</SelectItem>
-          <SelectItem value="evan_tasks">Tasks</SelectItem>
-          <SelectItem value="evan_notes">Notes</SelectItem>
-          <SelectItem value="evan_communications">Activities</SelectItem>
+          <SelectItem value="tasks">Tasks</SelectItem>
+          <SelectItem value="notes">Notes</SelectItem>
+          <SelectItem value="communications">Activities</SelectItem>
         </SelectContent>
       </Select>
 

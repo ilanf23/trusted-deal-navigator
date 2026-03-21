@@ -36,9 +36,9 @@ export const TaskCalendarView = ({
       const monthEnd = endOfMonth(currentMonth);
       
       const { data, error } = await supabase
-        .from('evan_appointments')
+        .from('appointments')
         .select('id, title, start_time, end_time, appointment_type, google_event_id')
-        .eq('team_member_name', 'evan')
+        .eq('team_member_id', '5e2d8710-7a23-4c33-87a2-4ad9ced4e936')
         .gte('start_time', monthStart.toISOString())
         .lte('start_time', monthEnd.toISOString())
         .order('start_time', { ascending: true });

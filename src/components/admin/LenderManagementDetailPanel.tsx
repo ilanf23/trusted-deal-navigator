@@ -4,6 +4,7 @@ import {
   X, DollarSign, Maximize2, Building2, User, Mail, Phone, PhoneCall, Hash,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase,
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Flag, Layers,
+  FolderOpen, AtSign, MapPin, Trash2, Plus, Landmark,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
@@ -16,13 +17,17 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
+
+interface LeadEmail { id: string; lead_id: string; email: string; email_type: string; is_primary: boolean; }
+interface LeadPhone { id: string; lead_id: string; phone_number: string; phone_type: string; is_primary: boolean; }
+interface LeadAddress { id: string; lead_id: string; address_type: string; address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip_code: string | null; country: string | null; is_primary: boolean; }
 
 interface StageConfigEntry {
   title: string;
@@ -360,11 +365,11 @@ function EditableTags({
   );
 }
 
-// ── Editable Notes ──
-function EditableNotes({
-  value, leadId, onSaved,
+// ── Editable Rich Text Field (generic) ──
+function EditableRichTextField({
+  value, leadId, field, placeholder, onSaved,
 }: {
-  value: string; leadId: string;
+  value: string; leadId: string; field: string; placeholder?: string;
   onSaved: (field: string, newValue: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -383,13 +388,13 @@ function EditableNotes({
     setSaving(true);
     const { error } = await supabase
       .from('leads')
-      .update({ notes: trimmed || null })
+      .update({ [field]: trimmed || null })
       .eq('id', leadId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
-    onSaved('notes', trimmed);
+    onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, value, leadId, onSaved]);
+  }, [draft, value, field, leadId, onSaved]);
 
   if (editing) {
     return (
@@ -397,7 +402,7 @@ function EditableNotes({
         <RichTextEditor
           value={draft}
           onChange={setDraft}
-          placeholder="Add notes..."
+          placeholder={placeholder ?? "Add notes..."}
           minHeight="60px"
           disabled={saving}
         />
@@ -417,7 +422,7 @@ function EditableNotes({
       {value ? (
         <HtmlContent value={value} />
       ) : (
-        <p className="text-[13px] text-muted-foreground italic">Click to add notes...</p>
+        <p className="text-[13px] text-muted-foreground italic">{placeholder ?? "Click to add notes..."}</p>
       )}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <Pencil className="h-3 w-3 text-muted-foreground" />
@@ -436,6 +441,89 @@ function ReadOnlyField({ icon, label, value }: { icon: React.ReactNode; label: s
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
       </div>
       <span className="text-[13px] font-medium text-foreground text-right truncate">{value}</span>
+    </div>
+  );
+}
+
+// ── Contact Email Row ──
+function ContactEmailRow({ email, onDelete }: { email: LeadEmail; onDelete: (id: string) => void }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 transition-colors group rounded-lg">
+      <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="text-[13px] font-medium text-foreground truncate flex-1">{email.email}</span>
+      {email.email_type && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 rounded-full shrink-0">
+          {email.email_type}
+        </Badge>
+      )}
+      {email.is_primary && (
+        <Badge className="text-[10px] px-1.5 py-0 h-4 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0 shrink-0">
+          Primary
+        </Badge>
+      )}
+      <button onClick={() => onDelete(email.id)} className="shrink-0 h-5 w-5 rounded flex items-center justify-center text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all">
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ── Contact Phone Row ──
+function ContactPhoneRow({ phone, onDelete, onCall }: { phone: LeadPhone; onDelete: (id: string) => void; onCall: (phoneNumber: string) => void }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 transition-colors group rounded-lg">
+      <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="text-[13px] font-medium text-foreground truncate flex-1">{formatPhoneNumber(phone.phone_number)}</span>
+      {phone.phone_type && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 rounded-full shrink-0">
+          {phone.phone_type}
+        </Badge>
+      )}
+      {phone.is_primary && (
+        <Badge className="text-[10px] px-1.5 py-0 h-4 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0 shrink-0">
+          Primary
+        </Badge>
+      )}
+      <button onClick={() => onCall(phone.phone_number)} title="Call this number" className="shrink-0 h-5 w-5 rounded flex items-center justify-center text-green-600 opacity-0 group-hover:opacity-100 hover:bg-green-50 dark:hover:bg-green-900/30 transition-all">
+        <PhoneCall className="h-3 w-3" />
+      </button>
+      <button onClick={() => onDelete(phone.id)} className="shrink-0 h-5 w-5 rounded flex items-center justify-center text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all">
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ── Address Block ──
+function AddressBlock({ address, onDelete }: { address: LeadAddress; onDelete: (id: string) => void }) {
+  const parts = [address.address_line_1, address.address_line_2].filter(Boolean);
+  const cityLine = [address.city, address.state].filter(Boolean).join(', ');
+  if (address.zip_code) parts.push(cityLine ? `${cityLine} ${address.zip_code}` : address.zip_code);
+  else if (cityLine) parts.push(cityLine);
+  if (address.country && address.country !== 'US' && address.country !== 'USA') parts.push(address.country);
+
+  return (
+    <div className="flex items-start gap-2 px-3 py-2 hover:bg-muted/40 transition-colors group rounded-lg">
+      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        {address.address_type && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 rounded-full mb-1">
+            {address.address_type}
+          </Badge>
+        )}
+        {parts.map((part, i) => (
+          <p key={i} className="text-[13px] font-medium text-foreground leading-snug">{part}</p>
+        ))}
+        {parts.length === 0 && <p className="text-[13px] text-muted-foreground italic">No address details</p>}
+      </div>
+      {address.is_primary && (
+        <Badge className="text-[10px] px-1.5 py-0 h-4 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0 shrink-0">
+          Primary
+        </Badge>
+      )}
+      <button onClick={() => onDelete(address.id)} className="shrink-0 h-5 w-5 rounded flex items-center justify-center text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all">
+        <Trash2 className="h-3 w-3" />
+      </button>
     </div>
   );
 }
@@ -479,7 +567,7 @@ function ActivityTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Re
     queryKey: ['lead-activity-timeline', 'communications', lead.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id, communication_type, direction, content, duration_seconds, created_at')
         .eq('lead_id', lead.id)
         .order('created_at', { ascending: false });
@@ -668,7 +756,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
     queryKey: ['lead-related', 'tasks', lead.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, status, is_completed, due_date')
         .eq('lead_id', lead.id)
         .order('is_completed', { ascending: true })
@@ -916,6 +1004,117 @@ export default function LenderManagementDetailPanel({
 
   const ownerOptions = teamMembers.map((m) => ({ value: m.id, label: m.name }));
 
+  // ── Add-form state ──
+  const [showAddEmail, setShowAddEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newEmailType, setNewEmailType] = useState('work');
+  const [showAddPhone, setShowAddPhone] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [newPhoneType, setNewPhoneType] = useState('work');
+  const [showAddAddress, setShowAddAddress] = useState(false);
+  const [newAddrLine1, setNewAddrLine1] = useState('');
+  const [newAddrCity, setNewAddrCity] = useState('');
+  const [newAddrState, setNewAddrState] = useState('');
+  const [newAddrZip, setNewAddrZip] = useState('');
+  const [newAddrType, setNewAddrType] = useState('mailing');
+
+  // ── Satellite queries ──
+  const { data: leadEmails = [] } = useQuery({
+    queryKey: ['lead-emails', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_emails').select('id, lead_id, email, email_type, is_primary').eq('lead_id', lead.id).order('is_primary', { ascending: false });
+      return (data ?? []) as LeadEmail[];
+    },
+  });
+
+  const { data: leadPhones = [] } = useQuery({
+    queryKey: ['lead-phones', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_phones').select('id, lead_id, phone_number, phone_type, is_primary').eq('lead_id', lead.id).order('is_primary', { ascending: false });
+      return (data ?? []) as LeadPhone[];
+    },
+  });
+
+  const { data: leadAddresses = [] } = useQuery({
+    queryKey: ['lead-addresses', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_addresses').select('id, lead_id, address_type, address_line_1, address_line_2, city, state, zip_code, country, is_primary').eq('lead_id', lead.id).order('is_primary', { ascending: false });
+      return (data ?? []) as LeadAddress[];
+    },
+  });
+
+  // ── Add mutations ──
+  const addEmailMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('lead_emails').insert({ lead_id: lead.id, email: newEmail.trim(), email_type: newEmailType });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-emails', lead.id] });
+      setNewEmail(''); setShowAddEmail(false);
+      toast.success('Email added');
+    },
+    onError: () => toast.error('Failed to add email'),
+  });
+
+  const addPhoneMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('lead_phones').insert({ lead_id: lead.id, phone_number: newPhone.trim(), phone_type: newPhoneType });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-phones', lead.id] });
+      setNewPhone(''); setShowAddPhone(false);
+      toast.success('Phone added');
+    },
+    onError: () => toast.error('Failed to add phone'),
+  });
+
+  const addAddressMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('lead_addresses').insert({
+        lead_id: lead.id, address_line_1: newAddrLine1.trim() || null,
+        city: newAddrCity.trim() || null, state: newAddrState.trim() || null,
+        zip_code: newAddrZip.trim() || null, address_type: newAddrType,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead.id] });
+      setNewAddrLine1(''); setNewAddrCity(''); setNewAddrState(''); setNewAddrZip(''); setShowAddAddress(false);
+      toast.success('Address added');
+    },
+    onError: () => toast.error('Failed to add address'),
+  });
+
+  // ── Delete mutations ──
+  const deleteEmailMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('lead_emails').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lead-emails', lead.id] }); toast.success('Email removed'); },
+    onError: () => toast.error('Failed to remove email'),
+  });
+
+  const deletePhoneMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('lead_phones').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lead-phones', lead.id] }); toast.success('Phone removed'); },
+    onError: () => toast.error('Failed to remove phone'),
+  });
+
+  const deleteAddressMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('lead_addresses').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lead-addresses', lead.id] }); toast.success('Address removed'); },
+    onError: () => toast.error('Failed to remove address'),
+  });
+
   return (
     <aside className="shrink-0 w-[380px] border-l border-border/60 bg-card flex flex-col h-full animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
@@ -1072,7 +1271,9 @@ export default function LenderManagementDetailPanel({
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Deal Details</span>
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
                 <ReadOnlyField icon={<Briefcase className="h-3.5 w-3.5" />} label="Pipeline" value="Lender Management" />
-                <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="CLX File" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={lead.known_as ?? ''} field="known_as" leadId={lead.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={lead.clx_file_name ?? ''} field="clx_file_name" leadId={lead.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<Hash className="h-3.5 w-3.5" />} label="Company" value={lead.company_name ?? ''} field="company_name" leadId={lead.id} onSaved={handleFieldSaved} />
                 {ownerOptions.length > 0 ? (
                   <EditableSelectField
                     icon={<User className="h-3.5 w-3.5" />}
@@ -1092,6 +1293,140 @@ export default function LenderManagementDetailPanel({
                   <ReadOnlyField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={formatValue(dealValue)} />
                 )}
                 <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Created" value={formatDate(lead.created_at)} />
+                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Last Contacted" value={formatDate(lead.last_activity_at)} />
+              </div>
+            </div>
+
+            {/* Emails -- multi */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Emails</span>
+                <button onClick={() => setShowAddEmail(true)} className="text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-0.5 transition-colors">
+                  <Plus className="h-3 w-3" /> Add
+                </button>
+              </div>
+              <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                {leadEmails.length === 0 && !showAddEmail && (
+                  <p className="text-[13px] text-muted-foreground italic px-3 py-2">No emails</p>
+                )}
+                {leadEmails.map((em) => (
+                  <ContactEmailRow key={em.id} email={em} onDelete={(id) => deleteEmailMutation.mutate(id)} />
+                ))}
+                {showAddEmail && (
+                  <div className="px-3 py-2.5 space-y-2 bg-blue-50/30 dark:bg-blue-950/20">
+                    <input
+                      value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      className="w-full text-[13px] text-foreground bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                      onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(); if (e.key === 'Escape') setShowAddEmail(false); }}
+                      autoFocus
+                    />
+                    <div className="flex items-center gap-2">
+                      <Select value={newEmailType} onValueChange={setNewEmailType}>
+                        <SelectTrigger className="h-7 text-[11px] border-border bg-card w-24 rounded-lg"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="work" className="text-[11px]">Work</SelectItem>
+                          <SelectItem value="personal" className="text-[11px]">Personal</SelectItem>
+                          <SelectItem value="other" className="text-[11px]">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex-1" />
+                      <button onClick={() => setShowAddEmail(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">Cancel</button>
+                      <button onClick={() => { if (newEmail.trim()) addEmailMutation.mutate(); }} disabled={!newEmail.trim() || addEmailMutation.isPending} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
+                        {addEmailMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Phones -- multi */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Phones</span>
+                <button onClick={() => setShowAddPhone(true)} className="text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-0.5 transition-colors">
+                  <Plus className="h-3 w-3" /> Add
+                </button>
+              </div>
+              <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                {leadPhones.length === 0 && !showAddPhone && (
+                  <p className="text-[13px] text-muted-foreground italic px-3 py-2">No phones</p>
+                )}
+                {leadPhones.map((ph) => (
+                  <ContactPhoneRow key={ph.id} phone={ph} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(num) => navigate(`/admin/calls?phone=${encodeURIComponent(num.replace(/\D/g, ''))}&leadId=${lead.id}`)} />
+                ))}
+                {showAddPhone && (
+                  <div className="px-3 py-2.5 space-y-2 bg-blue-50/30 dark:bg-blue-950/20">
+                    <input
+                      value={newPhone} onChange={(e) => setNewPhone(e.target.value)}
+                      placeholder="(555) 123-4567"
+                      className="w-full text-[13px] text-foreground bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                      onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(); if (e.key === 'Escape') setShowAddPhone(false); }}
+                      autoFocus
+                    />
+                    <div className="flex items-center gap-2">
+                      <Select value={newPhoneType} onValueChange={setNewPhoneType}>
+                        <SelectTrigger className="h-7 text-[11px] border-border bg-card w-24 rounded-lg"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="work" className="text-[11px]">Work</SelectItem>
+                          <SelectItem value="mobile" className="text-[11px]">Mobile</SelectItem>
+                          <SelectItem value="home" className="text-[11px]">Home</SelectItem>
+                          <SelectItem value="other" className="text-[11px]">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex-1" />
+                      <button onClick={() => setShowAddPhone(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">Cancel</button>
+                      <button onClick={() => { if (newPhone.trim()) addPhoneMutation.mutate(); }} disabled={!newPhone.trim() || addPhoneMutation.isPending} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
+                        {addPhoneMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Addresses -- multi */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Addresses</span>
+                <button onClick={() => setShowAddAddress(true)} className="text-[11px] font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-0.5 transition-colors">
+                  <Plus className="h-3 w-3" /> Add
+                </button>
+              </div>
+              <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                {leadAddresses.length === 0 && !showAddAddress && (
+                  <p className="text-[13px] text-muted-foreground italic px-3 py-2">No addresses</p>
+                )}
+                {leadAddresses.map((addr) => (
+                  <AddressBlock key={addr.id} address={addr} onDelete={(id) => deleteAddressMutation.mutate(id)} />
+                ))}
+                {showAddAddress && (
+                  <div className="px-3 py-2.5 space-y-2 bg-blue-50/30 dark:bg-blue-950/20">
+                    <input value={newAddrLine1} onChange={(e) => setNewAddrLine1(e.target.value)} placeholder="Street address" className="w-full text-[13px] text-foreground bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400" autoFocus />
+                    <div className="flex gap-2">
+                      <input value={newAddrCity} onChange={(e) => setNewAddrCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] text-foreground bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400" />
+                      <input value={newAddrState} onChange={(e) => setNewAddrState(e.target.value)} placeholder="State" className="w-16 text-[13px] text-foreground bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400" />
+                      <input value={newAddrZip} onChange={(e) => setNewAddrZip(e.target.value)} placeholder="ZIP" className="w-20 text-[13px] text-foreground bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={newAddrType} onValueChange={setNewAddrType}>
+                        <SelectTrigger className="h-7 text-[11px] border-border bg-card w-28 rounded-lg"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mailing" className="text-[11px]">Mailing</SelectItem>
+                          <SelectItem value="billing" className="text-[11px]">Billing</SelectItem>
+                          <SelectItem value="property" className="text-[11px]">Property</SelectItem>
+                          <SelectItem value="other" className="text-[11px]">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex-1" />
+                      <button onClick={() => setShowAddAddress(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">Cancel</button>
+                      <button onClick={() => addAddressMutation.mutate()} disabled={(!newAddrLine1.trim() && !newAddrCity.trim()) || addAddressMutation.isPending} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1">
+                        {addAddressMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1101,10 +1436,18 @@ export default function LenderManagementDetailPanel({
               <EditableTags tags={lead.tags ?? []} leadId={lead.id} onSaved={handleFieldSaved} />
             </div>
 
-            {/* Notes -- editable */}
+            {/* About -- editable (was Notes) */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Notes</span>
-              <EditableNotes value={lead.notes ?? ''} leadId={lead.id} onSaved={handleFieldSaved} />
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">About</span>
+              <EditableRichTextField value={lead.notes ?? ''} leadId={lead.id} field="notes" placeholder="Click to add about info..." onSaved={handleFieldSaved} />
+            </div>
+
+            {/* Bank Relationships -- editable */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+                <Landmark className="h-3.5 w-3.5" /> Bank Relationships
+              </span>
+              <EditableRichTextField value={lead.bank_relationships ?? ''} leadId={lead.id} field="bank_relationships" placeholder="Click to add bank relationships..." onSaved={handleFieldSaved} />
             </div>
           </div>
         </ScrollArea>

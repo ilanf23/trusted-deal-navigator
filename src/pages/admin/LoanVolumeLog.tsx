@@ -294,7 +294,6 @@ const LoanVolumeLog = () => {
 
   // Toolbar state
   const [rowDensity, setRowDensity] = useState<RowDensity>('comfortable');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
@@ -508,7 +507,17 @@ const LoanVolumeLog = () => {
         (l) =>
           l.name.toLowerCase().includes(q) ||
           (l.company_name ?? '').toLowerCase().includes(q) ||
+          (l.email ?? '').toLowerCase().includes(q) ||
+          (l.phone ?? '').toLowerCase().includes(q) ||
+          (l.title ?? '').toLowerCase().includes(q) ||
+          (l.source ?? '').toLowerCase().includes(q) ||
+          (l.contact_type ?? '').toLowerCase().includes(q) ||
+          (l.known_as ?? '').toLowerCase().includes(q) ||
+          (l.linkedin ?? '').toLowerCase().includes(q) ||
+          (l.website ?? '').toLowerCase().includes(q) ||
+          (l.uw_number ?? '').toLowerCase().includes(q) ||
           (l.lender_name ?? '').toLowerCase().includes(q) ||
+          (l.tags ?? []).some(t => t.toLowerCase().includes(q)) ||
           (teamMemberMap[l.assigned_to ?? ''] ?? '').toLowerCase().includes(q)
       );
     }
@@ -577,7 +586,6 @@ const LoanVolumeLog = () => {
     setWonFilter('all');
     setAssignedFilter('all');
     setSearchTerm('');
-    setSearchOpen(false);
   }
 
   function toggleColumn(key: ColumnKey) {
@@ -919,18 +927,6 @@ const LoanVolumeLog = () => {
               <AlignJustify className={`h-3.5 w-3.5 ${rowDensity !== 'comfortable' ? 'text-blue-600' : ''}`} />
             </button>
 
-            {/* Search */}
-            {searchOpen && (
-              <Input
-                autoFocus
-                placeholder="Search borrowers, companies..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Escape') { setSearchTerm(''); setSearchOpen(false); } }}
-                onBlur={() => { if (!searchTerm) setSearchOpen(false); }}
-                className="h-7 w-52 text-xs mr-1 border-border bg-card"
-              />
-            )}
 
             {/* Sort */}
             <Popover>
@@ -972,15 +968,6 @@ const LoanVolumeLog = () => {
                 <Filter className="h-3.5 w-3.5" />
               )}
               {isFiltersActive && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600" />}
-            </button>
-
-            {/* Search toggle */}
-            <button
-              onClick={() => setSearchOpen(v => !v)}
-              title="Search deals"
-              className={iconBtn(searchOpen || !!searchTerm)}
-            >
-              <FileSearch className={`h-3.5 w-3.5 ${(searchOpen || searchTerm) ? 'text-blue-600' : ''}`} />
             </button>
 
             {/* Column visibility */}
@@ -1047,6 +1034,17 @@ const LoanVolumeLog = () => {
             />
           </div>
         )}
+
+        {/* Search bar */}
+        <div className="shrink-0 px-5 py-2.5 border-b border-border bg-background">
+          <Input
+            type="text"
+            placeholder="Search by name, email, domain or phone number"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-9 px-3 text-sm rounded-full bg-muted/50 border-transparent focus:border-border focus:bg-background placeholder:text-muted-foreground/60"
+          />
+        </div>
 
         {/* Table Area */}
         <div className="flex flex-1 min-h-0 overflow-hidden">

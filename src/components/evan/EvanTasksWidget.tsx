@@ -28,7 +28,7 @@ export const EvanTasksWidget = () => {
     queryKey: ['evan-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('*')
         .order('is_completed', { ascending: true })
         .order('created_at', { ascending: false });
@@ -40,7 +40,7 @@ export const EvanTasksWidget = () => {
   const addTask = useMutation({
     mutationFn: async (title: string) => {
       const { error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .insert({ title });
       if (error) throw error;
     },
@@ -55,7 +55,7 @@ export const EvanTasksWidget = () => {
   const toggleTask = useMutation({
     mutationFn: async ({ id, is_completed }: { id: string; is_completed: boolean }) => {
       const { error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .update({ is_completed })
         .eq('id', id);
       if (error) throw error;
@@ -66,7 +66,7 @@ export const EvanTasksWidget = () => {
   const deleteTask = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .delete()
         .eq('id', id);
       if (error) throw error;

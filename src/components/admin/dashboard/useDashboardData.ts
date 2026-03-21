@@ -97,7 +97,7 @@ export function useDashboardData(timePeriod: TimePeriod) {
     queryKey: ['dashboard-touchpoints-this-week'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id, communication_type, direction, duration_seconds, created_at')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString())
@@ -112,7 +112,7 @@ export function useDashboardData(timePeriod: TimePeriod) {
     queryKey: ['dashboard-tasks-overview'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, priority, due_date, is_completed, status, created_at')
         .order('due_date', { ascending: true });
       if (error) throw error;
@@ -125,7 +125,7 @@ export function useDashboardData(timePeriod: TimePeriod) {
     queryKey: ['dashboard-scorecard-comms'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id, communication_type, direction, created_at')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString());

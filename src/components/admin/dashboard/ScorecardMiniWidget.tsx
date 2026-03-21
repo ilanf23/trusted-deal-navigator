@@ -32,7 +32,7 @@ export const ScorecardMiniWidget = ({ scorecardData, isLoading }: ScorecardMiniW
           <CardTitle className="text-base flex items-center gap-2">
             <Trophy className="h-4 w-4 text-primary" />
             Weekly Scorecard
-            <DbTableBadge tables={['leads', 'evan_communications']} />
+            <DbTableBadge tables={['leads', 'communications']} />
           </CardTitle>
           <Link to="/admin/scorecard">
             <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1">

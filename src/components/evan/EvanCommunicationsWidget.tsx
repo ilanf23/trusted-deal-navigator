@@ -134,7 +134,7 @@ export const EvanCommunicationsWidget = () => {
     queryKey: ['evan-communications'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
@@ -158,7 +158,7 @@ export const EvanCommunicationsWidget = () => {
   const addCommunication = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .insert({
           lead_id: newComm.lead_id || null,
           communication_type: newComm.communication_type,
@@ -254,7 +254,7 @@ export const EvanCommunicationsWidget = () => {
 
       // Link communication to new lead
       const { error: updateError } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .update({ lead_id: newLead.id })
         .eq('id', comm.id);
 

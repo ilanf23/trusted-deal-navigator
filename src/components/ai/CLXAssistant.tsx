@@ -128,7 +128,7 @@ const CLXAssistant = () => {
     queryKey: ['ai-suggested-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, priority, due_date')
         .eq('is_completed', false)
         .order('priority', { ascending: false })

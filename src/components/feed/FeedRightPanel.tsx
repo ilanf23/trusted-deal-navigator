@@ -49,7 +49,7 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
     queryKey: ['feed-right-due-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, due_date, assignee_name, lead_id, priority, source')
         .eq('is_completed', false)
         .not('due_date', 'is', null)
@@ -65,9 +65,9 @@ const FeedRightPanel = ({ isSheet }: { isSheet?: boolean }) => {
     queryFn: async () => {
       const now = new Date().toISOString();
       const { data, error } = await supabase
-        .from('evan_appointments')
-        .select('id, title, start_time, end_time, team_member_name, description')
-        .eq('team_member_name', 'evan')
+        .from('appointments')
+        .select('id, title, start_time, end_time, team_member_name, team_member_id, description')
+        .eq('team_member_id', '5e2d8710-7a23-4c33-87a2-4ad9ced4e936')
         .gte('start_time', now)
         .order('start_time', { ascending: true })
         .limit(5);

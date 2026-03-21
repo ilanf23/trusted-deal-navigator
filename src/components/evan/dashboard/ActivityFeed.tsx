@@ -19,14 +19,14 @@ export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
 
       // Get recent communications
       const { data: comms } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('*, leads(name, company_name)')
         .order('created_at', { ascending: false })
         .limit(10);
 
       // Get recent notes
       const { data: notes } = await supabase
-        .from('evan_notes')
+        .from('notes')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(5);
@@ -90,7 +90,7 @@ export const ActivityFeed = ({ evanId }: ActivityFeedProps) => {
         <CardTitle className="flex items-center gap-2 text-lg">
           <Activity className="h-5 w-5 text-muted-foreground" />
           Activity Feed
-          <DbTableBadge tables={['evan_communications', 'evan_notes']} />
+          <DbTableBadge tables={['communications', 'notes']} />
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">

@@ -178,7 +178,7 @@ export function EmailActionBar({
       leadId?: string;
     }) => {
       const { error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .insert({
           title,
           description,
@@ -188,6 +188,7 @@ export function EmailActionBar({
           due_date: dueDate.toISOString(),
           lead_id: leadId || linkedDeal?.id,
           assignee_name: 'Evan',
+          team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
           tags: ['inbox-action'],
         });
       if (error) throw error;

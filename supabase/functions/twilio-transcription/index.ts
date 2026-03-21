@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     let commToUpdate = null;
     
     const { data: commByCallSid } = await supabase
-      .from('evan_communications')
+      .from('communications')
       .select('*')
       .eq('call_sid', callSid)
       .single();
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     } else {
       // Fallback: Find the most recent communication for this call by phone number
       let commQuery = supabase
-        .from('evan_communications')
+        .from('communications')
         .select('*')
         .eq('communication_type', 'call')
         .order('created_at', { ascending: false })
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
       if (activeCall?.from_number) {
         const normalizedPhone = activeCall.from_number.replace(/\D/g, '').slice(-10);
         commQuery = supabase
-          .from('evan_communications')
+          .from('communications')
           .select('*')
           .eq('communication_type', 'call')
           .or(`phone_number.ilike.%${normalizedPhone}%`)
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     // Update the matching communication with the transcript
     if (commToUpdate) {
       const { error: updateError } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .update({ 
           transcript: transcriptionText,
           recording_url: recordingUrl || null,
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       console.log('No matching communication found, creating new record');
       
       const { error: insertError } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .insert({
           lead_id: activeCall?.lead_id || null,
           communication_type: 'call',

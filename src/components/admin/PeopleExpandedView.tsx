@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,8 +17,8 @@ import {
   Users, Building2, CheckSquare, FileText,
   CalendarDays, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle,
-  User, Mail, Phone, Tag, Briefcase, Loader2,
-  Linkedin, Check, Upload, Download, Trash2,
+  User, Mail, Phone, PhoneCall, Tag, Briefcase, Loader2,
+  Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -71,8 +71,40 @@ interface Person {
   linkedin: string | null;
   source: string | null;
   last_activity_at: string | null;
+  known_as: string | null;
+  clx_file_name: string | null;
+  bank_relationships: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface PersonEmail {
+  id: string;
+  person_id: string;
+  email: string;
+  email_type: string;
+  is_primary: boolean;
+}
+
+interface PersonPhone {
+  id: string;
+  person_id: string;
+  phone_number: string;
+  phone_type: string;
+  is_primary: boolean;
+}
+
+interface PersonAddress {
+  id: string;
+  person_id: string;
+  address_type: string;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  country: string | null;
+  is_primary: boolean;
 }
 
 // ── Contact type config ──
@@ -180,7 +212,7 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   type_change: { icon: Layers, color: 'text-violet-500' },
 };
 
-// ── Inline-save helper (for leads table) ──
+// ── Inline-save helper (for people table) ──
 function useInlineSave(
   personId: string,
   field: string,
@@ -405,12 +437,13 @@ function EditableTags({
   );
 }
 
-// ── Editable Notes ──
-function EditableNotes({
-  value, personId, onSaved,
+// ── Editable Rich Text Field ──
+function EditableRichTextField({
+  value, personId, field, onSaved, placeholder,
 }: {
-  value: string; personId: string;
+  value: string; personId: string; field: string;
   onSaved: (field: string, newValue: string) => void;
+  placeholder?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -426,13 +459,13 @@ function EditableNotes({
     setSaving(true);
     const { error } = await supabase
       .from('leads')
-      .update({ notes: trimmed || null })
+      .update({ [field]: trimmed || null })
       .eq('id', personId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
-    onSaved('notes', trimmed);
+    onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, value, personId, onSaved]);
+  }, [draft, value, field, personId, onSaved]);
 
   if (editing) {
     return (
@@ -440,7 +473,7 @@ function EditableNotes({
         <RichTextEditor
           value={draft}
           onChange={setDraft}
-          placeholder="Add notes..."
+          placeholder={placeholder || "Add content..."}
           minHeight="60px"
           disabled={saving}
         />
@@ -460,12 +493,62 @@ function EditableNotes({
       {value ? (
         <HtmlContent value={value} />
       ) : (
-        <p className="text-[13px] text-muted-foreground italic">Click to add notes...</p>
+        <p className="text-[13px] text-muted-foreground italic">{placeholder || "Click to add content..."}</p>
       )}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <Pencil className="h-3 w-3 text-muted-foreground" />
         <span className="text-[11px] text-muted-foreground">Click to edit</span>
       </div>
+    </div>
+  );
+}
+
+// ── Contact Email Row ──
+function ContactEmailRow({ entry, onDelete }: { entry: PersonEmail; onDelete: (id: string) => void }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+      <AtSign className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.email_type}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1">{entry.email}</span>
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ── Contact Phone Row ──
+function ContactPhoneRow({ entry, onDelete, onCall }: { entry: PersonPhone; onDelete: (id: string) => void; onCall?: (phone: string) => void }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+      <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="text-[11px] text-muted-foreground uppercase font-medium w-[50px] shrink-0">{entry.phone_type}</span>
+      <span className="text-[13px] text-foreground font-medium truncate flex-1">{formatPhoneNumber(entry.phone_number)}</span>
+      {onCall && (
+        <button onClick={() => onCall(entry.phone_number)} className="h-5 w-5 rounded flex items-center justify-center text-green-600 hover:bg-green-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+          <PhoneCall className="h-3 w-3" />
+        </button>
+      )}
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ── Address Block ──
+function AddressBlock({ entry, onDelete }: { entry: PersonAddress; onDelete: (id: string) => void }) {
+  const parts = [entry.address_line_1, entry.city, entry.state, entry.zip_code].filter(Boolean);
+  return (
+    <div className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <span className="text-[11px] text-muted-foreground uppercase font-medium">{entry.address_type}</span>
+        <p className="text-[13px] text-foreground font-medium">{parts.join(', ') || '—'}</p>
+      </div>
+      <button onClick={() => onDelete(entry.id)} className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0 mt-0.5">
+        <Trash2 className="h-3 w-3" />
+      </button>
     </div>
   );
 }
@@ -560,6 +643,20 @@ export default function PeopleExpandedView() {
   const [savingTask, setSavingTask] = useState(false);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
+  // Multi-value contact form state
+  const [showAddEmail, setShowAddEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newEmailType, setNewEmailType] = useState('work');
+  const [showAddPhone, setShowAddPhone] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [newPhoneType, setNewPhoneType] = useState('work');
+  const [showAddAddress, setShowAddAddress] = useState(false);
+  const [newAddressLine1, setNewAddressLine1] = useState('');
+  const [newAddressCity, setNewAddressCity] = useState('');
+  const [newAddressState, setNewAddressState] = useState('');
+  const [newAddressZip, setNewAddressZip] = useState('');
+  const [newAddressType, setNewAddressType] = useState('business');
+
   // File upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -590,9 +687,9 @@ export default function PeopleExpandedView() {
     queryKey: ['person-activities', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_activities')
+        .from('people_activities')
         .select('*')
-        .eq('lead_id', personId!)
+        .eq('person_id', personId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -607,12 +704,40 @@ export default function PeopleExpandedView() {
     queryKey: ['person-tasks', personId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_activities')
+        .from('people_activities')
         .select('id, title, content, created_at')
-        .eq('lead_id', personId!)
+        .eq('person_id', personId!)
         .eq('activity_type', 'task')
         .order('created_at', { ascending: false });
       return data ?? [];
+    },
+    enabled: !!personId,
+  });
+
+  // Satellite table queries
+  const { data: personEmails = [] } = useQuery({
+    queryKey: ['person-emails', personId],
+    queryFn: async () => {
+      const { data } = await supabase.from('people_emails').select('*').eq('person_id', personId!);
+      return (data || []) as PersonEmail[];
+    },
+    enabled: !!personId,
+  });
+
+  const { data: personPhones = [] } = useQuery({
+    queryKey: ['person-phones', personId],
+    queryFn: async () => {
+      const { data } = await supabase.from('people_phones').select('*').eq('person_id', personId!);
+      return (data || []) as PersonPhone[];
+    },
+    enabled: !!personId,
+  });
+
+  const { data: personAddresses = [] } = useQuery({
+    queryKey: ['person-addresses', personId],
+    queryFn: async () => {
+      const { data } = await supabase.from('people_addresses').select('*').eq('person_id', personId!);
+      return (data || []) as PersonAddress[];
     },
     enabled: !!personId,
   });
@@ -645,10 +770,9 @@ export default function PeopleExpandedView() {
     }
     toast.success('Contact type updated');
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
-    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
     // Log an activity for the type change
-    await supabase.from('lead_activities').insert({
-      lead_id: personId,
+    await supabase.from('people_activities').insert({
+      person_id: personId,
       activity_type: 'type_change',
       title: 'Contact type changed',
       content: JSON.stringify({ from: currentType, to: newType }),
@@ -674,8 +798,8 @@ export default function PeopleExpandedView() {
       return;
     }
     setSavingActivity(true);
-    const { error } = await supabase.from('lead_activities').insert({
-      lead_id: personId,
+    const { error } = await supabase.from('people_activities').insert({
+      person_id: personId,
       activity_type: type,
       content,
       title: type === 'note' ? 'Note' : type.charAt(0).toUpperCase() + type.slice(1),
@@ -698,8 +822,8 @@ export default function PeopleExpandedView() {
   const handleSaveTask = useCallback(async () => {
     if (!personId || !newTaskTitle.trim()) return;
     setSavingTask(true);
-    const { error } = await supabase.from('lead_activities').insert({
-      lead_id: personId,
+    const { error } = await supabase.from('people_activities').insert({
+      person_id: personId,
       activity_type: 'task',
       title: newTaskTitle.trim(),
       content: newTaskTitle.trim(),
@@ -770,8 +894,8 @@ export default function PeopleExpandedView() {
     }
 
     // Store relative path, NOT public URL
-    const { error: dbError } = await supabase.from('lead_files').insert({
-      lead_id: personId,
+    const { error: dbError } = await supabase.from('people_files' as any).insert({
+      person_id: personId,
       file_name: file.name,
       file_url: filePath,
       file_type: file.type || null,
@@ -798,7 +922,7 @@ export default function PeopleExpandedView() {
     // file_url stores relative path directly
     await supabase.storage.from('lead-files').remove([file.file_url]);
 
-    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
+    const { error } = await supabase.from('people_files' as any).delete().eq('id', file.id);
     if (error) {
       toast.error('Failed to delete file');
       return;
@@ -830,9 +954,9 @@ export default function PeopleExpandedView() {
     queryKey: ['person-files', personId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_files')
-        .select('id, lead_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
-        .eq('lead_id', personId!)
+        .from('people_files' as any)
+        .select('id, person_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .eq('person_id', personId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as PersonFile[];
@@ -857,6 +981,73 @@ export default function PeopleExpandedView() {
       return map;
     },
     enabled: !!personId,
+  });
+
+  // ── Satellite table mutations ──
+  const addEmailMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const { error } = await supabase.from('people_emails').insert({ person_id: personId!, email, email_type: newEmailType });
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); setNewEmail(''); setShowAddEmail(false); toast.success('Email added'); },
+    onError: () => toast.error('Failed to add email'),
+  });
+
+  const deleteEmailMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      const { error } = await supabase.from('people_emails').delete().eq('id', emailId);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-emails', personId] }); toast.success('Email removed'); },
+    onError: () => toast.error('Failed to remove email'),
+  });
+
+  const addPhoneMutation = useMutation({
+    mutationFn: async (phone: string) => {
+      const { error } = await supabase.from('people_phones').insert({ person_id: personId!, phone_number: phone, phone_type: newPhoneType });
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); setNewPhone(''); setShowAddPhone(false); toast.success('Phone added'); },
+    onError: () => toast.error('Failed to add phone'),
+  });
+
+  const deletePhoneMutation = useMutation({
+    mutationFn: async (phoneId: string) => {
+      const { error } = await supabase.from('people_phones').delete().eq('id', phoneId);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-phones', personId] }); toast.success('Phone removed'); },
+    onError: () => toast.error('Failed to remove phone'),
+  });
+
+  const addAddressMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('people_addresses').insert({
+        person_id: personId!,
+        address_line_1: newAddressLine1.trim(),
+        city: newAddressCity.trim() || null,
+        state: newAddressState.trim() || null,
+        zip_code: newAddressZip.trim() || null,
+        address_type: newAddressType,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['person-addresses', personId] });
+      setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip('');
+      setNewAddressType('business'); setShowAddAddress(false);
+      toast.success('Address added');
+    },
+    onError: () => toast.error('Failed to add address'),
+  });
+
+  const deleteAddressMutation = useMutation({
+    mutationFn: async (addressId: string) => {
+      const { error } = await supabase.from('people_addresses').delete().eq('id', addressId);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['person-addresses', personId] }); toast.success('Address removed'); },
+    onError: () => toast.error('Failed to remove address'),
   });
 
   if (isLoading || !person) {
@@ -968,10 +1159,98 @@ export default function PeopleExpandedView() {
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-card">
                 <EditableField icon={<Briefcase className="h-3.5 w-3.5" />} label="Title" value={person.title ?? ''} field="title" personId={person.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={person.company_name ?? ''} field="company_name" personId={person.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Known As" value={person.known_as ?? ''} field="known_as" personId={person.id} onSaved={handleFieldSaved} />
+                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={person.clx_file_name ?? ''} field="clx_file_name" personId={person.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={person.source ?? ''} field="source" personId={person.id} onSaved={handleFieldSaved} />
                 <EditableField icon={<User className="h-3.5 w-3.5" />} label="Assigned To" value={assignedName} field="assigned_to" personId={person.id} onSaved={handleFieldSaved} />
                 <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(person.created_at)} />
                 <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Updated" value={formatDate(person.updated_at)} />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Email</span>
+              <div className="space-y-1">
+                {personEmails.map((e) => (
+                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} />
+                ))}
+                {showAddEmail ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <Select value={newEmailType} onValueChange={setNewEmailType}>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="work" className="text-xs">Work</SelectItem>
+                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
+                )}
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Phone</span>
+              <div className="space-y-1">
+                {personPhones.map((p) => (
+                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)} />
+                ))}
+                {showAddPhone ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <Select value={newPhoneType} onValueChange={setNewPhoneType}>
+                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="work" className="text-xs">Work</SelectItem>
+                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
+                        <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
+                )}
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Address</span>
+              <div className="space-y-1">
+                {personAddresses.map((a) => (
+                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} />
+                ))}
+                {showAddAddress ? (
+                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
+                    <input autoFocus value={newAddressLine1} onChange={(e) => setNewAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    <div className="flex gap-1.5">
+                      <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                      <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                      <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Select value={newAddressType} onValueChange={setNewAddressType}>
+                        <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="business" className="text-xs">Business</SelectItem>
+                          <SelectItem value="home" className="text-xs">Home</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
+                        <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
+                )}
               </div>
             </div>
 
@@ -981,10 +1260,16 @@ export default function PeopleExpandedView() {
               <EditableTags tags={person.tags ?? []} personId={person.id} onSaved={handleFieldSaved} />
             </div>
 
-            {/* Notes */}
+            {/* About (formerly Notes) */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Notes</span>
-              <EditableNotes value={person.notes ?? ''} personId={person.id} onSaved={handleFieldSaved} />
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">About</span>
+              <EditableRichTextField value={person.notes ?? ''} personId={person.id} field="notes" onSaved={handleFieldSaved} placeholder="Background info about this contact..." />
+            </div>
+
+            {/* Bank Relationships */}
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block">Bank Relationships</span>
+              <EditableRichTextField value={person.bank_relationships ?? ''} personId={person.id} field="bank_relationships" onSaved={handleFieldSaved} placeholder="Excluded lender names from CLX agreement..." />
             </div>
 
             {/* Fixed (read-only) */}
@@ -993,6 +1278,7 @@ export default function PeopleExpandedView() {
               <div className="rounded-xl border border-border divide-y divide-border overflow-hidden bg-muted/50">
                 <ReadOnlyField icon={<Layers className="h-3.5 w-3.5" />} label="Type" value={typeCfg?.label ?? person.contact_type ?? '\u2014'} />
                 <ReadOnlyField icon={<CalendarDays className="h-3.5 w-3.5" />} label="Created" value={formatDate(person.created_at)} />
+                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Last Contacted" value={formatShortDate(person.last_activity_at)} />
                 <ReadOnlyField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={person.source ?? '\u2014'} />
               </div>
             </div>
@@ -1002,7 +1288,16 @@ export default function PeopleExpandedView() {
         {/* CENTER: Activity */}
         <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
           {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-3 gap-3 px-5 py-3.5 border-b border-border bg-card">
+          <div className="shrink-0 grid grid-cols-4 gap-3 px-5 py-3.5 border-b border-border bg-card">
+            <StatBox
+              value={lastActivityDate}
+              label="Last Contacted"
+              icon={<Clock className="h-3.5 w-3.5 text-slate-400" />}
+              bg="bg-white dark:bg-slate-900/80"
+              border="border-slate-400"
+              valueColor="text-slate-700 dark:text-slate-300"
+              iconBg="bg-slate-100 dark:bg-slate-700/40"
+            />
             <StatBox
               value={inactiveDays ?? '\u2014'}
               label="Days Since Activity"

@@ -96,7 +96,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     queryKey: ['evan-lead-communications', evanId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('lead_id, created_at, communication_type, direction')
         .order('created_at', { ascending: false })
         .limit(100);
@@ -112,7 +112,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
     queryKey: ['evan-lead-tasks'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, due_date, priority, description, lead_id')
         .eq('is_completed', false)
         .order('due_date', { ascending: true });
@@ -409,7 +409,7 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
             <Zap className="h-4 w-4 text-slate-600 dark:text-slate-300" />
           </div>
           <h3 className="text-base font-bold">Top Actions</h3>
-          <DbTableBadge tables={['leads', 'evan_communications', 'evan_tasks']} />
+          <DbTableBadge tables={['leads', 'communications', 'tasks']} />
           <span className="text-xs text-muted-foreground">{actions.length} items</span>
         </div>
       </div>

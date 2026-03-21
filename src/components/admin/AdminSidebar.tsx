@@ -197,9 +197,9 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
             url: '/admin/pipeline',
             icon: Kanban,
             subItems: [
+              { title: 'Potential', url: '/admin/pipeline?view=potential', icon: Crosshair },
               { title: 'Underwriting', url: '/admin/pipeline/underwriting', icon: ClipboardList },
               { title: 'Lender Management', url: '/admin/pipeline/lender-management', icon: Building2 },
-              { title: 'Potential', url: '/admin/pipeline?view=potential', icon: Crosshair },
             ],
           },
           {

@@ -23,7 +23,7 @@ import EvanLayout from '@/components/evan/EvanLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
-type Communication = Database['public']['Tables']['evan_communications']['Row'];
+type Communication = Database['public']['Tables']['communications']['Row'];
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -81,7 +81,7 @@ const EmployeeLeads = () => {
     queryFn: async () => {
       if (!previewLead?.id) return [];
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('*')
         .eq('lead_id', previewLead.id)
         .eq('communication_type', 'call')
@@ -153,7 +153,7 @@ const EmployeeLeads = () => {
       // Get the most recent communication for each lead
       const leadIds = leads.map(l => l.id);
       const { data, error } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('lead_id, communication_type, direction, created_at')
         .in('lead_id', leadIds)
         .order('created_at', { ascending: false });

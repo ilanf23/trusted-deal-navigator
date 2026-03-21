@@ -106,13 +106,14 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
         const dueDate = new Date();
         
         // Create the task
-        const { error: taskError } = await supabase.from('evan_tasks').insert({
+        const { error: taskError } = await supabase.from('tasks').insert({
           title: `7-Day Follow Up: ${lead.name}`,
           description: `No activity in ${daysSince} days. Follow up with ${lead.name}${lead.company_name ? ` at ${lead.company_name}` : ''}.`,
           status: 'todo',
           priority: 'high',
           lead_id: lead.id,
           assignee_name: 'Evan',
+          team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
           group_name: 'To Do',
           source: 'nudge',
           task_type: 'email',
@@ -218,7 +219,7 @@ Evan`;
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   Leads Needing Follow-Up
-                  <DbTableBadge tables={['leads', 'evan_tasks']} />
+                  <DbTableBadge tables={['leads', 'tasks']} />
                   {nudgeLeads.length > 0 && (
                     <Badge variant="destructive" className="text-xs">
                       {nudgeLeads.length}

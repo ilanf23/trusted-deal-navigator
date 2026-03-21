@@ -38,6 +38,9 @@ export interface DerivedCompany {
   notes: string | null;
   source: string | null;
   last_activity_at: string | null;
+  known_as: string | null;
+  clx_file_name: string | null;
+  bank_relationships: string | null;
   created_at: string;
   updated_at: string;
   deals_count: number;
@@ -144,6 +147,9 @@ export const useAllPipelineLeads = () => {
         notes: primary.notes,
         source: primary.source,
         last_activity_at: maxActivity,
+        known_as: primary.known_as,
+        clx_file_name: primary.clx_file_name,
+        bank_relationships: primary.bank_relationships,
         created_at: primary.created_at,
         updated_at: primary.updated_at,
         deals_count: leads.length,

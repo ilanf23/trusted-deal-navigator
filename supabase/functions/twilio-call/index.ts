@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
 
     // Log the communication
     const { error: dbError } = await supabase
-      .from('evan_communications')
+      .from('communications')
       .insert({
         lead_id: leadId || null,
         communication_type: 'call',

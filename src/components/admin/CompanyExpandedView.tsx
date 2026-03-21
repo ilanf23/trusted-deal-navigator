@@ -587,7 +587,7 @@ export default function CompanyExpandedView() {
   const handleSaveTask = useCallback(async () => {
     if (!companyId || !newTaskTitle.trim()) return;
     setSavingTask(true);
-    const { error } = await supabase.from('evan_tasks').insert({
+    const { error } = await supabase.from('tasks').insert({
       title: newTaskTitle.trim(),
       status: 'pending',
       priority: 'medium',
@@ -726,12 +726,12 @@ export default function CompanyExpandedView() {
     enabled: !!companyId,
   });
 
-  // Tasks (evan_tasks related to this company via description)
+  // Tasks (tasks related to this company via description)
   const { data: tasks = [] } = useQuery({
     queryKey: ['company-tasks', companyId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id, title, status, priority')
         .ilike('description', `%${companyId}%`)
         .order('created_at', { ascending: false });

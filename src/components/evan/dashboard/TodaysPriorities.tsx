@@ -19,14 +19,14 @@ export const TodaysPriorities = ({ evanId }: TodaysPrioritiesProps) => {
 
       // Get today's appointments
       const { data: appointments } = await supabase
-        .from('evan_appointments')
+        .from('appointments')
         .select('*')
         .gte('start_time', startOfDay(today).toISOString())
         .lte('start_time', endOfDay(today).toISOString());
 
       // Get pending tasks due today or overdue
       const { data: tasks } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('*')
         .eq('is_completed', false)
         .lte('due_date', endOfDay(today).toISOString());
@@ -59,7 +59,7 @@ export const TodaysPriorities = ({ evanId }: TodaysPrioritiesProps) => {
 
       // Get recent communications to determine calls to make
       const { data: recentCalls } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('lead_id')
         .eq('communication_type', 'call')
         .gte('created_at', subDays(today, 7).toISOString());

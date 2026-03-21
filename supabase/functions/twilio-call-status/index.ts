@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
       
       // Find the communication by call_sid
       const { data: comm, error: findError } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('id')
         .eq('call_sid', callSid)
         .single();
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
         
         // Try to find by most recent call
         const { data: recentComm } = await supabase
-          .from('evan_communications')
+          .from('communications')
           .select('id')
           .eq('communication_type', 'call')
           .is('recording_url', null)
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
           
         if (recentComm) {
           const { error: updateError } = await supabase
-            .from('evan_communications')
+            .from('communications')
             .update({
               recording_url: mp3Url,
               recording_sid: recordingSid,
@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
         }
       } else if (comm) {
         const { error: updateError } = await supabase
-          .from('evan_communications')
+          .from('communications')
           .update({
             recording_url: mp3Url,
             recording_sid: recordingSid,
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
     if (['completed', 'busy', 'failed', 'no-answer', 'canceled', 'cancelled'].includes(effectiveStatus)) {
       updateData.ended_at = new Date().toISOString();
 
-      // Also log to evan_communications
+      // Also log to communications
       const { data: activeCall } = await supabase
         .from('active_calls')
         .select('*')
@@ -207,14 +207,14 @@ Deno.serve(async (req) => {
       if (activeCall) {
         // Check if communication already exists for this call
         const { data: existingComm } = await supabase
-          .from('evan_communications')
+          .from('communications')
           .select('id')
           .eq('call_sid', callSid)
           .single();
 
         if (!existingComm) {
           await supabase
-            .from('evan_communications')
+            .from('communications')
             .insert({
               lead_id: activeCall.lead_id,
               communication_type: 'call',
@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
         } else {
           // Update existing communication with final status and duration
           await supabase
-            .from('evan_communications')
+            .from('communications')
             .update({
               status: effectiveStatus,
               duration_seconds: parseInt(callDuration) || parseInt(dialCallDuration) || null,

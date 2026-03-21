@@ -16,14 +16,14 @@ export const EvanMetricsWidget = () => {
     queryFn: async () => {
       // Get communications this month
       const { data: monthlyComms } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('communication_type, direction')
         .gte('created_at', monthStart.toISOString())
         .lte('created_at', monthEnd.toISOString());
 
       // Get communications this week
       const { data: weeklyComms } = await supabase
-        .from('evan_communications')
+        .from('communications')
         .select('communication_type')
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString());
@@ -35,7 +35,7 @@ export const EvanMetricsWidget = () => {
 
       // Get tasks completed this month
       const { data: completedTasks } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('id')
         .eq('is_completed', true);
 

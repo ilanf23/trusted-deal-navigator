@@ -91,7 +91,7 @@ export const GmailTaskDialog = ({
     queryKey: ['task-groups'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('evan_tasks')
+        .from('tasks')
         .select('group_name')
         .not('group_name', 'is', null);
       if (error) throw error;
@@ -119,7 +119,7 @@ export const GmailTaskDialog = ({
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('evan_tasks').insert({
+      const { error } = await supabase.from('tasks').insert({
         title: title.trim(),
         description: description || null,
         status,
