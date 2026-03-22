@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ import {
 type SortField = 'name' | 'owner' | 'related' | 'updated_at';
 
 const Projects = () => {
+  const navigate = useNavigate();
   const { teamMember } = useTeamMember();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -240,7 +242,7 @@ const Projects = () => {
                     <tr
                       key={p.id}
                       className={`border-b border-border hover:bg-muted/40 transition-colors cursor-pointer ${isSelected ? 'bg-muted/30' : ''}`}
-                      onClick={() => { setSelectedProject(p); setDialogOpen(true); }}
+                      onClick={() => navigate(`/admin/pipeline/projects/expanded-view/${p.id}`)}
                     >
                       {/* Checkbox */}
                       <td className="w-12 px-4 py-3" onClick={(e) => e.stopPropagation()}>

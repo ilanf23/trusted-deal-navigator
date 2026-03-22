@@ -55,6 +55,7 @@ import PipelineExpandedView from "./components/admin/PipelineExpandedView";
 import LenderManagementExpandedView from "./components/admin/LenderManagementExpandedView";
 import PeopleExpandedView from "./components/admin/PeopleExpandedView";
 import CompanyExpandedView from "./components/admin/CompanyExpandedView";
+import ProjectExpandedView from "./components/admin/ProjectExpandedView";
 import Tasks from "./pages/admin/Tasks";
 import Calls from "./pages/admin/Calls";
 import Gmail from "./pages/admin/Gmail";
@@ -185,6 +186,7 @@ const App = () => (
                 <Route path="/admin/pipeline/underwriting" element={<AdminRoute><Underwriting /></AdminRoute>} />
                 <Route path="/admin/pipeline/lender-management" element={<AdminRoute><LenderManagement /></AdminRoute>} />
                 <Route path="/admin/pipeline/projects" element={<AdminRoute><Projects /></AdminRoute>} />
+                <Route path="/admin/pipeline/projects/expanded-view/:projectId" element={<AdminRoute><ProjectExpandedView /></AdminRoute>} />
                 <Route path="/admin/contacts/people" element={<AdminRoute><People /></AdminRoute>} />
                 <Route path="/admin/contacts/companies" element={<AdminRoute><Companies /></AdminRoute>} />
                 <Route path="/admin/pipeline/underwriting/expanded-view/:leadId" element={<AdminRoute><UnderwritingExpandedView /></AdminRoute>} />
