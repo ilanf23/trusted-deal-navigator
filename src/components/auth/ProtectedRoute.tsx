@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { Loader2 } from 'lucide-react';
+import LoadingScreen from '@/components/ui/loading-screen';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -15,11 +15,7 @@ const ProtectedRoute = ({ children, requireAdmin = false, clientOnly = false }: 
   const location = useLocation();
 
   if (loading || teamLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user) {

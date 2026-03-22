@@ -266,9 +266,9 @@ function formatShortDate(dateStr: string | null): string {
 
 function getPipelineLeadRoute(pipelineName: string, leadId: string): string {
   switch (pipelineName) {
-    case 'Underwriting': return `/admin/pipeline/underwriting/lead/${leadId}`;
-    case 'Lender Management': return `/admin/pipeline/lender-management/lead/${leadId}`;
-    default: return `/admin/pipeline/lead/${leadId}`;
+    case 'Underwriting': return `/admin/pipeline/underwriting/expanded-view/${leadId}`;
+    case 'Lender Management': return `/admin/pipeline/lender-management/expanded-view/${leadId}`;
+    default: return `/admin/pipeline/pipeline/expanded-view/${leadId}`;
   }
 }
 
@@ -1121,8 +1121,8 @@ export default function PeopleExpandedView() {
   const [contactTypeDropdownOpen, setContactTypeDropdownOpen] = useState(false);
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
   const [visibilityDropdownOpen, setVisibilityDropdownOpen] = useState(false);
-  const [addingPipelineRecord, setAddingPipelineRecord] = useState(false);
-  const [selectedPipelineToAdd, setSelectedPipelineToAdd] = useState('');
+  const [pipelineSearchText, setPipelineSearchText] = useState('');
+  const [pipelineSearchFocused, setPipelineSearchFocused] = useState(false);
   const [customContactTypes, setCustomContactTypes] = useState<CustomContactType[]>(loadCustomContactTypes);
   const [showCustomizeDialog, setShowCustomizeDialog] = useState(false);
   const allContactTypes = useMemo(() => getAllContactTypes(customContactTypes), [customContactTypes]);
@@ -1555,10 +1555,11 @@ export default function PeopleExpandedView() {
 
   const { data: allPipelines = [] } = usePipelines();
 
-  const availablePipelines = useMemo(() => {
-    const existingIds = new Set(pipelineRecords.map((r: any) => r.pipeline_id));
-    return allPipelines.filter((p: any) => !existingIds.has(p.id));
-  }, [allPipelines, pipelineRecords]);
+  const filteredPipelines = useMemo(() => {
+    if (!pipelineSearchText.trim()) return allPipelines;
+    const q = pipelineSearchText.toLowerCase();
+    return allPipelines.filter((p: any) => p.name?.toLowerCase().includes(q));
+  }, [allPipelines, pipelineSearchText]);
 
   const addToPipelineMutation = useMutation({
     mutationFn: async (pipelineId: string) => {
@@ -1581,8 +1582,8 @@ export default function PeopleExpandedView() {
       queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
       toast.success('Added to pipeline');
-      setAddingPipelineRecord(false);
-      setSelectedPipelineToAdd('');
+      setPipelineSearchText('');
+      setPipelineSearchFocused(false);
     },
     onError: () => toast.error('Failed to add to pipeline'),
   });
@@ -2694,7 +2695,6 @@ export default function PeopleExpandedView() {
               label="Pipeline Records"
               count={pipelineRecords.length}
               iconColor="text-purple-500"
-              onAdd={() => setAddingPipelineRecord(true)}
             >
               <div className="space-y-1.5 py-1">
                 {pipelineRecords.map((rec: any) => (
@@ -2717,49 +2717,33 @@ export default function PeopleExpandedView() {
                   </button>
                 ))}
 
-                {addingPipelineRecord ? (
-                  <div className="space-y-1.5 mt-1">
-                    <Select value={selectedPipelineToAdd} onValueChange={setSelectedPipelineToAdd}>
-                      <SelectTrigger className="h-8 text-xs border-border">
-                        <SelectValue placeholder="Add Pipeline Record" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availablePipelines.map((p: any) => (
-                          <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
+                <div className="relative mt-1">
+                  <input
+                    value={pipelineSearchText}
+                    onChange={(e) => setPipelineSearchText(e.target.value)}
+                    onFocus={() => setPipelineSearchFocused(true)}
+                    placeholder="Add Pipeline Record"
+                    className="w-full text-sm text-foreground bg-transparent border-0 border-b-2 border-blue-600 px-0 py-1.5 outline-none placeholder:text-muted-foreground/60"
+                  />
+                  {pipelineSearchFocused && filteredPipelines.length > 0 && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => { setPipelineSearchFocused(false); setPipelineSearchText(''); }} />
+                      <div className="absolute z-50 top-full left-0 mt-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
+                        {filteredPipelines.map((p: any) => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              addToPipelineMutation.mutate(p.id);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            {p.name}
+                          </button>
                         ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs flex-1"
-                        disabled={!selectedPipelineToAdd || addToPipelineMutation.isPending}
-                        onClick={() => addToPipelineMutation.mutate(selectedPipelineToAdd)}
-                      >
-                        {addToPipelineMutation.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                        Add
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => { setAddingPipelineRecord(false); setSelectedPipelineToAdd(''); }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                    {availablePipelines.length === 0 && (
-                      <p className="text-[10px] text-muted-foreground italic">Already in all pipelines</p>
-                    )}
-                  </div>
-                ) : pipelineRecords.length === 0 ? (
-                  <button
-                    onClick={() => setAddingPipelineRecord(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add Pipeline Record
-                  </button>
-                ) : null}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </RelatedSection>
 

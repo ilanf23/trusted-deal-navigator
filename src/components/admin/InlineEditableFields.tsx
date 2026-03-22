@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Pencil, Check, Loader2,
+  Pencil, Check, Loader2, X, Tag,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
@@ -197,12 +199,12 @@ export function EditableField({
   }
 
   return (
-    <div onClick={() => setEditing(true)} className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer group ${highlight ? 'bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/70 dark:hover:bg-blue-950/30' : 'hover:bg-muted/40'}`}>
+    <div onClick={() => setEditing(true)} className={`flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-pointer group overflow-hidden ${highlight ? 'bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/70 dark:hover:bg-blue-950/30' : 'hover:bg-muted/40'}`}>
       <div className="flex items-center gap-2 text-muted-foreground shrink-0">
         {icon}
         <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{label}</span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
         <span className={`text-[13px] text-right truncate ${highlight ? 'font-bold text-blue-700 dark:text-blue-400' : 'font-medium text-foreground'}`}>
           {value || '—'}
         </span>
@@ -310,7 +312,7 @@ export function EditableContactRow({
   );
 }
 
-// ── Editable Tags ──
+// ── Editable Tags (with autocomplete) ──
 export function EditableTags({
   tags, leadId, onSaved,
 }: {
@@ -318,21 +320,57 @@ export function EditableTags({
   onSaved: (field: string, newValue: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(tags.join(', '));
+  const [draftTags, setDraftTags] = useState<string[]>(tags);
+  const [inputValue, setInputValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch all existing tags across leads
+  const { data: allExistingTags = [] } = useQuery({
+    queryKey: ['all-lead-tags'],
+    queryFn: async () => {
+      const { data } = await supabase.from('leads').select('tags').not('tags', 'is', null);
+      const tagSet = new Set<string>();
+      (data ?? []).forEach((row: any) => {
+        (row.tags ?? []).forEach((t: string) => tagSet.add(t));
+      });
+      return Array.from(tagSet).sort();
+    },
+    staleTime: 60000,
+  });
+
+  // Filtered suggestions
+  const suggestions = inputValue.length >= 1
+    ? allExistingTags
+        .filter(t => t.toLowerCase().includes(inputValue.toLowerCase()))
+        .filter(t => !draftTags.includes(t))
+        .slice(0, 8)
+    : [];
+
+  const showSuggestions = editing && suggestions.length > 0;
 
   useEffect(() => {
     if (editing) {
-      setDraft(tags.join(', '));
+      setDraftTags(tags);
+      setInputValue('');
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [editing, tags]);
 
-  const save = async () => {
-    const newTags = draft.split(',').map(t => t.trim()).filter(Boolean);
-    const currentStr = tags.join(',');
-    const newStr = newTags.join(',');
+  // Position dropdown
+  useEffect(() => {
+    if (!showSuggestions || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+  }, [showSuggestions, inputValue]);
+
+  const saveTags = async (newTags: string[]) => {
+    const currentStr = tags.sort().join(',');
+    const newStr = [...newTags].sort().join(',');
     if (newStr === currentStr) {
       setEditing(false);
       return;
@@ -351,22 +389,123 @@ export function EditableTags({
     setEditing(false);
   };
 
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed || draftTags.includes(trimmed)) return;
+    setDraftTags(prev => [...prev, trimmed]);
+    setInputValue('');
+    setActiveIndex(-1);
+    inputRef.current?.focus();
+  };
+
+  const removeTag = (tag: string) => {
+    setDraftTags(prev => prev.filter(t => t !== tag));
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0 && suggestions[activeIndex]) {
+        addTag(suggestions[activeIndex]);
+      } else if (inputValue.trim()) {
+        addTag(inputValue);
+      }
+    } else if (e.key === 'Escape') {
+      saveTags(draftTags);
+    } else if (e.key === 'Backspace' && !inputValue && draftTags.length > 0) {
+      setDraftTags(prev => prev.slice(0, -1));
+    } else if (e.key === 'ArrowDown' && showSuggestions) {
+      e.preventDefault();
+      setActiveIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp' && showSuggestions) {
+      e.preventDefault();
+      setActiveIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    }
+  };
+
+  // Click outside to save
+  useEffect(() => {
+    if (!editing) return;
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        (!dropdownRef.current || !dropdownRef.current.contains(target))
+      ) {
+        saveTags(draftTags);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  });
+
   if (editing) {
     return (
-      <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5">
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-          onBlur={save}
-          placeholder="tag1, tag2, tag3..."
-          disabled={saving}
-          className="w-full text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
-        />
-        <p className="text-[10px] text-muted-foreground mt-1">Comma-separated. Press Enter to save.</p>
-        {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500 mt-1" />}
-      </div>
+      <>
+        <div ref={containerRef} className="rounded-lg bg-blue-50/50 border border-blue-100 p-2">
+          <div className="flex flex-wrap gap-1.5 items-center">
+            {draftTags.map((tag) => (
+              <span key={tag} className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-medium">
+                {tag}
+                <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors ml-0.5">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <input
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => { setInputValue(e.target.value); setActiveIndex(-1); }}
+              onKeyDown={handleKeyDown}
+              placeholder={draftTags.length === 0 ? 'Type to add tags...' : 'Add more...'}
+              disabled={saving}
+              className="flex-1 min-w-[80px] text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50 py-0.5"
+            />
+          </div>
+          <div className="flex items-center justify-between mt-1.5">
+            <p className="text-[10px] text-muted-foreground">Enter to add. Backspace to remove.</p>
+            <div className="flex items-center gap-1.5">
+              {saving && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+              <button onClick={() => saveTags(draftTags)} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Suggestions dropdown via portal */}
+        {showSuggestions && createPortal(
+          <div
+            ref={dropdownRef}
+            style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+            className="z-[9999] bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-[240px] overflow-y-auto"
+          >
+            {suggestions.map((s, i) => {
+              const idx = s.toLowerCase().indexOf(inputValue.toLowerCase());
+              const before = s.slice(0, idx);
+              const match = s.slice(idx, idx + inputValue.length);
+              const after = s.slice(idx + inputValue.length);
+
+              return (
+                <button
+                  key={s}
+                  onMouseDown={(e) => { e.preventDefault(); addTag(s); }}
+                  className={`flex items-center gap-2.5 w-full text-left px-3 py-2 text-[13px] transition-colors ${
+                    i === activeIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'
+                  }`}
+                >
+                  <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span>
+                    {before}<span className="font-semibold text-blue-600 dark:text-blue-400">{match}</span>{after}
+                  </span>
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
+      </>
     );
   }
 

@@ -30,6 +30,7 @@ import {
   Bot,
   BrainCircuit,
   ScrollText,
+  FolderOpen,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -202,13 +203,14 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               { title: 'Lender Management', url: '/admin/pipeline/lender-management', icon: Building2 },
             ],
           },
+          { title: 'Projects', url: '/admin/pipeline/projects', icon: FolderOpen },
           {
             title: 'Contacts',
-            url: '/admin/pipeline/contacts',
+            url: '/admin/contacts',
             icon: Users,
             subItems: [
-              { title: 'People', url: '/admin/pipeline/contacts/people', icon: User },
-              { title: 'Companies', url: '/admin/pipeline/contacts/companies', icon: Building2 },
+              { title: 'People', url: '/admin/contacts/people', icon: User },
+              { title: 'Companies', url: '/admin/contacts/companies', icon: Building2 },
             ],
           },
           { title: 'Lender Programs', url: '/admin/lender-programs', icon: Building2 },

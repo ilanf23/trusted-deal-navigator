@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
-import { sanitizeFileName } from '@/lib/utils';
+import { sanitizeFileName, getLeadDisplayName } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -164,6 +164,7 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   meeting: { icon: Users, color: 'text-blue-500' },
   note: { icon: Pencil, color: 'text-amber-500' },
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
+  follow_up: { icon: Users, color: 'text-blue-500' },
 };
 
 /* ─── CRM-style inline-save helper (for stacked label fields) ─── */
@@ -563,6 +564,7 @@ export default function PipelineExpandedView() {
   const [activityNote, setActivityNote] = useState('');
   const [noteContent, setNoteContent] = useState('');
   const [savingActivity, setSavingActivity] = useState(false);
+  const [activityDropdownOpen, setActivityDropdownOpen] = useState(false);
 
   // Task inline add state
   const [addingTask, setAddingTask] = useState(false);
@@ -1312,7 +1314,7 @@ export default function PipelineExpandedView() {
                   </span>
                 </div>
                 <div className="min-w-0 pt-0.5">
-                  <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{lead.name}</h2>
+                  <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{getLeadDisplayName(lead)}</h2>
                   {lead.company_name && (
                     <p className="text-sm text-muted-foreground mt-0.5 truncate">{lead.company_name}</p>
                   )}
@@ -1689,48 +1691,85 @@ export default function PipelineExpandedView() {
               iconBg="bg-emerald-100 dark:bg-emerald-900/40"
             />
           </div>
-          {/* Tabs */}
-          <div className="shrink-0 flex items-center justify-center gap-2 border-b border-border px-6 py-2.5 bg-card">
-            <button
-              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activityTab === 'log'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-              onClick={() => setActivityTab('log')}
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              Log Activity
-            </button>
-            <button
-              className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activityTab === 'note'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-              onClick={() => setActivityTab('note')}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Create Note
-            </button>
+          {/* Activity Tabs — underline style */}
+          <div className="shrink-0 flex items-stretch bg-card border-b border-border">
+            {([
+              { key: 'log' as const, label: 'Log Activity' },
+              { key: 'note' as const, label: 'Create Note' },
+            ]).map((tab) => (
+              <button
+                key={tab.key}
+                className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
+                  activityTab === tab.key
+                    ? 'text-blue-700 dark:text-blue-400'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setActivityTab(tab.key)}
+              >
+                {tab.label}
+                {activityTab === tab.key && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-t-full" />
+                )}
+              </button>
+            ))}
           </div>
 
           <ScrollArea className="flex-1">
             <div className="px-6 py-5">
               {activityTab === 'log' ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Select value={activityType} onValueChange={setActivityType}>
-                      <SelectTrigger className="h-8 w-[120px] text-xs rounded-lg border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todo" className="text-xs">To Do</SelectItem>
-                        <SelectItem value="call" className="text-xs">Call</SelectItem>
-                        <SelectItem value="email" className="text-xs">Email</SelectItem>
-                        <SelectItem value="meeting" className="text-xs">Meeting</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {/* Activity type dropdown */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setActivityDropdownOpen(!activityDropdownOpen)}
+                      className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border hover:bg-muted/40 transition-colors text-sm font-medium text-foreground"
+                    >
+                      {(() => {
+                        const types: Record<string, { label: string; icon: typeof CheckSquare }> = {
+                          todo: { label: 'To Do', icon: CheckSquare },
+                          call: { label: 'Phone Call', icon: Phone },
+                          meeting: { label: 'Meeting', icon: CalendarDays },
+                          email: { label: 'Email', icon: MessageSquare },
+                          follow_up: { label: 'Follow Up', icon: Users },
+                        };
+                        const t = types[activityType] ?? types.todo;
+                        const Icon = t.icon;
+                        return <><Icon className="h-4 w-4 text-muted-foreground" />{t.label}</>;
+                      })()}
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                    </button>
+
+                    {activityDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setActivityDropdownOpen(false)} />
+                        <div className="absolute z-50 top-full left-0 mt-1.5 w-[320px] bg-popover border border-border rounded-xl shadow-lg overflow-hidden">
+                          <div className="py-1">
+                            {([
+                              { value: 'todo', label: 'To Do', icon: CheckSquare },
+                              { value: 'call', label: 'Phone Call', icon: Phone },
+                              { value: 'meeting', label: 'Meeting', icon: CalendarDays },
+                              { value: 'email', label: 'Email', icon: MessageSquare },
+                              { value: 'follow_up', label: 'Follow Up', icon: Users },
+                            ] as const)
+                              .map((opt) => {
+                                const Icon = opt.icon;
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => { setActivityType(opt.value); setActivityDropdownOpen(false); }}
+                                    className={`flex items-center gap-3.5 w-full text-left px-4 py-3 text-sm transition-colors ${
+                                      activityType === opt.value ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400' : 'text-foreground hover:bg-muted/50'
+                                    }`}
+                                  >
+                                    <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+                                    <span className="font-medium">{opt.label}</span>
+                                  </button>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <RichTextEditor
                     value={activityNote}

@@ -880,7 +880,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
                           .limit(1)
                           .maybeSingle();
                         if (data) {
-                          navigate(`/admin/pipeline/contacts/people/${data.id}`);
+                          navigate(`/admin/contacts/people/expanded-view/${data.id}`);
                         } else {
                           toast.info('No matching person record found');
                         }

@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAuth } from '@/contexts/AuthContext';
+import LoadingScreen from '@/components/ui/loading-screen';
 
 interface AdminRouteProps {
   children: ReactNode;
@@ -13,11 +14,7 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
   const location = useLocation();
 
   if (authLoading || teamLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user) {

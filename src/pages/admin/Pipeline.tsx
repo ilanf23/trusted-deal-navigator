@@ -186,7 +186,7 @@ function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick
           </div>
           <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{lead.name}</p>
           <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lead/${lead.id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/pipeline/expanded-view/${lead.id}`); }}
             className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity"
           >
             <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
@@ -1405,7 +1405,7 @@ const Pipeline = () => {
                                     </p>
                                     <button
                                       type="button"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lead/${lead.id}`); }}
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/pipeline/expanded-view/${lead.id}`); }}
                                       className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                     >
                                       <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
@@ -1650,7 +1650,7 @@ const Pipeline = () => {
               
               onClose={() => setDetailDialogLead(null)}
               onExpand={() => {
-                navigate(`/admin/pipeline/lead/${detailDialogLead.id}`);
+                navigate(`/admin/pipeline/pipeline/expanded-view/${detailDialogLead.id}`);
               }}
               onStageChange={(leadId, newStatus) => {
                 // Find the stage ID for this status

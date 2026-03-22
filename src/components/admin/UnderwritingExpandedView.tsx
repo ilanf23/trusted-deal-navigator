@@ -9,11 +9,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { isHtmlEmpty } from '@/lib/sanitize';
-import { sanitizeFileName } from '@/lib/utils';
+import { sanitizeFileName, getLeadDisplayName } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import ChecklistBuilder, { type ChecklistItem } from './ChecklistBuilder';
 import SavedChecklistCard, { type SavedChecklist } from './SavedChecklistCard';
 import {
@@ -27,9 +30,11 @@ import {
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { differenceInDays, parseISO, format } from 'date-fns';
+import { parseISO, format, differenceInDays } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
+import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
+import ProjectDetailDialog, { type LeadProject } from './ProjectDetailDialog';
 
 import {
   UNDERWRITING_STATUSES,
@@ -133,11 +138,6 @@ function formatValue(v: number): string {
   return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-function daysSince(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  try { return differenceInDays(new Date(), parseISO(dateStr)); } catch { return null; }
-}
-
 function formatShortDate(dateStr: string | null): string {
   if (!dateStr) return '—';
   try { return format(parseISO(dateStr), 'M/d/yyyy'); } catch { return '—'; }
@@ -155,105 +155,9 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   note: { icon: Pencil, color: 'text-amber-500' },
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
   checklist: { icon: CheckSquare, color: 'text-violet-500' },
+  follow_up: { icon: Users, color: 'text-blue-500' },
 };
 
-/* ─── Activity Tab Bar (auto-collapses to dropdown when buttons overflow) ─── */
-function ActivityTabBar({
-  activityTab,
-  setActivityTab,
-  showChecklist,
-}: {
-  activityTab: 'log' | 'note' | 'checklist';
-  setActivityTab: (tab: 'log' | 'note' | 'checklist') => void;
-  showChecklist: boolean;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const buttonsRef = useRef<HTMLDivElement>(null);
-  const [overflowing, setOverflowing] = useState(false);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    const buttons = buttonsRef.current;
-    if (!container || !buttons) return;
-
-    const check = () => {
-      // Compare the scroll width of the buttons row against the container width
-      setOverflowing(buttons.scrollWidth > container.clientWidth);
-    };
-
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(container);
-    return () => ro.disconnect();
-  }, [showChecklist]);
-
-  const activeBtn = 'bg-blue-600 text-white shadow-sm shadow-blue-500/25';
-  const inactiveBtn = 'text-muted-foreground hover:text-foreground hover:bg-muted/60';
-
-  return (
-    <div ref={containerRef} className="shrink-0 border-b border-border px-6 py-2.5 overflow-hidden">
-      {overflowing ? (
-        <Select value={activityTab} onValueChange={(v) => setActivityTab(v as 'log' | 'note' | 'checklist')}>
-          <SelectTrigger className="h-9 w-full text-xs font-semibold rounded-lg border-border">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="log" className="text-xs">Log Activity</SelectItem>
-            <SelectItem value="note" className="text-xs">Create Note</SelectItem>
-            {showChecklist && (
-              <SelectItem value="checklist" className="text-xs">Checklist</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-      ) : null}
-      {/* Always render buttons (hidden when overflowing) so we can measure them */}
-      <div
-        ref={buttonsRef}
-        className={`flex items-center justify-center gap-2 whitespace-nowrap ${overflowing ? 'invisible h-0 overflow-hidden' : ''}`}
-      >
-        <button
-          className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${activityTab === 'log' ? activeBtn : inactiveBtn}`}
-          onClick={() => setActivityTab('log')}
-        >
-          <MessageSquare className="h-3.5 w-3.5" />
-          Log Activity
-        </button>
-        <button
-          className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${activityTab === 'note' ? activeBtn : inactiveBtn}`}
-          onClick={() => setActivityTab('note')}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          Create Note
-        </button>
-        {showChecklist && (
-          <button
-            className={`inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${activityTab === 'checklist' ? activeBtn : inactiveBtn}`}
-            onClick={() => setActivityTab('checklist')}
-          >
-            <CheckSquare className="h-3.5 w-3.5" />
-            Checklist
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Stats Card (accent card style) ─── */
-function StatBox({ value, label, bg, border, valueColor }: {
-  value: string | number;
-  label: string;
-  bg: string;
-  border: string;
-  valueColor: string;
-}) {
-  return (
-    <div className={`flex flex-col gap-0.5 rounded-lg px-3.5 py-2.5 border-2 ${bg} ${border} min-w-0 flex-1 shadow-sm overflow-hidden`}>
-      <span className={`text-xl font-extrabold tabular-nums leading-tight truncate ${valueColor}`}>{value}</span>
-      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest truncate">{label}</span>
-    </div>
-  );
-}
 
 /* ─── Related Section ─── */
 function RelatedSection({ icon, label, count, iconColor, onAdd, onExpand, children }: {
@@ -416,6 +320,7 @@ export default function UnderwritingExpandedView() {
   const [activityNote, setActivityNote] = useState('');
   const [noteContent, setNoteContent] = useState('');
   const [savingActivity, setSavingActivity] = useState(false);
+  const [activityDropdownOpen, setActivityDropdownOpen] = useState(false);
 
   // Checklist builder state
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -431,11 +336,14 @@ export default function UnderwritingExpandedView() {
   const [templateName, setTemplateName] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
 
-  // Task inline add state
+  // Task state
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [savingTask, setSavingTask] = useState(false);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<LeadProject | null>(null);
 
   // File upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -451,6 +359,17 @@ export default function UnderwritingExpandedView() {
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [editContactName, setEditContactName] = useState('');
   const [editContactTitle, setEditContactTitle] = useState('');
+
+  // Calendar event dialog state
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [eventTitle, setEventTitle] = useState('');
+  const [eventDate, setEventDate] = useState<Date | undefined>(undefined);
+  const [eventTime, setEventTime] = useState('09:00');
+  const [eventEndTime, setEventEndTime] = useState('10:00');
+  const [eventType, setEventType] = useState('meeting');
+  const [eventDescription, setEventDescription] = useState('');
+  const [eventSaving, setEventSaving] = useState(false);
+  const [eventDatePickerOpen, setEventDatePickerOpen] = useState(false);
 
   // Activity expand / comments state
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
@@ -490,6 +409,21 @@ export default function UnderwritingExpandedView() {
   const [newAddressZip, setNewAddressZip] = useState('');
   const [newAddressType, setNewAddressType] = useState('business');
 
+  // ── Team members (must be before handlers that reference it) ──
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['team-members'],
+    queryFn: async () => {
+      const { data } = await supabase.from('team_members').select('id, name').eq('is_active', true);
+      return (data || []) as { id: string; name: string }[];
+    },
+  });
+
+  const teamMemberMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of teamMembers) map[m.id] = m.name;
+    return map;
+  }, [teamMembers]);
+
   // ── Stage change handler ──
   const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
     if (!leadId) return;
@@ -510,6 +444,7 @@ export default function UnderwritingExpandedView() {
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
     queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
     toast.success('Updated');
   }, [leadId, queryClient]);
 
@@ -683,26 +618,58 @@ export default function UnderwritingExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['activity-comments', leadId] });
   }, [leadId, commentTexts, teamMember, queryClient]);
 
-  // ── Save task ──
-  const handleSaveTask = useCallback(async () => {
-    if (!leadId || !newTaskTitle.trim()) return;
-    setSavingTask(true);
-    const { error } = await supabase.from('tasks').insert({
+  // ── Toggle task completion ──
+  const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
+    const isCompleting = !task.completed_at;
+    await supabase.from('lead_tasks').update({
+      completed_at: isCompleting ? new Date().toISOString() : null,
+      status: isCompleting ? 'completed' : 'pending',
+      updated_at: new Date().toISOString(),
+    }).eq('id', task.id);
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', leadId] });
+  }, [leadId, queryClient]);
+
+  // ── Save calendar event ──
+  const handleSaveEvent = useCallback(async () => {
+    if (!leadId || !eventTitle.trim() || !eventDate) return;
+    setEventSaving(true);
+    const dateStr = format(eventDate, 'yyyy-MM-dd');
+    const startTime = `${dateStr}T${eventTime}:00`;
+    const endTime = `${dateStr}T${eventEndTime}:00`;
+    const { error } = await supabase.from('appointments').insert({
       lead_id: leadId,
-      title: newTaskTitle.trim(),
-      status: 'pending',
-      priority: 'medium',
+      title: eventTitle.trim(),
+      description: eventDescription.trim() || null,
+      start_time: startTime,
+      end_time: endTime,
+      appointment_type: eventType,
     });
-    setSavingTask(false);
+    setEventSaving(false);
     if (error) {
-      toast.error('Failed to create task');
+      toast.error('Failed to create event');
       return;
     }
-    toast.success('Task created');
-    setNewTaskTitle('');
-    setAddingTask(false);
-    queryClient.invalidateQueries({ queryKey: ['lead-tasks', leadId] });
-  }, [leadId, newTaskTitle, queryClient]);
+    toast.success('Event created');
+    setEventDialogOpen(false);
+    setEventTitle('');
+    setEventDate(undefined);
+    setEventTime('09:00');
+    setEventEndTime('10:00');
+    setEventType('meeting');
+    setEventDescription('');
+    queryClient.invalidateQueries({ queryKey: ['lead-appointments', leadId] });
+  }, [leadId, eventTitle, eventDate, eventTime, eventEndTime, eventType, eventDescription, queryClient]);
+
+  // ── Delete calendar event ──
+  const handleDeleteEvent = useCallback(async (eventId: string) => {
+    const { error } = await supabase.from('appointments').delete().eq('id', eventId);
+    if (error) {
+      toast.error('Failed to delete event');
+      return;
+    }
+    toast.success('Event deleted');
+    queryClient.invalidateQueries({ queryKey: ['lead-appointments', leadId] });
+  }, [leadId, queryClient]);
 
   // ── Link existing person as contact (Related sidebar) ──
   const handleLinkPerson = useCallback(async (person: { id: string; name: string; title: string | null; email?: string | null }) => {
@@ -965,49 +932,6 @@ export default function UnderwritingExpandedView() {
     enabled: !!leadId,
   });
 
-  const { data: teamMembers = [] } = useQuery({
-    queryKey: ['team-members'],
-    queryFn: async () => {
-      const { data } = await supabase.from('team_members').select('id, name').eq('is_active', true);
-      return (data || []) as { id: string; name: string }[];
-    },
-  });
-
-  const teamMemberMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const m of teamMembers) map[m.id] = m.name;
-    return map;
-  }, [teamMembers]);
-
-  const { data: interactionCount = 0 } = useQuery({
-    queryKey: ['lead-interactions', leadId],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('communications')
-        .select('id', { count: 'exact', head: true })
-        .eq('lead_id', leadId!);
-      if (error) return 0;
-      return count ?? 0;
-    },
-    enabled: !!leadId,
-  });
-
-  const { data: lastContactType = null } = useQuery({
-    queryKey: ['lead-last-contact-type', leadId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('communications')
-        .select('communication_type')
-        .eq('lead_id', leadId!)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error || !data) return null;
-      return data.communication_type;
-    },
-    enabled: !!leadId,
-  });
-
   const { data: contacts = [] } = useQuery({
     queryKey: ['lead-contacts', leadId],
     queryFn: async () => {
@@ -1018,13 +942,39 @@ export default function UnderwritingExpandedView() {
   });
 
   const { data: tasks = [] } = useQuery({
-    queryKey: ['lead-tasks', leadId],
+    queryKey: ['person-tasks', leadId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('tasks')
-        .select('id, title, status, priority')
+        .from('lead_tasks')
+        .select('*')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false });
+      return (data ?? []) as LeadTask[];
+    },
+    enabled: !!leadId,
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['lead-projects', leadId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lead_projects' as any)
+        .select('*')
+        .eq('lead_id', leadId!)
+        .order('created_at', { ascending: false });
+      return (data ?? []) as LeadProject[];
+    },
+    enabled: !!leadId,
+  });
+
+  const { data: leadAppointments = [] } = useQuery({
+    queryKey: ['lead-appointments', leadId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('appointments')
+        .select('id, title, description, start_time, end_time, appointment_type')
+        .eq('lead_id', leadId!)
+        .order('start_time', { ascending: true });
       return data ?? [];
     },
     enabled: !!leadId,
@@ -1296,6 +1246,29 @@ export default function UnderwritingExpandedView() {
     return items.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
   }, [activities, allEmailThreads]);
 
+  // ── Stats for the 4-box row ──
+  const leadStats = useMemo(() => {
+    const now = new Date();
+    const interactionCount = activities.length + allEmailThreads.reduce((sum, t) => sum + (t.messages?.length ?? 0), 0);
+
+    // Last contacted = most recent activity or email date
+    let lastContactedDate: Date | null = null;
+    if (activities.length > 0) {
+      lastContactedDate = new Date(activities[0].created_at);
+    }
+    allEmailThreads.forEach(thread => {
+      if (thread.last_message_date) {
+        const d = new Date(thread.last_message_date);
+        if (!lastContactedDate || d > lastContactedDate) lastContactedDate = d;
+      }
+    });
+
+    const inactiveDays = lastContactedDate ? differenceInDays(now, lastContactedDate) : null;
+    const daysInStage = lead ? differenceInDays(now, new Date(lead.created_at)) : 0;
+
+    return { interactionCount, lastContactedDate, inactiveDays, daysInStage };
+  }, [activities, allEmailThreads, lead]);
+
   const { data: leadPhones = [] } = useQuery({
     queryKey: ['lead-phones', leadId],
     queryFn: async () => {
@@ -1409,15 +1382,14 @@ export default function UnderwritingExpandedView() {
     );
   }
 
+  const pendingTasks = tasks.filter((t: LeadTask) => !t.completed_at);
+  const completedTasks = tasks.filter((t: LeadTask) => !!t.completed_at);
+
   const dealValue = lead.deal_value ?? fakeValue(lead.id);
   const dealValueStr = lead.deal_value != null ? String(lead.deal_value) : '';
   const initial = lead.name[0]?.toUpperCase() ?? '?';
   const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? '—') : '—';
-  const daysInStage = daysSince(lead.updated_at);
-  const inactiveDays = daysSince(lead.last_activity_at);
-  const lastContacted = formatShortDate(lead.last_activity_at);
   const stageCfg = canonicalStageConfig[lead.status];
-  const inactiveColor = (inactiveDays ?? 0) > 30 ? 'text-red-600' : 'text-amber-600';
   const ownerOptions = teamMembers.map((m) => ({ value: m.id, label: m.name }));
 
   function goBack() {
@@ -1429,7 +1401,7 @@ export default function UnderwritingExpandedView() {
       {/* ── Header ── */}
       <div className="shrink-0 border-b border-border">
         {/* Top bar */}
-        <div className="px-4 py-2 flex items-center justify-between">
+        <div className="pl-10 pr-4 py-2 flex items-center justify-between">
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
             <X className="h-4 w-4" />
           </Button>
@@ -1473,8 +1445,8 @@ export default function UnderwritingExpandedView() {
 
         {/* LEFT: Details — fully editable */}
         <div className="w-full md:w-[320px] xl:w-[400px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
-        <ScrollArea className="md:h-full">
-          <div className="px-6 py-6 space-y-6">
+        <div className="md:h-full overflow-y-auto overflow-x-hidden">
+          <div className="pl-10 pr-6 py-6 space-y-6 min-w-0">
 
             {/* ── Contact Card Header ── */}
             <div className="flex items-start gap-4">
@@ -1482,7 +1454,7 @@ export default function UnderwritingExpandedView() {
                 <DollarSign className="h-6 w-6 text-gray-500 dark:text-gray-400" />
               </div>
               <div className="min-w-0 pt-0.5">
-                <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{lead.name}</h2>
+                <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{getLeadDisplayName(lead)}</h2>
                 <p className="text-sm text-muted-foreground mt-1 truncate">
                   {[lead.company_name, formatValue(dealValue)].filter(Boolean).join(' / ')}
                 </p>
@@ -1495,15 +1467,8 @@ export default function UnderwritingExpandedView() {
               </div>
             </div>
 
-            {/* Name */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">
-                Name <span className="text-red-500">*</span>
-              </label>
-              <div className="border-b border-border pb-2">
-                <p className="text-base text-foreground px-1 truncate">{lead.name}</p>
-              </div>
-            </div>
+            {/* Opportunity Name */}
+            <EditableField label="Opportunity Name" value={lead.opportunity_name || lead.name || ''} field="opportunity_name" leadId={lead.id} placeholder="e.g. Client - Refi 6-unit Apt. Bldg" onSaved={handleFieldSaved} />
 
             {/* Pipeline */}
             <div>
@@ -1548,18 +1513,7 @@ export default function UnderwritingExpandedView() {
             </div>
 
             {/* Value */}
-            <div>
-              <label className="text-sm text-muted-foreground block mb-2">Value</label>
-              <div className="border-b border-border pb-1">
-                <p className="text-base text-foreground py-1.5 px-1 tabular-nums">
-                  {lead.deal_value != null ? (
-                    <>{lead.deal_value.toLocaleString()}<br /><span className="text-sm text-muted-foreground">{formatValue(lead.deal_value)}</span></>
-                  ) : (
-                    <span className="text-muted-foreground italic">{'\u2014'}</span>
-                  )}
-                </p>
-              </div>
-            </div>
+            <EditableField icon={<DollarSign className="h-3.5 w-3.5" />} label="Value" value={lead.deal_value != null ? formatValue(lead.deal_value) : ''} field="deal_value" leadId={lead.id} onSaved={handleFieldSaved} transform={(v) => v ? Number(v.replace(/[^0-9.$,]/g, '')) : null} />
 
             {/* Description */}
             <div>
@@ -1581,15 +1535,15 @@ export default function UnderwritingExpandedView() {
                   </div>
                 </div>
                 {lead.phone && (
-                  <div className="flex items-center gap-2 px-1 py-1">
+                  <div className="flex items-center gap-2 px-1 py-1 min-w-0">
                     <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-foreground">{formatPhoneNumber(lead.phone)}</span>
+                    <span className="text-sm text-foreground truncate">{formatPhoneNumber(lead.phone)}</span>
                   </div>
                 )}
                 {lead.email && (
-                  <div className="flex items-center gap-2 px-1 py-1">
+                  <div className="flex items-center gap-2 px-1 py-1 min-w-0">
                     <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-foreground">{lead.email}</span>
+                    <span className="text-sm text-foreground truncate">{lead.email}</span>
                   </div>
                 )}
               </div>
@@ -1783,72 +1737,114 @@ export default function UnderwritingExpandedView() {
             </div>
 
           </div>
-        </ScrollArea>
+        </div>
         </div>
 
         {/* CENTER: Activity */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-muted/20">
-          {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-2 md:grid-cols-5 gap-3 px-5 py-3.5 border-b border-border overflow-hidden">
-            <StatBox
-              value={interactionCount}
-              label="Interactions"
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-blue-500"
-              valueColor="text-blue-700 dark:text-blue-400"
-            />
-            <StatBox
-              value={lastContacted}
-              label="Last Contacted"
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-slate-400"
-              valueColor="text-slate-700 dark:text-slate-300"
-            />
-            <StatBox
-              value={lastContactType ?? '—'}
-              label="Last Contact Of"
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-purple-500"
-              valueColor="text-purple-700 dark:text-purple-400"
-            />
-            <StatBox
-              value={inactiveDays ?? '—'}
-              label="Inactive Days"
-              bg="bg-white dark:bg-slate-900/80"
-              border={(inactiveDays ?? 0) > 30 ? 'border-red-500' : 'border-amber-500'}
-              valueColor={(inactiveDays ?? 0) > 30 ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}
-            />
-            <StatBox
-              value={daysInStage ?? '—'}
-              label="Days in Stage"
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-emerald-500"
-              valueColor="text-emerald-700 dark:text-emerald-400"
-            />
+          {/* Stats Row */}
+          <div className="shrink-0 px-5 py-4">
+            <div className="grid grid-cols-4 divide-x divide-border rounded-xl border border-border bg-card">
+              <div className="flex flex-col items-center justify-center py-3 px-2">
+                <span className="text-lg font-bold text-foreground">{leadStats.interactionCount}</span>
+                <span className="text-[11px] text-muted-foreground">Interactions</span>
+              </div>
+              <div className="flex flex-col items-center justify-center py-3 px-2">
+                <span className="text-lg font-bold text-foreground">
+                  {leadStats.lastContactedDate ? format(leadStats.lastContactedDate, 'M/d/yyyy') : '—'}
+                </span>
+                <span className="text-[11px] text-muted-foreground">Last Contacted</span>
+              </div>
+              <div className="flex flex-col items-center justify-center py-3 px-2">
+                <span className="text-lg font-bold text-foreground">{leadStats.inactiveDays ?? '—'}</span>
+                <span className="text-[11px] text-muted-foreground">Inactive Days</span>
+              </div>
+              <div className="flex flex-col items-center justify-center py-3 px-2">
+                <span className="text-lg font-bold text-foreground">{leadStats.daysInStage}</span>
+                <span className="text-[11px] text-muted-foreground">Days in Stage</span>
+              </div>
+            </div>
           </div>
-          {/* Tabs — buttons when they fit, dropdown when they overflow */}
-          <ActivityTabBar
-            activityTab={activityTab}
-            setActivityTab={setActivityTab}
-            showChecklist={checklistTabVisible || savedChecklists.length > 0}
-          />
+          {/* Activity Tabs — underline style */}
+          <div className="shrink-0 flex items-stretch bg-card border-b border-border">
+            {([
+              { key: 'log' as const, label: 'Log Activity' },
+              { key: 'note' as const, label: 'Create Note' },
+              ...((checklistTabVisible || savedChecklists.length > 0) ? [{ key: 'checklist' as const, label: 'Checklist' }] : []),
+            ]).map((tab) => (
+              <button
+                key={tab.key}
+                className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
+                  activityTab === tab.key
+                    ? 'text-blue-700 dark:text-blue-400'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setActivityTab(tab.key)}
+              >
+                {tab.label}
+                {activityTab === tab.key && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-t-full" />
+                )}
+              </button>
+            ))}
+          </div>
 
           <ScrollArea className="md:flex-1">
             <div className="px-6 py-5">
               {activityTab === 'log' ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Select value={activityType} onValueChange={setActivityType}>
-                      <SelectTrigger className="h-8 w-[120px] text-xs rounded-lg border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todo" className="text-xs">To Do</SelectItem>
-                        <SelectItem value="call" className="text-xs">Call</SelectItem>
-                        <SelectItem value="email" className="text-xs">Email</SelectItem>
-                        <SelectItem value="meeting" className="text-xs">Meeting</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {/* Activity type dropdown */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setActivityDropdownOpen(!activityDropdownOpen)}
+                      className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border hover:bg-muted/40 transition-colors text-sm font-medium text-foreground"
+                    >
+                      {(() => {
+                        const types: Record<string, { label: string; icon: typeof CheckSquare }> = {
+                          todo: { label: 'To Do', icon: CheckSquare },
+                          call: { label: 'Phone Call', icon: Phone },
+                          meeting: { label: 'Meeting', icon: CalendarDays },
+                          email: { label: 'Email', icon: MessageSquare },
+                          follow_up: { label: 'Follow Up', icon: Users },
+                        };
+                        const t = types[activityType] ?? types.todo;
+                        const Icon = t.icon;
+                        return <><Icon className="h-4 w-4 text-muted-foreground" />{t.label}</>;
+                      })()}
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                    </button>
+
+                    {activityDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setActivityDropdownOpen(false)} />
+                        <div className="absolute z-50 top-full left-0 mt-1.5 w-[320px] bg-popover border border-border rounded-xl shadow-lg overflow-hidden">
+                          <div className="py-1">
+                            {([
+                              { value: 'todo', label: 'To Do', icon: CheckSquare },
+                              { value: 'call', label: 'Phone Call', icon: Phone },
+                              { value: 'meeting', label: 'Meeting', icon: CalendarDays },
+                              { value: 'email', label: 'Email', icon: MessageSquare },
+                              { value: 'follow_up', label: 'Follow Up', icon: Users },
+                            ] as const)
+                              .map((opt) => {
+                                const Icon = opt.icon;
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => { setActivityType(opt.value); setActivityDropdownOpen(false); }}
+                                    className={`flex items-center gap-3.5 w-full text-left px-4 py-3 text-sm transition-colors ${
+                                      activityType === opt.value ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400' : 'text-foreground hover:bg-muted/50'
+                                    }`}
+                                  >
+                                    <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+                                    <span className="font-medium">{opt.label}</span>
+                                  </button>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <RichTextEditor
                     value={activityNote}
@@ -2154,16 +2150,16 @@ export default function UnderwritingExpandedView() {
             teamMemberMap={teamMemberMap}
             teamMembers={teamMembers}
             onClose={() => setSelectedPerson(null)}
-            onExpand={() => navigate(`/admin/pipeline/contacts/people/${selectedPerson.id}`)}
+            onExpand={() => navigate(`/admin/contacts/people/expanded-view/${selectedPerson.id}`)}
             onPersonUpdate={(updated) => setSelectedPerson(updated)}
           />
         ) : (
-        <div className="w-full md:w-[220px] xl:w-[260px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
+        <div className="w-full md:w-[280px] xl:w-[320px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-border">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Related</span>
           </div>
           <ScrollArea className="md:flex-1">
-          <div className="py-4 px-1">
+          <div className="py-4 px-3 pr-4 overflow-hidden">
             {/* People */}
             <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length + relatedPeople.filter(rp => !contacts.some(c => c.name.toLowerCase() === rp.name.toLowerCase())).length} onAdd={() => setAddingContact(true)}>
               <div className="space-y-3 py-1">
@@ -2321,15 +2317,79 @@ export default function UnderwritingExpandedView() {
                   </button>
                 )}
 
-                {/* View in list */}
-                {(contacts.length > 0 || relatedPeople.length > 0) && (
-                  <button
-                    onClick={() => navigate('/admin/pipeline/contacts/people')}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 flex items-center gap-1.5"
+              </div>
+            </RelatedSection>
+
+            {/* Tasks */}
+            <RelatedSection
+              icon={<CheckSquare className="h-3.5 w-3.5" />}
+              label="Tasks"
+              count={pendingTasks.length}
+              iconColor="text-emerald-500"
+              onAdd={() => { setEditingTask(null); setNewTaskTitle(''); setTaskDialogOpen(true); }}
+            >
+              <div className="space-y-1 py-1">
+                {pendingTasks.map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1 py-1 -mx-1 transition-colors group"
+                    onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
                   >
-                    <Layers className="h-3 w-3" /> View in list
-                  </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
+                      className="shrink-0"
+                    >
+                      <div className="h-3.5 w-3.5 rounded-sm border border-muted-foreground/40 group-hover:border-emerald-400 transition-colors" />
+                    </button>
+                    <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
+                    {t.due_date && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {format(parseISO(t.due_date), 'MMM d')}
+                      </span>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={() => { setEditingTask(null); setNewTaskTitle(''); setTaskDialogOpen(true); }}
+                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                >
+                  + Add task...
+                </button>
+                {completedTasks.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
+                    >
+                      {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      Show completed tasks ({completedTasks.length})
+                    </button>
+                    {showCompletedTasks && completedTasks.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1 py-1 -mx-1 transition-colors"
+                        onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
+                      >
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
+                          className="shrink-0"
+                        >
+                          <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />
+                        </button>
+                        <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
+                      </div>
+                    ))}
+                  </>
                 )}
+              </div>
+            </RelatedSection>
+
+            {/* Pipeline Records */}
+            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1}>
+              <div className="text-xs py-1">
+                <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
+                  {stageCfg?.label ?? lead.status}
+                </Badge>
               </div>
             </RelatedSection>
 
@@ -2369,87 +2429,6 @@ export default function UnderwritingExpandedView() {
                     className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
                   >
                     + {lead.company_name ? 'Change' : 'Add'} company...
-                  </button>
-                )}
-              </div>
-            </RelatedSection>
-
-            {/* Tasks */}
-            <RelatedSection
-              icon={<CheckSquare className="h-3.5 w-3.5" />}
-              label="Tasks"
-              count={tasks.filter(t => t.status !== 'completed' && t.status !== 'done').length}
-              onAdd={() => setAddingTask(true)}
-            >
-              <div className="space-y-2 py-1">
-                {tasks.filter(t => t.status !== 'completed' && t.status !== 'done').map((t) => (
-                  <div key={t.id} className="flex items-center gap-2 text-xs">
-                    <CheckSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-                    <span className="flex-1 truncate text-foreground font-medium">{t.title}</span>
-                    {t.priority && (
-                      <Badge variant="outline" className={`text-[9px] px-1.5 py-0 rounded-full ${
-                        t.priority === 'high' ? 'border-red-200 text-red-600 bg-red-50' :
-                        t.priority === 'medium' ? 'border-amber-200 text-amber-600 bg-amber-50' :
-                        'border-border text-muted-foreground'
-                      }`}>
-                        {t.priority}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-                {addingTask ? (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <input
-                      autoFocus
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newTaskTitle.trim()) handleSaveTask();
-                        if (e.key === 'Escape') { setAddingTask(false); setNewTaskTitle(''); }
-                      }}
-                      placeholder="Task title..."
-                      disabled={savingTask}
-                      className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
-                    />
-                    {savingTask && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingTask(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                  >
-                    + Add task...
-                  </button>
-                )}
-                {/* Show completed tasks toggle */}
-                {(() => {
-                  const completedTasks = tasks.filter(t => t.status === 'completed' || t.status === 'done');
-                  if (completedTasks.length === 0) return null;
-                  return (
-                    <>
-                      <button
-                        onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
-                      >
-                        {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                        Show completed tasks ({completedTasks.length})
-                      </button>
-                      {showCompletedTasks && completedTasks.map((t) => (
-                        <div key={t.id} className="flex items-center gap-2 text-xs">
-                          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                          <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
-                        </div>
-                      ))}
-                    </>
-                  );
-                })()}
-                {/* View in List link */}
-                {tasks.length > 0 && (
-                  <button
-                    onClick={() => toast.info('View in List coming soon')}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 flex items-center gap-1"
-                  >
-                    <Layers className="h-3 w-3" /> View in List
                   </button>
                 )}
               </div>
@@ -2531,21 +2510,78 @@ export default function UnderwritingExpandedView() {
             </RelatedSection>
 
             {/* Calendar Events */}
-            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0}>
-              <p className="text-xs text-muted-foreground py-1">No events</p>
+            <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={leadAppointments.length} onAdd={() => setEventDialogOpen(true)}>
+              <div className="space-y-1.5 py-1">
+                {leadAppointments.map((evt: any) => {
+                  const startDate = evt.start_time ? parseISO(evt.start_time) : null;
+                  const isPast = startDate ? startDate < new Date() : false;
+                  return (
+                    <div key={evt.id} className={`group flex items-start gap-2 text-xs rounded-lg px-1.5 py-1.5 -mx-1 hover:bg-muted/60 transition-colors ${isPast ? 'opacity-60' : ''}`}>
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        evt.appointment_type === 'call' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+                        evt.appointment_type === 'video' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600' :
+                        'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
+                      }`}>
+                        {evt.appointment_type === 'call' ? <Phone className="h-3 w-3" /> :
+                         evt.appointment_type === 'video' ? <Eye className="h-3 w-3" /> :
+                         <CalendarDays className="h-3 w-3" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{evt.title}</p>
+                        {startDate && (
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(startDate, 'MMM d, yyyy')} · {format(startDate, 'h:mm a')}
+                            {evt.end_time && ` – ${format(parseISO(evt.end_time), 'h:mm a')}`}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDeleteEvent(evt.id)}
+                        className="shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-all mt-0.5"
+                        title="Delete event"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+                {leadAppointments.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No events</p>
+                )}
+                <button
+                  onClick={() => setEventDialogOpen(true)}
+                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                >
+                  + Add event...
+                </button>
+              </div>
             </RelatedSection>
 
             {/* Projects */}
-            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={0}>
-              <p className="text-xs text-muted-foreground py-1">No projects</p>
-            </RelatedSection>
-
-            {/* Pipeline Records */}
-            <RelatedSection icon={<Layers className="h-3.5 w-3.5" />} label="Pipeline Records" count={1}>
-              <div className="text-xs py-1">
-                <Badge variant="secondary" className={`text-[11px] ${stageCfg?.bg ?? ''} ${stageCfg?.color ?? ''}`}>
-                  {stageCfg?.label ?? lead.status}
-                </Badge>
+            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={projects.length} iconColor="text-amber-500" onAdd={() => { setEditingProject(null); setProjectDialogOpen(true); }}>
+              <div className="space-y-1 py-1">
+                {projects.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1.5 py-1.5 -mx-1 transition-colors group"
+                    onClick={() => { setEditingProject(p); setProjectDialogOpen(true); }}
+                  >
+                    <FolderOpen className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    <span className="flex-1 truncate text-foreground font-medium">{p.name}</span>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 rounded-full capitalize shrink-0">
+                      {(p.status || 'open').replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+                ))}
+                {projects.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-1">No projects</p>
+                )}
+                <button
+                  onClick={() => { setEditingProject(null); setProjectDialogOpen(true); }}
+                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                >
+                  + Add project...
+                </button>
               </div>
             </RelatedSection>
           </div>
@@ -2553,6 +2589,125 @@ export default function UnderwritingExpandedView() {
         </div>
         )}
       </div>
+
+      {/* Task Detail Dialog */}
+      {leadId && (
+        <PeopleTaskDetailDialog
+          task={editingTask}
+          open={taskDialogOpen}
+          onClose={() => { setTaskDialogOpen(false); setEditingTask(null); }}
+          leadId={leadId}
+          leadName={lead?.opportunity_name || lead?.name || ''}
+          teamMembers={teamMembers}
+          currentUserName={teamMember?.name ?? null}
+          initialTitle={editingTask ? undefined : newTaskTitle}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['person-tasks', leadId] })}
+        />
+      )}
+
+      {/* Project Detail Dialog */}
+      {leadId && (
+        <ProjectDetailDialog
+          project={editingProject}
+          open={projectDialogOpen}
+          onClose={() => { setProjectDialogOpen(false); setEditingProject(null); }}
+          leadId={leadId}
+          leadName={lead?.opportunity_name || lead?.name || ''}
+          teamMembers={teamMembers}
+          currentUserName={teamMember?.name ?? null}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['lead-projects', leadId] })}
+        />
+      )}
+
+      {/* Calendar Event Dialog */}
+      <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>New Event</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
+              <input
+                autoFocus
+                value={eventTitle}
+                onChange={(e) => setEventTitle(e.target.value)}
+                placeholder="Event title..."
+                className="w-full text-sm text-foreground bg-muted border border-border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+              <Select value={eventType} onValueChange={setEventType}>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="meeting">Meeting</SelectItem>
+                  <SelectItem value="call">Phone Call</SelectItem>
+                  <SelectItem value="video">Video Call</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+              <Popover open={eventDatePickerOpen} onOpenChange={setEventDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left text-sm font-normal">
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {eventDate ? format(eventDate, 'MMM d, yyyy') : 'Pick a date...'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={eventDate}
+                    onSelect={(date) => { setEventDate(date); setEventDatePickerOpen(false); }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Start Time</label>
+                <input
+                  type="time"
+                  value={eventTime}
+                  onChange={(e) => setEventTime(e.target.value)}
+                  className="w-full text-sm text-foreground bg-muted border border-border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">End Time</label>
+                <input
+                  type="time"
+                  value={eventEndTime}
+                  onChange={(e) => setEventEndTime(e.target.value)}
+                  className="w-full text-sm text-foreground bg-muted border border-border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
+              <textarea
+                value={eventDescription}
+                onChange={(e) => setEventDescription(e.target.value)}
+                placeholder="Add details..."
+                rows={2}
+                className="w-full text-sm text-foreground bg-muted border border-border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setEventDialogOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleSaveEvent} disabled={eventSaving || !eventTitle.trim() || !eventDate}>
+              {eventSaving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Create Event
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

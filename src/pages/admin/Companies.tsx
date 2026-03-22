@@ -1120,7 +1120,7 @@ const Companies = () => {
                                     </p>
                                     <button
                                       type="button"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/contacts/companies/${company.id}`); }}
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/contacts/companies/expanded-view/${company.id}`); }}
                                       className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                     >
                                       <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
@@ -1332,7 +1332,7 @@ const Companies = () => {
               teamMembers={teamMembers}
               onClose={() => setSelectedCompany(null)}
               onExpand={() => {
-                navigate(`/admin/pipeline/contacts/companies/${selectedCompany.id}`);
+                navigate(`/admin/contacts/companies/expanded-view/${selectedCompany.id}`);
               }}
               onContactTypeChange={(companyId, newType) => {
                 contactTypeMutation.mutate({ companyId, newType, oldType: selectedCompany.contact_type ?? 'Other' });

@@ -158,6 +158,14 @@ export default {
           "65%, 85%": { transform: "translateZ(0) rotate(270deg)" },
           "100%": { transform: "translateZ(0) rotate(360deg)" },
         },
+        "loader-orbit": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
+        "loader-shimmer": {
+          "0%": { transform: "translateX(-150%)" },
+          "100%": { transform: "translateX(450%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",

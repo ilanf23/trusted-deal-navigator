@@ -449,10 +449,10 @@ const People = () => {
   // ── Add Person state ──
   const [addPersonOpen, setAddPersonOpen] = useState(false);
   const [addPersonType, setAddPersonType] = useState<string>('Prospect');
-  const [newPerson, setNewPerson] = useState({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect' });
+  const [newPerson, setNewPerson] = useState({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect', known_as: '', clx_file_name: '', assigned_to: '', direct_phone: '', fax_phone: '' });
 
   const createPersonMutation = useMutation({
-    mutationFn: async (data: { name: string; title: string; company_name: string; email: string; phone: string; contact_type: string }) => {
+    mutationFn: async (data: { name: string; title: string; company_name: string; email: string; phone: string; contact_type: string; known_as: string; clx_file_name: string; assigned_to: string; direct_phone: string; fax_phone: string }) => {
       // Insert into leads
       const { data: lead, error } = await supabase
         .from('leads')
@@ -463,11 +463,23 @@ const People = () => {
           email: data.email || null,
           phone: data.phone || null,
           contact_type: data.contact_type,
+          known_as: data.known_as || null,
+          clx_file_name: data.clx_file_name || null,
+          assigned_to: data.assigned_to || null,
           status: 'initial_review',
         })
         .select()
         .single();
       if (error) throw error;
+
+      // Insert extra phone numbers into lead_phones
+      const phonesToInsert = [
+        data.direct_phone ? { lead_id: lead.id, phone_number: data.direct_phone, phone_type: 'direct' } : null,
+        data.fax_phone ? { lead_id: lead.id, phone_number: data.fax_phone, phone_type: 'fax' } : null,
+      ].filter(Boolean);
+      if (phonesToInsert.length > 0) {
+        await supabase.from('lead_phones').insert(phonesToInsert);
+      }
 
       // Add to default (Potential) pipeline
       const { data: pipeline } = await supabase
@@ -497,7 +509,7 @@ const People = () => {
     onSuccess: (person) => {
       queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       setAddPersonOpen(false);
-      setNewPerson({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect' });
+      setNewPerson({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect', known_as: '', clx_file_name: '', assigned_to: '', direct_phone: '', fax_phone: '' });
       toast.success(`"${person.name}" added as ${person.contact_type}`);
       setSelectedPerson(person);
     },
@@ -1290,7 +1302,7 @@ const People = () => {
                                     </p>
                                     <button
                                       type="button"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/contacts/people/${person.id}`); }}
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/contacts/people/expanded-view/${person.id}`); }}
                                       className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                     >
                                       <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
@@ -1505,7 +1517,7 @@ const People = () => {
               teamMembers={teamMembers}
               onClose={() => setSelectedPerson(null)}
               onExpand={() => {
-                navigate(`/admin/pipeline/contacts/people/${selectedPerson.id}`);
+                navigate(`/admin/contacts/people/expanded-view/${selectedPerson.id}`);
               }}
               onContactTypeChange={(personId, newType) => {
                 contactTypeMutation.mutate({ personId, newType, oldType: selectedPerson.contact_type ?? 'Other' });
@@ -1519,133 +1531,170 @@ const People = () => {
 
       {/* ── Add Person Dialog ── */}
       <Dialog open={addPersonOpen} onOpenChange={setAddPersonOpen}>
-        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
-          {/* Header with gradient */}
-          <div className="px-6 pt-6 pb-4" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}>
-            <DialogHeader>
-              <DialogTitle className="text-white text-lg font-bold flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-                  <Plus className="h-4 w-4 text-white" />
-                </div>
-                New Contact
-              </DialogTitle>
-            </DialogHeader>
-            {/* Contact type selector pills */}
-            <div className="flex flex-wrap gap-1.5 mt-4">
-              {CONTACT_TYPES.map((type) => {
-                const cfg = contactTypeConfig[type];
-                const isActive = addPersonType === type;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => setAddPersonType(type)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                      isActive
-                        ? 'bg-white text-slate-800 shadow-md scale-105 dark:bg-white/90 dark:text-slate-900'
-                        : 'bg-white/15 text-white/90 hover:bg-white/25'
-                    }`}
-                  >
-                    <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1.5 ${isActive ? cfg.dot : 'bg-white/60'}`} />
-                    {cfg.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        <DialogContent className="sm:max-w-[560px] p-0 max-h-[90vh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+            <DialogTitle className="text-xl font-bold text-foreground">Add a New Person</DialogTitle>
+          </DialogHeader>
 
-          {/* Form body */}
-          <div className="px-6 py-5 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="person-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Name <span className="text-red-400">*</span>
-              </Label>
-              <Input
-                id="person-name"
-                placeholder="e.g. John Smith"
-                value={newPerson.name}
-                onChange={(e) => setNewPerson(prev => ({ ...prev, name: e.target.value }))}
-                onKeyDown={(e) => { if (e.key === 'Enter' && newPerson.name.trim()) handleCreatePerson(); }}
-                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-                autoFocus
-              />
+          <div className="px-6 pb-6 space-y-5 overflow-y-auto flex-1 min-h-0">
+            {/* Name with avatar */}
+            <div className="flex items-start gap-4">
+              <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0 mt-1">
+                <User className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <label className="text-sm font-semibold text-foreground block mb-1">
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  autoFocus
+                  placeholder="Full Name"
+                  value={newPerson.name}
+                  onChange={(e) => setNewPerson(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full text-base text-foreground bg-transparent border-b border-border pb-2 outline-none focus:border-blue-500 placeholder:text-muted-foreground/50"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="person-title" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Title</Label>
-              <Input
-                id="person-title"
-                placeholder="e.g. Managing Director"
-                value={newPerson.title}
-                onChange={(e) => setNewPerson(prev => ({ ...prev, title: e.target.value }))}
-                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="person-company" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company</Label>
-              <Input
-                id="person-company"
-                placeholder="Company name"
+            {/* Company */}
+            <div>
+              <label className="text-sm font-semibold text-foreground block mb-1">Company</label>
+              <input
+                placeholder="Add Company"
                 value={newPerson.company_name}
                 onChange={(e) => setNewPerson(prev => ({ ...prev, company_name: e.target.value }))}
-                className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
+                className="w-full text-base text-foreground bg-transparent border-b border-border pb-2 outline-none focus:border-blue-500 placeholder:text-muted-foreground/50"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="person-email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</Label>
-                <Input
-                  id="person-email"
-                  placeholder="email@example.com"
+            {/* Known As (Nick Name) */}
+            <div>
+              <label className="text-sm font-semibold text-foreground block mb-1">Known As (Nick Name)</label>
+              <input
+                placeholder="Add Known As (Nick Name)"
+                value={newPerson.known_as}
+                onChange={(e) => setNewPerson(prev => ({ ...prev, known_as: e.target.value }))}
+                className="w-full text-base text-foreground bg-transparent border-b border-border pb-2 outline-none focus:border-blue-500 placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            {/* CLX - File Name */}
+            <div>
+              <label className="text-sm font-semibold text-foreground block mb-1">CLX - File Name</label>
+              <input
+                placeholder="Add CLX - File Name"
+                value={newPerson.clx_file_name}
+                onChange={(e) => setNewPerson(prev => ({ ...prev, clx_file_name: e.target.value }))}
+                className="w-full text-base text-foreground bg-transparent border-b border-border pb-2 outline-none focus:border-blue-500 placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            {/* Title */}
+            <div>
+              <label className="text-sm font-semibold text-foreground block mb-1">Title</label>
+              <input
+                placeholder="Add Title"
+                value={newPerson.title}
+                onChange={(e) => setNewPerson(prev => ({ ...prev, title: e.target.value }))}
+                className="w-full text-base text-foreground bg-transparent border-b border-border pb-2 outline-none focus:border-blue-500 placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            {/* Contact Type + Owner row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-semibold text-foreground block mb-1">Contact Type</label>
+                <Select value={addPersonType} onValueChange={setAddPersonType}>
+                  <SelectTrigger className="w-full text-base border-0 border-b border-border rounded-none shadow-none px-0 h-auto pb-2 focus:ring-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CONTACT_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>{contactTypeConfig[type].label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-foreground block mb-1">Owner</label>
+                <Select value={newPerson.assigned_to} onValueChange={(v) => setNewPerson(prev => ({ ...prev, assigned_to: v }))}>
+                  <SelectTrigger className="w-full text-base border-0 border-b border-border rounded-none shadow-none px-0 h-auto pb-2 focus:ring-0">
+                    <SelectValue placeholder="Select Owner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Work Email + Work Phone row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-semibold text-foreground block mb-1">Work Email</label>
+                <input
+                  placeholder="Add Email"
                   type="email"
                   value={newPerson.email}
                   onChange={(e) => setNewPerson(prev => ({ ...prev, email: e.target.value }))}
-                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
+                  className="w-full text-base text-foreground bg-transparent border-b border-border pb-2 outline-none focus:border-blue-500 placeholder:text-muted-foreground/50"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="person-phone" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone</Label>
-                <Input
-                  id="person-phone"
-                  placeholder="(555) 123-4567"
+              <div>
+                <label className="text-sm font-semibold text-foreground block mb-1">Work Phone</label>
+                <input
+                  placeholder="Add Phone"
                   type="tel"
                   value={newPerson.phone}
                   onChange={(e) => setNewPerson(prev => ({ ...prev, phone: e.target.value }))}
-                  className="h-10 rounded-xl border-border focus:border-blue-400 focus:ring-blue-400/20 placeholder:text-muted-foreground/50"
+                  className="w-full text-base text-foreground bg-transparent border-b border-border pb-2 outline-none focus:border-blue-500 placeholder:text-muted-foreground/50"
                 />
               </div>
+            </div>
+
+            {/* Direct Phone */}
+            <div>
+              <label className="text-sm font-semibold text-foreground block mb-1">Direct Phone</label>
+              <input
+                placeholder="Add Direct Phone"
+                type="tel"
+                value={newPerson.direct_phone}
+                onChange={(e) => setNewPerson(prev => ({ ...prev, direct_phone: e.target.value }))}
+                className="w-full text-base text-foreground bg-transparent border-b border-border pb-2 outline-none focus:border-blue-500 placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            {/* Fax Phone */}
+            <div>
+              <label className="text-sm font-semibold text-foreground block mb-1">Fax Phone</label>
+              <input
+                placeholder="Add Fax Phone"
+                type="tel"
+                value={newPerson.fax_phone}
+                onChange={(e) => setNewPerson(prev => ({ ...prev, fax_phone: e.target.value }))}
+                className="w-full text-base text-foreground bg-transparent border-b border-border pb-2 outline-none focus:border-blue-500 placeholder:text-muted-foreground/50"
+              />
             </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 bg-muted/50 border-t border-border flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
+          <div className="px-6 py-4 border-t border-border flex items-center gap-3 shrink-0">
+            <button
               onClick={() => setAddPersonOpen(false)}
-              className="h-9 px-4 rounded-xl text-muted-foreground hover:text-foreground"
+              className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 uppercase tracking-wide px-4 py-2"
             >
               Cancel
-            </Button>
-            <button
+            </button>
+            <Button
               onClick={handleCreatePerson}
               disabled={!newPerson.name.trim() || createPersonMutation.isPending}
-              className="h-9 px-5 rounded-xl text-[13px] font-semibold text-white flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
-              style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}
+              className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold uppercase tracking-wide rounded-full px-6"
             >
-              {createPersonMutation.isPending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Add Contact
-                </>
-              )}
-            </button>
+              {createPersonMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Save
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

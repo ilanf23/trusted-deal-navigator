@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Building2, Mail, Phone, Calendar, CheckCircle2, Clock, PhoneIncoming, PhoneOutgoing, MessageSquare, Maximize2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
+import { getLeadDisplayName } from '@/lib/utils';
 import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -127,7 +128,7 @@ export const LeadCard = ({ lead, touchpoint, teamMemberMap, teamAvatarMap, onCli
       <CardContent className="p-3 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <h4 className="font-semibold text-sm leading-tight truncate">{lead.name}</h4>
+            <h4 className="font-semibold text-sm leading-tight truncate">{getLeadDisplayName(lead)}</h4>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onClick?.(); }}

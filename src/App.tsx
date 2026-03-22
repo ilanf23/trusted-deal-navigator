@@ -49,6 +49,7 @@ import Underwriting from "./pages/admin/Underwriting";
 import LenderManagement from "./pages/admin/LenderManagement";
 import People from "./pages/admin/People";
 import Companies from "./pages/admin/Companies";
+import Projects from "./pages/admin/Projects";
 import UnderwritingExpandedView from "./components/admin/UnderwritingExpandedView";
 import PipelineExpandedView from "./components/admin/PipelineExpandedView";
 import LenderManagementExpandedView from "./components/admin/LenderManagementExpandedView";
@@ -183,13 +184,14 @@ const App = () => (
                 <Route path="/admin/pipeline/feed" element={<AdminRoute><PipelineFeed /></AdminRoute>} />
                 <Route path="/admin/pipeline/underwriting" element={<AdminRoute><Underwriting /></AdminRoute>} />
                 <Route path="/admin/pipeline/lender-management" element={<AdminRoute><LenderManagement /></AdminRoute>} />
-                <Route path="/admin/pipeline/contacts/people" element={<AdminRoute><People /></AdminRoute>} />
-                <Route path="/admin/pipeline/contacts/companies" element={<AdminRoute><Companies /></AdminRoute>} />
-                <Route path="/admin/pipeline/underwriting/lead/:leadId" element={<AdminRoute><UnderwritingExpandedView /></AdminRoute>} />
-                <Route path="/admin/pipeline/lender-management/lead/:leadId" element={<AdminRoute><LenderManagementExpandedView /></AdminRoute>} />
-                <Route path="/admin/pipeline/lead/:leadId" element={<AdminRoute><PipelineExpandedView /></AdminRoute>} />
-                <Route path="/admin/pipeline/contacts/people/:personId" element={<AdminRoute><PeopleExpandedView /></AdminRoute>} />
-                <Route path="/admin/pipeline/contacts/companies/:companyId" element={<AdminRoute><CompanyExpandedView /></AdminRoute>} />
+                <Route path="/admin/pipeline/projects" element={<AdminRoute><Projects /></AdminRoute>} />
+                <Route path="/admin/contacts/people" element={<AdminRoute><People /></AdminRoute>} />
+                <Route path="/admin/contacts/companies" element={<AdminRoute><Companies /></AdminRoute>} />
+                <Route path="/admin/pipeline/underwriting/expanded-view/:leadId" element={<AdminRoute><UnderwritingExpandedView /></AdminRoute>} />
+                <Route path="/admin/pipeline/lender-management/expanded-view/:leadId" element={<AdminRoute><LenderManagementExpandedView /></AdminRoute>} />
+                <Route path="/admin/pipeline/pipeline/expanded-view/:leadId" element={<AdminRoute><PipelineExpandedView /></AdminRoute>} />
+                <Route path="/admin/contacts/people/expanded-view/:personId" element={<AdminRoute><PeopleExpandedView /></AdminRoute>} />
+                <Route path="/admin/contacts/companies/expanded-view/:companyId" element={<AdminRoute><CompanyExpandedView /></AdminRoute>} />
                 <Route path="/admin/tasks" element={<AdminRoute><Tasks /></AdminRoute>} />
                 <Route path="/admin/calls" element={<AdminRoute><Calls /></AdminRoute>} />
                 <Route path="/admin/lender-programs" element={<AdminRoute><LenderPrograms /></AdminRoute>} />

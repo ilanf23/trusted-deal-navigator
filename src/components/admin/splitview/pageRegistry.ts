@@ -167,8 +167,8 @@ export const allPages = pages;
 const pathToKeyMap: [string, string][] = [
   ['pipeline/feed', 'feed'],
   ['pipeline/underwriting', 'underwriting'],
-  ['pipeline/contacts/people', 'people'],
-  ['pipeline/contacts/companies', 'companies'],
+  ['contacts/people', 'people'],
+  ['contacts/companies', 'companies'],
   ['pipeline', 'pipeline'],
   ['dashboard', 'dashboard'],
   ['scorecard', 'scorecard'],
@@ -183,7 +183,7 @@ const pathToKeyMap: [string, string][] = [
   ['bug-reporting', 'bug-reporting'],
 ];
 
-/** Resolve a full pathname (e.g. "/admin/pipeline/contacts/people") to a page key. */
+/** Resolve a full pathname (e.g. "/admin/contacts/people") to a page key. */
 export function resolvePageKeyFromPath(pathname: string): string | null {
   // Strip prefix: /admin/ (no name) or /superadmin/<name>/
   const stripped = pathname

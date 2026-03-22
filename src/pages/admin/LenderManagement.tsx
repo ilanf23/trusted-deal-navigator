@@ -1,3 +1,4 @@
+import { getLeadDisplayName } from '@/lib/utils';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -202,9 +203,9 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
           <div className={`h-6 w-6 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
             {initial}
           </div>
-          <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{lead.name}</p>
+          <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{getLeadDisplayName(lead)}</p>
           <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lender-management/lead/${lead.id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lender-management/expanded-view/${lead.id}`); }}
             className="shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity"
           >
             <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
@@ -609,6 +610,7 @@ const LenderManagement = () => {
       result = result.filter(
         (l) =>
           l.name.toLowerCase().includes(q) ||
+          (l.opportunity_name ?? '').toLowerCase().includes(q) ||
           (l.company_name ?? '').toLowerCase().includes(q) ||
           (l.email ?? '').toLowerCase().includes(q) ||
           (l.phone ?? '').toLowerCase().includes(q) ||
@@ -1252,11 +1254,11 @@ const LenderManagement = () => {
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5">
                                     <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
-                                      {lead.name}
+                                      {getLeadDisplayName(lead)}
                                     </p>
                                     <button
                                       type="button"
-                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lender-management/lead/${lead.id}`); }}
+                                      onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/lender-management/expanded-view/${lead.id}`); }}
                                       className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                     >
                                       <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
@@ -1476,11 +1478,8 @@ const LenderManagement = () => {
                         <div className={`h-5 w-5 rounded-full ${getAvatarColor(draggedLead.name)} flex items-center justify-center text-white text-[10px] font-bold`}>
                           {draggedLead.name[0]?.toUpperCase()}
                         </div>
-                        <p className="text-sm font-semibold text-foreground truncate">{draggedLead.name}</p>
+                        <p className="text-sm font-semibold text-foreground truncate">{getLeadDisplayName(draggedLead)}</p>
                       </div>
-                      {draggedLead.company_name && (
-                        <p className="text-[11px] text-muted-foreground">{draggedLead.company_name}</p>
-                      )}
                     </Card>
                   ) : null}
                 </DragOverlay>
@@ -1500,7 +1499,7 @@ const LenderManagement = () => {
               fakeValue={fakeValue}
               onClose={() => setDetailDialogLead(null)}
               onExpand={() => {
-                navigate(`/admin/pipeline/lender-management/lead/${detailDialogLead.id}`);
+                navigate(`/admin/pipeline/lender-management/expanded-view/${detailDialogLead.id}`);
               }}
               onStageChange={(leadId, newStatus) => {
                 // Find the stage ID for this status
