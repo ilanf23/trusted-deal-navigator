@@ -1054,7 +1054,7 @@ const LoanVolumeLog = () => {
                 <thead className="border-b border-border">
                   <tr>
                     {/* Checkbox header */}
-                    <th className="w-10 px-3 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted">
+                    <th className="w-12 pl-2 pr-4 py-3 text-center sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted">
                       <Checkbox
                         checked={isAllSelected}
                         onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
@@ -1066,7 +1066,7 @@ const LoanVolumeLog = () => {
                     <ColHeader
                       colKey="borrower"
                       className="sticky top-0 z-30 bg-gray-100 dark:bg-muted border-r border-border/50"
-                      style={{ left: 40 }}
+                      style={{ left: 48 }}
                     >
                       Borrower
                     </ColHeader>
@@ -1099,10 +1099,10 @@ const LoanVolumeLog = () => {
                   {isLoading ? (
                     Array.from({ length: 8 }).map((_, i) => (
                       <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
-                        <td className="px-3 py-3.5 w-10 sticky left-0 z-[5] bg-white dark:bg-card">
+                        <td className="pl-2 pr-4 py-3.5 w-12 text-center sticky left-0 z-[5] bg-white dark:bg-card border-b border-[#e4dced] dark:border-border/40">
                           <Skeleton className="h-4 w-4 rounded" />
                         </td>
-                        <td className="px-3 py-3.5 sticky z-[5] border-r border-border/50 bg-white dark:bg-card" style={{ width: columnWidths.borrower, left: 40 }}>
+                        <td className="px-3 py-3.5 sticky z-[5] border-r border-b border-[#e4dced] dark:border-border/40 bg-white dark:bg-card" style={{ width: columnWidths.borrower, left: 48 }}>
                           <div className="flex items-center gap-2">
                             <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                             <Skeleton className="h-3.5 w-28" />
@@ -1205,7 +1205,7 @@ const LoanVolumeLog = () => {
                           }`}
                         >
                           {/* Checkbox */}
-                          <td className={`px-3 ${rowPad} w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}>
+                          <td className={`pl-2 pr-4 ${rowPad} w-12 text-center sticky left-0 z-[5] transition-colors border-b border-[#e4dced] dark:border-border/40 ${stickyBg}`}>
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={() => toggleLeadSelection(lead.id)}
@@ -1217,8 +1217,8 @@ const LoanVolumeLog = () => {
                           {/* Borrower (sticky) */}
                           {columnVisibility.borrower && (
                             <td
-                              className={`px-3 ${rowPad} overflow-hidden sticky z-[5] border-r border-border/50 transition-colors ${stickyBg}`}
-                              style={{ width: columnWidths.borrower, left: 40 }}
+                              className={`px-3 ${rowPad} overflow-hidden sticky z-[5] border-r border-b border-[#e4dced] dark:border-border/40 transition-colors ${stickyBg}`}
+                              style={{ width: columnWidths.borrower, left: 48 }}
                             >
                               <div className="flex items-center gap-2">
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>

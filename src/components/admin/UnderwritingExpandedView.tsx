@@ -26,6 +26,7 @@ import {
   MessageSquare, Pencil, Activity, Clock, AlertCircle, TrendingUp,
   User, Mail, Phone, PhoneCall, Hash, Tag, Briefcase, Loader2,
   Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download, Send, Bookmark, Maximize2,
+  MoreHorizontal, Copy, Check,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -167,14 +168,11 @@ function RelatedSection({ icon, label, count, iconColor, onAdd, onExpand, childr
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
-        <div role="button" className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-4 rounded-lg transition-colors cursor-pointer" onClick={() => setOpen(!open)}>
-          {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <span className={iconColor}>{icon}</span> {label}
-          </span>
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-muted text-muted-foreground">
-            {count}
-          </Badge>
+        <div role="button" className="flex items-center gap-1.5 w-full py-2.5 hover:bg-muted/50 px-4 rounded-lg transition-colors cursor-pointer" onClick={() => setOpen(!open)}>
+          <span className={`shrink-0 ${iconColor}`}>{icon}</span>
+          <span className="text-xs font-semibold text-foreground">{label}</span>
+          <span className="text-xs font-normal text-muted-foreground">({count})</span>
+          {open ? <ChevronDown className="h-3 w-3 text-muted-foreground ml-0.5" /> : <ChevronRight className="h-3 w-3 text-muted-foreground ml-0.5" />}
           <div className="flex items-center gap-0.5 ml-auto">
             {onExpand && (
               <Button
@@ -378,6 +376,45 @@ export default function UnderwritingExpandedView() {
   const [savingComment, setSavingComment] = useState<string | null>(null);
 
   const { teamMember } = useTeamMember();
+
+  // ── Follow state ──
+  const [followHovered, setFollowHovered] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const teamMemberId = teamMember?.id;
+  const { data: isFollowing = false } = useQuery({
+    queryKey: ['lead-follow', leadId, teamMemberId],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_followers').select('id')
+        .eq('lead_id', leadId!).eq('team_member_id', teamMemberId!).maybeSingle();
+      return !!data;
+    },
+    enabled: !!leadId && !!teamMemberId,
+  });
+  const toggleFollowMutation = useMutation({
+    mutationFn: async () => {
+      if (isFollowing) {
+        await supabase.from('lead_followers').delete().eq('lead_id', leadId!).eq('team_member_id', teamMemberId!);
+      } else {
+        await supabase.from('lead_followers').insert({ lead_id: leadId!, team_member_id: teamMemberId! });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-follow', leadId, teamMemberId] });
+      toast.success(isFollowing ? 'Unfollowed' : 'Following');
+    },
+  });
+  const handleDeleteLead = useCallback(async () => {
+    if (!leadId) return;
+    await supabase.from('pipeline_leads').delete().eq('lead_id', leadId);
+    await supabase.from('lead_files').delete().eq('lead_id', leadId);
+    await supabase.from('lead_activities').delete().eq('lead_id', leadId);
+    await supabase.from('lead_tasks').delete().eq('lead_id', leadId);
+    const { error } = await supabase.from('leads').delete().eq('id', leadId);
+    if (error) { toast.error('Failed to delete'); return; }
+    toast.success('Deleted');
+    queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+    navigate(-1);
+  }, [leadId, queryClient, navigate]);
 
   // Company inline add state (Related sidebar)
   const [addingCompany, setAddingCompany] = useState(false);
@@ -1397,49 +1434,8 @@ export default function UnderwritingExpandedView() {
   }
 
   return (
+    <>
     <div data-full-bleed className="flex flex-col bg-background h-[calc(100vh-3.5rem)] md:overflow-hidden overflow-y-auto">
-      {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border">
-        {/* Top bar */}
-        <div className="pl-10 pr-4 py-2 flex items-center justify-between">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
-            <X className="h-4 w-4" />
-          </Button>
-          <div className="flex items-center gap-1">
-            <DropdownMenu open={addMenuOpen} onOpenChange={setAddMenuOpen} modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-3 gap-1.5 text-sm font-medium focus-visible:ring-0 focus-visible:ring-offset-0"
-                  onMouseEnter={openAddMenu}
-                  onMouseLeave={closeAddMenu}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onMouseEnter={openAddMenu} onMouseLeave={closeAddMenu}>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setAddMenuOpen(false);
-                    setChecklistTabVisible(true);
-                    setActivityTab('checklist');
-                    setChecklistTitle('Checklist');
-                    setChecklistItems([]);
-                    setNewItemText('');
-                  }}
-                >
-                  <CheckSquare className="h-4 w-4 mr-2" />
-                  Add a Checklist
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-      </div>
-
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
@@ -1447,6 +1443,62 @@ export default function UnderwritingExpandedView() {
         <div className="w-full md:w-[320px] xl:w-[400px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
         <div className="md:h-full overflow-y-auto overflow-x-hidden">
           <div className="pl-10 pr-6 py-6 space-y-6 min-w-0">
+
+            {/* ── Action Buttons Row ── */}
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
+                <X className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                className={`h-8 text-sm font-medium gap-1.5 rounded-full px-5 transition-all ${
+                  isFollowing
+                    ? followHovered
+                      ? 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'
+                      : 'bg-white dark:bg-card text-foreground border border-border'
+                    : 'bg-[#2e1065] hover:bg-[#3b1382] text-white'
+                }`}
+                onClick={() => toggleFollowMutation.mutate()}
+                onMouseEnter={() => setFollowHovered(true)}
+                onMouseLeave={() => setFollowHovered(false)}
+                disabled={toggleFollowMutation.isPending}
+              >
+                {isFollowing ? (
+                  followHovered ? (<><X className="h-3.5 w-3.5" />Unfollow</>) : (<><Check className="h-3.5 w-3.5" />Following</>)
+                ) : ('Follow')}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied'); }}>
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied'); }}>
+                    Copy link
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setAddMenuOpen(false);
+                      setChecklistTabVisible(true);
+                      setActivityTab('checklist');
+                      setChecklistTitle('Checklist');
+                      setChecklistItems([]);
+                      setNewItemText('');
+                    }}
+                  >
+                    Add a Checklist
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400">
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             {/* ── Contact Card Header ── */}
             <div className="flex items-start gap-4">
@@ -1459,8 +1511,8 @@ export default function UnderwritingExpandedView() {
                   {[lead.company_name, formatValue(dealValue)].filter(Boolean).join(' / ')}
                 </p>
                 <div className="mt-2.5">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm font-medium">
-                    <DollarSign className="h-3.5 w-3.5" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-blue-200 text-blue-700 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800">
+                    <DollarSign className="h-3 w-3" />
                     Opportunity
                   </span>
                 </div>
@@ -2709,5 +2761,16 @@ export default function UnderwritingExpandedView() {
         </DialogContent>
       </Dialog>
     </div>
+    <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader><DialogTitle>Delete Record</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Are you sure you want to delete this record? This will permanently remove all associated data.</p>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+          <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => { setShowDeleteConfirm(false); handleDeleteLead(); }}>Delete</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

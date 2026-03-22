@@ -30,8 +30,6 @@ const Projects = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [selectedProject, setSelectedProject] = useState<LeadProject | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -303,18 +301,6 @@ const Projects = () => {
             </table>
           )}
         </ScrollArea>
-
-        {/* Edit Project Dialog */}
-        <ProjectDetailDialog
-          project={selectedProject}
-          open={dialogOpen}
-          onClose={() => { setDialogOpen(false); setSelectedProject(null); }}
-          leadId={selectedProject?.lead_id ?? ''}
-          leadName={selectedProject ? (leadMap[selectedProject.lead_id]?.name ?? '') : ''}
-          teamMembers={teamMembers}
-          currentUserName={teamMember?.name ?? null}
-          onSaved={() => {}}
-        />
 
         {/* Create Project Dialog */}
         <ProjectDetailDialog

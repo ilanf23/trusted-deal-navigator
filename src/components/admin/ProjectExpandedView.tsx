@@ -11,10 +11,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
-  X, ChevronDown, ChevronRight, ChevronLeft, Plus,
-  Users, FolderOpen, CalendarDays, Clock, User,
-  Loader2, Trash2, Circle, CircleCheck, Briefcase,
+  X, ChevronDown, ChevronRight, ChevronLeft, Plus, ArrowUpDown, SlidersHorizontal,
+  Users, FolderOpen, CalendarDays, Clock, User, Lock, FileText, DollarSign,
+  Loader2, Trash2, Circle, CircleCheck, Briefcase, MoreHorizontal, Copy, Check,
 } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
@@ -72,9 +74,8 @@ function RelatedSection({ icon, label, count, onAdd, children }: {
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
         <div role="button" className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-4 rounded-lg transition-colors cursor-pointer" onClick={() => setOpen(!open)}>
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">{icon} {label} <span className="text-muted-foreground font-normal">({count})</span></span>
           {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">{icon} {label}</span>
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1">{count}</Badge>
           {onAdd && (
             <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-foreground ml-auto" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
               <Plus className="h-3 w-3" />
@@ -100,10 +101,14 @@ export default function ProjectExpandedView() {
   const [activityType, setActivityType] = useState('to_do');
   const [noteContent, setNoteContent] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [followHovered, setFollowHovered] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Board task state
   const [addingTaskCol, setAddingTaskCol] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [selectedBoardTask, setSelectedBoardTask] = useState<ProjectTask | null>(null);
 
   // ── Queries ──
 
@@ -184,6 +189,21 @@ export default function ProjectExpandedView() {
     enabled: !!project?.lead_id,
   });
 
+  // Pipeline info for this lead
+  const { data: pipelineInfo } = useQuery({
+    queryKey: ['lead-pipeline-info', project?.lead_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('pipeline_leads')
+        .select('pipeline_id, pipelines(name)')
+        .eq('lead_id', project!.lead_id)
+        .limit(1)
+        .single();
+      return data as { pipeline_id: string; pipelines: { name: string } | null } | null;
+    },
+    enabled: !!project?.lead_id,
+  });
+
   // ── Stats ──
 
   const stats = useMemo(() => {
@@ -192,8 +212,15 @@ export default function ProjectExpandedView() {
     let lastContactedDate: Date | null = null;
     if (activities.length > 0) lastContactedDate = new Date(activities[0].created_at);
     const inactiveDays = lastContactedDate ? differenceInDays(now, lastContactedDate) : null;
-    return { interactionCount, lastContactedDate, inactiveDays };
-  }, [activities]);
+    const wonStatuses = ['funded', 'closed_won', 'won'];
+    const lostStatuses = ['lost', 'closed_lost', 'dead'];
+    const leadStatus = (lead?.status ?? '').toLowerCase();
+    const isWon = wonStatuses.includes(leadStatus);
+    const isResolved = isWon || lostStatuses.includes(leadStatus);
+    const winRate = isResolved ? (isWon ? 100 : 0) : 0;
+    const totalWon = isWon && lead?.loan_amount ? lead.loan_amount : 0;
+    return { interactionCount, lastContactedDate, inactiveDays, winRate, totalWon };
+  }, [activities, lead]);
 
   // ── Field save ──
 
@@ -254,6 +281,18 @@ export default function ProjectExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
   }, [project?.lead_id, queryClient]);
 
+  // ── Board: update task field ──
+
+  const handleUpdateTaskField = useCallback(async (taskId: string, field: string, value: unknown) => {
+    await supabase.from('lead_tasks').update({
+      [field]: value,
+      updated_at: new Date().toISOString(),
+    }).eq('id', taskId);
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+    // Keep selected task in sync
+    setSelectedBoardTask(prev => prev?.id === taskId ? { ...prev, [field]: value } as ProjectTask : prev);
+  }, [project?.lead_id, queryClient]);
+
   // ── Board task grouping ──
 
   const boardColumns = useMemo(() => {
@@ -264,6 +303,37 @@ export default function ProjectExpandedView() {
   }, [tasks]);
 
   const ownerName = project?.owner ? teamMemberMap[project.owner] : null;
+
+  const teamMemberId = teamMember?.id;
+  const { data: isFollowing = false } = useQuery({
+    queryKey: ['lead-follow', projectId, teamMemberId],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_followers').select('id')
+        .eq('lead_id', projectId!).eq('team_member_id', teamMemberId!).maybeSingle();
+      return !!data;
+    },
+    enabled: !!projectId && !!teamMemberId,
+  });
+  const toggleFollowMutation = useMutation({
+    mutationFn: async () => {
+      if (isFollowing) {
+        await supabase.from('lead_followers').delete().eq('lead_id', projectId!).eq('team_member_id', teamMemberId!);
+      } else {
+        await supabase.from('lead_followers').insert({ lead_id: projectId!, team_member_id: teamMemberId! });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-follow', projectId, teamMemberId] });
+      toast.success(isFollowing ? 'Unfollowed' : 'Following');
+    },
+  });
+
+  const handleDeleteProject = useCallback(async () => {
+    if (!projectId) return;
+    await supabase.from('lead_projects' as any).delete().eq('id', projectId);
+    toast.success('Project deleted');
+    navigate('/admin/pipeline/projects');
+  }, [projectId, navigate]);
 
   if (isLoading || !project) {
     return (
@@ -276,26 +346,8 @@ export default function ProjectExpandedView() {
 
   return (
     <div data-full-bleed className="flex flex-col bg-background h-[calc(100vh-3.5rem)] md:overflow-hidden overflow-y-auto">
-      {/* Header */}
+      {/* Tabs bar (no header) */}
       <div className="shrink-0 border-b border-border bg-card">
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/admin/pipeline/projects')} className="text-muted-foreground hover:text-foreground transition-colors">
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <h1 className="text-lg font-bold text-foreground truncate max-w-[500px]">{project.name}</h1>
-            {ownerName && (
-              <div className="h-7 w-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold" title={ownerName}>
-                {ownerName[0]?.toUpperCase()}
-              </div>
-            )}
-          </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/admin/pipeline/projects')}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Tabs: Board | Overview */}
         <div className="flex items-center gap-0 px-6">
           {(['board', 'overview'] as const).map(tab => (
             <button
@@ -312,73 +364,249 @@ export default function ProjectExpandedView() {
         </div>
       </div>
 
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Project</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Are you sure you want to delete this project? This action cannot be undone.</p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { setShowDeleteConfirm(false); handleDeleteProject(); }}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── BOARD TAB ── */}
       {activeTab === 'board' && (
-        <div className="flex-1 overflow-auto p-6">
-          <div className="flex gap-4 h-full min-h-[400px]">
-            {/* To Do Column */}
-            {[
-              { key: 'pending', label: 'To Do', items: boardColumns.todo },
-              { key: 'in_progress', label: 'In Progress', items: boardColumns.inProgress },
-              { key: 'completed', label: 'Done', items: boardColumns.done, icon: <CircleCheck className="h-4 w-4 text-emerald-500" /> },
-            ].map(col => (
-              <div key={col.key} className="flex-1 min-w-[240px] bg-muted/30 rounded-xl flex flex-col">
-                {/* Column header */}
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    {col.icon}
-                    <span className="text-sm font-semibold text-foreground">{col.label}</span>
-                    <span className="text-xs text-muted-foreground">({col.items.length})</span>
-                  </div>
-                  <button
-                    onClick={() => { setAddingTaskCol(col.key); setNewTaskTitle(''); }}
-                    className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* Board columns */}
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            {/* Toolbar */}
+            <div className="shrink-0 flex items-center justify-end gap-2 px-6 py-2 border-b border-border bg-card/50">
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5">
+                <ArrowUpDown className="h-3 w-3" /> Sort
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5">
+                <SlidersHorizontal className="h-3 w-3" /> Filter
+              </Button>
+            </div>
 
-                {/* Cards */}
-                <div className="flex-1 px-3 pb-3 space-y-2 overflow-y-auto">
-                  {addingTaskCol === col.key && (
-                    <div className="bg-card rounded-lg border border-border p-3">
-                      <input
-                        autoFocus
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newTaskTitle.trim()) handleAddBoardTask(col.key);
-                          if (e.key === 'Escape') setAddingTaskCol(null);
-                        }}
-                        placeholder="Task name..."
-                        className="w-full text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
-                      />
-                      <div className="flex items-center gap-2 mt-2">
-                        <Button size="sm" className="h-7 text-xs" onClick={() => handleAddBoardTask(col.key)} disabled={!newTaskTitle.trim()}>Add</Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingTaskCol(null)}>Cancel</Button>
+            <div className="flex-1 overflow-auto p-6">
+              <div className="flex gap-4 h-full min-h-[400px]">
+                {[
+                  { key: 'pending', label: 'To Do', items: boardColumns.todo },
+                  { key: 'in_progress', label: 'In Progress', items: boardColumns.inProgress },
+                  { key: 'completed', label: 'Done', items: boardColumns.done, icon: <CircleCheck className="h-4 w-4 text-emerald-500" /> },
+                ].map(col => (
+                  <div key={col.key} className="flex-1 min-w-[220px] bg-muted/30 rounded-xl flex flex-col">
+                    {/* Column header */}
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {col.icon}
+                        <span className="text-sm font-semibold text-foreground">{col.label}</span>
+                        <span className="text-xs text-muted-foreground">({col.items.length})</span>
                       </div>
+                      <button
+                        onClick={() => { setAddingTaskCol(col.key); setNewTaskTitle(''); }}
+                        className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
                     </div>
-                  )}
-                  {col.items.map(task => (
-                    <div key={task.id} className="bg-card rounded-lg border border-border p-3 hover:shadow-sm transition-shadow">
-                      <p className="text-sm text-foreground truncate">{task.title}</p>
-                      {task.assigned_to && teamMemberMap[task.assigned_to] && (
-                        <div className="flex items-center justify-end mt-2">
-                          <span className="text-[11px] text-muted-foreground">{teamMemberMap[task.assigned_to]}</span>
-                          <div className="ml-1.5 h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[9px] font-bold">
-                            {teamMemberMap[task.assigned_to][0]?.toUpperCase()}
+
+                    {/* Cards */}
+                    <div className="flex-1 px-3 pb-3 space-y-2 overflow-y-auto">
+                      {addingTaskCol === col.key && (
+                        <div className="bg-card rounded-lg border border-border p-3">
+                          <input
+                            autoFocus
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && newTaskTitle.trim()) handleAddBoardTask(col.key);
+                              if (e.key === 'Escape') setAddingTaskCol(null);
+                            }}
+                            placeholder="Task name..."
+                            className="w-full text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
+                          />
+                          <div className="flex items-center gap-2 mt-2">
+                            <Button size="sm" className="h-7 text-xs" onClick={() => handleAddBoardTask(col.key)} disabled={!newTaskTitle.trim()}>Add</Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingTaskCol(null)}>Cancel</Button>
                           </div>
                         </div>
                       )}
+                      {col.items.map(task => (
+                        <div
+                          key={task.id}
+                          onClick={() => setSelectedBoardTask(task)}
+                          className={`bg-card rounded-lg border p-3 hover:shadow-sm transition-all cursor-pointer ${
+                            selectedBoardTask?.id === task.id ? 'border-blue-500 ring-1 ring-blue-500/30' : 'border-border'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
+                            <p className="text-sm text-foreground truncate flex-1">{task.title}</p>
+                          </div>
+                          {task.assigned_to && teamMemberMap[task.assigned_to] && (
+                            <div className="flex items-center justify-end mt-3">
+                              <span className="text-[11px] text-muted-foreground">{teamMemberMap[task.assigned_to]}</span>
+                              <div className="ml-1.5 h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[9px] font-bold">
+                                {teamMemberMap[task.assigned_to][0]?.toUpperCase()}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {col.items.length === 0 && addingTaskCol !== col.key && (
+                        <div className="text-center py-8 text-muted-foreground text-xs">No tasks</div>
+                      )}
                     </div>
-                  ))}
-                  {col.items.length === 0 && addingTaskCol !== col.key && (
-                    <div className="text-center py-8 text-muted-foreground text-xs">No tasks</div>
-                  )}
-                </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
+
+          {/* Task detail panel */}
+          {selectedBoardTask && (
+            <div className="w-[360px] shrink-0 border-l border-border bg-card flex flex-col overflow-hidden">
+              <ScrollArea className="flex-1">
+                <div className="px-5 py-4 space-y-5">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-base font-semibold text-foreground leading-tight flex-1">{selectedBoardTask.title}</h3>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setSelectedBoardTask(null)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Title */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Title</label>
+                    <Input
+                      defaultValue={selectedBoardTask.title}
+                      className="h-9 text-sm"
+                      onBlur={(e) => {
+                        if (e.target.value.trim() !== selectedBoardTask.title) {
+                          handleUpdateTaskField(selectedBoardTask.id, 'title', e.target.value.trim());
+                        }
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Description</label>
+                    <Textarea
+                      defaultValue={selectedBoardTask.description ?? ''}
+                      placeholder="Add description..."
+                      rows={4}
+                      className="text-sm resize-none"
+                      onBlur={(e) => {
+                        const val = e.target.value.trim() || null;
+                        if (val !== (selectedBoardTask.description ?? '')) {
+                          handleUpdateTaskField(selectedBoardTask.id, 'description', val);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Assigned To */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Assigned To</label>
+                    <Select
+                      value={selectedBoardTask.assigned_to ?? ''}
+                      onValueChange={(v) => handleUpdateTaskField(selectedBoardTask.id, 'assigned_to', v || null)}
+                    >
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                      <SelectContent>
+                        {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Status</label>
+                    <Select
+                      value={selectedBoardTask.status ?? 'pending'}
+                      onValueChange={(v) => handleUpdateTaskField(selectedBoardTask.id, 'status', v)}
+                    >
+                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">To Do</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Done</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Priority */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Priority</label>
+                    <Select
+                      value={selectedBoardTask.priority ?? ''}
+                      onValueChange={(v) => handleUpdateTaskField(selectedBoardTask.id, 'priority', v || null)}
+                    >
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Due Date */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Due Date</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="flex items-center gap-2 text-sm text-foreground hover:bg-muted/40 rounded-md px-2 py-1 -mx-2 transition-colors w-full text-left">
+                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          {selectedBoardTask.due_date ? format(parseISO(selectedBoardTask.due_date), 'M/d/yyyy') : <span className="text-muted-foreground italic">Set due date</span>}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedBoardTask.due_date ? parseISO(selectedBoardTask.due_date) : undefined}
+                          onSelect={(date) => handleUpdateTaskField(selectedBoardTask.id, 'due_date', date ? date.toISOString() : null)}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* Created */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Created</label>
+                    <p className="text-sm text-muted-foreground">{format(parseISO(selectedBoardTask.created_at), 'M/d/yyyy h:mm a')}</p>
+                  </div>
+
+                  {/* Delete task */}
+                  <div className="pt-2 border-t border-border">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs text-destructive hover:text-destructive gap-1.5"
+                      onClick={async () => {
+                        await supabase.from('lead_tasks').delete().eq('id', selectedBoardTask.id);
+                        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+                        setSelectedBoardTask(null);
+                        toast.success('Task deleted');
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" /> Delete Task
+                    </Button>
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>
+          )}
         </div>
       )}
 
@@ -390,21 +618,56 @@ export default function ProjectExpandedView() {
           <div className="w-full md:w-[320px] xl:w-[400px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
             <ScrollArea className="md:h-full">
               <div className="px-6 py-6 space-y-5">
-                {/* Header card */}
-                <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <Briefcase className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-semibold text-foreground truncate">{project.name}</h2>
-                    {lead && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{lead.opportunity_name || lead.name}</p>
-                    )}
-                  </div>
+                {/* Action buttons */}
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => navigate('/admin/pipeline/projects')}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={isFollowing ? 'default' : 'outline'}
+                    size="sm"
+                    className={`h-8 px-3 text-xs font-medium gap-1.5 ${isFollowing ? 'bg-blue-600 hover:bg-red-600 text-white' : ''}`}
+                    onClick={() => toggleFollowMutation.mutate()}
+                    onMouseEnter={() => setFollowHovered(true)}
+                    onMouseLeave={() => setFollowHovered(false)}
+                  >
+                    {isFollowing ? (followHovered ? 'Unfollow' : 'Following') : 'Follow'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href);
+                      setCopied(true);
+                      toast.success('Link copied');
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                  >
+                    {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
+                        <Trash2 className="h-4 w-4 mr-2" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 {/* Name */}
                 <FieldRow label="Name *" value={project.name} onSave={(v) => saveField('name', v)} />
+
+                {/* Template */}
+                <div>
+                  <label className="text-xs text-muted-foreground flex items-center gap-1 mb-0.5">Template <Lock className="h-3 w-3" /></label>
+                  <p className="text-sm text-muted-foreground italic">No Selection</p>
+                </div>
 
                 {/* CLX File Name */}
                 <FieldRow label="CLX - File Name" value={project.clx_file_name ?? ''} onSave={(v) => saveField('clx_file_name', v || null)} />
@@ -452,7 +715,21 @@ export default function ProjectExpandedView() {
                 {/* Due Date */}
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Due Date</label>
-                  <p className="text-sm text-foreground">{project.due_date ? format(parseISO(project.due_date), 'M/d/yyyy') : '—'}</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="flex items-center gap-2 text-sm text-foreground hover:bg-muted/40 rounded-md px-2 py-1 -mx-2 transition-colors w-full text-left">
+                        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        {project.due_date ? format(parseISO(project.due_date), 'M/d/yyyy') : <span className="text-muted-foreground italic">Set due date</span>}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={project.due_date ? parseISO(project.due_date) : undefined}
+                        onSelect={(date) => saveField('due_date', date ? date.toISOString() : null)}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* Tags */}
@@ -487,45 +764,46 @@ export default function ProjectExpandedView() {
           </div>
 
           {/* CENTER: Activity */}
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-muted/20">
-            {/* Stats row */}
-            <div className="shrink-0 px-5 py-4">
-              <div className="grid grid-cols-3 divide-x divide-border rounded-xl border border-border bg-card">
-                <div className="flex flex-col items-center justify-center py-3 px-2">
-                  <span className="text-lg font-bold text-foreground">{stats.interactionCount || '--'}</span>
-                  <span className="text-[11px] text-muted-foreground">Interactions</span>
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#eeedf3] dark:bg-violet-950/20">
+            <ScrollArea className="md:flex-1">
+              <div className="px-6 pt-5">
+                {/* Stats row — floating card */}
+                <div className="grid grid-cols-3 divide-x divide-border rounded-lg border border-border bg-card mb-5">
+                  <div className="flex flex-col items-center justify-center py-3 px-2">
+                    <span className="text-lg font-bold text-foreground">{stats.interactionCount || '--'}</span>
+                    <span className="text-[11px] text-muted-foreground">Interactions</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center py-3 px-2">
+                    <span className="text-lg font-bold text-foreground">
+                      {stats.lastContactedDate ? format(stats.lastContactedDate, 'M/d/yyyy') : '--'}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">Last Contacted</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center py-3 px-2">
+                    <span className="text-lg font-bold text-foreground">{stats.inactiveDays ?? '--'}</span>
+                    <span className="text-[11px] text-muted-foreground">Inactive Days</span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-center justify-center py-3 px-2">
-                  <span className="text-lg font-bold text-foreground">
-                    {stats.lastContactedDate ? format(stats.lastContactedDate, 'M/d/yyyy') : '--'}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">Last Contacted</span>
-                </div>
-                <div className="flex flex-col items-center justify-center py-3 px-2">
-                  <span className="text-lg font-bold text-foreground">{stats.inactiveDays ?? '--'}</span>
-                  <span className="text-[11px] text-muted-foreground">Inactive Days</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Activity tabs */}
-            <div className="shrink-0 flex items-stretch bg-card border-b border-border">
-              {(['log', 'note'] as const).map(tab => (
-                <button
-                  key={tab}
-                  className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
-                    activityTab === tab ? 'text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  onClick={() => setActivityTab(tab)}
-                >
-                  {tab === 'log' ? 'Log Activity' : 'Create Note'}
-                  {activityTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-t-full" />}
-                </button>
-              ))}
-            </div>
+                {/* Activity tabs + form — floating card */}
+                <div className="rounded-lg border border-border bg-card overflow-hidden mb-5">
+                  <div className="flex items-stretch">
+                    {(['log', 'note'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
+                          activityTab === tab ? 'text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                        onClick={() => setActivityTab(tab)}
+                      >
+                        {tab === 'log' ? 'Log Activity' : 'Create Note'}
+                        {activityTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-700 dark:bg-blue-500" />}
+                      </button>
+                    ))}
+                  </div>
 
-            {/* Activity input */}
-            <div className="shrink-0 bg-card border-b border-border px-5 py-4">
+                  {/* Activity input */}
+                  <div className="p-5">
               {activityTab === 'log' && (
                 <div className="mb-3">
                   <Select value={activityType} onValueChange={setActivityType}>
@@ -555,14 +833,14 @@ export default function ProjectExpandedView() {
                   </Button>
                 </div>
               )}
-            </div>
+                  </div>
+                </div>
 
-            {/* Activity timeline */}
-            <ScrollArea className="md:flex-1">
-              <div className="px-5 py-4 space-y-3">
+                {/* Activity timeline */}
+                <div className="space-y-3 pb-5">
                 {activities.length > 0 ? (
                   activities.map(act => (
-                    <div key={act.id} className="rounded-xl bg-card border border-border p-4">
+                    <div key={act.id} className="rounded-lg bg-card border border-border p-4 hover:border-blue-100 dark:hover:border-blue-900 transition-colors">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="h-7 w-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-bold">
                           {(act.created_by?.[0] ?? '?').toUpperCase()}
@@ -579,6 +857,7 @@ export default function ProjectExpandedView() {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground text-sm">No activity recorded yet</div>
                 )}
+                </div>
               </div>
             </ScrollArea>
           </div>
@@ -587,9 +866,16 @@ export default function ProjectExpandedView() {
           <div className="w-full md:w-[280px] xl:w-[320px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
             <ScrollArea className="md:flex-1">
               <div className="py-4 px-1 overflow-hidden">
+                {/* Files */}
+                <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0} onAdd={() => {}}>
+                  <div className="py-1">
+                    <p className="text-xs text-muted-foreground">No files attached</p>
+                  </div>
+                </RelatedSection>
+
                 {/* People */}
-                <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length}>
-                  <div className="space-y-2 py-1">
+                <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} onAdd={() => {}}>
+                  <div className="space-y-3 py-1">
                     {contacts.map((c: any) => (
                       <div key={c.id} className="flex items-start gap-2.5">
                         <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300 shrink-0">
@@ -599,7 +885,7 @@ export default function ProjectExpandedView() {
                           <p className="text-xs font-semibold text-foreground truncate">{c.name}</p>
                           {c.title && <p className="text-[11px] text-blue-600 dark:text-blue-400 truncate">{c.title}</p>}
                           {c.phone && <p className="text-[11px] text-muted-foreground">{c.phone}</p>}
-                          {c.email && <p className="text-[11px] text-blue-600 dark:text-blue-400 truncate">{c.email}</p>}
+                          {c.email && <p className="text-[11px] text-blue-600 dark:text-blue-400 truncate ml-1">{c.email}</p>}
                         </div>
                       </div>
                     ))}
@@ -608,7 +894,7 @@ export default function ProjectExpandedView() {
                 </RelatedSection>
 
                 {/* Tasks */}
-                <RelatedSection icon={<Circle className="h-3.5 w-3.5" />} label="Tasks" count={tasks.length}>
+                <RelatedSection icon={<Circle className="h-3.5 w-3.5" />} label="Tasks" count={tasks.length} onAdd={() => {}}>
                   <div className="space-y-1 py-1">
                     {tasks.slice(0, 5).map(t => (
                       <div key={t.id} className="flex items-center gap-2 text-xs py-1">
@@ -623,12 +909,74 @@ export default function ProjectExpandedView() {
                 </RelatedSection>
 
                 {/* Companies */}
-                <RelatedSection icon={<Briefcase className="h-3.5 w-3.5" />} label="Companies" count={lead?.company_name ? 1 : 0}>
+                <RelatedSection icon={<Briefcase className="h-3.5 w-3.5" />} label="Companies" count={lead?.company_name ? 1 : 0} onAdd={() => {}}>
                   <div className="py-1">
                     {lead?.company_name ? (
                       <p className="text-xs text-foreground">{lead.company_name}</p>
                     ) : (
-                      <p className="text-xs text-muted-foreground">No companies</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Briefcase className="h-3.5 w-3.5" />
+                        <span>Add Company</span>
+                      </div>
+                    )}
+                  </div>
+                </RelatedSection>
+
+                {/* Financial Summary */}
+                <div className="px-4 py-4 border-t border-border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Won</p>
+                      <p className="text-lg font-bold text-foreground">${stats.totalWon.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Win Rate</p>
+                      <p className="text-lg font-bold text-foreground">{stats.winRate}%</p>
+                    </div>
+                  </div>
+
+                  {/* Pipeline value bar */}
+                  {lead?.loan_amount && lead.loan_amount > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-600 mb-1">
+                        ${lead.loan_amount >= 1000 ? `${(lead.loan_amount / 1000).toFixed(1)}K` : lead.loan_amount.toLocaleString()}
+                      </p>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-emerald-500" style={{ width: '100%' }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pipeline Records */}
+                <RelatedSection icon={<DollarSign className="h-3.5 w-3.5" />} label="Pipeline Records" count={lead ? 1 : 0} onAdd={() => {}}>
+                  <div className="py-1">
+                    {lead ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-7 w-7 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
+                            <DollarSign className="h-3.5 w-3.5 text-white" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-semibold text-foreground truncate">{lead.opportunity_name || lead.name}</p>
+                              {lead.loan_amount && (
+                                <span className="text-xs font-semibold text-foreground shrink-0">
+                                  ${lead.loan_amount >= 1000 ? `${(lead.loan_amount / 1000).toFixed(1)}K` : lead.loan_amount.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[11px] text-muted-foreground">{pipelineInfo?.pipelines?.name ?? 'Pipeline'}</span>
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 rounded-full capitalize">
+                                {lead.status ?? 'open'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No pipeline records</p>
                     )}
                   </div>
                 </RelatedSection>

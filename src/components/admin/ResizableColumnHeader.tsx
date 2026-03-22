@@ -62,7 +62,7 @@ const ResizableColumnHeader = ({
       {/* Resize handle */}
       <div
         className={cn(
-          "absolute right-0 top-0 bottom-0 w-1 cursor-col-resize group/resize z-10",
+          "absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize group/resize z-10",
           "hover:bg-primary/30 transition-colors",
           isResizing && "bg-primary/50"
         )}

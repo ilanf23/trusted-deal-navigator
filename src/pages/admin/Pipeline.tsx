@@ -23,11 +23,11 @@ import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   ArrowUpDown,
-  AlignJustify,
   PanelLeft,
   Filter,
   Settings2,
   ChevronDown,
+  ChevronUp,
   Plus,
   DollarSign,
   Check,
@@ -42,6 +42,18 @@ import {
   Download,
   PlusCircle,
   Loader2,
+  Search,
+  Bookmark,
+  BarChart3,
+  Landmark,
+  User,
+  CalendarDays,
+  MessageSquare,
+  Moon,
+  CheckSquare,
+  Tag,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
@@ -57,16 +69,15 @@ import { usePipelineLeads, type FlatPipelineLead } from '@/hooks/usePipelineLead
 import { usePipelineMutations } from '@/hooks/usePipelineMutations';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
 const AVATAR_COLORS = [
-  'bg-blue-500', 'bg-emerald-500', 'bg-blue-500', 'bg-amber-500',
-  'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
-  'bg-orange-500', 'bg-pink-500',
+  'bg-[#5C9EAD]', 'bg-[#4CAF50]', 'bg-[#C62828]', 'bg-[#EF6C00]',
+  'bg-[#546E7A]', 'bg-[#26A69A]', 'bg-[#6D8B74]', 'bg-[#3E7CB1]',
+  'bg-[#8D6E63]', 'bg-[#78909C]',
 ];
 
 const FILTER_OPTIONS = [
@@ -155,6 +166,33 @@ const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
   { value: 'assigned_to', label: 'Owner' },
   { value: 'updated_at', label: 'Updated' },
 ];
+
+const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir: SortDir }[]> = {
+  deal: [
+    { label: 'Name ascending', field: 'name', dir: 'asc' },
+    { label: 'Name descending', field: 'name', dir: 'desc' },
+  ],
+  company: [
+    { label: 'Company ascending', field: 'company_name', dir: 'asc' },
+    { label: 'Company descending', field: 'company_name', dir: 'desc' },
+  ],
+  status: [
+    { label: 'Status ascending', field: 'status', dir: 'asc' },
+    { label: 'Status descending', field: 'status', dir: 'desc' },
+  ],
+  ownedBy: [
+    { label: 'Owner ascending', field: 'assigned_to', dir: 'asc' },
+    { label: 'Owner descending', field: 'assigned_to', dir: 'desc' },
+  ],
+  lastContacted: [
+    { label: 'Last contacted ascending', field: 'last_activity_at', dir: 'asc' },
+    { label: 'Last contacted descending', field: 'last_activity_at', dir: 'desc' },
+  ],
+  stageUpdated: [
+    { label: 'Updated ascending', field: 'updated_at', dir: 'asc' },
+    { label: 'Updated descending', field: 'updated_at', dir: 'desc' },
+  ],
+};
 
 // ── Kanban sub-components ──
 function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick }: {
@@ -285,6 +323,9 @@ const Pipeline = () => {
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedLead, setDraggedLead] = useState<FlatPipelineLead | null>(null);
 
+  // Column sort menu state
+  const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
+
   // Bulk action state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [addTagsDialogOpen, setAddTagsDialogOpen] = useState(false);
@@ -345,6 +386,14 @@ const Pipeline = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showColumnsMenu]);
 
+  // Close column sort menu on outside click
+  useEffect(() => {
+    if (!colMenuOpen) return;
+    function handleClick() { setColMenuOpen(null); }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [colMenuOpen]);
+
   // Close detail panel on Escape
   useEffect(() => {
     function handleEsc(e: KeyboardEvent) {
@@ -357,7 +406,6 @@ const Pipeline = () => {
   function clearAllFilters() {
     setActiveFilter('all');
     setSearchTerm('');
-    setSearchOpen(false);
   }
 
   function toggleColumn(key: ColumnKey) {
@@ -855,19 +903,57 @@ const Pipeline = () => {
     if (colKey && !columnVisibility[colKey]) return null;
     const widthKey = colKey ?? 'deal';
     const width = columnWidths[widthKey] ?? 120;
+    const sortOptions = COLUMN_SORT_OPTIONS[widthKey];
+    const isMenuOpen = colMenuOpen === widthKey;
     return (
       <th
-        className={`px-4 py-3 text-left whitespace-nowrap ${extraClassName ?? ''}`}
-        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, ...extraStyle }}
+        className={`px-4 py-3 text-left whitespace-nowrap group/col ${extraClassName ?? ''}`}
+        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', ...extraStyle }}
       >
         <ResizableColumnHeader
           columnId={widthKey}
           currentWidth={`${width}px`}
           onResize={handleColumnResize}
         >
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
             {children}
           </span>
+          {/* Three-dot menu button -- inline so it's never hidden */}
+          {sortOptions && (
+            <div className="relative ml-auto shrink-0" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
+                style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
+                onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
+                onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+              >
+                &#8942;
+              </button>
+              {isMenuOpen && (
+                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 50, backgroundColor: '#fff', border: '1px solid #e4dced', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220, padding: '4px 0', overflow: 'hidden' }}>
+                  {sortOptions.map((opt) => (
+                    <button
+                      key={`${opt.field}-${opt.dir}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSortField(opt.field);
+                        setSortDir(opt.dir);
+                        setColMenuOpen(null);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
+                    >
+                      {opt.dir === 'asc' ? (
+                        <span style={{ color: '#3b2778', fontSize: 16 }}>&#8593;</span>
+                      ) : (
+                        <span style={{ color: '#5f6368', fontSize: 16 }}>&#8595;</span>
+                      )}
+                      <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </ResizableColumnHeader>
       </th>
     );
@@ -884,144 +970,68 @@ const Pipeline = () => {
     <EvanLayout>
       <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
 
-        {/* Header */}
-        <div className="shrink-0 border-b border-border bg-background px-5 py-3 flex flex-wrap items-center gap-3">
+        {/* ── Copper-Style Header ── */}
+        <div className="shrink-0 border-b border-[#e8eaed] dark:border-border bg-white dark:bg-background px-5 py-3 flex items-center gap-4">
+          <h1 className="text-lg font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap shrink-0">Pipeline</h1>
+
+          {/* Centered search bar */}
+          <div className="flex-1 flex justify-center max-w-2xl mx-auto">
+            <div className="relative w-full">
+              <Input
+                type="text"
+                placeholder="Search by name, email, domain or phone number"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-9 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border-transparent focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
+              />
+            </div>
+          </div>
+
           <div className="flex items-center gap-2 shrink-0">
-            <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">Pipeline</h1>
-            <DbTableBadge tables={['leads', 'pipeline_leads', 'pipeline_stages']} />
-          </div>
-
-          <div className="flex-1 min-w-0" />
-
-          {/* Table | Kanban | Sort toggle */}
-          <div className="flex items-center h-7 gap-0.5 shrink-0">
-            <button
-              onClick={() => setViewMode('table')}
-              title="Table view"
-              className={`flex items-center justify-center h-full px-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'text-blue-700 dark:text-blue-400'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Table2 className="h-3.5 w-3.5" />
+            <button className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors">
+              <Plus className="h-5 w-5 text-[#5f6368] dark:text-muted-foreground" />
             </button>
-            <button
-              onClick={() => setViewMode('kanban')}
-              title="Kanban view"
-              className={`flex items-center justify-center h-full px-2 rounded-md transition-all ${
-                viewMode === 'kanban'
-                  ? 'text-blue-700 dark:text-blue-400'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  title="Sort"
-                  className={`flex items-center justify-center h-full px-2 rounded-md transition-all ${
-                    isNonDefaultSort
-                      ? 'text-blue-700 dark:text-blue-400'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <ArrowUpDown className="h-3.5 w-3.5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 p-3 space-y-3">
-                <p className="text-xs font-semibold text-foreground">Sort by</p>
-                <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SORT_FIELD_OPTIONS.map(o => (
-                      <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="asc" className="text-xs">Ascending</SelectItem>
-                    <SelectItem value="desc" className="text-xs">Descending</SelectItem>
-                  </SelectContent>
-                </Select>
-              </PopoverContent>
-            </Popover>
-            <PipelineSettingsPopover open={settingsOpen} onOpenChange={setSettingsOpen} />
           </div>
-
-          {/* Add Opportunity button */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="group relative h-9 pl-4 pr-3 text-[13px] font-semibold rounded-full shrink-0 flex items-center gap-2 text-white overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
-                style={{ background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)' }}
-              >
-                <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
-                <span>Add Opportunity</span>
-                <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-xl border border-border bg-popover">
-              <DropdownMenuItem
-                onClick={() => openAddDialog()}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-foreground hover:bg-muted focus:bg-muted transition-colors"
-              >
-                <PlusCircle className="h-4 w-4 text-muted-foreground" />
-                Add Opportunity
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-[14px] font-medium text-foreground hover:bg-muted focus:bg-muted transition-colors"
-              >
-                <Download className="h-4 w-4 text-muted-foreground" />
-                Import Opportunities
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Search bar */}
-        <div className="shrink-0 px-5 py-2.5 border-b border-border bg-background">
-          <Input
-            type="text"
-            placeholder="Search by name, email, domain or phone number"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-9 px-3 text-sm rounded-full bg-muted/50 border-transparent focus:border-border focus:bg-background placeholder:text-muted-foreground/60"
-          />
         </div>
 
         {/* Body: Sidebar + Table */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-1 min-h-0 overflow-hidden gap-3">
 
-          {/* Left Sidebar */}
+          {/* ── Left Sidebar (Copper style) ── */}
           <aside
-            className={`shrink-0 border-r border-border bg-background flex flex-col overflow-hidden transition-all duration-200 ${
-              sidebarOpen ? 'w-56' : 'w-0 border-r-0'
+            className={`shrink-0 border-r border-[#e8eaed] dark:border-border bg-white dark:bg-background flex flex-col overflow-hidden transition-all duration-200 ${
+              sidebarOpen ? 'w-72' : 'w-0 border-r-0'
             }`}
           >
-            <div className="w-56">
-              <div className="px-3 pt-3 pb-2 flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</span>
-                <CreateFilterDialog
-                  teamMemberMap={teamMemberMap}
-                  stageConfig={Object.fromEntries(Object.entries(dynamicStageConfig).map(([k, v]) => [k, { label: v.title }]))}
-                  onSave={(filter) => {
-                    const id = `custom_${Date.now()}`;
-                    setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
-                    toast.success(`Filter "${filter.filterName}" created`);
-                  }}
-                />
+            <div className="w-72 pl-4">
+              <div className="px-6 pt-3 pb-2 flex items-center justify-between">
+                <span className="text-[12px] font-semibold text-[#1f1f1f] dark:text-foreground">Saved Filters</span>
+                <div className="flex items-center gap-1">
+                  <CreateFilterDialog
+                    teamMemberMap={teamMemberMap}
+                    stageConfig={Object.fromEntries(Object.entries(dynamicStageConfig).map(([k, v]) => [k, { label: v.title }]))}
+                    onSave={(filter) => {
+                      const id = `custom_${Date.now()}`;
+                      setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+                      toast.success(`Filter "${filter.filterName}" created`);
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Search Filters input */}
+              <div className="px-6 pb-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search Filters"
+                    className="w-full h-8 px-3 text-[13px] rounded-lg bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border text-[#1f1f1f] dark:text-foreground placeholder:text-[#80868b] dark:placeholder:text-muted-foreground/60 outline-none focus:border-[#1a73e8] dark:focus:border-blue-500 transition-colors"
+                  />
+                </div>
               </div>
 
               <nav className="flex-1 overflow-y-auto pb-4">
-                {/* Top-level filters */}
+                {/* All Opportunities -- top item */}
                 {FILTER_OPTIONS.filter(o => o.group === 'top').map((opt) => {
                   const isActive = activeFilter === opt.id;
                   const count = filterCounts[opt.id] ?? 0;
@@ -1029,15 +1039,17 @@ const Pipeline = () => {
                     <button
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                        isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      className={`relative w-full flex items-center justify-between px-6 py-3 text-left transition-colors ${
+                        isActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted hover:text-[#1f1f1f] dark:hover:text-foreground'
                       }`}
                     >
-                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                      <span className={`text-[13px] font-medium truncate ${isActive ? 'text-blue-700 dark:text-blue-400' : ''}`}>{opt.label}</span>
+                      <span className="flex items-center gap-2">
+                        <Bookmark className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-[#3b2778] dark:text-purple-400' : 'text-[#80868b] dark:text-muted-foreground'}`} />
+                        <span className={`text-[14px] font-medium truncate`}>{opt.label}</span>
+                      </span>
                       {count > 0 && (
-                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
-                          {count}
+                        <span className="ml-1 shrink-0 text-[11px] font-medium text-[#5f6368] dark:text-muted-foreground">
+                          {count.toLocaleString()}
                         </span>
                       )}
                     </button>
@@ -1047,30 +1059,23 @@ const Pipeline = () => {
                 {/* Public section */}
                 <button
                   onClick={() => setPublicFiltersOpen(v => !v)}
-                  className="w-full px-3 pt-3 pb-1 flex items-center justify-between group"
+                  className="w-full px-6 pt-4 pb-1 flex items-center justify-between group"
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Public</span>
-                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : '-rotate-90'}`} />
+                  <span className="text-[11px] font-semibold text-[#5f6368] dark:text-muted-foreground">Public</span>
+                  <ChevronUp className={`h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : 'rotate-180'}`} />
                 </button>
 
                 {publicFiltersOpen && FILTER_OPTIONS.filter(o => o.group === 'public').map((opt) => {
                   const isActive = activeFilter === opt.id;
-                  const count = filterCounts[opt.id] ?? 0;
                   return (
                     <button
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                        isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      className={`relative w-full flex items-center px-6 py-2.5 text-left transition-colors ${
+                        isActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted hover:text-[#1f1f1f] dark:hover:text-foreground'
                       }`}
                     >
-                      {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                      <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{opt.label}</span>
-                      {count > 0 && (
-                        <span className={`ml-1 shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`}>
-                          {count}
-                        </span>
-                      )}
+                      <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{opt.label}</span>
                     </button>
                   );
                 })}
@@ -1078,8 +1083,8 @@ const Pipeline = () => {
                 {/* Custom Filters */}
                 {customFilters.length > 0 && (
                   <>
-                    <div className="px-3 pt-3 pb-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Custom</span>
+                    <div className="px-6 pt-4 pb-1">
+                      <span className="text-[11px] font-semibold text-[#5f6368] dark:text-muted-foreground">Custom</span>
                     </div>
                     {customFilters.map((cf) => {
                       const isActive = activeFilter === cf.id;
@@ -1087,12 +1092,11 @@ const Pipeline = () => {
                         <button
                           key={cf.id}
                           onClick={() => setActiveFilter(cf.id)}
-                          className={`relative w-full flex items-center justify-between px-3 py-1.5 text-left transition-colors ${
-                            isActive ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          className={`relative w-full flex items-center px-6 py-2.5 text-left transition-colors ${
+                            isActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted hover:text-[#1f1f1f] dark:hover:text-foreground'
                           }`}
                         >
-                          {isActive && <span className="absolute left-0 top-0.5 bottom-0.5 w-0.5 rounded-r-full bg-blue-600" />}
-                          <span className={`text-[13px] truncate ${isActive ? 'font-medium text-blue-700 dark:text-blue-400' : ''}`}>{cf.label}</span>
+                          <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{cf.label}</span>
                         </button>
                       );
                     })}
@@ -1105,64 +1109,48 @@ const Pipeline = () => {
           {/* Main Table Area */}
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-            {/* Toolbar */}
-            <div className="shrink-0 border-b border-border px-3 py-2 flex items-center justify-between gap-2 bg-muted/50">
+            {/* ── Copper-Style Content Title Bar ── */}
+            <div className="shrink-0 border-b-0 px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
 
-              {/* Left group */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSidebarOpen(v => !v)}
                   title={sidebarOpen ? 'Hide filters' : 'Show filters'}
-                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border text-xs font-medium transition-all bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors text-[#5f6368] dark:text-muted-foreground"
                 >
-                  <PanelLeft className="h-3.5 w-3.5 shrink-0" />
+                  <PanelLeft className="h-4 w-4" />
                 </button>
 
+                <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
+                  {FILTER_OPTIONS.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Opportunities'}
+                </h2>
+                <Bookmark className="h-4 w-4 text-[#80868b] dark:text-muted-foreground shrink-0" />
                 {!isLoading && (
-                  <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">
+                  <span className="text-[#5f6368] dark:text-muted-foreground text-sm tabular-nums whitespace-nowrap">
                     # {filteredAndSorted.length.toLocaleString()} {filteredAndSorted.length === 1 ? 'deal' : 'deals'}
-                  </span>
-                )}
-
-                {isNonDefaultSort && (
-                  <span className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md px-2 h-7">
-                    <ArrowUpDown className="h-3 w-3 shrink-0" />
-                    {sortFieldLabel} {sortDir === 'asc' ? '↑' : '↓'}
-                    <button
-                      onClick={() => { setSortField('last_activity_at'); setSortDir('desc'); }}
-                      className="ml-0.5 text-blue-400 hover:text-blue-700"
-                      title="Reset sort"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
                   </span>
                 )}
               </div>
 
-              {/* Right group */}
-              <div className="flex items-center gap-0.5">
-
-                {/* Row density toggle */}
-                <button
-                  onClick={() => setRowDensity(d => d === 'comfortable' ? 'compact' : 'comfortable')}
-                  title={`Row density: ${rowDensity}`}
-                  className={iconBtn(rowDensity === 'compact')}
-                >
-                  <AlignJustify className={`h-3.5 w-3.5 ${rowDensity === 'compact' ? 'text-blue-600' : ''}`} />
-                </button>
-
+              <div className="flex items-center gap-1">
                 {/* Sort */}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button title="Sort options" className={iconBtn(isNonDefaultSort)}>
-                      <ArrowUpDown className={`h-3.5 w-3.5 ${isNonDefaultSort ? 'text-blue-600' : ''}`} />
-                      {isNonDefaultSort && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600" />}
+                    <button
+                      title="Sort options"
+                      className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
+                        isNonDefaultSort ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                      }`}
+                    >
+                      <BarChart3 className="h-4 w-4" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="w-56 p-3 space-y-3">
+                  <PopoverContent align="end" className="w-56 p-3 space-y-3">
                     <p className="text-xs font-semibold text-foreground">Sort by</p>
                     <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         {SORT_FIELD_OPTIONS.map(o => (
                           <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
@@ -1170,7 +1158,9 @@ const Pipeline = () => {
                       </SelectContent>
                     </Select>
                     <Select value={sortDir} onValueChange={(v) => setSortDir(v as SortDir)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="asc" className="text-xs">Ascending</SelectItem>
                         <SelectItem value="desc" className="text-xs">Descending</SelectItem>
@@ -1179,18 +1169,15 @@ const Pipeline = () => {
                   </PopoverContent>
                 </Popover>
 
-                {/* Filter clear */}
+                {/* Filter */}
                 <button
                   onClick={isFiltersActive ? clearAllFilters : undefined}
                   title={isFiltersActive ? 'Clear all filters' : 'No active filters'}
-                  className={iconBtn(isFiltersActive)}
+                  className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
+                    isFiltersActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                  }`}
                 >
-                  {isFiltersActive ? (
-                    <X className="h-3.5 w-3.5 text-blue-600" />
-                  ) : (
-                    <Filter className="h-3.5 w-3.5" />
-                  )}
-                  {isFiltersActive && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-600" />}
+                  {isFiltersActive ? <X className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
                 </button>
 
                 {/* Column visibility */}
@@ -1198,35 +1185,37 @@ const Pipeline = () => {
                   <button
                     onClick={() => setShowColumnsMenu(v => !v)}
                     title="Show/hide columns"
-                    className={iconBtn(showColumnsMenu)}
+                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
+                      showColumnsMenu ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'hover:bg-[#f1f3f4] dark:hover:bg-muted text-[#5f6368] dark:text-muted-foreground'
+                    }`}
                   >
-                    <Settings2 className={`h-3.5 w-3.5 ${showColumnsMenu ? 'text-blue-600' : ''}`} />
+                    <LayoutGrid className="h-4 w-4" />
                   </button>
 
                   {showColumnsMenu && (
-                    <div className="absolute right-0 top-full mt-1.5 z-50 bg-popover border border-border rounded-xl shadow-lg w-52 py-1.5 overflow-hidden">
-                      <div className="px-3 py-1.5 border-b border-border">
-                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Visible Columns</p>
+                    <div className="absolute right-0 top-full mt-1.5 z-50 bg-white dark:bg-popover border border-[#dadce0] dark:border-border rounded-lg shadow-lg w-52 py-1.5 overflow-hidden">
+                      <div className="px-3 py-1.5 border-b border-[#dadce0] dark:border-border">
+                        <p className="text-[11px] font-semibold text-[#5f6368] dark:text-muted-foreground uppercase tracking-wider">Visible Columns</p>
                       </div>
                       <div className="py-1">
                         {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map((key) => (
                           <button
                             key={key}
                             onClick={() => toggleColumn(key)}
-                            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-muted transition-colors"
+                            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors"
                           >
-                            <span className="text-[13px] text-foreground">{COLUMN_LABELS[key]}</span>
+                            <span className="text-[13px] text-[#1f1f1f] dark:text-foreground">{COLUMN_LABELS[key]}</span>
                             <span className={`flex items-center justify-center h-4 w-4 rounded border transition-colors ${
                               columnVisibility[key]
-                                ? 'bg-blue-600 border-blue-600'
-                                : 'border-border bg-card'
+                                ? 'bg-[#1a73e8] border-[#1a73e8]'
+                                : 'border-[#dadce0] dark:border-border bg-white dark:bg-card'
                             }`}>
                               {columnVisibility[key] && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
                             </span>
                           </button>
                         ))}
                       </div>
-                      <div className="px-3 py-1.5 border-t border-border">
+                      <div className="px-3 py-1.5 border-t border-[#dadce0] dark:border-border">
                         <button
                           onClick={() => {
                             const allTrue = Object.fromEntries(
@@ -1234,7 +1223,7 @@ const Pipeline = () => {
                             ) as Record<ColumnKey, boolean>;
                             setColumnVisibility(allTrue);
                           }}
-                          className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
+                          className="text-[11px] text-[#1a73e8] hover:text-[#174ea6] font-medium"
                         >
                           Show all columns
                         </button>
@@ -1242,12 +1231,39 @@ const Pipeline = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Add Opportunity button (Copper dark indigo style) */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="h-9 pl-4 pr-3 text-[13px] font-semibold rounded-md shrink-0 flex items-center gap-2 text-white bg-[#1a237e] hover:bg-[#283593] active:scale-[0.97] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a237e] focus-visible:ring-offset-2 ml-2"
+                    >
+                      <span>Add Opportunity</span>
+                      <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-lg shadow-xl border border-[#dadce0] dark:border-border bg-white dark:bg-popover">
+                    <DropdownMenuItem
+                      onClick={() => openAddDialog()}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer text-[14px] font-medium text-[#1f1f1f] dark:text-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted focus:bg-[#f1f3f4] dark:focus:bg-muted transition-colors"
+                    >
+                      <PlusCircle className="h-4 w-4 text-[#5f6368] dark:text-muted-foreground" />
+                      Add Opportunity
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer text-[14px] font-medium text-[#1f1f1f] dark:text-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted focus:bg-[#f1f3f4] dark:focus:bg-muted transition-colors"
+                    >
+                      <Download className="h-4 w-4 text-[#5f6368] dark:text-muted-foreground" />
+                      Import Opportunities
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
-            {/* Bulk Selection Toolbar */}
+            {/* ── Bulk Selection Toolbar ── */}
             {selectedLeadIds.size > 0 && (
-              <div className="mb-3">
+              <div className="px-4 py-2 border-b border-border bg-muted/30">
                 <PipelineBulkToolbar
                   selectedCount={selectedLeadIds.size}
                   totalCount={filteredAndSorted.length}
@@ -1261,44 +1277,73 @@ const Pipeline = () => {
               </div>
             )}
 
-            {/* Content Area: Table or Kanban */}
+            {/* ── Content Area: Table or Kanban ── */}
             {viewMode === 'table' ? (
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
-                  <thead className="border-b border-border">
-                    <tr>
-                      <th className="w-10 px-4 py-3 sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted">
+                  <thead style={{ borderTop: '1px solid #e4dced', borderBottom: '1px solid #e4dced' }}>
+                    <tr style={{ backgroundColor: '#eee6f6' }}>
+                      <th className="w-12 pl-2 pr-4 py-3 text-center sticky top-0 left-0 z-30" style={{ backgroundColor: '#eee6f6' }}>
                         <Checkbox
                           checked={isAllSelected}
                           onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
-                          className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                          className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                         />
                       </th>
-                      <ColHeader className="sticky top-0 z-30 bg-gray-100 dark:bg-muted border-r border-border/50" style={{ left: 40 }}>
-                        Deal
+                      <ColHeader className="sticky top-0 z-30" style={{ left: 48, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
+                        <User className="h-4 w-4" /> Deal
+                        <span className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded-sm bg-[#e4dced] dark:bg-muted">
+                          <span className="text-[8px] text-[#3b2778] dark:text-muted-foreground">&#9670;</span>
+                        </span>
                       </ColHeader>
-                      <ColHeader colKey="company" className="sticky top-0 z-10 bg-white dark:bg-card">Company</ColHeader>
-                      <ColHeader colKey="contact" className="sticky top-0 z-10 bg-white dark:bg-card">Contact</ColHeader>
-                      <ColHeader colKey="value" className="sticky top-0 z-10 bg-white dark:bg-card">Value</ColHeader>
-                      <ColHeader colKey="ownedBy" className="sticky top-0 z-10 bg-white dark:bg-card">Owner</ColHeader>
-                      <ColHeader colKey="tasks" className="sticky top-0 z-10 bg-white dark:bg-card">Tasks</ColHeader>
-                      <ColHeader colKey="status" className="sticky top-0 z-10 bg-white dark:bg-card">Status</ColHeader>
-                      <ColHeader colKey="stage" className="sticky top-0 z-10 bg-white dark:bg-card">Stage</ColHeader>
-                      <ColHeader colKey="daysInStage" className="sticky top-0 z-10 bg-white dark:bg-card">Days</ColHeader>
-                      <ColHeader colKey="stageUpdated" className="sticky top-0 z-10 bg-white dark:bg-card">Updated</ColHeader>
-                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10 bg-white dark:bg-card">Contacted</ColHeader>
-                      <ColHeader colKey="interactions" className="sticky top-0 z-10 bg-white dark:bg-card">Activity</ColHeader>
-                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10 bg-white dark:bg-card">Dormant</ColHeader>
-                      <ColHeader colKey="tags" className="sticky top-0 z-10 bg-white dark:bg-card">Tags</ColHeader>
-                      <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-white dark:bg-card" />
+                      <ColHeader colKey="company" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <Landmark className="h-4 w-4" /> Company
+                      </ColHeader>
+                      <ColHeader colKey="contact" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <User className="h-4 w-4" /> Contact
+                      </ColHeader>
+                      <ColHeader colKey="value" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <DollarSign className="h-4 w-4" /> Value
+                      </ColHeader>
+                      <ColHeader colKey="ownedBy" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <User className="h-4 w-4" /> Owner
+                      </ColHeader>
+                      <ColHeader colKey="tasks" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <CheckSquare className="h-4 w-4" /> Tasks
+                      </ColHeader>
+                      <ColHeader colKey="status" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <Tag className="h-4 w-4" /> Status
+                      </ColHeader>
+                      <ColHeader colKey="stage" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <Sparkles className="h-4 w-4" /> Stage
+                      </ColHeader>
+                      <ColHeader colKey="daysInStage" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <Clock className="h-4 w-4" /> Days
+                      </ColHeader>
+                      <ColHeader colKey="stageUpdated" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <CalendarDays className="h-4 w-4" /> Updated
+                      </ColHeader>
+                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <CalendarDays className="h-4 w-4" /> Contacted
+                      </ColHeader>
+                      <ColHeader colKey="interactions" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <MessageSquare className="h-4 w-4" /> Activity
+                      </ColHeader>
+                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                        <Moon className="h-4 w-4" /> Dormant
+                      </ColHeader>
+                      <ColHeader colKey="tags" className="sticky top-0 z-10" style={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
+                        <Tag className="h-4 w-4" /> Tags
+                      </ColHeader>
+                      <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-white dark:bg-background" />
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
-                          <td className="px-4 py-3.5 w-10 sticky left-0 z-[5] bg-white dark:bg-card"><Skeleton className="h-4 w-4 rounded" /></td>
-                          <td className="px-4 py-3.5 sticky z-[5] border-r border-border/50 bg-white dark:bg-card" style={{ width: columnWidths.deal, left: 40 }}>
+                        <tr key={i} className="bg-white dark:bg-card border-b border-[#e4dced] dark:border-border/40">
+                          <td className="pl-2 pr-4 py-3.5 w-12 text-center sticky left-0 z-[5] bg-white dark:bg-card border-b border-[#e4dced] dark:border-border/40"><Skeleton className="h-4 w-4 rounded" /></td>
+                          <td className="px-4 py-3.5 sticky z-[5] border-r border-b border-[#e4dced] dark:border-border/40 bg-white dark:bg-card" style={{ width: columnWidths.deal, left: 48 }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                               <div className="space-y-1.5">
@@ -1366,53 +1411,55 @@ const Pipeline = () => {
                         const isDetailOpen = detailDialogLead?.id === lead.id;
                         const isSelected = selectedLeadIds.has(lead.id);
 
-                        const stickyBg = isDetailOpen || isSelected
-                          ? 'bg-blue-50 dark:bg-blue-950 group-hover:bg-blue-100 dark:group-hover:bg-blue-900'
-                          : 'bg-white dark:bg-card group-hover:bg-gray-50 dark:group-hover:bg-muted';
+                        const stickyBg = isDetailOpen
+                          ? 'bg-[#e8f0fe] dark:bg-blue-950 group-hover:bg-[#d2e3fc] dark:group-hover:bg-blue-900'
+                          : isSelected
+                            ? 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted'
+                            : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
 
                         return (
                           <tr
                             key={lead.id}
                             onClick={() => handleRowClick(lead)}
-                            className={`cursor-pointer transition-colors duration-100 group border-b border-border/60 last:border-b-0 ${
-                              isDetailOpen || isSelected
-                                ? 'bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-50/80 dark:hover:bg-blue-950/40'
-                                : rowIdx % 2 === 0
-                                  ? 'bg-card hover:bg-muted/50'
-                                  : 'bg-muted/30 hover:bg-muted/50'
+                            className={`cursor-pointer transition-colors duration-100 group last:border-b-0 ${
+                              isDetailOpen
+                                ? 'border-b border-[#e4dced] dark:border-border/40 bg-[#e8f0fe] dark:bg-blue-950/30 hover:bg-[#d2e3fc] dark:hover:bg-blue-950/40'
+                                : isSelected
+                                  ? 'border-b border-transparent bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                                  : 'border-b border-[#e4dced] dark:border-border/40 bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
                             {/* Checkbox */}
-                            <td className={`px-4 ${rowPad} w-10 sticky left-0 z-[5] transition-colors ${stickyBg}`}>
+                            <td className={`pl-2 pr-4 ${rowPad} w-12 text-center sticky left-0 z-[5] transition-colors border-b border-[#e4dced] dark:border-border/40 ${stickyBg}`}>
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => toggleLeadSelection(lead.id)}
                                 onClick={(e) => e.stopPropagation()}
-                                className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
+                                className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
                               />
                             </td>
 
                             {/* Deal (sticky) */}
-                            <td className={`px-4 ${rowPad} overflow-hidden sticky z-[5] border-r border-border/50 transition-colors ${stickyBg}`} style={{ width: columnWidths.deal, left: 40 }}>
+                            <td className={`px-4 ${rowPad} overflow-hidden sticky z-[5] transition-colors border-x border-b border-[#e4dced] dark:border-border/40 ${stickyBg}`} style={{ width: columnWidths.deal, left: 48 }}>
                               <div className="flex items-center gap-2.5">
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
+                                  <div className="relative flex items-center">
+                                    <p className="font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0">
                                       {lead.name}
                                     </p>
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/pipeline/expanded-view/${lead.id}`); }}
-                                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
+                                      className="absolute right-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                     >
                                       <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
                                     </button>
                                   </div>
                                   {lead.company_name && (
-                                    <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">{lead.company_name}</p>
+                                    <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground truncate leading-tight mt-0.5">{lead.company_name}</p>
                                   )}
                                 </div>
                               </div>
@@ -1420,13 +1467,13 @@ const Pipeline = () => {
 
                             {/* Company */}
                             {columnVisibility.company && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.company }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.company }}>
                                 {lead.company_name ? (
                                   <div className="flex items-center gap-2">
                                     <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
                                       <Building2 className="h-3 w-3 text-muted-foreground" />
                                     </div>
-                                    <span className="text-[13px] text-foreground/80 truncate max-w-[120px]">{lead.company_name}</span>
+                                    <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate max-w-[120px]">{lead.company_name}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground/40">—</span>
@@ -1436,14 +1483,14 @@ const Pipeline = () => {
 
                             {/* Contact */}
                             {columnVisibility.contact && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.contact }}>
-                                <span className="text-[13px] text-foreground/80 truncate block max-w-[110px]">{lead.name}</span>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.contact }}>
+                                <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block max-w-[110px]">{lead.name}</span>
                               </td>
                             )}
 
                             {/* Value */}
                             {columnVisibility.value && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.value }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.value }}>
                                 <span className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
                                   —
                                 </span>
@@ -1452,7 +1499,7 @@ const Pipeline = () => {
 
                             {/* Owner */}
                             {columnVisibility.ownedBy && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.ownedBy }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.ownedBy }}>
                                 {assignedName && assignedInitial ? (
                                   <div className="flex items-center gap-2">
                                     {assignedAvatar ? (
@@ -1462,7 +1509,7 @@ const Pipeline = () => {
                                         {assignedInitial}
                                       </div>
                                     )}
-                                    <span className="text-[13px] text-foreground/80 truncate max-w-[80px]">{assignedName}</span>
+                                    <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate max-w-[80px]">{assignedName}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground/40 text-[13px]">—</span>
@@ -1472,23 +1519,28 @@ const Pipeline = () => {
 
                             {/* Tasks */}
                             {columnVisibility.tasks && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tasks }}>
-                                <span className="text-[12px] text-muted-foreground tabular-nums">
-                                  {taskCountMap[lead.id] ?? 0}
-                                </span>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.tasks }}>
+                                {(taskCountMap[lead.id] ?? 0) > 0 ? (
+                                  <span className="inline-flex items-center gap-1 text-[12px] text-[#5f6368] dark:text-muted-foreground">
+                                    <CheckSquare className="h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground" />
+                                    {taskCountMap[lead.id]}
+                                  </span>
+                                ) : (
+                                  <CheckSquare className="h-3.5 w-3.5 text-[#dadce0] dark:text-muted-foreground/30" />
+                                )}
                               </td>
                             )}
 
                             {/* Status */}
                             {columnVisibility.status && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status ?? 100 }}>
-                                <span className="text-[12px] text-muted-foreground">{lead.status}</span>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.status ?? 100 }}>
+                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground">{lead.status}</span>
                               </td>
                             )}
 
                             {/* Stage */}
                             {columnVisibility.stage && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.stage }}>
                                 {stageCfg ? (
                                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${stageCfg.pill}`}>
                                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
@@ -1502,10 +1554,10 @@ const Pipeline = () => {
 
                             {/* Days in Stage */}
                             {columnVisibility.daysInStage && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysInStage }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.daysInStage }}>
                                 {daysInStage !== null ? (
                                   <span className={`inline-flex items-center gap-1 text-[12px] font-medium ${
-                                    isLingering ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
+                                    isLingering ? 'text-amber-600 dark:text-amber-400' : 'text-[#5f6368] dark:text-muted-foreground'
                                   }`}>
                                     {isLingering && <Flame className="h-3 w-3 text-amber-500 shrink-0" />}
                                     {daysInStage}d
@@ -1518,36 +1570,40 @@ const Pipeline = () => {
 
                             {/* Stage Updated */}
                             {columnVisibility.stageUpdated && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stageUpdated }}>
-                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(lead.updated_at)}</span>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.stageUpdated }}>
+                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{formatShortDate(lead.updated_at)}</span>
                               </td>
                             )}
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lastContacted }}>
-                                <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(lead.last_activity_at)}</span>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.lastContacted }}>
+                                <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{formatShortDate(lead.last_activity_at)}</span>
                               </td>
                             )}
 
                             {/* Interactions */}
                             {columnVisibility.interactions && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.interactions }}>
-                                <span className="text-[12px] text-muted-foreground tabular-nums">
-                                  {interactionCountMap[lead.id] ?? 0}
-                                </span>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.interactions }}>
+                                {(interactionCountMap[lead.id] ?? 0) > 0 ? (
+                                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                                    {interactionCountMap[lead.id]}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground/40 text-[13px]">0</span>
+                                )}
                               </td>
                             )}
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.inactiveDays }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.inactiveDays }}>
                                 {isStale ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
                                     {inactiveDays}d
                                   </span>
                                 ) : inactiveDays !== null ? (
-                                  <span className="text-[12px] text-muted-foreground tabular-nums">{inactiveDays}d</span>
+                                  <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{inactiveDays}d</span>
                                 ) : (
                                   <span className="text-muted-foreground/40">—</span>
                                 )}
@@ -1556,7 +1612,7 @@ const Pipeline = () => {
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.tags }}>
+                              <td className={`px-4 ${rowPad} overflow-hidden border-r border-[#e4dced] dark:border-border/30`} style={{ width: columnWidths.tags }}>
                                 {lead.tags && lead.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {lead.tags.slice(0, 2).map((tag) => (
@@ -1577,7 +1633,7 @@ const Pipeline = () => {
                             {/* Detail arrow */}
                             <td className={`px-2 ${rowPad} w-10`}>
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
-                                isSelected
+                                isDetailOpen
                                   ? 'text-blue-500'
                                   : 'text-transparent group-hover:text-muted-foreground'
                               }`} />
