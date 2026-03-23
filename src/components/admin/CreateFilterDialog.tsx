@@ -371,7 +371,7 @@ export default function CreateFilterDialog({ teamMemberMap, stageConfig, onSave 
         title="Add filter"
         onClick={() => setOpen(true)}
       >
-        <Plus className="h-3.5 w-3.5" />
+        <Plus className="h-5 w-5" />
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="w-[460px] max-w-[90vw] p-0 flex flex-col max-h-[80vh] gap-0 rounded-xl shadow-2xl border-border/60">

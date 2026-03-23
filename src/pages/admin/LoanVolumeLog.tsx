@@ -13,6 +13,7 @@ import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import { InlineEditableCell } from '@/components/admin/InlineEditableCell';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SelectAllHeader } from '@/components/admin/SelectAllHeader';
 import {
   ArrowUpDown,
   AlignJustify,
@@ -616,7 +617,7 @@ const LoanVolumeLog = () => {
     return (
       <th
         className={`px-3 py-3 text-left whitespace-nowrap ${extraClassName ?? ''}`}
-        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, ...extraStyle }}
+        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, border: '1px solid #c8bdd6', ...extraStyle }}
       >
         <ResizableColumnHeader
           columnId={colKey}
@@ -1050,24 +1051,21 @@ const LoanVolumeLog = () => {
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <div className="flex-1 overflow-auto">
-              <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
-                <thead className="border-b border-border">
+              <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                <thead>
                   <tr>
-                    {/* Checkbox header */}
-                    <th className="w-12 pl-2 pr-4 py-3 text-center sticky top-0 left-0 z-30 bg-gray-100 dark:bg-muted">
-                      <Checkbox
-                        checked={isAllSelected}
-                        onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
-                        className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
-                      />
-                    </th>
-
-                    {/* Borrower (sticky) */}
                     <ColHeader
                       colKey="borrower"
-                      className="sticky top-0 z-30 bg-gray-100 dark:bg-muted border-r border-border/50"
-                      style={{ left: 48 }}
+                      className="sticky top-0 z-30 bg-gray-100 dark:bg-muted group/hdr"
+                      style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}
                     >
+                      <div className={`shrink-0 transition-opacity ${isAllSelected || selectedLeadIds.size > 0 ? 'opacity-100' : 'opacity-0 group-hover/hdr:opacity-100'}`}>
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                          className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                        />
+                      </div>
                       Borrower
                     </ColHeader>
 
@@ -1092,47 +1090,45 @@ const LoanVolumeLog = () => {
                     <ColHeader colKey="signals" className="sticky top-0 z-10 bg-white dark:bg-card">Signals</ColHeader>
 
                     {/* Detail arrow spacer */}
-                    <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-white dark:bg-card" />
+                    <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-white dark:bg-card" style={{ border: '1px solid #c8bdd6' }} />
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     Array.from({ length: 8 }).map((_, i) => (
                       <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
-                        <td className="pl-2 pr-4 py-3.5 w-12 text-center sticky left-0 z-[5] bg-white dark:bg-card border-b border-[#e4dced] dark:border-border/40">
-                          <Skeleton className="h-4 w-4 rounded" />
-                        </td>
-                        <td className="px-3 py-3.5 sticky z-[5] border-r border-b border-[#e4dced] dark:border-border/40 bg-white dark:bg-card" style={{ width: columnWidths.borrower, left: 48 }}>
+                        <td className="pl-2 pr-4 py-3.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                           <div className="flex items-center gap-2">
+                            <Skeleton className="h-4 w-4 rounded shrink-0" />
                             <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                             <Skeleton className="h-3.5 w-28" />
                           </div>
                         </td>
-                        {columnVisibility.status && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-14 rounded" /></td>}
-                        {columnVisibility.company && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                        {columnVisibility.loanAmount && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.category && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-18 rounded" /></td>}
-                        {columnVisibility.stage && <td className="px-3 py-3.5"><Skeleton className="h-5 w-20 rounded-full" /></td>}
-                        {columnVisibility.won && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                        {columnVisibility.assignedTo && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.lender && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                        {columnVisibility.lenderType && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.feePercent && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                        {columnVisibility.potentialRevenue && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.netRevenue && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.targetClosing && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-18 rounded" /></td>}
-                        {columnVisibility.wuDate && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-18 rounded" /></td>}
-                        {columnVisibility.daysToWu && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                        {columnVisibility.daysToClose && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                        {columnVisibility.source && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.clxAgreement && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                        {columnVisibility.signals && <td className="px-3 py-3.5"><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                        <td className="px-2 py-3.5 w-10" />
+                        {columnVisibility.status && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-14 rounded" /></td>}
+                        {columnVisibility.company && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                        {columnVisibility.loanAmount && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.category && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-18 rounded" /></td>}
+                        {columnVisibility.stage && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
+                        {columnVisibility.won && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                        {columnVisibility.assignedTo && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.lender && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                        {columnVisibility.lenderType && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.feePercent && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                        {columnVisibility.potentialRevenue && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.netRevenue && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.targetClosing && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-18 rounded" /></td>}
+                        {columnVisibility.wuDate && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-18 rounded" /></td>}
+                        {columnVisibility.daysToWu && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                        {columnVisibility.daysToClose && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                        {columnVisibility.source && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.clxAgreement && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                        {columnVisibility.signals && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                        <td className="px-2 py-3.5 w-10" style={{ border: '1px solid #c8bdd6' }} />
                       </tr>
                     ))
                   ) : filteredAndSorted.length === 0 ? (
                     <tr>
-                      <td colSpan={23}>
+                      <td colSpan={22} style={{ border: '1px solid #c8bdd6' }}>
                         <div className="flex flex-col items-center justify-center py-24 gap-4">
                           <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
                             <FileSearch className="h-6 w-6 text-muted-foreground" />
@@ -1204,23 +1200,20 @@ const LoanVolumeLog = () => {
                                 : 'bg-muted/30 hover:bg-muted/50'
                           }`}
                         >
-                          {/* Checkbox */}
-                          <td className={`pl-2 pr-4 ${rowPad} w-12 text-center sticky left-0 z-[5] transition-colors border-b border-[#e4dced] dark:border-border/40 ${stickyBg}`}>
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={() => toggleLeadSelection(lead.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="h-4 w-4 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
-                            />
-                          </td>
-
-                          {/* Borrower (sticky) */}
+                          {/* Borrower + Checkbox (sticky) */}
                           {columnVisibility.borrower && (
                             <td
-                              className={`px-3 ${rowPad} overflow-hidden sticky z-[5] border-r border-b border-[#e4dced] dark:border-border/40 transition-colors ${stickyBg}`}
-                              style={{ width: columnWidths.borrower, left: 48 }}
+                              className={`pl-2 pr-3 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`}
+                              style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}
                             >
                               <div className="flex items-center gap-2">
+                                <div className={`shrink-0 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} onClick={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}>
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => toggleLeadSelection(lead.id)}
+                                    className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                                  />
+                                </div>
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
                                 </div>
@@ -1238,7 +1231,7 @@ const LoanVolumeLog = () => {
 
                           {/* Status */}
                           {columnVisibility.status && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.status, border: '1px solid #c8bdd6' }}>
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                                 getStatusGroup(lead.status) === 'active'
                                   ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
@@ -1253,7 +1246,7 @@ const LoanVolumeLog = () => {
 
                           {/* Company */}
                           {columnVisibility.company && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.company }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.company_name ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'company_name', v || null)}
@@ -1266,7 +1259,7 @@ const LoanVolumeLog = () => {
 
                           {/* Loan Amount */}
                           {columnVisibility.loanAmount && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.loanAmount }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.loanAmount, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
                                 {formatCurrency(lead.deal_value)}
                               </span>
@@ -1275,7 +1268,7 @@ const LoanVolumeLog = () => {
 
                           {/* Category */}
                           {columnVisibility.category && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.category }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.category, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.loan_category ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'loan_category', v || null)}
@@ -1289,7 +1282,7 @@ const LoanVolumeLog = () => {
 
                           {/* Stage */}
                           {columnVisibility.stage && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}>
                               {stageCfg ? (
                                 <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${stageCfg.pill}`}>
                                   <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${stageCfg.dot}`} />
@@ -1303,7 +1296,7 @@ const LoanVolumeLog = () => {
 
                           {/* WON */}
                           {columnVisibility.won && (
-                            <td className={`px-3 ${rowPad} overflow-hidden text-center`} style={{ width: columnWidths.won }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden text-center`} style={{ width: columnWidths.won, border: '1px solid #c8bdd6' }}>
                               {isWon ? (
                                 <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-100 dark:bg-emerald-900">
                                   <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
@@ -1320,7 +1313,7 @@ const LoanVolumeLog = () => {
 
                           {/* Assigned To */}
                           {columnVisibility.assignedTo && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.assignedTo }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.assignedTo, border: '1px solid #c8bdd6' }}>
                               {assignedName && assignedInitial ? (
                                 <div className="flex items-center gap-1.5">
                                   {assignedAvatar ? (
@@ -1340,7 +1333,7 @@ const LoanVolumeLog = () => {
 
                           {/* Lender */}
                           {columnVisibility.lender && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lender }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lender, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.lender_name ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'lender_name', v || null)}
@@ -1353,7 +1346,7 @@ const LoanVolumeLog = () => {
 
                           {/* Lender Type */}
                           {columnVisibility.lenderType && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lenderType }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.lenderType, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.lender_type ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'lender_type', v || null)}
@@ -1374,7 +1367,7 @@ const LoanVolumeLog = () => {
 
                           {/* Fee % */}
                           {columnVisibility.feePercent && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.feePercent }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.feePercent, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] text-foreground/80 tabular-nums">
                                 {formatPercent(lead.fee_percent)}
                               </span>
@@ -1383,7 +1376,7 @@ const LoanVolumeLog = () => {
 
                           {/* Potential Revenue */}
                           {columnVisibility.potentialRevenue && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.potentialRevenue }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.potentialRevenue, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] font-medium text-blue-600 dark:text-blue-400 tabular-nums">
                                 {potentialRev > 0 ? formatCurrency(potentialRev) : '--'}
                               </span>
@@ -1392,7 +1385,7 @@ const LoanVolumeLog = () => {
 
                           {/* Net Revenue */}
                           {columnVisibility.netRevenue && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.netRevenue }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.netRevenue, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] font-medium text-violet-600 dark:text-violet-400 tabular-nums">
                                 {netRev ? formatCurrency(netRev) : '--'}
                               </span>
@@ -1401,7 +1394,7 @@ const LoanVolumeLog = () => {
 
                           {/* Target Closing */}
                           {columnVisibility.targetClosing && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.targetClosing }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.targetClosing, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] text-muted-foreground tabular-nums">
                                 {formatShortDate(lead.target_closing_date)}
                               </span>
@@ -1410,7 +1403,7 @@ const LoanVolumeLog = () => {
 
                           {/* WU Date */}
                           {columnVisibility.wuDate && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.wuDate }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.wuDate, border: '1px solid #c8bdd6' }}>
                               <span className="text-[12px] text-muted-foreground tabular-nums">
                                 {formatShortDate(lead.wu_date)}
                               </span>
@@ -1419,7 +1412,7 @@ const LoanVolumeLog = () => {
 
                           {/* Days to WU */}
                           {columnVisibility.daysToWu && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysToWu }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysToWu, border: '1px solid #c8bdd6' }}>
                               {daysToWuVal !== null ? (
                                 <span className={`text-[12px] font-medium tabular-nums ${
                                   daysToWuVal < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
@@ -1434,7 +1427,7 @@ const LoanVolumeLog = () => {
 
                           {/* Days to Close */}
                           {columnVisibility.daysToClose && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysToClose }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.daysToClose, border: '1px solid #c8bdd6' }}>
                               {daysToCloseVal !== null ? (
                                 <span className={`text-[12px] font-medium tabular-nums ${
                                   daysToCloseVal < 0 ? 'text-red-600 dark:text-red-400' : daysToCloseVal < 14 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
@@ -1449,7 +1442,7 @@ const LoanVolumeLog = () => {
 
                           {/* Source */}
                           {columnVisibility.source && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.source }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.source, border: '1px solid #c8bdd6' }}>
                               <InlineEditableCell
                                 value={lead.source ?? ''}
                                 onChange={(v) => handleInlineEdit(lead.id, 'source', v || null)}
@@ -1462,7 +1455,7 @@ const LoanVolumeLog = () => {
 
                           {/* CLX Agreement */}
                           {columnVisibility.clxAgreement && (
-                            <td className={`px-3 ${rowPad} overflow-hidden text-center`} style={{ width: columnWidths.clxAgreement }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden text-center`} style={{ width: columnWidths.clxAgreement, border: '1px solid #c8bdd6' }}>
                               {lead.clx_agreement ? (
                                 <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-emerald-100 dark:bg-emerald-900">
                                   <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
@@ -1475,7 +1468,7 @@ const LoanVolumeLog = () => {
 
                           {/* Signals */}
                           {columnVisibility.signals && (
-                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.signals }}>
+                            <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.signals, border: '1px solid #c8bdd6' }}>
                               {signals.length > 0 ? (
                                 <Popover>
                                   <PopoverTrigger asChild>
@@ -1508,7 +1501,7 @@ const LoanVolumeLog = () => {
                           )}
 
                           {/* Detail arrow */}
-                          <td className={`px-2 ${rowPad} w-10`}>
+                          <td className={`px-2 ${rowPad} w-10`} style={{ border: '1px solid #c8bdd6' }}>
                             <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                               isSelected
                                 ? 'text-blue-500'

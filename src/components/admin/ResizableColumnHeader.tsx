@@ -62,18 +62,18 @@ const ResizableColumnHeader = ({
       {/* Resize handle */}
       <div
         className={cn(
-          "absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize group/resize z-10",
-          "hover:bg-primary/30 transition-colors",
-          isResizing && "bg-primary/50"
+          "absolute -right-5 -top-3 -bottom-3 w-2 cursor-col-resize group/resize z-10",
+          "hover:bg-[#3b2778]/20 transition-colors",
+          isResizing && "bg-[#3b2778]/30"
         )}
         onMouseDown={handleMouseDown}
       >
         <div 
           className={cn(
-            "absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full transition-all",
-            "bg-slate-300 dark:bg-slate-600",
-            "group-hover/resize:bg-primary group-hover/resize:h-6",
-            isResizing && "bg-primary h-6"
+            "absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 transition-all",
+            "bg-[#3b2778]",
+            "opacity-0 group-hover/col:opacity-100 group-hover/resize:opacity-100",
+            isResizing && "opacity-100"
           )}
         />
       </div>

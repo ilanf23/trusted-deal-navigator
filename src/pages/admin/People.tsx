@@ -12,11 +12,13 @@ import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SelectAllHeader } from '@/components/admin/SelectAllHeader';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import {
   ArrowUpDown,
+  ArrowLeft,
   PanelLeft,
   Filter,
   Settings2,
@@ -762,8 +764,10 @@ const People = () => {
     const isMenuOpen = colMenuOpen === widthKey;
     return (
       <th
-        className={`px-4 py-3 text-left whitespace-nowrap group/col ${extraClassName ?? ''}`}
-        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', ...extraStyle }}
+        className={`px-4 py-3 text-left whitespace-nowrap group/col transition-colors ${extraClassName ?? ''}`}
+        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
       >
         <ResizableColumnHeader
           columnId={widthKey}
@@ -775,7 +779,7 @@ const People = () => {
           </span>
           {/* Three-dot menu button — inline so it's never hidden */}
           {sortOptions && (
-            <div className="relative ml-auto shrink-0" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+            <div className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
               <button
                 onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
                 style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
@@ -853,13 +857,13 @@ const People = () => {
 
           {/* ── Left Sidebar (Copper style) ── */}
           <aside
-            className={`shrink-0 border-r border-[#e8eaed] dark:border-border bg-white dark:bg-background flex flex-col overflow-hidden transition-all duration-200 ${
+            className={`shrink-0 border-r border-[#e8eaed] dark:border-border bg-[#f8f9fa] dark:bg-muted/30 flex flex-col overflow-hidden transition-all duration-200 ${
               sidebarOpen ? 'w-72' : 'w-0 border-r-0'
             }`}
           >
-            <div className="w-72 pl-4">
-              <div className="px-6 pt-3 pb-2 flex items-center justify-between">
-                <span className="text-[12px] font-semibold text-[#1f1f1f] dark:text-foreground">Saved Filters</span>
+            <div className="w-72 pl-4 flex-1 overflow-y-auto">
+              <div className="px-6 pt-5 pb-3 flex items-center justify-between">
+                <span className="text-[20px] font-bold text-[#1f1f1f] dark:text-foreground tracking-tight">Saved Filters</span>
                 <div className="flex items-center gap-1">
                   <CreateFilterDialog
                     teamMemberMap={teamMemberMap}
@@ -915,21 +919,27 @@ const People = () => {
                   onClick={() => setPublicFiltersOpen(v => !v)}
                   className="w-full px-6 pt-4 pb-1 flex items-center justify-between group"
                 >
-                  <span className="text-[11px] font-semibold text-[#5f6368] dark:text-muted-foreground">Public</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-muted-foreground">Public</span>
                   <ChevronUp className={`h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : 'rotate-180'}`} />
                 </button>
 
                 {publicFiltersOpen && FILTER_OPTIONS.filter(o => o.group === 'public').map((opt) => {
                   const isActive = activeFilter === opt.id;
+                  const count = filterCounts[opt.id] ?? 0;
                   return (
                     <button
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center px-6 py-2.5 text-left transition-colors ${
+                      className={`relative w-full flex items-center justify-between px-6 py-2.5 text-left transition-colors ${
                         isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
                       }`}
                     >
                       <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{opt.label}</span>
+                      {count > 0 && (
+                        <span className="ml-1 shrink-0 text-[11px] font-medium text-[#5f6368] dark:text-muted-foreground">
+                          {count.toLocaleString()}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -938,7 +948,7 @@ const People = () => {
                 {customFilters.length > 0 && (
                   <>
                     <div className="px-3 pt-4 pb-1">
-                      <span className="text-[11px] font-semibold text-[#5f6368] dark:text-muted-foreground">Custom</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-muted-foreground">Custom</span>
                     </div>
                     {customFilters.map((cf) => {
                       const isActive = activeFilter === cf.id;
@@ -946,7 +956,7 @@ const People = () => {
                         <button
                           key={cf.id}
                           onClick={() => setActiveFilter(cf.id)}
-                          className={`relative w-full flex items-center px-6 py-2.5 text-left transition-colors ${
+                          className={`relative w-full flex items-center justify-between px-6 py-2.5 text-left transition-colors ${
                             isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
                           }`}
                         >
@@ -957,6 +967,16 @@ const People = () => {
                   </>
                 )}
               </nav>
+            </div>
+            <div className="w-72 shrink-0 border-t border-[#e8eaed] dark:border-border px-6 py-3">
+              <button
+                onClick={() => setSidebarOpen(false)}
+                title="Hide filters"
+                className="flex items-center gap-2 text-[13px] font-medium text-black dark:text-foreground hover:text-[#5f6368] dark:hover:text-muted-foreground transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Hide Filters</span>
+              </button>
             </div>
           </aside>
 
@@ -970,16 +990,15 @@ const People = () => {
                 <button
                   onClick={() => setSidebarOpen(v => !v)}
                   title={sidebarOpen ? 'Hide filters' : 'Show filters'}
-                  className="h-8 flex items-center gap-1.5 px-2.5 rounded-lg hover:bg-[#f0eaf7] dark:hover:bg-muted transition-colors text-[#5f6368] dark:text-muted-foreground"
+                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors text-[#5f6368] dark:text-muted-foreground"
                 >
                   <PanelLeft className="h-4 w-4" />
-                  <span className="text-xs font-medium">{sidebarOpen ? 'Hide Filters' : 'Show Filters'}</span>
                 </button>
 
                 <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
                   {FILTER_OPTIONS.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Contacts'}
                 </h2>
-                <Bookmark className="h-4 w-4 text-[#80868b] dark:text-muted-foreground shrink-0" />
+
                 {!isLoading && (
                   <span className="text-[#5f6368] dark:text-muted-foreground text-sm tabular-nums whitespace-nowrap">
                     # {filteredAndSorted.length.toLocaleString()} people
@@ -1132,62 +1151,59 @@ const People = () => {
             {/* ── Content Area: Table or Kanban ── */}
             {viewMode === 'table' ? (
               <div className="flex-1 overflow-auto">
-                <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
+                <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      <th className="w-12 pl-2 pr-4 py-3 sticky top-0 left-0 z-30 text-center" style={{ backgroundColor: '#fff', borderTop: '2px solid #fff', borderBottom: '2px solid #fff' }}>
-                        <Checkbox
-                          checked={isAllSelected}
-                          onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
-                          className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
-                        />
-                      </th>
-                      <ColHeader className="sticky top-0 z-30" style={{ left: 48, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
+                      <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                        <div className={`shrink-0 transition-opacity ${isAllSelected || selectedPersonIds.size > 0 ? 'opacity-100' : 'opacity-0 group-hover/hdr:opacity-100'}`}>
+                          <Checkbox
+                            checked={isAllSelected}
+                            onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
+                            className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                          />
+                        </div>
                         <User className="h-4 w-4" /> Person
-                        <span className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded-sm bg-[#e4dced] dark:bg-muted">
-                          <span className="text-[8px] text-[#3b2778] dark:text-muted-foreground">&#9670;</span>
-                        </span>
                       </ColHeader>
-                      <ColHeader colKey="title" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                      <ColHeader colKey="title" className="sticky top-0 z-10">
                         <Equal className="h-4 w-4" /> Title
                       </ColHeader>
-                      <ColHeader colKey="company" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                      <ColHeader colKey="company" className="sticky top-0 z-10">
                         <Landmark className="h-4 w-4" /> Company
                       </ColHeader>
-                      <ColHeader colKey="tasks" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                      <ColHeader colKey="tasks" className="sticky top-0 z-10">
                         <CheckSquare className="h-4 w-4" /> Tasks
                       </ColHeader>
-                      <ColHeader colKey="email" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                      <ColHeader colKey="email" className="sticky top-0 z-10">
                         <AtSign className="h-4 w-4" /> Email
                       </ColHeader>
-                      <ColHeader colKey="contactType" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                      <ColHeader colKey="contactType" className="sticky top-0 z-10">
                         <Tag className="h-4 w-4" /> Type
                       </ColHeader>
-                      <ColHeader colKey="pipeline" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                      <ColHeader colKey="pipeline" className="sticky top-0 z-10">
                         <Sparkles className="h-4 w-4" /> Pipeline
                       </ColHeader>
-                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                      <ColHeader colKey="lastContacted" className="sticky top-0 z-10">
                         <CalendarDays className="h-4 w-4" /> Contacted
                       </ColHeader>
-                      <ColHeader colKey="interactions" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                      <ColHeader colKey="interactions" className="sticky top-0 z-10">
                         <MessageSquare className="h-4 w-4" /> Activity
                       </ColHeader>
-                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10 border-r border-[#e4dced] dark:border-border/50">
+                      <ColHeader colKey="inactiveDays" className="sticky top-0 z-10">
                         <Moon className="h-4 w-4" /> Dormant
                       </ColHeader>
-                      <ColHeader colKey="tags" className="sticky top-0 z-10" style={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
+                      <ColHeader colKey="tags" className="sticky top-0 z-10">
                         <Tag className="h-4 w-4" /> Tags
                       </ColHeader>
-                      <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-white dark:bg-background" />
+                      <th className="w-10 px-2 py-3 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
-                        <tr key={i} className="bg-white dark:bg-card border-b border-[#e4dced] dark:border-border/40">
-                          <td className="pl-2 pr-4 py-3.5 w-12 sticky left-0 z-[5] bg-white dark:bg-card border-b border-[#e4dced] dark:border-border/40"><Skeleton className="h-4 w-4 rounded" /></td>
-                          <td className="px-4 py-3.5 sticky z-[5] border-r border-[#e4dced] dark:border-border/50 bg-white dark:bg-card" style={{ width: columnWidths.person, left: 48 }}>
+                        <tr key={i} className="bg-white dark:bg-card">
+                          <td className="pl-2 pr-4 py-3.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                             <div className="flex items-center gap-2.5">
+                              <Skeleton className="h-4 w-4 rounded shrink-0" />
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                               <div className="space-y-1.5">
                                 <Skeleton className="h-3.5 w-36" />
@@ -1195,21 +1211,21 @@ const People = () => {
                               </div>
                             </div>
                           </td>
-                          {columnVisibility.title && <td className="px-4 py-3.5" style={{ width: columnWidths.title }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.company && <td className="px-4 py-3.5" style={{ width: columnWidths.company }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.tasks && <td className="px-4 py-3.5" style={{ width: columnWidths.tasks }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.email && <td className="px-4 py-3.5" style={{ width: columnWidths.email }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
-                          {columnVisibility.contactType && <td className="px-4 py-3.5" style={{ width: columnWidths.contactType }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
-                          {columnVisibility.pipeline && <td className="px-4 py-3.5" style={{ width: columnWidths.pipeline }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
-                          {columnVisibility.lastContacted && <td className="px-4 py-3.5" style={{ width: columnWidths.lastContacted }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.interactions && <td className="px-4 py-3.5" style={{ width: columnWidths.interactions }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.inactiveDays && <td className="px-4 py-3.5" style={{ width: columnWidths.inactiveDays }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.tags && <td className="px-4 py-3.5" style={{ width: columnWidths.tags }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                          {columnVisibility.title && <td className="px-4 py-3.5" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
+                          {columnVisibility.company && <td className="px-4 py-3.5" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
+                          {columnVisibility.tasks && <td className="px-4 py-3.5" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.email && <td className="px-4 py-3.5" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
+                          {columnVisibility.contactType && <td className="px-4 py-3.5" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
+                          {columnVisibility.pipeline && <td className="px-4 py-3.5" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
+                          {columnVisibility.lastContacted && <td className="px-4 py-3.5" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.interactions && <td className="px-4 py-3.5" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.inactiveDays && <td className="px-4 py-3.5" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                          {columnVisibility.tags && <td className="px-4 py-3.5" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
                         </tr>
                       ))
                     ) : filteredAndSorted.length === 0 ? (
                       <tr>
-                        <td colSpan={13}>
+                        <td colSpan={12}>
                           <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
                               <FileSearch className="h-6 w-6 text-muted-foreground" />
@@ -1253,7 +1269,7 @@ const People = () => {
                           <tr
                             key={person.id}
                             onClick={() => handleRowClick(person)}
-                            className={`cursor-pointer transition-colors duration-100 group border-b border-[#e4dced] dark:border-border/40 last:border-b-0 ${
+                            className={`cursor-pointer transition-colors duration-100 group ${
                               isDetailSelected
                                 ? 'bg-[#e8f0fe] dark:bg-blue-950/30 hover:bg-[#d2e3fc] dark:hover:bg-blue-950/40'
                                 : isBulkSelected
@@ -1261,21 +1277,16 @@ const People = () => {
                                   : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
-                            {/* Checkbox */}
-                            <td
-                              className={`pl-4 pr-2 py-3 w-12 sticky left-0 z-[5] transition-colors text-center border-b border-[#e4dced] dark:border-border/40 ${stickyBg}`}
-                              onClick={(e) => { e.stopPropagation(); togglePersonSelection(person.id); }}
-                            >
-                              <Checkbox
-                                checked={isBulkSelected}
-                                onCheckedChange={() => togglePersonSelection(person.id)}
-                                className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500"
-                              />
-                            </td>
-
-                            {/* Person (sticky) */}
-                            <td className={`px-4 py-3 overflow-hidden sticky z-[5] transition-colors border-x border-b border-[#e4dced] dark:border-border/40 ${stickyBg}`} style={{ width: columnWidths.person, left: 48 }}>
+                            {/* Person + Checkbox (sticky) */}
+                            <td className={`pl-2 pr-4 py-3 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2.5">
+                                <div className={`shrink-0 transition-opacity ${isBulkSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} onClick={(e) => { e.stopPropagation(); togglePersonSelection(person.id); }}>
+                                  <Checkbox
+                                    checked={isBulkSelected}
+                                    onCheckedChange={() => togglePersonSelection(person.id)}
+                                    className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                                  />
+                                </div>
                                 <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
                                 </div>
@@ -1298,14 +1309,14 @@ const People = () => {
 
                             {/* Title */}
                             {columnVisibility.title && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.title }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}>
                                 <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block max-w-[120px]">{person.title ?? '—'}</span>
                               </td>
                             )}
 
                             {/* Company */}
                             {columnVisibility.company && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.company }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
                                 {person.company_name ? (
                                   <div className="flex items-center gap-2">
                                     <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
@@ -1321,7 +1332,7 @@ const People = () => {
 
                             {/* Tasks */}
                             {columnVisibility.tasks && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.tasks }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
                                 {taskCount > 0 ? (
                                   <span className="inline-flex items-center gap-1 text-[12px] text-[#5f6368] dark:text-muted-foreground">
                                     <CheckSquare className="h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground" />
@@ -1335,7 +1346,7 @@ const People = () => {
 
                             {/* Email */}
                             {columnVisibility.email && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.email }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}>
                                 {person.email ? (
                                   <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate block max-w-[160px]">{person.email}</span>
                                 ) : (
@@ -1346,7 +1357,7 @@ const People = () => {
 
                             {/* Contact Type */}
                             {columnVisibility.contactType && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.contactType }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
                                 {typeCfg ? (
                                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
                                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
@@ -1360,7 +1371,7 @@ const People = () => {
 
                             {/* Pipeline / Stage */}
                             {columnVisibility.pipeline && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.pipeline }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}>
                                 {person._pipelineName ? (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400">
                                     {person._pipelineName}
@@ -1376,14 +1387,14 @@ const People = () => {
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.lastContacted }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
                                 <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(person.last_activity_at)}</span>
                               </td>
                             )}
 
                             {/* Interactions */}
                             {columnVisibility.interactions && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.interactions }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
                                 {interactionCount > 0 ? (
                                   <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
                                     {interactionCount}
@@ -1396,7 +1407,7 @@ const People = () => {
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.inactiveDays }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
                                 {isStale ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
                                     {inactiveDays}d
@@ -1411,7 +1422,7 @@ const People = () => {
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className="px-4 py-3 overflow-hidden border-r border-[#e4dced] dark:border-border/30" style={{ width: columnWidths.tags }}>
+                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
                                 {person.tags && person.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {person.tags.slice(0, 2).map((tag) => (
@@ -1430,7 +1441,7 @@ const People = () => {
                             )}
 
                             {/* Detail arrow */}
-                            <td className="px-2 py-3 w-10">
+                            <td className="px-2 py-3 w-10" style={{ border: '1px solid #c8bdd6' }}>
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isDetailSelected
                                   ? 'text-blue-500'
