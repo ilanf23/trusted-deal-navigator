@@ -1,4 +1,6 @@
 import AdminLayout from '@/components/admin/AdminLayout';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -15,6 +17,12 @@ const MaurasPage = () => {
     dailyProgress,
     isLoading,
   } = useMaurasDashboard();
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle("Maura's Dashboard");
+    return () => { setPageTitle(null); };
+  }, []);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -38,10 +46,6 @@ const MaurasPage = () => {
     return (
       <AdminLayout>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold">Maura's Dashboard</h1>
-            <p className="text-muted-foreground">Document processing and loan package management</p>
-          </div>
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <Card key={i}>
@@ -74,11 +78,6 @@ const MaurasPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Maura's Dashboard</h1>
-          <p className="text-muted-foreground">Document processing and loan package management</p>
-        </div>
-
         {/* Performance Metrics */}
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
           <Card className="border-admin-teal/20 border-2">

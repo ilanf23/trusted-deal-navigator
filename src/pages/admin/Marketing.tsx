@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,13 @@ const statusColors: Record<LeadStatus, string> = {
 
 const AdminMarketing = () => {
   const navigate = useNavigate();
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Marketing Analytics');
+    return () => { setPageTitle(null); };
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedSource, setSelectedSource] = useState<string>('all');
@@ -162,11 +170,7 @@ const AdminMarketing = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Marketing Analytics</h1>
-            <p className="text-muted-foreground">Track lead sources, conversion rates, and trends</p>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3">
           <Select value={selectedSource} onValueChange={setSelectedSource}>
             <SelectTrigger className="w-full sm:w-48">
               <Filter className="w-4 h-4 mr-2" />

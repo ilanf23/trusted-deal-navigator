@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,12 @@ const AdminInvoices = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Invoices');
+    return () => { setPageTitle(null); };
+  }, []);
 
   const [newInvoice, setNewInvoice] = useState({
     client_id: '',
@@ -166,14 +173,7 @@ const AdminInvoices = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-bold">Invoices</h1>
-              <DbTableBadge tables={['invoices']} />
-            </div>
-            <p className="text-muted-foreground">Create and manage client invoices</p>
-          </div>
+        <div className="flex items-center justify-end">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button>

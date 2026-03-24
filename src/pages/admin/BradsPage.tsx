@@ -1,4 +1,6 @@
 import AdminLayout from '@/components/admin/AdminLayout';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -10,6 +12,12 @@ import { useBradsDashboard } from '@/hooks/useBradsDashboard';
 const BradsPage = () => {
   const { metrics, highValueDeals, upcomingMeetings, referralPartners, monthlyGoals, isLoading } = useBradsDashboard();
 
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle("Brad's Dashboard");
+    return () => { setPageTitle(null); };
+  }, []);
+
   const getProbabilityColor = (prob: number) => {
     if (prob >= 75) return 'text-green-600';
     if (prob >= 50) return 'text-yellow-600';
@@ -20,13 +28,6 @@ const BradsPage = () => {
     return (
       <AdminLayout>
         <div className="space-y-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <Crown className="h-6 w-6 text-yellow-500" />
-              <h1 className="text-2xl font-bold">Brad's Dashboard</h1>
-            </div>
-            <p className="text-muted-foreground">Strategic oversight and high-value deal management</p>
-          </div>
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <Card key={i}>
@@ -52,14 +53,6 @@ const BradsPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <Crown className="h-6 w-6 text-yellow-500" />
-            <h1 className="text-2xl font-bold">Brad's Dashboard</h1>
-          </div>
-          <p className="text-muted-foreground">Strategic oversight and high-value deal management</p>
-        </div>
-
         {/* Performance Metrics */}
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
           <Card className="border-admin-teal/20 border-2">

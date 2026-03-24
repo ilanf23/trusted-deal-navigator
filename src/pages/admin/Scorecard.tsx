@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -128,6 +128,12 @@ const Scorecard = () => {
   const [timeMode, setTimeMode] = useState<'week' | 'custom'>('week');
   const [customStart, setCustomStart] = useState<string>(format(currentWeekStart, "yyyy-MM-dd'T'HH:mm"));
   const [customEnd, setCustomEnd] = useState<string>(format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd'T'HH:mm"));
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Performance Scorecard');
+    return () => { setPageTitle(null); };
+  }, []);
 
   const periodBoundaries = useMemo(() => {
     if (timeMode === 'custom') {
@@ -402,15 +408,7 @@ const Scorecard = () => {
       <div className="space-y-5 sm:space-y-8 pb-5 sm:pb-8">
 
         {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Performance Scorecard</h1>
-              <DbTableBadge tables={['leads', 'communications']} />
-            </div>
-            <p className="text-muted-foreground mt-1 text-sm">{periodLabel}</p>
-          </div>
-
+        <div className="flex flex-col sm:flex-row sm:items-end justify-end gap-4">
           <div className="flex flex-col gap-2">
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:flex-wrap">
               <Select value={timeMode} onValueChange={(v: 'week' | 'custom') => setTimeMode(v)}>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,12 @@ const SuperAdminDashboard = () => {
   const { teamMember, isOwner, loading } = useTeamMember();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
   const { currentMetrics, pipelineStages, teamMembers, referrals, scorecard, isLoading, isError } = useSuperAdminDashboard(timePeriod);
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Admin Dashboard');
+    return () => { setPageTitle(null); };
+  }, []);
 
   // Redirect non-owner employees to their team dashboard
   useEffect(() => {
@@ -126,14 +133,7 @@ const SuperAdminDashboard = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Shield className="h-6 w-6 text-admin-blue" />
-              <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            </div>
-            <p className="text-muted-foreground">Company-wide performance overview</p>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4">
           <Select value={timePeriod} onValueChange={(value: TimePeriod) => setTimePeriod(value)}>
             <SelectTrigger className="w-[180px] bg-background">
               <CalendarDays className="h-4 w-4 mr-2" />

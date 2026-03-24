@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { TEAM_EMAILS } from '@/constants/appConfig';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +12,12 @@ import { format } from 'date-fns';
 import { Bug, ExternalLink, Clock, User } from 'lucide-react';
 
 const IlanTeamEvanBugs = () => {
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle("Evan's Bug Reports");
+    return () => { setPageTitle(null); };
+  }, []);
+
   const { data: bugReports, isLoading } = useQuery({
     queryKey: ['evan-bug-reports'],
     queryFn: async () => {
@@ -57,19 +65,6 @@ const IlanTeamEvanBugs = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-primary/10">
-            <Bug className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Evan's Bug Reports</h1>
-            <p className="text-sm text-muted-foreground">
-              Bug reports submitted by Evan
-            </p>
-          </div>
-        </div>
-
         {/* Bug Reports List */}
         <ScrollArea className="h-[calc(100vh-200px)]">
           {isLoading ? (

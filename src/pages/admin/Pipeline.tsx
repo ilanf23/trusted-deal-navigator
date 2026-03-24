@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -232,9 +233,6 @@ function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick
             <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
           </button>
         </div>
-        {lead.company_name && (
-          <p className="text-[11px] text-muted-foreground mb-1 truncate">{lead.company_name}</p>
-        )}
         {daysInStage !== null && (
           <div className="flex items-center justify-end mt-1.5">
             <span className={`text-[10px] font-medium ${daysInStage > 14 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
@@ -373,6 +371,29 @@ const Pipeline = () => {
       return next;
     });
   }, []);
+
+  // ── Top bar: inject title + search into AdminLayout header ──
+  const { setPageTitle, setSearchComponent } = useAdminTopBar();
+
+  useEffect(() => {
+    setPageTitle('Pipeline');
+    return () => {
+      setPageTitle(null);
+      setSearchComponent(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSearchComponent(
+      <Input
+        type="text"
+        placeholder="Search by name, email, domain or phone number"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full h-9 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border-transparent focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
+      />
+    );
+  }, [searchTerm]);
 
   const columnsMenuRef = useRef<HTMLDivElement>(null);
 
@@ -752,7 +773,7 @@ const Pipeline = () => {
   };
 
   // Row padding based on density
-  const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
+  const rowPad = rowDensity === 'comfortable' ? 'py-1.5' : 'py-0.5';
 
   function handleRowClick(lead: any) {
     setDetailDialogLead(lead);
@@ -909,7 +930,7 @@ const Pipeline = () => {
     const isMenuOpen = colMenuOpen === widthKey;
     return (
       <th
-        className={`px-4 py-3 text-left whitespace-nowrap group/col ${extraClassName ?? ''}`}
+        className={`px-4 py-1.5 text-left whitespace-nowrap group/col ${extraClassName ?? ''}`}
         style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
       >
         <ResizableColumnHeader
@@ -970,31 +991,7 @@ const Pipeline = () => {
 
   return (
     <EvanLayout>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
-
-        {/* ── Copper-Style Header ── */}
-        <div className="shrink-0 border-b border-[#e8eaed] dark:border-border bg-white dark:bg-background px-5 py-3 flex items-center gap-4">
-          <h1 className="text-lg font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap shrink-0">Pipeline</h1>
-
-          {/* Centered search bar */}
-          <div className="flex-1 flex justify-center max-w-2xl mx-auto">
-            <div className="relative w-full">
-              <Input
-                type="text"
-                placeholder="Search by name, email, domain or phone number"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-9 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border-transparent focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors">
-              <Plus className="h-5 w-5 text-[#5f6368] dark:text-muted-foreground" />
-            </button>
-          </div>
-        </div>
+      <div className="system-font flex flex-col h-full min-h-0 overflow-hidden bg-background">
 
         {/* Body: Sidebar + Table */}
         <div className="flex flex-1 min-h-0 overflow-hidden gap-3">
@@ -1248,7 +1245,7 @@ const Pipeline = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="h-9 pl-4 pr-3 text-[13px] font-semibold rounded-md shrink-0 flex items-center gap-2 text-white bg-[#1a237e] hover:bg-[#283593] active:scale-[0.97] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a237e] focus-visible:ring-offset-2 ml-2"
+                      className="h-9 pl-4 pr-3 text-[13px] font-semibold rounded-md shrink-0 flex items-center gap-2 text-white bg-[#3b2778] hover:bg-[#4a3490] active:scale-[0.97] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b2778] focus-visible:ring-offset-2 ml-2"
                     >
                       <span>Add Opportunity</span>
                       <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -1273,30 +1270,29 @@ const Pipeline = () => {
               </div>
             </div>
 
-            {/* ── Bulk Selection Toolbar ── */}
-            {selectedLeadIds.size > 0 && (
-              <div className="px-4 py-2 border-b border-border bg-muted/30">
-                <PipelineBulkToolbar
-                  selectedCount={selectedLeadIds.size}
-                  totalCount={filteredAndSorted.length}
-                  onClearSelection={clearSelection}
-                  onDeleteBoxes={() => setDeleteConfirmOpen(true)}
-                  onAssignOwner={handleBulkAssignOwner}
-                  onAddTags={() => setAddTagsDialogOpen(true)}
-                  onMoveBoxes={() => setMoveBoxesDialogOpen(true)}
-                  teamMembers={teamMembers}
-                />
-              </div>
-            )}
-
             {/* ── Content Area: Table or Kanban ── */}
             {viewMode === 'table' ? (
               <div className="flex-1 overflow-auto">
-                <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                {/* ── Bulk Selection Toolbar ── */}
+                {selectedLeadIds.size > 0 && (
+                  <div className="sticky top-0 z-40 px-4 py-2 bg-white dark:bg-background border-b border-border">
+                    <PipelineBulkToolbar
+                      selectedCount={selectedLeadIds.size}
+                      totalCount={filteredAndSorted.length}
+                      onClearSelection={clearSelection}
+                      onDeleteBoxes={() => setDeleteConfirmOpen(true)}
+                      onAssignOwner={handleBulkAssignOwner}
+                      onAddTags={() => setAddTagsDialogOpen(true)}
+                      onMoveBoxes={() => setMoveBoxesDialogOpen(true)}
+                      teamMembers={teamMembers}
+                    />
+                  </div>
+                )}
+                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#eee6f6' }}>
                       <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                        <div className={`shrink-0 transition-opacity ${isAllSelected || selectedLeadIds.size > 0 ? 'opacity-100' : 'opacity-0 group-hover/hdr:opacity-100'}`}>
+                        <div className={`shrink-0`}>
                           <Checkbox
                             checked={isAllSelected}
                             onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
@@ -1344,14 +1340,14 @@ const Pipeline = () => {
                       <ColHeader colKey="tags" className="sticky top-0 z-10" style={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
                         <Tag className="h-4 w-4" /> Tags
                       </ColHeader>
-                      <th className="w-10 px-2 py-3 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className="bg-white dark:bg-card">
-                          <td className="pl-2 pr-4 py-3.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                          <td className="pl-2 pr-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-4 w-4 rounded shrink-0" />
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
@@ -1361,19 +1357,19 @@ const Pipeline = () => {
                               </div>
                             </div>
                           </td>
-                          {columnVisibility.company && <td className="px-4 py-3.5" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.contact && <td className="px-4 py-3.5" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.value && <td className="px-4 py-3.5" style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                          {columnVisibility.ownedBy && <td className="px-4 py-3.5" style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.tasks && <td className="px-4 py-3.5" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.status && <td className="px-4 py-3.5" style={{ width: columnWidths.status, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                          {columnVisibility.stage && <td className="px-4 py-3.5" style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
-                          {columnVisibility.daysInStage && <td className="px-4 py-3.5" style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.stageUpdated && <td className="px-4 py-3.5" style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.lastContacted && <td className="px-4 py-3.5" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.interactions && <td className="px-4 py-3.5" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.inactiveDays && <td className="px-4 py-3.5" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.tags && <td className="px-4 py-3.5" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                          {columnVisibility.company && <td className="px-4 py-1.5" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
+                          {columnVisibility.contact && <td className="px-4 py-1.5" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.value && <td className="px-4 py-1.5" style={{ width: columnWidths.value, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                          {columnVisibility.ownedBy && <td className="px-4 py-1.5" style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.tasks && <td className="px-4 py-1.5" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.status && <td className="px-4 py-1.5" style={{ width: columnWidths.status, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                          {columnVisibility.stage && <td className="px-4 py-1.5" style={{ width: columnWidths.stage, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
+                          {columnVisibility.daysInStage && <td className="px-4 py-1.5" style={{ width: columnWidths.daysInStage, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                          {columnVisibility.stageUpdated && <td className="px-4 py-1.5" style={{ width: columnWidths.stageUpdated, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.lastContacted && <td className="px-4 py-1.5" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.interactions && <td className="px-4 py-1.5" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.inactiveDays && <td className="px-4 py-1.5" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                          {columnVisibility.tags && <td className="px-4 py-1.5" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
                         </tr>
                       ))
                     ) : filteredAndSorted.length === 0 ? (
@@ -1441,7 +1437,7 @@ const Pipeline = () => {
                             {/* Deal + Checkbox (sticky) */}
                             <td className={`pl-2 pr-4 ${rowPad} overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.deal, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2.5">
-                                <div className={`shrink-0 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} onClick={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}>
+                                <div className={`shrink-0`} onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
                                     checked={isSelected}
                                     onCheckedChange={() => toggleLeadSelection(lead.id)}
@@ -1464,9 +1460,6 @@ const Pipeline = () => {
                                       <Maximize2 className="w-4 h-4 text-muted-foreground/60 hover:text-foreground transition-colors" />
                                     </button>
                                   </div>
-                                  {lead.company_name && (
-                                    <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground truncate leading-tight mt-0.5">{lead.company_name}</p>
-                                  )}
                                 </div>
                               </div>
                             </td>
@@ -1690,9 +1683,6 @@ const Pipeline = () => {
                         </div>
                         <p className="text-sm font-semibold text-foreground truncate">{draggedLead.name}</p>
                       </div>
-                      {draggedLead.company_name && (
-                        <p className="text-[11px] text-muted-foreground">{draggedLead.company_name}</p>
-                      )}
                     </Card>
                   ) : null}
                 </DragOverlay>

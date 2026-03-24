@@ -362,7 +362,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
   return (
     <Sidebar 
-      className="bg-sidebar font-sans text-sidebar-foreground [&_[data-sidebar=sidebar]]:bg-sidebar [&_[data-sidebar=sidebar]]:[box-shadow:1px_0_0_0_hsl(var(--sidebar-border))]"
+      className="system-font bg-sidebar font-sans text-sidebar-foreground [&_[data-sidebar=sidebar]]:bg-sidebar [&_[data-sidebar=sidebar]]:[box-shadow:1px_0_0_0_hsl(var(--sidebar-border))]"
       collapsible="icon"
       style={{ 
         '--sidebar-width': '17rem', 

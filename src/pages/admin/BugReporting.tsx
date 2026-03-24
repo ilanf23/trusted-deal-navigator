@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -15,6 +16,12 @@ const BugReporting = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [submitted, setSubmitted] = useState(false);
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Bug Reporting');
+    return () => { setPageTitle(null); };
+  }, []);
   const [newBug, setNewBug] = useState({
     title: '',
     description: '',
@@ -83,13 +90,6 @@ const BugReporting = () => {
   return (
     <AdminLayout>
       <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">Bug Reporting</h1>
-          <p className="text-muted-foreground mt-1">
-            Report bugs directly to Ilan @maverick.AI
-          </p>
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

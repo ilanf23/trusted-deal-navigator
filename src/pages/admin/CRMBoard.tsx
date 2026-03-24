@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -45,6 +46,12 @@ const CRMBoard = () => {
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<LeadStatus, boolean>>({} as Record<LeadStatus, boolean>);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Company Pipeline');
+    return () => { setPageTitle(null); };
+  }, []);
 
   // Fetch all team members for owner filter (exclude Adam and Ilan)
   const { data: teamMembers = [] } = useQuery({
@@ -246,11 +253,7 @@ const CRMBoard = () => {
     <AdminLayout>
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Company Pipeline</h1>
-            <span className="text-sm text-slate-500 font-medium">{totalLeads} leads</span>
-          </div>
+        <div className="flex items-center justify-end mb-6">
           <div className="flex items-center gap-2">
             <Link to="/admin/leads">
               <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50">

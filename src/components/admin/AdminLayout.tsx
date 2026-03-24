@@ -12,6 +12,7 @@ import { SplitViewProvider, useSplitView } from '@/contexts/SplitViewContext';
 import SplitViewContainer from './splitview/SplitViewContainer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, createContext, useContext } from 'react';
+import { AdminTopBarProvider, useAdminTopBar } from '@/contexts/AdminTopBarContext';
 
 export const AdminLayoutMountedContext = createContext(false);
 
@@ -70,12 +71,13 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const { theme, setTheme } = useTheme();
   const { lastAction, isUndoing, executeUndo } = useUndo();
   const { isOpen: aiChatOpen, setIsOpen: setAiChatOpen } = useAIAssistant();
+  const { pageTitle, searchComponent, actionsComponent } = useAdminTopBar();
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full admin-portal bg-background overflow-hidden">
-        <AdminSidebar 
-          onInboxToggle={() => setInboxOpen(!inboxOpen)} 
+        <AdminSidebar
+          onInboxToggle={() => setInboxOpen(!inboxOpen)}
           inboxOpen={inboxOpen}
           onAIToggle={() => setAiChatOpen(!aiChatOpen)}
           aiChatOpen={aiChatOpen}
@@ -83,15 +85,31 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
 
         <main className="flex-1 flex flex-col h-screen min-w-0 overflow-x-auto">
           {/* Top Bar - responsive padding and layout */}
-          <header className="h-14 md:h-16 flex items-center justify-between border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8">
-            <div className="flex items-center gap-2 md:gap-5">
+          <header className="h-14 md:h-16 flex items-center border-b border-border bg-card sticky top-0 z-[5] px-3 md:px-4 lg:pl-4 lg:pr-8 gap-3">
+            {/* Left: hamburger + page title */}
+            <div className="flex items-center gap-2 md:gap-4 shrink-0">
               <SidebarTrigger className="w-10 h-10 md:w-11 md:h-11 rounded-xl hover:bg-muted transition-colors flex items-center justify-center group">
                 <Menu className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground group-hover:text-foreground" />
               </SidebarTrigger>
+              {pageTitle && (
+                <h1 className="text-lg font-bold text-foreground whitespace-nowrap hidden sm:block">
+                  {pageTitle}
+                </h1>
+              )}
             </div>
-            
-            {/* Time Display and Actions */}
-            <div className="flex items-center gap-2 md:gap-4">
+
+            {/* Center: search bar or spacer */}
+            <div className="flex-1 flex justify-center min-w-0" key="topbar-center">
+              {searchComponent && (
+                <div className="w-full max-w-2xl">
+                  {searchComponent}
+                </div>
+              )}
+            </div>
+
+            {/* Right: page actions + global actions */}
+            <div className="flex items-center gap-2 md:gap-4 shrink-0">
+              {actionsComponent}
               {/* Undo Button - Always Visible */}
               <TooltipProvider>
                 <Tooltip>
@@ -171,7 +189,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     <AdminLayoutMountedContext.Provider value={true}>
       <UndoProvider>
         <SplitViewProvider>
-          <AdminLayoutContent>{children}</AdminLayoutContent>
+          <AdminTopBarProvider>
+            <AdminLayoutContent>{children}</AdminLayoutContent>
+          </AdminTopBarProvider>
         </SplitViewProvider>
       </UndoProvider>
     </AdminLayoutMountedContext.Provider>

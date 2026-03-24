@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -305,6 +306,13 @@ const LoanVolumeLog = () => {
   const [stageFilter, setStageFilter] = useState('all');
   const [wonFilter, setWonFilter] = useState('all');
   const [assignedFilter, setAssignedFilter] = useState('all');
+
+  // ── Top bar: inject title into AdminLayout header ──
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Loan Volume Log');
+    return () => { setPageTitle(null); };
+  }, []);
 
   // Column visibility
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
@@ -616,7 +624,7 @@ const LoanVolumeLog = () => {
     const width = columnWidths[colKey] ?? DEFAULT_COLUMN_WIDTHS[colKey] ?? 100;
     return (
       <th
-        className={`px-3 py-3 text-left whitespace-nowrap ${extraClassName ?? ''}`}
+        className={`px-3 py-1.5 text-left whitespace-nowrap ${extraClassName ?? ''}`}
         style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, border: '1px solid #c8bdd6', ...extraStyle }}
       >
         <ResizableColumnHeader
@@ -656,7 +664,6 @@ const LoanVolumeLog = () => {
         <div className="shrink-0 border-b border-border bg-background px-5 py-3 space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <h1 className="text-[15px] font-bold text-foreground whitespace-nowrap">Loan Volume Log</h1>
               <DbTableBadge tables={['leads']} />
               {!isLoading && (
                 <span className="text-[12px] text-muted-foreground bg-muted px-2 py-0.5 rounded-md font-medium tabular-nums">
@@ -1023,19 +1030,6 @@ const LoanVolumeLog = () => {
           </div>
         </div>
 
-        {/* Bulk Selection Toolbar */}
-        {selectedLeadIds.size > 0 && (
-          <div className="mb-0">
-            <PipelineBulkToolbar
-              selectedCount={selectedLeadIds.size}
-              totalCount={filteredAndSorted.length}
-              onClearSelection={clearSelection}
-              onEdit={() => { /* TODO */ }}
-              onExport={() => { /* TODO */ }}
-            />
-          </div>
-        )}
-
         {/* Search bar */}
         <div className="shrink-0 px-5 py-2.5 border-b border-border bg-background">
           <Input
@@ -1051,7 +1045,19 @@ const LoanVolumeLog = () => {
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <div className="flex-1 overflow-auto">
-              <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+              {/* Bulk Selection Toolbar */}
+              {selectedLeadIds.size > 0 && (
+                <div className="sticky top-0 z-40 px-4 py-2 bg-white dark:bg-background border-b border-border">
+                  <PipelineBulkToolbar
+                    selectedCount={selectedLeadIds.size}
+                    totalCount={filteredAndSorted.length}
+                    onClearSelection={clearSelection}
+                    onEdit={() => { /* TODO */ }}
+                    onExport={() => { /* TODO */ }}
+                  />
+                </div>
+              )}
+              <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                     <ColHeader
@@ -1059,7 +1065,7 @@ const LoanVolumeLog = () => {
                       className="sticky top-0 z-30 bg-gray-100 dark:bg-muted group/hdr"
                       style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}
                     >
-                      <div className={`shrink-0 transition-opacity ${isAllSelected || selectedLeadIds.size > 0 ? 'opacity-100' : 'opacity-0 group-hover/hdr:opacity-100'}`}>
+                      <div className="shrink-0">
                         <Checkbox
                           checked={isAllSelected}
                           onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
@@ -1090,40 +1096,40 @@ const LoanVolumeLog = () => {
                     <ColHeader colKey="signals" className="sticky top-0 z-10 bg-white dark:bg-card">Signals</ColHeader>
 
                     {/* Detail arrow spacer */}
-                    <th className="w-10 px-2 py-3 sticky top-0 z-10 bg-white dark:bg-card" style={{ border: '1px solid #c8bdd6' }} />
+                    <th className="w-10 px-2 py-1.5 sticky top-0 z-10 bg-white dark:bg-card" style={{ border: '1px solid #c8bdd6' }} />
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     Array.from({ length: 8 }).map((_, i) => (
                       <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
-                        <td className="pl-2 pr-4 py-3.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                        <td className="pl-2 pr-4 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                           <div className="flex items-center gap-2">
                             <Skeleton className="h-4 w-4 rounded shrink-0" />
                             <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                             <Skeleton className="h-3.5 w-28" />
                           </div>
                         </td>
-                        {columnVisibility.status && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-14 rounded" /></td>}
-                        {columnVisibility.company && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                        {columnVisibility.loanAmount && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.category && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-18 rounded" /></td>}
-                        {columnVisibility.stage && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
-                        {columnVisibility.won && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                        {columnVisibility.assignedTo && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.lender && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                        {columnVisibility.lenderType && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.feePercent && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                        {columnVisibility.potentialRevenue && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.netRevenue && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.targetClosing && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-18 rounded" /></td>}
-                        {columnVisibility.wuDate && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-18 rounded" /></td>}
-                        {columnVisibility.daysToWu && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                        {columnVisibility.daysToClose && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                        {columnVisibility.source && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
-                        {columnVisibility.clxAgreement && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                        {columnVisibility.signals && <td className="px-3 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                        <td className="px-2 py-3.5 w-10" style={{ border: '1px solid #c8bdd6' }} />
+                        {columnVisibility.status && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-14 rounded" /></td>}
+                        {columnVisibility.company && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                        {columnVisibility.loanAmount && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.category && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-18 rounded" /></td>}
+                        {columnVisibility.stage && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
+                        {columnVisibility.won && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                        {columnVisibility.assignedTo && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.lender && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                        {columnVisibility.lenderType && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.feePercent && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                        {columnVisibility.potentialRevenue && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.netRevenue && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.targetClosing && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-18 rounded" /></td>}
+                        {columnVisibility.wuDate && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-18 rounded" /></td>}
+                        {columnVisibility.daysToWu && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                        {columnVisibility.daysToClose && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                        {columnVisibility.source && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                        {columnVisibility.clxAgreement && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                        {columnVisibility.signals && <td className="px-3 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                        <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }} />
                       </tr>
                     ))
                   ) : filteredAndSorted.length === 0 ? (
@@ -1207,7 +1213,7 @@ const LoanVolumeLog = () => {
                               style={{ width: columnWidths.borrower, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}
                             >
                               <div className="flex items-center gap-2">
-                                <div className={`shrink-0 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} onClick={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}>
+                                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
                                     checked={isSelected}
                                     onCheckedChange={() => toggleLeadSelection(lead.id)}

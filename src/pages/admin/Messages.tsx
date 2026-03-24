@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -72,6 +73,12 @@ const AdminMessages = () => {
   const [callRatings, setCallRatings] = useState<CallRatingNotification[]>([]);
   const [ratingsLoading, setRatingsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Messages');
+    return () => { setPageTitle(null); };
+  }, []);
 
   const fetchCallRatings = async () => {
     try {
@@ -228,12 +235,6 @@ const AdminMessages = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
-          <p className="text-muted-foreground text-sm mt-1">Call analytics and client communications</p>
-        </div>
-
         <Tabs defaultValue="client-messages" className="w-full">
           <TabsList className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
             <TabsTrigger value="client-messages" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +33,28 @@ const Projects = () => {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // ── Top bar: inject title + search into AdminLayout header ──
+  const { setPageTitle, setSearchComponent } = useAdminTopBar();
+
+  useEffect(() => {
+    setPageTitle('Projects');
+    return () => {
+      setPageTitle(null);
+      setSearchComponent(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSearchComponent(
+      <Input
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="Search by name, email, domain or phone number"
+        className="h-9 px-4 rounded-full bg-muted/50 border-0 focus-visible:ring-1"
+      />
+    );
+  }, [searchTerm]);
 
   // Fetch all projects
   const { data: rawProjects = [], isLoading } = useQuery({
@@ -149,22 +172,6 @@ const Projects = () => {
   return (
     <EvanLayout>
       <div className="flex flex-col h-full bg-background">
-        {/* Top bar with search */}
-        <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center gap-4">
-          <h1 className="text-xl font-bold text-foreground shrink-0">Projects</h1>
-          <div className="flex-1 max-w-xl mx-auto">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, email, domain or phone number"
-                className="pl-9 h-9 rounded-full bg-muted/50 border-0 focus-visible:ring-1"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Filter bar */}
         <div className="shrink-0 border-b border-border bg-card px-6 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">

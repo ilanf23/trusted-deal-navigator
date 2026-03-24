@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -97,6 +98,12 @@ const ITEMS_PER_PAGE = 10;
 const UsersAndRoles = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Users & Roles');
+    return () => { setPageTitle(null); };
+  }, []);
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -276,17 +283,8 @@ const UsersAndRoles = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <ShieldCheck className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-foreground">Users & Roles</h1>
-            <p className="text-sm text-muted-foreground">Manage user permissions and access levels</p>
-          </div>
-        </div>
+      {/* Actions */}
+      <div className="flex justify-end">
         <Button size="sm" className="w-fit">
           <UserPlus className="w-4 h-4 mr-1.5" />
           Add User

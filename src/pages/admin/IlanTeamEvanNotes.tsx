@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +32,12 @@ const IlanTeamEvanNotes = () => {
   const [newNote, setNewNote] = useState('');
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle("Evan's Notes");
+    return () => { setPageTitle(null); };
+  }, []);
 
   // Fetch Evan's notes
   const { data: notes = [], isLoading } = useQuery({
@@ -139,17 +146,6 @@ const IlanTeamEvanNotes = () => {
   return (
     <AdminLayout>
       <div className="p-6 max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-            <StickyNote className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Evan's Notes</h1>
-            <p className="text-muted-foreground text-sm">View and manage notes for Evan</p>
-          </div>
-        </div>
-
         {/* Create Note */}
         <Card>
           <CardHeader className="pb-3">

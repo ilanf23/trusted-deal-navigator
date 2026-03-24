@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useAIChanges, type AIChange } from '@/hooks/useAIChanges';
 import AIChangesTable from '@/components/admin/ai-changes/AIChangesTable';
 import AIChangesFilters from '@/components/admin/ai-changes/AIChangesFilters';
 import AIChangeDetailPanel from '@/components/admin/ai-changes/AIChangeDetailPanel';
 import { useSearchParams } from 'react-router-dom';
-import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 const AIChanges = () => {
   const [searchParams] = useSearchParams();
@@ -17,6 +17,12 @@ const AIChanges = () => {
   }>({});
 
   const [selectedChange, setSelectedChange] = useState<AIChange | null>(null);
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('AI Changes');
+    return () => { setPageTitle(null); };
+  }, []);
 
   const { changes, batches, isLoading, undoChange, redoChange, undoBatch, refetch } = useAIChanges(filters);
 
@@ -60,16 +66,6 @@ const AIChanges = () => {
 
   return (
     <div className="flex-1 p-6 space-y-4">
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">AI Changes</h1>
-          <DbTableBadge tables={['ai_agent_changes']} />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Review and manage all changes made by the AI assistant
-        </p>
-      </div>
-
       <AIChangesFilters
         filters={filters}
         onFiltersChange={setFilters}

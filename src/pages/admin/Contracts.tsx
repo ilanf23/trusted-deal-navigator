@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,12 @@ const AdminContracts = () => {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Contracts');
+    return () => { setPageTitle(null); };
+  }, []);
 
   const [newContract, setNewContract] = useState({
     client_id: '',
@@ -142,14 +149,7 @@ const AdminContracts = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-bold">Contracts</h1>
-              <DbTableBadge tables={['contracts']} />
-            </div>
-            <p className="text-muted-foreground">Create and manage client contracts</p>
-          </div>
+        <div className="flex items-center justify-end">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button>

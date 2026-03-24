@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +9,12 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const IlansPage = () => {
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Developer Dashboard');
+    return () => { setPageTitle(null); };
+  }, []);
+
   // Fetch bug report stats
   const { data: bugStats } = useQuery({
     queryKey: ['bug-stats'],
@@ -27,12 +35,6 @@ const IlansPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="pb-4">
-          <h1 className="text-3xl font-semibold tracking-tight">Developer Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Development tools and bug tracking</p>
-        </div>
-
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="border hover:border-primary/30 transition-colors">

@@ -4,7 +4,7 @@ import {
   X, Maximize2, Building2, User, Mail, Phone, PhoneCall,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase,
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Layers,
-  Link2, FolderOpen, AtSign, MapPin, Trash2,
+  Link2, FolderOpen, AtSign, MapPin, Trash2, Copy, Plus,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/address-autocomplete';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
@@ -158,6 +159,66 @@ function useInlineSave(
   }, [currentValue]);
 
   return { editing, setEditing, draft, setDraft, saving, save, cancel };
+}
+
+// ── Simple field (header + value, click to edit) ──
+function SimpleField({
+  label,
+  value,
+  field,
+  personId,
+  onSaved,
+  placeholder,
+  required,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  field: string;
+  personId: string;
+  onSaved: (updated: any) => void;
+  placeholder?: string;
+  required?: boolean;
+  multiline?: boolean;
+}) {
+  const { editing, setEditing, draft, setDraft, saving, save } = useInlineSave(personId, field, value, onSaved);
+
+  if (editing) {
+    return (
+      <div>
+        <span className="text-[12px] font-semibold text-muted-foreground">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</span>
+        {multiline ? (
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === 'Escape') setEditing(false); }}
+            onBlur={() => save()}
+            rows={3}
+            className="w-full mt-0.5 text-[15px] text-foreground bg-transparent border-b border-blue-400 outline-none resize-none"
+          />
+        ) : (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+            onBlur={() => save()}
+            className="w-full mt-0.5 text-[15px] text-foreground bg-transparent border-b border-blue-400 outline-none"
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="cursor-pointer" onClick={() => setEditing(true)}>
+      <span className="text-[12px] font-semibold text-muted-foreground">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</span>
+      <p className={`text-[15px] mt-0.5 ${value ? 'font-medium text-foreground' : 'text-muted-foreground/50'}`}>
+        {saving ? <Loader2 className="h-4 w-4 animate-spin inline" /> : (value || placeholder || `Add ${label}`)}
+      </p>
+    </div>
+  );
 }
 
 // ── Editable field row ──
@@ -626,6 +687,13 @@ const TIMELINE_ICON_CONFIG: Record<string, { icon: React.ReactNode; dotColor: st
 
 // ── Activity Tab Content ──
 function ActivityTabContent({ person, contactTypeConfig }: { person: Person; contactTypeConfig: Record<string, ContactTypeConfigEntry> }) {
+  const queryClient = useQueryClient();
+  const { teamMember } = useTeamMember();
+  const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
+  const [activityType, setActivityType] = useState('to_do');
+  const [noteContent, setNoteContent] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+
   const { data: communications = [], isLoading: loadingComms } = useQuery({
     queryKey: ['people-activity-timeline', 'communications', person.id, person.phone],
     queryFn: async () => {
@@ -650,7 +718,7 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
     queryFn: async () => {
       const { data } = await supabase
         .from('lead_activities')
-        .select('id, activity_type, title, content, created_at')
+        .select('id, activity_type, title, content, created_at, created_by')
         .eq('lead_id', person.id)
         .order('created_at', { ascending: false });
       return data || [];
@@ -662,12 +730,44 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
 
   const isLoading = loadingComms || loadingActivities;
 
+  // ── Stats ──
+  const stats = useMemo(() => {
+    const total = communications.length + activities.length;
+    let lastDate: Date | null = null;
+    const allDates = [
+      ...communications.map(c => new Date(c.created_at)),
+      ...activities.map(a => new Date(a.created_at)),
+    ];
+    if (allDates.length > 0) lastDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+    const inactive = lastDate ? differenceInDays(new Date(), lastDate) : null;
+    return { total, lastDate, inactive };
+  }, [communications, activities]);
+
+  // ── Log activity mutation ──
+  const handleLogActivity = async () => {
+    if (!noteContent.trim()) return;
+    setSavingNote(true);
+    const { error } = await supabase.from('lead_activities').insert({
+      lead_id: person.id,
+      activity_type: activityTab === 'log' ? activityType : 'note',
+      title: activityTab === 'log' ? activityType.replace(/_/g, ' ') : 'Note',
+      content: noteContent.trim(),
+      created_by: teamMember?.name ?? 'Unknown',
+    });
+    setSavingNote(false);
+    if (error) { toast.error('Failed to save'); return; }
+    setNoteContent('');
+    queryClient.invalidateQueries({ queryKey: ['people-activity-timeline', 'activities', person.id] });
+    toast.success(activityTab === 'log' ? 'Activity logged' : 'Note saved');
+  };
+
   interface TimelineItem {
     id: string;
     type: string;
     title: string;
     content: string | null;
     createdAt: string;
+    createdBy?: string | null;
     source: 'communication' | 'activity';
     direction?: string;
     durationSeconds?: number | null;
@@ -675,33 +775,14 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
 
   const timelineItems = useMemo<TimelineItem[]>(() => {
     const items: TimelineItem[] = [];
-
     for (const c of communications) {
       const typeLabel = c.communication_type === 'sms' ? 'SMS' : c.communication_type === 'call' ? 'Call' : 'Email';
       const dirLabel = c.direction === 'inbound' ? 'Inbound' : 'Outbound';
-      items.push({
-        id: c.id,
-        type: c.communication_type,
-        title: `${dirLabel} ${typeLabel}`,
-        content: c.content,
-        createdAt: c.created_at,
-        source: 'communication',
-        direction: c.direction,
-        durationSeconds: c.duration_seconds,
-      });
+      items.push({ id: c.id, type: c.communication_type, title: `${dirLabel} ${typeLabel}`, content: c.content, createdAt: c.created_at, source: 'communication', direction: c.direction, durationSeconds: c.duration_seconds });
     }
-
     for (const a of activities) {
-      items.push({
-        id: a.id,
-        type: a.activity_type,
-        title: a.title ?? a.activity_type,
-        content: a.content,
-        createdAt: a.created_at,
-        source: 'activity',
-      });
+      items.push({ id: a.id, type: a.activity_type, title: a.title ?? a.activity_type, content: a.content, createdAt: a.created_at, createdBy: (a as any).created_by, source: 'activity' });
     }
-
     items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return items;
   }, [communications, activities]);
@@ -712,10 +793,7 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
         {[1, 2, 3].map((i) => (
           <div key={i} className="flex gap-3">
             <Skeleton className="h-7 w-7 rounded-full shrink-0" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-3.5 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-            </div>
+            <div className="flex-1 space-y-2"><Skeleton className="h-3.5 w-3/4" /><Skeleton className="h-3 w-1/2" /></div>
           </div>
         ))}
       </div>
@@ -723,74 +801,170 @@ function ActivityTabContent({ person, contactTypeConfig }: { person: Person; con
   }
 
   return (
-    <div className="px-5 py-4">
+    <div className="px-5 py-4 space-y-4">
+
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-3 rounded-lg border border-border divide-x divide-border overflow-hidden bg-white dark:bg-card">
+        <div className="py-3 text-center">
+          <p className="text-lg font-bold text-foreground">{stats.total}</p>
+          <p className="text-[11px] text-muted-foreground">Interactions</p>
+        </div>
+        <div className="py-3 text-center">
+          <p className="text-lg font-bold text-foreground">{stats.lastDate ? format(stats.lastDate, 'M/d/yyyy') : '—'}</p>
+          <p className="text-[11px] text-muted-foreground">Last Contacted</p>
+        </div>
+        <div className="py-3 text-center">
+          <p className="text-lg font-bold text-foreground">{stats.inactive ?? '—'}</p>
+          <p className="text-[11px] text-muted-foreground">Inactive Days</p>
+        </div>
+      </div>
+
+      {/* ── Log Activity / Create Note ── */}
+      <div className="rounded-lg border border-border overflow-hidden bg-white dark:bg-card">
+        <div className="flex border-b border-border">
+          {(['log', 'note'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActivityTab(tab)}
+              className={`flex-1 py-2.5 text-[13px] font-semibold transition-colors relative text-center ${
+                activityTab === tab ? 'text-[#3b2778]' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab === 'log' ? 'Log Activity' : 'Create Note'}
+              {activityTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, #6d28d9, #8b5cf6, #a78bfa)' }} />}
+            </button>
+          ))}
+        </div>
+        <div className="p-4 space-y-3">
+          {activityTab === 'log' && (
+            <Select value={activityType} onValueChange={setActivityType}>
+              <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="to_do">To Do</SelectItem>
+                <SelectItem value="phone_call">Phone Call</SelectItem>
+                <SelectItem value="meeting">Meeting</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="follow_up">Follow Up</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          <Textarea
+            value={noteContent}
+            onChange={(e) => setNoteContent(e.target.value)}
+            placeholder="Click here to add a note"
+            rows={3}
+            className="resize-none text-sm"
+          />
+          {noteContent.trim() && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={handleLogActivity} disabled={savingNote} className="bg-[#3b2778] hover:bg-[#2d1d5e] text-white">
+                {savingNote && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                {activityTab === 'note' ? 'Save Note' : 'Log Activity'}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Earlier label ── */}
+      {timelineItems.length > 0 && (
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-[13px] font-medium text-muted-foreground">Earlier</span>
+          <span className="text-[12px] text-muted-foreground">Filters ({timelineItems.length})</span>
+        </div>
+      )}
+
+      {/* ── Activity Feed ── */}
       {timelineItems.length === 0 ? (
-        <div className="py-10 flex flex-col items-center justify-center text-center">
+        <div className="py-8 flex flex-col items-center justify-center text-center">
           <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
             <Clock className="h-5 w-5 text-muted-foreground" />
           </div>
           <p className="text-sm font-medium text-muted-foreground">No activity recorded yet</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Activities will appear here</p>
         </div>
       ) : (
-        <div className="relative">
-          <div className="absolute left-[13px] top-2 bottom-2 w-px bg-border" />
-          <div className="space-y-0.5">
-            {timelineItems.map((item) => {
-              const iconCfg = TIMELINE_ICON_CONFIG[item.type] ?? TIMELINE_ICON_CONFIG.comment;
+        <div className="space-y-3">
+          {timelineItems.map((item) => {
+            const iconCfg = TIMELINE_ICON_CONFIG[item.type] ?? TIMELINE_ICON_CONFIG.comment;
+            const initial = item.createdBy?.[0]?.toUpperCase() ?? '?';
 
-              let fromType: string | null = null;
-              let toType: string | null = null;
-              if (item.type === 'type_change' && item.content) {
-                try {
-                  const parsed = JSON.parse(item.content);
-                  fromType = parsed.from;
-                  toType = parsed.to;
-                } catch { /* ignore */ }
-              }
+            let fromType: string | null = null;
+            let toType: string | null = null;
+            if (item.type === 'type_change' && item.content) {
+              try { const p = JSON.parse(item.content); fromType = p.from; toType = p.to; } catch { /* */ }
+            }
 
-              return (
-                <div key={item.id} className="flex gap-3 py-2.5 relative">
-                  <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 z-10 ${iconCfg.dotColor}`}>
-                    {iconCfg.icon}
+            return (
+              <div key={item.id} className="rounded-lg border border-border bg-white dark:bg-card p-4 hover:border-[#c8bdd6] transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold ${iconCfg.dotColor}`}>
+                    {item.source === 'activity' ? initial : iconCfg.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-[13px] font-semibold text-foreground leading-tight">{item.title}</p>
-                      <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
-                        {formatDistanceToNow(parseISO(item.createdAt), { addSuffix: true })}
-                      </span>
-                    </div>
-
-                    {item.type === 'type_change' && fromType && toType && (
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${contactTypeConfig[fromType]?.pill ?? 'bg-muted text-muted-foreground'}`}>
-                          {contactTypeConfig[fromType]?.label ?? fromType}
-                        </span>
-                        <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${contactTypeConfig[toType]?.pill ?? 'bg-muted text-muted-foreground'}`}>
-                          {contactTypeConfig[toType]?.label ?? toType}
-                        </span>
-                      </div>
-                    )}
-
-                    {item.type !== 'type_change' && item.content && (
-                      <p className="text-[12px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{item.content}</p>
-                    )}
-
-                    {item.type === 'call' && item.durationSeconds != null && item.durationSeconds > 0 && (
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {Math.floor(item.durationSeconds / 60)}m {item.durationSeconds % 60}s
-                      </p>
-                    )}
+                    <p className="text-[13px] font-semibold text-foreground truncate">{item.title}</p>
                   </div>
+                  <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+                    {format(parseISO(item.createdAt), 'MMM d, yyyy')}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+
+                {item.type === 'type_change' && fromType && toType && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${contactTypeConfig[fromType]?.pill ?? 'bg-muted text-muted-foreground'}`}>
+                      {contactTypeConfig[fromType]?.label ?? fromType}
+                    </span>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${contactTypeConfig[toType]?.pill ?? 'bg-muted text-muted-foreground'}`}>
+                      {contactTypeConfig[toType]?.label ?? toType}
+                    </span>
+                  </div>
+                )}
+
+                {item.type !== 'type_change' && item.content && (
+                  <p className="text-[12px] text-muted-foreground line-clamp-2 leading-relaxed">{item.content}</p>
+                )}
+
+                {item.type === 'call' && item.durationSeconds != null && item.durationSeconds > 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1">{Math.floor(item.durationSeconds / 60)}m {item.durationSeconds % 60}s</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
+  );
+}
+
+// ── Reusable collapsible section for Related tab ──
+function RelatedSection({ label, count, defaultOpen, onAdd, children }: {
+  label: string;
+  count: number;
+  defaultOpen?: boolean;
+  onAdd?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Collapsible defaultOpen={defaultOpen}>
+      <div className="border-t border-border">
+        <div className="flex items-center justify-between px-6 py-3">
+          <CollapsibleTrigger className="flex items-center gap-1 hover:text-foreground transition-colors">
+            <span className="text-[14px] font-semibold text-foreground">{label} ({count})</span>
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </CollapsibleTrigger>
+          <button
+            onClick={onAdd}
+            className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            title={`Add ${label}`}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+        <CollapsibleContent className="px-6 pb-3">
+          {children}
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
   );
 }
 
@@ -848,111 +1022,94 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
     );
   }
 
-  const typeCfg = contactTypeConfig[person.contact_type ?? 'Other'];
-
   return (
-    <div className="px-5 py-4 space-y-1">
-      {/* Company */}
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-1 rounded-lg transition-colors">
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <span className="text-indigo-500"><Building2 className="h-3.5 w-3.5" /></span> Company
-          </span>
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-muted text-muted-foreground">
-            {person.company_name ? 1 : 0}
-          </Badge>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pl-6 pb-2">
-          {person.company_name ? (
-            <div className="flex items-center gap-2.5 pt-1">
-              <div className={`h-7 w-7 rounded-lg bg-gradient-to-br ${getAvatarGradient(person.company_name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-                {person.company_name[0]?.toUpperCase() ?? '?'}
-              </div>
-              <p className="text-[12px] font-medium text-foreground">{person.company_name}</p>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground italic py-1">No company set</p>
-          )}
-        </CollapsibleContent>
-      </Collapsible>
+    <div className="py-4">
 
-      {/* Tasks */}
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-1 rounded-lg transition-colors">
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <span className="text-emerald-500"><CheckSquare className="h-3.5 w-3.5" /></span> Tasks
-          </span>
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-muted text-muted-foreground">
-            {pendingTasks.length}
-          </Badge>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pl-6 pb-2">
-          {pendingTasks.length === 0 && completedTasks.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic py-1">No tasks</p>
-          ) : (
-            <div className="space-y-1 pt-1">
-              {pendingTasks.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded-md px-1 py-0.5 -mx-1 transition-colors group"
-                  onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
-                >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
-                    className="shrink-0"
-                  >
-                    <div className="h-4 w-4 rounded border border-border group-hover:border-emerald-400 transition-colors" />
-                  </button>
-                  <span className="text-[12px] truncate flex-1 text-foreground">
-                    {t.title}
-                  </span>
-                  {t.due_date && (
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                      {formatDate(t.due_date)}
-                    </span>
-                  )}
-                </div>
-              ))}
-              {completedTasks.length > 0 && (
-                <>
-                  <button
-                    onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1 w-full"
-                  >
-                    {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                    Completed ({completedTasks.length})
-                  </button>
-                  {showCompletedTasks && completedTasks.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded-md px-1 py-0.5 -mx-1 transition-colors"
-                      onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
-                    >
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }}
-                        className="shrink-0"
-                      >
-                        <CheckSquare className="h-4 w-4 text-emerald-500" />
-                      </button>
-                      <span className="text-[12px] truncate flex-1 text-muted-foreground line-through">
-                        {t.title}
-                      </span>
-                    </div>
-                  ))}
-                </>
-              )}
-              <button
-                onClick={() => { setEditingTask(null); setTaskDialogOpen(true); }}
-                className="text-[11px] text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+      {/* ── Stats: Total Won + Win Rate ── */}
+      <div className="px-6 pb-5">
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <span className="text-[12px] font-medium text-muted-foreground">Total Won</span>
+            <p className="text-xl font-bold text-foreground mt-0.5">$0</p>
+          </div>
+          <div>
+            <span className="text-[12px] font-medium text-muted-foreground">Win Rate</span>
+            <p className="text-xl font-bold text-foreground mt-0.5">0%</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Pipeline Records ── */}
+      <RelatedSection label="Pipeline Records" count={0} defaultOpen>
+        <div className="flex items-center gap-3 py-2">
+          <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-muted flex items-center justify-center">
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <span className="text-[14px] text-muted-foreground/50">Add Pipeline Record</span>
+        </div>
+      </RelatedSection>
+
+      {/* ── People ── */}
+      <RelatedSection label="People" count={1}>
+        <div className="flex items-center gap-2.5 py-1.5">
+          <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(person.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+            {person.name[0]?.toUpperCase() ?? '?'}
+          </div>
+          <span className="text-[13px] font-medium text-foreground">{person.name}</span>
+        </div>
+      </RelatedSection>
+
+      {/* ── Tasks ── */}
+      <RelatedSection label="Tasks" count={pendingTasks.length} onAdd={() => { setEditingTask(null); setTaskDialogOpen(true); }}>
+        {pendingTasks.length === 0 && completedTasks.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground/50 py-1">No tasks</p>
+        ) : (
+          <div className="space-y-1">
+            {pendingTasks.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded-md px-1 py-1 -mx-1 transition-colors group"
+                onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}
               >
-                + Add task...
-              </button>
-            </div>
-          )}
-        </CollapsibleContent>
-      </Collapsible>
+                <button onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }} className="shrink-0">
+                  <div className="h-4 w-4 rounded border border-border group-hover:border-emerald-400 transition-colors" />
+                </button>
+                <span className="text-[13px] truncate flex-1 text-foreground">{t.title}</span>
+                {t.due_date && <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">{formatDate(t.due_date)}</span>}
+              </div>
+            ))}
+            {completedTasks.length > 0 && (
+              <>
+                <button onClick={() => setShowCompletedTasks(!showCompletedTasks)} className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground transition-colors py-1 w-full">
+                  {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  Completed ({completedTasks.length})
+                </button>
+                {showCompletedTasks && completedTasks.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded-md px-1 py-0.5 -mx-1 transition-colors" onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}>
+                    <button onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }} className="shrink-0"><CheckSquare className="h-4 w-4 text-emerald-500" /></button>
+                    <span className="text-[13px] truncate flex-1 text-muted-foreground line-through">{t.title}</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </RelatedSection>
+
+      {/* ── Files ── */}
+      <RelatedSection label="Files" count={0}>
+        <p className="text-[13px] text-muted-foreground/50 py-1">No files</p>
+      </RelatedSection>
+
+      {/* ── Calendar Events ── */}
+      <RelatedSection label="Calendar Events" count={0}>
+        <p className="text-[13px] text-muted-foreground/50 py-1">No events</p>
+      </RelatedSection>
+
+      {/* ── Projects ── */}
+      <RelatedSection label="Projects" count={0}>
+        <p className="text-[13px] text-muted-foreground/50 py-1">No projects</p>
+      </RelatedSection>
 
       <PeopleTaskDetailDialog
         task={editingTask}
@@ -966,31 +1123,6 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
           queryClient.invalidateQueries({ queryKey: ['person-tasks', person.id] });
         }}
       />
-
-      {/* Contact Type */}
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full py-2.5 hover:bg-muted/50 px-1 rounded-lg transition-colors">
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <span className="text-blue-500"><Layers className="h-3.5 w-3.5" /></span> Contact Type
-          </span>
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 min-w-[18px] justify-center rounded-full ml-1 bg-muted text-muted-foreground">
-            1
-          </Badge>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pl-6 pb-2">
-          <div className="pt-1">
-            {typeCfg ? (
-              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${typeCfg.bg}`}>
-                <span className={`h-2 w-2 rounded-full ${typeCfg.dot}`} />
-                <span className={`text-[11px] font-semibold ${typeCfg.color}`}>{typeCfg.label}</span>
-              </div>
-            ) : (
-              <Badge variant="outline" className="text-[11px]">{person.contact_type}</Badge>
-            )}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
     </div>
   );
 }
@@ -1163,68 +1295,61 @@ export default function PeopleDetailPanel({
   }, [person, onPersonUpdate, queryClient]);
 
   return (
-    <aside className="shrink-0 w-[380px] border-l border-border/60 bg-card flex flex-col h-full animate-in slide-in-from-right-5 duration-200">
+    <aside className="shrink-0 w-[380px] border-l border-border/60 bg-white dark:bg-card flex flex-col max-h-full animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
       <div className="shrink-0">
-        <div className="h-1" style={{ background: 'linear-gradient(90deg, #6d28d9, #8b5cf6, #a78bfa)' }} />
-
-        <div className="px-5 pt-4 pb-4">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
-                {initial}
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-[15px] font-bold text-foreground truncate leading-tight">{person.name}</h2>
-                {person.title && (
-                  <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                    <Briefcase className="h-3 w-3 shrink-0" />
-                    {person.title}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
-              {onExpand && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Expand full view" onClick={onExpand}>
-                  <Maximize2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onClose}>
-                <X className="h-3.5 w-3.5" />
+        {/* Top bar: X close + Follow/actions */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-1">
+            <Button size="sm" className="h-8 rounded-full bg-[#3b2778] hover:bg-[#2d1d5e] text-white text-xs font-semibold px-4">
+              Follow
+            </Button>
+            {onExpand && (
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Expand" onClick={onExpand}>
+                <Maximize2 className="h-4 w-4" />
               </Button>
-            </div>
+            )}
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Copy" onClick={() => { navigator.clipboard.writeText(person.name); toast.success('Copied'); }}>
+              <Copy className="h-4 w-4" />
+            </Button>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2.5">
-            {typeCfg && (
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${typeCfg.bg}`}>
-                <span className={`h-2 w-2 rounded-full ${typeCfg.dot}`} />
-                <span className={`text-xs font-semibold ${typeCfg.color}`}>{typeCfg.label}</span>
-              </div>
-            )}
-            {person.company_name && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted border border-border">
-                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-foreground">{person.company_name}</span>
-              </div>
-            )}
+        {/* Avatar + Name + Subtitle + Company badge */}
+        <div className="px-6 pb-4">
+          <div className="flex items-center gap-3 mb-1">
+            <div className={`h-14 w-14 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-lg font-bold shrink-0`}>
+              {initial}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-bold text-foreground truncate leading-tight">{person.name}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">1 Contact</p>
+              {person.company_name && (
+                <div className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-full border border-border bg-white dark:bg-card">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-foreground">{person.company_name}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex px-5 gap-1 border-b border-border">
+        <div className="flex border-b border-border">
           {(['details', 'activity', 'related'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-all relative ${
-                activeTab === tab ? 'text-blue-700 dark:text-blue-400' : 'text-muted-foreground hover:text-foreground'
+              className={`flex-1 py-2.5 text-[13px] font-semibold uppercase tracking-wider transition-all relative text-center ${
+                activeTab === tab ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab}
               {activeTab === tab && (
-                <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-blue-600" />
+                <span className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: 'linear-gradient(90deg, #6d28d9, #8b5cf6, #a78bfa)' }} />
               )}
             </button>
           ))}
@@ -1233,202 +1358,120 @@ export default function PeopleDetailPanel({
 
       {/* ── Tab Content ── */}
       {activeTab === 'details' && (
-        <ScrollArea className="flex-1">
-          <div className="px-5 py-4 space-y-5">
+        <ScrollArea className="overflow-auto">
+          <div className="px-6 py-5 space-y-6">
 
-            {/* Contact Type selector */}
+            {/* Name */}
+            <SimpleField label="Name" value={person.name} field="name" personId={person.id} onSaved={handleFieldSaved} required />
+
+            {/* CLX File Name */}
+            <SimpleField label="CLX - File Name" value={person.clx_file_name ?? ''} field="clx_file_name" personId={person.id} onSaved={handleFieldSaved} placeholder="Add CLX - File Name" />
+
+            {/* Work Phone */}
+            <SimpleField label="Work Phone" value={person.phone ?? ''} field="phone" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Phone" />
+
+            {/* Primary Contact — name + title/email */}
+            <div>
+              <span className="text-[12px] font-semibold text-muted-foreground">Primary Contact</span>
+              <p className="text-[15px] text-blue-700 dark:text-blue-400 mt-0.5">{person.name}</p>
+              {(person.title || person.email) && (
+                <div className="flex items-center gap-2 mt-1">
+                  <div className={`h-7 w-7 rounded-full bg-gray-200 dark:bg-muted flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0`}>
+                    {person.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    {person.title && <p className="text-[13px] text-muted-foreground truncate">{person.title}</p>}
+                    {person.email && (
+                      <div className="flex items-center gap-1">
+                        <a href={`mailto:${person.email}`} className="text-[13px] text-blue-700 dark:text-blue-400 truncate hover:underline">{person.email}</a>
+                        <button onClick={() => { navigator.clipboard.writeText(person.email!); }} className="shrink-0 text-muted-foreground hover:text-foreground" title="Copy email">
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Direct Phone */}
+            <SimpleField label="Direct Phone" value="" field="phone" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Direct Phone" />
+
+            {/* Fax Phone */}
+            <SimpleField label="Fax Phone" value="" field="phone" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Fax Phone" />
+
+            {/* Owner */}
+            <div>
+              <span className="text-[12px] font-semibold text-muted-foreground">Owner</span>
+              <div className="flex items-center justify-between mt-0.5">
+                <p className="text-[15px] text-blue-700 dark:text-blue-400">
+                  {person.assigned_to ? (teamMemberMap[person.assigned_to] ?? 'Unknown') : <span className="text-muted-foreground/50">Unassigned</span>}
+                </p>
+                {person.assigned_to && (
+                  <button onClick={() => handleFieldSaved({ ...person, assigned_to: null })} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Work Website */}
+            <SimpleField label="Work Website" value={person.linkedin ?? ''} field="linkedin" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Website" />
+
+            {/* Contact Type */}
             {onContactTypeChange && (
-              <div className="rounded-lg border border-border p-3">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Contact Type</span>
+              <div>
+                <span className="text-[12px] font-semibold text-muted-foreground">Contact Type</span>
                 <Select value={person.contact_type ?? 'Other'} onValueChange={(v) => onContactTypeChange(person.id, v)}>
-                  <SelectTrigger className="h-9 w-full text-xs border-border bg-card rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full shrink-0 ${typeCfg?.dot ?? 'bg-muted-foreground'}`} />
-                      <SelectValue>{typeCfg?.label ?? person.contact_type}</SelectValue>
-                    </div>
+                  <SelectTrigger className="h-9 w-full mt-0.5 text-[15px] font-medium border-0 bg-transparent shadow-none p-0 focus:ring-0">
+                    <SelectValue>{typeCfg?.label ?? person.contact_type}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {CONTACT_TYPES.map((t) => {
                       const cfg = contactTypeConfig[t];
-                      return (
-                        <SelectItem key={t} value={t} className="text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className={`h-2 w-2 rounded-full shrink-0 ${cfg?.dot ?? 'bg-muted-foreground'}`} />
-                            {cfg?.label ?? t}
-                          </div>
-                        </SelectItem>
-                      );
+                      return <SelectItem key={t} value={t}>{cfg?.label ?? t}</SelectItem>;
                     })}
                   </SelectContent>
                 </Select>
               </div>
             )}
 
-            {/* Contact info */}
+            {/* Email Domain */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Contact</span>
-              <div className="space-y-1.5">
-                <EditableContactRow icon={<User className="h-3.5 w-3.5" />} value={person.name} field="name" personId={person.id} placeholder="Name" onSaved={handleFieldSaved} />
-                <EditableContactRow icon={<Mail className="h-3.5 w-3.5" />} value={person.email ?? ''} field="email" personId={person.id} placeholder="Add email..." onSaved={handleFieldSaved} allowClear />
-                <div className="flex items-center gap-1">
-                  <div className="flex-1 min-w-0">
-                    <EditableContactRow icon={<Phone className="h-3.5 w-3.5" />} value={person.phone ?? ''} field="phone" personId={person.id} placeholder="Add phone..." onSaved={handleFieldSaved} allowClear />
-                  </div>
-                  {person.phone && (
-                    <button
-                      onClick={() => navigate(`/admin/calls?phone=${encodeURIComponent(person.phone!.replace(/\D/g, ''))}`)}
-                      title="Call this number"
-                      className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
-                    >
-                      <PhoneCall className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-                <EditableContactRow icon={<Link2 className="h-3.5 w-3.5" />} value={person.linkedin ?? ''} field="linkedin" personId={person.id} placeholder="Add LinkedIn..." onSaved={handleFieldSaved} allowClear />
-              </div>
+              <span className="text-[12px] font-semibold text-muted-foreground">Email Domain</span>
+              <p className="text-[15px] font-medium text-foreground mt-0.5">{person.email ? person.email.split('@')[1] : <span className="text-muted-foreground/50">—</span>}</p>
             </div>
 
-            {/* Details */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Details</span>
-              <div className="rounded-xl border border-border divide-y divide-border overflow-hidden">
-                <EditableField icon={<Briefcase className="h-3.5 w-3.5" />} label="Title" value={person.title ?? ''} field="title" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<Building2 className="h-3.5 w-3.5" />} label="Company" value={person.company_name ?? ''} field="company_name" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<User className="h-3.5 w-3.5" />} label="Nickname" value={person.known_as ?? ''} field="known_as" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<FolderOpen className="h-3.5 w-3.5" />} label="CLX File Name" value={person.clx_file_name ?? ''} field="clx_file_name" personId={person.id} onSaved={handleFieldSaved} />
-                <EditableField icon={<Tag className="h-3.5 w-3.5" />} label="Source" value={person.source ?? ''} field="source" personId={person.id} onSaved={handleFieldSaved} />
-                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Last Contacted" value={formatDate(person.last_activity_at)} />
-                <ReadOnlyField icon={<Clock className="h-3.5 w-3.5" />} label="Created" value={formatDate(person.created_at)} />
-              </div>
-            </div>
+            {/* LinkedIn */}
+            <SimpleField label="LinkedIn" value={person.linkedin ?? ''} field="linkedin" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Social" />
+
+            {/* Source */}
+            <SimpleField label="Source" value={person.source ?? ''} field="source" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Source" />
+
+            {/* Company */}
+            <SimpleField label="Company" value={person.company_name ?? ''} field="company_name" personId={person.id} onSaved={handleFieldSaved} placeholder="Add Company" />
 
             {/* Tags */}
             <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Tags</span>
+              <span className="text-[12px] font-semibold text-muted-foreground">Tags</span>
               <EditableTags tags={person.tags ?? []} personId={person.id} onSaved={handleFieldSaved} />
             </div>
 
-            {/* Email */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Email</span>
-              <div className="space-y-1">
-                {personEmails.map((e) => (
-                  <ContactEmailRow key={e.id} entry={e} onDelete={(id) => deleteEmailMutation.mutate(id)} onUpdate={(id, data) => updateEmailMutation.mutate({ id, data })} />
-                ))}
-                {showAddEmail ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
-                    <AtSign className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <Select value={newEmailType} onValueChange={setNewEmailType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="work" className="text-xs">Work</SelectItem>
-                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <input autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newEmail.trim()) addEmailMutation.mutate(newEmail.trim()); if (e.key === 'Escape') { setShowAddEmail(false); setNewEmail(''); } }} placeholder="email@example.com" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddEmail(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Email</button>
-                )}
-              </div>
-            </div>
+            {/* Notes */}
+            <SimpleField label="Notes" value={person.notes ?? ''} field="notes" personId={person.id} onSaved={handleFieldSaved} placeholder="Add notes..." multiline />
 
-            {/* Phone */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Phone</span>
-              <div className="space-y-1">
-                {personPhones.map((p) => (
-                  <ContactPhoneRow key={p.id} entry={p} onDelete={(id) => deletePhoneMutation.mutate(id)} onCall={(phone) => navigate(`/admin/calls?phone=${encodeURIComponent(phone.replace(/\D/g, ''))}`)} onUpdate={(id, data) => updatePhoneMutation.mutate({ id, data })} />
-                ))}
-                {showAddPhone ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/50 border border-blue-100">
-                    <Phone className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                    <Select value={newPhoneType} onValueChange={setNewPhoneType}>
-                      <SelectTrigger className="h-7 w-[80px] text-xs border-transparent bg-transparent shadow-none px-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="work" className="text-xs">Work</SelectItem>
-                        <SelectItem value="personal" className="text-xs">Personal</SelectItem>
-                        <SelectItem value="mobile" className="text-xs">Mobile</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <input autoFocus value={newPhone} onChange={(e) => setNewPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newPhone.trim()) addPhoneMutation.mutate(newPhone.trim()); if (e.key === 'Escape') { setShowAddPhone(false); setNewPhone(''); } }} placeholder="(555) 123-4567" className="flex-1 text-[13px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50" />
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddPhone(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Phone</button>
-                )}
-              </div>
-            </div>
-
-            {/* Address */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Address</span>
-              <div className="space-y-1">
-                {personAddresses.map((a) => (
-                  <AddressBlock key={a.id} entry={a} onDelete={(id) => deleteAddressMutation.mutate(id)} onUpdate={(id, data) => updateAddressMutation.mutate({ id, data })} />
-                ))}
-                {showAddAddress ? (
-                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-2.5 space-y-2">
-                    <AddressAutocompleteInput
-                      value={newAddressLine1}
-                      onChange={setNewAddressLine1}
-                      onSelect={(parsed: ParsedAddress) => {
-                        setNewAddressLine1(parsed.address_line_1);
-                        setNewAddressCity(parsed.city);
-                        setNewAddressState(parsed.state);
-                        setNewAddressZip(parsed.zip_code);
-                      }}
-                      placeholder="Start typing an address..."
-                      autoFocus
-                      className="w-full text-[13px] text-foreground bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300"
-                    />
-                    <div className="flex gap-1.5">
-                      <input value={newAddressCity} onChange={(e) => setNewAddressCity(e.target.value)} placeholder="City" className="flex-1 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      <input value={newAddressState} onChange={(e) => setNewAddressState(e.target.value)} placeholder="State" className="w-16 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                      <input value={newAddressZip} onChange={(e) => setNewAddressZip(e.target.value)} placeholder="Zip" className="w-20 text-[13px] bg-white border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Select value={newAddressType} onValueChange={setNewAddressType}>
-                        <SelectTrigger className="h-8 w-[110px] text-xs border-border"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="business" className="text-xs">Business</SelectItem>
-                          <SelectItem value="home" className="text-xs">Home</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="flex gap-1.5">
-                        <button onClick={() => { setShowAddAddress(false); setNewAddressLine1(''); setNewAddressCity(''); setNewAddressState(''); setNewAddressZip(''); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
-                        <button onClick={() => addAddressMutation.mutate()} disabled={!newAddressLine1.trim()} className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md disabled:opacity-50">Save</button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowAddAddress(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 px-3 py-1">+ Add Address</button>
-                )}
-              </div>
-            </div>
-
-            {/* About */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">About</span>
-              <EditableRichTextField value={person.notes ?? ''} personId={person.id} field="notes" onSaved={handleFieldSaved} placeholder="Background info about this contact..." />
-            </div>
-
-            {/* Bank Relationships */}
-            <div>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Bank Relationships</span>
-              <EditableRichTextField value={person.bank_relationships ?? ''} personId={person.id} field="bank_relationships" onSaved={handleFieldSaved} placeholder="Excluded lender names from CLX agreement..." />
-            </div>
           </div>
         </ScrollArea>
       )}
 
       {activeTab === 'activity' && (
-        <ScrollArea className="flex-1">
+        <ScrollArea className="overflow-auto bg-[#eeedf3] dark:bg-violet-950/20">
           <ActivityTabContent person={person} contactTypeConfig={contactTypeConfig} />
         </ScrollArea>
       )}
 
       {activeTab === 'related' && (
-        <ScrollArea className="flex-1">
+        <ScrollArea className="overflow-auto">
           <RelatedTabContent person={person} contactTypeConfig={contactTypeConfig} />
         </ScrollArea>
       )}

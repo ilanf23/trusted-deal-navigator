@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -156,6 +157,12 @@ const Calls = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { outboundCall } = useCall();
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Calls');
+    return () => { setPageTitle(null); };
+  }, []);
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
@@ -535,19 +542,9 @@ const Calls = () => {
   return (
     <EvanLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg border bg-card">
-            <Phone className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">Calls</h1>
-              <DbTableBadge tables={['active_calls']} />
-            </div>
-            <p className="text-sm text-muted-foreground">Incoming call management & lender programs</p>
-          </div>
-          <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border text-sm text-muted-foreground">
+        {/* Phone Number Badge */}
+        <div className="flex justify-end">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border text-sm text-muted-foreground">
             <Phone className="h-3.5 w-3.5" />
             <span className="font-medium">{formatPhoneNumber(import.meta.env.VITE_TWILIO_PHONE_NUMBER || '(904) 587-0026')}</span>
           </div>

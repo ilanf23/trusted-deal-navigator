@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,12 @@ const AdminClients = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Clients');
+    return () => { setPageTitle(null); };
+  }, []);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -56,14 +63,6 @@ const AdminClients = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold">Clients</h1>
-            <DbTableBadge tables={['profiles']} />
-          </div>
-          <p className="text-muted-foreground">View and manage your clients</p>
-        </div>
-
         <Card>
           <CardHeader>
             <div>

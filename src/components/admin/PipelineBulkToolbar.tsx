@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, ExternalLink, Trash2, Layers, Tag, User } from 'lucide-react';
+import { MoreHorizontal, Pencil, ExternalLink, Trash2, Layers, Tag, User, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PipelineBulkToolbarProps {
@@ -19,6 +19,7 @@ interface PipelineBulkToolbarProps {
   onDeleteBoxes?: () => void;
   onAssignOwner?: (ownerId: string) => void;
   onAddTags?: () => void;
+  onCreateFilter?: () => void;
   teamMembers?: { id: string; name: string }[];
   className?: string;
 }
@@ -33,6 +34,7 @@ const PipelineBulkToolbar = ({
   onDeleteBoxes,
   onAssignOwner,
   onAddTags,
+  onCreateFilter,
   teamMembers = [],
   className,
 }: PipelineBulkToolbarProps) => {
@@ -78,6 +80,19 @@ const PipelineBulkToolbar = ({
         >
           <ExternalLink className="h-3.5 w-3.5" />
           Export
+        </Button>
+      )}
+
+      {/* Create Filter */}
+      {onCreateFilter && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onCreateFilter}
+          className="gap-1.5 h-8 rounded-full border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm"
+        >
+          <Filter className="h-3.5 w-3.5" />
+          Create Filter
         </Button>
       )}
 

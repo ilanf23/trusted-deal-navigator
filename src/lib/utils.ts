@@ -11,6 +11,5 @@ export function sanitizeFileName(name: string): string {
 
 export function getLeadDisplayName(lead: { opportunity_name?: string | null; name: string; company_name?: string | null }): string {
   if (lead.opportunity_name?.trim()) return lead.opportunity_name.trim();
-  if (lead.company_name?.trim()) return `${lead.name} - ${lead.company_name.trim()}`;
   return lead.name;
 }

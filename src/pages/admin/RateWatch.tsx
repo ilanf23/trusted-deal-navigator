@@ -1,4 +1,5 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -133,6 +134,12 @@ type SortDirection = 'asc' | 'desc';
 const RateWatch = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Rate Watch');
+    return () => { setPageTitle(null); };
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -623,22 +630,8 @@ Commercial Lending X`,
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">Rate Watch</h1>
-                <p className="text-sm text-muted-foreground">
-                  Monitor rates and reach out when refinancing becomes attractive
-                </p>
-              </div>
-            </div>
-          </div>
-
+        {/* Actions */}
+        <div className="flex justify-end">
           <div className="flex items-center gap-2 flex-wrap">
             <input
               ref={fileInputRef}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, Lock, User, Loader2, ChevronRight, ChevronDown, X, Clock, Sparkles, FileText, PhoneCall, PhoneIncoming, PhoneOutgoing, Play, MessageSquare, Kanban } from 'lucide-react';
+import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, User, Loader2, ChevronRight, ChevronDown, X, Clock, Sparkles, FileText, PhoneCall, PhoneIncoming, PhoneOutgoing, Play, MessageSquare, Kanban } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
@@ -21,7 +22,6 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
 import EvanLayout from '@/components/evan/EvanLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
-import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
 type Communication = Database['public']['Tables']['communications']['Row'];
 
@@ -74,6 +74,12 @@ const EmployeeLeads = () => {
     status: 'discovery' as LeadStatus,
     notes: '',
   });
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Leads');
+    return () => { setPageTitle(null); };
+  }, []);
 
   // Fetch communications for selected lead
   const { data: communications = [] } = useQuery({
@@ -345,23 +351,7 @@ const EmployeeLeads = () => {
     <EvanLayout>
       <div className="flex flex-col h-[calc(100vh-200px)]">
       {/* Header Section */}
-      <div className="flex items-start justify-between mb-6">
-        <div className="animate-fade-in">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
-            <DbTableBadge tables={['leads']} />
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {leads.length} total leads · {filteredLeads.length} showing
-          </p>
-          {!canEdit && (
-            <Badge variant="outline" className="mt-2 gap-1">
-              <Lock className="h-3 w-3" />
-              View Only
-            </Badge>
-          )}
-        </div>
-        
+      <div className="flex items-start justify-end mb-6">
         <div className="flex items-center gap-3">
           <Button 
             variant="outline" 

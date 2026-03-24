@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -301,6 +302,29 @@ const Companies = () => {
   const [draggedCompany, setDraggedCompany] = useState<Company | null>(null);
   // Custom filters
   const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
+
+  // ── Top bar: inject title + search into AdminLayout header ──
+  const { setPageTitle, setSearchComponent } = useAdminTopBar();
+
+  useEffect(() => {
+    setPageTitle('Companies');
+    return () => {
+      setPageTitle(null);
+      setSearchComponent(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSearchComponent(
+      <Input
+        type="text"
+        placeholder="Search by name, email, domain or phone number"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full h-9 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border-transparent focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
+      />
+    );
+  }, [searchTerm]);
 
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
@@ -622,7 +646,7 @@ const Companies = () => {
   }
 
   // Row padding based on density
-  const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
+  const rowPad = rowDensity === 'comfortable' ? 'py-1.5' : 'py-0.5';
 
   const ColHeader = ({
     colKey,
@@ -642,7 +666,7 @@ const Companies = () => {
     const isMenuOpen = colMenuOpen === widthKey;
     return (
       <th
-        className={`px-4 py-3 text-left whitespace-nowrap group/col ${extraClassName ?? ''}`}
+        className={`px-4 py-1.5 text-left whitespace-nowrap group/col ${extraClassName ?? ''}`}
         style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
       >
         <ResizableColumnHeader
@@ -696,32 +720,7 @@ const Companies = () => {
 
   return (
     <EvanLayout>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
-
-        {/* ── Copper-Style Header ── */}
-        <div className="shrink-0 border-b border-[#e8eaed] dark:border-border bg-white dark:bg-background px-5 py-3 flex items-center gap-4">
-          <h1 className="text-lg font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap shrink-0">Companies</h1>
-
-          {/* Centered search bar */}
-          <div className="flex-1 flex justify-center max-w-2xl mx-auto">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5f6368] dark:text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by name, email, domain or phone number"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-9 pl-9 pr-3 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border-transparent focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors">
-              <Plus className="h-5 w-5 text-[#5f6368] dark:text-muted-foreground" />
-            </button>
-          </div>
-        </div>
+      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background system-font">
 
         {/* ── Body: Sidebar + Table ── */}
         <div className="flex flex-1 min-h-0 overflow-hidden gap-3">
@@ -975,7 +974,7 @@ const Companies = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="h-9 pl-4 pr-3 text-[13px] font-semibold rounded-md shrink-0 flex items-center gap-2 text-white bg-[#1a237e] hover:bg-[#283593] active:scale-[0.97] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a237e] focus-visible:ring-offset-2 ml-2"
+                      className="h-9 pl-4 pr-3 text-[13px] font-semibold rounded-md shrink-0 flex items-center gap-2 text-white bg-[#3b2778] hover:bg-[#4a3490] active:scale-[0.97] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b2778] focus-visible:ring-offset-2 ml-2"
                     >
                       <span>Add Company</span>
                       <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -1006,7 +1005,7 @@ const Companies = () => {
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#eee6f6' }}>
-                      <th className="w-12 pl-2 pr-4 py-3 text-center sticky top-0 left-0 z-30 bg-white" style={{ border: '1px solid #c8bdd6' }} />
+                      <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30 bg-white" style={{ border: '1px solid #c8bdd6' }} />
                       <ColHeader className="sticky top-0 z-30" style={{ left: 48, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
                         <Building2 className="h-4 w-4" /> Company
                       </ColHeader>
@@ -1040,30 +1039,30 @@ const Companies = () => {
                       <ColHeader colKey="tags" className="sticky top-0 z-10" style={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
                         <Tag className="h-4 w-4" /> Tags
                       </ColHeader>
-                      <th className="w-10 px-2 py-3 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className="bg-white dark:bg-card">
-                          <td className="pl-2 pr-4 py-3.5 w-12 text-center sticky left-0 z-[5] bg-white dark:bg-card" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-5 rounded" /></td>
-                          <td className="px-4 py-3.5 sticky z-[5] bg-white dark:bg-card" style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6' }}>
+                          <td className="pl-2 pr-4 py-1.5 w-12 text-center sticky left-0 z-[5] bg-white dark:bg-card" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-5 rounded" /></td>
+                          <td className="px-4 py-1.5 sticky z-[5] bg-white dark:bg-card" style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6' }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-7 w-7 rounded-md shrink-0" />
                               <Skeleton className="h-3.5 w-36" />
                             </div>
                           </td>
-                          {columnVisibility.phone && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.contact && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.deals && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.website && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
-                          {columnVisibility.contactType && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
-                          {columnVisibility.emailDomain && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-28 rounded" /></td>}
-                          {columnVisibility.lastActivity && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.interactions && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.inactiveDays && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.tags && <td className="px-4 py-3.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                          {columnVisibility.phone && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
+                          {columnVisibility.contact && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
+                          {columnVisibility.deals && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.website && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
+                          {columnVisibility.contactType && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
+                          {columnVisibility.emailDomain && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-28 rounded" /></td>}
+                          {columnVisibility.lastActivity && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.interactions && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.inactiveDays && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                          {columnVisibility.tags && <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
                         </tr>
                       ))
                     ) : filteredAndSorted.length === 0 ? (
@@ -1114,7 +1113,7 @@ const Companies = () => {
                             }`}
                           >
                             {/* Checkbox */}
-                            <td className={`pl-2 pr-4 py-3 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ border: '1px solid #c8bdd6' }}>
+                            <td className={`pl-2 pr-4 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ border: '1px solid #c8bdd6' }}>
                               <div className={`h-5 w-5 rounded border-2 transition-colors ${
                                 isSelected ? 'border-blue-500 bg-blue-500' : 'border-border bg-card group-hover:border-muted-foreground/50'
                               } flex items-center justify-center`}>
@@ -1123,7 +1122,7 @@ const Companies = () => {
                             </td>
 
                             {/* Company (sticky) */}
-                            <td className={`px-4 py-3 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-4 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6' }}>
                               <div className="flex items-center gap-2.5">
                                 <div className={`h-7 w-7 rounded-md ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
@@ -1147,7 +1146,7 @@ const Companies = () => {
 
                             {/* Phone */}
                             {columnVisibility.phone && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.phone, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.phone, border: '1px solid #c8bdd6' }}>
                                 {company.phone ? (
                                   <span className="text-[13px] text-[#5f6368] dark:text-muted-foreground truncate block">{company.phone}</span>
                                 ) : (
@@ -1158,7 +1157,7 @@ const Companies = () => {
 
                             {/* Contact */}
                             {columnVisibility.contact && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.contact, border: '1px solid #c8bdd6' }}>
                                 {company.contact_name ? (
                                   <span className="text-[13px] text-[#5f6368] dark:text-muted-foreground truncate block">{company.contact_name}</span>
                                 ) : (
@@ -1169,7 +1168,7 @@ const Companies = () => {
 
                             {/* Deals */}
                             {columnVisibility.deals && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.deals, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.deals, border: '1px solid #c8bdd6' }}>
                                 {company.deals_count > 0 ? (
                                   <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-muted text-[11px] font-bold text-foreground/70">
                                     {company.deals_count}
@@ -1182,7 +1181,7 @@ const Companies = () => {
 
                             {/* Website */}
                             {columnVisibility.website && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.website, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.website, border: '1px solid #c8bdd6' }}>
                                 {company.website ? (
                                   <a
                                     href={company.website}
@@ -1201,7 +1200,7 @@ const Companies = () => {
 
                             {/* Contact Type */}
                             {columnVisibility.contactType && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
                                 {typeCfg ? (
                                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
                                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
@@ -1215,7 +1214,7 @@ const Companies = () => {
 
                             {/* Email Domain */}
                             {columnVisibility.emailDomain && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.emailDomain, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.emailDomain, border: '1px solid #c8bdd6' }}>
                                 {company.email_domain ? (
                                   <span className="text-[13px] text-[#5f6368] dark:text-muted-foreground truncate block">{company.email_domain}</span>
                                 ) : (
@@ -1226,14 +1225,14 @@ const Companies = () => {
 
                             {/* Last Activity */}
                             {columnVisibility.lastActivity && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.lastActivity, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.lastActivity, border: '1px solid #c8bdd6' }}>
                                 <span className="text-[12px] text-[#5f6368] dark:text-muted-foreground tabular-nums">{formatShortDate(company.last_activity_at)}</span>
                               </td>
                             )}
 
                             {/* Interactions (derived from deals_count) */}
                             {columnVisibility.interactions && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
                                 {company.deals_count > 0 ? (
                                   <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
                                     {company.deals_count}
@@ -1246,7 +1245,7 @@ const Companies = () => {
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
                                 {isStale ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
                                     {inactiveDaysVal}d
@@ -1259,7 +1258,7 @@ const Companies = () => {
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
                                 {company.tags && company.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {company.tags.slice(0, 2).map((tag) => (
@@ -1278,7 +1277,7 @@ const Companies = () => {
                             )}
 
                             {/* Detail arrow */}
-                            <td className="px-2 py-3 w-10" style={{ border: '1px solid #c8bdd6' }}>
+                            <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }}>
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isSelected
                                   ? 'text-blue-500'

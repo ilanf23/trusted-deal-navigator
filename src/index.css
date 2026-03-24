@@ -308,6 +308,11 @@
   }
 }
 
+.system-font,
+.system-font *:not(svg):not(svg *) {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+}
+
 @layer components {
   /* ====== ADMIN PORTAL - Responsive Scaling ====== */
   /* Mobile: base sizes (no scaling) */

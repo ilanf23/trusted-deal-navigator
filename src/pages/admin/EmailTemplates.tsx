@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,12 @@ const EmailTemplates = () => {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Email Templates');
+    return () => { setPageTitle(null); };
+  }, []);
 
   // Fetch templates from database
   const { data: templates = [], isLoading } = useQuery({
@@ -160,16 +167,7 @@ const EmailTemplates = () => {
     <EvanLayout>
       <div className="p-6 max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/admin/gmail')}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-semibold">Email Templates</h1>
-              <p className="text-sm text-muted-foreground">Manage your email templates for quick responses</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-end mb-6">
           <Button onClick={handleCreate} className="gap-2">
             <Plus className="w-4 h-4" />
             New Template

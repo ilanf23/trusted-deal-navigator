@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +14,8 @@ import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SelectAllHeader } from '@/components/admin/SelectAllHeader';
-import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
+import { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
+import PeopleFilterPanel from '@/components/admin/PeopleFilterPanel';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import {
@@ -24,6 +26,7 @@ import {
   Settings2,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   Plus,
   User,
   CheckSquare,
@@ -40,7 +43,7 @@ import {
   Table2,
   GripVertical,
   PanelRightOpen,
-  Sparkles,
+  Workflow,
   Loader2,
   Download,
   PlusCircle,
@@ -172,16 +175,16 @@ const contactTypeConfig: Record<string, { label: string; color: string; bg: stri
   },
 };
 
-const FILTER_OPTIONS = [
-  { id: 'all', label: 'All Contacts', group: 'top' },
-  { id: 'Current Customer', label: 'Current Customers', group: 'public' },
-  { id: 'my_contacts', label: 'My People', group: 'public' },
-  { id: 'following', label: 'People I\'m Following', group: 'public' },
-  { id: 'Potential Customer', label: 'Potential Customers', group: 'public' },
-  { id: 'CLX RateWatch', label: 'CLX RateWatch', group: 'public' },
-  { id: 'CLX Referral Partner', label: 'CLX Referral Partners', group: 'public' },
-  { id: 'Searching for Bus. Acq.', label: 'Searching for Bus. Acq.', group: 'public' },
-  { id: 'Searching for RE Acq.', label: 'Searching for RE Acq.', group: 'public' },
+const DEFAULT_FILTER_OPTIONS = [
+  { id: 'all', label: 'All Contacts', group: 'top' as const, editable: false },
+  { id: 'Current Customer', label: 'Current Customers', group: 'public' as const, editable: true },
+  { id: 'my_contacts', label: 'My People', group: 'public' as const, editable: false },
+  { id: 'following', label: 'People I\'m Following', group: 'public' as const, editable: false },
+  { id: 'Potential Customer', label: 'Potential Customers', group: 'public' as const, editable: true },
+  { id: 'CLX RateWatch', label: 'CLX RateWatch', group: 'public' as const, editable: true },
+  { id: 'CLX Referral Partner', label: 'CLX Referral Partners', group: 'public' as const, editable: true },
+  { id: 'Searching for Bus. Acq.', label: 'Searching for Bus. Acq.', group: 'public' as const, editable: true },
+  { id: 'Searching for RE Acq.', label: 'Searching for RE Acq.', group: 'public' as const, editable: true },
 ];
 
 type SortField = 'name' | 'company_name' | 'contact_type' | 'last_activity_at' | 'updated_at';
@@ -297,9 +300,6 @@ function KanbanPersonCard({ person, isDragging, onClick }: {
             <Maximize2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
           </button>
         </div>
-        {person.company_name && (
-          <p className="text-[11px] text-muted-foreground mb-1.5 truncate">{person.company_name}</p>
-        )}
         {person.email && (
           <p className="text-[11px] text-muted-foreground truncate">{person.email}</p>
         )}
@@ -378,9 +378,60 @@ const People = () => {
   const [publicFiltersOpen, setPublicFiltersOpen] = useState(true);
   const [draggedPerson, setDraggedPerson] = useState<Person | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+
+  // Filter options (stateful so public filters can be renamed)
+  const [filterOptions, setFilterOptions] = useState(DEFAULT_FILTER_OPTIONS);
 
   // Custom filters
   const [customFilters, setCustomFilters] = useState<Array<{ id: string; label: string; values: CustomFilterValues }>>([]);
+  const [renamingFilterId, setRenamingFilterId] = useState<string | null>(null);
+  const [renamingValue, setRenamingValue] = useState('');
+
+  // Rename public filter (contact type) — updates all leads in DB
+  const renameContactTypeMutation = useMutation({
+    mutationFn: async ({ oldType, newType }: { oldType: string; newType: string }) => {
+      const { error } = await supabase
+        .from('leads')
+        .update({ contact_type: newType })
+        .eq('contact_type', oldType);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+    },
+    onError: () => toast.error('Failed to rename contact type'),
+  });
+
+  const handleFilterRename = (filterId: string, newLabel: string) => {
+    const trimmed = newLabel.trim();
+    if (!trimmed || trimmed === filterId) {
+      setRenamingFilterId(null);
+      setRenamingValue('');
+      return;
+    }
+
+    // Check if this is a public/editable filter (contact type)
+    const publicFilter = filterOptions.find(o => o.id === filterId && o.editable);
+    if (publicFilter) {
+      // Update filter options state (both id and label)
+      setFilterOptions(prev => prev.map(o =>
+        o.id === filterId ? { ...o, id: trimmed, label: trimmed } : o
+      ));
+      // Update active filter if it was the one being renamed
+      if (activeFilter === filterId) setActiveFilter(trimmed);
+      // Update DB — rename contact_type on all leads
+      renameContactTypeMutation.mutate({ oldType: filterId, newType: trimmed });
+      toast.success(`Renamed "${publicFilter.label}" to "${trimmed}"`);
+    } else {
+      // Custom filter rename (local only)
+      setCustomFilters(prev => prev.map(cf =>
+        cf.id === filterId ? { ...cf, label: trimmed } : cf
+      ));
+    }
+    setRenamingFilterId(null);
+    setRenamingValue('');
+  };
 
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<ColumnKey, boolean>>({
@@ -388,9 +439,33 @@ const People = () => {
     pipeline: true, lastContacted: true, interactions: true, inactiveDays: true, tags: true,
   });
 
+  // ── Top bar: inject title + search into AdminLayout header ──
+  const { setPageTitle, setSearchComponent, setActionsComponent } = useAdminTopBar();
+
+  useEffect(() => {
+    setPageTitle('People');
+    return () => {
+      setPageTitle(null);
+      setSearchComponent(null);
+      setActionsComponent(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSearchComponent(
+      <Input
+        type="text"
+        placeholder="Search by name, email, domain or phone number"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full h-9 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
+      />
+    );
+  }, [searchTerm]);
+
   const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
     person: 260, title: 130, company: 130, tasks: 55, email: 170,
-    contactType: 130, pipeline: 180, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+    contactType: 170, pipeline: 180, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
   }), []);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
@@ -665,13 +740,14 @@ const People = () => {
 
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { all: people.length };
-    for (const type of CONTACT_TYPES) {
-      counts[type] = people.filter((p) => p.contact_type === type).length;
+    // Count by current filter option IDs (contact types may have been renamed)
+    for (const opt of filterOptions.filter(o => o.editable)) {
+      counts[opt.id] = people.filter((p) => p.contact_type === opt.id).length;
     }
     counts['my_contacts'] = people.filter(p => p.assigned_to === teamMember?.id).length;
     counts['following'] = people.filter(p => followedLeadIds.includes(p.id)).length;
     return counts;
-  }, [people, teamMember?.id, followedLeadIds]);
+  }, [people, teamMember?.id, followedLeadIds, filterOptions]);
 
   const filteredAndSorted = useMemo(() => {
     let result = people;
@@ -682,8 +758,15 @@ const People = () => {
       } else if (activeFilter === 'following') {
         result = result.filter((p) => followedLeadIds.includes(p.id));
       } else {
-        // Filter by contact_type (Current Customer, Potential Customer, CLX RateWatch, etc.)
-        result = result.filter((p) => p.contact_type === activeFilter);
+        // Check if it's a custom filter with saved person IDs
+        const customFilter = customFilters.find(cf => cf.id === activeFilter);
+        if (customFilter && (customFilter.values as any).personIds) {
+          const ids = (customFilter.values as any).personIds as string[];
+          result = result.filter((p) => ids.includes(p.id));
+        } else {
+          // Filter by contact_type
+          result = result.filter((p) => p.contact_type === activeFilter);
+        }
       }
     }
 
@@ -712,7 +795,7 @@ const People = () => {
     });
 
     return result;
-  }, [people, activeFilter, searchTerm, sortField, sortDir]);
+  }, [people, activeFilter, searchTerm, sortField, sortDir, customFilters, followedLeadIds, teamMember?.id]);
 
 
   function handleColSort(field: SortField) {
@@ -726,6 +809,7 @@ const People = () => {
 
   function handleRowClick(person: Person) {
     setSelectedPerson(person);
+    setFilterPanelOpen(false);
   }
 
   const togglePersonSelection = (personId: string) => {
@@ -744,7 +828,63 @@ const People = () => {
   const selectAll = () => setSelectedPersonIds(new Set(filteredAndSorted.map(p => p.id)));
   const clearSelection = () => setSelectedPersonIds(new Set());
 
-  const rowPad = rowDensity === 'comfortable' ? 'py-2.5' : 'py-1';
+  // ── Bulk Edit Contact Type ──
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkContactType, setBulkContactType] = useState('');
+
+  const bulkContactTypeMutation = useMutation({
+    mutationFn: async ({ personIds, newType }: { personIds: string[]; newType: string }) => {
+      const { error } = await supabase
+        .from('leads')
+        .update({ contact_type: newType })
+        .in('id', personIds);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      clearSelection();
+      setBulkEditOpen(false);
+      setBulkContactType('');
+      toast.success('Contact type updated for selected people');
+    },
+    onError: () => toast.error('Failed to update contact type'),
+  });
+
+  // ── Export Selected as CSV ──
+  const handleExportSelected = () => {
+    const selected = filteredAndSorted.filter(p => selectedPersonIds.has(p.id));
+    const headers = ['Name', 'Title', 'Company', 'Email', 'Phone', 'Contact Type', 'Tags'];
+    const rows = selected.map(p => [
+      p.name, p.title ?? '', p.company_name ?? '', p.email ?? '',
+      p.phone ?? '', p.contact_type ?? '', (p.tags ?? []).join('; ')
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `people-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${selected.length} contacts`);
+  };
+
+  // ── Create Filter from Selection ──
+  const handleCreateFilterFromSelection = () => {
+    const id = `custom_${Date.now()}`;
+    const label = `Selected (${selectedPersonIds.size})`;
+    const personIds = Array.from(selectedPersonIds);
+    setCustomFilters(prev => [...prev, {
+      id,
+      label,
+      values: { filterName: label, personIds } as CustomFilterValues & { personIds: string[] },
+    }]);
+    setActiveFilter(id);
+    clearSelection();
+    toast.success(`Filter "${label}" created`);
+  };
+
+  const rowPad = rowDensity === 'comfortable' ? 'py-1.5' : 'py-0.5';
 
   const ColHeader = ({
     colKey,
@@ -764,7 +904,7 @@ const People = () => {
     const isMenuOpen = colMenuOpen === widthKey;
     return (
       <th
-        className={`px-4 py-3 text-left whitespace-nowrap group/col transition-colors ${extraClassName ?? ''}`}
+        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors ${extraClassName ?? ''}`}
         style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
@@ -827,53 +967,40 @@ const People = () => {
 
   return (
     <EvanLayout>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-background -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10">
+      <div className="system-font flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-background -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10">
 
-        {/* ── Copper-Style Header ── */}
-        <div className="shrink-0 border-b border-[#e8eaed] dark:border-border bg-white dark:bg-background px-5 py-3 flex items-center gap-4">
-          <h1 className="text-xl font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap shrink-0">People</h1>
 
-          {/* Right-aligned search bar */}
-          <div className="flex-1" />
-          <div className="relative w-full max-w-lg">
-            <Input
-              type="text"
-              placeholder="Search by name, email, domain or phone number"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors">
-              <Plus className="h-5 w-5 text-[#5f6368] dark:text-muted-foreground" />
-            </button>
-          </div>
-        </div>
 
         {/* ── Body: Sidebar + Table ── */}
-        <div className="flex flex-1 min-h-0 overflow-hidden gap-3">
+        <div className="relative flex flex-1 min-h-0 overflow-y-hidden overflow-x-clip">
+
+          {/* ── Sidebar collapse button (straddles border) ── */}
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            title={sidebarOpen ? 'Hide filters' : 'Show filters'}
+            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem)' : 'calc(72px - 21px)', borderRadius: '50%', transition: 'left 200ms ease' }}
+            className="absolute top-[9px] z-20 h-[42px] w-[42px] border border-gray-300 dark:border-border bg-white dark:bg-card flex items-center justify-center text-black dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted hover:border-gray-400 transition-colors shadow-sm"
+          >
+            <ArrowLeft className="h-5 w-5" strokeWidth={2.5} style={{ transform: `scale(2) ${sidebarOpen ? '' : 'rotate(180deg)'}`, transition: 'transform 200ms ease' }} />
+          </button>
 
           {/* ── Left Sidebar (Copper style) ── */}
           <aside
-            className={`shrink-0 border-r border-[#e8eaed] dark:border-border bg-[#f8f9fa] dark:bg-muted/30 flex flex-col overflow-hidden transition-all duration-200 ${
-              sidebarOpen ? 'w-72' : 'w-0 border-r-0'
+            className={`shrink-0 border-r border-[#e8eaed] dark:border-border flex flex-col overflow-hidden transition-all duration-200 ${
+              sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
             }`}
           >
-            <div className="w-72 pl-4 flex-1 overflow-y-auto">
+            {sidebarOpen && <div className="w-72 pl-4 flex-1 overflow-y-auto">
               <div className="px-6 pt-5 pb-3 flex items-center justify-between">
                 <span className="text-[20px] font-bold text-[#1f1f1f] dark:text-foreground tracking-tight">Saved Filters</span>
                 <div className="flex items-center gap-1">
-                  <CreateFilterDialog
-                    teamMemberMap={teamMemberMap}
-                    stageConfig={contactTypeConfig}
-                    onSave={(filter) => {
-                      const id = `custom_${Date.now()}`;
-                      setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
-                      toast.success(`Filter "${filter.filterName}" created`);
-                    }}
-                  />
+                  <button
+                    onClick={() => { setFilterPanelOpen(true); setSelectedPerson(null); }}
+                    className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors text-[#5f6368] dark:text-muted-foreground"
+                    title="New filter"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
@@ -888,16 +1015,16 @@ const People = () => {
                 </div>
               </div>
 
-              <nav className="flex-1 overflow-y-auto pb-4">
+              <nav className="flex-1 overflow-y-auto pb-4 px-3">
                 {/* All Contacts — top item */}
-                {FILTER_OPTIONS.filter(o => o.group === 'top').map((opt) => {
+                {filterOptions.filter(o => o.group === 'top').map((opt) => {
                   const isActive = activeFilter === opt.id;
                   const count = filterCounts[opt.id] ?? 0;
                   return (
                     <button
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-6 py-3 text-left transition-colors ${
+                      className={`relative w-full flex items-center justify-between px-3 py-3 text-left transition-colors ${
                         isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
                       }`}
                     >
@@ -917,20 +1044,41 @@ const People = () => {
                 {/* Public section (was "By Type") */}
                 <button
                   onClick={() => setPublicFiltersOpen(v => !v)}
-                  className="w-full px-6 pt-4 pb-1 flex items-center justify-between group"
+                  className="w-full px-3 pt-4 pb-1 flex items-center justify-between group"
                 >
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-muted-foreground">Public</span>
                   <ChevronUp className={`h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : 'rotate-180'}`} />
                 </button>
 
-                {publicFiltersOpen && FILTER_OPTIONS.filter(o => o.group === 'public').map((opt) => {
+                {publicFiltersOpen && filterOptions.filter(o => o.group === 'public').map((opt) => {
                   const isActive = activeFilter === opt.id;
                   const count = filterCounts[opt.id] ?? 0;
+                  const isRenaming = renamingFilterId === opt.id;
+
+                  if (isRenaming) {
+                    return (
+                      <div key={opt.id} className="py-1.5">
+                        <input
+                          autoFocus
+                          value={renamingValue}
+                          onChange={(e) => setRenamingValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleFilterRename(opt.id, renamingValue);
+                            if (e.key === 'Escape') { setRenamingFilterId(null); setRenamingValue(''); }
+                          }}
+                          onBlur={() => handleFilterRename(opt.id, renamingValue)}
+                          className="w-full h-8 px-2 text-[14px] rounded-md bg-white dark:bg-muted border border-[#1a73e8] dark:border-blue-500 text-[#1f1f1f] dark:text-foreground outline-none"
+                        />
+                      </div>
+                    );
+                  }
+
                   return (
                     <button
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-6 py-2.5 text-left transition-colors ${
+                      onDoubleClick={opt.editable ? () => { setRenamingFilterId(opt.id); setRenamingValue(opt.label); } : undefined}
+                      className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
                         isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
                       }`}
                     >
@@ -947,16 +1095,32 @@ const People = () => {
                 {/* Custom Filters */}
                 {customFilters.length > 0 && (
                   <>
-                    <div className="px-3 pt-4 pb-1">
+                    <div className="pt-4 pb-1">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-muted-foreground">Custom</span>
                     </div>
                     {customFilters.map((cf) => {
                       const isActive = activeFilter === cf.id;
-                      return (
+                      const isRenaming = renamingFilterId === cf.id;
+                      return isRenaming ? (
+                        <div key={cf.id} className="py-1.5">
+                          <input
+                            autoFocus
+                            value={renamingValue}
+                            onChange={(e) => setRenamingValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleFilterRename(cf.id, renamingValue);
+                              if (e.key === 'Escape') { setRenamingFilterId(null); setRenamingValue(''); }
+                            }}
+                            onBlur={() => handleFilterRename(cf.id, renamingValue)}
+                            className="w-full h-8 px-2 text-[14px] rounded-md bg-white dark:bg-muted border border-[#1a73e8] dark:border-blue-500 text-[#1f1f1f] dark:text-foreground outline-none"
+                          />
+                        </div>
+                      ) : (
                         <button
                           key={cf.id}
                           onClick={() => setActiveFilter(cf.id)}
-                          className={`relative w-full flex items-center justify-between px-6 py-2.5 text-left transition-colors ${
+                          onDoubleClick={() => { setRenamingFilterId(cf.id); setRenamingValue(cf.label); }}
+                          className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
                             isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
                           }`}
                         >
@@ -967,17 +1131,7 @@ const People = () => {
                   </>
                 )}
               </nav>
-            </div>
-            <div className="w-72 shrink-0 border-t border-[#e8eaed] dark:border-border px-6 py-3">
-              <button
-                onClick={() => setSidebarOpen(false)}
-                title="Hide filters"
-                className="flex items-center gap-2 text-[13px] font-medium text-black dark:text-foreground hover:text-[#5f6368] dark:hover:text-muted-foreground transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Hide Filters</span>
-              </button>
-            </div>
+            </div>}
           </aside>
 
           {/* ── Main Table Area ── */}
@@ -987,16 +1141,8 @@ const People = () => {
             <div className="shrink-0 border-b-0 px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
 
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setSidebarOpen(v => !v)}
-                  title={sidebarOpen ? 'Hide filters' : 'Show filters'}
-                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors text-[#5f6368] dark:text-muted-foreground"
-                >
-                  <PanelLeft className="h-4 w-4" />
-                </button>
-
-                <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
-                  {FILTER_OPTIONS.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Contacts'}
+                <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap ml-[96px]">
+                  {filterOptions.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Contacts'}
                 </h2>
 
                 {!isLoading && (
@@ -1110,7 +1256,7 @@ const People = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="h-9 pl-4 pr-3 text-[13px] font-semibold rounded-md shrink-0 flex items-center gap-2 text-white bg-[#1a237e] hover:bg-[#283593] active:scale-[0.97] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a237e] focus-visible:ring-offset-2 ml-2"
+                      className="h-9 pl-4 pr-3 text-[13px] font-semibold rounded-md shrink-0 flex items-center gap-2 text-white bg-[#3b2778] hover:bg-[#4a3490] active:scale-[0.97] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b2778] focus-visible:ring-offset-2 ml-2"
                     >
                       <span>Add Person</span>
                       <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -1135,27 +1281,27 @@ const People = () => {
               </div>
             </div>
 
-            {/* ── Bulk Selection Toolbar ── */}
-            {selectedPersonIds.size > 0 && (
-              <div className="px-4 py-2 border-b border-border bg-muted/30">
-                <PipelineBulkToolbar
-                  selectedCount={selectedPersonIds.size}
-                  totalCount={filteredAndSorted.length}
-                  onClearSelection={clearSelection}
-                  onEdit={() => toast.info('Bulk edit coming soon')}
-                  onExport={() => toast.info('Export coming soon')}
-                />
-              </div>
-            )}
-
             {/* ── Content Area: Table or Kanban ── */}
             {viewMode === 'table' ? (
               <div className="flex-1 overflow-auto">
-                <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                {/* ── Bulk Selection Toolbar — sticky overlay on table headers ── */}
+                {selectedPersonIds.size > 0 && (
+                  <div className="sticky top-0 z-40 px-4 py-2 bg-white dark:bg-background border-b border-border">
+                    <PipelineBulkToolbar
+                      selectedCount={selectedPersonIds.size}
+                      totalCount={filteredAndSorted.length}
+                      onClearSelection={clearSelection}
+                      onEdit={() => setBulkEditOpen(true)}
+                      onExport={handleExportSelected}
+                      onCreateFilter={handleCreateFilterFromSelection}
+                    />
+                  </div>
+                )}
+                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                        <div className={`shrink-0 transition-opacity ${isAllSelected || selectedPersonIds.size > 0 ? 'opacity-100' : 'opacity-0 group-hover/hdr:opacity-100'}`}>
+                        <div className="shrink-0">
                           <Checkbox
                             checked={isAllSelected}
                             onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
@@ -1180,7 +1326,7 @@ const People = () => {
                         <Tag className="h-4 w-4" /> Type
                       </ColHeader>
                       <ColHeader colKey="pipeline" className="sticky top-0 z-10">
-                        <Sparkles className="h-4 w-4" /> Pipeline
+                        <Workflow className="h-4 w-4" /> Pipeline
                       </ColHeader>
                       <ColHeader colKey="lastContacted" className="sticky top-0 z-10">
                         <CalendarDays className="h-4 w-4" /> Contacted
@@ -1194,14 +1340,14 @@ const People = () => {
                       <ColHeader colKey="tags" className="sticky top-0 z-10">
                         <Tag className="h-4 w-4" /> Tags
                       </ColHeader>
-                      <th className="w-10 px-2 py-3 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       Array.from({ length: 7 }).map((_, i) => (
                         <tr key={i} className="bg-white dark:bg-card">
-                          <td className="pl-2 pr-4 py-3.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                          <td className="pl-4 pr-6 py-1.5 sticky left-0 z-[5] bg-white dark:bg-card" style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                             <div className="flex items-center gap-2.5">
                               <Skeleton className="h-4 w-4 rounded shrink-0" />
                               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
@@ -1211,16 +1357,16 @@ const People = () => {
                               </div>
                             </div>
                           </td>
-                          {columnVisibility.title && <td className="px-4 py-3.5" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.company && <td className="px-4 py-3.5" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
-                          {columnVisibility.tasks && <td className="px-4 py-3.5" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.email && <td className="px-4 py-3.5" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
-                          {columnVisibility.contactType && <td className="px-4 py-3.5" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
-                          {columnVisibility.pipeline && <td className="px-4 py-3.5" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
-                          {columnVisibility.lastContacted && <td className="px-4 py-3.5" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
-                          {columnVisibility.interactions && <td className="px-4 py-3.5" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
-                          {columnVisibility.inactiveDays && <td className="px-4 py-3.5" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
-                          {columnVisibility.tags && <td className="px-4 py-3.5" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
+                          {columnVisibility.title && <td className="px-4 py-1.5" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
+                          {columnVisibility.company && <td className="px-4 py-1.5" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-24 rounded" /></td>}
+                          {columnVisibility.tasks && <td className="px-4 py-1.5" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.email && <td className="px-4 py-1.5" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
+                          {columnVisibility.contactType && <td className="px-4 py-1.5" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
+                          {columnVisibility.pipeline && <td className="px-4 py-1.5" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
+                          {columnVisibility.lastContacted && <td className="px-4 py-1.5" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
+                          {columnVisibility.interactions && <td className="px-4 py-1.5" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
+                          {columnVisibility.inactiveDays && <td className="px-4 py-1.5" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
+                          {columnVisibility.tags && <td className="px-4 py-1.5" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-16 rounded" /></td>}
                         </tr>
                       ))
                     ) : filteredAndSorted.length === 0 ? (
@@ -1278,9 +1424,9 @@ const People = () => {
                             }`}
                           >
                             {/* Person + Checkbox (sticky) */}
-                            <td className={`pl-2 pr-4 py-3 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                            <td className={`pl-4 pr-6 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2.5">
-                                <div className={`shrink-0 transition-opacity ${isBulkSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} onClick={(e) => { e.stopPropagation(); togglePersonSelection(person.id); }}>
+                                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
                                     checked={isBulkSelected}
                                     onCheckedChange={() => togglePersonSelection(person.id)}
@@ -1309,14 +1455,14 @@ const People = () => {
 
                             {/* Title */}
                             {columnVisibility.title && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.title, border: '1px solid #c8bdd6' }}>
                                 <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate block max-w-[120px]">{person.title ?? '—'}</span>
                               </td>
                             )}
 
                             {/* Company */}
                             {columnVisibility.company && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.company, border: '1px solid #c8bdd6' }}>
                                 {person.company_name ? (
                                   <div className="flex items-center gap-2">
                                     <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
@@ -1332,7 +1478,7 @@ const People = () => {
 
                             {/* Tasks */}
                             {columnVisibility.tasks && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}>
                                 {taskCount > 0 ? (
                                   <span className="inline-flex items-center gap-1 text-[12px] text-[#5f6368] dark:text-muted-foreground">
                                     <CheckSquare className="h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground" />
@@ -1346,7 +1492,7 @@ const People = () => {
 
                             {/* Email */}
                             {columnVisibility.email && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}>
                                 {person.email ? (
                                   <span className="text-[13px] text-[#202124] dark:text-foreground/80 truncate block max-w-[160px]">{person.email}</span>
                                 ) : (
@@ -1357,7 +1503,7 @@ const People = () => {
 
                             {/* Contact Type */}
                             {columnVisibility.contactType && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}>
                                 {typeCfg ? (
                                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap ${typeCfg.bg} ${typeCfg.color}`}>
                                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${typeCfg.dot}`} />
@@ -1371,7 +1517,7 @@ const People = () => {
 
                             {/* Pipeline / Stage */}
                             {columnVisibility.pipeline && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}>
                                 {person._pipelineName ? (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400">
                                     {person._pipelineName}
@@ -1387,14 +1533,14 @@ const People = () => {
 
                             {/* Last Contacted */}
                             {columnVisibility.lastContacted && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}>
                                 <span className="text-[12px] text-muted-foreground tabular-nums">{formatShortDate(person.last_activity_at)}</span>
                               </td>
                             )}
 
                             {/* Interactions */}
                             {columnVisibility.interactions && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}>
                                 {interactionCount > 0 ? (
                                   <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-[11px] font-bold text-blue-600 dark:text-blue-400">
                                     {interactionCount}
@@ -1407,7 +1553,7 @@ const People = () => {
 
                             {/* Inactive Days */}
                             {columnVisibility.inactiveDays && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}>
                                 {isStale ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800">
                                     {inactiveDays}d
@@ -1422,7 +1568,7 @@ const People = () => {
 
                             {/* Tags */}
                             {columnVisibility.tags && (
-                              <td className="px-4 py-3 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
+                              <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.tags, border: '1px solid #c8bdd6' }}>
                                 {person.tags && person.tags.length > 0 ? (
                                   <span className="flex items-center gap-1 flex-wrap">
                                     {person.tags.slice(0, 2).map((tag) => (
@@ -1441,7 +1587,7 @@ const People = () => {
                             )}
 
                             {/* Detail arrow */}
-                            <td className="px-2 py-3 w-10" style={{ border: '1px solid #c8bdd6' }}>
+                            <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }}>
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isDetailSelected
                                   ? 'text-blue-500'
@@ -1491,9 +1637,6 @@ const People = () => {
                         </div>
                         <p className="text-sm font-semibold text-foreground truncate">{draggedPerson.name}</p>
                       </div>
-                      {draggedPerson.company_name && (
-                        <p className="text-[11px] text-muted-foreground">{draggedPerson.company_name}</p>
-                      )}
                     </Card>
                   ) : null}
                 </DragOverlay>
@@ -1502,7 +1645,7 @@ const People = () => {
           </main>
 
           {/* ── Right Detail Panel ── */}
-          {selectedPerson && (
+          {selectedPerson && !filterPanelOpen && (
             <PeopleDetailPanel
               person={selectedPerson}
               contactTypeConfig={contactTypeConfig}
@@ -1519,10 +1662,59 @@ const People = () => {
               onPersonUpdate={(updatedPerson) => setSelectedPerson(updatedPerson)}
             />
           )}
+
+          {/* ── Right Filter Panel ── */}
+          {filterPanelOpen && (
+            <PeopleFilterPanel
+              teamMemberMap={teamMemberMap}
+              contactTypes={filterOptions.filter(o => o.editable).map(o => o.id)}
+              onClose={() => setFilterPanelOpen(false)}
+              onSave={(filter) => {
+                const id = `custom_${Date.now()}`;
+                setCustomFilters(prev => [...prev, { id, label: filter.filterName, values: filter }]);
+                setActiveFilter(id);
+                setFilterPanelOpen(false);
+                toast.success(`Filter "${filter.filterName}" created`);
+              }}
+            />
+          )}
         </div>
       </div>
 
       {/* ── Add Person Dialog ── */}
+      {/* ── Bulk Edit Contact Type Dialog ── */}
+      <Dialog open={bulkEditOpen} onOpenChange={(open) => { setBulkEditOpen(open); if (!open) setBulkContactType(''); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Change Contact Type</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Update contact type for {selectedPersonIds.size} selected {selectedPersonIds.size === 1 ? 'person' : 'people'}.
+          </p>
+          <Select value={bulkContactType} onValueChange={setBulkContactType}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select contact type" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.keys(contactTypeConfig).map((type) => (
+                <SelectItem key={type} value={type}>{type}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setBulkEditOpen(false); setBulkContactType(''); }}>Cancel</Button>
+            <Button
+              disabled={!bulkContactType || bulkContactTypeMutation.isPending}
+              onClick={() => bulkContactTypeMutation.mutate({ personIds: Array.from(selectedPersonIds), newType: bulkContactType })}
+              className="bg-[#3b2778] hover:bg-[#2d1d5e] text-white"
+            >
+              {bulkContactTypeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              Apply
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={addPersonOpen} onOpenChange={setAddPersonOpen}>
         <DialogContent className="sm:max-w-[560px] p-0 max-h-[90vh] flex flex-col">
           <DialogHeader className="px-6 pt-6 pb-2 shrink-0">

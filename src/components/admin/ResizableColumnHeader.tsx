@@ -59,10 +59,10 @@ const ResizableColumnHeader = ({
   return (
     <div className={cn("relative flex items-center", className)}>
       {children}
-      {/* Resize handle */}
+      {/* Resize handle — -right-4 compensates for th's px-4 padding, placing handle at column border */}
       <div
         className={cn(
-          "absolute -right-5 -top-3 -bottom-3 w-2 cursor-col-resize group/resize z-10",
+          "absolute -right-4 -top-3 -bottom-3 w-2 cursor-col-resize group/resize z-10",
           "hover:bg-[#3b2778]/20 transition-colors",
           isResizing && "bg-[#3b2778]/30"
         )}

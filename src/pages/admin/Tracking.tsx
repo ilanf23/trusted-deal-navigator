@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -85,6 +86,12 @@ const Tracking = () => {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [sortField, setSortField] = useState<'priority' | 'next_follow_up'>('next_follow_up');
   const [sortAsc, setSortAsc] = useState(true);
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Partner Referral Tracking');
+    return () => { setPageTitle(null); };
+  }, []);
 
   // Fetch ALL tracking records (admin view)
   const { data: trackingRecords = [], isLoading } = useQuery({
@@ -208,14 +215,7 @@ const Tracking = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-foreground">Partner Referral Tracking</h1>
-              <DbTableBadge tables={['partner_tracking']} />
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">Link and manage partner referrals for pipeline tracking</p>
-          </div>
+        <div className="flex items-center justify-end">
           <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="w-4 h-4 mr-1.5" />Link Referral</Button>

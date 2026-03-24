@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { DbTableBadge } from '@/components/admin/DbTableBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,6 +75,12 @@ const AdminLeads = () => {
     notes: '',
     assigned_to: '',
   });
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Leads');
+    return () => { setPageTitle(null); };
+  }, []);
 
   const fetchTeamMembers = async () => {
     try {
@@ -270,17 +276,7 @@ const AdminLeads = () => {
     <AdminLayout>
       <div className="flex flex-col h-[calc(100vh-112px)]">
         {/* Header Section */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="animate-fade-in">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
-              <DbTableBadge tables={['leads']} />
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {leads.length} total leads · {filteredLeads.length} showing
-            </p>
-          </div>
-          
+        <div className="flex items-start justify-end mb-6">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button className="h-10 px-4 rounded-xl bg-foreground text-background hover:bg-foreground/90 shadow-sm transition-all duration-200 hover:shadow-md active:scale-[0.98]">

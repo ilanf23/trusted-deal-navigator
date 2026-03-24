@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,6 +73,12 @@ const createEmptyRow = (rowNum: number): LenderRow => ({
 });
 
 const LenderPrograms = () => {
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Lender Programs');
+    return () => { setPageTitle(null); };
+  }, []);
+
   const [rows, setRows] = useState<LenderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -777,18 +784,8 @@ const LenderPrograms = () => {
   return (
     <AdminLayout>
       <div className="space-y-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold text-foreground tracking-tight">Lender Programs</h1>
-              <DbTableBadge tables={['lender_programs']} />
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {rows.filter(r => r.lender_name.trim()).length} of 900 rows filled
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 justify-end">
             <input
               ref={fileInputRef}
               type="file"
@@ -836,7 +833,6 @@ const LenderPrograms = () => {
               </Button>
             )}
           </div>
-        </div>
 
         {/* Main content grid - spreadsheet + optional panel */}
         <div className={`grid gap-4 ${panelMode !== 'list' ? 'grid-cols-1 xl:grid-cols-4' : 'grid-cols-1'}`}>

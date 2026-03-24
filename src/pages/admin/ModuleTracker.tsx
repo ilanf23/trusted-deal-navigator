@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -39,6 +40,11 @@ const ICONS = ['Box','LayoutDashboard','Mail','Phone','FileText','Users','Kanban
 
 export default function ModuleTracker() {
   const { toast } = useToast();
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Module Tracker');
+    return () => { setPageTitle(null); };
+  }, []);
   const [modules, setModules] = useState<Module[]>([]);
   const [requirements, setRequirements] = useState<BusinessRequirement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,19 +155,8 @@ export default function ModuleTracker() {
         />
 
         <div className="relative z-10 p-6 space-y-6">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="relative inline-block">
-                <h1 className="font-bold text-4xl tracking-tight text-foreground">Module Tracker</h1>
-                {/* Gradient accent underline */}
-                <div
-                  className="absolute -bottom-1 left-0 right-0 h-[3px] rounded-full"
-                  style={{ background: 'linear-gradient(to right, #6366f1, #a855f7)' }}
-                />
-              </div>
-              <p className="text-sm text-muted-foreground font-medium mt-2">Business requirements and development pipeline</p>
-            </div>
+          {/* Actions */}
+          <div className="flex justify-end">
             <Button onClick={() => setAddModuleOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
               <Plus className="h-4 w-4 mr-1.5" /> Add Module
             </Button>

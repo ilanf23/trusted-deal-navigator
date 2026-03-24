@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -60,6 +61,12 @@ const STAGE_COLORS: Record<string, string> = {
 const TeamPerformance = () => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ytd');
   const [selectedEmployee, setSelectedEmployee] = useState<string>('evan');
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Team Performance');
+    return () => { setPageTitle(null); };
+  }, []);
 
   const now = new Date();
   const periodStart = timePeriod === 'ytd' ? startOfYear(now) : startOfMonth(now);
@@ -392,26 +399,14 @@ const TeamPerformance = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10">
-              <Users className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Team Performance</h1>
-              <p className="text-sm text-muted-foreground">Employee results & metrics dashboard</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
-              <TabsList className="bg-muted/50">
-                <TabsTrigger value="mtd">MTD</TabsTrigger>
-                <TabsTrigger value="ytd">YTD</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+        {/* Time Period Selector */}
+        <div className="flex justify-end">
+          <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
+            <TabsList className="bg-muted/50">
+              <TabsTrigger value="mtd">MTD</TabsTrigger>
+              <TabsTrigger value="ytd">YTD</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Employee Selector Cards */}

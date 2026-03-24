@@ -1433,22 +1433,7 @@ const EmployeePipeline = () => {
           </div>
         )}
 
-        {/* Bulk Selection Toolbar - positioned below stage progress */}
-        {selectedLeadIds.size > 0 && (
-          <div className="mb-4">
-            <PipelineBulkToolbar
-              selectedCount={selectedLeadIds.size}
-              totalCount={filteredLeads.length}
-              onClearSelection={clearSelection}
-              onEdit={() => {/* TODO: bulk edit */}}
-              onExport={() => {/* TODO: export */}}
-              onMoveBoxes={() => setMoveBoxesOpen(true)}
-              onDeleteBoxes={() => setDeleteConfirmOpen(true)}
-              onAssignOwner={handleBulkAssignOwner}
-              teamMembers={teamMembers}
-            />
-          </div>
-        )}
+        {/* Bulk Selection Toolbar moved inside scroll container below */}
 
         {/* Filters - responsive */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-4 mb-3 md:mb-4">
@@ -1496,6 +1481,22 @@ const EmployeePipeline = () => {
         {/* CRM Table - Fixed grid layout */}
         <div className="flex-1 overflow-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
           <div className="min-w-fit">
+            {/* Bulk Selection Toolbar - sticky inside scroll container */}
+            {selectedLeadIds.size > 0 && (
+              <div className="sticky top-0 z-40 px-4 py-2 bg-white dark:bg-background border-b border-border">
+                <PipelineBulkToolbar
+                  selectedCount={selectedLeadIds.size}
+                  totalCount={filteredLeads.length}
+                  onClearSelection={clearSelection}
+                  onEdit={() => {/* TODO: bulk edit */}}
+                  onExport={() => {/* TODO: export */}}
+                  onMoveBoxes={() => setMoveBoxesOpen(true)}
+                  onDeleteBoxes={() => setDeleteConfirmOpen(true)}
+                  onAssignOwner={handleBulkAssignOwner}
+                  teamMembers={teamMembers}
+                />
+              </div>
+            )}
             {/* Table Header */}
             <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <div 

@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -217,6 +219,12 @@ const statusConfig = {
 };
 
 const DevNotes = () => {
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Dev Notes');
+    return () => { setPageTitle(null); };
+  }, []);
+
   const groupedAutomations = automations.reduce((acc, automation) => {
     if (!acc[automation.category]) {
       acc[automation.category] = [];
@@ -228,19 +236,6 @@ const DevNotes = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-primary/10">
-            <Code2 className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Dev Notes</h1>
-            <p className="text-sm text-muted-foreground">
-              Documentation of automations and integrations built for CLX
-            </p>
-          </div>
-        </div>
-
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>

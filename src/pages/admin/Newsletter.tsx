@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -112,6 +113,12 @@ const LEAD_STATUS_OPTIONS = [
 const Newsletter = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { setPageTitle } = useAdminTopBar();
+  useEffect(() => {
+    setPageTitle('Newsletter');
+    return () => { setPageTitle(null); };
+  }, []);
   const [createCampaignOpen, setCreateCampaignOpen] = useState(false);
   const [createTemplateOpen, setCreateTemplateOpen] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', subject: '', content: '' });
@@ -423,11 +430,7 @@ const Newsletter = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Newsletter</h1>
-            <p className="text-muted-foreground">Send email campaigns to your leads</p>
-          </div>
+        <div className="flex items-center justify-end">
           <Dialog open={createCampaignOpen} onOpenChange={setCreateCampaignOpen}>
             <DialogTrigger asChild>
               <Button>
