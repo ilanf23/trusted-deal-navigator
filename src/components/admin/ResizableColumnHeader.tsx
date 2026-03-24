@@ -56,24 +56,63 @@ const ResizableColumnHeader = ({
     document.body.style.userSelect = 'none';
   }, [columnId, currentWidth, onResize, minWidth, maxWidth]);
 
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const th = (e.target as HTMLElement).closest('th');
+    if (!th) return;
+    const colIndex = th.cellIndex;
+    const table = th.closest('table');
+    if (!table) return;
+
+    let maxContentWidth = 0;
+
+    // Measure header content width
+    const headerContent = th.querySelector('span');
+    if (headerContent) maxContentWidth = headerContent.scrollWidth;
+
+    // Measure all body cells at this column index
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach((row) => {
+      const cell = row.children[colIndex] as HTMLElement | undefined;
+      if (cell) {
+        const inner = cell.firstElementChild as HTMLElement | null;
+        maxContentWidth = Math.max(maxContentWidth, inner ? inner.scrollWidth : cell.scrollWidth);
+      }
+    });
+
+    // Add padding (px-4 = 32px total) + buffer
+    const autoWidth = Math.max(minWidth, Math.min(maxWidth, maxContentWidth + 40));
+    onResize(columnId, autoWidth);
+
+    // Brief purple pulse on the header for visual feedback
+    const origBg = th.style.backgroundColor;
+    th.style.transition = 'background-color 150ms ease';
+    th.style.backgroundColor = '#d8cce8';
+    setTimeout(() => { th.style.backgroundColor = origBg; }, 200);
+  }, [columnId, onResize, minWidth, maxWidth]);
+
   return (
     <div className={cn("relative flex items-center", className)}>
       {children}
-      {/* Resize handle — -right-4 compensates for th's px-4 padding, placing handle at column border */}
+      {/* Resize handle — positioned within th's px-4 padding area */}
       <div
         className={cn(
-          "absolute -right-4 -top-3 -bottom-3 w-2 cursor-col-resize group/resize z-10",
-          "hover:bg-[#3b2778]/20 transition-colors",
-          isResizing && "bg-[#3b2778]/30"
+          "absolute -right-4 top-0 bottom-0 w-3 cursor-col-resize group/resize z-10",
+          "hover:bg-[#3b2778]/10 transition-colors",
+          isResizing && "bg-[#3b2778]/20"
         )}
         onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
+        title="Drag to resize · Double-click to auto-fit"
       >
-        <div 
+        <div
           className={cn(
-            "absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 transition-all",
-            "bg-[#3b2778]",
-            "opacity-0 group-hover/col:opacity-100 group-hover/resize:opacity-100",
-            isResizing && "opacity-100"
+            "absolute right-0 top-0 bottom-0 w-0.5 transition-all",
+            "bg-slate-300 dark:bg-slate-600",
+            "group-hover/resize:bg-[#3b2778]",
+            isResizing && "bg-[#3b2778]"
           )}
         />
       </div>

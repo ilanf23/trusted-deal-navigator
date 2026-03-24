@@ -309,8 +309,12 @@
 }
 
 .system-font,
-.system-font *:not(svg):not(svg *) {
+.system-font *:not(svg):not(svg *):not(.font-playfair) {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+}
+
+.font-playfair {
+  font-family: 'Bodoni Moda', Georgia, serif !important;
 }
 
 @layer components {

@@ -372,9 +372,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
       <SidebarHeader className={`border-b border-sidebar-border/40 overflow-visible ${isCollapsed ? 'px-2 pt-3 pb-3' : 'px-4 pt-0 pb-0'}`}>
         <Link to={homeUrl} className={`flex items-center justify-center group ${isCollapsed ? '' : 'relative z-10 -mt-6 -mb-10'}`}>
           {isCollapsed ? (
-            <div className="w-12 h-12 rounded-xl bg-sidebar-accent flex items-center justify-center shadow-sm">
-              <span className="text-sidebar-accent-foreground font-extrabold text-lg tracking-tight">CLX</span>
-            </div>
+            <span className="font-playfair text-white font-bold text-2xl tracking-tight">CLX</span>
           ) : (
             <img
               src="/logo.png"

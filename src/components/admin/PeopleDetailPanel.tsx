@@ -4,13 +4,12 @@ import {
   X, Maximize2, Building2, User, Mail, Phone, PhoneCall,
   Tag, FileText, Clock, ArrowRight, ChevronRight, Briefcase,
   Pencil, Check, Loader2, MessageSquare, Users, CheckSquare, ChevronDown, Layers,
-  Link2, FolderOpen, AtSign, MapPin, Trash2, Copy, Plus,
+  Link2, FolderOpen, AtSign, MapPin, Trash2, Copy, Plus, Download, Upload,
 } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-input';
 import { HtmlContent } from '@/components/ui/html-content';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/address-autocomplete';
@@ -22,7 +21,48 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { usePipelines } from '@/hooks/usePipelines';
+import { sanitizeFileName } from '@/lib/utils';
 import { differenceInDays, parseISO, format, formatDistanceToNow } from 'date-fns';
+
+// ── File type ──
+interface PersonFile {
+  id: string;
+  lead_id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(fileType: string | null): string {
+  if (!fileType) return '\u{1F4C4}';
+  if (fileType.startsWith('image/')) return '\u{1F5BC}\uFE0F';
+  if (fileType === 'application/pdf') return '\u{1F4D5}';
+  if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv')) return '\u{1F4CA}';
+  if (fileType.includes('word') || fileType.includes('document')) return '\u{1F4DD}';
+  if (fileType.includes('zip') || fileType.includes('compressed')) return '\u{1F4E6}';
+  return '\u{1F4C4}';
+}
+
+function getPipelineLeadRoute(pipelineName: string, leadId: string): string {
+  switch (pipelineName) {
+    case 'Underwriting': return `/admin/pipeline/underwriting/expanded-view/${leadId}`;
+    case 'Lender Management': return `/admin/pipeline/lender-management/expanded-view/${leadId}`;
+    default: return `/admin/pipeline/pipeline/expanded-view/${leadId}`;
+  }
+}
 
 // ── Person type ──
 interface Person {
@@ -971,10 +1011,20 @@ function RelatedSection({ label, count, defaultOpen, onAdd, children }: {
 // ── Related Tab Content ──
 function RelatedTabContent({ person, contactTypeConfig }: { person: Person; contactTypeConfig: Record<string, ContactTypeConfigEntry> }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { teamMember } = useTeamMember();
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+
+  // ── Pipeline state ──
+  const [pipelineSearchText, setPipelineSearchText] = useState('');
+  const [pipelineSearchFocused, setPipelineSearchFocused] = useState(false);
+
+  // ── File state ──
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
     queryKey: ['person-tasks', person.id],
@@ -995,6 +1045,209 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       return (data || []) as { id: string; name: string }[];
     },
   });
+
+  // ── Pipeline records query ──
+  const { data: pipelineRecords = [] } = useQuery({
+    queryKey: ['person-pipeline-records', person.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('pipeline_leads')
+        .select('id, pipeline_id, stage_id, added_at, updated_at, pipeline:pipelines(id, name), stage:pipeline_stages(id, name, color)')
+        .eq('lead_id', person.id)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        pipeline_id: string;
+        stage_id: string;
+        added_at: string;
+        updated_at: string;
+        pipeline: { id: string; name: string };
+        stage: { id: string; name: string; color: string | null };
+      }>;
+    },
+  });
+
+  const { data: allPipelines = [] } = usePipelines();
+
+  const filteredPipelines = useMemo(() => {
+    if (!pipelineSearchText.trim()) return allPipelines;
+    const q = pipelineSearchText.toLowerCase();
+    return allPipelines.filter((p: any) => p.name?.toLowerCase().includes(q));
+  }, [allPipelines, pipelineSearchText]);
+
+  const addToPipelineMutation = useMutation({
+    mutationFn: async (pipelineId: string) => {
+      const { data: stages, error: stagesError } = await (supabase as any)
+        .from('pipeline_stages')
+        .select('id')
+        .eq('pipeline_id', pipelineId)
+        .order('position')
+        .limit(1);
+      if (stagesError) throw stagesError;
+      if (!stages || stages.length === 0) throw new Error('Pipeline has no stages');
+
+      const { error: insertError } = await (supabase as any)
+        .from('pipeline_leads')
+        .insert({ pipeline_id: pipelineId, lead_id: person.id, stage_id: stages[0].id });
+      if (insertError) throw insertError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['person-pipeline-records', person.id] });
+      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+      toast.success('Added to pipeline');
+      setPipelineSearchText('');
+      setPipelineSearchFocused(false);
+    },
+    onError: () => toast.error('Failed to add to pipeline'),
+  });
+
+  // ── Person files query ──
+  const { data: personFiles = [] } = useQuery({
+    queryKey: ['person-files', person.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lead_files')
+        .select('id, lead_id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .eq('lead_id', person.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as PersonFile[];
+    },
+  });
+
+  // ── Related people (same company) ──
+  const { data: relatedPeople = [] } = useQuery({
+    queryKey: ['related-people', person.id, person.company_name],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, name')
+        .eq('company_name', person.company_name!)
+        .neq('id', person.id)
+        .order('name')
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; name: string }>;
+    },
+    enabled: !!person.company_name,
+  });
+
+  // ── Remove from pipeline ──
+  const removeFromPipelineMutation = useMutation({
+    mutationFn: async (recordId: string) => {
+      const { error } = await (supabase as any).from('pipeline_leads').delete().eq('id', recordId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['person-pipeline-records', person.id] });
+      queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+      toast.success('Removed from pipeline');
+    },
+    onError: () => toast.error('Failed to remove from pipeline'),
+  });
+
+  // ── Core file upload logic ──
+  const uploadFile = useCallback(async (file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('File too large (max 10MB)');
+      return;
+    }
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      toast.error('You must be logged in to upload files.');
+      return;
+    }
+
+    setUploadingFile(true);
+    const filePath = `${person.id}/${Date.now()}_${sanitizeFileName(file.name)}`;
+    const { error: uploadError } = await supabase.storage
+      .from('lead-files')
+      .upload(filePath, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+    if (uploadError) {
+      setUploadingFile(false);
+      toast.error(`Upload failed: ${uploadError.message || 'Storage error'}`);
+      return;
+    }
+
+    const { error: dbError } = await supabase.from('lead_files').insert({
+      lead_id: person.id,
+      file_name: file.name,
+      file_url: filePath,
+      file_type: file.type || null,
+      file_size: file.size,
+    });
+    setUploadingFile(false);
+    if (dbError) {
+      toast.error(`Failed to save file: ${dbError.message || 'Database error'}`);
+      await supabase.storage.from('lead-files').remove([filePath]);
+      return;
+    }
+    toast.success('File uploaded');
+    queryClient.invalidateQueries({ queryKey: ['person-files', person.id] });
+  }, [person.id, queryClient]);
+
+  // ── File upload from input ──
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    uploadFile(file);
+  }, [uploadFile]);
+
+  // ── Drag-and-drop handlers ──
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) uploadFile(file);
+  }, [uploadFile]);
+
+  // ── File delete ──
+  const handleDeleteFile = useCallback(async (file: PersonFile) => {
+    await supabase.storage.from('lead-files').remove([file.file_url]);
+    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
+    if (error) {
+      toast.error('Failed to delete file');
+      return;
+    }
+    toast.success('File deleted');
+    queryClient.invalidateQueries({ queryKey: ['person-files', person.id] });
+  }, [person.id, queryClient]);
+
+  // ── File download (signed URL) ──
+  const handleDownloadFile = useCallback(async (file: PersonFile) => {
+    const { data, error } = await supabase.storage
+      .from('lead-files')
+      .createSignedUrl(file.file_url, 60);
+    if (error || !data?.signedUrl) {
+      toast.error('Failed to generate download link');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = data.signedUrl;
+    a.download = file.file_name;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, []);
 
   const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
     const isCompleting = !task.completed_at;
@@ -1040,22 +1293,87 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       </div>
 
       {/* ── Pipeline Records ── */}
-      <RelatedSection label="Pipeline Records" count={0} defaultOpen>
-        <div className="flex items-center gap-3 py-2">
-          <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-muted flex items-center justify-center">
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      <RelatedSection label="Pipeline Records" count={pipelineRecords.length} defaultOpen>
+        <div className="space-y-1.5">
+          {pipelineRecords.map((rec: any) => (
+            <button
+              key={rec.id}
+              onClick={() => navigate(getPipelineLeadRoute(rec.pipeline.name, person.id))}
+              className="flex items-center gap-2.5 text-[13px] p-2 rounded-lg hover:bg-muted/40 transition-colors w-full text-left group"
+            >
+              <div
+                className="h-2.5 w-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: rec.stage?.color || '#6b7280' }}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground truncate">{rec.pipeline.name}</p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {rec.stage?.name} · {formatDate(rec.added_at)}
+                </p>
+              </div>
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeFromPipelineMutation.mutate(rec.id); }}
+                  className="p-1 rounded hover:bg-muted"
+                  title="Remove from pipeline"
+                >
+                  <X className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                </button>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+            </button>
+          ))}
+
+          <div className="relative mt-1">
+            <input
+              value={pipelineSearchText}
+              onChange={(e) => setPipelineSearchText(e.target.value)}
+              onFocus={() => setPipelineSearchFocused(true)}
+              placeholder="Add Pipeline Record"
+              className="w-full text-[13px] text-foreground bg-transparent border-0 border-b border-muted-foreground/20 focus:border-[#3b2778] px-0 py-1.5 outline-none placeholder:text-muted-foreground/50 transition-colors"
+            />
+            {pipelineSearchFocused && filteredPipelines.length > 0 && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => { setPipelineSearchFocused(false); setPipelineSearchText(''); }} />
+                <div className="absolute z-50 top-full left-0 mt-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
+                  {filteredPipelines.map((p: any) => (
+                    <button
+                      key={p.id}
+                      onClick={() => addToPipelineMutation.mutate(p.id)}
+                      className="w-full text-left px-3 py-2 text-[13px] text-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-          <span className="text-[14px] text-muted-foreground/50">Add Pipeline Record</span>
         </div>
       </RelatedSection>
 
       {/* ── People ── */}
-      <RelatedSection label="People" count={1}>
-        <div className="flex items-center gap-2.5 py-1.5">
-          <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(person.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-            {person.name[0]?.toUpperCase() ?? '?'}
+      <RelatedSection label="People" count={1 + relatedPeople.length}>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 py-1.5">
+            <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(person.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+              {person.name[0]?.toUpperCase() ?? '?'}
+            </div>
+            <span className="text-[13px] font-medium text-foreground">{person.name}</span>
           </div>
-          <span className="text-[13px] font-medium text-foreground">{person.name}</span>
+          {relatedPeople.map((rp) => (
+            <button
+              key={rp.id}
+              onClick={() => navigate(`/admin/contacts/people/expanded-view/${rp.id}`)}
+              className="flex items-center gap-2.5 py-1.5 w-full text-left hover:bg-muted/50 rounded-md px-1 -mx-1 transition-colors group"
+            >
+              <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(rp.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
+                {rp.name[0]?.toUpperCase() ?? '?'}
+              </div>
+              <span className="text-[13px] font-medium text-foreground truncate flex-1">{rp.name}</span>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+            </button>
+          ))}
         </div>
       </RelatedSection>
 
@@ -1097,8 +1415,71 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       </RelatedSection>
 
       {/* ── Files ── */}
-      <RelatedSection label="Files" count={0}>
-        <p className="text-[13px] text-muted-foreground/50 py-1">No files</p>
+      <RelatedSection label="Files" count={personFiles.length} onAdd={() => fileInputRef.current?.click()}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+        <div
+          className={`space-y-1.5 rounded-lg transition-colors ${isDragging ? 'bg-[#eee6f6] dark:bg-purple-950/30 border-2 border-dashed border-[#3b2778] p-2' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isDragging ? (
+            <div className="flex flex-col items-center justify-center py-4 gap-1.5">
+              <Upload className="h-5 w-5 text-[#3b2778]" />
+              <span className="text-[13px] font-medium text-[#3b2778]">Drop file here</span>
+            </div>
+          ) : (
+            <>
+              {personFiles.map((f) => (
+                <div key={f.id} className="flex items-center gap-2 text-[13px] p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+                  <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate">{f.file_name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatFileSize(f.file_size)} · {formatDate(f.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }}
+                      className="p-1 rounded hover:bg-muted"
+                      title="Download"
+                    >
+                      <Download className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFile(f)}
+                      className="p-1 rounded hover:bg-muted"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {uploadingFile && (
+                <div className="flex items-center gap-2 text-[13px] text-muted-foreground py-1">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3b2778]" />
+                  Uploading...
+                </div>
+              )}
+              {personFiles.length === 0 && !uploadingFile && (
+                <p className="text-[13px] text-muted-foreground/50 py-1">No files</p>
+              )}
+            </>
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-[13px] text-[#3b2778] dark:text-purple-400 font-medium hover:text-[#2a1d5c] dark:hover:text-purple-300 transition-colors py-1"
+          >
+            + Upload file...
+          </button>
+        </div>
       </RelatedSection>
 
       {/* ── Calendar Events ── */}
@@ -1295,7 +1676,7 @@ export default function PeopleDetailPanel({
   }, [person, onPersonUpdate, queryClient]);
 
   return (
-    <aside className="shrink-0 w-[380px] border-l border-border/60 bg-white dark:bg-card flex flex-col max-h-full animate-in slide-in-from-right-5 duration-200">
+    <aside className="shrink-0 w-[380px] border-l border-border/60 border-b-2 border-b-gray-300 dark:border-b-border bg-white dark:bg-card flex flex-col shadow-lg animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
       <div className="shrink-0">
         {/* Top bar: X close + Follow/actions */}
@@ -1358,7 +1739,7 @@ export default function PeopleDetailPanel({
 
       {/* ── Tab Content ── */}
       {activeTab === 'details' && (
-        <ScrollArea className="overflow-auto">
+        <div>
           <div className="px-6 py-5 space-y-6">
 
             {/* Name */}
@@ -1461,25 +1842,25 @@ export default function PeopleDetailPanel({
             <SimpleField label="Notes" value={person.notes ?? ''} field="notes" personId={person.id} onSaved={handleFieldSaved} placeholder="Add notes..." multiline />
 
           </div>
-        </ScrollArea>
+        </div>
       )}
 
       {activeTab === 'activity' && (
-        <ScrollArea className="overflow-auto bg-[#eeedf3] dark:bg-violet-950/20">
+        <div className="overflow-y-auto max-h-[400px] bg-[#eeedf3] dark:bg-violet-950/20">
           <ActivityTabContent person={person} contactTypeConfig={contactTypeConfig} />
-        </ScrollArea>
+        </div>
       )}
 
       {activeTab === 'related' && (
-        <ScrollArea className="overflow-auto">
+        <div className="overflow-y-auto max-h-[400px]">
           <RelatedTabContent person={person} contactTypeConfig={contactTypeConfig} />
-        </ScrollArea>
+        </div>
       )}
 
       {/* Footer */}
       {onExpand && (
         <div className="shrink-0 px-5 py-3 border-t border-border">
-          <button onClick={onExpand} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
+          <button onClick={onExpand} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-[#3b2778] dark:text-purple-300 bg-[#e0d4f0] dark:bg-purple-950/50 hover:bg-[#d8cce8] dark:hover:bg-purple-900/50 transition-colors">
             Open full record
             <Maximize2 className="h-3 w-3" />
           </button>

@@ -465,7 +465,7 @@ const People = () => {
 
   const DEFAULT_COLUMN_WIDTHS: Record<string, number> = useMemo(() => ({
     person: 260, title: 130, company: 130, tasks: 55, email: 170,
-    contactType: 170, pipeline: 180, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
+    contactType: 200, pipeline: 220, lastContacted: 90, interactions: 65, inactiveDays: 70, tags: 100,
   }), []);
 
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
@@ -488,6 +488,7 @@ const People = () => {
   }, []);
 
   const columnsMenuRef = useRef<HTMLDivElement>(null);
+  const detailPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -519,6 +520,20 @@ const People = () => {
     }
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
+  }, [selectedPerson]);
+
+  // Close detail panel on click outside
+  useEffect(() => {
+    if (!selectedPerson) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (detailPanelRef.current && !detailPanelRef.current.contains(e.target as Node)) {
+        const target = e.target as HTMLElement;
+        if (target.closest('tr')) return; // let row click handler handle it
+        setSelectedPerson(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedPerson]);
 
   const sortFieldLabel = SORT_FIELD_OPTIONS.find(o => o.value === sortField)?.label ?? sortField;
@@ -922,6 +937,7 @@ const People = () => {
             <div className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
               <button
                 onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
+                title="Sort options"
                 style={{ color: '#202124', backgroundColor: isMenuOpen ? '#d8cce8' : undefined, width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 'bold', lineHeight: 1 }}
                 onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
                 onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
@@ -1138,10 +1154,10 @@ const People = () => {
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
             {/* ── Copper-Style Content Title Bar ── */}
-            <div className="shrink-0 border-b-0 px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
+            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
 
-              <div className="flex items-center gap-3">
-                <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap ml-[96px]">
+              <div className="flex items-center gap-3 ml-24">
+                <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
                   {filterOptions.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Contacts'}
                 </h2>
 
@@ -1297,11 +1313,11 @@ const People = () => {
                     />
                   </div>
                 )}
-                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                        <div className="shrink-0">
+                        <div className="shrink-0" title="Select all">
                           <Checkbox
                             checked={isAllSelected}
                             onCheckedChange={(checked) => checked ? selectAll() : clearSelection()}
@@ -1362,7 +1378,7 @@ const People = () => {
                           {columnVisibility.tasks && <td className="px-4 py-1.5" style={{ width: columnWidths.tasks, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
                           {columnVisibility.email && <td className="px-4 py-1.5" style={{ width: columnWidths.email, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-32 rounded" /></td>}
                           {columnVisibility.contactType && <td className="px-4 py-1.5" style={{ width: columnWidths.contactType, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-20 rounded-full" /></td>}
-                          {columnVisibility.pipeline && <td className="px-4 py-1.5" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}><Skeleton className="h-5 w-28 rounded-full" /></td>}
+                          {columnVisibility.pipeline && <td className="px-4 py-1.5" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-28 rounded" /></td>}
                           {columnVisibility.lastContacted && <td className="px-4 py-1.5" style={{ width: columnWidths.lastContacted, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-20 rounded" /></td>}
                           {columnVisibility.interactions && <td className="px-4 py-1.5" style={{ width: columnWidths.interactions, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-8 rounded" /></td>}
                           {columnVisibility.inactiveDays && <td className="px-4 py-1.5" style={{ width: columnWidths.inactiveDays, border: '1px solid #c8bdd6' }}><Skeleton className="h-3.5 w-10 rounded" /></td>}
@@ -1406,27 +1422,27 @@ const People = () => {
                         const isBulkSelected = selectedPersonIds.has(person.id);
 
                         const stickyBg = isDetailSelected
-                          ? 'bg-[#e8f0fe] dark:bg-blue-950 group-hover:bg-[#d2e3fc] dark:group-hover:bg-blue-900'
+                          ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
                           : isBulkSelected
-                            ? 'bg-violet-50 dark:bg-violet-950/30 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/40'
+                            ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
                             : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
 
                         return (
                           <tr
                             key={person.id}
                             onClick={() => handleRowClick(person)}
-                            className={`cursor-pointer transition-colors duration-100 group ${
+                            className={`cursor-pointer transition-colors duration-200 group ${
                               isDetailSelected
-                                ? 'bg-[#e8f0fe] dark:bg-blue-950/30 hover:bg-[#d2e3fc] dark:hover:bg-blue-950/40'
+                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
                                 : isBulkSelected
-                                  ? 'bg-violet-50/60 dark:bg-violet-950/20 hover:bg-violet-50/80'
+                                  ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
                                   : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
                             {/* Person + Checkbox (sticky) */}
-                            <td className={`pl-4 pr-6 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
-                              <div className="flex items-center gap-2.5">
-                                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <td className={`pl-4 pr-6 py-3 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.person, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                              <div className="flex items-center gap-4">
+                                <div className="shrink-0" title="Select" onClick={(e) => e.stopPropagation()}>
                                   <Checkbox
                                     checked={isBulkSelected}
                                     onCheckedChange={() => togglePersonSelection(person.id)}
@@ -1443,6 +1459,7 @@ const People = () => {
                                     </p>
                                     <button
                                       type="button"
+                                      title="Open expanded view"
                                       onClick={(e) => { e.stopPropagation(); navigate(`/admin/contacts/people/expanded-view/${person.id}`); }}
                                       className="absolute right-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground"
                                     >
@@ -1519,10 +1536,10 @@ const People = () => {
                             {columnVisibility.pipeline && (
                               <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.pipeline, border: '1px solid #c8bdd6' }}>
                                 {person._pipelineName ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400">
-                                    {person._pipelineName}
+                                  <span className="text-[12px] text-foreground whitespace-nowrap truncate">
+                                    <span className="font-semibold">{person._pipelineName}</span>
                                     {person._stageName && (
-                                      <span className="text-purple-400 dark:text-purple-500 font-normal">{' > '}{person._stageName}</span>
+                                      <span className="text-muted-foreground font-normal">{' > '}{person._stageName}</span>
                                     )}
                                   </span>
                                 ) : (
@@ -1587,10 +1604,10 @@ const People = () => {
                             )}
 
                             {/* Detail arrow */}
-                            <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }}>
+                            <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }} title="Open detail panel">
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isDetailSelected
-                                  ? 'text-blue-500'
+                                  ? 'text-[#3b2778]'
                                   : 'text-transparent group-hover:text-muted-foreground'
                               }`} />
                             </td>
@@ -1644,23 +1661,25 @@ const People = () => {
             )}
           </main>
 
-          {/* ── Right Detail Panel ── */}
+          {/* ── Right Detail Panel (overlay) ── */}
           {selectedPerson && !filterPanelOpen && (
-            <PeopleDetailPanel
-              person={selectedPerson}
-              contactTypeConfig={contactTypeConfig}
-              teamMemberMap={teamMemberMap}
-              teamMembers={teamMembers}
-              onClose={() => setSelectedPerson(null)}
-              onExpand={() => {
-                navigate(`/admin/contacts/people/expanded-view/${selectedPerson.id}`);
-              }}
-              onContactTypeChange={(personId, newType) => {
-                contactTypeMutation.mutate({ personId, newType, oldType: selectedPerson.contact_type ?? 'Other' });
-                setSelectedPerson({ ...selectedPerson, contact_type: newType });
-              }}
-              onPersonUpdate={(updatedPerson) => setSelectedPerson(updatedPerson)}
-            />
+            <div ref={detailPanelRef} className="absolute right-0 top-0 z-50">
+              <PeopleDetailPanel
+                person={selectedPerson}
+                contactTypeConfig={contactTypeConfig}
+                teamMemberMap={teamMemberMap}
+                teamMembers={teamMembers}
+                onClose={() => setSelectedPerson(null)}
+                onExpand={() => {
+                  navigate(`/admin/contacts/people/expanded-view/${selectedPerson.id}`);
+                }}
+                onContactTypeChange={(personId, newType) => {
+                  contactTypeMutation.mutate({ personId, newType, oldType: selectedPerson.contact_type ?? 'Other' });
+                  setSelectedPerson({ ...selectedPerson, contact_type: newType });
+                }}
+                onPersonUpdate={(updatedPerson) => setSelectedPerson(updatedPerson)}
+              />
+            </div>
           )}
 
           {/* ── Right Filter Panel ── */}

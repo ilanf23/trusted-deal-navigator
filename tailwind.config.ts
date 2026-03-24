@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'system-ui', '-apple-system', 'sans-serif'],
         serif: ['Cormorant Garamond', 'Georgia', 'serif'],
+        display: ['Bodoni Moda', 'Georgia', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",
