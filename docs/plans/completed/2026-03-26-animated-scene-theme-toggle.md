@@ -49,4 +49,4 @@ Replace the current pill-shaped Sun/Moon toggle in the admin header with an anim
 
 ### Task 3: Update documentation
 
-- [ ] Move this plan to `docs/plans/completed/`
+- [x] Move this plan to `docs/plans/completed/`
