@@ -260,7 +260,7 @@ export default function ProjectExpandedView() {
     await supabase.from('tasks').insert({
       lead_id: project.lead_id,
       title: newTaskTitle.trim(),
-      status: status === 'pending' ? 'todo' : status,
+      status: status === 'pending' ? 'todo' : status === 'completed' ? 'done' : status,
       source: 'lead',
       created_by: teamMember?.name ?? null,
     });
@@ -907,7 +907,7 @@ export default function ProjectExpandedView() {
                 {/* People */}
                 <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} onAdd={() => {}}>
                   <div className="space-y-3 py-1">
-                    {contacts.map((c: any) => (
+                    {contacts.map((c: { id: string; name?: string; role?: string; email?: string; title?: string; phone?: string }) => (
                       <div key={c.id} className="flex items-start gap-2.5">
                         <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300 shrink-0">
                           {c.name?.split(' ').map((n: string) => n[0]?.toUpperCase()).join('').slice(0, 2)}

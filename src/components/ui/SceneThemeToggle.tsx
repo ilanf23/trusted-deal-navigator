@@ -32,6 +32,9 @@ const SceneThemeToggle = () => {
             <stop offset="0%" stopColor="#1e1b4b" />
             <stop offset="100%" stopColor="#312e81" />
           </linearGradient>
+          <clipPath id={`scene-clip-${svgId}`}>
+            <rect width="120" height="48" rx="24" />
+          </clipPath>
         </defs>
 
         {/* Sky background */}
@@ -114,9 +117,6 @@ const SceneThemeToggle = () => {
         </g>
 
         {/* Rolling hills */}
-        <clipPath id={`scene-clip-${svgId}`}>
-          <rect width="120" height="48" rx="24" />
-        </clipPath>
         <g clipPath={`url(#scene-clip-${svgId})`}>
           {/* Back hill */}
           <ellipse

@@ -88,7 +88,7 @@ interface CallLog {
 }
 
 const formatCurrency = (amount: number | null) => {
-  if (!amount) return 'N/A';
+  if (amount === null || amount === undefined) return 'N/A';
   if (amount >= 1000000000) {
     return `$${(amount / 1000000000).toFixed(0)}B`;
   } else if (amount >= 1000000) {
@@ -108,23 +108,6 @@ const formatPhoneNumber = (phone: string) => {
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   }
   return phone;
-};
-
-const getTypeBadgeClass = (type: string) => {
-  switch (type) {
-    case 'SBA':
-      return 'bg-admin-blue text-white border-0';
-    case 'Conventional':
-      return 'bg-admin-teal text-white border-0';
-    case 'Bridge':
-      return 'bg-admin-orange text-white border-0';
-    case 'Construction':
-      return 'bg-gradient-to-r from-admin-orange to-admin-orange-dark text-white border-0';
-    case 'CMBS':
-      return 'bg-admin-blue-dark text-white border-0';
-    default:
-      return 'bg-muted text-muted-foreground';
-  }
 };
 
 const getStatusBadgeClass = (status: string) => {
@@ -162,7 +145,7 @@ const Calls = () => {
   useEffect(() => {
     setPageTitle('Calls');
     return () => { setPageTitle(null); };
-  }, []);
+  }, [setPageTitle]);
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [transcriptDialogOpen, setTranscriptDialogOpen] = useState(false);
   const [selectedTranscriptCall, setSelectedTranscriptCall] = useState<CallLog | null>(null);
@@ -253,6 +236,7 @@ const Calls = () => {
     if (updated && updated.transcript !== selectedTranscriptCall.transcript) {
       setSelectedTranscriptCall(updated);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when callHistory changes or the selected call ID changes, not on transcript text change
   }, [callHistory, selectedTranscriptCall?.id]);
 
   const currentCall = activeCalls[0];
@@ -379,7 +363,7 @@ const Calls = () => {
       setNewLeadEmail('');
       setNewLeadCompany('');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error('Failed to create lead: ' + error.message);
     },
   });
@@ -527,9 +511,7 @@ const Calls = () => {
     toast.info('Automation skipped - lead created without follow-up task');
   };
 
-  const isLoading = callsLoading;
-
-  if (isLoading) {
+  if (callsLoading) {
     return (
       <EvanLayout>
         <div className="flex items-center justify-center py-20">
@@ -595,8 +577,7 @@ const Calls = () => {
             {/* Section: Contact Info */}
             <div className="pt-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-1 mb-3">Contact</p>
-            </div>
-            <Card className="rounded-lg">
+              <Card className="rounded-lg">
               <CardHeader className="pb-3 pt-4 px-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -758,6 +739,7 @@ const Calls = () => {
                 )}
               </CardContent>
             </Card>
+            </div>
           </div>
 
           {/* Right Column - Call History (dominant) */}
