@@ -753,9 +753,11 @@ const Calls = () => {
                 )}
               </CardContent>
             </Card>
+          </div>
 
-            {/* Call History Card */}
-            <Card>
+          {/* Right Column - Call History (dominant) */}
+          <div className="lg:col-span-3">
+            <Card className="h-full">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -800,7 +802,7 @@ const Calls = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-[430px]">
+                <ScrollArea className="h-[calc(100vh-12rem)]">
                   {historyLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -919,11 +921,6 @@ const Calls = () => {
                 </ScrollArea>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Right Column - Outbound Call */}
-          <div className="space-y-6">
-            <OutboundCallCard initialPhone={prefilledPhone || undefined} initialLeadId={prefilledLeadId || undefined} />
           </div>
         </div>
       </div>

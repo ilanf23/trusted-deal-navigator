@@ -43,13 +43,13 @@ Right column (lg:col-span-3, ~60% width):
 
 This groups the "action" items (active call, dialer, lead info) on the left as a command panel, and gives call history the dominant screen space on the right since it's the most-used section.
 
-- [ ] Restructure the grid from `grid-cols-1 lg:grid-cols-3` to `grid-cols-1 lg:grid-cols-5` (for better proportional control)
-- [ ] Move OutboundCallCard to left column (lg:col-span-2), placed after Active Call card
-- [ ] Move Caller Information card below OutboundCallCard in left column
-- [ ] Make Call History the sole card in right column (lg:col-span-3) with increased scroll height
-- [ ] Increase Call History ScrollArea from h-[430px] to h-[calc(100vh-12rem)] so it fills available vertical space
-- [ ] Tighten spacing: reduce outer `space-y-6` to `space-y-4`, reduce inner card gaps
-- [ ] Make Active Call card more compact when no active call (smaller padding, single-line empty state)
+- [x] Restructure the grid from `grid-cols-1 lg:grid-cols-3` to `grid-cols-1 lg:grid-cols-5` (for better proportional control)
+- [x] Move OutboundCallCard to left column (lg:col-span-2), placed after Active Call card
+- [x] Move Caller Information card below OutboundCallCard in left column
+- [x] Make Call History the sole card in right column (lg:col-span-3) with increased scroll height
+- [x] Increase Call History ScrollArea from h-[430px] to h-[calc(100vh-12rem)] so it fills available vertical space
+- [x] Tighten spacing: reduce outer `space-y-6` to `space-y-4`, reduce inner card gaps
+- [x] Make Active Call card more compact when no active call (smaller padding, single-line empty state)
 
 ### Task 2: Polish card styling for visual hierarchy
 
