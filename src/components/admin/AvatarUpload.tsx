@@ -15,6 +15,10 @@ interface AvatarUploadProps {
   fallbackInitials: string;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  tableName?: string;
+  tableIdColumn?: string;
+  tableImageColumn?: string;
+  queryKeysToInvalidate?: string[][];
 }
 
 const sizeClasses = {
@@ -39,6 +43,10 @@ export const AvatarUpload = ({
   fallbackInitials,
   className = '',
   size = 'md',
+  tableName = 'team_members',
+  tableIdColumn = 'user_id',
+  tableImageColumn = 'avatar_url',
+  queryKeysToInvalidate = [['team-member'], ['team-members']],
 }: AvatarUploadProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<Step>('select');
@@ -233,15 +241,16 @@ export const AvatarUpload = ({
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
       const { error: updateError } = await supabase
-        .from('team_members')
-        .update({ avatar_url: `${urlData.publicUrl}?t=${Date.now()}` })
-        .eq('user_id', userId);
+        .from(tableName)
+        .update({ [tableImageColumn]: `${urlData.publicUrl}?t=${Date.now()}` })
+        .eq(tableIdColumn, userId);
       if (updateError) throw updateError;
 
       toast.success('Profile photo updated!');
       handleClose();
-      queryClient.invalidateQueries({ queryKey: ['team-member'] });
-      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      for (const key of queryKeysToInvalidate) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
     } catch (error: any) {
       toast.error('Failed to upload photo: ' + error.message);
     } finally {
@@ -257,13 +266,14 @@ export const AvatarUpload = ({
         `${userId}/avatar.png`, `${userId}/avatar.jpg`,
         `${userId}/avatar.jpeg`, `${userId}/avatar.webp`,
       ]);
-      const { error } = await supabase.from('team_members')
-        .update({ avatar_url: null }).eq('user_id', userId);
+      const { error } = await supabase.from(tableName)
+        .update({ [tableImageColumn]: null }).eq(tableIdColumn, userId);
       if (error) throw error;
       toast.success('Profile photo removed');
       handleClose();
-      queryClient.invalidateQueries({ queryKey: ['team-member'] });
-      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      for (const key of queryKeysToInvalidate) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
     } catch (error: any) {
       toast.error('Failed to remove photo: ' + error.message);
     } finally {

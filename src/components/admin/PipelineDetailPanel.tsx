@@ -1125,8 +1125,14 @@ export default function PipelineDetailPanel({
         <div className="px-5 pt-4 pb-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
-                {initial}
+              <div className="h-10 w-10 rounded-xl shrink-0 overflow-hidden shadow-md">
+                {lead.image_url ? (
+                  <img src={lead.image_url} alt={lead.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className={`h-full w-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold`}>
+                    {initial}
+                  </div>
+                )}
               </div>
               <div className="min-w-0">
                 <h2 className="text-[15px] font-bold text-foreground truncate leading-tight">{lead.name}</h2>

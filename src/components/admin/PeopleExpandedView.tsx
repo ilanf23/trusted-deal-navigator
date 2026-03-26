@@ -20,15 +20,17 @@ import {
   CalendarDays, Layers, Plus,
   MessageSquare, Pencil, Activity, Clock, AlertCircle,
   User, Mail, Phone, PhoneCall, Tag, Briefcase, Loader2,
-  Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send, X, Copy, Globe, Eye,
+  Linkedin, Check, Upload, Download, Trash2, FolderOpen, AtSign, MapPin, Send, X, Copy, Globe, Eye, ChevronsRight,
 } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { AvatarUpload } from '@/components/admin/AvatarUpload';
 import { useGmailConnection } from '@/hooks/useGmailConnection';
 import { usePipelines } from '@/hooks/usePipelines';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
+import ProjectDetailDialog, { type LeadProject } from './ProjectDetailDialog';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
 
@@ -87,8 +89,18 @@ interface Person {
   last_contacted: string | null;
   history: string | null;
   description: string | null;
+  about: string | null;
+  deal_value: number | null;
+  loan_amount: number | null;
+  status: string | null;
+  next_action: string | null;
+  opportunity_name: string | null;
+  waiting_on: string | null;
+  uw_number: string | null;
+  cohort_year: number | null;
   created_at: string;
   updated_at: string;
+  [key: string]: any;
 }
 
 interface PersonEmail {
@@ -280,6 +292,17 @@ const ACTIVITY_TYPE_ICONS: Record<string, { icon: typeof Activity; color: string
   todo: { icon: CheckSquare, color: 'text-muted-foreground' },
   type_change: { icon: Layers, color: 'text-violet-500' },
 };
+
+// ── Available extra fields for "Add new field" ──
+const EXTRA_FIELD_OPTIONS: { field: string; label: string }[] = [
+  { field: 'about', label: 'About' },
+  { field: 'opportunity_name', label: 'Opportunity Name' },
+  { field: 'deal_value', label: 'Deal Value' },
+  { field: 'next_action', label: 'Next Action' },
+  { field: 'waiting_on', label: 'Waiting On' },
+  { field: 'uw_number', label: 'UW Number' },
+  { field: 'cohort_year', label: 'Cohort Year' },
+];
 
 // ── Inline-save helper (for people table) ──
 function useInlineSave(
@@ -1161,6 +1184,52 @@ export default function PeopleExpandedView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
 
+  // Extra fields state
+  const [extraFields, setExtraFields] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('people-extra-fields');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [showFieldPicker, setShowFieldPicker] = useState(false);
+
+  const availableExtraFields = useMemo(() => {
+    return EXTRA_FIELD_OPTIONS.filter(o => !extraFields.includes(o.field));
+  }, [extraFields]);
+
+  const addExtraField = useCallback((field: string) => {
+    setExtraFields(prev => {
+      const next = [...prev, field];
+      localStorage.setItem('people-extra-fields', JSON.stringify(next));
+      return next;
+    });
+    setShowFieldPicker(false);
+  }, []);
+
+  const removeExtraField = useCallback((field: string) => {
+    setExtraFields(prev => {
+      const next = prev.filter(f => f !== field);
+      localStorage.setItem('people-extra-fields', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // Calendar events state
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventDate, setNewEventDate] = useState('');
+  const [newEventTime, setNewEventTime] = useState('09:00');
+  const [newEventEndTime, setNewEventEndTime] = useState('10:00');
+  const [newEventType, setNewEventType] = useState('meeting');
+  const [savingEvent, setSavingEvent] = useState(false);
+
+  // Projects state
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<LeadProject | null>(null);
+  const [showAddProject, setShowAddProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [savingProject, setSavingProject] = useState(false);
+
   // Activity expand / comments state
   const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
@@ -1511,6 +1580,87 @@ export default function PeopleExpandedView() {
     enabled: !!personId,
   });
 
+  // ── Calendar events query ──
+  const { data: calendarEvents = [] } = useQuery({
+    queryKey: ['person-appointments', personId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('lead_id', personId!)
+        .order('start_time', { ascending: false });
+      if (error) throw error;
+      return data as Array<{
+        id: string; title: string; description: string | null;
+        start_time: string; end_time: string | null;
+        appointment_type: string | null; lead_id: string | null;
+        team_member_name: string | null; created_at: string;
+      }>;
+    },
+    enabled: !!personId,
+  });
+
+  const handleSaveEvent = useCallback(async () => {
+    if (!newEventTitle.trim() || !newEventDate || !personId) return;
+    setSavingEvent(true);
+    const startTime = `${newEventDate}T${newEventTime}:00`;
+    const endTime = `${newEventDate}T${newEventEndTime}:00`;
+    const { error } = await supabase.from('appointments').insert({
+      title: newEventTitle.trim(),
+      start_time: startTime,
+      end_time: endTime,
+      lead_id: personId,
+      appointment_type: newEventType,
+      team_member_name: teamMember?.name ?? null,
+    });
+    setSavingEvent(false);
+    if (error) {
+      toast.error('Failed to create event');
+      return;
+    }
+    toast.success('Event created');
+    setNewEventTitle('');
+    setNewEventDate('');
+    setNewEventTime('09:00');
+    setNewEventEndTime('10:00');
+    setShowAddEvent(false);
+    queryClient.invalidateQueries({ queryKey: ['person-appointments', personId] });
+  }, [newEventTitle, newEventDate, newEventTime, newEventEndTime, newEventType, personId, teamMember, queryClient]);
+
+  const handleInlineCreateProject = useCallback(async () => {
+    if (!newProjectName.trim() || !personId) return;
+    setSavingProject(true);
+    try {
+      const { error } = await supabase.from('lead_projects').insert({
+        lead_id: personId,
+        name: newProjectName.trim(),
+        status: 'open',
+        project_stage: 'open',
+        visibility: 'everyone',
+        created_by: teamMember?.name || null,
+      });
+      if (error) throw error;
+      toast.success('Project created');
+      queryClient.invalidateQueries({ queryKey: ['person-projects', personId] });
+      setNewProjectName('');
+      setShowAddProject(false);
+    } catch {
+      toast.error('Failed to create project');
+    } finally {
+      setSavingProject(false);
+    }
+  }, [newProjectName, personId, teamMember, queryClient]);
+
+  const handleDeleteEvent = useCallback(async (eventId: string) => {
+    const { error } = await supabase.from('appointments').delete().eq('id', eventId);
+    if (error) {
+      toast.error('Failed to delete event');
+      return;
+    }
+    toast.success('Event deleted');
+    queryClient.invalidateQueries({ queryKey: ['person-appointments', personId] });
+  }, [personId, queryClient]);
+
   // ── Activity comments query ──
   const { data: activityCommentsMap = {} } = useQuery({
     queryKey: ['person-activity-comments', personId],
@@ -1552,6 +1702,33 @@ export default function PeopleExpandedView() {
     },
     enabled: !!personId,
   });
+
+  // Projects for this person
+  const { data: personProjects = [] } = useQuery({
+    queryKey: ['person-projects', personId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lead_projects')
+        .select('*')
+        .eq('lead_id', personId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as LeadProject[];
+    },
+    enabled: !!personId,
+  });
+
+  // Financial stats from person's lead data
+  const financialStats = useMemo(() => {
+    const wonStatuses = ['funded', 'closed_won', 'won'];
+    const lostStatuses = ['lost', 'closed_lost', 'dead'];
+    const leadStatus = (person?.status ?? '').toLowerCase();
+    const isWon = wonStatuses.includes(leadStatus);
+    const isResolved = isWon || lostStatuses.includes(leadStatus);
+    const winRate = isResolved ? (isWon ? 100 : 0) : 0;
+    const totalWon = isWon && person?.loan_amount ? person.loan_amount : 0;
+    return { totalWon, winRate };
+  }, [person?.status, person?.loan_amount]);
 
   const { data: allPipelines = [] } = usePipelines();
 
@@ -1707,27 +1884,33 @@ export default function PeopleExpandedView() {
   return (
     <>
     <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
-      {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border px-4 py-2 flex items-center">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-      </div>
-
       {/* ── 3-Column Body ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-auto md:overflow-hidden">
 
         {/* LEFT: Details */}
-        <ScrollArea className="w-[400px] shrink-0 border-r border-border bg-card">
-          <div className="px-6 py-6 space-y-6">
+        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] shrink-0 md:min-w-[240px] border-b md:border-b-0 md:border-r border-border bg-card">
+          <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
+
+            {/* ── Back Arrow ── */}
+            <button onClick={goBack} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
+              <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="30" y1="8" x2="2" y2="8" />
+                <polyline points="8,2 2,8 8,14" />
+              </svg>
+            </button>
 
             {/* ── Contact Card Header ── */}
             <div className="flex items-start gap-4">
-              <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                <span className="text-lg font-bold text-gray-500 dark:text-gray-400">
-                  {person.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
-                </span>
-              </div>
+              <AvatarUpload
+                userId={person.id}
+                currentAvatarUrl={person.image_url}
+                fallbackInitials={person.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
+                size="lg"
+                tableName="leads"
+                tableIdColumn="id"
+                tableImageColumn="image_url"
+                queryKeysToInvalidate={[['person-expanded', person.id]]}
+              />
               <div className="min-w-0 pt-0.5">
                 <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{person.name}</h2>
                 {(person.title || person.company_name) && (
@@ -2153,61 +2336,111 @@ export default function PeopleExpandedView() {
               <EditableRichTextField value={person.bank_relationships ?? ''} personId={person.id} field="bank_relationships" onSaved={handleFieldSaved} placeholder="Excluded lender names from CLX agreement..." />
             </div>
 
+            {/* ── Extra fields added by user ── */}
+            {extraFields.map((fieldKey) => {
+              const opt = EXTRA_FIELD_OPTIONS.find(o => o.field === fieldKey);
+              if (!opt) return null;
+              const val = String(person[fieldKey] ?? '');
+              return (
+                <div key={fieldKey} className="group/extra">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{opt.label}</span>
+                    <button
+                      onClick={() => removeExtraField(fieldKey)}
+                      className="opacity-0 group-hover/extra:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+                      title="Remove field"
+                    >
+                      <X className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                    </button>
+                  </div>
+                  <EditableField label="" value={val} field={fieldKey} personId={person.id} onSaved={handleFieldSaved} placeholder={`Add ${opt.label}`} noLabel />
+                </div>
+              );
+            })}
+
             {/* + Add new field */}
-            <button
-              onClick={() => toast.info('Custom fields coming soon')}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-2 border-t border-border w-full justify-center mt-2"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add new field
-            </button>
+            <div className="relative border-t border-border mt-2">
+              <button
+                onClick={() => setShowFieldPicker(!showFieldPicker)}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-2 w-full justify-center"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add new field
+              </button>
+              {showFieldPicker && availableExtraFields.length > 0 && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowFieldPicker(false)} />
+                  <div className="absolute z-50 bottom-full left-0 mb-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
+                    {availableExtraFields.map((opt) => (
+                      <button
+                        key={opt.field}
+                        onClick={() => addExtraField(opt.field)}
+                        className="w-full text-left px-3 py-2 text-[13px] text-foreground hover:bg-muted/50 transition-colors"
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {showFieldPicker && availableExtraFields.length === 0 && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowFieldPicker(false)} />
+                  <div className="absolute z-50 bottom-full left-0 mb-1 w-full bg-popover border border-border rounded-lg shadow-lg p-3">
+                    <p className="text-[13px] text-muted-foreground text-center">All available fields have been added</p>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </ScrollArea>
 
         {/* CENTER: Activity */}
-        <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
-          {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-3 divide-x divide-border border-b border-border bg-card">
-            <div className="flex flex-col items-center justify-center py-4">
-              <span className="text-xl font-bold text-foreground">{activities.length}</span>
-              <span className="text-xs text-muted-foreground mt-0.5">Interactions</span>
-            </div>
-            <div className="flex flex-col items-center justify-center py-4">
-              <span className="text-xl font-bold text-foreground">{person.last_contacted ? format(parseISO(person.last_contacted), 'M/d/yyyy') : '—'}</span>
-              <span className="text-xs text-muted-foreground mt-0.5">Last Contacted</span>
-            </div>
-            <div className="flex flex-col items-center justify-center py-4">
-              <span className="text-xl font-bold text-foreground">{inactiveDays ?? '—'}</span>
-              <span className="text-xs text-muted-foreground mt-0.5">Inactive Days</span>
-            </div>
-          </div>
-
-          {/* Activity Tabs — underline style */}
-          <div className="shrink-0 flex items-stretch bg-card border-b border-border">
-            {([
-              { key: 'log' as const, label: 'Log Activity' },
-              { key: 'note' as const, label: 'Create Note' },
-              { key: 'email' as const, label: 'Send Email' },
-            ]).map((tab) => (
-              <button
-                key={tab.key}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
-                  activityTab === tab.key
-                    ? 'text-blue-700 dark:text-blue-400'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                onClick={() => setActivityTab(tab.key)}
-              >
-                {tab.label}
-                {activityTab === tab.key && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-t-full" />
-                )}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
           <ScrollArea className="flex-1">
-            <div className="px-6 py-5">
+            <div className="px-3 md:px-4 lg:px-6 pt-5">
+              {/* Stats — floating card */}
+              <div className="grid grid-cols-3 divide-x divide-border rounded-lg border border-border bg-card mb-5">
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{activities.length}</span>
+                  <span className="text-[11px] text-muted-foreground">Interactions</span>
+                </div>
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{person.last_contacted ? format(parseISO(person.last_contacted), 'M/d/yyyy') : '—'}</span>
+                  <span className="text-[11px] text-muted-foreground">Last Contacted</span>
+                </div>
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{inactiveDays ?? '—'}</span>
+                  <span className="text-[11px] text-muted-foreground">Inactive Days</span>
+                </div>
+              </div>
+
+              {/* Activity tabs + form — floating card */}
+              <div className="rounded-lg border border-border bg-card overflow-hidden mb-5">
+                <div className="flex items-stretch border-b border-gray-200 dark:border-border">
+                  {([
+                    { key: 'log' as const, label: 'Log Activity' },
+                    { key: 'note' as const, label: 'Create Note' },
+                    { key: 'email' as const, label: 'Send Email' },
+                  ]).map((tab) => (
+                    <button
+                      key={tab.key}
+                      className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
+                        activityTab === tab.key
+                          ? 'text-blue-700 dark:text-blue-400'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      onClick={() => setActivityTab(tab.key)}
+                    >
+                      {tab.label}
+                      {activityTab === tab.key && (
+                        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-700 dark:bg-blue-500" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-5">
               {activityTab === 'log' && (
                 <div className="space-y-4">
                   {/* Activity type dropdown */}
@@ -2400,11 +2633,12 @@ export default function PeopleExpandedView() {
                   </div>
                 )
               )}
+                </div>
+              </div>
 
-              {/* Earlier - Activity History */}
-              <Separator className="my-6" />
+              {/* Activity timeline */}
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
-              <div className="space-y-3">
+              <div className="space-y-3 pb-5">
                 {activities.length > 0 ? (
                   activities.map((act: any) => {
                     const typeInfo = ACTIVITY_TYPE_ICONS[act.activity_type] ?? ACTIVITY_TYPE_ICONS.note;
@@ -2421,7 +2655,7 @@ export default function PeopleExpandedView() {
                       } catch { /* ignore */ }
 
                       return (
-                        <div key={act.id} className="flex gap-3 p-3 rounded-xl bg-card border border-border hover:border-border transition-colors">
+                        <div key={act.id} className="flex gap-3 p-4 rounded-lg bg-card border border-border hover:border-blue-100 dark:hover:border-blue-900 transition-colors">
                           <div className={`h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 ${typeInfo.color}`}>
                             <IconComp className="h-4 w-4" />
                           </div>
@@ -2453,7 +2687,7 @@ export default function PeopleExpandedView() {
                     return (
                       <div
                         key={act.id}
-                        className={`rounded-xl bg-card border transition-colors ${isExpanded ? 'border-blue-200' : 'border-border hover:border-border'}`}
+                        className={`rounded-lg bg-card border transition-colors ${isExpanded ? 'border-blue-200' : 'border-border hover:border-blue-100 dark:hover:border-blue-900'}`}
                       >
                         <button
                           type="button"
@@ -2544,11 +2778,307 @@ export default function PeopleExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <ScrollArea className="w-[260px] shrink-0 border-l border-border bg-card">
-          <div className="py-4 px-1">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
+        <ScrollArea className="w-full md:w-[280px] lg:w-[310px] xl:w-[374px] shrink-0 md:min-w-[220px] border-t md:border-t-0 md:border-l border-border bg-card">
+          <div>
+            {/* Financial Summary */}
+            <div className="px-3 md:px-3.5 xl:px-5 py-5 space-y-3">
+              <div className="flex items-start gap-6">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Won</p>
+                  <p className="text-xl font-bold text-foreground mt-1">${financialStats.totalWon.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Win Rate</p>
+                  <p className="text-xl font-bold text-foreground mt-1">{financialStats.winRate}%</p>
+                </div>
+              </div>
+              {person?.loan_amount && person.loan_amount > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-emerald-600 mb-1">
+                    ${person.loan_amount >= 1000 ? `${(person.loan_amount / 1000).toFixed(1)}K` : person.loan_amount.toLocaleString()}
+                  </p>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${financialStats.winRate}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
 
-            {/* Company */}
+            {/* Pipeline Records */}
+            <Collapsible defaultOpen>
+              <div className="border-t border-border">
+                <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
+                  <span className="text-sm font-medium text-foreground">Pipeline Records ({pipelineRecords.length})</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
+                  <Plus className="h-4 w-4 text-muted-foreground ml-2" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
+                  <div className="space-y-2">
+                    {pipelineRecords.map((rec: any) => (
+                      <button
+                        key={rec.id}
+                        onClick={() => navigate(getPipelineLeadRoute(rec.pipeline.name, personId!))}
+                        className="flex items-center gap-2.5 text-sm p-2 rounded-lg hover:bg-muted/40 transition-colors w-full text-left"
+                      >
+                        <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: rec.stage?.color || '#6b7280' }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">{rec.pipeline.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{rec.stage?.name} · {formatShortDate(rec.added_at)}</p>
+                        </div>
+                      </button>
+                    ))}
+                    <div className="relative">
+                      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <ChevronsRight className="h-4 w-4 text-muted-foreground/60" />
+                        </div>
+                        <input
+                          value={pipelineSearchText}
+                          onChange={(e) => setPipelineSearchText(e.target.value)}
+                          onFocus={() => setPipelineSearchFocused(true)}
+                          placeholder="Add Pipeline Record"
+                          className="flex-1 text-sm text-foreground bg-transparent border-0 px-0 py-1.5 outline-none placeholder:text-muted-foreground/50"
+                        />
+                      </div>
+                      {pipelineSearchFocused && filteredPipelines.length > 0 && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => { setPipelineSearchFocused(false); setPipelineSearchText(''); }} />
+                          <div className="absolute z-50 top-full left-0 mt-1 w-full bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto">
+                            {filteredPipelines.map((p: any) => (
+                              <button key={p.id} onClick={() => { addToPipelineMutation.mutate(p.id); }}
+                                className="w-full text-left px-3 py-2.5 text-sm text-foreground hover:bg-muted/50 transition-colors">
+                                {p.name}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+
+            {/* Tasks */}
+            <Collapsible defaultOpen>
+              <div className="border-t border-border">
+                <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
+                  <span className="text-sm font-medium text-foreground">Tasks ({pendingTasks.length})</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
+                  <button className="ml-2" onClick={(e) => { e.stopPropagation(); setEditingTask(null); setNewTaskTitle(''); setTaskDialogOpen(true); }}>
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
+                  <div className="space-y-1">
+                    {pendingTasks.map((t) => (
+                      <div key={t.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/30 rounded-md px-2 py-1.5 -mx-2 transition-colors group"
+                        onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}>
+                        <button onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }} className="shrink-0">
+                          <div className="h-4 w-4 rounded-sm border border-muted-foreground/40 group-hover:border-emerald-400 transition-colors" />
+                        </button>
+                        <span className="flex-1 truncate text-foreground">{t.title}</span>
+                        {t.due_date && <span className="text-xs text-muted-foreground shrink-0">{formatShortDate(t.due_date)}</span>}
+                      </div>
+                    ))}
+                    {completedTasks.length > 0 && (
+                      <>
+                        <button onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 w-full">
+                          {showCompletedTasks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                          Show completed ({completedTasks.length})
+                        </button>
+                        {showCompletedTasks && completedTasks.map((t) => (
+                          <div key={t.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/30 rounded-md px-2 py-1.5 -mx-2 transition-colors"
+                            onClick={() => { setEditingTask(t); setTaskDialogOpen(true); }}>
+                            <button onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(t); }} className="shrink-0">
+                              <CheckSquare className="h-4 w-4 text-emerald-500" />
+                            </button>
+                            <span className="flex-1 truncate line-through text-muted-foreground">{t.title}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+
+            {/* Calendar Events */}
+            <Collapsible defaultOpen>
+              <div className="border-t border-border">
+                <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
+                  <span className="text-sm font-medium text-foreground">Calendar Events ({calendarEvents.length})</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
+                  <button className="ml-2" onClick={(e) => { e.stopPropagation(); setShowAddEvent(true); }}>
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
+                  <div className="space-y-1.5">
+                    {calendarEvents.map((ev) => (
+                      <div key={ev.id} className="flex items-center gap-2 text-sm p-2 rounded-lg hover:bg-muted/30 transition-colors group -mx-2">
+                        <CalendarDays className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">{ev.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatShortDate(ev.start_time)}
+                            {ev.appointment_type && ` · ${ev.appointment_type}`}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteEvent(ev.id)}
+                          className="p-1 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                        </button>
+                      </div>
+                    ))}
+                    {calendarEvents.length === 0 && !showAddEvent && (
+                      <p className="text-sm text-muted-foreground">No events</p>
+                    )}
+                    {showAddEvent && (
+                      <div className="space-y-2 pt-1 border-t border-border mt-1">
+                        <input
+                          value={newEventTitle}
+                          onChange={(e) => setNewEventTitle(e.target.value)}
+                          placeholder="Event title"
+                          className="w-full text-sm bg-transparent border border-border rounded-md px-2 py-1.5 outline-none focus:border-blue-400"
+                          autoFocus
+                        />
+                        <input
+                          type="date"
+                          value={newEventDate}
+                          onChange={(e) => setNewEventDate(e.target.value)}
+                          className="w-full text-xs bg-transparent border border-border rounded-md px-2 py-1.5 outline-none focus:border-blue-400"
+                        />
+                        <div className="flex gap-1.5">
+                          <input type="time" value={newEventTime} onChange={(e) => setNewEventTime(e.target.value)}
+                            className="flex-1 text-xs bg-transparent border border-border rounded-md px-2 py-1.5 outline-none focus:border-blue-400" />
+                          <input type="time" value={newEventEndTime} onChange={(e) => setNewEventEndTime(e.target.value)}
+                            className="flex-1 text-xs bg-transparent border border-border rounded-md px-2 py-1.5 outline-none focus:border-blue-400" />
+                        </div>
+                        <select value={newEventType} onChange={(e) => setNewEventType(e.target.value)}
+                          className="w-full text-xs bg-transparent border border-border rounded-md px-2 py-1.5 outline-none focus:border-blue-400">
+                          <option value="meeting">Meeting</option>
+                          <option value="call">Call</option>
+                          <option value="follow_up">Follow Up</option>
+                          <option value="deadline">Deadline</option>
+                        </select>
+                        <div className="flex gap-1.5">
+                          <button onClick={handleSaveEvent} disabled={savingEvent || !newEventTitle.trim() || !newEventDate}
+                            className="flex-1 text-xs font-medium text-white bg-[#3b2778] hover:bg-[#4a3490] rounded-md py-1.5 disabled:opacity-50 transition-colors">
+                            {savingEvent ? 'Saving...' : 'Add Event'}
+                          </button>
+                          <button onClick={() => { setShowAddEvent(false); setNewEventTitle(''); setNewEventDate(''); }}
+                            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 transition-colors">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+
+            {/* Projects */}
+            <Collapsible defaultOpen>
+              <div className="border-t border-border">
+                <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
+                  <span className="text-sm font-medium text-foreground">Projects ({personProjects.length})</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
+                  <button className="ml-2" onClick={(e) => { e.stopPropagation(); setShowAddProject(true); }}>
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
+                  {personProjects.length > 0 ? (
+                    <div className="space-y-1">
+                      {personProjects.map((proj) => (
+                        <button
+                          key={proj.id}
+                          onClick={() => { setEditingProject(proj as LeadProject); setProjectDialogOpen(true); }}
+                          className="flex items-center gap-2.5 text-sm p-2 rounded-lg hover:bg-muted/40 transition-colors w-full text-left group -mx-2"
+                        >
+                          <div className={`h-2 w-2 rounded-full shrink-0 ${proj.project_stage === 'closed' ? 'bg-emerald-500' : proj.project_stage === 'on_hold' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground truncate">{proj.name}</p>
+                            {proj.due_date && <p className="text-xs text-muted-foreground">{formatShortDate(proj.due_date)}</p>}
+                          </div>
+                          <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    !showAddProject && <p className="text-sm text-muted-foreground">No projects</p>
+                  )}
+                  {showAddProject && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newProjectName.trim()) handleInlineCreateProject();
+                          if (e.key === 'Escape') { setShowAddProject(false); setNewProjectName(''); }
+                        }}
+                        placeholder="Add Project"
+                        className="flex-1 text-sm bg-transparent border-b-2 border-blue-500 outline-none py-1 placeholder:text-muted-foreground/50"
+                        autoFocus
+                        disabled={savingProject}
+                      />
+                      <button onClick={() => { setShowAddProject(false); setNewProjectName(''); }}>
+                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                      </button>
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+
+            {/* Files */}
+            <Collapsible defaultOpen>
+              <div className="border-t border-border">
+                <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
+                  <span className="text-sm font-medium text-foreground">Files ({personFiles.length})</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
+                  <button className="ml-2" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
+                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+                  <div className="space-y-1.5">
+                    {personFiles.map((f) => (
+                      <div key={f.id} className="flex items-center gap-2 text-sm p-2 rounded-lg hover:bg-muted/30 transition-colors group -mx-2">
+                        <span className="text-base shrink-0">{getFileIcon(f.file_type)}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">{f.file_name}</p>
+                          <p className="text-xs text-muted-foreground">{formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}</p>
+                        </div>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <button onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }} className="p-1 rounded hover:bg-muted" title="Download">
+                            <Download className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                          </button>
+                          <button onClick={() => handleDeleteFile(f)} className="p-1 rounded hover:bg-muted" title="Delete">
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-500" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {uploadingFile && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading...
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+
+            {/* Legacy sections hidden */}
+            <div className="hidden">
             <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Company" count={person.company_name ? 1 : 0} iconColor="text-indigo-500">
               <div className="space-y-2 py-1">
                 {person.company_name ? (
@@ -2751,6 +3281,7 @@ export default function PeopleExpandedView() {
             <RelatedSection icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar Events" count={0} iconColor="text-amber-500">
               <p className="text-xs text-muted-foreground py-1">No events</p>
             </RelatedSection>
+            </div>
           </div>
         </ScrollArea>
       </div>
@@ -2790,6 +3321,22 @@ export default function PeopleExpandedView() {
         initialTitle={editingTask ? undefined : newTaskTitle}
         onSaved={() => {
           queryClient.invalidateQueries({ queryKey: ['person-tasks', personId] });
+        }}
+      />
+    )}
+
+    {/* Project Detail Dialog */}
+    {personId && (
+      <ProjectDetailDialog
+        project={editingProject}
+        open={projectDialogOpen}
+        onClose={() => { setProjectDialogOpen(false); setEditingProject(null); }}
+        leadId={personId}
+        leadName={person?.name ?? ''}
+        teamMembers={teamMembers}
+        currentUserName={teamMember?.name ?? null}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['person-projects', personId] });
         }}
       />
     )}

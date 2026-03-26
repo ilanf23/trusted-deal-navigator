@@ -342,6 +342,9 @@ export default function UnderwritingExpandedView() {
   const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<LeadProject | null>(null);
+  const [showAddProject, setShowAddProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [savingProject, setSavingProject] = useState(false);
 
   // File upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -708,6 +711,30 @@ export default function UnderwritingExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['lead-appointments', leadId] });
   }, [leadId, queryClient]);
 
+  const handleInlineCreateProject = useCallback(async () => {
+    if (!newProjectName.trim() || !leadId) return;
+    setSavingProject(true);
+    try {
+      const { error } = await supabase.from('lead_projects').insert({
+        lead_id: leadId,
+        name: newProjectName.trim(),
+        status: 'open',
+        project_stage: 'open',
+        visibility: 'everyone',
+        created_by: teamMember?.name || null,
+      });
+      if (error) throw error;
+      toast.success('Project created');
+      queryClient.invalidateQueries({ queryKey: ['lead-projects', leadId] });
+      setNewProjectName('');
+      setShowAddProject(false);
+    } catch {
+      toast.error('Failed to create project');
+    } finally {
+      setSavingProject(false);
+    }
+  }, [newProjectName, leadId, teamMember, queryClient]);
+
   // ── Link existing person as contact (Related sidebar) ──
   const handleLinkPerson = useCallback(async (person: { id: string; name: string; title: string | null; email?: string | null }) => {
     if (!leadId) return;
@@ -995,7 +1022,7 @@ export default function UnderwritingExpandedView() {
     queryKey: ['lead-projects', leadId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_projects' as any)
+        .from('lead_projects')
         .select('*')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false });
@@ -2610,7 +2637,7 @@ export default function UnderwritingExpandedView() {
             </RelatedSection>
 
             {/* Projects */}
-            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={projects.length} iconColor="text-amber-500" onAdd={() => { setEditingProject(null); setProjectDialogOpen(true); }}>
+            <RelatedSection icon={<FolderOpen className="h-3.5 w-3.5" />} label="Projects" count={projects.length} iconColor="text-amber-500" onAdd={() => setShowAddProject(true)}>
               <div className="space-y-1 py-1">
                 {projects.map((p) => (
                   <div
@@ -2625,15 +2652,35 @@ export default function UnderwritingExpandedView() {
                     </Badge>
                   </div>
                 ))}
-                {projects.length === 0 && (
+                {projects.length === 0 && !showAddProject && (
                   <p className="text-xs text-muted-foreground py-1">No projects</p>
                 )}
-                <button
-                  onClick={() => { setEditingProject(null); setProjectDialogOpen(true); }}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
-                >
-                  + Add project...
-                </button>
+                {showAddProject ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      value={newProjectName}
+                      onChange={(e) => setNewProjectName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newProjectName.trim()) handleInlineCreateProject();
+                        if (e.key === 'Escape') { setShowAddProject(false); setNewProjectName(''); }
+                      }}
+                      placeholder="Add Project"
+                      className="flex-1 text-xs bg-transparent border-b-2 border-blue-500 outline-none py-1 placeholder:text-muted-foreground/50"
+                      autoFocus
+                      disabled={savingProject}
+                    />
+                    <button onClick={() => { setShowAddProject(false); setNewProjectName(''); }}>
+                      <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowAddProject(true)}
+                    className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1"
+                  >
+                    + Add project...
+                  </button>
+                )}
               </div>
             </RelatedSection>
           </div>

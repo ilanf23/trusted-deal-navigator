@@ -128,6 +128,15 @@ export const LeadCard = ({ lead, touchpoint, teamMemberMap, teamAvatarMap, onCli
       <CardContent className="p-3 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
+            <div className="h-5 w-5 rounded-full shrink-0 overflow-hidden">
+              {lead.image_url ? (
+                <img src={lead.image_url} alt={lead.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className={`h-full w-full ${getAvatarColor(lead.name)} flex items-center justify-center text-white text-[8px] font-bold`}>
+                  {lead.name[0]?.toUpperCase()}
+                </div>
+              )}
+            </div>
             <h4 className="font-semibold text-sm leading-tight truncate">{getLeadDisplayName(lead)}</h4>
             <button
               type="button"

@@ -62,7 +62,7 @@ const statusOptions = [
 ];
 
 const stageOptions = Object.entries(stageLabels).map(([value, label]) => ({ value, label }));
-const priorityOptions = [{ value: '', label: '—' }, ...Object.entries(priorityLabels).map(([value, label]) => ({ value, label }))];
+const priorityOptions = [{ value: 'none', label: '—' }, ...Object.entries(priorityLabels).map(([value, label]) => ({ value, label }))];
 
 // ── Related Section ──
 
@@ -116,7 +116,7 @@ export default function ProjectExpandedView() {
     queryKey: ['project-expanded', projectId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_projects' as any)
+        .from('lead_projects')
         .select('*')
         .eq('id', projectId!)
         .single();
@@ -227,7 +227,7 @@ export default function ProjectExpandedView() {
   const saveField = useCallback(async (field: string, value: unknown) => {
     if (!projectId) return;
     const { error } = await supabase
-      .from('lead_projects' as any)
+      .from('lead_projects')
       .update({ [field]: value, updated_at: new Date().toISOString() })
       .eq('id', projectId);
     if (error) { toast.error('Failed to save'); return; }
@@ -330,7 +330,7 @@ export default function ProjectExpandedView() {
 
   const handleDeleteProject = useCallback(async () => {
     if (!projectId) return;
-    await supabase.from('lead_projects' as any).delete().eq('id', projectId);
+    await supabase.from('lead_projects').delete().eq('id', projectId);
     toast.success('Project deleted');
     navigate('/admin/pipeline/projects');
   }, [projectId, navigate]);
@@ -752,7 +752,7 @@ export default function ProjectExpandedView() {
                 {/* Priority */}
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Priority</label>
-                  <Select value={project.priority ?? ''} onValueChange={(v) => saveField('priority', v || null)}>
+                  <Select value={project.priority ?? 'none'} onValueChange={(v) => saveField('priority', v === 'none' ? null : v)}>
                     <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>
                       {priorityOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}

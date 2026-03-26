@@ -61,7 +61,7 @@ const Projects = () => {
     queryKey: ['all-projects'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_projects' as any)
+        .from('lead_projects')
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;

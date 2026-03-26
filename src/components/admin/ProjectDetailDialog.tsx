@@ -132,7 +132,7 @@ export default function ProjectDetailDialog({
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('lead_projects' as any).insert({
+      const { error } = await supabase.from('lead_projects').insert({
         lead_id: leadId,
         name: name.trim(),
         status,
@@ -158,7 +158,7 @@ export default function ProjectDetailDialog({
     mutationFn: async (updates: Record<string, unknown>) => {
       if (!project) return;
       const { error } = await supabase
-        .from('lead_projects' as any)
+        .from('lead_projects')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', project.id);
       if (error) throw error;
@@ -170,7 +170,7 @@ export default function ProjectDetailDialog({
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!project) return;
-      const { error } = await supabase.from('lead_projects' as any).delete().eq('id', project.id);
+      const { error } = await supabase.from('lead_projects').delete().eq('id', project.id);
       if (error) throw error;
     },
     onSuccess: () => { toast.success('Project deleted'); invalidate(); onClose(); },

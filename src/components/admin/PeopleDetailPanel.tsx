@@ -1702,8 +1702,14 @@ export default function PeopleDetailPanel({
         {/* Avatar + Name + Subtitle + Company badge */}
         <div className="px-6 pb-4">
           <div className="flex items-center gap-3 mb-1">
-            <div className={`h-14 w-14 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-lg font-bold shrink-0`}>
-              {initial}
+            <div className="h-14 w-14 rounded-full shrink-0 overflow-hidden">
+              {person.image_url ? (
+                <img src={person.image_url} alt={person.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className={`h-full w-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-lg font-bold`}>
+                  {initial}
+                </div>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-bold text-foreground truncate leading-tight">{person.name}</h2>

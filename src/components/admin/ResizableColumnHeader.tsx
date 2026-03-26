@@ -94,22 +94,22 @@ const ResizableColumnHeader = ({
   }, [columnId, onResize, minWidth, maxWidth]);
 
   return (
-    <div className={cn("relative flex items-center", className)}>
+    <div className={cn("relative flex items-center h-full", className)}>
       {children}
       {/* Resize handle — positioned within th's px-4 padding area */}
       <div
         className={cn(
-          "absolute -right-4 top-0 bottom-0 w-3 cursor-col-resize group/resize z-10",
-          "hover:bg-[#3b2778]/10 transition-colors",
-          isResizing && "bg-[#3b2778]/20"
+          "absolute -right-5 -top-1.5 -bottom-1.5 w-6 cursor-col-resize group/resize z-10",
+          "transition-all",
+          "opacity-0 group-hover/col:opacity-100",
+          isResizing && "opacity-100"
         )}
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
-        title="Drag to resize · Double-click to auto-fit"
       >
         <div
           className={cn(
-            "absolute right-0 top-0 bottom-0 w-0.5 transition-all",
+            "absolute right-0 -top-1.5 -bottom-1.5 w-1 transition-all",
             "bg-slate-300 dark:bg-slate-600",
             "group-hover/resize:bg-[#3b2778]",
             isResizing && "bg-[#3b2778]"

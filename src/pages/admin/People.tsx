@@ -919,7 +919,7 @@ const People = () => {
     const isMenuOpen = colMenuOpen === widthKey;
     return (
       <th
-        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors ${extraClassName ?? ''}`}
+        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors hover:z-20 ${extraClassName ?? ''}`}
         style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
@@ -1449,8 +1449,14 @@ const People = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
-                                  {initial}
+                                <div className="h-7 w-7 rounded-full shrink-0 shadow-sm overflow-hidden">
+                                  {person.image_url ? (
+                                    <img src={person.image_url} alt={person.name} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className={`h-full w-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold`}>
+                                      {initial}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <div className="relative flex items-center">
