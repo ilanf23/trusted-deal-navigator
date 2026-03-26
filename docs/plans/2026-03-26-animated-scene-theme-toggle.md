@@ -44,8 +44,8 @@ Replace the current pill-shaped Sun/Moon toggle in the admin header with an anim
 
 ### Task 2: Verify build and lint
 
-- [ ] Run `npm run build` - must pass with no errors
-- [ ] Run `npm run lint` - must pass with no errors
+- [x] Run `npm run build` - must pass with no errors
+- [x] Run `npm run lint` - must pass with no errors (no new errors introduced; pre-existing errors in unrelated files)
 
 ### Task 3: Update documentation
 
