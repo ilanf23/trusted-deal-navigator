@@ -56,10 +56,10 @@ This groups the "action" items (active call, dialer, lead info) on the left as a
 **Files:**
 - Modify: `src/pages/admin/Calls.tsx`
 
-- [ ] Add subtle section labels or dividers between the left-column cards for visual grouping
-- [ ] Make the Active Call card's empty state more minimal (reduce from full card to a slim status bar style)
-- [ ] Ensure all cards have consistent border-radius, padding, and header sizing
-- [ ] Verify responsive behavior: on mobile (single column), stack in order: Active Call, Dialer, Lead Info, Call History
+- [x] Add subtle section labels or dividers between the left-column cards for visual grouping
+- [x] Make the Active Call card's empty state more minimal (reduce from full card to a slim status bar style)
+- [x] Ensure all cards have consistent border-radius, padding, and header sizing
+- [x] Verify responsive behavior: on mobile (single column), stack in order: Active Call, Dialer, Lead Info, Call History
 
 ### Task 3: Verify build and lint
 
