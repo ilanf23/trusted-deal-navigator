@@ -3,12 +3,12 @@ import AdminSidebar from './AdminSidebar';
 import FloatingInbox from './FloatingInbox';
 import FloatingBugReport from './FloatingBugReport';
 import AIEmailAssistant from './AIEmailAssistant';
-import { Menu, Moon, Sun, Undo2, Loader2, Columns2 } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { Menu, Undo2, Loader2, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UndoProvider, useUndo } from '@/contexts/UndoContext';
 import { useAIAssistant } from '@/contexts/AIAssistantContext';
 import { SplitViewProvider, useSplitView } from '@/contexts/SplitViewContext';
+import SceneThemeToggle from '@/components/ui/SceneThemeToggle';
 import SplitViewContainer from './splitview/SplitViewContainer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, createContext, useContext } from 'react';
@@ -68,7 +68,6 @@ const SplitViewContent = ({ children }: AdminLayoutProps) => {
 
 const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
   const [inboxOpen, setInboxOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
   const { lastAction, isUndoing, executeUndo } = useUndo();
   const { isOpen: aiChatOpen, setIsOpen: setAiChatOpen } = useAIAssistant();
   const { pageTitle, searchComponent, actionsComponent } = useAdminTopBar();
@@ -147,32 +146,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
               <SplitViewToggle />
 
               {/* Theme Toggle */}
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="relative inline-flex items-center h-9 w-[4.25rem] md:h-10 md:w-[4.75rem] rounded-full bg-muted/60 border border-border/40 p-0.5 cursor-pointer transition-colors duration-300 hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label="Toggle theme"
-                role="switch"
-                aria-checked={theme === 'dark'}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-8 w-8 md:h-9 md:w-9 rounded-full shadow-md transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                    theme === 'dark'
-                      ? 'translate-x-[100%] bg-slate-700'
-                      : 'translate-x-0 bg-white'
-                  }`}
-                />
-                <span className="relative z-10 flex items-center justify-center h-8 w-8 md:h-9 md:w-9">
-                  <Sun className={`h-4 w-4 md:h-[1.125rem] md:w-[1.125rem] transition-colors duration-300 ${
-                    theme === 'dark' ? 'text-muted-foreground/40' : 'text-amber-500'
-                  }`} />
-                </span>
-                <span className="relative z-10 flex items-center justify-center h-8 w-8 md:h-9 md:w-9">
-                  <Moon className={`h-4 w-4 md:h-[1.125rem] md:w-[1.125rem] transition-colors duration-300 ${
-                    theme === 'dark' ? 'text-blue-400' : 'text-muted-foreground/40'
-                  }`} />
-                </span>
-                <span className="sr-only">Toggle theme</span>
-              </button>
+              <SceneThemeToggle />
             </div>
           </header>
           

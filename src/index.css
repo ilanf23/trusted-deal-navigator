@@ -988,6 +988,25 @@
   50% { transform: scale(1.02); }
 }
 
+/* Scene Theme Toggle animations */
+@keyframes scene-twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes scene-cloud-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+}
+
+.scene-twinkle {
+  animation: scene-twinkle 2s ease-in-out infinite;
+}
+
+.scene-cloud-drift {
+  animation: scene-cloud-drift 6s ease-in-out infinite;
+}
+
 /* Gmail-style email body formatting */
 .gmail-email-body {
   /* Base styles that won't override inline HTML email styles */
