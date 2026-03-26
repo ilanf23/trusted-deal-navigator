@@ -66,8 +66,8 @@ This groups the "action" items (active call, dialer, lead info) on the left as a
 **Files:**
 - Check: `src/pages/admin/Calls.tsx`
 
-- [ ] Run `npm run build` — must pass with no errors
-- [ ] Run `npm run lint` — must pass with no errors
+- [x] Run `npm run build` — must pass with no errors
+- [x] Run `npm run lint` — must pass with no errors (no lint errors in Calls.tsx; pre-existing errors in other files)
 
 ### Task 4: Move plan to completed
 
