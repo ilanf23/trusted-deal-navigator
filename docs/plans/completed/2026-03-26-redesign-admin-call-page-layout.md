@@ -71,4 +71,4 @@ This groups the "action" items (active call, dialer, lead info) on the left as a
 
 ### Task 4: Move plan to completed
 
-- [ ] Move this plan to `docs/plans/completed/`
+- [x] Move this plan to `docs/plans/completed/`
