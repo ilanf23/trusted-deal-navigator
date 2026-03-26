@@ -1,8 +1,10 @@
+import { useId } from 'react';
 import { useTheme } from 'next-themes';
 
 const SceneThemeToggle = () => {
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === 'dark';
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  const svgId = useId();
 
   return (
     <button
@@ -22,11 +24,11 @@ const SceneThemeToggle = () => {
       >
         <defs>
           {/* Sky gradients */}
-          <linearGradient id="sky-light" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`sky-light-${svgId}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#60a5fa" />
             <stop offset="100%" stopColor="#67e8f9" />
           </linearGradient>
-          <linearGradient id="sky-dark" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`sky-dark-${svgId}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#1e1b4b" />
             <stop offset="100%" stopColor="#312e81" />
           </linearGradient>
@@ -37,7 +39,7 @@ const SceneThemeToggle = () => {
           width="120"
           height="48"
           rx="24"
-          fill="url(#sky-light)"
+          fill={`url(#sky-light-${svgId})`}
           className="transition-opacity duration-700"
           style={{ opacity: isDark ? 0 : 1 }}
         />
@@ -45,7 +47,7 @@ const SceneThemeToggle = () => {
           width="120"
           height="48"
           rx="24"
-          fill="url(#sky-dark)"
+          fill={`url(#sky-dark-${svgId})`}
           className="transition-opacity duration-700"
           style={{ opacity: isDark ? 1 : 0 }}
         />
@@ -84,27 +86,17 @@ const SceneThemeToggle = () => {
         </g>
 
         {/* Sun - slides down and fades when dark */}
-        <circle
-          cx="30"
-          r="10"
-          fill="#fbbf24"
+        <g
           className="transition-all duration-700 ease-in-out"
           style={{
-            cy: isDark ? 55 : 16,
+            transform: isDark ? 'translateY(39px)' : 'translateY(0px)',
             opacity: isDark ? 0 : 1,
           }}
-        />
-        {/* Sun glow */}
-        <circle
-          cx="30"
-          r="14"
-          fill="#fbbf24"
-          className="transition-all duration-700 ease-in-out"
-          style={{
-            cy: isDark ? 55 : 16,
-            opacity: isDark ? 0 : 0.2,
-          }}
-        />
+        >
+          <circle cx="30" cy="16" r="10" fill="#fbbf24" />
+          {/* Sun glow */}
+          <circle cx="30" cy="16" r="14" fill="#fbbf24" opacity="0.2" />
+        </g>
 
         {/* Moon - slides up and fades in when dark */}
         <g
@@ -122,10 +114,10 @@ const SceneThemeToggle = () => {
         </g>
 
         {/* Rolling hills */}
-        <clipPath id="scene-clip">
+        <clipPath id={`scene-clip-${svgId}`}>
           <rect width="120" height="48" rx="24" />
         </clipPath>
-        <g clipPath="url(#scene-clip)">
+        <g clipPath={`url(#scene-clip-${svgId})`}>
           {/* Back hill */}
           <ellipse
             cx="40"

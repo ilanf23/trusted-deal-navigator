@@ -30,10 +30,11 @@ export interface LeadTask {
   status: string | null;
   priority: string | null;
   due_date: string | null;
-  assigned_to: string | null;
-  activity_type: string | null;
+  team_member_id: string | null;
+  task_type: string | null;
   created_by: string | null;
   completed_at: string | null;
+  is_completed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -141,10 +142,10 @@ export const PeopleTaskDetailDialog = ({
     }
     if (task) {
       setTitle(task.title);
-      setActivityType(task.activity_type || 'to_do');
+      setActivityType(task.task_type || 'to_do');
       setDueDate(parseDateOnly(task.due_date));
       setDueTime(extractTimeFromDate(task.due_date));
-      setAssignedTo(task.assigned_to || '');
+      setAssignedTo(task.team_member_id || '');
       setPriority(task.priority || 'none');
       setDescription(task.description || '');
     } else {
@@ -239,7 +240,7 @@ export const PeopleTaskDetailDialog = ({
 
   const handleActivityTypeChange = useCallback((val: string) => {
     setActivityType(val);
-    if (task) saveField('activity_type', val);
+    if (task) saveField('task_type', val);
   }, [task, saveField]);
 
   const handleDateSelect = useCallback((date: Date | undefined) => {
@@ -261,7 +262,7 @@ export const PeopleTaskDetailDialog = ({
   const handleAssignedToChange = useCallback((val: string) => {
     const resolved = val === '__none__' ? '' : val;
     setAssignedTo(resolved);
-    if (task) saveField('assigned_to', resolved || null);
+    if (task) saveField('team_member_id', resolved || null);
   }, [task, saveField]);
 
   const handlePriorityChange = useCallback((val: string) => {
@@ -274,7 +275,8 @@ export const PeopleTaskDetailDialog = ({
     const isCompleting = !task.completed_at;
     updateMutation.mutate({
       completed_at: isCompleting ? new Date().toISOString() : null,
-      status: isCompleting ? 'completed' : 'pending',
+      is_completed: isCompleting,
+      status: isCompleting ? 'done' : 'todo',
     });
   }, [task, updateMutation]);
 

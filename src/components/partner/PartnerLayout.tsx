@@ -9,7 +9,7 @@ interface PartnerLayoutProps {
 }
 
 const PartnerLayout = ({ children }: PartnerLayoutProps) => {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
 
   // Default to light mode on first visit
   useEffect(() => {
@@ -47,27 +47,27 @@ const PartnerLayout = ({ children }: PartnerLayoutProps) => {
               </time>
 
               <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
                 className="relative inline-flex items-center h-9 w-[4.25rem] md:h-10 md:w-[4.75rem] rounded-full bg-muted/60 border border-border/40 p-0.5 cursor-pointer transition-colors duration-300 hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 aria-label="Toggle theme"
                 role="switch"
-                aria-checked={theme === 'dark'}
+                aria-checked={resolvedTheme === 'dark'}
               >
                 <span
                   className={`absolute top-0.5 left-0.5 h-8 w-8 md:h-9 md:w-9 rounded-full shadow-md transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                    theme === 'dark'
+                    resolvedTheme === 'dark'
                       ? 'translate-x-[100%] bg-slate-700'
                       : 'translate-x-0 bg-white'
                   }`}
                 />
                 <span className="relative z-10 flex items-center justify-center h-8 w-8 md:h-9 md:w-9">
                   <Sun className={`h-4 w-4 md:h-[1.125rem] md:w-[1.125rem] transition-colors duration-300 ${
-                    theme === 'dark' ? 'text-muted-foreground/40' : 'text-amber-500'
+                    resolvedTheme === 'dark' ? 'text-muted-foreground/40' : 'text-amber-500'
                   }`} />
                 </span>
                 <span className="relative z-10 flex items-center justify-center h-8 w-8 md:h-9 md:w-9">
                   <Moon className={`h-4 w-4 md:h-[1.125rem] md:w-[1.125rem] transition-colors duration-300 ${
-                    theme === 'dark' ? 'text-blue-400' : 'text-muted-foreground/40'
+                    resolvedTheme === 'dark' ? 'text-blue-400' : 'text-muted-foreground/40'
                   }`} />
                 </span>
                 <span className="sr-only">Toggle theme</span>
