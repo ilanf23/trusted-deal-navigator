@@ -541,7 +541,7 @@ const Calls = () => {
 
   return (
     <EvanLayout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Phone Number Badge */}
         <div className="flex justify-end">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border text-sm text-muted-foreground">
@@ -550,27 +550,23 @@ const Calls = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Call Info & Lead Details */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Current Call Card */}
-            <Card className={`border-2 ${currentCall ? 'border-green-500/50 bg-green-50/30' : 'border-muted'}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-full ${currentCall ? 'bg-green-500 animate-pulse' : 'bg-muted'}`}>
-                    <Phone className={`h-5 w-5 ${currentCall ? 'text-white' : 'text-muted-foreground'}`} />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          {/* Left Column - Command Panel: Active Call, Dialer, Lead Info */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Active Call Card - compact when no active call */}
+            {currentCall ? (
+              <Card className="border-2 border-green-500/50 bg-green-50/30">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-full bg-green-500 animate-pulse">
+                      <Phone className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Active Call</CardTitle>
+                      <CardDescription>Status: {currentCall.status}</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">
-                      {currentCall ? 'Active Call' : 'No Active Call'}
-                    </CardTitle>
-                    <CardDescription>
-                      {currentCall ? `Status: ${currentCall.status}` : 'Waiting for incoming calls'}
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              {currentCall && (
+                </CardHeader>
                 <CardContent className="pt-0">
                   <div className="p-4 rounded-lg bg-background border">
                     <p className="text-2xl font-semibold text-center">
@@ -581,10 +577,20 @@ const Calls = () => {
                     </p>
                   </div>
                 </CardContent>
-              )}
-            </Card>
+              </Card>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-muted bg-muted/30">
+                <div className="p-1.5 rounded-full bg-muted">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <span className="text-sm text-muted-foreground">No active call — waiting for incoming</span>
+              </div>
+            )}
 
-            {/* Matched Lead Card */}
+            {/* Outbound Dialer */}
+            <OutboundCallCard initialPhone={prefilledPhone || undefined} initialLeadId={prefilledLeadId || undefined} />
+
+            {/* Matched Lead / Caller Information Card */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
