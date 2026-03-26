@@ -93,11 +93,11 @@ export function useLoanVolumeLog() {
       if (leadIds.length === 0) return {};
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
-        .from('lead_tasks')
+        .from('tasks')
         .select('lead_id')
         .in('lead_id', leadIds)
         .lt('due_date', today)
-        .eq('completed', false);
+        .eq('is_completed', false);
       if (error) return {};
       const map: Record<string, number> = {};
       for (const row of data || []) {

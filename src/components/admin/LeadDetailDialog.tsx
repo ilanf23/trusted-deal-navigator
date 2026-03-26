@@ -968,17 +968,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     mutationFn: async ({ title, dueDate }: { title: string; dueDate?: string }) => {
       if (!lead) return;
       
-      // Add to lead_tasks for CRM tracking
-      const { error: leadTaskError } = await supabase.from('lead_tasks').insert({
-        lead_id: lead.id,
-        title,
-        due_date: dueDate || null,
-        priority: 'medium',
-        status: 'pending',
-      });
-      if (leadTaskError) throw leadTaskError;
-      
-      // Also add to tasks so it appears in Evan's Tasks page
+      // Add to unified tasks table
       const { error: evanTaskError } = await supabase.from('tasks').insert({
         title,
         description: `Task for ${lead.name}${lead.company_name ? ` (${lead.company_name})` : ''}`,
@@ -2951,20 +2941,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         onCreateTask={async (task) => {
           if (!lead) return;
           
-          // Add to lead_tasks for CRM tracking
-          const { error: leadTaskError } = await supabase.from('lead_tasks').insert({
-            lead_id: lead.id,
-            title: task.title || '',
-            due_date: task.due_date || null,
-            priority: task.priority || 'medium',
-            status: 'pending',
-          });
-          if (leadTaskError) {
-            toast({ title: 'Failed to create task', variant: 'destructive' });
-            return;
-          }
-          
-          // Also add to tasks so it appears in Tasks page
+          // Add to unified tasks table
           const { error: evanTaskError } = await supabase.from('tasks').insert({
             title: task.title || '',
             description: task.description || `Task for ${lead.name}${lead.company_name ? ` (${lead.company_name})` : ''}`,

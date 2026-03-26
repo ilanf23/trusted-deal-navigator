@@ -802,7 +802,7 @@ const TeamPerformance = () => {
                                     {rating.call_rating}
                                   </div>
                                   <div>
-                                    <p className="text-sm font-medium">{rating.lead?.name || rating.lead_name || 'Unknown'}</p>
+                                    <p className="text-sm font-medium">{rating.lead?.name || 'Unknown'}</p>
                                     <p className="text-xs text-muted-foreground">
                                       {formatDistanceToNow(new Date(rating.call_date), { addSuffix: true })}
                                     </p>

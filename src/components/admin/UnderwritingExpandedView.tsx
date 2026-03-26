@@ -409,7 +409,7 @@ export default function UnderwritingExpandedView() {
     await supabase.from('pipeline_leads').delete().eq('lead_id', leadId);
     await supabase.from('lead_files').delete().eq('lead_id', leadId);
     await supabase.from('lead_activities').delete().eq('lead_id', leadId);
-    await supabase.from('lead_tasks').delete().eq('lead_id', leadId);
+    await supabase.from('tasks').delete().eq('lead_id', leadId);
     const { error } = await supabase.from('leads').delete().eq('id', leadId);
     if (error) { toast.error('Failed to delete'); return; }
     toast.success('Deleted');
@@ -659,9 +659,10 @@ export default function UnderwritingExpandedView() {
   // ── Toggle task completion ──
   const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
     const isCompleting = !task.completed_at;
-    await supabase.from('lead_tasks').update({
+    await supabase.from('tasks').update({
       completed_at: isCompleting ? new Date().toISOString() : null,
-      status: isCompleting ? 'completed' : 'pending',
+      is_completed: isCompleting,
+      status: isCompleting ? 'done' : 'todo',
       updated_at: new Date().toISOString(),
     }).eq('id', task.id);
     queryClient.invalidateQueries({ queryKey: ['person-tasks', leadId] });
@@ -1007,7 +1008,7 @@ export default function UnderwritingExpandedView() {
     queryKey: ['person-tasks', leadId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_tasks')
+        .from('tasks')
         .select('*')
         .eq('lead_id', leadId!)
         .order('created_at', { ascending: false });
@@ -1462,10 +1463,10 @@ export default function UnderwritingExpandedView() {
     <>
     <div data-full-bleed className="flex flex-col bg-background h-[calc(100vh-3.5rem)] md:overflow-hidden overflow-y-auto">
       {/* ── 3-Column Body ── */}
-      <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Details — fully editable */}
-        <div className="w-full md:w-[320px] xl:w-[400px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
+        <div className="w-full md:w-[320px] xl:w-[400px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
         <div className="md:h-full overflow-y-auto overflow-x-hidden">
           <div className="pl-10 pr-6 py-6 space-y-6 min-w-0">
 
@@ -2231,7 +2232,7 @@ export default function UnderwritingExpandedView() {
             onPersonUpdate={(updated) => setSelectedPerson(updated)}
           />
         ) : (
-        <div className="w-full md:w-[280px] xl:w-[320px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
+        <div className="w-full md:w-[280px] xl:w-[320px] shrink-0 min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-border">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Related</span>
           </div>

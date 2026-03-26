@@ -588,7 +588,7 @@ const Pipeline = () => {
     queryKey: ['pipeline-task-counts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('lead_tasks')
+        .from('tasks')
         .select('lead_id')
         .in('lead_id', leads.map((l) => l.id));
       if (error) return {} as Record<string, number>;

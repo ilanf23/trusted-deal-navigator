@@ -167,15 +167,16 @@ export const PeopleTaskDetailDialog = ({
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('lead_tasks').insert({
+      const { error } = await supabase.from('tasks').insert({
         lead_id: leadId,
         title: title.trim(),
         description: description.trim() || null,
-        activity_type: activityType,
+        task_type: activityType,
         due_date: combineDateAndTime(dueDate, dueTime) || null,
-        assigned_to: assignedTo || null,
+        team_member_id: assignedTo || null,
         priority,
-        status: 'pending',
+        status: 'todo',
+        source: 'lead',
         created_by: currentUserName || null,
       });
       if (error) throw error;
@@ -192,7 +193,7 @@ export const PeopleTaskDetailDialog = ({
     mutationFn: async (updates: Record<string, unknown>) => {
       if (!task) return;
       const { error } = await supabase
-        .from('lead_tasks')
+        .from('tasks')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', task.id);
       if (error) throw error;
@@ -206,7 +207,7 @@ export const PeopleTaskDetailDialog = ({
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!task) return;
-      const { error } = await supabase.from('lead_tasks').delete().eq('id', task.id);
+      const { error } = await supabase.from('tasks').delete().eq('id', task.id);
       if (error) throw error;
     },
     onSuccess: () => {

@@ -35,9 +35,6 @@ interface CallRatingNotification {
   lead_id: string | null;
   communication_id: string | null;
   lead?: { name: string; phone: string | null; email: string | null } | null;
-  lead_name?: string;
-  lead_phone?: string | null;
-  lead_email?: string | null;
   call_date: string;
   call_direction: string;
   call_rating: number;
@@ -341,7 +338,7 @@ const AdminMessages = () => {
                             {/* Content */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium">{rating.lead?.name || rating.lead_name || 'Unknown'}</span>
+                                <span className="font-medium">{rating.lead?.name || 'Unknown'}</span>
                                 <Badge variant="outline" className="text-xs gap-1 font-normal">
                                   {rating.call_direction === 'inbound' ? (
                                     <>
@@ -367,10 +364,10 @@ const AdminMessages = () => {
                               )}
 
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                {(rating.lead?.phone || rating.lead_phone) && (
+                                {rating.lead?.phone && (
                                   <span className="flex items-center gap-1">
                                     <Phone className="w-3 h-3" />
-                                    {rating.lead?.phone || rating.lead_phone}
+                                    {rating.lead?.phone}
                                   </span>
                                 )}
                                 <span className="flex items-center gap-1">

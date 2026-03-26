@@ -81,7 +81,7 @@ export function useDropboxPhotosFromDB(enabled = false) {
         rev: row.dropbox_rev ?? undefined,
         content_hash: row.content_hash ?? undefined,
         lead_id: row.lead_id ?? undefined,
-        lead_name: (row as any).lead?.name ?? row.lead_name ?? undefined,
+        lead_name: (row as any).lead?.name ?? undefined,
         extraction_status: row.extraction_status ?? undefined,
       }));
       return { entries };

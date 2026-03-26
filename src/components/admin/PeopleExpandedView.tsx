@@ -1272,7 +1272,7 @@ export default function PeopleExpandedView() {
     queryKey: ['person-tasks', personId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_tasks')
+        .from('tasks')
         .select('*')
         .eq('lead_id', personId!)
         .order('created_at', { ascending: false });
@@ -1426,11 +1426,12 @@ export default function PeopleExpandedView() {
   // ── Save task inline (Enter key) ──
   const handleSaveTask = useCallback(async () => {
     if (!personId || !newTaskTitle.trim()) return;
-    const { error } = await supabase.from('lead_tasks').insert({
+    const { error } = await supabase.from('tasks').insert({
       lead_id: personId,
       title: newTaskTitle.trim(),
-      status: 'pending',
-      activity_type: 'to_do',
+      status: 'todo',
+      task_type: 'to_do',
+      source: 'lead',
     });
     if (error) {
       toast.error('Failed to create task');
@@ -1445,9 +1446,10 @@ export default function PeopleExpandedView() {
   // ── Toggle task completion directly ──
   const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
     const isCompleting = !task.completed_at;
-    await supabase.from('lead_tasks').update({
+    await supabase.from('tasks').update({
       completed_at: isCompleting ? new Date().toISOString() : null,
-      status: isCompleting ? 'completed' : 'pending',
+      is_completed: isCompleting,
+      status: isCompleting ? 'done' : 'todo',
       updated_at: new Date().toISOString(),
     }).eq('id', task.id);
     queryClient.invalidateQueries({ queryKey: ['person-tasks', personId] });

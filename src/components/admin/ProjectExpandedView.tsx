@@ -167,7 +167,7 @@ export default function ProjectExpandedView() {
     queryKey: ['person-tasks', project?.lead_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_tasks')
+        .from('tasks')
         .select('*')
         .eq('lead_id', project!.lead_id)
         .order('created_at', { ascending: false });
@@ -257,10 +257,11 @@ export default function ProjectExpandedView() {
 
   const handleAddBoardTask = useCallback(async (status: string) => {
     if (!project?.lead_id || !newTaskTitle.trim()) return;
-    await supabase.from('lead_tasks').insert({
+    await supabase.from('tasks').insert({
       lead_id: project.lead_id,
       title: newTaskTitle.trim(),
-      status,
+      status: status === 'pending' ? 'todo' : status,
+      source: 'lead',
       created_by: teamMember?.name ?? null,
     });
     setNewTaskTitle('');
@@ -273,9 +274,10 @@ export default function ProjectExpandedView() {
 
   const handleToggleTask = useCallback(async (task: ProjectTask) => {
     const isCompleting = !task.completed_at;
-    await supabase.from('lead_tasks').update({
+    await supabase.from('tasks').update({
       completed_at: isCompleting ? new Date().toISOString() : null,
-      status: isCompleting ? 'completed' : 'pending',
+      is_completed: isCompleting,
+      status: isCompleting ? 'done' : 'todo',
       updated_at: new Date().toISOString(),
     }).eq('id', task.id);
     queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
@@ -284,7 +286,7 @@ export default function ProjectExpandedView() {
   // ── Board: update task field ──
 
   const handleUpdateTaskField = useCallback(async (taskId: string, field: string, value: unknown) => {
-    await supabase.from('lead_tasks').update({
+    await supabase.from('tasks').update({
       [field]: value,
       updated_at: new Date().toISOString(),
     }).eq('id', taskId);
@@ -612,10 +614,10 @@ export default function ProjectExpandedView() {
 
       {/* ── OVERVIEW TAB ── */}
       {activeTab === 'overview' && (
-        <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
           {/* LEFT: Details */}
-          <div className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
+          <div className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
             <ScrollArea className="md:h-full">
               <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
@@ -892,7 +894,7 @@ export default function ProjectExpandedView() {
           </div>
 
           {/* RIGHT: Related */}
-          <div className="w-full md:w-[240px] lg:w-[310px] xl:w-[374px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
+          <div className="w-full md:w-[240px] lg:w-[310px] xl:w-[374px] shrink-0 min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
             <ScrollArea className="md:flex-1">
               <div className="py-4 px-1 overflow-hidden">
                 {/* Files */}
