@@ -64,7 +64,7 @@ export function useDropboxPhotosFromDB(enabled = false) {
       const orFilter = PHOTO_EXTENSIONS.map(ext => `name.ilike.%.${ext}`).join(',');
       const { data, error } = await supabase
         .from('dropbox_files')
-        .select('*')
+        .select('*, lead:leads(name)')
         .eq('is_folder', false)
         .or(orFilter)
         .order('modified_at', { ascending: false })
@@ -81,7 +81,7 @@ export function useDropboxPhotosFromDB(enabled = false) {
         rev: row.dropbox_rev ?? undefined,
         content_hash: row.content_hash ?? undefined,
         lead_id: row.lead_id ?? undefined,
-        lead_name: row.lead_name ?? undefined,
+        lead_name: (row as any).lead?.name ?? row.lead_name ?? undefined,
         extraction_status: row.extraction_status ?? undefined,
       }));
       return { entries };

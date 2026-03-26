@@ -49,6 +49,9 @@ const statusConfig: Record<LeadStatus, { label: string; color: string; bg: strin
   need_structure_from_brad: { label: 'Need Structure', color: 'text-indigo-600', bg: 'bg-indigo-50' },
   maura_underwriting: { label: 'Maura UW', color: 'text-pink-600', bg: 'bg-pink-50' },
   brad_underwriting: { label: 'Brad UW', color: 'text-sky-600', bg: 'bg-sky-50' },
+  need_structure: { label: 'Need Structure', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  underwriting_review: { label: 'UW Review', color: 'text-pink-600', bg: 'bg-pink-50' },
+  senior_underwriting: { label: 'Senior UW', color: 'text-sky-600', bg: 'bg-sky-50' },
   uw_paused: { label: 'UW Paused', color: 'text-gray-600', bg: 'bg-gray-50' },
 };
 

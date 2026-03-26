@@ -124,7 +124,7 @@ export const GmailTaskDialog = ({
         description: description || null,
         status,
         priority,
-        assignee_name: assignee || null,
+        team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
         due_date: dueDate?.toISOString() || null,
         lead_id: leadId || null,
         estimated_hours: estimatedHours,

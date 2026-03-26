@@ -39,6 +39,9 @@ const statusColors: Record<LeadStatus, string> = {
   need_structure_from_brad: 'bg-indigo-100 text-indigo-800',
   maura_underwriting: 'bg-pink-100 text-pink-800',
   brad_underwriting: 'bg-sky-100 text-sky-800',
+  need_structure: 'bg-indigo-100 text-indigo-800',
+  underwriting_review: 'bg-pink-100 text-pink-800',
+  senior_underwriting: 'bg-sky-100 text-sky-800',
   uw_paused: 'bg-gray-100 text-gray-800',
 };
 

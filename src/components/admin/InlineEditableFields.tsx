@@ -36,6 +36,9 @@ export const UNDERWRITING_STATUSES: LeadStatus[] = [
   'need_structure_from_brad',
   'maura_underwriting',
   'brad_underwriting',
+  'need_structure',
+  'underwriting_review',
+  'senior_underwriting',
   'uw_paused',
   'ready_for_wu_approval',
 ];
@@ -92,6 +95,27 @@ export const stageConfig: Record<string, { label: string; color: string; bg: str
   },
   brad_underwriting: {
     label: 'Brad Underwriting',
+    color: 'text-teal-700 dark:text-teal-400',
+    bg: 'bg-teal-50 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800',
+    dot: 'bg-teal-500',
+    pill: 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
+  },
+  need_structure: {
+    label: 'Need Structure',
+    color: 'text-indigo-700 dark:text-indigo-400',
+    bg: 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800',
+    dot: 'bg-indigo-500',
+    pill: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300',
+  },
+  underwriting_review: {
+    label: 'UW Review',
+    color: 'text-pink-700 dark:text-pink-400',
+    bg: 'bg-pink-50 dark:bg-pink-950/50 border-pink-200 dark:border-pink-800',
+    dot: 'bg-pink-500',
+    pill: 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300',
+  },
+  senior_underwriting: {
+    label: 'Senior UW',
     color: 'text-teal-700 dark:text-teal-400',
     bg: 'bg-teal-50 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800',
     dot: 'bg-teal-500',

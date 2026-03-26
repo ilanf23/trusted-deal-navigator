@@ -381,6 +381,7 @@ export type Database = {
       bug_reports: {
         Row: {
           assigned_to: string | null
+          assigned_to_id: string | null
           browser_info: string | null
           created_at: string
           description: string | null
@@ -397,6 +398,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          assigned_to_id?: string | null
           browser_info?: string | null
           created_at?: string
           description?: string | null
@@ -413,6 +415,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          assigned_to_id?: string | null
           browser_info?: string | null
           created_at?: string
           description?: string | null
@@ -427,7 +430,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bug_reports_assigned_to_id_fkey"
+            columns: ["assigned_to_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       business_requirements: {
         Row: {
@@ -650,13 +661,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "call_rating_notifications_communication_id_fkey"
-            columns: ["communication_id"]
-            isOneToOne: false
-            referencedRelation: "evan_communications"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "call_rating_notifications_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -790,57 +794,6 @@ export type Database = {
           },
         ]
       }
-      companies: {
-        Row: {
-          company_name: string
-          contact_name: string | null
-          contact_type: string | null
-          created_at: string
-          email_domain: string | null
-          id: string
-          inactive_days: number
-          interactions_count: number
-          last_contacted: string | null
-          phone: string | null
-          tags: string[] | null
-          tasks_count: number
-          updated_at: string
-          website: string | null
-        }
-        Insert: {
-          company_name: string
-          contact_name?: string | null
-          contact_type?: string | null
-          created_at?: string
-          email_domain?: string | null
-          id?: string
-          inactive_days?: number
-          interactions_count?: number
-          last_contacted?: string | null
-          phone?: string | null
-          tags?: string[] | null
-          tasks_count?: number
-          updated_at?: string
-          website?: string | null
-        }
-        Update: {
-          company_name?: string
-          contact_name?: string | null
-          contact_type?: string | null
-          created_at?: string
-          email_domain?: string | null
-          id?: string
-          inactive_days?: number
-          interactions_count?: number
-          last_contacted?: string | null
-          phone?: string | null
-          tags?: string[] | null
-          tasks_count?: number
-          updated_at?: string
-          website?: string | null
-        }
-        Relationships: []
-      }
       contracts: {
         Row: {
           client_id: string
@@ -926,6 +879,7 @@ export type Database = {
           owner_name: string | null
           requested_amount: number
           stage: string
+          team_member_id: string | null
           weighted_fees: number
         }
         Insert: {
@@ -937,6 +891,7 @@ export type Database = {
           owner_name?: string | null
           requested_amount?: number
           stage: string
+          team_member_id?: string | null
           weighted_fees?: number
         }
         Update: {
@@ -948,9 +903,18 @@ export type Database = {
           owner_name?: string | null
           requested_amount?: number
           stage?: string
+          team_member_id?: string | null
           weighted_fees?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_deals_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dashboard_referral_sources: {
         Row: {
@@ -1283,6 +1247,7 @@ export type Database = {
           id: string
           name: string
           subject: string
+          team_member_id: string | null
           team_member_name: string | null
           updated_at: string
         }
@@ -1293,6 +1258,7 @@ export type Database = {
           id?: string
           name: string
           subject: string
+          team_member_id?: string | null
           team_member_name?: string | null
           updated_at?: string
         }
@@ -1303,10 +1269,19 @@ export type Database = {
           id?: string
           name?: string
           subject?: string
+          team_member_id?: string | null
           team_member_name?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_threads: {
         Row: {
@@ -1696,35 +1671,6 @@ export type Database = {
           },
         ]
       }
-      lead_companies: {
-        Row: {
-          company_name: string
-          created_at: string | null
-          id: string
-          lead_id: string
-        }
-        Insert: {
-          company_name: string
-          created_at?: string | null
-          id?: string
-          lead_id: string
-        }
-        Update: {
-          company_name?: string
-          created_at?: string | null
-          id?: string
-          lead_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_companies_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       lead_connections: {
         Row: {
           connected_company: string | null
@@ -1896,6 +1842,42 @@ export type Database = {
           },
         ]
       }
+      lead_followers: {
+        Row: {
+          created_at: string | null
+          id: string
+          lead_id: string
+          team_member_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lead_id: string
+          team_member_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lead_id?: string
+          team_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_followers_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_followers_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_lender_programs: {
         Row: {
           created_at: string
@@ -2004,6 +1986,84 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_projects: {
+        Row: {
+          bank_relationships: string | null
+          clx_file_name: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          lead_id: string
+          name: string
+          owner: string | null
+          priority: string | null
+          project_stage: string | null
+          related_to: string | null
+          status: string | null
+          tags: string[] | null
+          updated_at: string
+          visibility: string | null
+          waiting_on: string | null
+        }
+        Insert: {
+          bank_relationships?: string | null
+          clx_file_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id: string
+          name: string
+          owner?: string | null
+          priority?: string | null
+          project_stage?: string | null
+          related_to?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          visibility?: string | null
+          waiting_on?: string | null
+        }
+        Update: {
+          bank_relationships?: string | null
+          clx_file_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string
+          name?: string
+          owner?: string | null
+          priority?: string | null
+          project_stage?: string | null
+          related_to?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          visibility?: string | null
+          waiting_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_projects_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_projects_owner_fkey"
+            columns: ["owner"]
+            isOneToOne: false
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
@@ -2211,6 +2271,128 @@ export type Database = {
           },
         ]
       }
+      lead_signals: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          lead_id: string
+          resolved_at: string | null
+          severity: string
+          signal_type: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lead_id: string
+          resolved_at?: string | null
+          severity?: string
+          signal_type: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          lead_id?: string
+          resolved_at?: string | null
+          severity?: string
+          signal_type?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_signals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_projects: {
+        Row: {
+          bank_relationships: string | null
+          clx_file_name: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          lead_id: string
+          name: string
+          owner: string | null
+          priority: string | null
+          project_stage: string | null
+          related_to: string | null
+          status: string | null
+          tags: string[] | null
+          updated_at: string
+          visibility: string | null
+          waiting_on: string | null
+        }
+        Insert: {
+          bank_relationships?: string | null
+          clx_file_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id: string
+          name: string
+          owner?: string | null
+          priority?: string | null
+          project_stage?: string | null
+          related_to?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          visibility?: string | null
+          waiting_on?: string | null
+        }
+        Update: {
+          bank_relationships?: string | null
+          clx_file_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string
+          name?: string
+          owner?: string | null
+          priority?: string | null
+          project_stage?: string | null
+          related_to?: string | null
+          status?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          visibility?: string | null
+          waiting_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_projects_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_projects_owner_fkey"
+            columns: ["owner"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_tasks: {
         Row: {
           activity_type: string | null
@@ -2277,9 +2459,12 @@ export type Database = {
       leads: {
         Row: {
           about: string | null
+          actual_net_revenue: number | null
           assigned_to: string | null
           bank_relationships: string | null
           client_other_lenders: boolean
+          close_date: string | null
+          clx_agreement: boolean | null
           clx_file_name: string | null
           cohort_year: number | null
           company_name: string | null
@@ -2290,18 +2475,29 @@ export type Database = {
           deal_value: number | null
           description: string | null
           email: string | null
+          fee_percent: number | null
           flagged_for_weekly: boolean
           history: string | null
           id: string
           initial_nudge_created_at: string | null
+          invoice_amount: number | null
           known_as: string | null
           last_activity_at: string | null
+          last_contacted: string | null
+          lender_name: string | null
+          lender_type: string | null
           linkedin: string | null
+          loan_category: string | null
+          loan_stage: string | null
+          loss_reason: string | null
           name: string
+          net_revenue: number | null
           next_action: string | null
           notes: string | null
           opportunity_name: string | null
           phone: string | null
+          potential_revenue: number | null
+          priority: string | null
           qualified_at: string | null
           questionnaire_completed_at: string | null
           questionnaire_sent_at: string | null
@@ -2309,22 +2505,37 @@ export type Database = {
           ratewatch_questionnaire_completed_at: string | null
           ratewatch_questionnaire_sent_at: string | null
           ratewatch_questionnaire_token: string | null
+          referral_source: string | null
+          rs_fee_percent: number | null
+          rs_revenue: number | null
+          sheets_last_synced_at: string | null
+          sheets_row_index: number | null
           sla_threshold_days: number | null
           source: string | null
           status: Database["public"]["Enums"]["lead_status"]
           tags: string[] | null
+          target_closing_date: string | null
           title: string | null
           twitter: string | null
           updated_at: string
           uw_number: string | null
+          visibility: string | null
+          volume_log_status: string | null
           waiting_on: string | null
           website: string | null
+          win_percentage: number | null
+          won: boolean | null
+          work_website: string | null
+          wu_date: string | null
         }
         Insert: {
           about?: string | null
+          actual_net_revenue?: number | null
           assigned_to?: string | null
           bank_relationships?: string | null
           client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
           clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
@@ -2335,18 +2546,29 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
+          fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
           linkedin?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
           name: string
+          net_revenue?: number | null
           next_action?: string | null
           notes?: string | null
           opportunity_name?: string | null
           phone?: string | null
+          potential_revenue?: number | null
+          priority?: string | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
@@ -2354,22 +2576,37 @@ export type Database = {
           ratewatch_questionnaire_completed_at?: string | null
           ratewatch_questionnaire_sent_at?: string | null
           ratewatch_questionnaire_token?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
+          target_closing_date?: string | null
           title?: string | null
           twitter?: string | null
           updated_at?: string
           uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
           waiting_on?: string | null
           website?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          work_website?: string | null
+          wu_date?: string | null
         }
         Update: {
           about?: string | null
+          actual_net_revenue?: number | null
           assigned_to?: string | null
           bank_relationships?: string | null
           client_other_lenders?: boolean
+          close_date?: string | null
+          clx_agreement?: boolean | null
           clx_file_name?: string | null
           cohort_year?: number | null
           company_name?: string | null
@@ -2380,18 +2617,29 @@ export type Database = {
           deal_value?: number | null
           description?: string | null
           email?: string | null
+          fee_percent?: number | null
           flagged_for_weekly?: boolean
           history?: string | null
           id?: string
           initial_nudge_created_at?: string | null
+          invoice_amount?: number | null
           known_as?: string | null
           last_activity_at?: string | null
+          last_contacted?: string | null
+          lender_name?: string | null
+          lender_type?: string | null
           linkedin?: string | null
+          loan_category?: string | null
+          loan_stage?: string | null
+          loss_reason?: string | null
           name?: string
+          net_revenue?: number | null
           next_action?: string | null
           notes?: string | null
           opportunity_name?: string | null
           phone?: string | null
+          potential_revenue?: number | null
+          priority?: string | null
           qualified_at?: string | null
           questionnaire_completed_at?: string | null
           questionnaire_sent_at?: string | null
@@ -2399,16 +2647,28 @@ export type Database = {
           ratewatch_questionnaire_completed_at?: string | null
           ratewatch_questionnaire_sent_at?: string | null
           ratewatch_questionnaire_token?: string | null
+          referral_source?: string | null
+          rs_fee_percent?: number | null
+          rs_revenue?: number | null
+          sheets_last_synced_at?: string | null
+          sheets_row_index?: number | null
           sla_threshold_days?: number | null
           source?: string | null
           status?: Database["public"]["Enums"]["lead_status"]
           tags?: string[] | null
+          target_closing_date?: string | null
           title?: string | null
           twitter?: string | null
           updated_at?: string
           uw_number?: string | null
+          visibility?: string | null
+          volume_log_status?: string | null
           waiting_on?: string | null
           website?: string | null
+          win_percentage?: number | null
+          won?: boolean | null
+          work_website?: string | null
+          wu_date?: string | null
         }
         Relationships: [
           {
@@ -4104,13 +4364,6 @@ export type Database = {
             foreignKeyName: "evan_task_activities_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
-            referencedRelation: "evan_tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "evan_task_activities_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -4158,13 +4411,6 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "evan_task_files_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "evan_tasks"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "evan_task_files_task_id_fkey"
             columns: ["task_id"]
@@ -4267,6 +4513,7 @@ export type Database = {
           loan_amount: number
           notes: string | null
           rep_name: string
+          team_member_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4279,6 +4526,7 @@ export type Database = {
           loan_amount?: number
           notes?: string | null
           rep_name: string
+          team_member_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4291,6 +4539,7 @@ export type Database = {
           loan_amount?: number
           notes?: string | null
           rep_name?: string
+          team_member_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4299,6 +4548,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_funded_deals_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
@@ -4352,6 +4608,7 @@ export type Database = {
           goal_label: string
           id: string
           target_value: number
+          team_member_id: string | null
           team_member_name: string
           updated_at: string | null
         }
@@ -4361,6 +4618,7 @@ export type Database = {
           goal_label: string
           id?: string
           target_value?: number
+          team_member_id?: string | null
           team_member_name: string
           updated_at?: string | null
         }
@@ -4370,10 +4628,19 @@ export type Database = {
           goal_label?: string
           id?: string
           target_value?: number
+          team_member_id?: string | null
           team_member_name?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "team_monthly_goals_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -4396,372 +4663,47 @@ export type Database = {
         }
         Relationships: []
       }
-    }
-    Views: {
-      evan_appointments: {
+      volume_log_sync_config: {
         Row: {
-          appointment_type: string | null
-          created_at: string | null
-          description: string | null
-          end_time: string | null
-          google_calendar_id: string | null
-          google_event_id: string | null
-          id: string | null
-          lead_id: string | null
-          start_time: string | null
-          sync_status: string | null
-          synced_at: string | null
-          team_member_id: string | null
-          team_member_name: string | null
-          title: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          appointment_type?: string | null
-          created_at?: string | null
-          description?: string | null
-          end_time?: string | null
-          google_calendar_id?: string | null
-          google_event_id?: string | null
-          id?: string | null
-          lead_id?: string | null
-          start_time?: string | null
-          sync_status?: string | null
-          synced_at?: string | null
-          team_member_id?: string | null
-          team_member_name?: string | null
-          title?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          appointment_type?: string | null
-          created_at?: string | null
-          description?: string | null
-          end_time?: string | null
-          google_calendar_id?: string | null
-          google_event_id?: string | null
-          id?: string | null
-          lead_id?: string | null
-          start_time?: string | null
-          sync_status?: string | null
-          synced_at?: string | null
-          team_member_id?: string | null
-          team_member_name?: string | null
-          title?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "appointments_team_member_id_fkey"
-            columns: ["team_member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "evan_appointments_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      evan_communications: {
-        Row: {
-          call_sid: string | null
-          communication_type: string | null
-          content: string | null
-          created_at: string | null
-          direction: string | null
-          duration_seconds: number | null
-          id: string | null
-          lead_id: string | null
-          phone_number: string | null
-          recording_sid: string | null
-          recording_url: string | null
-          status: string | null
-          team_member_id: string | null
-          transcript: string | null
-        }
-        Insert: {
-          call_sid?: string | null
-          communication_type?: string | null
-          content?: string | null
-          created_at?: string | null
-          direction?: string | null
-          duration_seconds?: number | null
-          id?: string | null
-          lead_id?: string | null
-          phone_number?: string | null
-          recording_sid?: string | null
-          recording_url?: string | null
-          status?: string | null
-          team_member_id?: string | null
-          transcript?: string | null
-        }
-        Update: {
-          call_sid?: string | null
-          communication_type?: string | null
-          content?: string | null
-          created_at?: string | null
-          direction?: string | null
-          duration_seconds?: number | null
-          id?: string | null
-          lead_id?: string | null
-          phone_number?: string | null
-          recording_sid?: string | null
-          recording_url?: string | null
-          status?: string | null
-          team_member_id?: string | null
-          transcript?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "communications_team_member_id_fkey"
-            columns: ["team_member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "evan_communications_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      evan_notes: {
-        Row: {
-          content: string | null
-          created_at: string | null
-          id: string | null
-          is_pinned: boolean | null
-          team_member_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          content?: string | null
-          created_at?: string | null
-          id?: string | null
-          is_pinned?: boolean | null
-          team_member_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          content?: string | null
-          created_at?: string | null
-          id?: string | null
-          is_pinned?: boolean | null
-          team_member_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notes_team_member_id_fkey"
-            columns: ["team_member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      evan_task_activities: {
-        Row: {
-          activity_type: string | null
-          content: string | null
+          column_mapping: Json
           created_at: string | null
           created_by: string | null
-          id: string | null
-          mentioned_users: string[] | null
-          new_value: string | null
-          old_value: string | null
-          task_id: string | null
-          team_member_id: string | null
-        }
-        Insert: {
-          activity_type?: string | null
-          content?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          id?: string | null
-          mentioned_users?: string[] | null
-          new_value?: string | null
-          old_value?: string | null
-          task_id?: string | null
-          team_member_id?: string | null
-        }
-        Update: {
-          activity_type?: string | null
-          content?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          id?: string | null
-          mentioned_users?: string[] | null
-          new_value?: string | null
-          old_value?: string | null
-          task_id?: string | null
-          team_member_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "evan_task_activities_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "evan_tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "evan_task_activities_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_activities_team_member_id_fkey"
-            columns: ["team_member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      evan_task_files: {
-        Row: {
-          created_at: string | null
-          file_name: string | null
-          file_size: number | null
-          file_type: string | null
-          file_url: string | null
-          id: string | null
-          task_id: string | null
-          team_member_id: string | null
-          uploaded_by: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          file_name?: string | null
-          file_size?: number | null
-          file_type?: string | null
-          file_url?: string | null
-          id?: string | null
-          task_id?: string | null
-          team_member_id?: string | null
-          uploaded_by?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          file_name?: string | null
-          file_size?: number | null
-          file_type?: string | null
-          file_url?: string | null
-          id?: string | null
-          task_id?: string | null
-          team_member_id?: string | null
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "evan_task_files_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "evan_tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "evan_task_files_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_files_team_member_id_fkey"
-            columns: ["team_member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      evan_tasks: {
-        Row: {
-          assignee_name: string | null
-          created_at: string | null
-          description: string | null
-          due_date: string | null
-          estimated_hours: number | null
-          group_name: string | null
-          id: string | null
-          is_completed: boolean | null
-          lead_id: string | null
-          priority: string | null
-          source: string | null
-          status: string | null
-          tags: string[] | null
-          task_type: string | null
-          team_member_id: string | null
-          title: string | null
+          header_row: Json | null
+          id: string
+          last_pull_at: string | null
+          last_push_at: string | null
+          sheet_name: string | null
+          spreadsheet_id: string
           updated_at: string | null
         }
         Insert: {
-          assignee_name?: string | null
+          column_mapping?: Json
           created_at?: string | null
-          description?: string | null
-          due_date?: string | null
-          estimated_hours?: number | null
-          group_name?: string | null
-          id?: string | null
-          is_completed?: boolean | null
-          lead_id?: string | null
-          priority?: string | null
-          source?: string | null
-          status?: string | null
-          tags?: string[] | null
-          task_type?: string | null
-          team_member_id?: string | null
-          title?: string | null
+          created_by?: string | null
+          header_row?: Json | null
+          id?: string
+          last_pull_at?: string | null
+          last_push_at?: string | null
+          sheet_name?: string | null
+          spreadsheet_id: string
           updated_at?: string | null
         }
         Update: {
-          assignee_name?: string | null
+          column_mapping?: Json
           created_at?: string | null
-          description?: string | null
-          due_date?: string | null
-          estimated_hours?: number | null
-          group_name?: string | null
-          id?: string | null
-          is_completed?: boolean | null
-          lead_id?: string | null
-          priority?: string | null
-          source?: string | null
-          status?: string | null
-          tags?: string[] | null
-          task_type?: string | null
-          team_member_id?: string | null
-          title?: string | null
+          created_by?: string | null
+          header_row?: Json | null
+          id?: string
+          last_pull_at?: string | null
+          last_push_at?: string | null
+          sheet_name?: string | null
+          spreadsheet_id?: string
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "evan_tasks_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tasks_team_member_id_fkey"
-            columns: ["team_member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
+    }
+    Views: {
       v_pipeline_metrics: {
         Row: {
           deal_count: number | null
@@ -4881,6 +4823,9 @@ export type Database = {
         | "maura_underwriting"
         | "brad_underwriting"
         | "uw_paused"
+        | "need_structure"
+        | "underwriting_review"
+        | "senior_underwriting"
       pipeline_column_type:
         | "free_form"
         | "date"
@@ -5057,6 +5002,9 @@ export const Constants = {
         "maura_underwriting",
         "brad_underwriting",
         "uw_paused",
+        "need_structure",
+        "underwriting_review",
+        "senior_underwriting",
       ],
       pipeline_column_type: [
         "free_form",

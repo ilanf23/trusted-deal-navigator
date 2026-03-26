@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useTeamMemberByName } from '@/hooks/useTeamMemberByName';
 
 export interface BradMetrics {
   activeDeals: number;
@@ -81,6 +82,9 @@ const formatDaysAgo = (daysAgo: number): string => {
 };
 
 export const useBradsDashboard = () => {
+  const { data: teamMember } = useTeamMemberByName('Brad');
+  const teamMemberId = teamMember?.id;
+
   // Team performance from view
   const perfQuery = useQuery({
     queryKey: ['brad-team-performance'],
@@ -97,33 +101,35 @@ export const useBradsDashboard = () => {
 
   // High-value deals
   const dealsQuery = useQuery({
-    queryKey: ['brad-deals'],
+    queryKey: ['brad-deals', teamMemberId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('dashboard_deals')
         .select('*')
-        .ilike('owner_name', 'Brad')
+        .eq('team_member_id', teamMemberId!)
         .order('requested_amount', { ascending: false })
         .limit(10);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!teamMemberId,
   });
 
   // Upcoming meetings
   const meetingsQuery = useQuery({
-    queryKey: ['brad-meetings'],
+    queryKey: ['brad-meetings', teamMemberId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointments')
         .select('*')
-        .ilike('team_member_name', 'brad')
+        .eq('team_member_id', teamMemberId!)
         .gte('start_time', new Date().toISOString())
         .order('start_time', { ascending: true })
         .limit(5);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!teamMemberId,
   });
 
   // Referral partners
@@ -142,15 +148,16 @@ export const useBradsDashboard = () => {
 
   // Monthly goals
   const goalsQuery = useQuery({
-    queryKey: ['brad-monthly-goals'],
+    queryKey: ['brad-monthly-goals', teamMemberId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('team_monthly_goals')
         .select('*')
-        .ilike('team_member_name', 'Brad');
+        .eq('team_member_id', teamMemberId!);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!teamMemberId,
   });
 
   // Derive metrics

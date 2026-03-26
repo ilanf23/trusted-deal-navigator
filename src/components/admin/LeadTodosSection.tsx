@@ -13,7 +13,6 @@ type LeadTodoItem = {
   status?: string | null;
   priority?: string | null;
   estimated_hours?: number | null;
-  assignee_name?: string | null;
 };
 
 interface LeadTodosSectionProps {
@@ -217,11 +216,6 @@ export function LeadTodosSection({
                             <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               {task.estimated_hours}h
-                            </span>
-                          )}
-                          {task.assignee_name && (
-                            <span className="text-[11px] text-muted-foreground">
-                              {task.assignee_name}
                             </span>
                           )}
                         </div>

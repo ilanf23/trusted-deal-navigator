@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useTeamMemberByName } from '@/hooks/useTeamMemberByName';
 
 export interface AdamMetrics {
   activeDeals: number;
@@ -63,6 +64,9 @@ const deriveLenderStatus = (lastContact: string | null): string => {
 };
 
 export const useAdamsDashboard = () => {
+  const { data: teamMember } = useTeamMemberByName('Adam');
+  const teamMemberId = teamMember?.id;
+
   // Team performance from view
   const perfQuery = useQuery({
     queryKey: ['adam-team-performance'],
@@ -92,17 +96,18 @@ export const useAdamsDashboard = () => {
 
   // Deals for Adam
   const dealsQuery = useQuery({
-    queryKey: ['adam-deals'],
+    queryKey: ['adam-deals', teamMemberId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('dashboard_deals')
         .select('*')
-        .ilike('owner_name', 'Adam')
+        .eq('team_member_id', teamMemberId!)
         .order('requested_amount', { ascending: false })
         .limit(10);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!teamMemberId,
   });
 
   // Top lender programs for lender activity table
@@ -150,15 +155,16 @@ export const useAdamsDashboard = () => {
 
   // Operational goals
   const goalsQuery = useQuery({
-    queryKey: ['adam-monthly-goals'],
+    queryKey: ['adam-monthly-goals', teamMemberId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('team_monthly_goals')
         .select('*')
-        .ilike('team_member_name', 'Adam');
+        .eq('team_member_id', teamMemberId!);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!teamMemberId,
   });
 
   // Derive metrics

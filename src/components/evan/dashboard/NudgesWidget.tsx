@@ -112,7 +112,6 @@ export const NudgesWidget = ({ evanId }: NudgesWidgetProps) => {
           status: 'todo',
           priority: 'high',
           lead_id: lead.id,
-          assignee_name: 'Evan',
           team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
           group_name: 'To Do',
           source: 'nudge',

@@ -32,6 +32,9 @@ const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
   need_structure_from_brad: { label: 'Need Structure', color: 'bg-indigo-400' },
   maura_underwriting: { label: 'Maura UW', color: 'bg-pink-500' },
   brad_underwriting: { label: 'Brad UW', color: 'bg-sky-500' },
+  need_structure: { label: 'Need Structure', color: 'bg-indigo-400' },
+  underwriting_review: { label: 'UW Review', color: 'bg-pink-500' },
+  senior_underwriting: { label: 'Senior UW', color: 'bg-sky-500' },
   uw_paused: { label: 'UW Paused', color: 'bg-gray-500' },
 };
 

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useTeamMemberByName } from '@/hooks/useTeamMemberByName';
 
 export interface MauraMetrics {
   activeDeals: number;
@@ -46,6 +47,9 @@ const derivePriority = (daysInStage: number): string => {
 };
 
 export const useMaurasDashboard = () => {
+  const { data: teamMember } = useTeamMemberByName('Maura');
+  const teamMemberId = teamMember?.id;
+
   // Team performance from view
   const perfQuery = useQuery({
     queryKey: ['maura-team-performance'],
@@ -62,30 +66,32 @@ export const useMaurasDashboard = () => {
 
   // Deals for Maura
   const dealsQuery = useQuery({
-    queryKey: ['maura-deals'],
+    queryKey: ['maura-deals', teamMemberId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('dashboard_deals')
         .select('*')
-        .ilike('owner_name', 'Maura')
+        .eq('team_member_id', teamMemberId!)
         .order('days_in_stage', { ascending: false })
         .limit(20);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!teamMemberId,
   });
 
   // Daily progress goals
   const goalsQuery = useQuery({
-    queryKey: ['maura-monthly-goals'],
+    queryKey: ['maura-monthly-goals', teamMemberId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('team_monthly_goals')
         .select('*')
-        .ilike('team_member_name', 'Maura');
+        .eq('team_member_id', teamMemberId!);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!teamMemberId,
   });
 
   // Derive metrics

@@ -203,8 +203,7 @@ export const TaskWorkspace = () => {
       const term = searchTerm.toLowerCase();
       result = result.filter(task =>
         task.title.toLowerCase().includes(term) ||
-        task.description?.toLowerCase().includes(term) ||
-        task.assignee_name?.toLowerCase().includes(term)
+        task.description?.toLowerCase().includes(term)
       );
     }
     

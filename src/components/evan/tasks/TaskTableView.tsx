@@ -321,10 +321,10 @@ export const TaskTableView = ({
                 <div className="flex items-center gap-2">
                   <Avatar className="h-5 w-5 md:h-6 md:w-6 ring-2 ring-background">
                     <AvatarFallback className="text-[9px] md:text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
-                      {(task.assignee_name || 'E').substring(0, 2).toUpperCase()}
+                      {'EV'}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-xs md:text-sm">{task.assignee_name || 'Unassigned'}</span>
+                  <span className="text-xs md:text-sm">Evan</span>
                 </div>
               </TableCell>
 

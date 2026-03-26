@@ -202,7 +202,7 @@ const TeamPerformance = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('call_rating_notifications')
-        .select('*')
+        .select('*, lead:leads(name, phone, email)')
         .gte('created_at', periodStart.toISOString())
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -802,7 +802,7 @@ const TeamPerformance = () => {
                                     {rating.call_rating}
                                   </div>
                                   <div>
-                                    <p className="text-sm font-medium">{rating.lead_name}</p>
+                                    <p className="text-sm font-medium">{rating.lead?.name || rating.lead_name || 'Unknown'}</p>
                                     <p className="text-xs text-muted-foreground">
                                       {formatDistanceToNow(new Date(rating.call_date), { addSuffix: true })}
                                     </p>

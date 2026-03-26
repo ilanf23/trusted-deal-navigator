@@ -23,7 +23,7 @@ interface Task {
   priority: string | null;
   status: string | null;
   estimated_hours: number | null;
-  assignee_name: string | null;
+  team_member_id: string | null;
   created_at: string;
 }
 
@@ -77,7 +77,6 @@ export const TaskBoard = () => {
         due_date: dueDate,
         status: 'todo',
         priority: '3',
-        assignee_name: 'Evan',
         team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
       });
       if (error) throw error;
@@ -129,7 +128,6 @@ export const TaskBoard = () => {
               title: deletedTask.title,
               status: deletedTask.status,
               priority: deletedTask.priority,
-              assignee_name: deletedTask.assignee_name,
               team_member_id: deletedTask.team_member_id,
               due_date: deletedTask.due_date,
               description: deletedTask.description,
@@ -365,7 +363,7 @@ export const TaskBoard = () => {
                           <div className="p-2 flex justify-center">
                             <Avatar className="h-7 w-7 border-2 border-white shadow-sm">
                               <AvatarFallback className="text-[10px] bg-gradient-to-br from-pink-400 to-pink-600 text-white font-medium">
-                                {(task.assignee_name || 'E').substring(0, 2).toUpperCase()}
+                                {'EV'}
                               </AvatarFallback>
                             </Avatar>
                           </div>
@@ -552,7 +550,7 @@ export const TaskBoard = () => {
                       <div className="p-2 flex justify-center">
                         <Avatar className="h-7 w-7 border-2 border-white shadow-sm">
                           <AvatarFallback className="text-[10px] bg-gradient-to-br from-pink-400 to-pink-600 text-white font-medium">
-                            {(task.assignee_name || 'E').substring(0, 2).toUpperCase()}
+                            {'EV'}
                           </AvatarFallback>
                         </Avatar>
                       </div>

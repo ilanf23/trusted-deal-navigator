@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useTeamMemberByName } from '@/hooks/useTeamMemberByName';
 
 export interface WendyMetrics {
   activeDeals: number;
@@ -58,6 +59,9 @@ const deriveNextAction = (stage: string): string => {
 };
 
 export const useWendysDashboard = () => {
+  const { data: teamMember } = useTeamMemberByName('Wendy');
+  const teamMemberId = teamMember?.id;
+
   const perfQuery = useQuery({
     queryKey: ['wendy-team-performance'],
     queryFn: async () => {
@@ -72,29 +76,31 @@ export const useWendysDashboard = () => {
   });
 
   const dealsQuery = useQuery({
-    queryKey: ['wendy-deals'],
+    queryKey: ['wendy-deals', teamMemberId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('dashboard_deals')
         .select('*')
-        .ilike('owner_name', 'Wendy')
+        .eq('team_member_id', teamMemberId!)
         .order('days_in_stage', { ascending: false })
         .limit(20);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!teamMemberId,
   });
 
   const goalsQuery = useQuery({
-    queryKey: ['wendy-monthly-goals'],
+    queryKey: ['wendy-monthly-goals', teamMemberId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('team_monthly_goals')
         .select('*')
-        .ilike('team_member_name', 'Wendy');
+        .eq('team_member_id', teamMemberId!);
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!teamMemberId,
   });
 
   const perf = perfQuery.data;

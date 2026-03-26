@@ -987,7 +987,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
         status: 'todo',
         lead_id: lead.id,
         source: 'lead',
-        assignee_name: 'Evan',
         team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
       });
       if (evanTaskError) throw evanTaskError;
@@ -2974,7 +2973,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
             status: task.status || 'todo',
             lead_id: lead.id,
             source: 'lead',
-            assignee_name: task.assignee_name || 'Evan',
             team_member_id: (task as any).team_member_id || '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
             estimated_hours: task.estimated_hours || null,
           });

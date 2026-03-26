@@ -59,7 +59,7 @@ export const TaskTimelineView = ({
   };
 
   const groupedByAssignee = tasksWithDates.reduce((acc, task) => {
-    const assignee = task.assignee_name || 'Unassigned';
+    const assignee = 'Evan';
     if (!acc[assignee]) acc[assignee] = [];
     acc[assignee].push(task);
     return acc;
@@ -223,7 +223,7 @@ export const TaskTimelineView = ({
                   </span>
                   <Avatar className="h-6 w-6">
                     <AvatarFallback className="text-[9px] bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                      {(task.assignee_name || 'U').substring(0, 2).toUpperCase()}
+                      {'EV'}
                     </AvatarFallback>
                   </Avatar>
                 </div>

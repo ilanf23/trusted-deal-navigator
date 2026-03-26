@@ -85,7 +85,7 @@ export const useFeedData = () => {
         // Tasks
         supabase
           .from('tasks')
-          .select('id, title, created_at, lead_id, assignee_name, status')
+          .select('id, title, created_at, lead_id, status, team_member:team_members(name)')
           .order('created_at', { ascending: false })
           .limit(100),
         // Lead activities (logged activities from all pipelines)
@@ -250,7 +250,7 @@ export const useFeedData = () => {
       // ── 4. Tasks ──
       for (const task of (tasks || [])) {
         const leadInfo = task.lead_id ? leadMap.get(task.lead_id) : null;
-        const taskActorName = task.assignee_name || 'Team';
+        const taskActorName = (task as any).team_member?.name || 'Team';
         activities.push({
           id: `task-${task.id}`,
           type: 'task_created',

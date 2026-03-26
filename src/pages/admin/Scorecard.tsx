@@ -228,7 +228,7 @@ const Scorecard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, title, is_completed, lead_id, created_at, due_date, source, assignee_name')
+        .select('id, title, is_completed, lead_id, created_at, due_date, source, team_member_id')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
       if (error) throw error;
@@ -283,8 +283,7 @@ const Scorecard = () => {
     const scopedTasks = repFilter === 'me'
       ? (tasks || []).filter(t =>
           (t.lead_id && userLeadIds.has(t.lead_id)) ||
-          (t.team_member_id && teamMember && t.team_member_id === teamMember.id) ||
-          (t.assignee_name && teamMember && t.assignee_name.toLowerCase() === teamMember.name.toLowerCase())
+          (t.team_member_id && teamMember && t.team_member_id === teamMember.id)
         )
       : (tasks || []);
 

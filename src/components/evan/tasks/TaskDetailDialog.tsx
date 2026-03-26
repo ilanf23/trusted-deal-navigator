@@ -157,7 +157,7 @@ export const TaskDetailDialog = ({
       title: newTaskTitle,
       description: newTaskDescription || undefined,
       status: newTaskStatus,
-      assignee_name: newTaskAssignee || undefined,
+      team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
       due_date: combineDateAndTime(newTaskDueDate, newTaskDueTime),
       lead_id: newTaskLeadId || undefined,
       estimated_hours: newTaskHours || undefined,
@@ -707,15 +707,10 @@ export const TaskDetailDialog = ({
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9 ring-2 ring-background">
                   <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-medium">
-                    {(task!.assignee_name || 'E').substring(0, 2).toUpperCase()}
+                    {'EV'}
                   </AvatarFallback>
                 </Avatar>
-                <Input
-                  value={task!.assignee_name || ''}
-                  onChange={(e) => onUpdateTask(task!.id, { assignee_name: e.target.value })}
-                  className="max-w-[200px] h-9 rounded-lg"
-                  placeholder="Assignee name"
-                />
+                <span className="text-sm font-medium">Evan</span>
               </div>
             </div>
 

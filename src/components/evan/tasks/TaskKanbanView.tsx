@@ -166,7 +166,7 @@ export const TaskKanbanView = ({
                     
                     <Avatar className="h-5 w-5 md:h-6 md:w-6 ring-2 ring-background">
                       <AvatarFallback className="text-[8px] md:text-[9px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
-                        {(task.assignee_name || 'E').substring(0, 2).toUpperCase()}
+                        {'EV'}
                       </AvatarFallback>
                     </Avatar>
                   </div>
