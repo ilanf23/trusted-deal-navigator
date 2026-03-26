@@ -2004,7 +2004,7 @@ export default function PipelineExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <div className="w-[220px] xl:w-[260px] shrink-0 border-l border-border bg-card overflow-hidden">
+        <div className="w-[220px] xl:w-[260px] shrink-0 min-w-0 border-l border-border bg-card overflow-hidden">
         <ScrollArea className="h-full">
           <div className="py-4 px-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>

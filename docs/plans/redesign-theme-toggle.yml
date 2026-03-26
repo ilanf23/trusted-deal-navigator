@@ -1,0 +1,30 @@
+# Redesign Light/Dark Mode Toggle Button
+# The current toggle is a basic ghost icon button with Sun/Moon icons.
+# Redesign it into a modern, polished toggle across both admin and partner portals.
+
+tasks:
+  - name: "Redesign the light/dark mode toggle button"
+    description: |
+      Redesign the theme toggle button in both AdminLayout and PartnerLayout.
+
+      Current implementation:
+      - File: src/components/admin/AdminLayout.tsx (lines ~150-159)
+      - File: src/components/partner/PartnerLayout.tsx (lines ~50-59)
+      - Uses next-themes useTheme() hook
+      - Simple ghost Button with Sun/Moon lucide icons that rotate/scale on toggle
+      - Located in the top-right header area of both portals
+
+      Redesign requirements:
+      1. Replace the plain icon button with a modern pill-shaped toggle switch
+      2. The toggle should have a sliding indicator that moves left (light/sun) to right (dark/moon)
+      3. Both Sun and Moon icons should always be visible, with the active one highlighted
+      4. Use a subtle background track (e.g. muted/10) with a solid sliding thumb
+      5. Light mode: sun icon highlighted, warm accent; Dark mode: moon icon highlighted, cool accent
+      6. Smooth spring-like transition animation on the sliding thumb
+      7. Keep the same useTheme() logic - just change the visual presentation
+      8. Apply the same redesign to both AdminLayout.tsx and PartnerLayout.tsx
+      9. Keep it accessible with sr-only label and keyboard support
+      10. Responsive sizing similar to current (slightly smaller on mobile)
+
+      Do NOT create a separate component file. Inline the new toggle markup directly
+      where the current Button is in each layout file. Keep it simple and self-contained.

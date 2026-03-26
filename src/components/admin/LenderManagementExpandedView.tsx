@@ -1014,7 +1014,7 @@ export default function LenderManagementExpandedView() {
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Details — fully editable */}
-        <div className="w-[320px] xl:w-[400px] shrink-0 border-r border-border bg-card overflow-hidden">
+        <div className="w-[320px] xl:w-[400px] shrink-0 min-w-0 border-r border-border bg-card overflow-hidden">
         <ScrollArea className="h-full">
           <div className="px-6 py-6 space-y-6">
 
