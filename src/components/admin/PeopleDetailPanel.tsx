@@ -1030,7 +1030,7 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
     queryKey: ['person-tasks', person.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('lead_tasks')
+        .from('tasks')
         .select('*')
         .eq('lead_id', person.id)
         .order('created_at', { ascending: false });
@@ -1251,9 +1251,10 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
 
   const toggleTaskCompletion = useCallback(async (task: LeadTask) => {
     const isCompleting = !task.completed_at;
-    await supabase.from('lead_tasks').update({
+    await supabase.from('tasks').update({
       completed_at: isCompleting ? new Date().toISOString() : null,
-      status: isCompleting ? 'completed' : 'pending',
+      is_completed: isCompleting,
+      status: isCompleting ? 'done' : 'todo',
       updated_at: new Date().toISOString(),
     }).eq('id', task.id);
     queryClient.invalidateQueries({ queryKey: ['person-tasks', person.id] });

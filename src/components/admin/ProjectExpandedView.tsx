@@ -596,7 +596,7 @@ export default function ProjectExpandedView() {
                       size="sm"
                       className="h-8 text-xs text-destructive hover:text-destructive gap-1.5"
                       onClick={async () => {
-                        await supabase.from('lead_tasks').delete().eq('id', selectedBoardTask.id);
+                        await supabase.from('tasks').delete().eq('id', selectedBoardTask.id);
                         queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
                         setSelectedBoardTask(null);
                         toast.success('Task deleted');
