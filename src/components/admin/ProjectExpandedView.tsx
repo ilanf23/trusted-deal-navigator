@@ -615,18 +615,44 @@ export default function ProjectExpandedView() {
         <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
           {/* LEFT: Details */}
-          <div className="w-full md:w-[320px] xl:w-[400px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
+          <div className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] shrink-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
             <ScrollArea className="md:h-full">
-              <div className="px-6 py-6 space-y-5">
-                {/* Action buttons */}
+              <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
+
+                {/* ── Back Arrow ── */}
+                <button onClick={() => navigate(-1)} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
+                  <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="30" y1="8" x2="2" y2="8" />
+                    <polyline points="8,2 2,8 8,14" />
+                  </svg>
+                </button>
+
+                {/* ── Project Header Card ── */}
+                <div className="flex items-start gap-4">
+                  <div className="h-14 w-14 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                    <FolderOpen className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="min-w-0 pt-0.5 flex-1">
+                    <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{project.name}</h2>
+                    {lead && (
+                      <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                        {[lead.company_name, lead.name].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    <div className="mt-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-amber-200 text-amber-700 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800">
+                        <FolderOpen className="h-3 w-3" /> Project
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Action buttons ── */}
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => navigate('/admin/pipeline/projects')}>
-                    <X className="h-4 w-4" />
-                  </Button>
                   <Button
                     variant={isFollowing ? 'default' : 'outline'}
                     size="sm"
-                    className={`h-8 px-3 text-xs font-medium gap-1.5 ${isFollowing ? 'bg-blue-600 hover:bg-red-600 text-white' : ''}`}
+                    className={`h-8 text-sm font-medium gap-1.5 rounded-full px-5 ${isFollowing ? 'bg-blue-600 hover:bg-red-600 text-white' : ''}`}
                     onClick={() => toggleFollowMutation.mutate()}
                     onMouseEnter={() => setFollowHovered(true)}
                     onMouseLeave={() => setFollowHovered(false)}
@@ -660,113 +686,116 @@ export default function ProjectExpandedView() {
                   </DropdownMenu>
                 </div>
 
-                {/* Name */}
-                <FieldRow label="Name *" value={project.name} onSave={(v) => saveField('name', v)} />
+                {/* ── Fields ── */}
+                <div className="space-y-5">
+                  {/* Name */}
+                  <FieldRow label="Name *" value={project.name} onSave={(v) => saveField('name', v)} />
 
-                {/* Template */}
-                <div>
-                  <label className="text-xs text-muted-foreground flex items-center gap-1 mb-0.5">Template <Lock className="h-3 w-3" /></label>
-                  <p className="text-sm text-muted-foreground italic">No Selection</p>
-                </div>
+                  {/* Template */}
+                  <div>
+                    <label className="text-xs text-muted-foreground flex items-center gap-1 mb-0.5">Template <Lock className="h-3 w-3" /></label>
+                    <p className="text-sm text-muted-foreground italic">No Selection</p>
+                  </div>
 
-                {/* CLX File Name */}
-                <FieldRow label="CLX - File Name" value={project.clx_file_name ?? ''} onSave={(v) => saveField('clx_file_name', v || null)} />
+                  {/* CLX File Name */}
+                  <FieldRow label="CLX - File Name" value={project.clx_file_name ?? ''} onSave={(v) => saveField('clx_file_name', v || null)} />
 
-                {/* Waiting On */}
-                <FieldRow label="Waiting On:" value={project.waiting_on ?? ''} onSave={(v) => saveField('waiting_on', v || null)} placeholder="Add Waiting On:" />
+                  {/* Waiting On */}
+                  <FieldRow label="Waiting On:" value={project.waiting_on ?? ''} onSave={(v) => saveField('waiting_on', v || null)} placeholder="Add Waiting On:" />
 
-                {/* Owner */}
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Owner</label>
-                  <Select value={project.owner ?? ''} onValueChange={(v) => saveField('owner', v || null)}>
-                    <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                    <SelectContent>
-                      {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* Owner */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Owner</label>
+                    <Select value={project.owner ?? ''} onValueChange={(v) => saveField('owner', v || null)}>
+                      <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                      <SelectContent>
+                        {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Status */}
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Status</label>
-                  <Select value={project.status ?? 'open'} onValueChange={(v) => saveField('status', v)}>
-                    <SelectTrigger className="h-9 w-full text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* Status */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Status</label>
+                    <Select value={project.status ?? 'open'} onValueChange={(v) => saveField('status', v)}>
+                      <SelectTrigger className="h-9 w-full text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {statusOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Created */}
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Created</label>
-                  <p className="text-sm text-foreground">{format(parseISO(project.created_at), 'M/d/yyyy')}</p>
-                </div>
+                  {/* Project Stage */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Project Stage</label>
+                    <Select value={project.project_stage ?? 'open'} onValueChange={(v) => saveField('project_stage', v)}>
+                      <SelectTrigger className="h-9 w-full text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {stageOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Visibility */}
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Visibility</label>
-                  <p className="text-sm text-foreground">{project.visibility || 'Everyone'}</p>
-                </div>
+                  {/* Priority */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Priority</label>
+                    <Select value={project.priority ?? 'none'} onValueChange={(v) => saveField('priority', v === 'none' ? null : v)}>
+                      <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        {priorityOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Description */}
-                <FieldRow label="Description" value={project.description ?? ''} onSave={(v) => saveField('description', v || null)} multiline placeholder="Add description..." />
+                  {/* Due Date */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Due Date</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="flex items-center gap-2 text-sm text-foreground hover:bg-muted/40 rounded-md px-2 py-1 -mx-2 transition-colors w-full text-left">
+                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          {project.due_date ? format(parseISO(project.due_date), 'M/d/yyyy') : <span className="text-muted-foreground italic">Set due date</span>}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={project.due_date ? parseISO(project.due_date) : undefined}
+                          onSelect={(date) => saveField('due_date', date ? date.toISOString() : null)}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
 
-                {/* Due Date */}
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Due Date</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="flex items-center gap-2 text-sm text-foreground hover:bg-muted/40 rounded-md px-2 py-1 -mx-2 transition-colors w-full text-left">
-                        <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        {project.due_date ? format(parseISO(project.due_date), 'M/d/yyyy') : <span className="text-muted-foreground italic">Set due date</span>}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={project.due_date ? parseISO(project.due_date) : undefined}
-                        onSelect={(date) => saveField('due_date', date ? date.toISOString() : null)}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                  {/* Created */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Created</label>
+                    <p className="text-sm text-foreground">{format(parseISO(project.created_at), 'M/d/yyyy')}</p>
+                  </div>
 
-                {/* Tags */}
-                <FieldRow label="Tags" value={(project.tags ?? []).join(', ')} onSave={(v) => saveField('tags', v ? v.split(',').map(t => t.trim()).filter(Boolean) : [])} placeholder="Add Tag" />
+                  {/* Visibility */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Visibility</label>
+                    <p className="text-sm text-foreground">{project.visibility || 'Everyone'}</p>
+                  </div>
 
-                {/* Project Stage */}
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Project Stage</label>
-                  <Select value={project.project_stage ?? 'open'} onValueChange={(v) => saveField('project_stage', v)}>
-                    <SelectTrigger className="h-9 w-full text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {stageOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* Description */}
+                  <FieldRow label="Description" value={project.description ?? ''} onSave={(v) => saveField('description', v || null)} multiline placeholder="Add description..." />
 
-                {/* Bank Relationships */}
-                <FieldRow label="Bank Relationships" value={project.bank_relationships ?? ''} onSave={(v) => saveField('bank_relationships', v || null)} placeholder="Add Bank Relationships" />
+                  {/* Tags */}
+                  <FieldRow label="Tags" value={(project.tags ?? []).join(', ')} onSave={(v) => saveField('tags', v ? v.split(',').map(t => t.trim()).filter(Boolean) : [])} placeholder="Add Tag" />
 
-                {/* Priority */}
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Priority</label>
-                  <Select value={project.priority ?? 'none'} onValueChange={(v) => saveField('priority', v === 'none' ? null : v)}>
-                    <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
-                      {priorityOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {/* Bank Relationships */}
+                  <FieldRow label="Bank Relationships" value={project.bank_relationships ?? ''} onSave={(v) => saveField('bank_relationships', v || null)} placeholder="Add Bank Relationships" />
                 </div>
               </div>
             </ScrollArea>
           </div>
 
           {/* CENTER: Activity */}
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#eeedf3] dark:bg-violet-950/20">
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
             <ScrollArea className="md:flex-1">
-              <div className="px-6 pt-5">
+              <div className="px-3 md:px-4 lg:px-6 pt-5">
                 {/* Stats row — floating card */}
                 <div className="grid grid-cols-3 divide-x divide-border rounded-lg border border-border bg-card mb-5">
                   <div className="flex flex-col items-center justify-center py-3 px-2">
@@ -863,7 +892,7 @@ export default function ProjectExpandedView() {
           </div>
 
           {/* RIGHT: Related */}
-          <div className="w-full md:w-[280px] xl:w-[320px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
+          <div className="w-full md:w-[240px] lg:w-[310px] xl:w-[374px] shrink-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
             <ScrollArea className="md:flex-1">
               <div className="py-4 px-1 overflow-hidden">
                 {/* Files */}

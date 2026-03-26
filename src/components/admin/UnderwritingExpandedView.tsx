@@ -35,7 +35,7 @@ import { parseISO, format, differenceInDays } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
-import ProjectDetailDialog, { type LeadProject } from './ProjectDetailDialog';
+import { type LeadProject } from './ProjectDetailDialog';
 
 import {
   UNDERWRITING_STATUSES,
@@ -340,8 +340,6 @@ export default function UnderwritingExpandedView() {
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
-  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<LeadProject | null>(null);
   const [showAddProject, setShowAddProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [savingProject, setSavingProject] = useState(false);
@@ -2643,7 +2641,7 @@ export default function UnderwritingExpandedView() {
                   <div
                     key={p.id}
                     className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded-md px-1.5 py-1.5 -mx-1 transition-colors group"
-                    onClick={() => { setEditingProject(p); setProjectDialogOpen(true); }}
+                    onClick={() => navigate(`/admin/pipeline/projects/expanded-view/${p.id}`)}
                   >
                     <FolderOpen className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                     <span className="flex-1 truncate text-foreground font-medium">{p.name}</span>
@@ -2704,19 +2702,6 @@ export default function UnderwritingExpandedView() {
         />
       )}
 
-      {/* Project Detail Dialog */}
-      {leadId && (
-        <ProjectDetailDialog
-          project={editingProject}
-          open={projectDialogOpen}
-          onClose={() => { setProjectDialogOpen(false); setEditingProject(null); }}
-          leadId={leadId}
-          leadName={lead?.opportunity_name || lead?.name || ''}
-          teamMembers={teamMembers}
-          currentUserName={teamMember?.name ?? null}
-          onSaved={() => queryClient.invalidateQueries({ queryKey: ['lead-projects', leadId] })}
-        />
-      )}
 
       {/* Calendar Event Dialog */}
       <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>

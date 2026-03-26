@@ -30,7 +30,7 @@ import { AvatarUpload } from '@/components/admin/AvatarUpload';
 import { useGmailConnection } from '@/hooks/useGmailConnection';
 import { usePipelines } from '@/hooks/usePipelines';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
-import ProjectDetailDialog, { type LeadProject } from './ProjectDetailDialog';
+import { type LeadProject } from './ProjectDetailDialog';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
 
@@ -1224,8 +1224,6 @@ export default function PeopleExpandedView() {
   const [savingEvent, setSavingEvent] = useState(false);
 
   // Projects state
-  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<LeadProject | null>(null);
   const [showAddProject, setShowAddProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [savingProject, setSavingProject] = useState(false);
@@ -1885,10 +1883,10 @@ export default function PeopleExpandedView() {
     <>
     <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
       {/* ── 3-Column Body ── */}
-      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-auto md:overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Details */}
-        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] shrink-0 md:min-w-[240px] border-b md:border-b-0 md:border-r border-border bg-card">
+        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] md:shrink-0 md:min-w-[240px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
           <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
             {/* ── Back Arrow ── */}
@@ -2778,7 +2776,7 @@ export default function PeopleExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <ScrollArea className="w-full md:w-[280px] lg:w-[310px] xl:w-[374px] shrink-0 md:min-w-[220px] border-t md:border-t-0 md:border-l border-border bg-card">
+        <ScrollArea className="w-full md:w-[280px] lg:w-[310px] xl:w-[374px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-hidden">
           <div>
             {/* Financial Summary */}
             <div className="px-3 md:px-3.5 xl:px-5 py-5 space-y-3">
@@ -2989,25 +2987,28 @@ export default function PeopleExpandedView() {
                 <CollapsibleTrigger className="flex items-center w-full px-3 md:px-3.5 xl:px-5 py-3 hover:bg-muted/30 transition-colors">
                   <span className="text-sm font-medium text-foreground">Projects ({personProjects.length})</span>
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-1.5" />
-                  <button className="ml-2" onClick={(e) => { e.stopPropagation(); setShowAddProject(true); }}>
+                  <button className="ml-auto" onClick={(e) => { e.stopPropagation(); setShowAddProject(true); }}>
                     <Plus className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="px-3 md:px-3.5 xl:px-5 pb-4">
                   {personProjects.length > 0 ? (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {personProjects.map((proj) => (
                         <button
                           key={proj.id}
-                          onClick={() => { setEditingProject(proj as LeadProject); setProjectDialogOpen(true); }}
-                          className="flex items-center gap-2.5 text-sm p-2 rounded-lg hover:bg-muted/40 transition-colors w-full text-left group -mx-2"
+                          onClick={() => navigate(`/admin/pipeline/projects/expanded-view/${proj.id}`)}
+                          className="flex items-center gap-3 text-sm py-2 rounded-lg hover:bg-muted/40 transition-colors w-full text-left"
                         >
-                          <div className={`h-2 w-2 rounded-full shrink-0 ${proj.project_stage === 'closed' ? 'bg-emerald-500' : proj.project_stage === 'on_hold' ? 'bg-amber-500' : 'bg-blue-500'}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground truncate">{proj.name}</p>
-                            {proj.due_date && <p className="text-xs text-muted-foreground">{formatShortDate(proj.due_date)}</p>}
+                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                            <Briefcase className="h-5 w-5 text-muted-foreground" />
                           </div>
-                          <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground break-words">{proj.name}</p>
+                            {proj.clx_file_name && (
+                              <p className="text-xs text-blue-600 dark:text-blue-400 break-words">{proj.clx_file_name}</p>
+                            )}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -3325,21 +3326,6 @@ export default function PeopleExpandedView() {
       />
     )}
 
-    {/* Project Detail Dialog */}
-    {personId && (
-      <ProjectDetailDialog
-        project={editingProject}
-        open={projectDialogOpen}
-        onClose={() => { setProjectDialogOpen(false); setEditingProject(null); }}
-        leadId={personId}
-        leadName={person?.name ?? ''}
-        teamMembers={teamMembers}
-        currentUserName={teamMember?.name ?? null}
-        onSaved={() => {
-          queryClient.invalidateQueries({ queryKey: ['person-projects', personId] });
-        }}
-      />
-    )}
     </>
   );
 }

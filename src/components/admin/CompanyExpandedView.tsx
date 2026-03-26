@@ -775,7 +775,7 @@ export default function CompanyExpandedView() {
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Company Details */}
-        <ScrollArea className="w-[400px] shrink-0 border-r border-border bg-card">
+        <ScrollArea className="w-[400px] shrink-0 min-w-0 border-r border-border bg-card overflow-hidden">
           <div className="px-6 py-6 space-y-6">
 
             {/* ── Contact Card Header ── */}
@@ -893,7 +893,7 @@ export default function CompanyExpandedView() {
         </ScrollArea>
 
         {/* MIDDLE: Activity */}
-        <div className="flex-1 flex flex-col min-w-0 bg-muted/20">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-muted/20">
           {/* Stats Bar */}
           <div className="shrink-0 grid grid-cols-3 gap-3 px-5 py-3.5 border-b border-border bg-card">
             <StatBox
@@ -1150,7 +1150,7 @@ export default function CompanyExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <ScrollArea className="w-[260px] shrink-0 border-l border-border bg-card">
+        <ScrollArea className="w-[260px] shrink-0 min-w-0 border-l border-border bg-card overflow-hidden">
           <div className="py-4 px-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
 
