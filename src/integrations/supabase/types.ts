@@ -380,7 +380,6 @@ export type Database = {
       }
       bug_reports: {
         Row: {
-          assigned_to: string | null
           assigned_to_id: string | null
           browser_info: string | null
           created_at: string
@@ -397,7 +396,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assigned_to?: string | null
           assigned_to_id?: string | null
           browser_info?: string | null
           created_at?: string
@@ -414,7 +412,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assigned_to?: string | null
           assigned_to_id?: string | null
           browser_info?: string | null
           created_at?: string
@@ -614,10 +611,7 @@ export type Database = {
           communication_id: string | null
           created_at: string
           id: string
-          lead_email: string | null
           lead_id: string | null
-          lead_name: string
-          lead_phone: string | null
           rating_reasoning: string | null
           read_at: string | null
           transcript_preview: string | null
@@ -629,10 +623,7 @@ export type Database = {
           communication_id?: string | null
           created_at?: string
           id?: string
-          lead_email?: string | null
           lead_id?: string | null
-          lead_name: string
-          lead_phone?: string | null
           rating_reasoning?: string | null
           read_at?: string | null
           transcript_preview?: string | null
@@ -644,10 +635,7 @@ export type Database = {
           communication_id?: string | null
           created_at?: string
           id?: string
-          lead_email?: string | null
           lead_id?: string | null
-          lead_name?: string
-          lead_phone?: string | null
           rating_reasoning?: string | null
           read_at?: string | null
           transcript_preview?: string | null
@@ -876,7 +864,6 @@ export type Database = {
           days_in_stage: number
           deal_name: string | null
           id: string
-          owner_name: string | null
           requested_amount: number
           stage: string
           team_member_id: string | null
@@ -888,7 +875,6 @@ export type Database = {
           days_in_stage?: number
           deal_name?: string | null
           id?: string
-          owner_name?: string | null
           requested_amount?: number
           stage: string
           team_member_id?: string | null
@@ -900,7 +886,6 @@ export type Database = {
           days_in_stage?: number
           deal_name?: string | null
           id?: string
-          owner_name?: string | null
           requested_amount?: number
           stage?: string
           team_member_id?: string | null
@@ -1121,7 +1106,6 @@ export type Database = {
           id: string
           is_folder: boolean
           lead_id: string | null
-          lead_name: string | null
           mime_type: string | null
           modified_at: string | null
           name: string
@@ -1143,7 +1127,6 @@ export type Database = {
           id?: string
           is_folder?: boolean
           lead_id?: string | null
-          lead_name?: string | null
           mime_type?: string | null
           modified_at?: string | null
           name: string
@@ -1165,7 +1148,6 @@ export type Database = {
           id?: string
           is_folder?: boolean
           lead_id?: string | null
-          lead_name?: string | null
           mime_type?: string | null
           modified_at?: string | null
           name?: string
@@ -1248,7 +1230,6 @@ export type Database = {
           name: string
           subject: string
           team_member_id: string | null
-          team_member_name: string | null
           updated_at: string
         }
         Insert: {
@@ -1259,7 +1240,6 @@ export type Database = {
           name: string
           subject: string
           team_member_id?: string | null
-          team_member_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -1270,7 +1250,6 @@ export type Database = {
           name?: string
           subject?: string
           team_member_id?: string | null
-          team_member_name?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2315,147 +2294,6 @@ export type Database = {
           },
         ]
       }
-      lead_projects: {
-        Row: {
-          bank_relationships: string | null
-          clx_file_name: string | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          due_date: string | null
-          id: string
-          lead_id: string
-          name: string
-          owner: string | null
-          priority: string | null
-          project_stage: string | null
-          related_to: string | null
-          status: string | null
-          tags: string[] | null
-          updated_at: string
-          visibility: string | null
-          waiting_on: string | null
-        }
-        Insert: {
-          bank_relationships?: string | null
-          clx_file_name?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          lead_id: string
-          name: string
-          owner?: string | null
-          priority?: string | null
-          project_stage?: string | null
-          related_to?: string | null
-          status?: string | null
-          tags?: string[] | null
-          updated_at?: string
-          visibility?: string | null
-          waiting_on?: string | null
-        }
-        Update: {
-          bank_relationships?: string | null
-          clx_file_name?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          lead_id?: string
-          name?: string
-          owner?: string | null
-          priority?: string | null
-          project_stage?: string | null
-          related_to?: string | null
-          status?: string | null
-          tags?: string[] | null
-          updated_at?: string
-          visibility?: string | null
-          waiting_on?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_projects_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_projects_owner_fkey"
-            columns: ["owner"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_tasks: {
-        Row: {
-          activity_type: string | null
-          assigned_to: string | null
-          completed_at: string | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          due_date: string | null
-          id: string
-          lead_id: string
-          priority: string | null
-          status: string | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          activity_type?: string | null
-          assigned_to?: string | null
-          completed_at?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          lead_id: string
-          priority?: string | null
-          status?: string | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          activity_type?: string | null
-          assigned_to?: string | null
-          completed_at?: string | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          lead_id?: string
-          priority?: string | null
-          status?: string | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_tasks_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_tasks_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       leads: {
         Row: {
           about: string | null
@@ -3387,112 +3225,6 @@ export type Database = {
           },
         ]
       }
-      people: {
-        Row: {
-          assigned_to: string | null
-          bank_relationships: string | null
-          clx_file_name: string | null
-          company_name: string | null
-          contact_type: string | null
-          created_at: string
-          email: string | null
-          id: string
-          known_as: string | null
-          last_activity_at: string | null
-          linkedin: string | null
-          name: string
-          notes: string | null
-          phone: string | null
-          source: string | null
-          tags: string[] | null
-          title: string | null
-          updated_at: string
-        }
-        Insert: {
-          assigned_to?: string | null
-          bank_relationships?: string | null
-          clx_file_name?: string | null
-          company_name?: string | null
-          contact_type?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          known_as?: string | null
-          last_activity_at?: string | null
-          linkedin?: string | null
-          name: string
-          notes?: string | null
-          phone?: string | null
-          source?: string | null
-          tags?: string[] | null
-          title?: string | null
-          updated_at?: string
-        }
-        Update: {
-          assigned_to?: string | null
-          bank_relationships?: string | null
-          clx_file_name?: string | null
-          company_name?: string | null
-          contact_type?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          known_as?: string | null
-          last_activity_at?: string | null
-          linkedin?: string | null
-          name?: string
-          notes?: string | null
-          phone?: string | null
-          source?: string | null
-          tags?: string[] | null
-          title?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "people_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      people_activities: {
-        Row: {
-          activity_type: string
-          content: string | null
-          created_at: string
-          id: string
-          person_id: string
-          title: string | null
-        }
-        Insert: {
-          activity_type: string
-          content?: string | null
-          created_at?: string
-          id?: string
-          person_id: string
-          title?: string | null
-        }
-        Update: {
-          activity_type?: string
-          content?: string | null
-          created_at?: string
-          id?: string
-          person_id?: string
-          title?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "people_activities_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       people_addresses: {
         Row: {
           address_line_1: string | null
@@ -3533,15 +3265,7 @@ export type Database = {
           state?: string | null
           zip_code?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "people_addresses_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       people_emails: {
         Row: {
@@ -3568,15 +3292,7 @@ export type Database = {
           is_primary?: boolean | null
           person_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "people_emails_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       people_phones: {
         Row: {
@@ -3603,60 +3319,7 @@ export type Database = {
           phone_number?: string
           phone_type?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "people_phones_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      people_tasks: {
-        Row: {
-          assigned_to: string | null
-          created_at: string
-          due_date: string | null
-          id: string
-          person_id: string
-          status: string | null
-          title: string
-        }
-        Insert: {
-          assigned_to?: string | null
-          created_at?: string
-          due_date?: string | null
-          id?: string
-          person_id: string
-          status?: string | null
-          title: string
-        }
-        Update: {
-          assigned_to?: string | null
-          created_at?: string
-          due_date?: string | null
-          id?: string
-          person_id?: string
-          status?: string | null
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "people_tasks_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "people_tasks_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       pipeline_column_values: {
         Row: {
@@ -4429,8 +4092,9 @@ export type Database = {
       }
       tasks: {
         Row: {
-          assignee_name: string | null
+          completed_at: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           due_date: string | null
           estimated_hours: number | null
@@ -4448,8 +4112,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assignee_name?: string | null
+          completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
@@ -4467,8 +4132,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assignee_name?: string | null
+          completed_at?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
@@ -4512,7 +4178,6 @@ export type Database = {
           lead_id: string | null
           loan_amount: number
           notes: string | null
-          rep_name: string
           team_member_id: string | null
           updated_at: string
         }
@@ -4525,7 +4190,6 @@ export type Database = {
           lead_id?: string | null
           loan_amount?: number
           notes?: string | null
-          rep_name: string
           team_member_id?: string | null
           updated_at?: string
         }
@@ -4538,7 +4202,6 @@ export type Database = {
           lead_id?: string | null
           loan_amount?: number
           notes?: string | null
-          rep_name?: string
           team_member_id?: string | null
           updated_at?: string
         }
@@ -4609,7 +4272,6 @@ export type Database = {
           id: string
           target_value: number
           team_member_id: string | null
-          team_member_name: string
           updated_at: string | null
         }
         Insert: {
@@ -4619,7 +4281,6 @@ export type Database = {
           id?: string
           target_value?: number
           team_member_id?: string | null
-          team_member_name: string
           updated_at?: string | null
         }
         Update: {
@@ -4629,7 +4290,6 @@ export type Database = {
           id?: string
           target_value?: number
           team_member_id?: string | null
-          team_member_name?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -5019,4 +4679,3 @@ export const Constants = {
     },
   },
 } as const
-

@@ -298,9 +298,9 @@ export default function ProjectExpandedView() {
   // ── Board task grouping ──
 
   const boardColumns = useMemo(() => {
-    const todo = tasks.filter(t => !t.status || t.status === 'pending' || t.status === 'to_do');
-    const inProgress = tasks.filter(t => t.status === 'in_progress');
-    const done = tasks.filter(t => t.status === 'completed' || t.status === 'done');
+    const todo = tasks.filter(t => !t.status || t.status === 'todo' || t.status === 'pending' || t.status === 'to_do');
+    const inProgress = tasks.filter(t => t.status === 'in_progress' || t.status === 'working');
+    const done = tasks.filter(t => t.status === 'done' || t.status === 'completed');
     return { todo, inProgress, done };
   }, [tasks]);
 
