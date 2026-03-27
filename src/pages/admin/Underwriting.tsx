@@ -1404,9 +1404,9 @@ const Underwriting = () => {
                         const isBulkSelected = selectedLeadIds.has(lead.id);
 
                         const stickyBg = isDetailSelected
-                          ? 'bg-blue-50 dark:bg-blue-950 group-hover:bg-blue-100 dark:group-hover:bg-blue-900'
+                          ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
                           : isBulkSelected
-                            ? 'bg-blue-50 dark:bg-blue-950/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40'
+                            ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
                             : 'bg-white dark:bg-card group-hover:bg-gray-50 dark:group-hover:bg-muted';
 
                         return (
@@ -1415,9 +1415,9 @@ const Underwriting = () => {
                             onClick={() => handleRowClick(lead)}
                             className={`cursor-pointer transition-colors duration-100 group ${
                               isDetailSelected
-                                ? 'bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/40'
+                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
                                 : isBulkSelected
-                                  ? 'bg-blue-50/60 dark:bg-blue-950/20 hover:bg-blue-50/80'
+                                  ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
                                   : 'bg-white dark:bg-card hover:bg-gray-50 dark:hover:bg-muted/30'
                             }`}
                           >
