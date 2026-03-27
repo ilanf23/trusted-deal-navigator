@@ -7,6 +7,7 @@ import { useAllPipelineLeads, DerivedCompany } from '@/hooks/useAllPipelineLeads
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
@@ -1099,7 +1100,7 @@ const Companies = () => {
                         const isSelected = selectedCompany?.id === company.id;
 
                         const stickyBg = isSelected
-                          ? 'bg-[#e8f0fe] dark:bg-blue-950 group-hover:bg-[#d2e3fc] dark:group-hover:bg-blue-900'
+                          ? 'bg-[#eee6f6] dark:bg-purple-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-950/40'
                           : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
 
                         return (
@@ -1108,21 +1109,20 @@ const Companies = () => {
                             onClick={() => handleRowClick(company)}
                             className={`cursor-pointer transition-colors duration-100 group ${
                               isSelected
-                                ? 'bg-[#e8f0fe] dark:bg-blue-950/30 hover:bg-[#d2e3fc] dark:hover:bg-blue-950/40'
+                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
                                 : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
                             {/* Checkbox */}
                             <td className={`pl-2 pr-4 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ border: '1px solid #c8bdd6' }}>
-                              <div className={`h-5 w-5 rounded border-2 transition-colors ${
-                                isSelected ? 'border-blue-500 bg-blue-500' : 'border-border bg-card group-hover:border-muted-foreground/50'
-                              } flex items-center justify-center`}>
-                                {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                              </div>
+                              <Checkbox
+                                checked={isSelected}
+                                className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                              />
                             </td>
 
                             {/* Company (sticky) */}
-                            <td className={`px-4 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6' }}>
+                            <td className={`px-4 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2.5">
                                 <div className={`h-7 w-7 rounded-md ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
                                   {initial}
