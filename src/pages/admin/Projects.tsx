@@ -213,26 +213,26 @@ const Projects = () => {
               {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm">
-                <tr className="border-b border-border">
-                  <th className="w-12 px-4 py-3">
+            <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#eee6f6' }}>
+                  <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30" style={{ border: '1px solid #c8bdd6', backgroundColor: '#eee6f6' }}>
                     <Checkbox
                       checked={allSelected}
                       onCheckedChange={toggleAll}
-                      className="h-4 w-4"
+                      className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                     />
                   </th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">
+                  <th className="text-left px-4 py-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] sticky top-0 z-30" style={{ left: 48, border: '1px solid #c8bdd6', backgroundColor: '#eee6f6' }}>
                     <SortHeader field="name" label="Name" />
                   </th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">
+                  <th className="text-left px-4 py-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] sticky top-0 z-10" style={{ border: '1px solid #c8bdd6', backgroundColor: '#eee6f6' }}>
                     <SortHeader field="owner" label="Owned By" />
                   </th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">
+                  <th className="text-left px-4 py-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] sticky top-0 z-10" style={{ border: '1px solid #c8bdd6', backgroundColor: '#eee6f6' }}>
                     <SortHeader field="related" label="Related To" />
                   </th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">
+                  <th className="text-left px-4 py-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] sticky top-0 z-10" style={{ border: '1px solid #c8bdd6', backgroundColor: '#eee6f6' }}>
                     <SortHeader field="updated_at" label="Modified" />
                   </th>
                 </tr>
@@ -243,23 +243,31 @@ const Projects = () => {
                   const relatedTo = getRelatedTo(p);
                   const isSelected = selectedIds.has(p.id);
 
+                  const stickyBg = isSelected
+                    ? 'bg-[#eee6f6] dark:bg-purple-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-950/40'
+                    : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+
                   return (
                     <tr
                       key={p.id}
-                      className={`border-b border-border hover:bg-muted/40 transition-colors cursor-pointer ${isSelected ? 'bg-muted/30' : ''}`}
+                      className={`cursor-pointer transition-colors duration-100 group ${
+                        isSelected
+                          ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                          : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                      }`}
                       onClick={() => navigate(`/admin/pipeline/projects/expanded-view/${p.id}`)}
                     >
                       {/* Checkbox */}
-                      <td className="w-12 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className={`pl-2 pr-4 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => toggleOne(p.id)}
-                          className="h-4 w-4"
+                          className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                         />
                       </td>
 
-                      {/* Name */}
-                      <td className="px-4 py-3">
+                      {/* Name (sticky) */}
+                      <td className={`px-4 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ left: 48, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0">
                             <FolderClosed className="h-4 w-4 text-muted-foreground" />
@@ -271,14 +279,14 @@ const Projects = () => {
                       </td>
 
                       {/* Owned By */}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}>
                         <span className="text-[13px] text-foreground">
                           {ownerName ?? '—'}
                         </span>
                       </td>
 
                       {/* Related To */}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}>
                         {relatedTo ? (
                           <span className="text-[13px] text-blue-600 dark:text-blue-400 truncate block max-w-[200px]">
                             {relatedTo}
@@ -289,7 +297,7 @@ const Projects = () => {
                       </td>
 
                       {/* Modified */}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1.5" style={{ border: '1px solid #c8bdd6' }}>
                         <span className="text-[13px] text-muted-foreground">
                           {format(parseISO(p.updated_at), 'M/d/yyyy')}
                         </span>
@@ -299,7 +307,7 @@ const Projects = () => {
                 })}
                 {filteredProjects.length === 0 && !isLoading && (
                   <tr>
-                    <td colSpan={5} className="text-center py-16 text-muted-foreground text-sm">
+                    <td colSpan={5} className="text-center py-16 text-muted-foreground text-sm" style={{ border: '1px solid #c8bdd6' }}>
                       No projects found
                     </td>
                   </tr>

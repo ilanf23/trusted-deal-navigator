@@ -92,16 +92,16 @@ These are the exact styling patterns from People.tsx that all tables must match:
 **Files:**
 - Modify: `src/pages/admin/Projects.tsx`
 
-- [ ] Replace `bg-muted/60 backdrop-blur-sm` header with `backgroundColor: '#eee6f6'`
-- [ ] Add `border: '1px solid #c8bdd6'` to all header and data cells
-- [ ] Set table to `tableLayout: 'fixed'`, `borderCollapse: 'collapse'`
-- [ ] Replace `bg-muted/30` selected state with `bg-[#eee6f6] dark:bg-purple-950/30` and left border accent
-- [ ] Replace `hover:bg-muted/40` with `hover:bg-[#f8f9fb] dark:hover:bg-muted/30`
-- [ ] Make first column (Name) sticky with `left-0 z-[5]` and box shadow
-- [ ] Update checkbox to People's purple-checked style
-- [ ] Match text sizing to 13px and header to uppercase/tracking-wider
-- [ ] Add `transition-colors duration-100 group` to rows
-- [ ] Run `npm run build` to verify
+- [x] Replace `bg-muted/60 backdrop-blur-sm` header with `backgroundColor: '#eee6f6'`
+- [x] Add `border: '1px solid #c8bdd6'` to all header and data cells
+- [x] Set table to `tableLayout: 'fixed'`, `borderCollapse: 'collapse'`
+- [x] Replace `bg-muted/30` selected state with `bg-[#eee6f6] dark:bg-purple-950/30` and left border accent
+- [x] Replace `hover:bg-muted/40` with `hover:bg-[#f8f9fb] dark:hover:bg-muted/30`
+- [x] Make first column (Name) sticky with `left-0 z-[5]` and box shadow
+- [x] Update checkbox to People's purple-checked style
+- [x] Match text sizing to 13px and header to uppercase/tracking-wider
+- [x] Add `transition-colors duration-100 group` to rows
+- [x] Run `npm run build` to verify
 
 ### Task 6: Restyle EmployeeLeads.tsx table to match People
 
