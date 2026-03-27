@@ -2781,8 +2781,8 @@ export default function PeopleExpandedView() {
         <ScrollArea className="w-full md:w-[280px] lg:w-[310px] xl:w-[374px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-hidden">
           <div>
             {/* Financial Summary */}
-            <div className="px-3 md:px-3.5 xl:px-5 py-5 space-y-3">
-              <div className="flex items-start gap-6">
+            <div className="px-4 md:px-5 xl:px-6 py-5 space-y-3">
+              <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Won</p>
                   <p className="text-xl font-bold text-foreground mt-1">${financialStats.totalWon.toLocaleString()}</p>

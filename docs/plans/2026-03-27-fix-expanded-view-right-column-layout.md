@@ -56,9 +56,9 @@ Fix the right column in all expanded views so content is never cut off on any sc
 **Files:**
 - Modify: `src/components/admin/PeopleExpandedView.tsx`
 
-- [ ] Change the financial stats container (line 2784) padding from `px-3 md:px-3.5 xl:px-5 py-5` to `px-4 md:px-5 xl:px-6 py-5` for more breathing room
-- [ ] Change the flex row for Total Won / Win Rate (line 2785) from `flex items-start gap-6` to `flex items-start justify-between` so they spread across the full width instead of being crammed together with a fixed gap
-- [ ] Run lint: `npm run lint`
+- [x] Change the financial stats container (line 2784) padding from `px-3 md:px-3.5 xl:px-5 py-5` to `px-4 md:px-5 xl:px-6 py-5` for more breathing room
+- [x] Change the flex row for Total Won / Win Rate (line 2785) from `flex items-start gap-6` to `flex items-start justify-between` so they spread across the full width instead of being crammed together with a fixed gap
+- [x] Run lint: `npm run lint`
 
 ### Task 5: Fix ProjectExpandedView Total Won / Win Rate spacing
 
