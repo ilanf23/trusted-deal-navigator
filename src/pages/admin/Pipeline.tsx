@@ -1417,9 +1417,9 @@ const Pipeline = () => {
                         const isSelected = selectedLeadIds.has(lead.id);
 
                         const stickyBg = isDetailOpen
-                          ? 'bg-[#e8f0fe] dark:bg-blue-950 group-hover:bg-[#d2e3fc] dark:group-hover:bg-blue-900'
+                          ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
                           : isSelected
-                            ? 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted'
+                            ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
                             : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
 
                         return (
@@ -1428,9 +1428,9 @@ const Pipeline = () => {
                             onClick={() => handleRowClick(lead)}
                             className={`cursor-pointer transition-colors duration-100 group ${
                               isDetailOpen
-                                ? 'bg-[#e8f0fe] dark:bg-blue-950/30 hover:bg-[#d2e3fc] dark:hover:bg-blue-950/40'
+                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
                                 : isSelected
-                                  ? 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                                  ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
                                   : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
@@ -1633,7 +1633,7 @@ const Pipeline = () => {
                             <td className={`px-2 ${rowPad} w-10`} style={{ border: '1px solid #c8bdd6' }}>
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isDetailOpen
-                                  ? 'text-blue-500'
+                                  ? 'text-[#3b2778]'
                                   : 'text-transparent group-hover:text-muted-foreground'
                               }`} />
                             </td>

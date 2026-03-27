@@ -63,11 +63,11 @@ These are the exact styling patterns from People.tsx that all tables must match:
 **Files:**
 - Modify: `src/pages/admin/Pipeline.tsx`
 
-- [ ] Change detail-open row bg from `#e8f0fe` / `blue-950/30` to `#eee6f6` / `purple-950/30`
-- [ ] Change detail-open hover from `#d2e3fc` / `blue-950/40` to `#e0d4f0` / `purple-950/40`
-- [ ] Update sticky column bg states for selected rows to purple scheme
-- [ ] Add `border-l-[3px] border-l-[#3b2778]` to selected/detail-open row
-- [ ] Run `npm run build` to verify
+- [x] Change detail-open row bg from `#e8f0fe` / `blue-950/30` to `#eee6f6` / `purple-950/30`
+- [x] Change detail-open hover from `#d2e3fc` / `blue-950/40` to `#e0d4f0` / `purple-950/40`
+- [x] Update sticky column bg states for selected rows to purple scheme
+- [x] Add `border-l-[3px] border-l-[#3b2778]` to selected/detail-open row
+- [x] Run `npm run build` to verify
 
 ### Task 3: Fix Underwriting.tsx selection colors (blue -> purple)
 
