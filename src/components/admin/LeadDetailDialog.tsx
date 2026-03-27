@@ -1167,7 +1167,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   const daysInStage = differenceInDays(new Date(), new Date(lead.updated_at));
   const lastEmailDate = communications.find(c => c.communication_type === 'email')?.created_at;
   const lastInteractionDate = communications.length > 0 ? communications[0].created_at : null;
-  const nextDueTask = tasks.find(t => t.status !== 'completed' && t.due_date);
+  const nextDueTask = tasks.find(t => t.status !== 'completed' && t.status !== 'done' && t.due_date);
 
   // Combine activities for timeline (including emails)
   const timelineItems = [
@@ -2829,7 +2829,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                     <GripVertical className="w-4 h-4 text-muted-foreground/50" />
                     <ListTodo className="w-4 h-4 text-muted-foreground" />
                     <span className="font-medium text-sm text-foreground">Tasks</span>
-                    <Badge variant="secondary" className="ml-auto text-xs">{tasks.filter(t => t.status !== 'completed').length}</Badge>
+                    <Badge variant="secondary" className="ml-auto text-xs">{tasks.filter(t => t.status !== 'completed' && t.status !== 'done').length}</Badge>
                     <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", !tasksOpen && "-rotate-90")} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-2 pt-3 pl-6">
@@ -2838,13 +2838,13 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
                     ) : (
                       tasks.slice(0, 5).map(task => (
                         <div key={task.id} className="flex items-start gap-2 py-1">
-                          {task.status === 'completed' ? (
+                          {task.status === 'completed' || task.status === 'done' ? (
                             <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5" />
                           ) : (
                             <Circle className="w-4 h-4 text-muted-foreground mt-0.5" />
                           )}
                           <div className="flex-1">
-                            <p className={cn("text-sm", task.status === 'completed' && "line-through text-muted-foreground")}>{task.title}</p>
+                            <p className={cn("text-sm", (task.status === 'completed' || task.status === 'done') && "line-through text-muted-foreground")}>{task.title}</p>
                             {task.due_date && (
                               <p className="text-xs text-muted-foreground">Due {format(new Date(task.due_date), 'MMM d')}</p>
                             )}

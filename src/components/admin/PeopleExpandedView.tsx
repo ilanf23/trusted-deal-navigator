@@ -1883,9 +1883,9 @@ export default function PeopleExpandedView() {
 
   return (
     <>
-    <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
+    <div data-full-bleed className="flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
       {/* ── 3-Column Body ── */}
-      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Details */}
         <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] md:shrink-0 md:min-w-[240px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
