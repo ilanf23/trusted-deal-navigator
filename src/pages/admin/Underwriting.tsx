@@ -1274,7 +1274,7 @@ const Underwriting = () => {
                     />
                   </div>
                 )}
-                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#eee6f6' }}>
                       <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
@@ -1326,7 +1326,7 @@ const Underwriting = () => {
                       <ColHeader colKey="tags" className="sticky top-0 z-10" style={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
                         <Tag className="h-4 w-4" /> Tags
                       </ColHeader>
-                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10 bg-white dark:bg-background" style={{ border: '1px solid #c8bdd6' }} />
+                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
                     </tr>
                   </thead>
                   <tbody>

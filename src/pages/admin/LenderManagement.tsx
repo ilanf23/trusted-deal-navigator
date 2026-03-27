@@ -1136,7 +1136,7 @@ const LenderManagement = () => {
                     />
                   </div>
                 )}
-                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#eee6f6' }}>
                       <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
