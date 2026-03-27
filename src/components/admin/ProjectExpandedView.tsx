@@ -896,7 +896,7 @@ export default function ProjectExpandedView() {
           {/* RIGHT: Related */}
           <div className="w-full md:w-[240px] lg:w-[310px] xl:w-[374px] shrink-0 min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
             <ScrollArea className="md:flex-1">
-              <div className="py-4 px-1 overflow-hidden">
+              <div className="py-4 px-3 overflow-hidden">
                 {/* Files */}
                 <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0} onAdd={() => {}}>
                   <div className="py-1">

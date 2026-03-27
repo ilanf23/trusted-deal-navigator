@@ -65,9 +65,9 @@ Fix the right column in all expanded views so content is never cut off on any sc
 **Files:**
 - Modify: `src/components/admin/ProjectExpandedView.tsx`
 
-- [ ] Change the right column inner container (line 899) padding from `py-4 px-1 overflow-hidden` to `py-4 px-3 overflow-hidden` for consistent padding in the Related sections
-- [ ] Verify the financial summary section (line 957) already uses `px-4 py-4` and `flex items-center justify-between` - this is already well-spaced; ensure it stays consistent
-- [ ] Run lint: `npm run lint`
+- [x] Change the right column inner container (line 899) padding from `py-4 px-1 overflow-hidden` to `py-4 px-3 overflow-hidden` for consistent padding in the Related sections
+- [x] Verify the financial summary section (line 957) already uses `px-4 py-4` and `flex items-center justify-between` - this is already well-spaced; ensure it stays consistent
+- [x] Run lint: `npm run lint`
 
 ### Task 6: Verify build passes
 
