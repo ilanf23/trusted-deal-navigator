@@ -108,14 +108,14 @@ These are the exact styling patterns from People.tsx that all tables must match:
 **Files:**
 - Modify: `src/pages/admin/EmployeeLeads.tsx`
 
-- [ ] Replace shadcn `<Table>` / `<TableHeader>` / `<TableRow>` / `<TableHead>` / `<TableCell>` / `<TableBody>` with native HTML `<table>`, `<thead>`, `<tr>`, `<th>`, `<td>`, `<tbody>`
-- [ ] Add People's purple header bg (`#eee6f6`), cell borders (`#c8bdd6`), and `borderCollapse: 'collapse'`
-- [ ] Apply People's row hover/selection/sticky patterns
-- [ ] Make first column (Lead name) sticky with shadow
-- [ ] Update checkbox to People's purple-checked style
-- [ ] Match all text sizing and spacing to People (13px body, 13px semibold uppercase headers)
-- [ ] Replace `bg-accent/5 border-l-2 border-l-foreground` selected state with People's purple styling
-- [ ] Run `npm run build` to verify
+- [x] Replace shadcn `<Table>` / `<TableHeader>` / `<TableRow>` / `<TableHead>` / `<TableCell>` / `<TableBody>` with native HTML `<table>`, `<thead>`, `<tr>`, `<th>`, `<td>`, `<tbody>`
+- [x] Add People's purple header bg (`#eee6f6`), cell borders (`#c8bdd6`), and `borderCollapse: 'collapse'`
+- [x] Apply People's row hover/selection/sticky patterns
+- [x] Make first column (Lead name) sticky with shadow
+- [x] Update checkbox to People's purple-checked style
+- [x] Match all text sizing and spacing to People (13px body, 13px semibold uppercase headers)
+- [x] Replace `bg-accent/5 border-l-2 border-l-foreground` selected state with People's purple styling
+- [x] Run `npm run build` to verify
 
 ### Task 7: Restyle Leads.tsx table to match People
 

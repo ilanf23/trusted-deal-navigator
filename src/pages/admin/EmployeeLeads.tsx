@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Plus, Phone, Mail, Building2, Calendar, Edit, Trash2, User, Loader2, ChevronRight, ChevronDown, X, Clock, Sparkles, FileText, PhoneCall, PhoneIncoming, PhoneOutgoing, Play, MessageSquare, Kanban } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,7 @@ import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
 import EvanLayout from '@/components/evan/EvanLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
+import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 
 type Communication = Database['public']['Tables']['communications']['Row'];
 
@@ -56,6 +57,8 @@ const statusConfig: Record<LeadStatus, { label: string; color: string; bg: strin
   uw_paused: { label: 'UW Paused', color: 'text-gray-600', bg: 'bg-gray-50' },
 };
 
+const DEFAULT_EL_COL_WIDTHS: Record<string, number> = { lead: 180, contact: 130, touchpoint: 140, status: 100, created: 90 };
+
 const EmployeeLeads = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -77,6 +80,22 @@ const EmployeeLeads = () => {
     status: 'discovery' as LeadStatus,
     notes: '',
   });
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('employee-leads-column-widths');
+      if (saved) return { ...DEFAULT_EL_COL_WIDTHS, ...JSON.parse(saved) };
+    } catch { /* ignore corrupt localStorage */ }
+    return DEFAULT_EL_COL_WIDTHS;
+  });
+  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
+    setColumnWidths(prev => {
+      const next = { ...prev, [columnId]: newWidth };
+      localStorage.setItem('employee-leads-column-widths', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const { setPageTitle } = useAdminTopBar();
   useEffect(() => {
@@ -350,6 +369,43 @@ const EmployeeLeads = () => {
     return acc;
   }, {} as Record<LeadStatus, number>);
 
+  const toggleLeadSelection = (id: string) => {
+    setSelectedLeadIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const isAllSelected = filteredLeads.length > 0 && filteredLeads.every(l => selectedLeadIds.has(l.id));
+
+  const ColHeader = ({ colKey, children, className: extraClassName, style: extraStyle }: {
+    colKey?: string;
+    children: React.ReactNode;
+    className?: string;
+    style?: React.CSSProperties;
+  }) => {
+    const widthKey = colKey ?? 'lead';
+    const width = columnWidths[widthKey] ?? 120;
+    return (
+      <th
+        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors hover:z-20 ${extraClassName ?? ''}`}
+        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
+      >
+        <ResizableColumnHeader
+          columnId={widthKey}
+          currentWidth={`${width}px`}
+          onResize={handleColumnResize}
+        >
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
+            {children}
+          </span>
+        </ResizableColumnHeader>
+      </th>
+    );
+  };
+
   return (
     <EvanLayout>
       <div className="flex flex-col h-[calc(100vh-200px)]">
@@ -552,19 +608,39 @@ const EmployeeLeads = () => {
                 <p className="text-xs text-muted-foreground">Try adjusting your filters</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent border-border/50">
-                    <TableHead className="w-[180px]">Lead</TableHead>
-                    <TableHead className="w-[130px]">Contact</TableHead>
-                    <TableHead className="w-[140px]">Last Touchpoint</TableHead>
-                    <TableHead className="w-[80px]">Status</TableHead>
-                    <TableHead className="w-[90px]">Created</TableHead>
-                    <TableHead className="w-[40px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLeads.map((lead, index) => {
+              <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                      <div className="shrink-0" title="Select all" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedLeadIds(new Set(filteredLeads.map(l => l.id)));
+                            else setSelectedLeadIds(new Set());
+                          }}
+                          className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                        />
+                      </div>
+                      <User className="h-4 w-4" /> Lead
+                    </ColHeader>
+                    <ColHeader colKey="contact" className="sticky top-0 z-10">
+                      <Phone className="h-4 w-4" /> Contact
+                    </ColHeader>
+                    <ColHeader colKey="touchpoint" className="sticky top-0 z-10">
+                      <MessageSquare className="h-4 w-4" /> Touchpoint
+                    </ColHeader>
+                    <ColHeader colKey="status" className="sticky top-0 z-10">
+                      <Sparkles className="h-4 w-4" /> Status
+                    </ColHeader>
+                    <ColHeader colKey="created" className="sticky top-0 z-10">
+                      <Calendar className="h-4 w-4" /> Created
+                    </ColHeader>
+                    <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLeads.map((lead) => {
                     const touchpoint = touchpoints[lead.id];
                     const getTouchpointIcon = () => {
                       if (!touchpoint) return <MessageSquare className="w-3 h-3 text-muted-foreground/50" />;
@@ -585,24 +661,40 @@ const EmployeeLeads = () => {
                       };
                       return typeLabels[touchpoint.type] || touchpoint.type;
                     };
-                    
+
+                    const isDetailSelected = detailDialogLead?.id === lead.id;
+                    const isBulkSelected = selectedLeadIds.has(lead.id);
+
+                    const stickyBg = isDetailSelected
+                      ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
+                      : isBulkSelected
+                        ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
+                        : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+
                     return (
-                      <TableRow 
-                        key={lead.id} 
-                        className={`
-                          cursor-pointer transition-colors border-border/30
-                          ${previewLead?.id === lead.id 
-                            ? 'bg-accent/5 border-l-2 border-l-foreground' 
-                            : 'hover:bg-muted/40'
-                          }
-                        `}
-                        style={{ animationDelay: `${index * 30}ms` }}
+                      <tr
+                        key={lead.id}
                         onClick={() => setDetailDialogLead(lead)}
+                        className={`cursor-pointer transition-colors duration-100 group ${
+                          isDetailSelected
+                            ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                            : isBulkSelected
+                              ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
+                              : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                        }`}
                       >
-                        <TableCell>
+                        {/* Lead (sticky) */}
+                        <td className={`pl-4 pr-6 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0">
-                              <span className="text-sm font-semibold text-foreground/70">
+                            <div className="shrink-0" title="Select" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={isBulkSelected}
+                                onCheckedChange={() => toggleLeadSelection(lead.id)}
+                                className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                              />
+                            </div>
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0">
+                              <span className="text-[13px] font-semibold text-foreground/70">
                                 {lead.name.charAt(0).toUpperCase()}
                               </span>
                             </div>
@@ -616,40 +708,43 @@ const EmployeeLeads = () => {
                               )}
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        {/* Contact */}
+                        <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
                           <div className="space-y-0.5">
                             {lead.phone && (
-                              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                              <p className="text-[13px] text-muted-foreground flex items-center gap-1.5">
                                 <Phone className="w-3 h-3" />
                                 {lead.phone}
                               </p>
                             )}
                             {lead.email && (
-                              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate max-w-[120px]">
+                              <p className="text-[13px] text-muted-foreground flex items-center gap-1.5 truncate max-w-[120px]">
                                 <Mail className="w-3 h-3 flex-shrink-0" />
                                 <span className="truncate">{lead.email}</span>
                               </p>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        {/* Last Touchpoint */}
+                        <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
                           <div className="flex items-center gap-2">
                             {getTouchpointIcon()}
                             <div className="min-w-0">
-                              <p className="text-[11px] font-medium text-foreground truncate">
+                              <p className="text-[13px] font-medium text-foreground truncate">
                                 {getTouchpointLabel()}
                               </p>
                               <p className="text-[10px] text-muted-foreground">
-                                {touchpoint 
+                                {touchpoint
                                   ? formatDistanceToNow(new Date(touchpoint.date), { addSuffix: true })
                                   : '—'
                                 }
                               </p>
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        {/* Status */}
+                        <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
                           <div className="flex items-center gap-1.5">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusConfig[lead.status].bg} ${statusConfig[lead.status].color}`}>
                               {statusConfig[lead.status].label}
@@ -658,20 +753,26 @@ const EmployeeLeads = () => {
                               <FileText className="w-3.5 h-3.5 text-emerald-500" />
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-[11px] text-muted-foreground">
+                        </td>
+                        {/* Created */}
+                        <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
+                          <p className="text-[13px] text-muted-foreground">
                             {format(new Date(lead.created_at), 'MMM d')}
                           </p>
-                        </TableCell>
-                        <TableCell>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                        {/* Detail arrow */}
+                        <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }}>
+                          <ChevronRight className={`w-4 h-4 transition-all duration-150 ${
+                            isDetailSelected
+                              ? 'text-[#3b2778]'
+                              : 'text-transparent group-hover:text-muted-foreground'
+                          }`} />
+                        </td>
+                      </tr>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             )}
           </ScrollArea>
         </Card>
