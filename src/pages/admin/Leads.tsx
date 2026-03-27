@@ -128,7 +128,7 @@ const AdminLeads = () => {
   useEffect(() => {
     setPageTitle('Leads');
     return () => { setPageTitle(null); };
-  }, []);
+  }, [setPageTitle]);
 
   const fetchTeamMembers = async () => {
     try {

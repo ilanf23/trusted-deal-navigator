@@ -101,7 +101,7 @@ const EmployeeLeads = () => {
   useEffect(() => {
     setPageTitle('Leads');
     return () => { setPageTitle(null); };
-  }, []);
+  }, [setPageTitle]);
 
   // Fetch communications for selected lead
   const { data: communications = [] } = useQuery({
