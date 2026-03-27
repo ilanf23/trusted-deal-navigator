@@ -2232,7 +2232,7 @@ export default function UnderwritingExpandedView() {
             onPersonUpdate={(updated) => setSelectedPerson(updated)}
           />
         ) : (
-        <div className="w-full md:w-[280px] xl:w-[320px] shrink-0 min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
+        <div className="w-full md:w-[280px] xl:w-[320px] md:shrink-0 md:min-w-[220px] min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-border">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Related</span>
           </div>

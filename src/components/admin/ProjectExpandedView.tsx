@@ -894,7 +894,7 @@ export default function ProjectExpandedView() {
           </div>
 
           {/* RIGHT: Related */}
-          <div className="w-full md:w-[240px] lg:w-[310px] xl:w-[374px] shrink-0 min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
+          <div className="w-full md:w-[240px] lg:w-[310px] xl:w-[374px] md:shrink-0 md:min-w-[220px] min-w-0 md:border-l border-t md:border-t-0 border-border bg-card overflow-hidden flex flex-col">
             <ScrollArea className="md:flex-1">
               <div className="py-4 px-3 overflow-hidden">
                 {/* Files */}
