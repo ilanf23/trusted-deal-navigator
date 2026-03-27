@@ -122,10 +122,10 @@ These are the exact styling patterns from People.tsx that all tables must match:
 **Files:**
 - Modify: `src/pages/admin/Leads.tsx`
 
-- [ ] Apply same structural changes as EmployeeLeads: replace shadcn Table with native HTML table
-- [ ] Add People's purple header, cell borders, row states, sticky column, checkbox styling
-- [ ] Match text sizing and spacing
-- [ ] Run `npm run build` to verify
+- [x] Apply same structural changes as EmployeeLeads: replace shadcn Table with native HTML table
+- [x] Add People's purple header, cell borders, row states, sticky column, checkbox styling
+- [x] Match text sizing and spacing
+- [x] Run `npm run build` to verify
 
 ### Task 8: Final verification
 

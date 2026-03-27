@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+
+const ColHeader = ResizableColumnHeader;
 import { Plus, Loader2, FileText, Phone, Mail, Building2, X, ChevronRight, User, Calendar, Clock, Sparkles, Users, PhoneIncoming, PhoneOutgoing, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -470,114 +472,142 @@ const AdminLeads = () => {
                   <p className="text-xs text-muted-foreground">Try adjusting your filters</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent border-border/50">
-                      <TableHead className="w-[180px]">Lead</TableHead>
-                      <TableHead className="w-[130px]">Contact</TableHead>
-                      <TableHead className="w-[140px]">Last Touchpoint</TableHead>
-                      <TableHead className="w-[90px]">Owner</TableHead>
-                      <TableHead className="w-[80px]">Status</TableHead>
-                      <TableHead className="w-[90px]">Created</TableHead>
-                      <TableHead className="w-[40px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLeads.map((lead, index) => (
-                      <TableRow 
-                        key={lead.id} 
-                        className={`
-                          cursor-pointer transition-colors border-border/30
-                          ${previewLead?.id === lead.id 
-                            ? 'bg-accent/5 border-l-2 border-l-foreground' 
-                            : 'hover:bg-muted/40'
-                          }
-                        `}
-                        style={{ animationDelay: `${index * 30}ms` }}
-                        onClick={() => setPreviewLead(lead)}
-                        onDoubleClick={() => {
-                          setSelectedLead(lead);
-                          setIsDetailOpen(true);
-                        }}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0">
-                              <span className="text-sm font-semibold text-foreground/70">
-                                {lead.name.charAt(0).toUpperCase()}
-                              </span>
+                <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)', width: 180 }}>
+                        <User className="h-4 w-4" /> Lead
+                      </ColHeader>
+                      <ColHeader colKey="contact" className="sticky top-0 z-10" style={{ width: 130 }}>
+                        <Phone className="h-4 w-4" /> Contact
+                      </ColHeader>
+                      <ColHeader colKey="touchpoint" className="sticky top-0 z-10" style={{ width: 140 }}>
+                        <MessageSquare className="h-4 w-4" /> Touchpoint
+                      </ColHeader>
+                      <ColHeader colKey="owner" className="sticky top-0 z-10" style={{ width: 90 }}>
+                        <Users className="h-4 w-4" /> Owner
+                      </ColHeader>
+                      <ColHeader colKey="status" className="sticky top-0 z-10" style={{ width: 80 }}>
+                        <Sparkles className="h-4 w-4" /> Status
+                      </ColHeader>
+                      <ColHeader colKey="created" className="sticky top-0 z-10" style={{ width: 90 }}>
+                        <Calendar className="h-4 w-4" /> Created
+                      </ColHeader>
+                      <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLeads.map((lead) => {
+                      const isDetailSelected = previewLead?.id === lead.id;
+
+                      const stickyBg = isDetailSelected
+                        ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
+                        : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+
+                      return (
+                        <tr
+                          key={lead.id}
+                          onClick={() => setPreviewLead(lead)}
+                          onDoubleClick={() => {
+                            setSelectedLead(lead);
+                            setIsDetailOpen(true);
+                          }}
+                          className={`cursor-pointer transition-colors duration-100 group ${
+                            isDetailSelected
+                              ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
+                              : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                          }`}
+                        >
+                          {/* Lead (sticky) */}
+                          <td className={`pl-4 pr-6 py-1.5 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0">
+                                <span className="text-[13px] font-semibold text-foreground/70">
+                                  {lead.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-medium text-foreground truncate">{lead.name}</p>
+                                {lead.company_name && (
+                                  <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                                    <Building2 className="w-3 h-3 flex-shrink-0" />
+                                    {lead.company_name}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-[13px] font-medium text-foreground truncate">{lead.name}</p>
-                              {lead.company_name && (
-                                <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
-                                  <Building2 className="w-3 h-3 flex-shrink-0" />
-                                  {lead.company_name}
+                          </td>
+                          {/* Contact */}
+                          <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
+                            <div className="space-y-0.5">
+                              {lead.phone && (
+                                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                  <Phone className="w-3 h-3" />
+                                  {lead.phone}
+                                </p>
+                              )}
+                              {lead.email && (
+                                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
+                                  <Mail className="w-3 h-3" />
+                                  {lead.email}
                                 </p>
                               )}
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-0.5">
-                            {lead.phone && (
-                              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                                <Phone className="w-3 h-3" />
-                                {lead.phone}
-                              </p>
-                            )}
-                            {lead.email && (
-                              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
-                                <Mail className="w-3 h-3" />
-                                {lead.email}
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {touchpoints[lead.id] ? (
-                            <div className="flex items-center gap-2">
-                              {getTouchpointIcon(touchpoints[lead.id].type, touchpoints[lead.id].direction)}
-                              <div className="min-w-0">
-                                <p className="text-[11px] font-medium text-foreground truncate">
-                                  {getTouchpointLabel(touchpoints[lead.id].type, touchpoints[lead.id].direction)}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {formatDistanceToNow(new Date(touchpoints[lead.id].date), { addSuffix: true })}
-                                </p>
+                          </td>
+                          {/* Last Touchpoint */}
+                          <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
+                            {touchpoints[lead.id] ? (
+                              <div className="flex items-center gap-2">
+                                {getTouchpointIcon(touchpoints[lead.id].type, touchpoints[lead.id].direction)}
+                                <div className="min-w-0">
+                                  <p className="text-[11px] font-medium text-foreground truncate">
+                                    {getTouchpointLabel(touchpoints[lead.id].type, touchpoints[lead.id].direction)}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {formatDistanceToNow(new Date(touchpoints[lead.id].date), { addSuffix: true })}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            <span className="text-[11px] text-muted-foreground/50">No contact yet</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-[12px] font-medium text-foreground/80">
-                            {lead.team_member?.name || '—'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusConfig[lead.status].bg} ${statusConfig[lead.status].color}`}>
-                              {statusConfig[lead.status].label}
-                            </span>
-                            {lead.questionnaire_completed_at && (
-                              <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground/50">No contact yet</span>
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-[11px] text-muted-foreground">
-                            {format(new Date(lead.created_at), 'MMM d, yyyy')}
-                          </p>
-                        </TableCell>
-                        <TableCell>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          </td>
+                          {/* Owner */}
+                          <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
+                            <span className="text-[13px] font-medium text-foreground/80">
+                              {lead.team_member?.name || '—'}
+                            </span>
+                          </td>
+                          {/* Status */}
+                          <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusConfig[lead.status].bg} ${statusConfig[lead.status].color}`}>
+                                {statusConfig[lead.status].label}
+                              </span>
+                              {lead.questionnaire_completed_at && (
+                                <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                              )}
+                            </div>
+                          </td>
+                          {/* Created */}
+                          <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
+                            <p className="text-[13px] text-muted-foreground">
+                              {format(new Date(lead.created_at), 'MMM d, yyyy')}
+                            </p>
+                          </td>
+                          {/* Arrow */}
+                          <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }}>
+                            <ChevronRight className={`w-4 h-4 transition-all duration-150 ${
+                              isDetailSelected
+                                ? 'text-[#3b2778]'
+                                : 'text-transparent group-hover:text-muted-foreground'
+                            }`} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </ScrollArea>
           </Card>
