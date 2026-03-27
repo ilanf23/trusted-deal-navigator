@@ -34,7 +34,7 @@ interface ProjectTask {
   status: string | null;
   priority: string | null;
   due_date: string | null;
-  assigned_to: string | null;
+  team_member_id: string | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -451,11 +451,11 @@ export default function ProjectExpandedView() {
                             <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
                             <p className="text-sm text-foreground truncate flex-1">{task.title}</p>
                           </div>
-                          {task.assigned_to && teamMemberMap[task.assigned_to] && (
+                          {task.team_member_id && teamMemberMap[task.team_member_id] && (
                             <div className="flex items-center justify-end mt-3">
-                              <span className="text-[11px] text-muted-foreground">{teamMemberMap[task.assigned_to]}</span>
+                              <span className="text-[11px] text-muted-foreground">{teamMemberMap[task.team_member_id]}</span>
                               <div className="ml-1.5 h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[9px] font-bold">
-                                {teamMemberMap[task.assigned_to][0]?.toUpperCase()}
+                                {teamMemberMap[task.team_member_id][0]?.toUpperCase()}
                               </div>
                             </div>
                           )}
@@ -520,8 +520,8 @@ export default function ProjectExpandedView() {
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1">Assigned To</label>
                     <Select
-                      value={selectedBoardTask.assigned_to ?? ''}
-                      onValueChange={(v) => handleUpdateTaskField(selectedBoardTask.id, 'assigned_to', v || null)}
+                      value={selectedBoardTask.team_member_id ?? ''}
+                      onValueChange={(v) => handleUpdateTaskField(selectedBoardTask.id, 'team_member_id', v || null)}
                     >
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Unassigned" /></SelectTrigger>
                       <SelectContent>
@@ -534,14 +534,14 @@ export default function ProjectExpandedView() {
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1">Status</label>
                     <Select
-                      value={selectedBoardTask.status ?? 'pending'}
+                      value={selectedBoardTask.status ?? 'todo'}
                       onValueChange={(v) => handleUpdateTaskField(selectedBoardTask.id, 'status', v)}
                     >
                       <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">To Do</SelectItem>
+                        <SelectItem value="todo">To Do</SelectItem>
                         <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Done</SelectItem>
+                        <SelectItem value="done">Done</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
