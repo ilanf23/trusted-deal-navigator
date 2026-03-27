@@ -1011,7 +1011,7 @@ export default function LenderManagementExpandedView() {
       </div>
 
       {/* ── 3-Column Body ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Details — fully editable */}
         <div className="w-[320px] xl:w-[400px] shrink-0 min-w-0 border-r border-border bg-card overflow-hidden">
@@ -1657,7 +1657,7 @@ export default function LenderManagementExpandedView() {
         </div>
 
         {/* RIGHT: Related */}
-        <div className="w-[220px] xl:w-[260px] shrink-0 min-w-0 border-l border-border bg-card overflow-hidden">
+        <div className="w-full md:w-[260px] lg:w-[310px] xl:w-[340px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l border-border bg-card overflow-hidden">
         <ScrollArea className="h-full">
           <div className="py-4 px-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4 block px-3">Related</span>
