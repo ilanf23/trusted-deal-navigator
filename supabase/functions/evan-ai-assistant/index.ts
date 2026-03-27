@@ -128,12 +128,12 @@ async function executeAction(
           title,
           priority,
           is_completed: false,
-          status: "pending",
+          status: "todo",
         };
         if (leadId) taskData.lead_id = leadId;
         if (dueDate) taskData.due_date = dueDate;
         if (desc) taskData.description = desc;
-        if (teamMemberId) taskData.assignee_id = teamMemberId;
+        if (teamMemberId) taskData.team_member_id = teamMemberId;
 
         const { data: task, error: taskErr } = await supabase
           .from("tasks")
@@ -177,7 +177,7 @@ async function executeAction(
 
         const { error } = await supabase
           .from("tasks")
-          .update({ is_completed: true, status: "completed" })
+          .update({ is_completed: true, status: "done", completed_at: new Date().toISOString() })
           .eq("id", taskId);
 
         if (error) return { success: false, description: `Failed: ${error.message}` };
@@ -191,7 +191,7 @@ async function executeAction(
           target_id: taskId,
           operation: "update",
           old_values: { is_completed: false, status: current.status },
-          new_values: { is_completed: true, status: "completed" },
+          new_values: { is_completed: true, status: "done" },
           description: `Completed task: "${current.title}"`,
           batch_id: batchId,
           batch_order: batchOrder,

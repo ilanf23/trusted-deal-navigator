@@ -65,7 +65,7 @@ const PipelineFeed = () => {
       const { data, error } = await supabase
         .from('tasks')
         .select('id, title, due_date, lead_id')
-        .eq('status', 'pending')
+        .eq('status', 'todo')
         .lt('due_date', new Date().toISOString())
         .order('due_date', { ascending: true })
         .limit(10);
