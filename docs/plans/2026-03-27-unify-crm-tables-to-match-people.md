@@ -129,5 +129,5 @@ These are the exact styling patterns from People.tsx that all tables must match:
 
 ### Task 8: Final verification
 
-- [ ] Run `npm run build` — must pass with no errors
-- [ ] Run `npm run lint` — fix any lint issues introduced
+- [x] Run `npm run build` — must pass with no errors
+- [x] Run `npm run lint` — fix any lint issues introduced
