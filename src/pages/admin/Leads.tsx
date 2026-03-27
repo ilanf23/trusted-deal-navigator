@@ -584,13 +584,13 @@ const AdminLeads = () => {
                           <td className="px-4 py-1.5 overflow-hidden" style={{ border: '1px solid #c8bdd6' }}>
                             <div className="space-y-0.5">
                               {lead.phone && (
-                                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                <p className="text-[13px] text-muted-foreground flex items-center gap-1.5">
                                   <Phone className="w-3 h-3" />
                                   {lead.phone}
                                 </p>
                               )}
                               {lead.email && (
-                                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
+                                <p className="text-[13px] text-muted-foreground flex items-center gap-1.5 truncate">
                                   <Mail className="w-3 h-3" />
                                   {lead.email}
                                 </p>
@@ -603,7 +603,7 @@ const AdminLeads = () => {
                               <div className="flex items-center gap-2">
                                 {getTouchpointIcon(touchpoints[lead.id].type, touchpoints[lead.id].direction)}
                                 <div className="min-w-0">
-                                  <p className="text-[11px] font-medium text-foreground truncate">
+                                  <p className="text-[13px] font-medium text-foreground truncate">
                                     {getTouchpointLabel(touchpoints[lead.id].type, touchpoints[lead.id].direction)}
                                   </p>
                                   <p className="text-[10px] text-muted-foreground">
@@ -612,7 +612,7 @@ const AdminLeads = () => {
                                 </div>
                               </div>
                             ) : (
-                              <span className="text-[11px] text-muted-foreground/50">No contact yet</span>
+                              <span className="text-[13px] text-muted-foreground/50">No contact yet</span>
                             )}
                           </td>
                           {/* Owner */}
