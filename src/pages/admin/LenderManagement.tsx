@@ -1480,7 +1480,7 @@ const LenderManagement = () => {
                             <td className={`px-2 ${rowPad} w-10`} style={{ border: '1px solid #c8bdd6' }}>
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isDetailOpen
-                                  ? 'text-blue-500'
+                                  ? 'text-[#3b2778]'
                                   : 'text-transparent group-hover:text-muted-foreground'
                               }`} />
                             </td>

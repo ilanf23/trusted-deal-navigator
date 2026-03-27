@@ -1407,7 +1407,7 @@ const Underwriting = () => {
                           ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
                           : isBulkSelected
                             ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
-                            : 'bg-white dark:bg-card group-hover:bg-gray-50 dark:group-hover:bg-muted';
+                            : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
 
                         return (
                           <tr
@@ -1418,7 +1418,7 @@ const Underwriting = () => {
                                 ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
                                 : isBulkSelected
                                   ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
-                                  : 'bg-white dark:bg-card hover:bg-gray-50 dark:hover:bg-muted/30'
+                                  : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >
                             {/* Opportunity + Checkbox (sticky) */}
@@ -1618,7 +1618,7 @@ const Underwriting = () => {
                             <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }}>
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isDetailSelected
-                                  ? 'text-blue-500'
+                                  ? 'text-[#3b2778]'
                                   : 'text-transparent group-hover:text-muted-foreground'
                               }`} />
                             </td>

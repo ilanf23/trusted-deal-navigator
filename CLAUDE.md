@@ -101,6 +101,7 @@ Token identity: `clx-admin`. 1-hour expiry from `twilio-token` edge function. De
 - `AdminSidebar.tsx` renders different nav sections based on role (via `useMemo` from `teamMember` + `isOwner`)
 - Sidebar collapsed state: `state === 'collapsed'` from `useSidebar()`; always handle both expanded and collapsed rendering paths
 - Variants via `cva` (class-variance-authority), props extend native HTML attributes, `React.forwardRef` for ref access
+- CRM admin tables: All use native HTML `<table>` (not shadcn Table) with a unified purple theme. Reference implementation: `src/pages/admin/People.tsx`. Key patterns: header bg `#eee6f6`, cell borders `#c8bdd6`, `ResizableColumnHeader` (ColHeader), sticky first column with box shadow, purple selection highlights (`#eee6f6` / `#3b2778`), 13px typography.
 
 ## Key Dependencies
 

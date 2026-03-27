@@ -1006,7 +1006,7 @@ const Companies = () => {
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#eee6f6' }}>
-                      <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30 bg-white" style={{ border: '1px solid #c8bdd6' }} />
+                      <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
                       <ColHeader className="sticky top-0 z-30" style={{ left: 48, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
                         <Building2 className="h-4 w-4" /> Company
                       </ColHeader>
@@ -1280,7 +1280,7 @@ const Companies = () => {
                             <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }}>
                               <PanelRightOpen className={`h-4 w-4 transition-all duration-150 ${
                                 isSelected
-                                  ? 'text-blue-500'
+                                  ? 'text-[#3b2778]'
                                   : 'text-transparent group-hover:text-muted-foreground'
                               }`} />
                             </td>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -12,8 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
-
-const ColHeader = ResizableColumnHeader;
 import { Plus, Loader2, FileText, Phone, Mail, Building2, X, ChevronRight, User, Calendar, Clock, Sparkles, Users, PhoneIncoming, PhoneOutgoing, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +26,8 @@ type TeamMember = Database['public']['Tables']['team_members']['Row'];
 interface LeadWithOwner extends Lead {
   team_member?: TeamMember | null;
 }
+
+const DEFAULT_LEADS_COL_WIDTHS: Record<string, number> = { lead: 180, contact: 130, touchpoint: 140, owner: 90, status: 80, created: 90 };
 
 const statusConfig: Record<LeadStatus, { label: string; color: string; bg: string }> = {
   initial_review: { label: 'Initial Review', color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -49,8 +49,8 @@ const statusConfig: Record<LeadStatus, { label: string; color: string; bg: strin
   waiting_on_client: { label: 'Waiting on Client', color: 'text-yellow-600', bg: 'bg-yellow-50' },
   complete_files_for_review: { label: 'Complete Files', color: 'text-teal-600', bg: 'bg-teal-50' },
   need_structure_from_brad: { label: 'Need Structure', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  maura_underwriting: { label: 'UW Review', color: 'text-pink-600', bg: 'bg-pink-50' },
-  brad_underwriting: { label: 'Senior UW', color: 'text-sky-600', bg: 'bg-sky-50' },
+  maura_underwriting: { label: 'Maura UW', color: 'text-pink-600', bg: 'bg-pink-50' },
+  brad_underwriting: { label: 'Brad UW', color: 'text-sky-600', bg: 'bg-sky-50' },
   need_structure: { label: 'Need Structure', color: 'text-indigo-600', bg: 'bg-indigo-50' },
   underwriting_review: { label: 'UW Review', color: 'text-pink-600', bg: 'bg-pink-50' },
   senior_underwriting: { label: 'Senior UW', color: 'text-sky-600', bg: 'bg-sky-50' },
@@ -70,6 +70,49 @@ const AdminLeads = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [previewLead, setPreviewLead] = useState<LeadWithOwner | null>(null);
   const { toast } = useToast();
+
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('admin-leads-column-widths');
+      if (saved) return { ...DEFAULT_LEADS_COL_WIDTHS, ...JSON.parse(saved) };
+    } catch { /* ignore corrupt localStorage */ }
+    return DEFAULT_LEADS_COL_WIDTHS;
+  });
+  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
+    setColumnWidths(prev => {
+      const next = { ...prev, [columnId]: newWidth };
+      localStorage.setItem('admin-leads-column-widths', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const ColHeader = ({ colKey, children, className: extraClassName, style: extraStyle }: {
+    colKey?: string;
+    children: React.ReactNode;
+    className?: string;
+    style?: React.CSSProperties;
+  }) => {
+    const widthKey = colKey ?? 'lead';
+    const width = columnWidths[widthKey] ?? 120;
+    return (
+      <th
+        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors hover:z-20 ${extraClassName ?? ''}`}
+        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
+      >
+        <ResizableColumnHeader
+          columnId={widthKey}
+          currentWidth={`${width}px`}
+          onResize={handleColumnResize}
+        >
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
+            {children}
+          </span>
+        </ResizableColumnHeader>
+      </th>
+    );
+  };
 
   const [newLead, setNewLead] = useState({
     name: '',
@@ -475,22 +518,22 @@ const AdminLeads = () => {
                 <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      <ColHeader className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)', width: 180 }}>
+                      <ColHeader className="sticky top-0 left-0 z-30 group/hdr" style={{ boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                         <User className="h-4 w-4" /> Lead
                       </ColHeader>
-                      <ColHeader colKey="contact" className="sticky top-0 z-10" style={{ width: 130 }}>
+                      <ColHeader colKey="contact" className="sticky top-0 z-10">
                         <Phone className="h-4 w-4" /> Contact
                       </ColHeader>
-                      <ColHeader colKey="touchpoint" className="sticky top-0 z-10" style={{ width: 140 }}>
+                      <ColHeader colKey="touchpoint" className="sticky top-0 z-10">
                         <MessageSquare className="h-4 w-4" /> Touchpoint
                       </ColHeader>
-                      <ColHeader colKey="owner" className="sticky top-0 z-10" style={{ width: 90 }}>
+                      <ColHeader colKey="owner" className="sticky top-0 z-10">
                         <Users className="h-4 w-4" /> Owner
                       </ColHeader>
-                      <ColHeader colKey="status" className="sticky top-0 z-10" style={{ width: 80 }}>
+                      <ColHeader colKey="status" className="sticky top-0 z-10">
                         <Sparkles className="h-4 w-4" /> Status
                       </ColHeader>
-                      <ColHeader colKey="created" className="sticky top-0 z-10" style={{ width: 90 }}>
+                      <ColHeader colKey="created" className="sticky top-0 z-10">
                         <Calendar className="h-4 w-4" /> Created
                       </ColHeader>
                       <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
