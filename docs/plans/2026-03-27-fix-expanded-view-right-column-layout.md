@@ -71,5 +71,5 @@ Fix the right column in all expanded views so content is never cut off on any sc
 
 ### Task 6: Verify build passes
 
-- [ ] Run `npm run build` to confirm no build errors
-- [ ] Run `npm run lint` for final lint check
+- [x] Run `npm run build` to confirm no build errors
+- [x] Run `npm run lint` for final lint check (pre-existing warnings only, no new issues from expanded view changes)
