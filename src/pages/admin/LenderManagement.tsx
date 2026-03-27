@@ -1264,9 +1264,9 @@ const LenderManagement = () => {
                         const isSelected = selectedLeadIds.has(lead.id);
 
                         const stickyBg = isDetailOpen
-                          ? 'bg-[#e8f0fe] dark:bg-blue-950 group-hover:bg-[#d2e3fc] dark:group-hover:bg-blue-900'
+                          ? 'bg-[#eee6f6] dark:bg-purple-950 group-hover:bg-[#e0d4f0] dark:group-hover:bg-purple-900'
                           : isSelected
-                            ? 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted'
+                            ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
                             : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
 
                         return (
@@ -1275,9 +1275,9 @@ const LenderManagement = () => {
                             onClick={() => handleRowClick(lead)}
                             className={`cursor-pointer transition-colors duration-100 group ${
                               isDetailOpen
-                                ? 'bg-[#e8f0fe] dark:bg-blue-950/30 hover:bg-[#d2e3fc] dark:hover:bg-blue-950/40'
+                                ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
                                 : isSelected
-                                  ? 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                                  ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
                                   : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                             }`}
                           >

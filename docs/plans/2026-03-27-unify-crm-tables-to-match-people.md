@@ -83,9 +83,9 @@ These are the exact styling patterns from People.tsx that all tables must match:
 **Files:**
 - Modify: `src/pages/admin/LenderManagement.tsx`
 
-- [ ] Apply same selection color changes as Pipeline (blue -> purple for selected row, hover, sticky bg)
-- [ ] Add `border-l-[3px] border-l-[#3b2778]` to selected row
-- [ ] Run `npm run build` to verify
+- [x] Apply same selection color changes as Pipeline (blue -> purple for selected row, hover, sticky bg)
+- [x] Add `border-l-[3px] border-l-[#3b2778]` to selected row
+- [x] Run `npm run build` to verify
 
 ### Task 5: Restyle Projects.tsx table to match People
 
