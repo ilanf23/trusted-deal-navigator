@@ -772,10 +772,10 @@ export default function CompanyExpandedView() {
       </div>
 
       {/* ── 3-Column Body ── */}
-      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Company Details */}
-        <ScrollArea className="w-[400px] shrink-0 min-w-0 border-r border-border bg-card overflow-hidden">
+        <ScrollArea className="w-full md:w-[400px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
           <div className="px-6 py-6 space-y-6">
 
             {/* ── Contact Card Header ── */}

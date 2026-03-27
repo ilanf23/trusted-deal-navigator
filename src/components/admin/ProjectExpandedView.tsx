@@ -614,7 +614,7 @@ export default function ProjectExpandedView() {
 
       {/* ── OVERVIEW TAB ── */}
       {activeTab === 'overview' && (
-        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
           {/* LEFT: Details */}
           <div className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
