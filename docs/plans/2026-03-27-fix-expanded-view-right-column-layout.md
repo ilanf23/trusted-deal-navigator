@@ -38,9 +38,9 @@ Fix the right column in all expanded views so content is never cut off on any sc
 **Files:**
 - Modify: `src/components/admin/CompanyExpandedView.tsx`
 
-- [ ] Change right column (line 1153) from `w-[260px] shrink-0 min-w-0 border-l` to responsive widths: `w-full md:w-[260px] lg:w-[310px] xl:w-[340px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l`
-- [ ] Change the flex row container (line 775) to include `flex-col md:flex-row` if not already present
-- [ ] Run lint: `npm run lint`
+- [x] Change right column (line 1153) from `w-[260px] shrink-0 min-w-0 border-l` to responsive widths: `w-full md:w-[260px] lg:w-[310px] xl:w-[340px] md:shrink-0 md:min-w-[220px] min-w-0 border-t md:border-t-0 md:border-l`
+- [x] Change the flex row container (line 775) to include `flex-col md:flex-row` if not already present
+- [x] Run lint: `npm run lint`
 
 ### Task 3: Fix LenderManagementExpandedView right column
 
