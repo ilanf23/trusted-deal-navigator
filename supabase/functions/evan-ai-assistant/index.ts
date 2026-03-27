@@ -841,7 +841,7 @@ serve(async (req) => {
       // Fetch pending tasks
       const { data: tasks } = await supabase
         .from("tasks")
-        .select("id, title, description, status, priority, due_date, is_completed, lead_id, tags, assignee_name")
+        .select("id, title, description, status, priority, due_date, is_completed, lead_id, tags, team_member_id")
         .eq("is_completed", false)
         .order("due_date", { ascending: true })
         .limit(30);

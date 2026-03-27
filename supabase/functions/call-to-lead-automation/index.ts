@@ -239,7 +239,6 @@ ${transcript ? ratingReasoning : 'No transcript available - call was not recorde
         status: 'todo',
         due_date: taskDueDate.toISOString(),
         group_name: 'To Do',
-        assignee_name: 'Evan',
         team_member_id: '5e2d8710-7a23-4c33-87a2-4ad9ced4e936',
         tags: ['follow-up', 'new-lead', 'phone-call'],
       })

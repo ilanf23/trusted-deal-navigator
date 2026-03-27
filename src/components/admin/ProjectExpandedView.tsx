@@ -260,7 +260,7 @@ export default function ProjectExpandedView() {
     await supabase.from('tasks').insert({
       lead_id: project.lead_id,
       title: newTaskTitle.trim(),
-      status: status === 'pending' ? 'todo' : status === 'completed' ? 'done' : status,
+      status: status,
       source: 'lead',
       created_by: teamMember?.name ?? null,
     });
@@ -398,9 +398,9 @@ export default function ProjectExpandedView() {
             <div className="flex-1 overflow-auto p-6">
               <div className="flex gap-4 h-full min-h-[400px]">
                 {[
-                  { key: 'pending', label: 'To Do', items: boardColumns.todo },
+                  { key: 'todo', label: 'To Do', items: boardColumns.todo },
                   { key: 'in_progress', label: 'In Progress', items: boardColumns.inProgress },
-                  { key: 'completed', label: 'Done', items: boardColumns.done, icon: <CircleCheck className="h-4 w-4 text-emerald-500" /> },
+                  { key: 'done', label: 'Done', items: boardColumns.done, icon: <CircleCheck className="h-4 w-4 text-emerald-500" /> },
                 ].map(col => (
                   <div key={col.key} className="flex-1 min-w-[220px] bg-muted/30 rounded-xl flex flex-col">
                     {/* Column header */}

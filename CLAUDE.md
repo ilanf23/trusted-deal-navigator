@@ -81,7 +81,7 @@ DB types (auto-generated, ~5000 lines): `src/integrations/supabase/types.ts`
 
 Edge functions live in `supabase/functions/`. Each function is a Deno TypeScript module. All use a shared rate limiting pattern via Postgres atomic counters (`enforceRateLimit(req, funcName, limit, window)`). See `supabase/functions/CLAUDE.md` for full catalog.
 
-Key tables: `team_members`, `user_roles`, `leads`, `active_calls`, `call_events`, `communications`, `ai_conversations`, `contracts`, `invoices`, `partner_referrals`, `pipeline_stages`, `pipelines`, `email_threads`.
+Key tables: `team_members`, `user_roles`, `leads`, `tasks`, `active_calls`, `call_events`, `evan_communications`, `ai_conversations`, `contracts`, `invoices`, `partner_referrals`. The `tasks` table is the unified task store (replaces former `lead_tasks`). Task status values are `todo`, `in_progress`, `done`. Assignment uses `team_member_id` (FK to `team_members`).
 
 ## Twilio Calling Architecture
 
