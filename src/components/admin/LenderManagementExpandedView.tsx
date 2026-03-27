@@ -450,7 +450,7 @@ export default function LenderManagementExpandedView() {
     const { error } = await supabase.from('tasks').insert({
       lead_id: leadId,
       title: newTaskTitle.trim(),
-      status: 'pending',
+      status: 'todo',
       priority: 'medium',
     });
     setSavingTask(false);
@@ -1002,7 +1002,7 @@ export default function LenderManagementExpandedView() {
   }
 
   return (
-    <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
+    <div data-full-bleed className="flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
       {/* ── Header ── */}
       <div className="shrink-0 border-b border-border px-4 py-2 flex items-center">
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>

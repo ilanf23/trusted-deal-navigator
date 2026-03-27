@@ -704,7 +704,7 @@ export default function PipelineExpandedView() {
     const { error } = await supabase.from('tasks').insert({
       lead_id: leadId,
       title: newTaskTitle.trim(),
-      status: 'pending',
+      status: 'todo',
       priority: 'medium',
     });
     setSavingTask(false);
@@ -1256,7 +1256,7 @@ export default function PipelineExpandedView() {
   }
 
   return (
-    <div data-full-bleed className="flex flex-col bg-background overflow-hidden h-[calc(100vh-3.5rem)]">
+    <div data-full-bleed className="flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
