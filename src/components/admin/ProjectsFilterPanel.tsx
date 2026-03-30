@@ -96,7 +96,7 @@ function FilterRow({
             role="button"
             tabIndex={0}
             onClick={(e) => { e.stopPropagation(); onClear(); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onClear?.(); } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onClear?.(); } }}
             className="text-[11px] text-[#3b2778] dark:text-[#a78bfa] hover:underline shrink-0"
           >
             Clear
@@ -328,6 +328,8 @@ export default function ProjectsFilterPanel({
     [values],
   );
 
+  const hasChanges = useMemo(() => JSON.stringify(values) !== JSON.stringify(initialValues ?? defaultValues), [values, initialValues]);
+
   const chips = useMemo(() => getActiveChips(values, teamMemberMap), [values, teamMemberMap]);
 
   const handleApply = () => {
@@ -359,7 +361,7 @@ export default function ProjectsFilterPanel({
   const clearSection: Record<string, () => void> = {
     ownedBy: () => set('ownedBy', []),
     followed: () => set('followed', false),
-    dateAdded: () => { set('dateAddedFrom', ''); set('dateAddedTo', ''); },
+    dateAdded: () => setValues((prev) => ({ ...prev, dateAddedFrom: '', dateAddedTo: '' })),
     status: () => set('status', []),
     type: () => set('type', []),
     tags: () => set('tags', ''),
@@ -559,7 +561,7 @@ export default function ProjectsFilterPanel({
         <button
           type="button"
           onClick={handleApply}
-          disabled={activeCount === 0}
+          disabled={activeCount === 0 && !hasChanges}
           className="px-6 py-2 rounded-lg text-[13px] font-semibold text-white bg-gradient-to-b from-[#4a3290] to-[#3b2778] hover:from-[#3b2778] hover:to-[#2d1d5e] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 shadow-sm"
         >
           {activeCount > 0 ? `Apply ${activeCount} Filter${activeCount > 1 ? 's' : ''}` : 'Apply Filters'}

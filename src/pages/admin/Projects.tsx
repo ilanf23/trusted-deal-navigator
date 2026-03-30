@@ -124,7 +124,7 @@ const Projects = () => {
         const parsed = JSON.parse(saved);
         return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
       }
-    } catch {}
+    } catch { /* ignore corrupt localStorage */ }
     return DEFAULT_COLUMN_WIDTHS;
   });
 
@@ -276,10 +276,10 @@ const Projects = () => {
     if (activeFilter) {
       const f = activeFilter;
       if (f.ownedBy.length > 0) result = result.filter(p => f.ownedBy.includes(p.owner ?? ''));
-      if (f.dateAddedFrom) result = result.filter(p => p.created_at >= f.dateAddedFrom);
-      if (f.dateAddedTo) result = result.filter(p => p.created_at <= f.dateAddedTo + 'T23:59:59');
+      if (f.dateAddedFrom) result = result.filter(p => new Date(p.created_at) >= new Date(f.dateAddedFrom + 'T00:00:00'));
+      if (f.dateAddedTo) result = result.filter(p => new Date(p.created_at) <= new Date(f.dateAddedTo + 'T23:59:59.999'));
       if (f.status.length > 0) result = result.filter(p => f.status.includes(p.status ?? ''));
-      if (f.type.length > 0) result = result.filter(p => f.type.includes((p as any).project_type ?? ''));
+      // Type filter: lead_projects has no project_type column yet — skip until schema supports it
       if (f.tags) {
         const filterTags = f.tags.toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
         result = result.filter(p => (p.tags ?? []).some(t => filterTags.includes(t.toLowerCase())));
