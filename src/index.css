@@ -28,12 +28,12 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    /* Accent: Warm orange */
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent: Neutral gray */
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 10% 20%;
 
-    /* Highlight: Golden orange */
-    --highlight: 32 95% 50%;
+    /* Highlight: Purple */
+    --highlight: 261 54% 31%;
     --highlight-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
@@ -75,10 +75,10 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 25 95% 58%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 220 14% 18%;
+    --accent-foreground: 210 40% 98%;
 
-    --highlight: 32 95% 55%;
+    --highlight: 261 54% 50%;
     --highlight-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 30.6%;
@@ -120,12 +120,12 @@
     --muted: 220 14% 95%;
     --muted-foreground: 220 10% 45%;
     
-    /* Accent: Orange */
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 100%;
-    
-    /* Highlight: Orange */
-    --highlight: 25 95% 53%;
+    /* Accent: Neutral gray */
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 10% 20%;
+
+    /* Highlight: Purple */
+    --highlight: 261 54% 31%;
     --highlight-foreground: 0 0% 100%;
     
     /* Destructive stays red */
@@ -138,13 +138,13 @@
     --ring: 217 91% 50%;
     --radius: 0.75rem;
     
-    /* Admin Color Palette - Blue & Orange */
+    /* Admin Color Palette - Blue & Purple */
     --admin-blue: 217 91% 50%;
     --admin-blue-light: 217 91% 96%;
     --admin-blue-dark: 217 91% 40%;
-    --admin-orange: 25 95% 53%;
-    --admin-orange-light: 25 95% 95%;
-    --admin-orange-dark: 25 95% 43%;
+    --admin-orange: 261 54% 31%;
+    --admin-orange-light: 261 54% 95%;
+    --admin-orange-dark: 261 54% 22%;
 
     /* Semantic Status Colors */
     --status-success: 142 71% 45%;
@@ -185,7 +185,7 @@
     --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.15);
     --shadow-glow: 0 0 40px -10px rgb(0 0 0 / 0.1);
     --shadow-blue: 0 4px 14px -3px hsl(217 91% 50% / 0.25);
-    --shadow-orange: 0 4px 14px -3px hsl(25 95% 53% / 0.25);
+    --shadow-orange: 0 4px 14px -3px hsl(261 54% 31% / 0.25);
     --shadow-inset: inset 0 1px 2px 0 rgb(0 0 0 / 0.04);
   }
 
@@ -211,12 +211,12 @@
     --muted: 217 32% 17%;
     --muted-foreground: 215 20% 65%;
     
-    /* Accent: Orange (slightly brighter in dark) */
-    --accent: 25 95% 58%;
-    --accent-foreground: 0 0% 100%;
-    
-    /* Highlight: Orange */
-    --highlight: 25 95% 58%;
+    /* Accent: Neutral dark */
+    --accent: 220 14% 18%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Highlight: Purple */
+    --highlight: 261 54% 50%;
     --highlight-foreground: 0 0% 100%;
     
     /* Destructive */
@@ -232,9 +232,9 @@
     --admin-blue: 217 91% 60%;
     --admin-blue-light: 217 40% 20%;
     --admin-blue-dark: 217 91% 70%;
-    --admin-orange: 25 95% 58%;
-    --admin-orange-light: 25 40% 20%;
-    --admin-orange-dark: 25 95% 68%;
+    --admin-orange: 261 54% 50%;
+    --admin-orange-light: 261 30% 20%;
+    --admin-orange-dark: 261 54% 65%;
 
     /* Semantic Status Colors - Dark Mode */
     --status-success: 142 71% 55%;
@@ -275,7 +275,7 @@
     --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
     --shadow-glow: 0 0 40px -10px rgb(0 0 0 / 0.4);
     --shadow-blue: 0 4px 14px -3px hsl(217 91% 60% / 0.35);
-    --shadow-orange: 0 4px 14px -3px hsl(25 95% 58% / 0.35);
+    --shadow-orange: 0 4px 14px -3px hsl(261 54% 50% / 0.35);
     --shadow-inset: inset 0 1px 2px 0 rgb(0 0 0 / 0.2);
   }
 }
@@ -662,6 +662,9 @@
   .admin-portal main > div:not([data-split-view]) > div:has([data-full-bleed]) {
     max-width: none !important;
   }
+  .admin-portal main:has([data-full-bleed]) {
+    overflow-x: hidden !important;
+  }
   /* Keep AdminLayout header visible on full-bleed pages */
 
   /* Metric Cards */
@@ -828,7 +831,7 @@
   }
 
   .accent-gradient {
-    background: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(32 95% 55%) 100%);
+    background: linear-gradient(135deg, hsl(var(--highlight)) 0%, hsl(261 54% 45%) 100%);
   }
 
   .section-container {
@@ -925,6 +928,21 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+@keyframes filter-chip-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.filter-chip-enter {
+  animation: filter-chip-enter 150ms ease-out both;
 }
 
 @keyframes spring {
