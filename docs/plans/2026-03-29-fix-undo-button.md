@@ -82,10 +82,10 @@ Fix the always-inactive undo button in the admin top bar and expand undo support
 - Modify: `src/pages/admin/Pipeline.tsx`
 - Modify: `src/components/admin/ProjectDetailDialog.tsx`
 
-- [ ] Import `useUndo` in Projects.tsx — add registerUndo to `bulkDeleteMutation` (capture deleted projects, re-insert on undo), `bulkAddTagsMutation` (capture previous tags), and `handleBulkAssignOwner` (capture previous owners)
-- [ ] Import `useUndo` in Pipeline.tsx — add registerUndo to `bulkDeleteMutation`, `bulkAssignOwnerMutation`, and `createOpportunityMutation`
-- [ ] Import `useUndo` in ProjectDetailDialog.tsx — add registerUndo to `createMutation` (undo = delete), `updateMutation` (capture + restore previous values), and `deleteMutation` (undo = re-insert)
-- [ ] Run `npm run build` and `npm run lint`
+- [x] Import `useUndo` in Projects.tsx — add registerUndo to `bulkDeleteMutation` (capture deleted projects, re-insert on undo), `bulkAddTagsMutation` (capture previous tags), and `handleBulkAssignOwner` (capture previous owners)
+- [x] Import `useUndo` in Pipeline.tsx — add registerUndo to `bulkDeleteMutation`, `bulkAssignOwnerMutation`, and `createOpportunityMutation`
+- [x] Import `useUndo` in ProjectDetailDialog.tsx — add registerUndo to `createMutation` (undo = delete), `updateMutation` (capture + restore previous values), and `deleteMutation` (undo = re-insert)
+- [x] Run `npm run build` and `npm run lint`
 
 ### Task 5: Add Undo to Expanded View Key Operations
 

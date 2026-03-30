@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { CalendarIcon, User, Trash2, FolderOpen } from 'lucide-react';
+import { useUndo } from '@/contexts/UndoContext';
+import { CalendarIcon, User, Trash2, FolderOpen, X, ChevronDown } from 'lucide-react';
 
 // ── Types ──
 
@@ -82,6 +84,7 @@ export default function ProjectDetailDialog({
   project, open, onClose, leadId, leadName, teamMembers, currentUserName, onSaved,
 }: ProjectDetailDialogProps) {
   const queryClient = useQueryClient();
+  const { registerUndo } = useUndo();
   const isEditMode = !!project;
 
   // Form state
@@ -97,11 +100,32 @@ export default function ProjectDetailDialog({
   const [clxFileName, setClxFileName] = useState('');
   const [bankRelationships, setBankRelationships] = useState('');
   const [waitingOn, setWaitingOn] = useState('');
+  const [relatedToId, setRelatedToId] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showLeadPicker, setShowLeadPicker] = useState(false);
+
+  // Fetch all leads for the "Related To" picker
+  const { data: allLeads = [] } = useQuery({
+    queryKey: ['all-leads-for-project-picker'],
+    queryFn: async () => {
+      const { data } = await supabase.from('leads').select('id, name, company_name').order('name').limit(500);
+      return (data ?? []) as { id: string; name: string; company_name: string | null }[];
+    },
+    enabled: open,
+  });
+
+  const selectedLeadName = useMemo(() => {
+    if (relatedToId) {
+      const found = allLeads.find(l => l.id === relatedToId);
+      if (found) return [found.name, found.company_name].filter(Boolean).join(' - ');
+    }
+    if (leadName) return leadName;
+    return '';
+  }, [relatedToId, allLeads, leadName]);
 
   // Populate form on open
   useEffect(() => {
-    if (!open) { setConfirmDelete(false); return; }
+    if (!open) { setConfirmDelete(false); setShowLeadPicker(false); return; }
     if (project) {
       setName(project.name);
       setStatus(project.status || 'open');
@@ -115,16 +139,19 @@ export default function ProjectDetailDialog({
       setClxFileName(project.clx_file_name || '');
       setBankRelationships(project.bank_relationships || '');
       setWaitingOn(project.waiting_on || '');
+      setRelatedToId(project.lead_id || '');
     } else {
       setName(''); setStatus('open'); setProjectStage('open');
-      setPriority(''); setOwner(''); setDueDate(undefined);
+      setPriority(''); setOwner(''); setDueDate(new Date());
       setDescription(''); setVisibility('everyone'); setTags('');
       setClxFileName(''); setBankRelationships(''); setWaitingOn('');
+      setRelatedToId(leadId || '');
     }
-  }, [open, project]);
+  }, [open, project, leadId]);
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
+    queryClient.invalidateQueries({ queryKey: ['all-projects'] });
     onSaved();
   }, [queryClient, onSaved]);
 
@@ -132,8 +159,10 @@ export default function ProjectDetailDialog({
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('lead_projects').insert({
-        lead_id: leadId,
+      const resolvedLeadId = relatedToId || leadId;
+      if (!resolvedLeadId) throw new Error('A Related To lead is required');
+      const { data, error } = await supabase.from('lead_projects').insert({
+        lead_id: resolvedLeadId,
         name: name.trim(),
         status,
         project_stage: projectStage,
@@ -147,33 +176,92 @@ export default function ProjectDetailDialog({
         bank_relationships: bankRelationships.trim() || null,
         waiting_on: waitingOn.trim() || null,
         created_by: currentUserName || null,
-      });
+      }).select('id').single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => { toast.success('Project created'); invalidate(); onClose(); },
-    onError: () => toast.error('Failed to create project'),
+    onSuccess: (data) => {
+      toast.success('Project created');
+      invalidate();
+      onClose();
+      if (data) {
+        registerUndo({
+          label: `Created project "${name.trim()}"`,
+          execute: async () => {
+            await supabase.from('lead_projects').delete().eq('id', data.id);
+            queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
+            queryClient.invalidateQueries({ queryKey: ['all-projects'] });
+          },
+        });
+      }
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to create project'),
   });
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Record<string, unknown>) => {
       if (!project) return;
+      // Capture previous values for the fields being updated
+      const previousValues: Record<string, unknown> = {};
+      for (const key of Object.keys(updates)) {
+        previousValues[key] = project[key as keyof LeadProject];
+      }
       const { error } = await supabase
         .from('lead_projects')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', project.id);
       if (error) throw error;
+      return { projectId: project.id, previousValues };
     },
-    onSuccess: () => invalidate(),
+    onSuccess: (result) => {
+      invalidate();
+      if (result) {
+        const fieldNames = Object.keys(result.previousValues).filter(k => k !== 'updated_at').join(', ');
+        registerUndo({
+          label: `Updated project ${fieldNames}`,
+          execute: async () => {
+            await supabase
+              .from('lead_projects')
+              .update({ ...result.previousValues, updated_at: new Date().toISOString() })
+              .eq('id', result.projectId);
+            queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
+            queryClient.invalidateQueries({ queryKey: ['all-projects'] });
+          },
+        });
+      }
+    },
     onError: () => toast.error('Failed to update project'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!project) return;
+      // Capture full record for undo re-insert
+      const { data: fullRecord } = await supabase
+        .from('lead_projects')
+        .select('*')
+        .eq('id', project.id)
+        .single();
       const { error } = await supabase.from('lead_projects').delete().eq('id', project.id);
       if (error) throw error;
+      return fullRecord;
     },
-    onSuccess: () => { toast.success('Project deleted'); invalidate(); onClose(); },
+    onSuccess: (deletedProject) => {
+      toast.success('Project deleted');
+      invalidate();
+      onClose();
+      if (deletedProject) {
+        registerUndo({
+          label: `Deleted project "${deletedProject.name}"`,
+          execute: async () => {
+            const { id, ...rest } = deletedProject;
+            await supabase.from('lead_projects').insert({ id, ...rest });
+            queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
+            queryClient.invalidateQueries({ queryKey: ['all-projects'] });
+          },
+        });
+      }
+    },
     onError: () => toast.error('Failed to delete project'),
   });
 
@@ -222,8 +310,12 @@ export default function ProjectDetailDialog({
 
   const handleCreate = useCallback(() => {
     if (!name.trim()) return;
+    if (!relatedToId && !leadId) {
+      toast.error('Please select a Related To lead');
+      return;
+    }
     createMutation.mutate();
-  }, [name, createMutation]);
+  }, [name, relatedToId, leadId, createMutation]);
 
   const handleDelete = useCallback(() => {
     if (confirmDelete) deleteMutation.mutate();
@@ -236,174 +328,245 @@ export default function ProjectDetailDialog({
 
   const ownerName = owner ? teamMembers.find(m => m.id === owner)?.name ?? '' : '';
 
+  // Shared underline input style
+  const underlineInput = "w-full bg-transparent border-0 border-b border-gray-300 rounded-none px-0 py-2 text-base text-foreground placeholder:text-gray-400 focus:outline-none focus:border-b-2 focus:border-[#1a237e] focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none";
+  const underlineSelect = "w-full bg-transparent border-0 border-b border-gray-300 rounded-none px-0 py-2 h-auto text-base text-foreground shadow-none focus:ring-0 focus:ring-offset-0 [&>svg]:text-gray-400";
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col rounded-2xl p-0">
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 bg-white dark:bg-card rounded-lg">
         {/* Header */}
-        <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-              <FolderOpen className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="min-w-0 flex-1">
-              {isEditMode ? (
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onBlur={handleNameBlur}
-                  className="text-lg font-semibold border-0 p-0 h-auto shadow-none focus-visible:ring-0"
-                />
-              ) : (
-                <DialogTitle className="text-lg">Create Project</DialogTitle>
-              )}
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{leadName}</p>
-            </div>
-          </div>
-        </DialogHeader>
+        <div className="shrink-0 px-8 pt-6 pb-4">
+          {isEditMode ? (
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={handleNameBlur}
+              className="text-2xl font-bold text-foreground bg-transparent border-0 outline-none w-full"
+            />
+          ) : (
+            <h2 className="text-2xl font-bold text-foreground">Add a New Project</h2>
+          )}
+        </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {/* Name (create mode only) */}
+        <div className="flex-1 overflow-y-auto px-8 pb-6 space-y-6">
+          {/* Name */}
           {!isEditMode && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Project name..." autoFocus />
+              <label className="text-sm font-medium text-gray-500 block mb-1">Name <span className="text-red-500">*</span></label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Add Name" autoFocus className={underlineInput} />
             </div>
           )}
 
+          {/* Template */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Template</label>
+            <div className="flex items-center justify-between border-b border-gray-300 py-2">
+              <span className="text-base text-gray-400">No Selection</span>
+              <ChevronDown className="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
+
+          {/* CLX - File Name */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">CLX - File Name</label>
+            <input value={clxFileName} onChange={(e) => setClxFileName(e.target.value)} onBlur={() => handleTextFieldBlur('clx_file_name', clxFileName, project?.clx_file_name ?? null)} placeholder="Add CLX - File Name" className={underlineInput} />
+          </div>
+
+          {/* Related To */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Related To</label>
+            {selectedLeadName && !showLeadPicker ? (
+              <div className="flex items-center justify-between border-b border-gray-300 py-2 cursor-pointer" onClick={() => setShowLeadPicker(true)}>
+                <span className="text-base text-foreground">{selectedLeadName}</span>
+                <X className="h-4 w-4 text-gray-400 hover:text-foreground" onClick={(e) => { e.stopPropagation(); setRelatedToId(''); }} />
+              </div>
+            ) : showLeadPicker || (!selectedLeadName && !relatedToId) ? (
+              <div>
+                <div className="rounded-lg border border-gray-200 overflow-hidden">
+                  <Command className="bg-white dark:bg-card">
+                    <CommandInput placeholder="Search leads..." className="h-9 text-sm" />
+                    <CommandList className="max-h-[160px]">
+                      <CommandEmpty className="py-2 text-center text-xs text-gray-400">No results</CommandEmpty>
+                      <CommandGroup>
+                        {allLeads.map(l => (
+                          <CommandItem
+                            key={l.id}
+                            onSelect={() => { setRelatedToId(l.id); setShowLeadPicker(false); }}
+                            className="text-sm cursor-pointer"
+                          >
+                            <span>{l.name}</span>
+                            {l.company_name && <span className="ml-1.5 text-xs text-gray-400">· {l.company_name}</span>}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </div>
+              </div>
+            ) : (
+              <div className="border-b border-gray-300 py-2 cursor-pointer" onClick={() => setShowLeadPicker(true)}>
+                <span className="text-base text-gray-400">Add Relation</span>
+              </div>
+            )}
+          </div>
+
+          {/* Waiting On: */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Waiting On:</label>
+            <input value={waitingOn} onChange={(e) => setWaitingOn(e.target.value)} onBlur={() => handleTextFieldBlur('waiting_on', waitingOn, project?.waiting_on ?? null)} placeholder="Add Waiting On:" className={underlineInput} />
+          </div>
+
+          {/* Owner */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Owner</label>
+            {ownerName ? (
+              <div className="flex items-center justify-between border-b border-gray-300 py-2">
+                <span className="text-base text-foreground font-medium">{ownerName}</span>
+                <button onClick={() => handleOwnerChange('__none__')} className="text-gray-400 hover:text-foreground transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <Select value={owner || '__none__'} onValueChange={handleOwnerChange}>
+                <SelectTrigger className={underlineSelect}>
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            {/* Hidden select for re-picking when owner is set */}
+            {ownerName && (
+              <Select value={owner || '__none__'} onValueChange={handleOwnerChange}>
+                <SelectTrigger className="h-0 w-0 overflow-hidden border-0 p-0 opacity-0 absolute">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Unassigned</SelectItem>
+                  {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
           {/* Status */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Status</label>
             <Select value={status} onValueChange={(v) => handleSelectChange('status', v)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className={underlineSelect}>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {statusOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
+          {/* Visibility */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Visibility</label>
+            <Select value={visibility} onValueChange={(v) => handleSelectChange('visibility', v)}>
+              <SelectTrigger className={underlineSelect}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="everyone">Everyone</SelectItem>
+                <SelectItem value="owner_only">Owner Only</SelectItem>
+                <SelectItem value="team">Team</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Description</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} onBlur={handleDescriptionBlur} placeholder="Add Description" rows={3} className={`${underlineInput} resize-none`} />
+          </div>
+
+          {/* Due Date */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Due Date</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="w-full flex items-center justify-between border-b border-gray-300 py-2 text-left hover:border-gray-400 transition-colors">
+                  <span className={`text-base ${dueDate ? 'text-foreground' : 'text-gray-400'}`}>
+                    {dueDate ? format(dueDate, 'M/d/yyyy') : 'Pick a date...'}
+                  </span>
+                  <CalendarIcon className="h-4 w-4 text-gray-400" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-[200]" align="start">
+                <Calendar mode="single" selected={dueDate} onSelect={handleDateSelect} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Tags</label>
+            <input value={tags} onChange={(e) => setTags(e.target.value)} onBlur={handleTagsBlur} placeholder="Add Tag" className={underlineInput} />
+          </div>
+
           {/* Project Stage */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Project Stage</label>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Project Stage</label>
             <Select value={projectStage} onValueChange={(v) => handleSelectChange('project_stage', v)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className={underlineSelect}>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {projectStageOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
+          {/* Bank Relationships */}
+          <div>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Bank Relationships</label>
+            <input value={bankRelationships} onChange={(e) => setBankRelationships(e.target.value)} onBlur={() => handleTextFieldBlur('bank_relationships', bankRelationships, project?.bank_relationships ?? null)} placeholder="Add Bank Relationships" className={underlineInput} />
+          </div>
+
           {/* Priority */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Priority</label>
+            <label className="text-sm font-medium text-gray-500 block mb-1">Priority</label>
             <Select value={priority || '__none__'} onValueChange={(v) => handleSelectChange('priority', v === '__none__' ? '' : v)}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Select priority..." /></SelectTrigger>
+              <SelectTrigger className={underlineSelect}>
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">None</SelectItem>
                 {priorityOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-
-          {/* Owner */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Owner</label>
-            <Select value={owner || '__none__'} onValueChange={handleOwnerChange}>
-              <SelectTrigger className="w-full">
-                <div className="flex items-center gap-2">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{ownerName || 'Unassigned'}</span>
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Unassigned</SelectItem>
-                {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Due Date */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Due Date</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dueDate ? format(dueDate, 'MMM d, yyyy') : 'Pick a date...'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 z-[200]" align="start">
-                <Calendar mode="single" selected={dueDate} onSelect={handleDateSelect} initialFocus />
-              </PopoverContent>
-            </Popover>
-            {dueDate && (
-              <button onClick={() => handleDateSelect(undefined)} className="text-xs text-muted-foreground hover:text-foreground mt-1">
-                Clear date
-              </button>
-            )}
-          </div>
-
-          {/* CLX File Name */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">CLX File Name</label>
-            <Input value={clxFileName} onChange={(e) => setClxFileName(e.target.value)} onBlur={() => handleTextFieldBlur('clx_file_name', clxFileName, project?.clx_file_name ?? null)} placeholder="e.g. CharityHospital" />
-          </div>
-
-          {/* Waiting On */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Waiting On</label>
-            <Input value={waitingOn} onChange={(e) => setWaitingOn(e.target.value)} onBlur={() => handleTextFieldBlur('waiting_on', waitingOn, project?.waiting_on ?? null)} placeholder="Who/what are you waiting on?" />
-          </div>
-
-          {/* Bank Relationships */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Bank Relationships</label>
-            <Input value={bankRelationships} onChange={(e) => setBankRelationships(e.target.value)} onBlur={() => handleTextFieldBlur('bank_relationships', bankRelationships, project?.bank_relationships ?? null)} />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} onBlur={handleDescriptionBlur} placeholder="Add details..." rows={3} className="resize-none" />
-          </div>
-
-          {/* Visibility */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Visibility</label>
-            <Select value={visibility} onValueChange={(v) => handleSelectChange('visibility', v)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="everyone">Everyone</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Tags</label>
-            <Input value={tags} onChange={(e) => setTags(e.target.value)} onBlur={handleTagsBlur} placeholder="Comma-separated tags..." />
-          </div>
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 px-6 py-4 border-t border-border flex items-center justify-between">
+        <div className="shrink-0 px-8 py-4 border-t border-gray-200 flex items-center gap-4">
           {isEditMode ? (
             <>
               <Button variant="ghost" size="sm" className={confirmDelete ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-muted-foreground'} onClick={handleDelete}>
                 <Trash2 className="h-4 w-4 mr-1.5" />
                 {confirmDelete ? 'Confirm Delete' : 'Delete'}
               </Button>
+              <div className="flex-1" />
               <Button variant="ghost" size="sm" onClick={handleClose}>Close</Button>
             </>
           ) : (
             <>
-              <div />
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={handleClose}>Cancel</Button>
-                <Button size="sm" onClick={handleCreate} disabled={!name.trim() || createMutation.isPending}>
-                  Create Project
-                </Button>
-              </div>
+              <button onClick={handleClose} className="text-sm font-semibold uppercase tracking-wider text-[#3b2778] hover:text-[#2d1d5e] transition-colors px-4 py-2">
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={!name.trim() || createMutation.isPending}
+                className="text-sm font-semibold uppercase tracking-wider text-white bg-[#3b2778] hover:bg-[#2d1d5e] disabled:opacity-50 disabled:cursor-not-allowed rounded-full px-8 py-2.5 transition-colors"
+              >
+                Save
+              </button>
             </>
           )}
         </div>

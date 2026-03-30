@@ -15,6 +15,7 @@ import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SelectAllHeader } from '@/components/admin/SelectAllHeader';
 import { Card } from '@/components/ui/card';
@@ -72,6 +73,7 @@ import { usePipelineLeads, type FlatPipelineLead } from '@/hooks/usePipelineLead
 import { usePipelineMutations } from '@/hooks/usePipelineMutations';
 import { buildStageConfig } from '@/utils/pipelineStageConfig';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useUndo } from '@/contexts/UndoContext';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -305,6 +307,7 @@ const Pipeline = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { teamMember: currentTeamMember } = useTeamMember();
+  const { registerUndo } = useUndo();
 
   // Core state
   const [activeFilter, setActiveFilter] = useState<string>('all');
@@ -385,13 +388,7 @@ const Pipeline = () => {
 
   useEffect(() => {
     setSearchComponent(
-      <Input
-        type="text"
-        placeholder="Search by name, email, domain or phone number"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full h-9 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border-transparent focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
-      />
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
     );
   }, [searchTerm]);
 
@@ -563,6 +560,14 @@ const Pipeline = () => {
       setNewOpp({ name: '', company_name: '', email: '', phone: '' });
       toast.success(`"${lead.name}" added to ${dynamicStageConfig[addOpportunityStage]?.title ?? 'pipeline'}`);
       setDetailDialogLead(lead as any);
+      registerUndo({
+        label: `Created opportunity "${lead.name}"`,
+        execute: async () => {
+          await supabase.from('pipeline_leads').delete().eq('lead_id', lead.id);
+          await supabase.from('leads').delete().eq('id', lead.id);
+          queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+        },
+      });
     },
     onError: () => {
       toast.error('Failed to create opportunity');
@@ -799,18 +804,35 @@ const Pipeline = () => {
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async (pipelineLeadIds: string[]) => {
+      // Capture pipeline_leads records before deleting for undo
+      const { data: deletedRecords } = await supabase
+        .from('pipeline_leads')
+        .select('*')
+        .in('id', pipelineLeadIds);
       const { error } = await supabase
         .from('pipeline_leads')
         .delete()
         .in('id', pipelineLeadIds);
       if (error) throw error;
-      return pipelineLeadIds;
+      return { ids: pipelineLeadIds, deletedRecords: deletedRecords ?? [] };
     },
-    onSuccess: (ids) => {
+    onSuccess: ({ ids, deletedRecords }) => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
       toast.success(`${ids.length} lead(s) removed from pipeline`);
       clearSelection();
       setDeleteConfirmOpen(false);
+      if (deletedRecords.length > 0) {
+        registerUndo({
+          label: `Removed ${ids.length} lead(s) from pipeline`,
+          execute: async () => {
+            for (const rec of deletedRecords) {
+              const { id, ...rest } = rec;
+              await supabase.from('pipeline_leads').insert({ id, ...rest });
+            }
+            queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+          },
+        });
+      }
     },
     onError: () => toast.error('Failed to delete leads'),
   });
@@ -828,18 +850,33 @@ const Pipeline = () => {
   // Bulk assign owner mutation
   const bulkAssignOwnerMutation = useMutation({
     mutationFn: async ({ leadIds, ownerId }: { leadIds: string[]; ownerId: string }) => {
+      // Capture previous owners for undo
+      const { data: prevLeads } = await supabase
+        .from('leads')
+        .select('id, assigned_to')
+        .in('id', leadIds);
+      const previousOwners = (prevLeads ?? []).map(l => ({ id: l.id, assigned_to: l.assigned_to }));
       const { error } = await supabase
         .from('leads')
         .update({ assigned_to: ownerId })
         .in('id', leadIds);
       if (error) throw error;
-      return { leadIds, ownerId };
+      return { leadIds, ownerId, previousOwners };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
       const ownerName = teamMemberMap[result.ownerId] || 'team member';
       toast.success(`${result.leadIds.length} lead(s) assigned to ${ownerName}`);
       clearSelection();
+      registerUndo({
+        label: `Assigned ${result.leadIds.length} lead(s) to ${ownerName}`,
+        execute: async () => {
+          for (const prev of result.previousOwners) {
+            await supabase.from('leads').update({ assigned_to: prev.assigned_to }).eq('id', prev.id);
+          }
+          queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+        },
+      });
     },
     onError: () => toast.error('Failed to assign owner'),
   });
