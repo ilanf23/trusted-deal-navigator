@@ -15,6 +15,7 @@ import EvanLayout from '@/components/evan/EvanLayout';
 import CompanyDetailPanel, { contactTypeConfigDefault } from '@/components/admin/CompanyDetailPanel';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import {
   ArrowLeft, PanelLeft, Filter, ChevronDown, ChevronUp, Plus,
   Building2, Tag, Check, X, LayoutGrid, FileSearch,
@@ -319,13 +320,7 @@ const Companies = () => {
 
   useEffect(() => {
     setSearchComponent(
-      <Input
-        type="text"
-        placeholder="Search by name, email, domain or phone number"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full h-9 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border-transparent focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
-      />
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
     );
   }, [searchTerm]);
 
@@ -439,7 +434,6 @@ const Companies = () => {
           const { error } = await supabase.from('leads').update({ contact_type: oldType }).eq('company_name', companyName);
           if (error) throw error;
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-          toast.success('Contact type restored');
         },
       });
     },
@@ -527,7 +521,6 @@ const Companies = () => {
           const { error } = await supabase.from('leads').delete().eq('id', company.id);
           if (error) throw error;
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-          toast.success('Company creation undone');
         },
       });
     },

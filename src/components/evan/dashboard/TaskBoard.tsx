@@ -136,7 +136,6 @@ export const TaskBoard = () => {
             if (error) throw error;
             queryClient.invalidateQueries({ queryKey: ['evan-tasks-board'] });
             queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
-            toast.success('Task restored');
           },
         });
       }

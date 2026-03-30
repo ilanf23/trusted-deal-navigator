@@ -32,6 +32,8 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { parseISO, format, differenceInDays } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
@@ -313,6 +315,16 @@ export default function UnderwritingExpandedView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
+  const { setSearchComponent } = useAdminTopBar();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setSearchComponent(
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+    );
+    return () => setSearchComponent(null);
+  }, [searchTerm]);
+
   const [activityTab, setActivityTab] = useState<'log' | 'note' | 'checklist'>('log');
 
   // Activity form state
@@ -1008,18 +1020,9 @@ export default function UnderwritingExpandedView() {
       toast.error('Failed to delete file');
       return;
     }
-    registerUndo({
-      label: `Deleted file "${file.file_name}"`,
-      execute: async () => {
-        await supabase.from('lead_files').insert({
-          id: file.id, lead_id: file.lead_id, file_name: file.file_name,
-          file_url: file.file_url, file_type: file.file_type, file_size: file.file_size,
-        });
-        queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
-      },
-    });
+    toast.success('File deleted');
     queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
-  }, [leadId, queryClient, registerUndo]);
+  }, [leadId, queryClient]);
 
   // ── Queries ──
   const { data: lead, isLoading } = useQuery({

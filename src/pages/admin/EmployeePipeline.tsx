@@ -436,7 +436,6 @@ const EmployeePipeline = () => {
               await supabase.from('pipeline_stages').delete().in('id', toDelete);
             }
             queryClient.invalidateQueries({ queryKey: ['pipeline-stages', selectedPipelineId] });
-            toast.success('Pipeline stage changes undone');
           },
         });
       }
@@ -818,7 +817,6 @@ const EmployeePipeline = () => {
             queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
             queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
             queryClient.invalidateQueries({ queryKey: ['leads'] });
-            toast.success('Undo successful');
           },
         });
       }
@@ -950,7 +948,6 @@ const EmployeePipeline = () => {
             queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
             queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
             queryClient.invalidateQueries({ queryKey: ['leads'] });
-            toast.success(`${deletedLeads.length} lead(s) restored`);
           },
         });
       }
@@ -995,7 +992,6 @@ const EmployeePipeline = () => {
             }
             queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
             queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
-            toast.success('Undo successful');
           },
         });
       }

@@ -25,7 +25,27 @@ export const UndoProvider = ({ children }: { children: ReactNode }) => {
   const [lastAction, setLastAction] = useState<UndoAction | null>(null);
   const [isUndoing, setIsUndoing] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const executeUndoRef = useRef<() => Promise<void>>();
+  const isUndoingRef = useRef(false);
+  const lastActionRef = useRef<UndoAction | null>(null);
+
+  const doExecuteUndo = useCallback(async (action: UndoAction) => {
+    if (isUndoingRef.current) return;
+    isUndoingRef.current = true;
+    setIsUndoing(true);
+    try {
+      await action.execute();
+      setLastAction(null);
+      lastActionRef.current = null;
+      toast.dismiss(UNDO_TOAST_ID);
+      toast.success('Undone');
+    } catch (error) {
+      console.error('Undo failed:', error);
+      toast.error('Undo failed');
+    } finally {
+      isUndoingRef.current = false;
+      setIsUndoing(false);
+    }
+  }, []);
 
   const registerUndo = useCallback((action: Omit<UndoAction, 'id' | 'timestamp'>) => {
     // Clear previous timeout to prevent race conditions
@@ -41,20 +61,7 @@ export const UndoProvider = ({ children }: { children: ReactNode }) => {
     };
 
     setLastAction(newAction);
-
-    // Store the execute function in a ref so the toast action can call it
-    executeUndoRef.current = async () => {
-      setIsUndoing(true);
-      try {
-        await newAction.execute();
-        setLastAction(null);
-        toast.dismiss(UNDO_TOAST_ID);
-      } catch (error) {
-        console.error('Undo failed:', error);
-      } finally {
-        setIsUndoing(false);
-      }
-    };
+    lastActionRef.current = newAction;
 
     // Dismiss previous undo toast, then show new one
     toast.dismiss(UNDO_TOAST_ID);
@@ -64,7 +71,8 @@ export const UndoProvider = ({ children }: { children: ReactNode }) => {
       action: {
         label: 'Undo',
         onClick: () => {
-          executeUndoRef.current?.();
+          const current = lastActionRef.current;
+          if (current) doExecuteUndo(current);
         },
       },
     });
@@ -73,31 +81,24 @@ export const UndoProvider = ({ children }: { children: ReactNode }) => {
     timeoutRef.current = setTimeout(() => {
       setLastAction(prev => {
         if (prev && Date.now() - prev.timestamp >= UNDO_TIMEOUT_MS) {
+          lastActionRef.current = null;
           return null;
         }
         return prev;
       });
       timeoutRef.current = null;
     }, UNDO_TIMEOUT_MS);
-  }, []);
+  }, [doExecuteUndo]);
 
   const executeUndo = useCallback(async () => {
     if (!lastAction || isUndoing) return;
-
-    setIsUndoing(true);
-    try {
-      await lastAction.execute();
-      setLastAction(null);
-      toast.dismiss(UNDO_TOAST_ID);
-    } catch (error) {
-      console.error('Undo failed:', error);
-    } finally {
-      setIsUndoing(false);
-    }
-  }, [lastAction, isUndoing]);
+    await doExecuteUndo(lastAction);
+  }, [lastAction, isUndoing, doExecuteUndo]);
 
   const clearUndo = useCallback(() => {
     setLastAction(null);
+    lastActionRef.current = null;
+    toast.dismiss(UNDO_TOAST_ID);
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;

@@ -272,7 +272,6 @@ const EmployeeLeads = () => {
             queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
             queryClient.invalidateQueries({ queryKey: ['leads'] });
             queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-            toast.success('Lead restored');
           },
         });
       }
@@ -309,7 +308,6 @@ const EmployeeLeads = () => {
             queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
             queryClient.invalidateQueries({ queryKey: ['leads'] });
             queryClient.invalidateQueries({ queryKey: ['evans-pipeline-leads'] });
-            toast.success('Undo successful');
           },
         });
       }

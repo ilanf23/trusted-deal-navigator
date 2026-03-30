@@ -18,6 +18,7 @@ import { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import PeopleFilterPanel from '@/components/admin/PeopleFilterPanel';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import {
   ArrowUpDown,
   ArrowLeft,
@@ -408,7 +409,6 @@ const People = () => {
           const { error } = await supabase.from('leads').update({ contact_type: oldType }).eq('contact_type', newType);
           if (error) throw error;
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-          toast.success('Contact type rename undone');
         },
       });
     },
@@ -465,13 +465,7 @@ const People = () => {
 
   useEffect(() => {
     setSearchComponent(
-      <Input
-        type="text"
-        placeholder="Search by name, email, domain or phone number"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full h-9 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border border-[#dadce0] dark:border-border focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
-      />
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
     );
   }, [searchTerm]);
 
@@ -592,7 +586,6 @@ const People = () => {
           const { error } = await supabase.from('leads').update({ contact_type: oldType }).eq('id', personId);
           if (error) throw error;
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-          toast.success('Contact type restored');
         },
       });
     },
@@ -673,7 +666,6 @@ const People = () => {
           const { error } = await supabase.from('leads').delete().eq('id', person.id);
           if (error) throw error;
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-          toast.success('Contact creation undone');
         },
       });
     },
@@ -905,7 +897,6 @@ const People = () => {
             await supabase.from('leads').update({ contact_type: rec.contact_type }).eq('id', rec.id);
           }
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-          toast.success('Bulk contact type change undone');
         },
       });
     },

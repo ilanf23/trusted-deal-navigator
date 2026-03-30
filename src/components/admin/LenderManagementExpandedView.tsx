@@ -21,10 +21,12 @@ import {
   User, Mail, Phone, PhoneCall, Hash, Tag, Briefcase, Loader2,
   Globe, Linkedin, AtSign, MapPin, Trash2, Flag, Eye, Upload, Download, Send,
 } from 'lucide-react';
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 
@@ -305,6 +307,16 @@ export default function LenderManagementExpandedView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
+  const { setSearchComponent } = useAdminTopBar();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setSearchComponent(
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+    );
+    return () => setSearchComponent(null);
+  }, [searchTerm]);
+
   const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
 
   // Activity form state
@@ -628,18 +640,9 @@ export default function LenderManagementExpandedView() {
       toast.error('Failed to delete file');
       return;
     }
-    registerUndo({
-      label: `Deleted file "${file.file_name}"`,
-      execute: async () => {
-        await supabase.from('lead_files').insert({
-          id: file.id, lead_id: file.lead_id, file_name: file.file_name,
-          file_url: file.file_url, file_type: file.file_type, file_size: file.file_size,
-        });
-        queryClient.invalidateQueries({ queryKey: ['lm-lead-files', leadId] });
-      },
-    });
+    toast.success('File deleted');
     queryClient.invalidateQueries({ queryKey: ['lm-lead-files', leadId] });
-  }, [leadId, queryClient, registerUndo]);
+  }, [leadId, queryClient]);
 
   // ── File download (signed URL) ──
   const handleDownloadFile = useCallback(async (file: LeadFile) => {

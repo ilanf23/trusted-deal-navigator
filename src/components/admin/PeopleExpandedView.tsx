@@ -27,6 +27,8 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { AvatarUpload } from '@/components/admin/AvatarUpload';
 import { useGmailConnection } from '@/hooks/useGmailConnection';
 import { usePipelines } from '@/hooks/usePipelines';
@@ -1162,6 +1164,16 @@ export default function PeopleExpandedView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
+  const { setSearchComponent } = useAdminTopBar();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setSearchComponent(
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+    );
+    return () => setSearchComponent(null);
+  }, [searchTerm]);
+
   const [activityTab, setActivityTab] = useState<'log' | 'note' | 'email'>('log');
 
   // Activity form state
@@ -1581,18 +1593,9 @@ export default function PeopleExpandedView() {
       toast.error('Failed to delete file');
       return;
     }
-    registerUndo({
-      label: `Deleted file "${file.file_name}"`,
-      execute: async () => {
-        await supabase.from('lead_files').insert({
-          id: file.id, lead_id: file.lead_id, file_name: file.file_name,
-          file_url: file.file_url, file_type: file.file_type, file_size: file.file_size,
-        });
-        queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
-      },
-    });
+    toast.success('File deleted');
     queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
-  }, [personId, queryClient, registerUndo]);
+  }, [personId, queryClient]);
 
   // ── File download (signed URL) ──
   const handleDownloadFile = useCallback(async (file: PersonFile) => {

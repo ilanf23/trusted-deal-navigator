@@ -51,7 +51,6 @@ export const useTasksData = () => {
             const { error } = await supabase.from('tasks').delete().eq('id', data.id);
             if (error) throw error;
             queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
-            toast.success('Task creation undone');
           },
         });
       }
@@ -109,7 +108,6 @@ export const useTasksData = () => {
             }).eq('id', result.currentTask.id);
             if (error) throw error;
             queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
-            toast.success('Undo successful');
           },
         });
       }
@@ -159,7 +157,6 @@ export const useTasksData = () => {
             });
             if (error) throw error;
             queryClient.invalidateQueries({ queryKey: ['evan-tasks-full'] });
-            toast.success('Task restored');
           },
         });
       }

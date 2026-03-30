@@ -19,11 +19,13 @@ import {
   Loader2, Trash2, Circle, CircleCheck, Briefcase, MoreHorizontal, Copy, Check, Download,
   CalendarPlus, LayoutDashboard,
 } from 'lucide-react';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { sanitizeFileName } from '@/lib/utils';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { parseISO, format, differenceInDays } from 'date-fns';
 import type { LeadProject } from './ProjectDetailDialog';
 
@@ -132,6 +134,15 @@ export default function ProjectExpandedView() {
   const queryClient = useQueryClient();
   const { teamMember } = useTeamMember();
   const { registerUndo } = useUndo();
+  const { setSearchComponent } = useAdminTopBar();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setSearchComponent(
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+    );
+    return () => setSearchComponent(null);
+  }, [searchTerm]);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'board'>('overview');
   const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
@@ -383,18 +394,28 @@ export default function ProjectExpandedView() {
 
   const handleAddBoardTask = useCallback(async (status: string) => {
     if (!project?.lead_id || !newTaskTitle.trim()) return;
-    await supabase.from('tasks').insert({
+    const { data: created, error } = await supabase.from('tasks').insert({
       lead_id: project.lead_id,
       title: newTaskTitle.trim(),
       status: status,
       source: 'lead',
       created_by: teamMember?.name ?? null,
-    });
+    }).select('id').single();
+    if (error) { toast.error('Failed to add task'); return; }
     setNewTaskTitle('');
     setAddingTaskCol(null);
     queryClient.invalidateQueries({ queryKey: ['person-tasks', project.lead_id] });
     toast.success('Task added');
-  }, [project?.lead_id, newTaskTitle, teamMember, queryClient]);
+    if (created) {
+      registerUndo({
+        label: `Created task "${newTaskTitle.trim()}"`,
+        execute: async () => {
+          await supabase.from('tasks').delete().eq('id', created.id);
+          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+        },
+      });
+    }
+  }, [project?.lead_id, newTaskTitle, teamMember, queryClient, registerUndo]);
 
   // ── Board: toggle task ──
 
@@ -426,6 +447,9 @@ export default function ProjectExpandedView() {
   // ── Board: update task field ──
 
   const handleUpdateTaskField = useCallback(async (taskId: string, field: string, value: unknown) => {
+    // Capture previous value for undo
+    const { data: prev } = await supabase.from('tasks').select(field).eq('id', taskId).single();
+    const previousValue = prev ? (prev as Record<string, unknown>)[field] : null;
     await supabase.from('tasks').update({
       [field]: value,
       updated_at: new Date().toISOString(),
@@ -433,7 +457,14 @@ export default function ProjectExpandedView() {
     queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
     // Keep selected task in sync
     setSelectedBoardTask(prev => prev?.id === taskId ? { ...prev, [field]: value } as ProjectTask : prev);
-  }, [project?.lead_id, queryClient]);
+    registerUndo({
+      label: `Updated task ${field}`,
+      execute: async () => {
+        await supabase.from('tasks').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', taskId);
+        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+      },
+    });
+  }, [project?.lead_id, queryClient, registerUndo]);
 
   // ── Board task grouping ──
 
@@ -513,19 +544,28 @@ export default function ProjectExpandedView() {
   const handleSaveSidebarTask = useCallback(async () => {
     if (!project?.lead_id || !newSidebarTaskTitle.trim()) return;
     setSavingTask(true);
-    const { error } = await supabase.from('tasks').insert({
+    const { data: created, error } = await supabase.from('tasks').insert({
       lead_id: project.lead_id,
       title: newSidebarTaskTitle.trim(),
       status: 'todo',
       source: 'lead',
       created_by: teamMember?.name ?? null,
-    });
+    }).select('id').single();
     setSavingTask(false);
     if (error) { toast.error('Failed to create task'); return; }
     toast.success('Task created');
     setNewSidebarTaskTitle(''); setAddingTask(false);
     queryClient.invalidateQueries({ queryKey: ['person-tasks', project.lead_id] });
-  }, [project?.lead_id, newSidebarTaskTitle, teamMember, queryClient]);
+    if (created) {
+      registerUndo({
+        label: `Created task "${newSidebarTaskTitle.trim()}"`,
+        execute: async () => {
+          await supabase.from('tasks').delete().eq('id', created.id);
+          queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+        },
+      });
+    }
+  }, [project?.lead_id, newSidebarTaskTitle, teamMember, queryClient, registerUndo]);
 
   // ── Save company (Related sidebar) ──
   const handleSaveCompany = useCallback(async () => {
@@ -597,18 +637,9 @@ export default function ProjectExpandedView() {
     await supabase.storage.from('lead-files').remove([file.file_url]);
     const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
     if (error) { toast.error('Failed to delete file'); return; }
-    registerUndo({
-      label: `Deleted file "${file.file_name}"`,
-      execute: async () => {
-        await supabase.from('lead_files').insert({
-          id: file.id, lead_id: file.lead_id, file_name: file.file_name,
-          file_url: file.file_url, file_type: file.file_type, file_size: file.file_size,
-        });
-        queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.lead_id] });
-      },
-    });
+    toast.success('File deleted');
     queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.lead_id] });
-  }, [project?.lead_id, queryClient, registerUndo]);
+  }, [project?.lead_id, queryClient]);
 
   // ── File download (signed URL) ──
   const handleDownloadFile = useCallback(async (file: LeadFile) => {
@@ -719,13 +750,13 @@ export default function ProjectExpandedView() {
                       </div>
                       <button
                         onClick={() => { setAddingTaskCol(col.key); setNewTaskTitle(''); }}
-                        className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                        className="flex items-center justify-center text-foreground/70 hover:text-foreground transition-colors"
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-5 w-5" strokeWidth={2} />
                       </button>
                     </div>
 
-                    {/* Cards */}
+                    {/* Tickets */}
                     <div className="flex-1 px-3 pb-3 space-y-2 overflow-y-auto">
                       {addingTaskCol === col.key && (
                         <div className="bg-card rounded-lg border border-border p-3">
@@ -737,7 +768,7 @@ export default function ProjectExpandedView() {
                               if (e.key === 'Enter' && newTaskTitle.trim()) handleAddBoardTask(col.key);
                               if (e.key === 'Escape') setAddingTaskCol(null);
                             }}
-                            placeholder="Task name..."
+                            placeholder="Ticket name..."
                             className="w-full text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
                           />
                           <div className="flex items-center gap-2 mt-2">
@@ -746,30 +777,30 @@ export default function ProjectExpandedView() {
                           </div>
                         </div>
                       )}
-                      {col.items.map(task => (
+                      {col.items.map(ticket => (
                         <div
-                          key={task.id}
-                          onClick={() => setSelectedBoardTask(task)}
+                          key={ticket.id}
+                          onClick={() => setSelectedBoardTask(ticket)}
                           className={`bg-card rounded-lg border p-3 hover:shadow-sm transition-all cursor-pointer ${
-                            selectedBoardTask?.id === task.id ? 'border-blue-500 ring-1 ring-blue-500/30' : 'border-border'
+                            selectedBoardTask?.id === ticket.id ? 'border-blue-500 ring-1 ring-blue-500/30' : 'border-border'
                           }`}
                         >
                           <div className="flex items-start gap-2">
                             <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
-                            <p className="text-sm text-foreground truncate flex-1">{task.title}</p>
+                            <p className="text-sm text-foreground truncate flex-1">{ticket.title}</p>
                           </div>
-                          {task.team_member_id && teamMemberMap[task.team_member_id] && (
+                          {ticket.team_member_id && teamMemberMap[ticket.team_member_id] && (
                             <div className="flex items-center justify-end mt-3">
-                              <span className="text-[11px] text-muted-foreground">{teamMemberMap[task.team_member_id]}</span>
+                              <span className="text-[11px] text-muted-foreground">{teamMemberMap[ticket.team_member_id]}</span>
                               <div className="ml-1.5 h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[9px] font-bold">
-                                {teamMemberMap[task.team_member_id][0]?.toUpperCase()}
+                                {teamMemberMap[ticket.team_member_id][0]?.toUpperCase()}
                               </div>
                             </div>
                           )}
                         </div>
                       ))}
                       {col.items.length === 0 && addingTaskCol !== col.key && (
-                        <div className="text-center py-8 text-muted-foreground text-xs">No tasks</div>
+                        <div className="text-center py-8 text-muted-foreground text-xs">No tickets</div>
                       )}
                     </div>
                   </div>
@@ -778,7 +809,7 @@ export default function ProjectExpandedView() {
             </div>
           </div>
 
-          {/* Task detail panel */}
+          {/* Ticket detail panel */}
           {selectedBoardTask && (
             <div className="w-[360px] shrink-0 border-l border-border bg-card flex flex-col overflow-hidden">
               <ScrollArea className="flex-1">
