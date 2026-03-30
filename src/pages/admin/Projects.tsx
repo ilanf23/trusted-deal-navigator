@@ -306,7 +306,7 @@ const Projects = () => {
 
 
 
-  const allSelected = filteredProjects.length > 0 && selectedIds.size === filteredProjects.length;
+  const allSelected = filteredProjects.length > 0 && filteredProjects.every(p => selectedIds.has(p.id));
   const toggleAll = () => {
     if (allSelected) setSelectedIds(new Set());
     else setSelectedIds(new Set(filteredProjects.map(p => p.id)));
@@ -775,6 +775,7 @@ const Projects = () => {
                 ].some(Boolean);
                 setActiveFilter(hasAnyCriteria ? filter : null);
                 setFilterPanelOpen(false);
+                setSelectedIds(new Set());
                 toast.success(hasAnyCriteria ? 'Filters applied' : 'Filters cleared');
               }}
             />
