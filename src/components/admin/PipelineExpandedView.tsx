@@ -592,7 +592,7 @@ export default function PipelineExpandedView() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { registerUndo } = useUndo();
+  const { registerUndo, isUndoingRef } = useUndo();
   const { setSearchComponent } = useAdminTopBar();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -693,8 +693,8 @@ export default function PipelineExpandedView() {
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
     queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
-    toast.success('Updated');
-  }, [leadId, queryClient]);
+    if (!isUndoingRef.current) toast.success('Updated');
+  }, [leadId, queryClient, isUndoingRef]);
 
   const handleBooleanToggle = useCallback(async (field: string, currentVal: boolean) => {
     if (!leadId) return;

@@ -1166,7 +1166,7 @@ export default function PeopleExpandedView() {
   const { personId } = useParams<{ personId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { registerUndo } = useUndo();
+  const { registerUndo, isUndoingRef } = useUndo();
   const { setSearchComponent } = useAdminTopBar();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -1405,8 +1405,8 @@ export default function PeopleExpandedView() {
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
     queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-    toast.success('Updated');
-  }, [personId, queryClient]);
+    if (!isUndoingRef.current) toast.success('Updated');
+  }, [personId, queryClient, isUndoingRef]);
 
   // ── Save activity ──
   const handleSaveActivity = useCallback(async () => {

@@ -14,6 +14,7 @@ interface UndoAction {
 interface UndoContextType {
   lastAction: UndoAction | null;
   isUndoing: boolean;
+  isUndoingRef: React.RefObject<boolean>;
   registerUndo: (action: Omit<UndoAction, 'id' | 'timestamp'>) => void;
   executeUndo: () => Promise<void>;
   clearUndo: () => void;
@@ -113,7 +114,7 @@ export const UndoProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <UndoContext.Provider value={{ lastAction, isUndoing, registerUndo, executeUndo, clearUndo }}>
+    <UndoContext.Provider value={{ lastAction, isUndoing, isUndoingRef, registerUndo, executeUndo, clearUndo }}>
       {children}
     </UndoContext.Provider>
   );
@@ -126,6 +127,7 @@ export const useUndo = (): UndoContextType => {
     return {
       lastAction: null,
       isUndoing: false,
+      isUndoingRef: { current: false },
       registerUndo: () => {},
       executeUndo: async () => {},
       clearUndo: () => {},

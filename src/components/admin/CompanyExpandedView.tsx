@@ -509,7 +509,7 @@ export default function CompanyExpandedView() {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { registerUndo } = useUndo();
+  const { registerUndo, isUndoingRef } = useUndo();
   const { setSearchComponent } = useAdminTopBar();
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -546,8 +546,8 @@ export default function CompanyExpandedView() {
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
     queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-    toast.success('Updated');
-  }, [companyId, queryClient]);
+    if (!isUndoingRef.current) toast.success('Updated');
+  }, [companyId, queryClient, isUndoingRef]);
 
   /* ── Contact type change ── */
   const handleContactTypeChange = useCallback(async (newType: string) => {
