@@ -52,13 +52,13 @@ Fix the always-inactive undo button in the admin top bar and expand undo support
 **Files:**
 - Modify: `src/contexts/UndoContext.tsx`
 
-- [ ] Increase auto-clear timeout from 30 seconds to 60 seconds
-- [ ] Clean up stale timeouts properly — store timeout ID in a ref so new registerUndo calls clear the previous timer (prevents race conditions with multiple rapid actions)
-- [ ] After calling `setLastAction`, fire a sonner toast showing the action label with an inline "Undo" action button
-- [ ] The toast "Undo" button calls `executeUndo` when clicked
-- [ ] Dismiss previous undo toast when a new action is registered (only one undo toast at a time)
-- [ ] Dismissing the toast does NOT clear lastAction (the top-bar button still works independently)
-- [ ] Run `npm run build` and `npm run lint`
+- [x] Increase auto-clear timeout from 30 seconds to 60 seconds
+- [x] Clean up stale timeouts properly — store timeout ID in a ref so new registerUndo calls clear the previous timer (prevents race conditions with multiple rapid actions)
+- [x] After calling `setLastAction`, fire a sonner toast showing the action label with an inline "Undo" action button
+- [x] The toast "Undo" button calls `executeUndo` when clicked
+- [x] Dismiss previous undo toast when a new action is registered (only one undo toast at a time)
+- [x] Dismissing the toast does NOT clear lastAction (the top-bar button still works independently)
+- [x] Run `npm run build` and `npm run lint`
 
 ### Task 3: Add Undo to People and Companies Table Mutations
 
