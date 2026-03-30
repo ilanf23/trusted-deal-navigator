@@ -394,19 +394,26 @@ const People = () => {
   // Rename public filter (contact type) — updates all leads in DB
   const renameContactTypeMutation = useMutation({
     mutationFn: async ({ oldType, newType }: { oldType: string; newType: string }) => {
+      // Capture affected lead IDs before the rename so undo is scoped to only these records
+      const { data: affectedLeads } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('contact_type', oldType);
+      const affectedIds = (affectedLeads ?? []).map(l => l.id);
       const { error } = await supabase
         .from('leads')
         .update({ contact_type: newType })
         .eq('contact_type', oldType);
       if (error) throw error;
-      return { oldType, newType };
+      return { oldType, newType, affectedIds };
     },
-    onSuccess: ({ oldType, newType }) => {
+    onSuccess: ({ oldType, newType, affectedIds }) => {
       queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       registerUndo({
         label: `Renamed contact type "${oldType}" to "${newType}"`,
         execute: async () => {
-          const { error } = await supabase.from('leads').update({ contact_type: oldType }).eq('contact_type', newType);
+          if (affectedIds.length === 0) return;
+          const { error } = await supabase.from('leads').update({ contact_type: oldType }).in('id', affectedIds);
           if (error) throw error;
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
         },

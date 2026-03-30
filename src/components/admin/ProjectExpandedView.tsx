@@ -637,12 +637,23 @@ export default function ProjectExpandedView() {
 
   // ── File delete ──
   const handleDeleteFile = useCallback(async (file: LeadFile) => {
+    // Capture file record for undo before deleting
+    const { data: fileRecord } = await supabase.from('lead_files').select('*').eq('id', file.id).single();
     await supabase.storage.from('lead-files').remove([file.file_url]);
     const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
     if (error) { toast.error('Failed to delete file'); return; }
     toast.success('File deleted');
     queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.lead_id] });
-  }, [project?.lead_id, queryClient]);
+    if (fileRecord) {
+      registerUndo({
+        label: `Deleted file "${file.file_name}"`,
+        execute: async () => {
+          await supabase.from('lead_files').insert(fileRecord);
+          queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.lead_id] });
+        },
+      });
+    }
+  }, [project?.lead_id, queryClient, registerUndo]);
 
   // ── File download (signed URL) ──
   const handleDownloadFile = useCallback(async (file: LeadFile) => {

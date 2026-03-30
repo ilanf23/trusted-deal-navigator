@@ -896,6 +896,9 @@ const Pipeline = () => {
         .in('id', leadIds);
       if (fetchError) throw fetchError;
 
+      // Capture previous tags for undo
+      const previousTags = (currentLeads || []).map(l => ({ id: l.id, tags: (l.tags as string[]) || [] }));
+
       // Update each lead, merging new tags with existing
       for (const lead of (currentLeads || [])) {
         const existingTags: string[] = (lead.tags as string[]) || [];
@@ -906,7 +909,7 @@ const Pipeline = () => {
           .eq('id', lead.id);
         if (error) throw error;
       }
-      return { count: leadIds.length, tags };
+      return { count: leadIds.length, tags, previousTags };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
@@ -914,6 +917,15 @@ const Pipeline = () => {
       clearSelection();
       setAddTagsDialogOpen(false);
       setBulkTagValue('');
+      registerUndo({
+        label: `Added tags to ${result.count} lead(s)`,
+        execute: async () => {
+          for (const prev of result.previousTags) {
+            await supabase.from('leads').update({ tags: prev.tags }).eq('id', prev.id);
+          }
+          queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
+        },
+      });
     },
     onError: () => toast.error('Failed to add tags'),
   });

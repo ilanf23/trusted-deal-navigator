@@ -332,11 +332,17 @@ const Projects = () => {
       .in('id', ids);
     const previousOwners = (prevProjects ?? []).map(p => ({ id: p.id, owner: p.owner }));
 
-    Promise.all(
-      ids.map(id =>
-        supabase.from('lead_projects').update({ owner: ownerId, updated_at: new Date().toISOString() }).eq('id', id)
-      )
-    ).then(() => {
+    try {
+      const results = await Promise.all(
+        ids.map(id =>
+          supabase.from('lead_projects').update({ owner: ownerId, updated_at: new Date().toISOString() }).eq('id', id)
+        )
+      );
+      const failed = results.filter(r => r.error);
+      if (failed.length > 0) {
+        toast.error(`Failed to assign ${failed.length} of ${ids.length} project(s)`);
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ['all-projects'] });
       const ownerName = teamMemberMap[ownerId] || 'team member';
       toast.success(`${ids.length} project(s) assigned to ${ownerName}`);
@@ -350,7 +356,9 @@ const Projects = () => {
           queryClient.invalidateQueries({ queryKey: ['all-projects'] });
         },
       });
-    }).catch(() => toast.error('Failed to assign owner'));
+    } catch {
+      toast.error('Failed to assign owner');
+    }
   }, [selectedIds, teamMemberMap, queryClient, registerUndo]);
 
   const bulkAddTagsMutation = useMutation({
