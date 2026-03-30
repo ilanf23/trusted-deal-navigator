@@ -106,5 +106,5 @@ Fix the always-inactive undo button in the admin top bar and expand undo support
 
 ### Task 6: Build Verification and Cleanup
 
-- [ ] Run `npm run build` — must pass with zero errors
-- [ ] Run `npm run lint` — must pass with zero errors
+- [x] Run `npm run build` — must pass with zero errors
+- [x] Run `npm run lint` — must pass with zero errors (pre-existing `any` type errors remain; no new errors introduced by undo feature)
