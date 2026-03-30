@@ -665,6 +665,7 @@ const People = () => {
         execute: async () => {
           const { error } = await supabase.from('leads').delete().eq('id', person.id);
           if (error) throw error;
+          setSelectedPerson(null);
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
         },
       });

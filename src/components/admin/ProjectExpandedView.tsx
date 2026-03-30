@@ -423,12 +423,13 @@ export default function ProjectExpandedView() {
     const isCompleting = !task.completed_at;
     const prevCompletedAt = task.completed_at;
     const prevStatus = task.status;
-    await supabase.from('tasks').update({
+    const { error } = await supabase.from('tasks').update({
       completed_at: isCompleting ? new Date().toISOString() : null,
       is_completed: isCompleting,
       status: isCompleting ? 'done' : 'todo',
       updated_at: new Date().toISOString(),
     }).eq('id', task.id);
+    if (error) { toast.error('Failed to update task'); return; }
     registerUndo({
       label: isCompleting ? `Completed "${task.title}"` : `Reopened "${task.title}"`,
       execute: async () => {
@@ -450,10 +451,11 @@ export default function ProjectExpandedView() {
     // Capture previous value for undo
     const { data: prev } = await supabase.from('tasks').select(field).eq('id', taskId).single();
     const previousValue = prev ? (prev as Record<string, unknown>)[field] : null;
-    await supabase.from('tasks').update({
+    const { error } = await supabase.from('tasks').update({
       [field]: value,
       updated_at: new Date().toISOString(),
     }).eq('id', taskId);
+    if (error) { toast.error('Failed to update task'); return; }
     queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
     // Keep selected task in sync
     setSelectedBoardTask(prev => prev?.id === taskId ? { ...prev, [field]: value } as ProjectTask : prev);
@@ -505,7 +507,8 @@ export default function ProjectExpandedView() {
     if (!projectId) return;
     // Capture full project record before deleting
     const { data: projectData } = await supabase.from('lead_projects').select('*').eq('id', projectId).single();
-    await supabase.from('lead_projects').delete().eq('id', projectId);
+    const { error } = await supabase.from('lead_projects').delete().eq('id', projectId);
+    if (error) { toast.error('Failed to delete project'); return; }
     if (projectData) {
       registerUndo({
         label: `Deleted project "${projectData.name}"`,

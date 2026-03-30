@@ -520,6 +520,7 @@ const Companies = () => {
         execute: async () => {
           const { error } = await supabase.from('leads').delete().eq('id', company.id);
           if (error) throw error;
+          setSelectedCompany(null);
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
         },
       });

@@ -565,6 +565,7 @@ const Pipeline = () => {
         execute: async () => {
           await supabase.from('pipeline_leads').delete().eq('lead_id', lead.id);
           await supabase.from('leads').delete().eq('id', lead.id);
+          setDetailDialogLead(null);
           queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
         },
       });
