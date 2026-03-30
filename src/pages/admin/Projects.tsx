@@ -648,7 +648,7 @@ const Projects = () => {
                   return (
                     <tr
                       key={p.id}
-                      className={`cursor-pointer transition-colors duration-100 group ${
+                      className={`${filterPanelOpen ? 'cursor-default' : 'cursor-pointer'} transition-colors duration-100 group ${
                         selectedProject?.id === p.id
                           ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
                           : isSelected
@@ -798,11 +798,11 @@ const Projects = () => {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete {selectedIds.size} Project{selectedIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
-              <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+              <AlertDialogDescription>You can undo this action briefly after deletion.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleBulkDelete} className="bg-red-600 hover:bg-red-700 text-white">
+              <AlertDialogAction onClick={handleBulkDelete} disabled={bulkDeleteMutation.isPending} className="bg-red-600 hover:bg-red-700 text-white">
                 {bulkDeleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Delete
               </AlertDialogAction>
