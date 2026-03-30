@@ -22,7 +22,7 @@ import MoveBoxesModal from '@/components/admin/MoveBoxesModal';
 import { usePipelineColumns } from '@/hooks/usePipelineColumns';
 import HelpTooltip from '@/components/ui/help-tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
 import { DbTableBadge } from '@/components/admin/DbTableBadge';
 
@@ -1076,15 +1076,6 @@ const EmployeePipeline = () => {
     }, 100);
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   // Selection helpers
   const toggleLeadSelection = (leadId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -1709,12 +1700,7 @@ const EmployeePipeline = () => {
                                 case 'avatar':
                                   const avatarSrc = getLeadAvatar(lead.name);
                                   return (
-                                    <Avatar className="h-7 w-7 bg-[#0066FF] flex-shrink-0">
-                                      {avatarSrc && <AvatarImage src={avatarSrc} alt={lead.name} className="object-cover" />}
-                                      <AvatarFallback className="text-[10px] text-white font-semibold bg-[#0066FF]">
-                                        {getInitials(lead.name)}
-                                      </AvatarFallback>
-                                    </Avatar>
+                                    <CrmAvatar name={lead.name} imageUrl={avatarSrc} />
                                   );
                                 case 'name':
                                   return (

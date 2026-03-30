@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
@@ -79,12 +80,6 @@ type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
 
 
-const AVATAR_COLORS = [
-  'bg-[#5C9EAD]', 'bg-[#4CAF50]', 'bg-[#C62828]', 'bg-[#EF6C00]',
-  'bg-[#546E7A]', 'bg-[#26A69A]', 'bg-[#6D8B74]', 'bg-[#3E7CB1]',
-  'bg-[#8D6E63]', 'bg-[#78909C]',
-];
-
 const FILTER_OPTIONS = [
   { id: 'all', label: 'All Opportunities', group: 'top' },
   { id: 'my_open', label: 'My Open Opportunities', group: 'public' },
@@ -101,14 +96,6 @@ const FILTER_OPTIONS = [
   { id: 'pre_approval_issued', label: 'Pre-Approval Letters Issued', group: 'public' },
   { id: 'ready_for_wu_approval', label: "Write Up's Pending Approval", group: 'public' },
 ];
-
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
@@ -210,8 +197,6 @@ function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick
   const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
-  const avatarColor = getAvatarColor(lead.name);
-  const initial = lead.name[0]?.toUpperCase() ?? '?';
   const effectiveOwnerId = leadOwnerMap[lead.id] ?? lead.assigned_to;
   const assignedName = effectiveOwnerId ? (teamMemberMap[effectiveOwnerId] ?? null) : null;
   
@@ -224,9 +209,7 @@ function KanbanDealCard({ lead, teamMemberMap, leadOwnerMap, isDragging, onClick
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
         <div className="flex items-center gap-2 mb-1.5">
-          <div className={`h-6 w-6 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-            {initial}
-          </div>
+          <CrmAvatar name={lead.name} size="sm" />
           <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{lead.name}</p>
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/pipeline/expanded-view/${lead.id}`); }}
@@ -1450,15 +1433,11 @@ const Pipeline = () => {
                       </tr>
                     ) : (
                       filteredAndSorted.map((lead, rowIdx) => {
-                        const initial = lead.name[0]?.toUpperCase() ?? '?';
-                        const avatarColor = getAvatarColor(lead.name);
                         const stageCfg = dynamicStageConfig[lead._stageId];
                         const effectiveOwnerId = leadOwnerMap[lead.id] ?? lead.assigned_to;
                         const assignedName = effectiveOwnerId
                           ? (teamMemberMap[effectiveOwnerId] ?? null)
                           : null;
-                        const assignedInitial = assignedName?.[0]?.toUpperCase() ?? null;
-                        const assignedColor = assignedName ? getAvatarColor(assignedName) : '';
                         const assignedAvatar = effectiveOwnerId ? (teamAvatarMap[effectiveOwnerId] ?? null) : null;
                         const daysInStage = daysSince(lead.updated_at);
                         const inactiveDays = daysSince(lead.last_activity_at);
@@ -1496,9 +1475,7 @@ const Pipeline = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
-                                  {initial}
-                                </div>
+                                <CrmAvatar name={lead.name} />
                                 <div className="min-w-0 flex-1">
                                   <div className="relative flex items-center">
                                     <p className="font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0">
@@ -1551,15 +1528,9 @@ const Pipeline = () => {
                             {/* Owner */}
                             {columnVisibility.ownedBy && (
                               <td className={`px-4 ${rowPad} overflow-hidden`} style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
-                                {assignedName && assignedInitial ? (
+                                {assignedName ? (
                                   <div className="flex items-center gap-2">
-                                    {assignedAvatar ? (
-                                      <img src={assignedAvatar} alt={assignedName} className="h-6 w-6 rounded-full object-cover shrink-0 shadow-sm" />
-                                    ) : (
-                                      <div className={`h-6 w-6 rounded-full ${assignedColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0 shadow-sm`}>
-                                        {assignedInitial}
-                                      </div>
-                                    )}
+                                    <CrmAvatar name={assignedName} imageUrl={assignedAvatar} size="sm" />
                                     <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate max-w-[80px]">{assignedName}</span>
                                   </div>
                                 ) : (
@@ -1730,9 +1701,7 @@ const Pipeline = () => {
                   {draggedLead ? (
                     <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
                       <div className="flex items-center gap-2 mb-1">
-                        <div className={`h-5 w-5 rounded-full ${getAvatarColor(draggedLead.name)} flex items-center justify-center text-white text-[10px] font-bold`}>
-                          {draggedLead.name[0]?.toUpperCase()}
-                        </div>
+                        <CrmAvatar name={draggedLead.name} size="xs" />
                         <p className="text-sm font-semibold text-foreground truncate">{draggedLead.name}</p>
                       </div>
                     </Card>

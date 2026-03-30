@@ -543,7 +543,7 @@ const Projects = () => {
     <EvanLayout>
       <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem)] bg-background">
         {/* Filter bar */}
-        <div className="shrink-0 border-b border-border bg-card px-6 py-2.5 flex items-center justify-between">
+        <div className="shrink-0 border-b border-border bg-card px-8 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Dropdown filter */}
             <button className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground/80 border border-border rounded-md px-3 py-1.5 transition-colors">
@@ -594,7 +594,7 @@ const Projects = () => {
 
         {/* Table + Detail Panel */}
         <div className="relative flex flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="flex-1 pt-4 pl-4">
+        <ScrollArea className="flex-1 pt-4 pl-8">
           {/* ── Bulk Selection Toolbar ── */}
           {selectedIds.size > 0 && (
             <div className="sticky top-0 z-40 px-4 py-2 bg-white dark:bg-background border-b border-border">

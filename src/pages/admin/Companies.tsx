@@ -15,6 +15,7 @@ import EvanLayout from '@/components/evan/EvanLayout';
 import CompanyDetailPanel, { contactTypeConfigDefault } from '@/components/admin/CompanyDetailPanel';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import {
   ArrowLeft, PanelLeft, Filter, ChevronDown, ChevronUp, Plus,
@@ -167,20 +168,6 @@ const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir
   ],
 };
 
-const AVATAR_COLORS = [
-  'bg-[#5C9EAD]', 'bg-[#4CAF50]', 'bg-[#C62828]', 'bg-[#EF6C00]',
-  'bg-[#546E7A]', 'bg-[#26A69A]', 'bg-[#6D8B74]', 'bg-[#3E7CB1]',
-  'bg-[#8D6E63]', 'bg-[#78909C]',
-];
-
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
   try { return differenceInDays(new Date(), parseISO(dateStr)); } catch { return null; }
@@ -201,9 +188,6 @@ function KanbanCompanyCard({ company, isDragging, onClick }: {
   const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: company.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
-  const avatarColor = getAvatarColor(company.company_name);
-  const initial = company.company_name[0]?.toUpperCase() ?? '?';
-
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <Card
@@ -211,9 +195,7 @@ function KanbanCompanyCard({ company, isDragging, onClick }: {
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
         <div className="flex items-center gap-2 mb-1.5">
-          <div className={`h-6 w-6 rounded-md ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-            {initial}
-          </div>
+          <CrmAvatar name={company.company_name} size="sm" />
           <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{company.company_name}</p>
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`/admin/companies/company/${company.id}`); }}
@@ -1107,8 +1089,6 @@ const Companies = () => {
                       </tr>
                     ) : (
                       filteredAndSorted.map((company) => {
-                        const initial = company.company_name[0]?.toUpperCase() ?? '?';
-                        const avatarColor = getAvatarColor(company.company_name);
                         const typeCfg = contactTypeConfig[company.contact_type ?? 'Other'];
                         const inactiveDaysVal = daysSince(company.last_activity_at) ?? 0;
                         const isStale = inactiveDaysVal > 7;
@@ -1139,9 +1119,7 @@ const Companies = () => {
                             {/* Company (sticky) */}
                             <td className={`px-4 py-1.5 overflow-hidden sticky z-[5] transition-colors ${stickyBg}`} style={{ width: columnWidths.company, left: 48, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
                               <div className="flex items-center gap-2.5">
-                                <div className={`h-7 w-7 rounded-md ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
-                                  {initial}
-                                </div>
+                                <CrmAvatar name={company.company_name} />
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5">
                                     <p className="font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight">
@@ -1337,9 +1315,7 @@ const Companies = () => {
                   {draggedCompany ? (
                     <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
                       <div className="flex items-center gap-2 mb-1">
-                        <div className={`h-5 w-5 rounded-md ${getAvatarColor(draggedCompany.company_name)} flex items-center justify-center text-white text-[10px] font-bold`}>
-                          {draggedCompany.company_name[0]?.toUpperCase()}
-                        </div>
+                        <CrmAvatar name={draggedCompany.company_name} size="xs" />
                         <p className="text-sm font-semibold text-foreground truncate">{draggedCompany.company_name}</p>
                       </div>
                       {draggedCompany.contact_name && (

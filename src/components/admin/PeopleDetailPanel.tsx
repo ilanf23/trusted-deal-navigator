@@ -16,6 +16,7 @@ import { AddressAutocompleteInput, type ParsedAddress } from '@/components/ui/ad
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { PeopleTaskDetailDialog, type LeadTask } from './PeopleTaskDetailDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -125,20 +126,6 @@ const CONTACT_TYPES = [
   'Client', 'Prospect', 'Referral Partner', 'Lender',
   'Attorney', 'CPA', 'Vendor', 'Other',
 ];
-
-function getAvatarGradient(name: string) {
-  const gradients = [
-    'from-blue-500 to-blue-600',
-    'from-blue-500 to-indigo-600',
-    'from-emerald-500 to-teal-600',
-    'from-amber-500 to-orange-600',
-    'from-rose-500 to-pink-600',
-    'from-cyan-500 to-blue-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return gradients[Math.abs(hash) % gradients.length];
-}
 
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
@@ -1357,9 +1344,7 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
       <RelatedSection label="People" count={1 + relatedPeople.length}>
         <div className="space-y-1">
           <div className="flex items-center gap-2.5 py-1.5">
-            <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(person.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-              {person.name[0]?.toUpperCase() ?? '?'}
-            </div>
+            <CrmAvatar name={person.name} />
             <span className="text-[13px] font-medium text-foreground">{person.name}</span>
           </div>
           {relatedPeople.map((rp) => (
@@ -1368,9 +1353,7 @@ function RelatedTabContent({ person, contactTypeConfig }: { person: Person; cont
               onClick={() => navigate(`/admin/contacts/people/expanded-view/${rp.id}`)}
               className="flex items-center gap-2.5 py-1.5 w-full text-left hover:bg-muted/50 rounded-md px-1 -mx-1 transition-colors group"
             >
-              <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(rp.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-                {rp.name[0]?.toUpperCase() ?? '?'}
-              </div>
+              <CrmAvatar name={rp.name} />
               <span className="text-[13px] font-medium text-foreground truncate flex-1">{rp.name}</span>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             </button>
@@ -1538,8 +1521,6 @@ export default function PeopleDetailPanel({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const typeCfg = contactTypeConfig[person.contact_type ?? 'Other'];
-  const initial = person.name[0]?.toUpperCase() ?? '?';
-  const gradient = getAvatarGradient(person.name);
 
   // ── Satellite queries ──
   const { data: personEmails = [] } = useQuery({
@@ -1703,15 +1684,7 @@ export default function PeopleDetailPanel({
         {/* Avatar + Name + Subtitle + Company badge */}
         <div className="px-6 pb-4">
           <div className="flex items-center gap-3 mb-1">
-            <div className="h-14 w-14 rounded-full shrink-0 overflow-hidden">
-              {person.image_url ? (
-                <img src={person.image_url} alt={person.name} className="h-full w-full object-cover" />
-              ) : (
-                <div className={`h-full w-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-lg font-bold`}>
-                  {initial}
-                </div>
-              )}
-            </div>
+            <CrmAvatar name={person.name} imageUrl={person.image_url} size="xl" />
             <div className="min-w-0 flex-1">
               <h2 className="text-xl font-bold text-foreground truncate leading-tight">{person.name}</h2>
               <p className="text-sm text-muted-foreground mt-0.5">1 Contact</p>

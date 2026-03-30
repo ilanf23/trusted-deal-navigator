@@ -28,6 +28,7 @@ import { format, formatDistanceToNow, differenceInDays, differenceInHours } from
 import { TaskDetailDialog } from '@/components/evan/tasks/TaskDetailDialog';
 import { Task } from '@/components/evan/tasks/types';
 import { LeadTodosSection } from '@/components/admin/LeadTodosSection';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { FormattedPhoneInput } from '@/components/admin/FormattedPhoneInput';
 import { LeadFilesSection } from '@/components/admin/LeadFilesSection';
 import { LeadDealSheetTab } from '@/components/admin/LeadDealSheetTab';
@@ -179,20 +180,6 @@ interface Communication {
   status: string | null;
   transcript: string | null;
   created_at: string;
-}
-
-function getAvatarGradient(name: string) {
-  const gradients = [
-    'from-blue-500 to-blue-600',
-    'from-blue-500 to-indigo-600',
-    'from-emerald-500 to-teal-600',
-    'from-amber-500 to-orange-600',
-    'from-rose-500 to-pink-600',
-    'from-cyan-500 to-blue-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return gradients[Math.abs(hash) % gradients.length];
 }
 
 const stages = [
@@ -1157,8 +1144,6 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
   // Get assigned team member
   const assignedMember = teamMembers.find(t => t.id === lead.assigned_to);
   const currentStage = stages.find(s => s.status === lead.status);
-  const initial = lead.name?.[0]?.toUpperCase() ?? '?';
-  const gradient = getAvatarGradient(lead.name ?? '');
 
   // Get all emails for contacts section
   const allEmails = emails.length > 0 ? emails : (lead.email ? [{ id: 'legacy', email: lead.email, email_type: 'primary' }] : []);
@@ -1239,9 +1224,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4" />
           </Button>
-          <div className={`h-9 w-9 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
-            {initial}
-          </div>
+          <CrmAvatar name={lead.name ?? ''} size="xl" />
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-foreground truncate leading-tight">{lead.name}</h2>
             {lead.company_name && (

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EditableField, EditableSelectField } from './InlineEditableFields';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -21,20 +22,6 @@ interface VolumeLogDetailPanelProps {
 }
 
 // ── Helpers ──
-
-function getAvatarGradient(name: string) {
-  const gradients = [
-    'from-blue-500 to-blue-600',
-    'from-blue-500 to-indigo-600',
-    'from-emerald-500 to-teal-600',
-    'from-amber-500 to-orange-600',
-    'from-rose-500 to-pink-600',
-    'from-cyan-500 to-blue-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return gradients[Math.abs(hash) % gradients.length];
-}
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '\u2014';
@@ -171,8 +158,6 @@ export default function VolumeLogDetailPanel({
 
   if (!lead) return null;
 
-  const initial = lead.name?.[0]?.toUpperCase() ?? '?';
-  const gradient = getAvatarGradient(lead.name ?? '');
   const isWon = (lead as any).won;
   const volumeLogStatus = (lead as any).volume_log_status || 'Active';
   const loanAmount = lead.deal_value;
@@ -207,9 +192,7 @@ export default function VolumeLogDetailPanel({
         <div className="px-5 pt-4 pb-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
-                {initial}
-              </div>
+              <CrmAvatar name={lead.name ?? ''} size="xl" />
               <div className="min-w-0">
                 <h2 className="text-[15px] font-bold text-foreground truncate leading-tight">{lead.name}</h2>
                 {lead.company_name && (

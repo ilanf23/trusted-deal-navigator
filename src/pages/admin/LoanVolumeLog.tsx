@@ -10,6 +10,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import EvanLayout from '@/components/evan/EvanLayout';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import { InlineEditableCell } from '@/components/admin/InlineEditableCell';
@@ -135,20 +136,6 @@ const DENSITY_PAD: Record<RowDensity, string> = {
 };
 
 // ── Helpers ──
-
-const AVATAR_COLORS = [
-  'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500',
-  'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
-  'bg-orange-500', 'bg-pink-500',
-];
-
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 function formatCurrency(value: number | null): string {
   if (value === null || value === undefined) return '—';
@@ -1171,11 +1158,7 @@ const LoanVolumeLog = () => {
                     </tr>
                   ) : (
                     filteredAndSorted.map((lead, rowIdx) => {
-                      const initial = lead.name[0]?.toUpperCase() ?? '?';
-                      const avatarColor = getAvatarColor(lead.name);
                       const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? null) : null;
-                      const assignedInitial = assignedName?.[0]?.toUpperCase() ?? null;
-                      const assignedColor = assignedName ? getAvatarColor(assignedName) : '';
                       const assignedAvatar = lead.assigned_to ? (teamAvatarMap[lead.assigned_to] ?? null) : null;
                       const isDetailOpen = detailDialogLead?.id === lead.id;
                       const isSelected = selectedLeadIds.has(lead.id);
@@ -1220,9 +1203,7 @@ const LoanVolumeLog = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
-                                  {initial}
-                                </div>
+                                <CrmAvatar name={lead.name} />
                                 <div className="min-w-0 flex-1">
                                   <p className="font-semibold text-foreground truncate text-[13px] leading-tight">
                                     {lead.name}
@@ -1320,15 +1301,9 @@ const LoanVolumeLog = () => {
                           {/* Assigned To */}
                           {columnVisibility.assignedTo && (
                             <td className={`px-3 ${rowPad} overflow-hidden`} style={{ width: columnWidths.assignedTo, border: '1px solid #c8bdd6' }}>
-                              {assignedName && assignedInitial ? (
+                              {assignedName ? (
                                 <div className="flex items-center gap-1.5">
-                                  {assignedAvatar ? (
-                                    <img src={assignedAvatar} alt={assignedName} className="h-5 w-5 rounded-full object-cover shrink-0" />
-                                  ) : (
-                                    <div className={`h-5 w-5 rounded-full ${assignedColor} flex items-center justify-center text-white text-[9px] font-bold shrink-0`}>
-                                      {assignedInitial}
-                                    </div>
-                                  )}
+                                  <CrmAvatar name={assignedName} imageUrl={assignedAvatar} size="xs" />
                                   <span className="text-[11px] text-foreground/80 truncate">{assignedName}</span>
                                 </div>
                               ) : (

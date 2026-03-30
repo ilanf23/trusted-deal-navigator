@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { AvatarUpload } from '@/components/admin/AvatarUpload';
 import { useGmailConnection } from '@/hooks/useGmailConnection';
@@ -249,20 +250,6 @@ const contactTypeConfig: Record<string, { label: string; color: string; bg: stri
 };
 
 // ── Helpers ──
-
-function getAvatarGradient(name: string) {
-  const gradients = [
-    'from-blue-500 to-blue-600',
-    'from-blue-500 to-indigo-600',
-    'from-emerald-500 to-teal-600',
-    'from-amber-500 to-orange-600',
-    'from-rose-500 to-pink-600',
-    'from-cyan-500 to-blue-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return gradients[Math.abs(hash) % gradients.length];
-}
 
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
@@ -1933,8 +1920,6 @@ export default function PeopleExpandedView() {
     );
   }
 
-  const initial = person.name[0]?.toUpperCase() ?? '?';
-  const gradient = getAvatarGradient(person.name);
   const typeCfg = fullContactTypeConfig[person.contact_type ?? 'Other'] ?? contactTypeConfig[person.contact_type ?? 'Other'];
   const inactiveDays = daysSince(person.last_activity_at);
   const lastActivityDate = formatShortDate(person.last_activity_at);
@@ -3152,9 +3137,7 @@ export default function PeopleExpandedView() {
               <div className="space-y-2 py-1">
                 {person.company_name ? (
                   <div className="text-xs text-foreground flex items-center gap-2">
-                    <div className={`h-5 w-5 rounded-full bg-gradient-to-br ${getAvatarGradient(person.company_name)} flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>
-                      {person.company_name[0]?.toUpperCase()}
-                    </div>
+                    <CrmAvatar name={person.company_name} size="xs" />
                     <span className="font-medium">{person.company_name}</span>
                   </div>
                 ) : (

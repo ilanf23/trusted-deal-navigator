@@ -337,7 +337,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
   };
 
   const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40 focus-visible:ring-offset-0 focus-visible:ring-offset-sidebar';
-  const activeIndicator = "before:content-[''] before:absolute before:left-0 before:inset-y-1.5 before:w-[2.5px] before:rounded-full before:bg-sidebar-primary";
+  const activeIndicator = '';
   const activeSurface = 'bg-sidebar-accent text-sidebar-accent-foreground';
   const inactiveItem = 'text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-foreground';
   const inactiveParent = 'text-sidebar-foreground hover:bg-sidebar-accent/70';

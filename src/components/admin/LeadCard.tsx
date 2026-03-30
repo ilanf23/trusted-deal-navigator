@@ -7,6 +7,7 @@ import { Building2, Mail, Phone, Calendar, CheckCircle2, Clock, PhoneIncoming, P
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import { getLeadDisplayName } from '@/lib/utils';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -74,18 +75,6 @@ const formatPhoneNumber = (phone: string | null | undefined): string => {
   return phone;
 };
 
-const AVATAR_COLORS = [
-  'bg-blue-600', 'bg-emerald-600', 'bg-violet-600', 'bg-rose-600',
-  'bg-amber-600', 'bg-cyan-600', 'bg-pink-600', 'bg-indigo-600',
-];
-
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 export const LeadCard = ({ lead, touchpoint, teamMemberMap, teamAvatarMap, onClick }: LeadCardProps) => {
   const navigate = useNavigate();
@@ -128,15 +117,7 @@ export const LeadCard = ({ lead, touchpoint, teamMemberMap, teamAvatarMap, onCli
       <CardContent className="p-3 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="h-5 w-5 rounded-full shrink-0 overflow-hidden">
-              {lead.image_url ? (
-                <img src={lead.image_url} alt={lead.name} className="h-full w-full object-cover" />
-              ) : (
-                <div className={`h-full w-full ${getAvatarColor(lead.name)} flex items-center justify-center text-white text-[8px] font-bold`}>
-                  {lead.name[0]?.toUpperCase()}
-                </div>
-              )}
-            </div>
+            <CrmAvatar name={lead.name} imageUrl={lead.image_url} size="xs" />
             <h4 className="font-semibold text-sm leading-tight truncate">{getLeadDisplayName(lead)}</h4>
             <button
               type="button"
@@ -172,19 +153,10 @@ export const LeadCard = ({ lead, touchpoint, teamMemberMap, teamAvatarMap, onCli
               const ownerName = teamMemberMap[lead.assigned_to!];
               const ownerAvatar = teamAvatarMap?.[lead.assigned_to!];
               if (!ownerName) return null;
-              const ownerInitial = ownerName[0]?.toUpperCase();
               return (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="h-5 w-5 rounded-full overflow-hidden shrink-0 shadow-sm">
-                      {ownerAvatar ? (
-                        <img src={ownerAvatar} alt={ownerName} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className={`h-full w-full ${getAvatarColor(ownerName)} flex items-center justify-center text-white text-[8px] font-bold`}>
-                          {ownerInitial}
-                        </div>
-                      )}
-                    </div>
+                    <CrmAvatar name={ownerName} imageUrl={ownerAvatar} size="xs" />
                   </TooltipTrigger>
                   <TooltipContent>{ownerName}</TooltipContent>
                 </Tooltip>

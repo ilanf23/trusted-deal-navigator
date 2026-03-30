@@ -18,6 +18,7 @@ import { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import PeopleFilterPanel from '@/components/admin/PeopleFilterPanel';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import {
   ArrowUpDown,
@@ -239,20 +240,6 @@ const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir
   ],
 };
 
-const AVATAR_COLORS = [
-  'bg-[#5C9EAD]', 'bg-[#4CAF50]', 'bg-[#C62828]', 'bg-[#EF6C00]',
-  'bg-[#546E7A]', 'bg-[#26A69A]', 'bg-[#6D8B74]', 'bg-[#3E7CB1]',
-  'bg-[#8D6E63]', 'bg-[#78909C]',
-];
-
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
   try {
@@ -281,8 +268,6 @@ function KanbanPersonCard({ person, isDragging, onClick }: {
   const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: person.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
-  const avatarColor = getAvatarColor(person.name);
-  const initial = person.name[0]?.toUpperCase() ?? '?';
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
@@ -291,9 +276,7 @@ function KanbanPersonCard({ person, isDragging, onClick }: {
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
         <div className="flex items-center gap-2 mb-1.5">
-          <div className={`h-6 w-6 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-            {initial}
-          </div>
+          <CrmAvatar name={person.name} size="sm" />
           <p className="text-sm font-semibold text-foreground leading-tight truncate flex-1">{person.name}</p>
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`/admin/people/person/${person.id}`); }}
@@ -1463,8 +1446,6 @@ const People = () => {
                       </tr>
                     ) : (
                       filteredAndSorted.map((person, rowIdx) => {
-                        const initial = person.name[0]?.toUpperCase() ?? '?';
-                        const avatarColor = getAvatarColor(person.name);
                         const typeCfg = contactTypeConfig[person.contact_type ?? 'Other'];
                         const taskCount = taskCountMap[person.id] ?? 0;
                         const interactionCount = interactionCountMap[person.id] ?? 0;
@@ -1501,15 +1482,7 @@ const People = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <div className="h-7 w-7 rounded-full shrink-0 shadow-sm overflow-hidden">
-                                  {person.image_url ? (
-                                    <img src={person.image_url} alt={person.name} className="h-full w-full object-cover" />
-                                  ) : (
-                                    <div className={`h-full w-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold`}>
-                                      {initial}
-                                    </div>
-                                  )}
-                                </div>
+                                <CrmAvatar name={person.name} imageUrl={person.image_url} />
                                 <div className="min-w-0 flex-1">
                                   <div className="relative flex items-center">
                                     <p className="font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0">
@@ -1707,9 +1680,7 @@ const People = () => {
                   {draggedPerson ? (
                     <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
                       <div className="flex items-center gap-2 mb-1">
-                        <div className={`h-5 w-5 rounded-full ${getAvatarColor(draggedPerson.name)} flex items-center justify-center text-white text-[10px] font-bold`}>
-                          {draggedPerson.name[0]?.toUpperCase()}
-                        </div>
+                        <CrmAvatar name={draggedPerson?.name || ''} size="xs" />
                         <p className="text-sm font-semibold text-foreground truncate">{draggedPerson.name}</p>
                       </div>
                     </Card>

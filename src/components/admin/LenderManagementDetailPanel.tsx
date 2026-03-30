@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -54,20 +55,6 @@ interface LenderManagementDetailPanelProps {
   onExpand?: () => void;
   onStageChange?: (leadId: string, newStatus: string) => void;
   onLeadUpdate?: (updatedLead: Lead) => void;
-}
-
-function getAvatarGradient(name: string) {
-  const gradients = [
-    'from-blue-500 to-blue-600',
-    'from-blue-500 to-indigo-600',
-    'from-emerald-500 to-teal-600',
-    'from-amber-500 to-orange-600',
-    'from-rose-500 to-pink-600',
-    'from-cyan-500 to-blue-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return gradients[Math.abs(hash) % gradients.length];
 }
 
 function daysSince(dateStr: string | null): number | null {
@@ -828,9 +815,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
           <div className="space-y-2 pt-1">
             {contacts.map((c) => (
               <div key={c.id} className="flex items-center gap-2.5">
-                <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(c.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-                  {c.name[0]?.toUpperCase() ?? '?'}
-                </div>
+                <CrmAvatar name={c.name} />
                 <div className="min-w-0">
                   <p className="text-[12px] font-medium text-foreground truncate leading-tight">
                     {c.name}
@@ -848,9 +833,7 @@ function RelatedTabContent({ lead, stageConfig }: { lead: Lead; stageConfig: Rec
       <RelatedSection icon={<Building2 className="h-3.5 w-3.5" />} label="Company" count={lead.company_name ? 1 : 0} iconColor="text-indigo-500">
         {lead.company_name ? (
           <div className="flex items-center gap-2.5 pt-1">
-            <div className={`h-7 w-7 rounded-lg bg-gradient-to-br ${getAvatarGradient(lead.company_name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-              {lead.company_name[0]?.toUpperCase() ?? '?'}
-            </div>
+            <CrmAvatar name={lead.company_name} />
             <p className="text-[12px] font-medium text-foreground">{lead.company_name}</p>
           </div>
         ) : (
@@ -980,8 +963,6 @@ export default function LenderManagementDetailPanel({
   const stageCfg = stageConfig[activeStageKey];
   const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? '\u2014') : '\u2014';
   const dealValue = fakeValue ? fakeValue(lead.id) : null;
-  const initial = lead.name[0]?.toUpperCase() ?? '?';
-  const gradient = getAvatarGradient(lead.name);
   const daysInStage = daysSince(lead.updated_at);
   const currentStageIdx = stageKeys.indexOf(activeStageKey);
 
@@ -1124,9 +1105,7 @@ export default function LenderManagementDetailPanel({
         <div className="px-5 pt-4 pb-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
-                {initial}
-              </div>
+              <CrmAvatar name={lead.name} size="xl" />
               <div className="min-w-0">
                 <h2 className="text-[15px] font-bold text-foreground truncate leading-tight">{lead.name}</h2>
                 {lead.company_name && (

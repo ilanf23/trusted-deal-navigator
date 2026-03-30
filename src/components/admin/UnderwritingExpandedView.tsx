@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -283,20 +284,6 @@ function AddressBlock({ entry, onDelete }: { entry: LeadAddress; onDelete: (id: 
       </button>
     </div>
   );
-}
-
-function getAvatarGradient(name: string) {
-  const gradients = [
-    'from-blue-500 to-blue-600',
-    'from-blue-500 to-indigo-600',
-    'from-emerald-500 to-teal-600',
-    'from-amber-500 to-orange-600',
-    'from-rose-500 to-pink-600',
-    'from-cyan-500 to-blue-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return gradients[Math.abs(hash) % gradients.length];
 }
 
 const CONTACT_TYPE_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; pill: string }> = {
@@ -1524,11 +1511,7 @@ export default function UnderwritingExpandedView() {
 
             {/* ── Contact Card Header ── */}
             <div className="flex items-start gap-4">
-              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center shrink-0">
-                <span className="text-lg font-bold text-white">
-                  {lead.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
-                </span>
-              </div>
+              <CrmAvatar name={lead.name} size="xl" />
               <div className="min-w-0 pt-0.5">
                 <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{getLeadDisplayName(lead)}</h2>
                 <p className="text-sm text-muted-foreground mt-0.5 truncate">
@@ -1602,9 +1585,7 @@ export default function UnderwritingExpandedView() {
               <label className="text-sm text-muted-foreground block mb-2">Primary Contact</label>
               <div className="border-b border-border pb-3">
                 <div className="flex items-center gap-3 px-1 py-1.5">
-                  <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${getAvatarGradient(lead.name)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
-                    {lead.name[0]?.toUpperCase() ?? '?'}{lead.name.split(' ')[1]?.[0]?.toUpperCase() ?? ''}
-                  </div>
+                  <CrmAvatar name={lead.name} size="lg" />
                   <div className="min-w-0">
                     <p className="text-base text-foreground truncate">{lead.name}</p>
                     {lead.title && <p className="text-xs text-muted-foreground truncate">{lead.title}</p>}

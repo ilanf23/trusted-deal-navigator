@@ -13,7 +13,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -224,15 +224,6 @@ const CRMBoard = () => {
     }));
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   const stageCounts = stages.map(stage => ({
     ...stage,
     count: getLeadsByStatus(stage.status).length
@@ -440,11 +431,7 @@ const CRMBoard = () => {
                                   />
                                 </div>
                                 <div>
-                                  <Avatar className="h-7 w-7 bg-[#0066FF]">
-                                    <AvatarFallback className="text-[10px] text-white font-semibold bg-[#0066FF]">
-                                      {getInitials(lead.name)}
-                                    </AvatarFallback>
-                                  </Avatar>
+                                  <CrmAvatar name={lead.name} />
                                 </div>
                                 <div className="font-medium text-slate-900 truncate">{lead.name}</div>
                                 <div>

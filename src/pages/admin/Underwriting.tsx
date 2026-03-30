@@ -16,6 +16,7 @@ import UnderwritingDetailPanel from '@/components/admin/UnderwritingDetailPanel'
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import {
   ArrowUpDown,
   ArrowLeft,
@@ -108,20 +109,6 @@ const SORT_FIELD_OPTIONS: { value: SortField; label: string }[] = [
   { value: 'updated_at', label: 'Updated' },
 ];
 
-const AVATAR_COLORS = [
-  'bg-[#5C9EAD]', 'bg-[#4CAF50]', 'bg-[#C62828]', 'bg-[#EF6C00]',
-  'bg-[#546E7A]', 'bg-[#26A69A]', 'bg-[#6D8B74]', 'bg-[#3E7CB1]',
-  'bg-[#8D6E63]', 'bg-[#78909C]',
-];
-
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
 function seededRand(seed: string, index: number): number {
   let h = index * 2654435761;
   for (let i = 0; i < seed.length; i++) {
@@ -212,8 +199,6 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
   const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
-  const avatarColor = getAvatarColor(lead.name);
-  const initial = lead.name[0]?.toUpperCase() ?? '?';
   const assignedName = lead.assigned_to ? (teamMemberMap[lead.assigned_to] ?? null) : null;
   const dealValue = fakeValue(lead.id);
   const daysInStage = daysSince(lead.updated_at);
@@ -225,9 +210,7 @@ function KanbanDealCard({ lead, teamMemberMap, isDragging, onClick }: {
         onClick={(e) => { e.stopPropagation(); onClick(); }}
       >
         <div className="flex items-center gap-2 mb-1.5">
-          <div className={`h-6 w-6 rounded-full ${avatarColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-            {initial}
-          </div>
+          <CrmAvatar name={lead.name} size="sm" />
           <p className="text-sm font-semibold text-foreground leading-tight truncate">{getLeadDisplayName(lead)}</p>
           <button
             type="button"
@@ -1379,14 +1362,10 @@ const Underwriting = () => {
                       </tr>
                     ) : (
                       filteredAndSorted.map((lead, rowIdx) => {
-                        const initial = lead.name[0]?.toUpperCase() ?? '?';
-                        const avatarColor = getAvatarColor(lead.name);
                         const stageCfg = dynamicStageConfig[lead._stageId];
                         const assignedName = lead.assigned_to
                           ? (teamMemberMap[lead.assigned_to] ?? null)
                           : null;
-                        const assignedInitial = assignedName?.[0]?.toUpperCase() ?? null;
-                        const assignedColor = assignedName ? getAvatarColor(assignedName) : '';
                         const assignedAvatar = lead.assigned_to ? (teamAvatarMap[lead.assigned_to] ?? null) : null;
                         const taskCount = taskCountMap[lead.id] ?? fakeTasks(lead.id);
                         const interactionCount = interactionCountMap[lead.id] ?? fakeInteractions(lead.id);
@@ -1426,9 +1405,7 @@ const Underwriting = () => {
                                     className="h-5 w-5 rounded-none border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
                                   />
                                 </div>
-                                <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm`}>
-                                  {initial}
-                                </div>
+                                <CrmAvatar name={lead.name} />
                                 <div className="min-w-0 flex-1">
                                   <div className="relative flex items-center">
                                     <p className="font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0">
@@ -1479,15 +1456,9 @@ const Underwriting = () => {
                             {/* Owner */}
                             {columnVisibility.ownedBy && (
                               <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.ownedBy, border: '1px solid #c8bdd6' }}>
-                                {assignedName && assignedInitial ? (
+                                {assignedName ? (
                                   <div className="flex items-center gap-2">
-                                    {assignedAvatar ? (
-                                      <img src={assignedAvatar} alt={assignedName} className="h-6 w-6 rounded-full object-cover shrink-0 shadow-sm" />
-                                    ) : (
-                                      <div className={`h-6 w-6 rounded-full ${assignedColor} flex items-center justify-center text-white text-[10px] font-bold shrink-0 shadow-sm`}>
-                                        {assignedInitial}
-                                      </div>
-                                    )}
+                                    <CrmAvatar name={assignedName} imageUrl={assignedAvatar} size="sm" />
                                     <span className="text-[13px] text-[#5f6368] dark:text-foreground/80 truncate">{assignedName}</span>
                                   </div>
                                 ) : (
@@ -1657,9 +1628,7 @@ const Underwriting = () => {
                   {draggedLead ? (
                     <Card className="p-3 shadow-lg border border-blue-300 rotate-2 cursor-grabbing w-56 bg-card">
                       <div className="flex items-center gap-2 mb-1">
-                        <div className={`h-5 w-5 rounded-full ${getAvatarColor(draggedLead.name)} flex items-center justify-center text-white text-[10px] font-bold`}>
-                          {draggedLead.name[0]?.toUpperCase()}
-                        </div>
+                        <CrmAvatar name={draggedLead.name} size="xs" />
                         <p className="text-sm font-semibold text-foreground truncate">{getLeadDisplayName(draggedLead)}</p>
                       </div>
                     </Card>

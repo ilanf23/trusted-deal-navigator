@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { formatPhoneNumber } from './InlineEditableFields';
+import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -80,20 +81,6 @@ const contactTypeConfigDefault: Record<string, ContactTypeConfigEntry> = {
   Vendor: { label: 'Vendor', color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800', dot: 'bg-orange-500', pill: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300' },
   Other: { label: 'Other', color: 'text-slate-700 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800', dot: 'bg-slate-500', pill: 'bg-slate-100 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300' },
 };
-
-function getAvatarGradient(name: string) {
-  const gradients = [
-    'from-blue-500 to-blue-600',
-    'from-blue-500 to-indigo-600',
-    'from-emerald-500 to-teal-600',
-    'from-amber-500 to-orange-600',
-    'from-rose-500 to-pink-600',
-    'from-cyan-500 to-blue-600',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return gradients[Math.abs(hash) % gradients.length];
-}
 
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
@@ -585,9 +572,7 @@ function RelatedTabContent({ company, contactTypeConfig }: { company: Company; c
                 const personTypeCfg = contactTypeConfig[person.contact_type ?? 'Other'];
                 return (
                   <div key={person.id} className="flex items-center gap-2.5 py-1.5">
-                    <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarGradient(person.name)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
-                      {person.name[0]?.toUpperCase() ?? '?'}
-                    </div>
+                    <CrmAvatar name={person.name} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-medium text-foreground truncate">{person.name}</p>
                       {person.title && (
@@ -654,8 +639,6 @@ export default function CompanyDetailPanel({
   const [activeTab, setActiveTab] = useState<'details' | 'activity' | 'related'>('details');
   const queryClient = useQueryClient();
   const typeCfg = contactTypeConfig[company.contact_type ?? 'Other'];
-  const initial = company.company_name[0]?.toUpperCase() ?? '?';
-  const gradient = getAvatarGradient(company.company_name);
 
   const handleFieldSaved = useCallback((field: string, newValue: string) => {
     queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
@@ -699,9 +682,7 @@ export default function CompanyDetailPanel({
         <div className="px-5 pt-4 pb-4">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`h-10 w-10 rounded-md bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
-                {initial}
-              </div>
+              <CrmAvatar name={company.company_name} size="xl" />
               <div className="min-w-0">
                 <h2 className="text-[15px] font-bold text-foreground truncate leading-tight">{company.company_name}</h2>
                 {company.contact_name && (
@@ -826,13 +807,7 @@ export default function CompanyDetailPanel({
                         {teamMembers.map((tm) => (
                           <SelectItem key={tm.id} value={tm.id} className="text-xs">
                             <div className="flex items-center gap-2">
-                              {tm.avatar_url ? (
-                                <img src={tm.avatar_url} alt="" className="h-4 w-4 rounded-full" />
-                              ) : (
-                                <div className={`h-4 w-4 rounded-full bg-gradient-to-br ${getAvatarGradient(tm.name)} flex items-center justify-center text-white text-[8px] font-bold`}>
-                                  {tm.name[0]?.toUpperCase()}
-                                </div>
-                              )}
+                              <CrmAvatar name={tm.name} imageUrl={tm.avatar_url} size="xxs" />
                               {tm.name}
                             </div>
                           </SelectItem>
