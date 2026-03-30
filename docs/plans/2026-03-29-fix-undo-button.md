@@ -66,14 +66,14 @@ Fix the always-inactive undo button in the admin top bar and expand undo support
 - Modify: `src/pages/admin/People.tsx`
 - Modify: `src/pages/admin/Companies.tsx`
 
-- [ ] Import `useUndo` in People.tsx and destructure `registerUndo`
-- [ ] Add registerUndo to `contactTypeMutation` — capture previous contact_type before update, restore on undo
-- [ ] Add registerUndo to `createPersonMutation` — on undo, delete the created lead record
-- [ ] Add registerUndo to `bulkContactTypeMutation` — capture all affected records' previous contact_types, restore on undo
-- [ ] Add registerUndo to `renameContactTypeMutation` — capture affected records, restore previous contact_type values
-- [ ] Import `useUndo` in Companies.tsx and destructure `registerUndo`
-- [ ] Add registerUndo to `contactTypeMutation` and `createCompanyMutation` following the same pattern
-- [ ] Run `npm run build` and `npm run lint`
+- [x] Import `useUndo` in People.tsx and destructure `registerUndo`
+- [x] Add registerUndo to `contactTypeMutation` — capture previous contact_type before update, restore on undo
+- [x] Add registerUndo to `createPersonMutation` — on undo, delete the created lead record
+- [x] Add registerUndo to `bulkContactTypeMutation` — capture all affected records' previous contact_types, restore on undo
+- [x] Add registerUndo to `renameContactTypeMutation` — capture affected records, restore previous contact_type values
+- [x] Import `useUndo` in Companies.tsx and destructure `registerUndo`
+- [x] Add registerUndo to `contactTypeMutation` and `createCompanyMutation` following the same pattern
+- [x] Run `npm run build` and `npm run lint`
 
 ### Task 4: Add Undo to Projects and Pipeline Table Mutations
 

@@ -74,6 +74,7 @@ import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
+import { useUndo } from '@/contexts/UndoContext';
 import { useAllPipelineLeads } from '@/hooks/useAllPipelineLeads';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
@@ -358,6 +359,7 @@ function KanbanDropColumn({ contactType, label, color, people, draggedId, onPers
 const People = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { registerUndo } = useUndo();
   const { teamMember } = useTeamMember();
 
   // ── Core state ──
@@ -396,9 +398,19 @@ const People = () => {
         .update({ contact_type: newType })
         .eq('contact_type', oldType);
       if (error) throw error;
+      return { oldType, newType };
     },
-    onSuccess: () => {
+    onSuccess: ({ oldType, newType }) => {
       queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      registerUndo({
+        label: `Renamed contact type "${oldType}" to "${newType}"`,
+        execute: async () => {
+          const { error } = await supabase.from('leads').update({ contact_type: oldType }).eq('contact_type', newType);
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          toast.success('Contact type rename undone');
+        },
+      });
     },
     onError: () => toast.error('Failed to rename contact type'),
   });
@@ -569,10 +581,20 @@ const People = () => {
         title: `Changed from ${oldType} to ${newType}`,
         content: JSON.stringify({ from: oldType, to: newType }),
       });
+      return { personId, oldType, newType };
     },
-    onSuccess: () => {
+    onSuccess: ({ personId, oldType, newType }) => {
       queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       toast.success('Contact type updated');
+      registerUndo({
+        label: `Changed contact type to "${newType}"`,
+        execute: async () => {
+          const { error } = await supabase.from('leads').update({ contact_type: oldType }).eq('id', personId);
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          toast.success('Contact type restored');
+        },
+      });
     },
     onError: () => {
       toast.error('Failed to update contact type');
@@ -645,6 +667,15 @@ const People = () => {
       setNewPerson({ name: '', title: '', company_name: '', email: '', phone: '', contact_type: 'Prospect', known_as: '', clx_file_name: '', assigned_to: '', direct_phone: '', fax_phone: '' });
       toast.success(`"${person.name}" added as ${person.contact_type}`);
       setSelectedPerson(person);
+      registerUndo({
+        label: `Created "${person.name}"`,
+        execute: async () => {
+          const { error } = await supabase.from('leads').delete().eq('id', person.id);
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          toast.success('Contact creation undone');
+        },
+      });
     },
     onError: () => {
       toast.error('Failed to create contact');
@@ -849,18 +880,34 @@ const People = () => {
 
   const bulkContactTypeMutation = useMutation({
     mutationFn: async ({ personIds, newType }: { personIds: string[]; newType: string }) => {
+      // Capture previous contact_types before update
+      const { data: prevRecords } = await supabase
+        .from('leads')
+        .select('id, contact_type')
+        .in('id', personIds);
       const { error } = await supabase
         .from('leads')
         .update({ contact_type: newType })
         .in('id', personIds);
       if (error) throw error;
+      return { prevRecords: prevRecords ?? [], newType };
     },
-    onSuccess: () => {
+    onSuccess: ({ prevRecords, newType }) => {
       queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       clearSelection();
       setBulkEditOpen(false);
       setBulkContactType('');
       toast.success('Contact type updated for selected people');
+      registerUndo({
+        label: `Bulk changed ${prevRecords.length} contacts to "${newType}"`,
+        execute: async () => {
+          for (const rec of prevRecords) {
+            await supabase.from('leads').update({ contact_type: rec.contact_type }).eq('id', rec.id);
+          }
+          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          toast.success('Bulk contact type change undone');
+        },
+      });
     },
     onError: () => toast.error('Failed to update contact type'),
   });

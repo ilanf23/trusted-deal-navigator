@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
+import { useUndo } from '@/contexts/UndoContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAllPipelineLeads, DerivedCompany } from '@/hooks/useAllPipelineLeads';
 import { Input } from '@/components/ui/input';
@@ -283,6 +284,7 @@ function KanbanDropColumn({ contactType, label, color, companies, draggedId, onC
 
 const Companies = () => {
   const queryClient = useQueryClient();
+  const { registerUndo } = useUndo();
   const navigate = useNavigate();
 
   // ── Core state ──
@@ -417,7 +419,7 @@ const Companies = () => {
 
   // ── Contact type update mutation for Kanban drag ──
   const contactTypeMutation = useMutation({
-    mutationFn: async ({ companyId, newType }: { companyId: string; newType: string; oldType: string }) => {
+    mutationFn: async ({ companyId, newType, oldType }: { companyId: string; newType: string; oldType: string }) => {
       // companyId is the first lead's ID; get company_name from it
       const company = companies.find(c => c.id === companyId);
       if (!company) throw new Error('Company not found');
@@ -426,10 +428,20 @@ const Companies = () => {
         .update({ contact_type: newType })
         .eq('company_name', company.company_name);
       if (error) throw error;
+      return { companyName: company.company_name, oldType, newType };
     },
-    onSuccess: () => {
+    onSuccess: ({ companyName, oldType, newType }) => {
       queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       toast.success('Contact type updated');
+      registerUndo({
+        label: `Changed "${companyName}" type to "${newType}"`,
+        execute: async () => {
+          const { error } = await supabase.from('leads').update({ contact_type: oldType }).eq('company_name', companyName);
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          toast.success('Contact type restored');
+        },
+      });
     },
     onError: () => {
       toast.error('Failed to update contact type');
@@ -509,6 +521,15 @@ const Companies = () => {
       setNewCompany({ company_name: '', contact_name: '', phone: '', website: '', email_domain: '', contact_type: 'Prospect' });
       toast.success(`"${company.company_name}" added as ${company.contact_type}`);
       setSelectedCompany(company);
+      registerUndo({
+        label: `Created "${company.company_name}"`,
+        execute: async () => {
+          const { error } = await supabase.from('leads').delete().eq('id', company.id);
+          if (error) throw error;
+          queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+          toast.success('Company creation undone');
+        },
+      });
     },
     onError: () => {
       toast.error('Failed to create company');
