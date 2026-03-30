@@ -274,8 +274,8 @@ const Projects = () => {
     if (activeFilter) {
       const f = activeFilter;
       if (f.ownedBy.length > 0) result = result.filter(p => f.ownedBy.includes(p.owner ?? ''));
-      if (f.dateAddedFrom) result = result.filter(p => new Date(p.created_at) >= new Date(f.dateAddedFrom + 'T00:00:00'));
-      if (f.dateAddedTo) result = result.filter(p => new Date(p.created_at) <= new Date(f.dateAddedTo + 'T23:59:59.999'));
+      if (f.dateAddedFrom) result = result.filter(p => new Date(p.created_at) >= new Date(f.dateAddedFrom + 'T00:00:00Z'));
+      if (f.dateAddedTo) result = result.filter(p => new Date(p.created_at) <= new Date(f.dateAddedTo + 'T23:59:59.999Z'));
       if (f.status.length > 0) result = result.filter(p => f.status.includes(p.status ?? ''));
       if (f.tags) {
         const filterTags = f.tags.toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
