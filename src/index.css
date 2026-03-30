@@ -28,12 +28,12 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    /* Accent: Neutral gray */
-    --accent: 220 14% 96%;
-    --accent-foreground: 220 10% 20%;
+    /* Accent: Warm orange */
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Highlight: Purple */
-    --highlight: 261 54% 31%;
+    /* Highlight: Golden orange */
+    --highlight: 32 95% 50%;
     --highlight-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
@@ -75,10 +75,10 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 220 14% 18%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 25 95% 58%;
+    --accent-foreground: 0 0% 100%;
 
-    --highlight: 261 54% 50%;
+    --highlight: 32 95% 55%;
     --highlight-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 30.6%;
@@ -120,14 +120,14 @@
     --muted: 220 14% 95%;
     --muted-foreground: 220 10% 45%;
     
-    /* Accent: Neutral gray */
-    --accent: 220 14% 96%;
-    --accent-foreground: 220 10% 20%;
+    /* Accent: Orange */
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Highlight: Purple */
-    --highlight: 261 54% 31%;
+    /* Highlight: Orange */
+    --highlight: 25 95% 53%;
     --highlight-foreground: 0 0% 100%;
-    
+
     /* Destructive stays red */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
@@ -138,13 +138,13 @@
     --ring: 217 91% 50%;
     --radius: 0.75rem;
     
-    /* Admin Color Palette - Blue & Purple */
+    /* Admin Color Palette - Blue & Orange */
     --admin-blue: 217 91% 50%;
     --admin-blue-light: 217 91% 96%;
     --admin-blue-dark: 217 91% 40%;
-    --admin-orange: 261 54% 31%;
-    --admin-orange-light: 261 54% 95%;
-    --admin-orange-dark: 261 54% 22%;
+    --admin-orange: 25 95% 53%;
+    --admin-orange-light: 25 95% 95%;
+    --admin-orange-dark: 25 95% 43%;
 
     /* Semantic Status Colors */
     --status-success: 142 71% 45%;
@@ -185,7 +185,7 @@
     --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.15);
     --shadow-glow: 0 0 40px -10px rgb(0 0 0 / 0.1);
     --shadow-blue: 0 4px 14px -3px hsl(217 91% 50% / 0.25);
-    --shadow-orange: 0 4px 14px -3px hsl(261 54% 31% / 0.25);
+    --shadow-orange: 0 4px 14px -3px hsl(25 95% 53% / 0.25);
     --shadow-inset: inset 0 1px 2px 0 rgb(0 0 0 / 0.04);
   }
 
@@ -211,30 +211,30 @@
     --muted: 217 32% 17%;
     --muted-foreground: 215 20% 65%;
     
-    /* Accent: Neutral dark */
-    --accent: 220 14% 18%;
-    --accent-foreground: 210 40% 98%;
+    /* Accent: Orange dark */
+    --accent: 25 95% 58%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Highlight: Purple */
-    --highlight: 261 54% 50%;
+    /* Highlight: Orange dark */
+    --highlight: 25 95% 58%;
     --highlight-foreground: 0 0% 100%;
-    
+
     /* Destructive */
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    
+
     /* Borders: Dark */
     --border: 217 32% 20%;
     --input: 217 32% 20%;
     --ring: 217 91% 60%;
-    
+
     /* Admin Color Palette - adjusted for dark */
     --admin-blue: 217 91% 60%;
     --admin-blue-light: 217 40% 20%;
     --admin-blue-dark: 217 91% 70%;
-    --admin-orange: 261 54% 50%;
-    --admin-orange-light: 261 30% 20%;
-    --admin-orange-dark: 261 54% 65%;
+    --admin-orange: 25 95% 58%;
+    --admin-orange-light: 25 40% 20%;
+    --admin-orange-dark: 25 95% 68%;
 
     /* Semantic Status Colors - Dark Mode */
     --status-success: 142 71% 55%;
@@ -275,7 +275,7 @@
     --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
     --shadow-glow: 0 0 40px -10px rgb(0 0 0 / 0.4);
     --shadow-blue: 0 4px 14px -3px hsl(217 91% 60% / 0.35);
-    --shadow-orange: 0 4px 14px -3px hsl(261 54% 50% / 0.35);
+    --shadow-orange: 0 4px 14px -3px hsl(25 95% 58% / 0.35);
     --shadow-inset: inset 0 1px 2px 0 rgb(0 0 0 / 0.2);
   }
 }

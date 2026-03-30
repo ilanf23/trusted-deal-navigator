@@ -274,8 +274,8 @@ const Projects = () => {
     if (activeFilter) {
       const f = activeFilter;
       if (f.ownedBy.length > 0) result = result.filter(p => f.ownedBy.includes(p.owner ?? ''));
-      if (f.dateAddedFrom) result = result.filter(p => new Date(p.created_at) >= new Date(f.dateAddedFrom + 'T00:00:00'));
-      if (f.dateAddedTo) result = result.filter(p => new Date(p.created_at) <= new Date(f.dateAddedTo + 'T23:59:59.999'));
+      if (f.dateAddedFrom) result = result.filter(p => new Date(p.created_at) >= new Date(f.dateAddedFrom + 'T00:00:00Z'));
+      if (f.dateAddedTo) result = result.filter(p => new Date(p.created_at) <= new Date(f.dateAddedTo + 'T23:59:59.999Z'));
       if (f.status.length > 0) result = result.filter(p => f.status.includes(p.status ?? ''));
       if (f.tags) {
         const filterTags = f.tags.toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
@@ -655,7 +655,7 @@ const Projects = () => {
                             ? 'bg-[#eee6f6] dark:bg-purple-950/30 hover:bg-[#e0d4f0] dark:hover:bg-purple-950/40 border-l-[3px] border-l-[#3b2778]'
                             : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
                       }`}
-                      onClick={() => setSelectedProject(p)}
+                      onClick={() => { if (!filterPanelOpen) setSelectedProject(p); }}
                     >
                       {/* Checkbox */}
                       <td className={`pl-2 pr-4 py-1.5 w-12 text-center sticky left-0 z-[5] transition-colors ${stickyBg}`} style={{ border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
