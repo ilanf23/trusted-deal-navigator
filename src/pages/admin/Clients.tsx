@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { DbTableBadge } from '@/components/admin/DbTableBadge';
+import { DataTable, Column } from '@/components/shared/DataTable';
 
 interface Client {
   id: string;
@@ -18,6 +16,36 @@ interface Client {
   phone: string | null;
   created_at: string;
 }
+
+const clientColumns: Column<Client>[] = [
+  {
+    key: 'email',
+    header: 'Email',
+    render: (row) => <span className="font-medium">{row.email || '-'}</span>,
+  },
+  {
+    key: 'company_name',
+    header: 'Company',
+    render: (row) => row.company_name || '-',
+  },
+  {
+    key: 'contact_person',
+    header: 'Contact Person',
+    className: 'hidden md:table-cell',
+    render: (row) => row.contact_person || '-',
+  },
+  {
+    key: 'phone',
+    header: 'Phone',
+    className: 'hidden md:table-cell',
+    render: (row) => row.phone || '-',
+  },
+  {
+    key: 'created_at',
+    header: 'Joined',
+    render: (row) => new Date(row.created_at).toLocaleDateString(),
+  },
+];
 
 const AdminClients = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -79,35 +107,14 @@ const AdminClients = () => {
               <div className="flex justify-center py-8">
                 <Loader2 className="w-8 h-8 animate-spin" />
               </div>
-            ) : filteredClients.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No clients found. Clients will appear here once they sign up.
-              </div>
             ) : (
-              <Table className="min-w-[600px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead className="hidden md:table-cell">Contact Person</TableHead>
-                    <TableHead className="hidden md:table-cell">Phone</TableHead>
-                    <TableHead>Joined</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClients.map((client) => (
-                    <TableRow key={client.id}>
-                      <TableCell className="font-medium">{client.email || '-'}</TableCell>
-                      <TableCell>{client.company_name || '-'}</TableCell>
-                      <TableCell className="hidden md:table-cell">{client.contact_person || '-'}</TableCell>
-                      <TableCell className="hidden md:table-cell">{client.phone || '-'}</TableCell>
-                      <TableCell>
-                        {new Date(client.created_at).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable<Client>
+                columns={clientColumns}
+                data={filteredClients}
+                rowId={(row) => row.id}
+                emptyState="No clients found. Clients will appear here once they sign up."
+                className="min-w-[600px]"
+              />
             )}
           </CardContent>
         </Card>

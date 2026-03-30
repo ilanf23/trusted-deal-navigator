@@ -42,9 +42,9 @@ Create three shared components (UserAvatar, StatusBadge, DataTable) and migrate 
 **Files:**
 - Modify: `src/pages/admin/Clients.tsx` (~120 lines)
 
-- [ ] Replace inline shadcn Table markup with `<DataTable>` and column config array
-- [ ] Preserve search input, data fetching (useQuery), and all existing functionality
-- [ ] Run `npm run build` to confirm zero errors
+- [x] Replace inline shadcn Table markup with `<DataTable>` and column config array
+- [x] Preserve search input, data fetching (useQuery), and all existing functionality
+- [x] Run `npm run build` to confirm zero errors
 
 ### Task 3: Migrate portal pages
 

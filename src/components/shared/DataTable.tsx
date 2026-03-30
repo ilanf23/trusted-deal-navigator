@@ -15,6 +15,7 @@ export interface Column<T> {
   header: string;
   width?: string;
   align?: "left" | "center" | "right";
+  className?: string;
   render?: (row: T) => ReactNode;
 }
 
@@ -54,6 +55,7 @@ export function DataTable<T>({
                 className={cn(
                   "px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider",
                   alignClass[col.align || "left"],
+                  col.className,
                 )}
                 style={col.width ? { width: col.width } : undefined}
               >
@@ -90,6 +92,7 @@ export function DataTable<T>({
                       className={cn(
                         "px-4 py-3 text-sm",
                         alignClass[col.align || "left"],
+                        col.className,
                       )}
                       style={col.width ? { width: col.width } : undefined}
                     >
