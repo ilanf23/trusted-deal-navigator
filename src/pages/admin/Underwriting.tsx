@@ -15,6 +15,7 @@ import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
 import UnderwritingDetailPanel from '@/components/admin/UnderwritingDetailPanel';
 import CreateFilterDialog, { CustomFilterValues } from '@/components/admin/CreateFilterDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import {
   ArrowUpDown,
   ArrowLeft,
@@ -365,13 +366,7 @@ const Underwriting = () => {
 
   useEffect(() => {
     setSearchComponent(
-      <Input
-        type="text"
-        placeholder="Search by name, email, domain or phone number"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full h-9 px-4 text-sm rounded-full bg-[#f1f3f4] dark:bg-muted/50 border-transparent focus:border-[#d2d5d9] dark:focus:border-border focus:bg-white dark:focus:bg-background placeholder:text-[#5f6368]/70 dark:placeholder:text-muted-foreground/60"
-      />
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
     );
   }, [searchTerm]);
 

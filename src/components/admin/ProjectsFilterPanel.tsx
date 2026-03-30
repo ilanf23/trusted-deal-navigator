@@ -170,17 +170,35 @@ function CheckboxSelect({
   return (
     <div className="space-y-1">
       {searchable && (
-        <div className="relative mb-2">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+        <div className="mb-2">
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search..."
-            className="h-7 pl-8 text-xs rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] focus-visible:ring-[#3b2778] dark:focus-visible:ring-[#a78bfa]"
+            className="h-7 pl-3 text-xs rounded-lg shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] focus-visible:ring-[#3b2778] dark:focus-visible:ring-[#a78bfa]"
           />
         </div>
       )}
       <div className="space-y-0.5 max-h-40 overflow-y-auto">
+        {(() => {
+          const allSelected = filtered.length > 0 && filtered.every(o => selected.includes(o.value));
+          return (
+            <label
+              className={`flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-md transition-colors ${
+                allSelected ? 'bg-[#ece8f4] dark:bg-[#3b2778]/20' : 'hover:bg-gray-100 dark:hover:bg-white/[0.04]'
+              }`}
+            >
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={(checked) => {
+                  onChange(checked ? filtered.map(o => o.value) : []);
+                }}
+                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778] dark:data-[state=checked]:bg-[#a78bfa] dark:data-[state=checked]:border-[#a78bfa]"
+              />
+              <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200">(All)</span>
+            </label>
+          );
+        })()}
         {filtered.map((opt) => {
           const isChecked = selected.includes(opt.value);
           return (
@@ -346,8 +364,8 @@ export default function ProjectsFilterPanel({
   return (
     <aside className="shrink-0 w-[400px] bg-slate-50 dark:bg-[#1a1a2e] flex flex-col h-full shadow-[-4px_0_12px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_12px_rgba(0,0,0,0.3)] animate-in slide-in-from-right-5 duration-200">
       {/* ── Header ── */}
-      <div className="shrink-0 flex items-center gap-3 px-5 py-3.5 border-b border-gray-200/60 dark:border-white/10">
-        <h2 className="flex-1 text-base font-semibold text-gray-800 dark:text-gray-100">Filters</h2>
+      <div className="shrink-0 flex items-center gap-3 px-4 py-1.5 dark:border-white/10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }}>
+        <h2 className="flex-1 text-[13px] font-semibold capitalize tracking-wider text-[#3b2778] dark:text-gray-100">Filters</h2>
         {activeCount > 0 && (
           <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#3b2778] dark:bg-[#a78bfa] text-[11px] font-semibold text-white">
             {activeCount}

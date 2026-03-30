@@ -12,6 +12,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { useFeedData, type FeedActivityType } from '@/hooks/useFeedData';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Bell, CheckCircle, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -111,13 +112,7 @@ const PipelineFeed = () => {
 
   useEffect(() => {
     setSearchComponent(
-      <input
-        type="text"
-        placeholder="Search by name, email, domain or phone number"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full h-8 pl-3 pr-4 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-300 focus:border-purple-300 transition-all dark:bg-muted/50 dark:border-border dark:text-foreground dark:placeholder:text-muted-foreground/60"
-      />
+      <AdminTopBarSearch value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
     );
   }, [searchQuery]);
 

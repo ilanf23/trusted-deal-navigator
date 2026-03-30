@@ -30,7 +30,7 @@ import {
   Bot,
   BrainCircuit,
   ScrollText,
-  FolderOpen,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -166,7 +166,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
           { title: 'Analytics', url: '/superadmin/marketing', icon: BarChart3 },
         ],
       });
-    } else if (teamMember) {
+    } else if (teamMember || userRole === 'admin') {
       // Top-level pages (no section heading, direct links)
       sections.push({
         title: '',
@@ -203,7 +203,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
               { title: 'Lender Management', url: '/admin/pipeline/lender-management', icon: Building2 },
             ],
           },
-          { title: 'Projects', url: '/admin/pipeline/projects', icon: FolderOpen },
+          { title: 'Projects', url: '/admin/pipeline/projects', icon: Briefcase },
           {
             title: 'Contacts',
             url: '/admin/contacts',
@@ -362,7 +362,7 @@ const AdminSidebar = ({ onInboxToggle, inboxOpen, onAIToggle, aiChatOpen }: Admi
 
   return (
     <Sidebar 
-      className="system-font bg-sidebar font-sans text-sidebar-foreground [&_[data-sidebar=sidebar]]:bg-sidebar [&_[data-sidebar=sidebar]]:[box-shadow:1px_0_0_0_hsl(var(--sidebar-border))]"
+      className="system-font bg-sidebar font-poppins text-sidebar-foreground [&_[data-sidebar=sidebar]]:bg-sidebar [&_[data-sidebar=sidebar]]:[box-shadow:1px_0_0_0_hsl(var(--sidebar-border))]"
       collapsible="icon"
       style={{ 
         '--sidebar-width': '17rem', 

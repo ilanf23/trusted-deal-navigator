@@ -9,7 +9,7 @@ interface AdminRouteProps {
 }
 
 const AdminRoute = ({ children }: AdminRouteProps) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const { teamMember, loading: teamLoading } = useTeamMember();
   const location = useLocation();
 
@@ -21,7 +21,8 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  if (!teamMember) {
+  // Allow access if user is a team member OR has an admin role
+  if (!teamMember && !isAdmin) {
     return <Navigate to="/user" replace />;
   }
 

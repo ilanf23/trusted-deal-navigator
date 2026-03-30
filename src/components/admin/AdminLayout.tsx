@@ -30,12 +30,16 @@ const SplitViewToggle = () => {
             variant="ghost"
             size="icon"
             onClick={toggleSplitView}
-            className={`h-10 w-10 md:h-11 md:w-11 rounded-xl hidden lg:inline-flex ${
-              isActive ? 'bg-primary/10 text-primary' : ''
+            aria-pressed={isActive}
+            aria-label={isActive ? 'Exit split view' : 'Enter split view'}
+            className={`hidden lg:flex h-10 w-10 md:h-11 md:w-11 rounded-xl transition-all ${
+              isActive
+                ? 'text-violet-600 bg-violet-50 hover:bg-violet-100 dark:text-violet-400 dark:bg-violet-900/20 dark:hover:bg-violet-900/30'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
           >
             <Columns2 className="h-5 w-5 md:h-6 md:w-6" />
-            <span className="sr-only">Toggle split view</span>
+            <span className="sr-only">Split View</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent>
@@ -100,7 +104,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
             {/* Center: search bar or spacer */}
             <div className="flex-1 flex justify-center min-w-0" key="topbar-center">
               {searchComponent && (
-                <div className="w-full max-w-2xl">
+                <div className="w-full max-w-3xl">
                   {searchComponent}
                 </div>
               )}

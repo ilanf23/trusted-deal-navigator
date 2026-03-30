@@ -12,13 +12,13 @@ const SceneThemeToggle = () => {
       role="switch"
       aria-checked={isDark}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="relative rounded-full cursor-pointer overflow-hidden transition-shadow duration-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      style={{ width: 120, height: 48 }}
+      className="relative rounded-full cursor-pointer overflow-hidden transition-shadow duration-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-70 hover:opacity-100"
+      style={{ width: 64, height: 26 }}
     >
       <svg
         viewBox="0 0 120 48"
-        width={120}
-        height={48}
+        width={64}
+        height={26}
         xmlns="http://www.w3.org/2000/svg"
         className="block"
       >

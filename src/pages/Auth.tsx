@@ -61,7 +61,7 @@ const Auth = () => {
       if (from) {
         navigate(from, { replace: true });
       } else if (isAdmin) {
-        navigate('/superadmin', { replace: true });
+        navigate('/admin/dashboard', { replace: true });
       } else {
         navigate('/user', { replace: true });
       }
@@ -89,8 +89,6 @@ const Auth = () => {
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
         setError('Invalid email or password. Please try again.');
-      } else if (error.message.includes('Email not confirmed')) {
-        setError('Please verify your email address before signing in.');
       } else {
         setError(error.message);
       }
@@ -122,22 +120,18 @@ const Auth = () => {
       return;
     }
 
-    const { error } = await signUp(signupEmail, signupPassword, { signup_role: signupRole });
+    const { error: signUpError } = await signUp(signupEmail, signupPassword, { signup_role: signupRole });
 
-    if (error) {
-      if (error.message.includes('already registered')) {
+    if (signUpError) {
+      if (signUpError.message.includes('already registered')) {
         setError('An account with this email already exists. Please sign in instead.');
       } else {
-        setError(error.message);
+        setError(signUpError.message);
       }
-    } else {
-      setSuccess('Account created successfully! You can now sign in.');
-      setSignupEmail('');
-      setSignupPassword('');
-      setSignupConfirmPassword('');
-      setSignupRole('client');
     }
-    
+    // No manual signIn needed — auto-confirm trigger makes signUp() return a session,
+    // which fires onAuthStateChange(SIGNED_IN) and the redirect useEffect handles navigation.
+
     setIsLoading(false);
   };
 

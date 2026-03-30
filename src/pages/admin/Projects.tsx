@@ -594,7 +594,7 @@ const Projects = () => {
 
         {/* Table + Detail Panel */}
         <div className="relative flex flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 pt-4 pl-4">
           {/* ── Bulk Selection Toolbar ── */}
           {selectedIds.size > 0 && (
             <div className="sticky top-0 z-40 px-4 py-2 bg-white dark:bg-background border-b border-border">
@@ -615,7 +615,7 @@ const Projects = () => {
               {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
             </div>
           ) : (
-            <table className="w-full text-sm ml-2" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+            <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#eee6f6' }}>
                   <th className="w-12 pl-2 pr-4 py-1.5 text-center sticky top-0 left-0 z-30" style={{ border: '1px solid #c8bdd6', backgroundColor: '#eee6f6' }}>
