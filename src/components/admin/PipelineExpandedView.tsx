@@ -26,6 +26,7 @@ import {
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useUndo } from '@/contexts/UndoContext';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 
@@ -177,6 +178,7 @@ function useCrmInlineSave(
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(currentValue);
   const [saving, setSaving] = useState(false);
+  const { registerUndo } = useUndo();
 
   useEffect(() => {
     if (editing) setDraft(currentValue);
@@ -188,6 +190,7 @@ function useCrmInlineSave(
       setEditing(false);
       return;
     }
+    const previousValue = currentValue;
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -198,9 +201,16 @@ function useCrmInlineSave(
       toast.error('Failed to save');
       return;
     }
+    registerUndo({
+      label: `Updated ${field}`,
+      execute: async () => {
+        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        onSaved(field, previousValue);
+      },
+    });
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, currentValue, field, leadId, onSaved]);
+  }, [draft, currentValue, field, leadId, onSaved, registerUndo]);
 
   const cancel = useCallback(() => {
     setDraft(currentValue);
@@ -296,9 +306,12 @@ function CrmEditableRichTextField({
     if (editing) setDraft(value);
   }, [editing, value]);
 
+  const { registerUndo: registerUndoRich } = useUndo();
+
   const save = useCallback(async () => {
     const trimmed = draft.trim();
     if (trimmed === value) { setEditing(false); return; }
+    const previousValue = value;
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -306,9 +319,16 @@ function CrmEditableRichTextField({
       .eq('id', leadId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
+    registerUndoRich({
+      label: `Updated ${field}`,
+      execute: async () => {
+        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        onSaved(field, previousValue);
+      },
+    });
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, value, field, leadId, onSaved]);
+  }, [draft, value, field, leadId, onSaved, registerUndoRich]);
 
   if (editing) {
     return (
@@ -365,6 +385,8 @@ function CrmEditableTags({
     }
   }, [editing, tags]);
 
+  const { registerUndo: registerUndoTags } = useUndo();
+
   const save = async () => {
     const newTags = draft.split(',').map(t => t.trim()).filter(Boolean);
     const currentStr = tags.join(',');
@@ -373,6 +395,7 @@ function CrmEditableTags({
       setEditing(false);
       return;
     }
+    const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -383,6 +406,13 @@ function CrmEditableTags({
       toast.error('Failed to save');
       return;
     }
+    registerUndoTags({
+      label: 'Updated tags',
+      execute: async () => {
+        await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        onSaved('tags', previousTags.join(','));
+      },
+    });
     onSaved('tags', newStr);
     setEditing(false);
   };
@@ -557,6 +587,7 @@ export default function PipelineExpandedView() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { registerUndo } = useUndo();
   const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
 
   // Activity form state
@@ -617,6 +648,8 @@ export default function PipelineExpandedView() {
   // ── Stage change handler ──
   const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
     if (!leadId) return;
+    const { data: current } = await supabase.from('leads').select('status').eq('id', leadId).single();
+    const previousStatus = current?.status as LeadStatus | null;
     const { error } = await supabase
       .from('leads')
       .update({ status: newStatus })
@@ -625,10 +658,20 @@ export default function PipelineExpandedView() {
       toast.error('Failed to update stage');
       return;
     }
+    registerUndo({
+      label: `Stage changed to ${pipelineStageConfig[newStatus]?.title ?? newStatus}`,
+      execute: async () => {
+        if (previousStatus) {
+          await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+        }
+        queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+      },
+    });
     toast.success('Stage updated');
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
     queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
-  }, [leadId, queryClient]);
+  }, [leadId, queryClient, registerUndo]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
@@ -641,10 +684,18 @@ export default function PipelineExpandedView() {
     if (!leadId) return;
     const { error } = await supabase.from('leads').update({ [field]: !currentVal }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
+    registerUndo({
+      label: `Toggled ${field}`,
+      execute: async () => {
+        await supabase.from('leads').update({ [field]: currentVal }).eq('id', leadId);
+        queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
+      },
+    });
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
     queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
     toast.success('Updated');
-  }, [leadId, queryClient]);
+  }, [leadId, queryClient, registerUndo]);
 
   // ── Save activity ──
   const handleSaveActivity = useCallback(async () => {
@@ -860,9 +911,18 @@ export default function PipelineExpandedView() {
       toast.error('Failed to delete file');
       return;
     }
-    toast.success('File deleted');
+    registerUndo({
+      label: `Deleted file "${file.file_name}"`,
+      execute: async () => {
+        await supabase.from('lead_files').insert({
+          id: file.id, lead_id: file.lead_id, file_name: file.file_name,
+          file_url: file.file_url, file_type: file.file_type, file_size: file.file_size,
+        });
+        queryClient.invalidateQueries({ queryKey: ['pipeline-lead-files', leadId] });
+      },
+    });
     queryClient.invalidateQueries({ queryKey: ['pipeline-lead-files', leadId] });
-  }, [leadId, queryClient]);
+  }, [leadId, queryClient, registerUndo]);
 
   // ── File download (signed URL) ──
   const handleDownloadFile = useCallback(async (file: LeadFile) => {
@@ -1261,55 +1321,21 @@ export default function PipelineExpandedView() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Details — CRM-style contact panel */}
-        <div className="w-full md:w-[320px] xl:w-[400px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden flex flex-col">
-          {/* Purple accent bar */}
-          <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-600 shrink-0" />
+        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] md:shrink-0 md:min-w-[240px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+            <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
-          {/* Action bar */}
-          <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-border">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
-              <X className="h-4 w-4" />
-            </Button>
-            <div className="flex-1" />
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs font-medium"
-              onClick={() => navigate(`/admin/gmail?compose=new${lead.email ? `&to=${encodeURIComponent(lead.email)}` : ''}`)}
-            >
-              <Mail className="h-3.5 w-3.5" />
-              Email
-            </Button>
-            <Button
-              variant={lead.flagged_for_weekly ? 'default' : 'outline'}
-              size="sm"
-              className={`h-8 gap-1.5 text-xs font-medium ${lead.flagged_for_weekly ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''}`}
-              onClick={() => handleBooleanToggle('flagged_for_weekly', lead.flagged_for_weekly)}
-            >
-              <Flag className="h-3.5 w-3.5" />
-              {lead.flagged_for_weekly ? 'Following' : 'Follow'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={() => { navigator.clipboard.writeText(lead.name); toast.success('Name copied'); }}
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => toast.info('More options coming soon')}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Scrollable content */}
-          <ScrollArea className="flex-1">
-            <div className="px-6 py-6 space-y-6">
+              {/* ── Back Arrow ── */}
+              <button onClick={goBack} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
+                <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="30" y1="8" x2="2" y2="8" />
+                  <polyline points="8,2 2,8 8,14" />
+                </svg>
+              </button>
 
               {/* ── Contact Card Header ── */}
               <div className="flex items-start gap-4">
-                <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                  <span className="text-lg font-bold text-gray-500 dark:text-gray-400">
+                <div className={`h-14 w-14 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center shrink-0`}>
+                  <span className="text-lg font-bold text-white">
                     {lead.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
                   </span>
                 </div>
@@ -1638,84 +1664,53 @@ export default function PipelineExpandedView() {
                 Add new field
               </button>
             </div>
-          </ScrollArea>
-        </div>
+        </ScrollArea>
 
         {/* CENTER: Activity */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-muted/20">
-          {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-5 gap-3 px-5 py-3.5 border-b border-border bg-card">
-            <StatBox
-              value={interactionCount}
-              label="Interactions"
-              icon={<Activity className="h-3.5 w-3.5 text-blue-500" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-blue-500"
-              valueColor="text-blue-700 dark:text-blue-400"
-              iconBg="bg-blue-100 dark:bg-blue-900/40"
-            />
-            <StatBox
-              value={lastContacted}
-              label="Last Contacted"
-              icon={<Clock className="h-3.5 w-3.5 text-slate-400" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-slate-400"
-              valueColor="text-slate-700 dark:text-slate-300"
-              iconBg="bg-slate-100 dark:bg-slate-700/40"
-            />
-            <StatBox
-              value={lastContactType ?? '—'}
-              label="Last Contact Of"
-              icon={<MessageSquare className="h-3.5 w-3.5 text-purple-500" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-purple-500"
-              valueColor="text-purple-700 dark:text-purple-400"
-              iconBg="bg-purple-100 dark:bg-purple-900/40"
-            />
-            <StatBox
-              value={inactiveDays ?? '—'}
-              label="Inactive Days"
-              icon={<AlertCircle className="h-3.5 w-3.5" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border={(inactiveDays ?? 0) > 30 ? 'border-red-500' : 'border-amber-500'}
-              valueColor={(inactiveDays ?? 0) > 30 ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}
-              iconBg={(inactiveDays ?? 0) > 30 ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}
-            />
-            <StatBox
-              value={daysInStage ?? '—'}
-              label="Days in Stage"
-              icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-500" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-emerald-500"
-              valueColor="text-emerald-700 dark:text-emerald-400"
-              iconBg="bg-emerald-100 dark:bg-emerald-900/40"
-            />
-          </div>
-          {/* Activity Tabs — underline style */}
-          <div className="shrink-0 flex items-stretch bg-card border-b border-border">
-            {([
-              { key: 'log' as const, label: 'Log Activity' },
-              { key: 'note' as const, label: 'Create Note' },
-            ]).map((tab) => (
-              <button
-                key={tab.key}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
-                  activityTab === tab.key
-                    ? 'text-blue-700 dark:text-blue-400'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                onClick={() => setActivityTab(tab.key)}
-              >
-                {tab.label}
-                {activityTab === tab.key && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-t-full" />
-                )}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
           <ScrollArea className="flex-1">
-            <div className="px-6 py-5">
+            <div className="px-3 md:px-4 lg:px-6 pt-5">
+              {/* Stats — floating card */}
+              <div className="grid grid-cols-3 divide-x divide-border rounded-lg border border-border bg-card mb-5">
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{interactionCount}</span>
+                  <span className="text-[11px] text-muted-foreground">Interactions</span>
+                </div>
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{lastContacted}</span>
+                  <span className="text-[11px] text-muted-foreground">Last Contacted</span>
+                </div>
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{inactiveDays ?? '—'}</span>
+                  <span className="text-[11px] text-muted-foreground">Inactive Days</span>
+                </div>
+              </div>
+
+              {/* Activity tabs + form — floating card */}
+              <div className="rounded-lg border border-border bg-card overflow-hidden mb-5">
+                <div className="flex items-stretch border-b border-gray-200 dark:border-border">
+                  {([
+                    { key: 'log' as const, label: 'Log Activity' },
+                    { key: 'note' as const, label: 'Create Note' },
+                  ]).map((tab) => (
+                    <button
+                      key={tab.key}
+                      className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
+                        activityTab === tab.key
+                          ? 'text-blue-700 dark:text-blue-400'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      onClick={() => setActivityTab(tab.key)}
+                    >
+                      {tab.label}
+                      {activityTab === tab.key && (
+                        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-700 dark:bg-blue-500" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-5">
               {activityTab === 'log' ? (
                 <div className="space-y-4">
                   {/* Activity type dropdown */}
@@ -1810,9 +1805,10 @@ export default function PipelineExpandedView() {
                   </div>
                 </div>
               )}
+                </div>
+              </div>
 
               {/* Earlier — Activity History + Email Threads */}
-              <Separator className="my-6" />
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
               {gmailEmailsLoading && (
                 <div className="flex items-center gap-2 py-2 mb-3">

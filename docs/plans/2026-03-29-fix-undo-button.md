@@ -97,12 +97,12 @@ Fix the always-inactive undo button in the admin top bar and expand undo support
 - Modify: `src/components/admin/UnderwritingExpandedView.tsx`
 - Modify: `src/components/admin/LenderManagementExpandedView.tsx`
 
-- [ ] For each expanded view: import `useUndo` and add registerUndo to inline field edit handlers — capture the old field value before the Supabase update call, register undo with a restore function
-- [ ] Add registerUndo to file delete operations (re-insert the lead_files record on undo)
-- [ ] Add registerUndo to task toggle/create operations in ProjectExpandedView
-- [ ] Add registerUndo to delete operations (project delete, appointment delete, etc.) — capture full record before delete, re-insert on undo
-- [ ] Skip undo for: activity log inserts (non-destructive append-only), follow toggles (trivial to re-toggle)
-- [ ] Run `npm run build` and `npm run lint`
+- [x] For each expanded view: import `useUndo` and add registerUndo to inline field edit handlers — capture the old field value before the Supabase update call, register undo with a restore function
+- [x] Add registerUndo to file delete operations (re-insert the lead_files record on undo)
+- [x] Add registerUndo to task toggle/create operations in ProjectExpandedView
+- [x] Add registerUndo to delete operations (project delete, appointment delete, etc.) — capture full record before delete, re-insert on undo
+- [x] Skip undo for: activity log inserts (non-destructive append-only), follow toggles (trivial to re-toggle)
+- [x] Run `npm run build` and `npm run lint`
 
 ### Task 6: Build Verification and Cleanup
 

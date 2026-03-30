@@ -21,6 +21,7 @@ import {
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useUndo } from '@/contexts/UndoContext';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
 
@@ -103,6 +104,7 @@ function useInlineSave(
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(currentValue);
   const [saving, setSaving] = useState(false);
+  const { registerUndo } = useUndo();
 
   useEffect(() => {
     if (editing) setDraft(currentValue);
@@ -120,6 +122,7 @@ function useInlineSave(
       setEditing(false);
       return;
     }
+    const previousValue = currentValue;
     setSaving(true);
     const saveValue = transform ? transform(trimmed) : (trimmed || null);
     const dbField = FIELD_TO_COLUMN[field] ?? field;
@@ -133,9 +136,17 @@ function useInlineSave(
       toast.error('Failed to save');
       return;
     }
+    registerUndo({
+      label: `Updated ${field}`,
+      execute: async () => {
+        const restoreValue = transform ? transform(previousValue) : (previousValue || null);
+        await supabase.from('leads').update({ [dbField]: restoreValue } as any).eq('id', companyId);
+        onSaved(field, previousValue);
+      },
+    });
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, currentValue, field, companyId, onSaved, transform]);
+  }, [draft, currentValue, field, companyId, onSaved, transform, registerUndo]);
 
   const cancel = useCallback(() => {
     setDraft(currentValue);
@@ -269,6 +280,8 @@ function EditableTags({
     }
   }, [editing, tags]);
 
+  const { registerUndo: registerUndoTags } = useUndo();
+
   const save = async () => {
     const newTags = draft.split(',').map(t => t.trim()).filter(Boolean);
     const currentStr = tags.join(',');
@@ -277,6 +290,7 @@ function EditableTags({
       setEditing(false);
       return;
     }
+    const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -287,6 +301,13 @@ function EditableTags({
       toast.error('Failed to save');
       return;
     }
+    registerUndoTags({
+      label: 'Updated tags',
+      execute: async () => {
+        await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', companyId);
+        onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
+      },
+    });
     onSaved('tags', JSON.stringify(newTags.length > 0 ? newTags : null));
     setEditing(false);
   };
@@ -347,9 +368,12 @@ function EditableNotes({
     if (editing) setDraft(value);
   }, [editing, value]);
 
+  const { registerUndo: registerUndoNotes } = useUndo();
+
   const save = useCallback(async () => {
     const trimmed = draft.trim();
     if (trimmed === value) { setEditing(false); return; }
+    const previousValue = value;
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -357,9 +381,16 @@ function EditableNotes({
       .eq('id', companyId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
+    registerUndoNotes({
+      label: 'Updated notes',
+      execute: async () => {
+        await supabase.from('leads').update({ notes: previousValue || null } as any).eq('id', companyId);
+        onSaved('notes', previousValue);
+      },
+    });
     onSaved('notes', trimmed);
     setEditing(false);
-  }, [draft, value, companyId, onSaved]);
+  }, [draft, value, companyId, onSaved, registerUndoNotes]);
 
   if (editing) {
     return (
@@ -473,6 +504,7 @@ export default function CompanyExpandedView() {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { registerUndo } = useUndo();
   const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
 
   // Activity form state
@@ -505,6 +537,8 @@ export default function CompanyExpandedView() {
   /* ── Contact type change ── */
   const handleContactTypeChange = useCallback(async (newType: string) => {
     if (!companyId) return;
+    const { data: current } = await supabase.from('leads').select('contact_type').eq('id', companyId).single();
+    const previousType = current?.contact_type ?? null;
     const { error } = await supabase
       .from('leads')
       .update({ contact_type: newType })
@@ -513,14 +547,24 @@ export default function CompanyExpandedView() {
       toast.error('Failed to update contact type');
       return;
     }
+    registerUndo({
+      label: `Contact type changed to ${newType}`,
+      execute: async () => {
+        await supabase.from('leads').update({ contact_type: previousType }).eq('id', companyId);
+        queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
+        queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      },
+    });
     toast.success('Contact type updated');
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
     queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-  }, [companyId, queryClient]);
+  }, [companyId, queryClient, registerUndo]);
 
   /* ── Owner change ── */
   const handleOwnerChange = useCallback(async (newOwner: string) => {
     if (!companyId) return;
+    const { data: current } = await supabase.from('leads').select('assigned_to').eq('id', companyId).single();
+    const previousOwner = current?.assigned_to ?? null;
     const { error } = await supabase
       .from('leads')
       .update({ assigned_to: newOwner || null } as any)
@@ -529,10 +573,18 @@ export default function CompanyExpandedView() {
       toast.error('Failed to update owner');
       return;
     }
+    registerUndo({
+      label: 'Owner updated',
+      execute: async () => {
+        await supabase.from('leads').update({ assigned_to: previousOwner } as any).eq('id', companyId);
+        queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
+        queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      },
+    });
     toast.success('Owner updated');
     queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
     queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
-  }, [companyId, queryClient]);
+  }, [companyId, queryClient, registerUndo]);
 
   /* ── Save activity ── */
   const handleSaveActivity = useCallback(async () => {
@@ -764,38 +816,39 @@ export default function CompanyExpandedView() {
 
   return (
     <div data-full-bleed className="flex flex-col bg-background md:overflow-hidden overflow-y-auto h-[calc(100vh-3.5rem)]">
-      {/* ── Header ── */}
-      <div className="shrink-0 border-b border-border px-4 py-2 flex items-center">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
       {/* ── 3-Column Body ── */}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Company Details */}
-        <ScrollArea className="w-full md:w-[400px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
-          <div className="px-6 py-6 space-y-6">
+        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] md:shrink-0 md:min-w-[240px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+          <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
+
+            {/* ── Back Arrow ── */}
+            <button onClick={goBack} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
+              <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="30" y1="8" x2="2" y2="8" />
+                <polyline points="8,2 2,8 8,14" />
+              </svg>
+            </button>
 
             {/* ── Contact Card Header ── */}
             <div className="flex items-start gap-4">
-              <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                <Building2 className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center shrink-0">
+                <span className="text-lg font-bold text-white">
+                  {company.company_name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
+                </span>
               </div>
               <div className="min-w-0 pt-0.5">
                 <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{company.company_name}</h2>
                 {company.contact_name && (
-                  <p className="text-sm text-muted-foreground mt-1 truncate">{company.contact_name}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5 truncate">{company.contact_name}</p>
                 )}
-                {typeCfg && (
-                  <div className="mt-2.5">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${typeCfg.bg} ${typeCfg.color}`}>
-                      <span className={`h-2 w-2 rounded-full ${typeCfg.dot}`} />
-                      {typeCfg.label}
-                    </span>
-                  </div>
-                )}
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
+                    <Building2 className="h-3 w-3" />
+                    Company
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -893,63 +946,50 @@ export default function CompanyExpandedView() {
         </ScrollArea>
 
         {/* MIDDLE: Activity */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-muted/20">
-          {/* Stats Bar */}
-          <div className="shrink-0 grid grid-cols-3 gap-3 px-5 py-3.5 border-b border-border bg-card">
-            <StatBox
-              value={inactiveDays ?? '\u2014'}
-              label="Days Since Activity"
-              icon={<AlertCircle className="h-3.5 w-3.5" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border={(inactiveDays ?? 0) > 30 ? 'border-red-500' : 'border-amber-500'}
-              valueColor={(inactiveDays ?? 0) > 30 ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}
-              iconBg={(inactiveDays ?? 0) > 30 ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}
-            />
-            <StatBox
-              value={relatedPeople.length}
-              label="Related People"
-              icon={<Users className="h-3.5 w-3.5 text-blue-500" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-blue-500"
-              valueColor="text-blue-700 dark:text-blue-400"
-              iconBg="bg-blue-100 dark:bg-blue-900/40"
-            />
-            <StatBox
-              value={relatedDeals.length}
-              label="Related Deals"
-              icon={<DollarSign className="h-3.5 w-3.5 text-emerald-500" />}
-              bg="bg-white dark:bg-slate-900/80"
-              border="border-emerald-500"
-              valueColor="text-emerald-700 dark:text-emerald-400"
-              iconBg="bg-emerald-100 dark:bg-emerald-900/40"
-            />
-          </div>
-
-          {/* Activity Tabs — underline style */}
-          <div className="shrink-0 flex items-stretch bg-card border-b border-border">
-            {([
-              { key: 'log' as const, label: 'Log Activity' },
-              { key: 'note' as const, label: 'Create Note' },
-            ]).map((tab) => (
-              <button
-                key={tab.key}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
-                  activityTab === tab.key
-                    ? 'text-blue-700 dark:text-blue-400'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                onClick={() => setActivityTab(tab.key)}
-              >
-                {tab.label}
-                {activityTab === tab.key && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-t-full" />
-                )}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
           <ScrollArea className="flex-1">
-            <div className="px-6 py-5">
+            <div className="px-3 md:px-4 lg:px-6 pt-5">
+              {/* Stats — floating card */}
+              <div className="grid grid-cols-3 divide-x divide-border rounded-lg border border-border bg-card mb-5">
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{inactiveDays ?? '\u2014'}</span>
+                  <span className="text-[11px] text-muted-foreground">Inactive Days</span>
+                </div>
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{relatedPeople.length}</span>
+                  <span className="text-[11px] text-muted-foreground">Related People</span>
+                </div>
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{relatedDeals.length}</span>
+                  <span className="text-[11px] text-muted-foreground">Related Deals</span>
+                </div>
+              </div>
+
+              {/* Activity tabs + form — floating card */}
+              <div className="rounded-lg border border-border bg-card overflow-hidden mb-5">
+                <div className="flex items-stretch border-b border-gray-200 dark:border-border">
+                  {([
+                    { key: 'log' as const, label: 'Log Activity' },
+                    { key: 'note' as const, label: 'Create Note' },
+                  ]).map((tab) => (
+                    <button
+                      key={tab.key}
+                      className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
+                        activityTab === tab.key
+                          ? 'text-blue-700 dark:text-blue-400'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      onClick={() => setActivityTab(tab.key)}
+                    >
+                      {tab.label}
+                      {activityTab === tab.key && (
+                        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-700 dark:bg-blue-500" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-5">
               {activityTab === 'log' ? (
                 <div className="space-y-4">
                   {/* Activity type dropdown */}
@@ -1044,9 +1084,10 @@ export default function CompanyExpandedView() {
                   </div>
                 </div>
               )}
+                </div>
+              </div>
 
               {/* Earlier - Activity History */}
-              <Separator className="my-6" />
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
               <div className="space-y-3">
                 {activities.length > 0 ? (

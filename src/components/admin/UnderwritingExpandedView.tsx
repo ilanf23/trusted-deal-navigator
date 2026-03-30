@@ -31,6 +31,7 @@ import {
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useUndo } from '@/contexts/UndoContext';
 import { parseISO, format, differenceInDays } from 'date-fns';
 import { extractSenderName, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
@@ -311,6 +312,7 @@ export default function UnderwritingExpandedView() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { registerUndo } = useUndo();
   const [activityTab, setActivityTab] = useState<'log' | 'note' | 'checklist'>('log');
 
   // Activity form state
@@ -465,6 +467,8 @@ export default function UnderwritingExpandedView() {
   // ── Stage change handler ──
   const handleStageChange = useCallback(async (newStatus: LeadStatus) => {
     if (!leadId) return;
+    const { data: current } = await supabase.from('leads').select('status').eq('id', leadId).single();
+    const previousStatus = current?.status as LeadStatus | null;
     const { error } = await supabase
       .from('leads')
       .update({ status: newStatus })
@@ -473,10 +477,20 @@ export default function UnderwritingExpandedView() {
       toast.error('Failed to update stage');
       return;
     }
+    registerUndo({
+      label: `Stage changed to ${canonicalStageConfig[newStatus]?.title ?? newStatus}`,
+      execute: async () => {
+        if (previousStatus) {
+          await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+        }
+        queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+      },
+    });
     toast.success('Stage updated');
     queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
     queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
-  }, [leadId, queryClient]);
+  }, [leadId, queryClient, registerUndo]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
@@ -490,10 +504,18 @@ export default function UnderwritingExpandedView() {
     if (!leadId) return;
     const { error } = await supabase.from('leads').update({ [field]: !currentVal }).eq('id', leadId);
     if (error) { toast.error('Failed to save'); return; }
+    registerUndo({
+      label: `Toggled ${field}`,
+      execute: async () => {
+        await supabase.from('leads').update({ [field]: currentVal }).eq('id', leadId);
+        queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
+        queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
+      },
+    });
     queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
     queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
     toast.success('Updated');
-  }, [leadId, queryClient]);
+  }, [leadId, queryClient, registerUndo]);
 
   // ── Save activity ──
   const handleSaveActivity = useCallback(async () => {
@@ -701,14 +723,24 @@ export default function UnderwritingExpandedView() {
 
   // ── Delete calendar event ──
   const handleDeleteEvent = useCallback(async (eventId: string) => {
+    const { data: eventData } = await supabase.from('appointments').select('*').eq('id', eventId).single();
     const { error } = await supabase.from('appointments').delete().eq('id', eventId);
     if (error) {
       toast.error('Failed to delete event');
       return;
     }
+    if (eventData) {
+      registerUndo({
+        label: `Deleted event "${eventData.title}"`,
+        execute: async () => {
+          await supabase.from('appointments').insert(eventData);
+          queryClient.invalidateQueries({ queryKey: ['lead-appointments', leadId] });
+        },
+      });
+    }
     toast.success('Event deleted');
     queryClient.invalidateQueries({ queryKey: ['lead-appointments', leadId] });
-  }, [leadId, queryClient]);
+  }, [leadId, queryClient, registerUndo]);
 
   const handleInlineCreateProject = useCallback(async () => {
     if (!newProjectName.trim() || !leadId) return;
@@ -976,9 +1008,18 @@ export default function UnderwritingExpandedView() {
       toast.error('Failed to delete file');
       return;
     }
-    toast.success('File deleted');
+    registerUndo({
+      label: `Deleted file "${file.file_name}"`,
+      execute: async () => {
+        await supabase.from('lead_files').insert({
+          id: file.id, lead_id: file.lead_id, file_name: file.file_name,
+          file_url: file.file_url, file_type: file.file_type, file_size: file.file_size,
+        });
+        queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
+      },
+    });
     queryClient.invalidateQueries({ queryKey: ['lead-files', leadId] });
-  }, [leadId, queryClient]);
+  }, [leadId, queryClient, registerUndo]);
 
   // ── Queries ──
   const { data: lead, isLoading } = useQuery({
@@ -1466,78 +1507,31 @@ export default function UnderwritingExpandedView() {
       <div className="flex flex-col md:flex-row flex-1 min-h-0 md:overflow-hidden">
 
         {/* LEFT: Details — fully editable */}
-        <div className="w-full md:w-[320px] xl:w-[400px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
-        <div className="md:h-full overflow-y-auto overflow-x-hidden">
-          <div className="pl-10 pr-6 py-6 space-y-6 min-w-0">
+        <ScrollArea className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] md:shrink-0 md:min-w-[240px] min-w-0 border-b md:border-b-0 md:border-r border-border bg-card overflow-hidden">
+          <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
 
-            {/* ── Action Buttons Row ── */}
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={goBack}>
-                <X className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                className={`h-8 text-sm font-medium gap-1.5 rounded-full px-5 transition-all ${
-                  isFollowing
-                    ? followHovered
-                      ? 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'
-                      : 'bg-white dark:bg-card text-foreground border border-border'
-                    : 'bg-[#2e1065] hover:bg-[#3b1382] text-white'
-                }`}
-                onClick={() => toggleFollowMutation.mutate()}
-                onMouseEnter={() => setFollowHovered(true)}
-                onMouseLeave={() => setFollowHovered(false)}
-                disabled={toggleFollowMutation.isPending}
-              >
-                {isFollowing ? (
-                  followHovered ? (<><X className="h-3.5 w-3.5" />Unfollow</>) : (<><Check className="h-3.5 w-3.5" />Following</>)
-                ) : ('Follow')}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied'); }}>
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied'); }}>
-                    Copy link
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setAddMenuOpen(false);
-                      setChecklistTabVisible(true);
-                      setActivityTab('checklist');
-                      setChecklistTitle('Checklist');
-                      setChecklistItems([]);
-                      setNewItemText('');
-                    }}
-                  >
-                    Add a Checklist
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400">
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            {/* ── Back Arrow ── */}
+            <button onClick={goBack} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
+              <svg width="32" height="16" viewBox="0 0 32 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="30" y1="8" x2="2" y2="8" />
+                <polyline points="8,2 2,8 8,14" />
+              </svg>
+            </button>
 
             {/* ── Contact Card Header ── */}
             <div className="flex items-start gap-4">
-              <div className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                <DollarSign className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center shrink-0">
+                <span className="text-lg font-bold text-white">
+                  {lead.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
+                </span>
               </div>
               <div className="min-w-0 pt-0.5">
                 <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{getLeadDisplayName(lead)}</h2>
-                <p className="text-sm text-muted-foreground mt-1 truncate">
+                <p className="text-sm text-muted-foreground mt-0.5 truncate">
                   {[lead.company_name, formatValue(dealValue)].filter(Boolean).join(' / ')}
                 </p>
-                <div className="mt-2.5">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-blue-200 text-blue-700 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800">
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
                     <DollarSign className="h-3 w-3" />
                     Opportunity
                   </span>
@@ -1815,60 +1809,56 @@ export default function UnderwritingExpandedView() {
             </div>
 
           </div>
-        </div>
-        </div>
+        </ScrollArea>
 
         {/* CENTER: Activity */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-muted/20">
-          {/* Stats Row */}
-          <div className="shrink-0 px-5 py-4">
-            <div className="grid grid-cols-4 divide-x divide-border rounded-xl border border-border bg-card">
-              <div className="flex flex-col items-center justify-center py-3 px-2">
-                <span className="text-lg font-bold text-foreground">{leadStats.interactionCount}</span>
-                <span className="text-[11px] text-muted-foreground">Interactions</span>
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f5f0fa] dark:bg-purple-950/20">
+          <ScrollArea className="flex-1">
+            <div className="px-3 md:px-4 lg:px-6 pt-5">
+              {/* Stats — floating card */}
+              <div className="grid grid-cols-3 divide-x divide-border rounded-lg border border-border bg-card mb-5">
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{leadStats.interactionCount}</span>
+                  <span className="text-[11px] text-muted-foreground">Interactions</span>
+                </div>
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">
+                    {leadStats.lastContactedDate ? format(leadStats.lastContactedDate, 'M/d/yyyy') : '—'}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">Last Contacted</span>
+                </div>
+                <div className="flex flex-col items-center justify-center py-3 px-2">
+                  <span className="text-lg font-bold text-foreground">{leadStats.inactiveDays ?? '—'}</span>
+                  <span className="text-[11px] text-muted-foreground">Inactive Days</span>
+                </div>
               </div>
-              <div className="flex flex-col items-center justify-center py-3 px-2">
-                <span className="text-lg font-bold text-foreground">
-                  {leadStats.lastContactedDate ? format(leadStats.lastContactedDate, 'M/d/yyyy') : '—'}
-                </span>
-                <span className="text-[11px] text-muted-foreground">Last Contacted</span>
-              </div>
-              <div className="flex flex-col items-center justify-center py-3 px-2">
-                <span className="text-lg font-bold text-foreground">{leadStats.inactiveDays ?? '—'}</span>
-                <span className="text-[11px] text-muted-foreground">Inactive Days</span>
-              </div>
-              <div className="flex flex-col items-center justify-center py-3 px-2">
-                <span className="text-lg font-bold text-foreground">{leadStats.daysInStage}</span>
-                <span className="text-[11px] text-muted-foreground">Days in Stage</span>
-              </div>
-            </div>
-          </div>
-          {/* Activity Tabs — underline style */}
-          <div className="shrink-0 flex items-stretch bg-card border-b border-border">
-            {([
-              { key: 'log' as const, label: 'Log Activity' },
-              { key: 'note' as const, label: 'Create Note' },
-              ...((checklistTabVisible || savedChecklists.length > 0) ? [{ key: 'checklist' as const, label: 'Checklist' }] : []),
-            ]).map((tab) => (
-              <button
-                key={tab.key}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
-                  activityTab === tab.key
-                    ? 'text-blue-700 dark:text-blue-400'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                onClick={() => setActivityTab(tab.key)}
-              >
-                {tab.label}
-                {activityTab === tab.key && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-600 rounded-t-full" />
-                )}
-              </button>
-            ))}
-          </div>
 
-          <ScrollArea className="md:flex-1">
-            <div className="px-6 py-5">
+              {/* Activity tabs + form — floating card */}
+              <div className="rounded-lg border border-border bg-card overflow-hidden mb-5">
+                <div className="flex items-stretch border-b border-gray-200 dark:border-border">
+                  {([
+                    { key: 'log' as const, label: 'Log Activity' },
+                    { key: 'note' as const, label: 'Create Note' },
+                    ...((checklistTabVisible || savedChecklists.length > 0) ? [{ key: 'checklist' as const, label: 'Checklist' }] : []),
+                  ]).map((tab) => (
+                    <button
+                      key={tab.key}
+                      className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
+                        activityTab === tab.key
+                          ? 'text-blue-700 dark:text-blue-400'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      onClick={() => setActivityTab(tab.key)}
+                    >
+                      {tab.label}
+                      {activityTab === tab.key && (
+                        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-700 dark:bg-blue-500" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-5">
               {activityTab === 'log' ? (
                 <div className="space-y-4">
                   {/* Activity type dropdown */}
@@ -2018,9 +2008,10 @@ export default function UnderwritingExpandedView() {
                   </div>
                 </>
               )}
+                </div>
+              </div>
 
               {/* Earlier — Activity History + Email Threads */}
-              <Separator className="my-6" />
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Earlier</h3>
               {gmailEmailsLoading && (
                 <div className="flex items-center gap-2 py-2 mb-3">

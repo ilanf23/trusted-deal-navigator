@@ -26,6 +26,7 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useUndo } from '@/contexts/UndoContext';
 import { AvatarUpload } from '@/components/admin/AvatarUpload';
 import { useGmailConnection } from '@/hooks/useGmailConnection';
 import { usePipelines } from '@/hooks/usePipelines';
@@ -314,6 +315,7 @@ function useInlineSave(
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(currentValue);
   const [saving, setSaving] = useState(false);
+  const { registerUndo } = useUndo();
 
   useEffect(() => {
     if (editing) setDraft(currentValue);
@@ -325,6 +327,7 @@ function useInlineSave(
       setEditing(false);
       return;
     }
+    const previousValue = currentValue;
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -335,9 +338,16 @@ function useInlineSave(
       toast.error('Failed to save');
       return;
     }
+    registerUndo({
+      label: `Updated ${field}`,
+      execute: async () => {
+        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', personId);
+        onSaved(field, previousValue);
+      },
+    });
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, currentValue, field, personId, onSaved]);
+  }, [draft, currentValue, field, personId, onSaved, registerUndo]);
 
   const cancel = useCallback(() => {
     setDraft(currentValue);
@@ -533,6 +543,8 @@ function EditableTags({
     setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
   }, [showSuggestions, inputValue]);
 
+  const { registerUndo: registerUndoTags } = useUndo();
+
   const saveTags = async (newTags: string[]) => {
     const currentStr = tags.sort().join(',');
     const newStr = [...newTags].sort().join(',');
@@ -540,6 +552,7 @@ function EditableTags({
       setEditing(false);
       return;
     }
+    const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -550,6 +563,13 @@ function EditableTags({
       toast.error('Failed to save');
       return;
     }
+    registerUndoTags({
+      label: 'Updated tags',
+      execute: async () => {
+        await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', personId);
+        onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
+      },
+    });
     onSaved('tags', JSON.stringify(newTags.length > 0 ? newTags : null));
     setEditing(false);
   };
@@ -712,9 +732,12 @@ function EditableRichTextField({
     if (editing) setDraft(value);
   }, [editing, value]);
 
+  const { registerUndo: registerUndoRich } = useUndo();
+
   const save = useCallback(async () => {
     const trimmed = draft.trim();
     if (trimmed === value) { setEditing(false); return; }
+    const previousValue = value;
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -722,9 +745,16 @@ function EditableRichTextField({
       .eq('id', personId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
+    registerUndoRich({
+      label: `Updated ${field}`,
+      execute: async () => {
+        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', personId);
+        onSaved(field, previousValue);
+      },
+    });
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, value, field, personId, onSaved]);
+  }, [draft, value, field, personId, onSaved, registerUndoRich]);
 
   if (editing) {
     return (
@@ -1131,6 +1161,7 @@ export default function PeopleExpandedView() {
   const { personId } = useParams<{ personId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { registerUndo } = useUndo();
   const [activityTab, setActivityTab] = useState<'log' | 'note' | 'email'>('log');
 
   // Activity form state
@@ -1326,7 +1357,7 @@ export default function PeopleExpandedView() {
   // ── Contact type change handler ──
   const handleContactTypeChange = useCallback(async (newType: string) => {
     if (!personId) return;
-    const currentType = person?.contact_type ?? null;
+    const previousType = person?.contact_type ?? null;
     const { error } = await supabase
       .from('leads')
       .update({ contact_type: newType })
@@ -1335,17 +1366,24 @@ export default function PeopleExpandedView() {
       toast.error('Failed to update contact type');
       return;
     }
-    toast.success('Contact type updated');
+    registerUndo({
+      label: `Contact type changed to ${newType}`,
+      execute: async () => {
+        await supabase.from('leads').update({ contact_type: previousType }).eq('id', personId);
+        queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
+        queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
+      },
+    });
     queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
     // Log an activity for the type change
     await supabase.from('lead_activities').insert({
       lead_id: personId,
       activity_type: 'type_change',
       title: 'Contact type changed',
-      content: JSON.stringify({ from: currentType, to: newType }),
+      content: JSON.stringify({ from: previousType, to: newType }),
     });
     queryClient.invalidateQueries({ queryKey: ['person-activities', personId] });
-  }, [personId, person?.contact_type, queryClient]);
+  }, [personId, person?.contact_type, queryClient, registerUndo]);
 
   // ── Field saved handler ──
   const handleFieldSaved = useCallback((_field: string, _newValue: string) => {
@@ -1543,9 +1581,18 @@ export default function PeopleExpandedView() {
       toast.error('Failed to delete file');
       return;
     }
-    toast.success('File deleted');
+    registerUndo({
+      label: `Deleted file "${file.file_name}"`,
+      execute: async () => {
+        await supabase.from('lead_files').insert({
+          id: file.id, lead_id: file.lead_id, file_name: file.file_name,
+          file_url: file.file_url, file_type: file.file_type, file_size: file.file_size,
+        });
+        queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
+      },
+    });
     queryClient.invalidateQueries({ queryKey: ['person-files', personId] });
-  }, [personId, queryClient]);
+  }, [personId, queryClient, registerUndo]);
 
   // ── File download (signed URL) ──
   const handleDownloadFile = useCallback(async (file: PersonFile) => {
@@ -1652,14 +1699,25 @@ export default function PeopleExpandedView() {
   }, [newProjectName, personId, teamMember, queryClient]);
 
   const handleDeleteEvent = useCallback(async (eventId: string) => {
+    // Capture event before deleting
+    const { data: eventData } = await supabase.from('appointments').select('*').eq('id', eventId).single();
     const { error } = await supabase.from('appointments').delete().eq('id', eventId);
     if (error) {
       toast.error('Failed to delete event');
       return;
     }
-    toast.success('Event deleted');
+    if (eventData) {
+      registerUndo({
+        label: `Deleted event "${eventData.title}"`,
+        execute: async () => {
+          const { id: _id, ...rest } = eventData;
+          await supabase.from('appointments').insert({ ...rest, id: eventId });
+          queryClient.invalidateQueries({ queryKey: ['person-appointments', personId] });
+        },
+      });
+    }
     queryClient.invalidateQueries({ queryKey: ['person-appointments', personId] });
-  }, [personId, queryClient]);
+  }, [personId, queryClient, registerUndo]);
 
   // ── Activity comments query ──
   const { data: activityCommentsMap = {} } = useQuery({

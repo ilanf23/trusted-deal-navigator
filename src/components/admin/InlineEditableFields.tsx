@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useUndo } from '@/contexts/UndoContext';
 import type { Database } from '@/integrations/supabase/types';
 
 type LeadStatus = Database['public']['Enums']['lead_status'];
@@ -148,6 +149,7 @@ export function useInlineSave(
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(currentValue);
   const [saving, setSaving] = useState(false);
+  const { registerUndo } = useUndo();
 
   useEffect(() => {
     if (editing) setDraft(currentValue);
@@ -159,6 +161,7 @@ export function useInlineSave(
       setEditing(false);
       return;
     }
+    const previousValue = currentValue;
     setSaving(true);
     const saveValue = transform ? transform(trimmed) : (trimmed || null);
     const { error } = await supabase
@@ -171,9 +174,17 @@ export function useInlineSave(
       toast.error('Failed to save');
       return;
     }
+    registerUndo({
+      label: `Updated ${field}`,
+      execute: async () => {
+        const restoreValue = transform ? transform(previousValue) : (previousValue || null);
+        await supabase.from('leads').update({ [field]: restoreValue }).eq('id', leadId);
+        onSaved(field, previousValue);
+      },
+    });
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, currentValue, field, leadId, onSaved, transform]);
+  }, [draft, currentValue, field, leadId, onSaved, transform, registerUndo]);
 
   const cancel = useCallback(() => {
     setDraft(currentValue);
@@ -248,9 +259,11 @@ export function EditableSelectField({
   onSaved: (field: string, newValue: string) => void;
 }) {
   const [saving, setSaving] = useState(false);
+  const { registerUndo } = useUndo();
 
   const handleChange = async (newValue: string) => {
     if (newValue === value) return;
+    const previousValue = value;
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -261,6 +274,13 @@ export function EditableSelectField({
       toast.error('Failed to save');
       return;
     }
+    registerUndo({
+      label: `Updated ${label}`,
+      execute: async () => {
+        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        onSaved(field, previousValue);
+      },
+    });
     onSaved(field, newValue);
   };
 
@@ -392,6 +412,8 @@ export function EditableTags({
     setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
   }, [showSuggestions, inputValue]);
 
+  const { registerUndo: registerUndoTags } = useUndo();
+
   const saveTags = async (newTags: string[]) => {
     const currentStr = tags.sort().join(',');
     const newStr = [...newTags].sort().join(',');
@@ -399,6 +421,7 @@ export function EditableTags({
       setEditing(false);
       return;
     }
+    const previousTags = [...tags];
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -409,6 +432,13 @@ export function EditableTags({
       toast.error('Failed to save');
       return;
     }
+    registerUndoTags({
+      label: 'Updated tags',
+      execute: async () => {
+        await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
+      },
+    });
     onSaved('tags', JSON.stringify(newTags.length > 0 ? newTags : null));
     setEditing(false);
   };
@@ -564,6 +594,7 @@ export function EditableNotes({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
+  const { registerUndo: registerUndoNotes } = useUndo();
 
   useEffect(() => {
     if (editing) {
@@ -574,6 +605,7 @@ export function EditableNotes({
   const save = useCallback(async () => {
     const trimmed = draft.trim();
     if (trimmed === value) { setEditing(false); return; }
+    const previousValue = value;
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -581,9 +613,16 @@ export function EditableNotes({
       .eq('id', leadId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
+    registerUndoNotes({
+      label: 'Updated notes',
+      execute: async () => {
+        await supabase.from('leads').update({ notes: previousValue || null }).eq('id', leadId);
+        onSaved('notes', previousValue);
+      },
+    });
     onSaved('notes', trimmed);
     setEditing(false);
-  }, [draft, value, leadId, onSaved]);
+  }, [draft, value, leadId, onSaved, registerUndoNotes]);
 
   if (editing) {
     return (
@@ -631,6 +670,7 @@ export function EditableNotesField({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
+  const { registerUndo: registerUndoField } = useUndo();
 
   useEffect(() => {
     if (editing) {
@@ -641,6 +681,7 @@ export function EditableNotesField({
   const save = useCallback(async () => {
     const trimmed = draft.trim();
     if (trimmed === value) { setEditing(false); return; }
+    const previousValue = value;
     setSaving(true);
     const { error } = await supabase
       .from('leads')
@@ -648,9 +689,16 @@ export function EditableNotesField({
       .eq('id', leadId);
     setSaving(false);
     if (error) { toast.error('Failed to save'); return; }
+    registerUndoField({
+      label: `Updated ${field}`,
+      execute: async () => {
+        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        onSaved(field, previousValue);
+      },
+    });
     onSaved(field, trimmed);
     setEditing(false);
-  }, [draft, value, field, leadId, onSaved]);
+  }, [draft, value, field, leadId, onSaved, registerUndoField]);
 
   if (editing) {
     return (

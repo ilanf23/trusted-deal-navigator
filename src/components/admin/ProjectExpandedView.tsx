@@ -16,11 +16,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import {
   X, ChevronDown, ChevronRight, ChevronLeft, Plus, ArrowUpDown, SlidersHorizontal,
   Users, FolderOpen, CalendarDays, Clock, User, Lock, FileText, DollarSign,
-  Loader2, Trash2, Circle, CircleCheck, Briefcase, MoreHorizontal, Copy, Check,
+  Loader2, Trash2, Circle, CircleCheck, Briefcase, MoreHorizontal, Copy, Check, Download,
+  CalendarPlus, LayoutDashboard,
 } from 'lucide-react';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { sanitizeFileName } from '@/lib/utils';
 import { useTeamMember } from '@/hooks/useTeamMember';
+import { useUndo } from '@/contexts/UndoContext';
 import { parseISO, format, differenceInDays } from 'date-fns';
 import type { LeadProject } from './ProjectDetailDialog';
 
@@ -64,6 +67,39 @@ const statusOptions = [
 const stageOptions = Object.entries(stageLabels).map(([value, label]) => ({ value, label }));
 const priorityOptions = [{ value: 'none', label: '—' }, ...Object.entries(priorityLabels).map(([value, label]) => ({ value, label }))];
 
+interface LeadFile {
+  id: string;
+  lead_id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(fileType: string | null): string {
+  if (!fileType) return '📄';
+  if (fileType.startsWith('image/')) return '🖼️';
+  if (fileType === 'application/pdf') return '📕';
+  if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv')) return '📊';
+  if (fileType.includes('word') || fileType.includes('document')) return '📝';
+  if (fileType.includes('zip') || fileType.includes('compressed')) return '📦';
+  return '📄';
+}
+
+function formatShortDate(dateStr: string | null): string {
+  if (!dateStr) return '—';
+  try { return format(parseISO(dateStr), 'M/d/yyyy'); } catch { return '—'; }
+}
+
 // ── Related Section ──
 
 function RelatedSection({ icon, label, count, onAdd, children }: {
@@ -95,6 +131,7 @@ export default function ProjectExpandedView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { teamMember } = useTeamMember();
+  const { registerUndo } = useUndo();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'board'>('overview');
   const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
@@ -109,6 +146,20 @@ export default function ProjectExpandedView() {
   const [addingTaskCol, setAddingTaskCol] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedBoardTask, setSelectedBoardTask] = useState<ProjectTask | null>(null);
+
+  // Related sidebar inline-add state
+
+  const [addingTask, setAddingTask] = useState(false);
+  const [newSidebarTaskTitle, setNewSidebarTaskTitle] = useState('');
+  const [savingTask, setSavingTask] = useState(false);
+
+  const [addingCompany, setAddingCompany] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [savingCompany, setSavingCompany] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [draggingFile, setDraggingFile] = useState(false);
 
   // ── Queries ──
 
@@ -176,7 +227,7 @@ export default function ProjectExpandedView() {
     enabled: !!project?.lead_id,
   });
 
-  // Contacts for this lead
+  // Contacts for this lead (legacy)
   const { data: contacts = [] } = useQuery({
     queryKey: ['lead-contacts', project?.lead_id],
     queryFn: async () => {
@@ -185,6 +236,70 @@ export default function ProjectExpandedView() {
         .select('*')
         .eq('lead_id', project!.lead_id);
       return data ?? [];
+    },
+    enabled: !!project?.lead_id,
+  });
+
+  // Linked people (project_people junction)
+  const { data: projectPeople = [] } = useQuery({
+    queryKey: ['project-people', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('project_people')
+        .select('id, lead_id, role')
+        .eq('project_id', projectId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!projectId,
+  });
+
+  const ppLeadIds = useMemo(() => projectPeople.map(pp => pp.lead_id), [projectPeople]);
+  const { data: ppLeadMap = {} } = useQuery({
+    queryKey: ['pp-lead-names', ppLeadIds],
+    queryFn: async () => {
+      if (ppLeadIds.length === 0) return {};
+      const { data } = await supabase.from('leads').select('id, name, company_name, email, phone').in('id', ppLeadIds);
+      const m: Record<string, { name: string; company_name: string | null; email: string | null; phone: string | null }> = {};
+      for (const l of data ?? []) m[l.id] = l;
+      return m;
+    },
+    enabled: ppLeadIds.length > 0,
+  });
+
+  // All leads for people picker
+  const [showPeoplePicker, setShowPeoplePicker] = useState(false);
+  const [peopleSearch, setPeopleSearch] = useState('');
+  const { data: allLeadsForPicker = [] } = useQuery({
+    queryKey: ['all-leads-picker-expanded'],
+    queryFn: async () => {
+      const { data } = await supabase.from('leads').select('id, name, company_name').order('name').limit(200);
+      return (data ?? []) as { id: string; name: string; company_name: string | null }[];
+    },
+    enabled: showPeoplePicker,
+  });
+
+  const filteredPickerLeads = useMemo(() => {
+    const existing = new Set(ppLeadIds);
+    let list = allLeadsForPicker.filter(l => !existing.has(l.id));
+    if (peopleSearch.trim()) {
+      const q = peopleSearch.toLowerCase();
+      list = list.filter(l => l.name.toLowerCase().includes(q) || (l.company_name ?? '').toLowerCase().includes(q));
+    }
+    return list.slice(0, 10);
+  }, [allLeadsForPicker, ppLeadIds, peopleSearch]);
+
+  // Files for this lead
+  const { data: leadFiles = [] } = useQuery({
+    queryKey: ['project-lead-files', project?.lead_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lead_files')
+        .select('id, file_name, file_url, file_type, file_size, uploaded_by, created_at')
+        .eq('lead_id', project!.lead_id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as LeadFile[];
     },
     enabled: !!project?.lead_id,
   });
@@ -226,14 +341,25 @@ export default function ProjectExpandedView() {
 
   const saveField = useCallback(async (field: string, value: unknown) => {
     if (!projectId) return;
+    // Capture previous value before update
+    const { data: prev } = await supabase.from('lead_projects').select(field).eq('id', projectId).single();
+    const previousValue = prev ? (prev as Record<string, unknown>)[field] : null;
     const { error } = await supabase
       .from('lead_projects')
       .update({ [field]: value, updated_at: new Date().toISOString() })
       .eq('id', projectId);
     if (error) { toast.error('Failed to save'); return; }
+    registerUndo({
+      label: `Updated ${field}`,
+      execute: async () => {
+        await supabase.from('lead_projects').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', projectId);
+        queryClient.invalidateQueries({ queryKey: ['project-expanded', projectId] });
+        queryClient.invalidateQueries({ queryKey: ['all-projects'] });
+      },
+    });
     queryClient.invalidateQueries({ queryKey: ['project-expanded', projectId] });
     queryClient.invalidateQueries({ queryKey: ['all-projects'] });
-  }, [projectId, queryClient]);
+  }, [projectId, queryClient, registerUndo]);
 
   // ── Log activity ──
 
@@ -274,14 +400,28 @@ export default function ProjectExpandedView() {
 
   const handleToggleTask = useCallback(async (task: ProjectTask) => {
     const isCompleting = !task.completed_at;
+    const prevCompletedAt = task.completed_at;
+    const prevStatus = task.status;
     await supabase.from('tasks').update({
       completed_at: isCompleting ? new Date().toISOString() : null,
       is_completed: isCompleting,
       status: isCompleting ? 'done' : 'todo',
       updated_at: new Date().toISOString(),
     }).eq('id', task.id);
+    registerUndo({
+      label: isCompleting ? `Completed "${task.title}"` : `Reopened "${task.title}"`,
+      execute: async () => {
+        await supabase.from('tasks').update({
+          completed_at: prevCompletedAt,
+          is_completed: !!prevCompletedAt,
+          status: prevStatus || 'todo',
+          updated_at: new Date().toISOString(),
+        }).eq('id', task.id);
+        queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
+      },
+    });
     queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
-  }, [project?.lead_id, queryClient]);
+  }, [project?.lead_id, queryClient, registerUndo]);
 
   // ── Board: update task field ──
 
@@ -332,10 +472,156 @@ export default function ProjectExpandedView() {
 
   const handleDeleteProject = useCallback(async () => {
     if (!projectId) return;
+    // Capture full project record before deleting
+    const { data: projectData } = await supabase.from('lead_projects').select('*').eq('id', projectId).single();
     await supabase.from('lead_projects').delete().eq('id', projectId);
+    if (projectData) {
+      registerUndo({
+        label: `Deleted project "${projectData.name}"`,
+        execute: async () => {
+          await supabase.from('lead_projects').insert(projectData);
+          queryClient.invalidateQueries({ queryKey: ['all-projects'] });
+        },
+      });
+    }
     toast.success('Project deleted');
     navigate('/admin/pipeline/projects');
-  }, [projectId, navigate]);
+  }, [projectId, navigate, registerUndo, queryClient]);
+
+  // ── Add person (project_people) ──
+  const handleAddPerson = useCallback(async (leadId: string) => {
+    if (!projectId) return;
+    const { error } = await supabase.from('project_people').insert({ project_id: projectId, lead_id: leadId });
+    if (error) { toast.error('Failed to link person'); return; }
+    toast.success('Person linked');
+    setShowPeoplePicker(false);
+    setPeopleSearch('');
+    queryClient.invalidateQueries({ queryKey: ['project-people', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['project-people-all'] });
+  }, [projectId, queryClient]);
+
+  // ── Remove person (project_people) ──
+  const handleRemovePerson = useCallback(async (linkId: string) => {
+    const { error } = await supabase.from('project_people').delete().eq('id', linkId);
+    if (error) { toast.error('Failed to remove'); return; }
+    toast.success('Person removed');
+    queryClient.invalidateQueries({ queryKey: ['project-people', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['project-people-all'] });
+  }, [projectId, queryClient]);
+
+  // ── Save task (Related sidebar) ──
+  const handleSaveSidebarTask = useCallback(async () => {
+    if (!project?.lead_id || !newSidebarTaskTitle.trim()) return;
+    setSavingTask(true);
+    const { error } = await supabase.from('tasks').insert({
+      lead_id: project.lead_id,
+      title: newSidebarTaskTitle.trim(),
+      status: 'todo',
+      source: 'lead',
+      created_by: teamMember?.name ?? null,
+    });
+    setSavingTask(false);
+    if (error) { toast.error('Failed to create task'); return; }
+    toast.success('Task created');
+    setNewSidebarTaskTitle(''); setAddingTask(false);
+    queryClient.invalidateQueries({ queryKey: ['person-tasks', project.lead_id] });
+  }, [project?.lead_id, newSidebarTaskTitle, teamMember, queryClient]);
+
+  // ── Save company (Related sidebar) ──
+  const handleSaveCompany = useCallback(async () => {
+    if (!project?.lead_id || !newCompanyName.trim()) return;
+    setSavingCompany(true);
+    const { error } = await supabase.from('leads').update({ company_name: newCompanyName.trim() }).eq('id', project.lead_id);
+    setSavingCompany(false);
+    if (error) { toast.error('Failed to update company'); return; }
+    toast.success('Company updated');
+    setNewCompanyName(''); setAddingCompany(false);
+    queryClient.invalidateQueries({ queryKey: ['project-lead', project.lead_id] });
+  }, [project?.lead_id, newCompanyName, queryClient]);
+
+  // ── File upload ──
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !project?.lead_id) return;
+    e.target.value = '';
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) { toast.error('You must be logged in to upload files.'); return; }
+
+    setUploadingFile(true);
+    const filePath = `${project.lead_id}/${Date.now()}_${sanitizeFileName(file.name)}`;
+    const { error: uploadError } = await supabase.storage
+      .from('lead-files')
+      .upload(filePath, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+
+    if (uploadError) {
+      setUploadingFile(false);
+      toast.error(`Upload failed: ${uploadError.message || 'Storage error'}`);
+      return;
+    }
+
+    const { error: dbError } = await supabase.from('lead_files').insert({
+      lead_id: project.lead_id,
+      file_name: file.name,
+      file_url: filePath,
+      file_type: file.type || null,
+      file_size: file.size,
+    });
+    setUploadingFile(false);
+    if (dbError) {
+      await supabase.storage.from('lead-files').remove([filePath]);
+      toast.error('Failed to save file record');
+      return;
+    }
+    toast.success('File uploaded');
+    queryClient.invalidateQueries({ queryKey: ['project-lead-files', project.lead_id] });
+  }, [project?.lead_id, queryClient]);
+
+  // ── File drop handler ──
+  const handleFileDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDraggingFile(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    // Reuse the upload handler by creating a synthetic event
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.files = dt.files;
+      fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }, []);
+
+  // ── File delete ──
+  const handleDeleteFile = useCallback(async (file: LeadFile) => {
+    await supabase.storage.from('lead-files').remove([file.file_url]);
+    const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
+    if (error) { toast.error('Failed to delete file'); return; }
+    registerUndo({
+      label: `Deleted file "${file.file_name}"`,
+      execute: async () => {
+        await supabase.from('lead_files').insert({
+          id: file.id, lead_id: file.lead_id, file_name: file.file_name,
+          file_url: file.file_url, file_type: file.file_type, file_size: file.file_size,
+        });
+        queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.lead_id] });
+      },
+    });
+    queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.lead_id] });
+  }, [project?.lead_id, queryClient, registerUndo]);
+
+  // ── File download (signed URL) ──
+  const handleDownloadFile = useCallback(async (file: LeadFile) => {
+    const { data, error } = await supabase.storage.from('lead-files').createSignedUrl(file.file_url, 60);
+    if (error || !data?.signedUrl) { toast.error('Failed to generate download link'); return; }
+    const a = document.createElement('a');
+    a.href = data.signedUrl;
+    a.download = file.file_name;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, []);
 
   if (isLoading || !project) {
     return (
@@ -348,21 +634,51 @@ export default function ProjectExpandedView() {
 
   return (
     <div data-full-bleed className="flex flex-col bg-background h-[calc(100vh-3.5rem)] md:overflow-hidden overflow-y-auto">
-      {/* Tabs bar (no header) */}
+      {/* Project name header */}
+      <div className="shrink-0 px-6 pt-4 pb-2 bg-card">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-semibold text-foreground">{project.name}</h1>
+          {ownerName && (
+            <span className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground uppercase" title={ownerName}>
+              {ownerName.charAt(0)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs bar with actions */}
       <div className="shrink-0 border-b border-border bg-card">
-        <div className="flex items-center gap-0 px-6">
-          {(['board', 'overview'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-sm font-semibold capitalize relative transition-colors ${
-                activeTab === tab ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab === 'board' ? 'Board' : 'Overview'}
-              {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />}
-            </button>
-          ))}
+        <div className="flex items-center justify-between px-6">
+          <div className="flex items-center gap-0">
+            {(['board', 'overview'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2.5 text-sm font-semibold capitalize relative transition-colors ${
+                  activeTab === tab ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {tab === 'board' ? 'Board' : 'Overview'}
+                {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />}
+              </button>
+            ))}
+          </div>
+          {activeTab === 'board' && (
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5">
+                <ArrowUpDown className="h-3 w-3" /> Sort
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5">
+                <SlidersHorizontal className="h-3 w-3" /> Filter
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5">
+                <CalendarPlus className="h-3 w-3" /> Create Template
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5">
+                <LayoutDashboard className="h-3 w-3" /> Edit Layout
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -385,24 +701,15 @@ export default function ProjectExpandedView() {
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* Board columns */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            {/* Toolbar */}
-            <div className="shrink-0 flex items-center justify-end gap-2 px-6 py-2 border-b border-border bg-card/50">
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5">
-                <ArrowUpDown className="h-3 w-3" /> Sort
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground gap-1.5">
-                <SlidersHorizontal className="h-3 w-3" /> Filter
-              </Button>
-            </div>
 
-            <div className="flex-1 overflow-auto p-6">
-              <div className="flex gap-4 h-full min-h-[400px]">
+            <div className="flex-1 overflow-auto bg-muted pl-4">
+              <div className="flex h-full min-h-[400px] divide-x divide-border">
                 {[
                   { key: 'todo', label: 'To Do', items: boardColumns.todo },
                   { key: 'in_progress', label: 'In Progress', items: boardColumns.inProgress },
                   { key: 'done', label: 'Done', items: boardColumns.done, icon: <CircleCheck className="h-4 w-4 text-emerald-500" /> },
                 ].map(col => (
-                  <div key={col.key} className="flex-1 min-w-[220px] bg-muted/30 rounded-xl flex flex-col">
+                  <div key={col.key} className="flex-1 min-w-[220px] flex flex-col">
                     {/* Column header */}
                     <div className="flex items-center justify-between px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -631,8 +938,10 @@ export default function ProjectExpandedView() {
 
                 {/* ── Project Header Card ── */}
                 <div className="flex items-start gap-4">
-                  <div className="h-14 w-14 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                    <FolderOpen className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  <div className="h-14 w-14 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shrink-0">
+                    <span className="text-lg font-bold text-white">
+                      {project.name.split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
+                    </span>
                   </div>
                   <div className="min-w-0 pt-0.5 flex-1">
                     <h2 className="text-xl font-semibold text-foreground truncate leading-tight">{project.name}</h2>
@@ -642,50 +951,11 @@ export default function ProjectExpandedView() {
                       </p>
                     )}
                     <div className="mt-2">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-amber-200 text-amber-700 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800">
-                        <FolderOpen className="h-3 w-3" /> Project
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-border text-muted-foreground bg-muted/50">
+                        <Briefcase className="h-3 w-3" /> Project
                       </span>
                     </div>
                   </div>
-                </div>
-
-                {/* ── Action buttons ── */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant={isFollowing ? 'default' : 'outline'}
-                    size="sm"
-                    className={`h-8 text-sm font-medium gap-1.5 rounded-full px-5 ${isFollowing ? 'bg-blue-600 hover:bg-red-600 text-white' : ''}`}
-                    onClick={() => toggleFollowMutation.mutate()}
-                    onMouseEnter={() => setFollowHovered(true)}
-                    onMouseLeave={() => setFollowHovered(false)}
-                  >
-                    {isFollowing ? (followHovered ? 'Unfollow' : 'Following') : 'Follow'}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      setCopied(true);
-                      toast.success('Link copied');
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                  >
-                    {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
-                        <Trash2 className="h-4 w-4 mr-2" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
 
                 {/* ── Fields ── */}
@@ -898,34 +1168,121 @@ export default function ProjectExpandedView() {
             <ScrollArea className="md:flex-1">
               <div className="py-4 px-3 overflow-hidden">
                 {/* Files */}
-                <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={0} onAdd={() => {}}>
-                  <div className="py-1">
-                    <p className="text-xs text-muted-foreground">No files attached</p>
+                <RelatedSection icon={<FileText className="h-3.5 w-3.5" />} label="Files" count={leadFiles.length} onAdd={() => fileInputRef.current?.click()}>
+                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+                  <div
+                    className={`space-y-1.5 py-1 rounded-lg transition-colors ${draggingFile ? 'bg-blue-50 dark:bg-blue-950/30 ring-2 ring-blue-400 ring-dashed' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setDraggingFile(true); }}
+                    onDragEnter={(e) => { e.preventDefault(); setDraggingFile(true); }}
+                    onDragLeave={(e) => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget as Node)) setDraggingFile(false); }}
+                    onDrop={handleFileDrop}
+                  >
+                    {draggingFile && (
+                      <div className="flex items-center justify-center py-4 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                        Drop file here to upload
+                      </div>
+                    )}
+                    {!draggingFile && (
+                      <>
+                        {leadFiles.map((f) => (
+                          <div key={f.id} className="flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-muted/40 transition-colors group">
+                            <span className="text-sm shrink-0">{getFileIcon(f.file_type)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-foreground truncate">{f.file_name}</p>
+                              <p className="text-[10px] text-muted-foreground">{formatFileSize(f.file_size)} · {formatShortDate(f.created_at)}</p>
+                            </div>
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <button onClick={(e) => { e.stopPropagation(); handleDownloadFile(f); }} className="p-1 rounded hover:bg-muted" title="Download">
+                                <Download className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                              </button>
+                              <button onClick={() => handleDeleteFile(f)} className="p-1 rounded hover:bg-muted" title="Delete">
+                                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {uploadingFile && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                            <Loader2 className="h-3 w-3 animate-spin text-orange-500" /> Uploading...
+                          </div>
+                        )}
+                        {leadFiles.length === 0 && !uploadingFile && (
+                          <p className="text-xs text-muted-foreground">No files attached — drag & drop or click to upload</p>
+                        )}
+                        <button onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1">
+                          + Upload file...
+                        </button>
+                      </>
+                    )}
                   </div>
                 </RelatedSection>
 
                 {/* People */}
-                <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={contacts.length} onAdd={() => {}}>
+                <RelatedSection icon={<Users className="h-3.5 w-3.5" />} label="People" count={projectPeople.length} onAdd={() => setShowPeoplePicker(!showPeoplePicker)}>
                   <div className="space-y-3 py-1">
-                    {contacts.map((c: { id: string; name?: string; role?: string; email?: string; title?: string; phone?: string }) => (
-                      <div key={c.id} className="flex items-start gap-2.5">
-                        <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300 shrink-0">
-                          {c.name?.split(' ').map((n: string) => n[0]?.toUpperCase()).join('').slice(0, 2)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-foreground truncate">{c.name}</p>
-                          {c.title && <p className="text-[11px] text-blue-600 dark:text-blue-400 truncate">{c.title}</p>}
-                          {c.phone && <p className="text-[11px] text-muted-foreground">{c.phone}</p>}
-                          {c.email && <p className="text-[11px] text-blue-600 dark:text-blue-400 truncate ml-1">{c.email}</p>}
+                    {/* People picker */}
+                    {showPeoplePicker && (
+                      <div className="space-y-1.5">
+                        <input
+                          autoFocus
+                          value={peopleSearch}
+                          onChange={(e) => setPeopleSearch(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Escape') { setShowPeoplePicker(false); setPeopleSearch(''); } }}
+                          placeholder="Search people..."
+                          className="w-full text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                        />
+                        <div className="max-h-[140px] overflow-y-auto space-y-0.5">
+                          {filteredPickerLeads.map(l => (
+                            <button
+                              key={l.id}
+                              onClick={() => handleAddPerson(l.id)}
+                              className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/60 transition-colors"
+                            >
+                              <User className="h-3 w-3 text-muted-foreground shrink-0" />
+                              <span className="text-xs text-foreground truncate">{l.name}</span>
+                              {l.company_name && <span className="text-[10px] text-muted-foreground truncate">· {l.company_name}</span>}
+                            </button>
+                          ))}
+                          {filteredPickerLeads.length === 0 && <p className="text-[10px] text-muted-foreground text-center py-2">No results</p>}
                         </div>
                       </div>
-                    ))}
-                    {contacts.length === 0 && <p className="text-xs text-muted-foreground py-1">No people linked</p>}
+                    )}
+
+                    {/* Linked people list */}
+                    {projectPeople.map(pp => {
+                      const info = ppLeadMap[pp.lead_id];
+                      return (
+                        <div key={pp.id} className="flex items-start gap-2.5 group">
+                          <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-gray-300 shrink-0">
+                            {info?.name?.split(' ').map((n: string) => n[0]?.toUpperCase()).join('').slice(0, 2) ?? '??'}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-foreground truncate">{info?.name ?? '...'}</p>
+                            {pp.role && <p className="text-[11px] text-blue-600 dark:text-blue-400 truncate capitalize">{pp.role}</p>}
+                            {info?.company_name && <p className="text-[11px] text-muted-foreground truncate">{info.company_name}</p>}
+                            {info?.email && <p className="text-[11px] text-blue-600 dark:text-blue-400 truncate">{info.email}</p>}
+                          </div>
+                          <button
+                            onClick={() => handleRemovePerson(pp.id)}
+                            className="p-1 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5"
+                            title="Remove person"
+                          >
+                            <X className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {projectPeople.length === 0 && !showPeoplePicker && <p className="text-xs text-muted-foreground py-1">No people linked</p>}
+                    {!showPeoplePicker && (
+                      <button onClick={() => setShowPeoplePicker(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1">
+                        + Add person...
+                      </button>
+                    )}
                   </div>
                 </RelatedSection>
 
                 {/* Tasks */}
-                <RelatedSection icon={<Circle className="h-3.5 w-3.5" />} label="Tasks" count={tasks.length} onAdd={() => {}}>
+                <RelatedSection icon={<Circle className="h-3.5 w-3.5" />} label="Tasks" count={tasks.length} onAdd={() => setAddingTask(true)}>
                   <div className="space-y-1 py-1">
                     {tasks.slice(0, 5).map(t => (
                       <div key={t.id} className="flex items-center gap-2 text-xs py-1">
@@ -935,20 +1292,71 @@ export default function ProjectExpandedView() {
                         <span className={`truncate ${t.completed_at ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{t.title}</span>
                       </div>
                     ))}
-                    {tasks.length === 0 && <p className="text-xs text-muted-foreground py-1">No tasks</p>}
+                    {addingTask ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          autoFocus
+                          value={newSidebarTaskTitle}
+                          onChange={(e) => setNewSidebarTaskTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newSidebarTaskTitle.trim()) handleSaveSidebarTask();
+                            if (e.key === 'Escape') { setAddingTask(false); setNewSidebarTaskTitle(''); }
+                          }}
+                          placeholder="Task title..."
+                          disabled={savingTask}
+                          className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                        />
+                        {savingTask && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+                      </div>
+                    ) : (
+                      <button onClick={() => setAddingTask(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1">
+                        + Add task...
+                      </button>
+                    )}
+                    {tasks.length === 0 && !addingTask && <p className="text-xs text-muted-foreground py-1">No tasks</p>}
+                    {tasks.length > 5 && (
+                      <button
+                        onClick={() => setActiveTab('board')}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 flex items-center gap-1"
+                      >
+                        View all {tasks.length} tasks in Board
+                      </button>
+                    )}
                   </div>
                 </RelatedSection>
 
                 {/* Companies */}
-                <RelatedSection icon={<Briefcase className="h-3.5 w-3.5" />} label="Companies" count={lead?.company_name ? 1 : 0} onAdd={() => {}}>
-                  <div className="py-1">
-                    {lead?.company_name ? (
-                      <p className="text-xs text-foreground">{lead.company_name}</p>
-                    ) : (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Briefcase className="h-3.5 w-3.5" />
-                        <span>Add Company</span>
+                <RelatedSection icon={<Briefcase className="h-3.5 w-3.5" />} label="Companies" count={lead?.company_name ? 1 : 0} onAdd={() => setAddingCompany(true)}>
+                  <div className="space-y-2 py-1">
+                    {lead?.company_name && (
+                      <div className="text-xs text-foreground flex items-center gap-2">
+                        <div className="h-5 w-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-[10px] font-bold text-indigo-700 dark:text-indigo-400 shrink-0">
+                          {lead.company_name[0]?.toUpperCase()}
+                        </div>
+                        {lead.company_name}
                       </div>
+                    )}
+                    {!lead?.company_name && !addingCompany && <p className="text-xs text-muted-foreground">No companies</p>}
+                    {addingCompany ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          autoFocus
+                          value={newCompanyName}
+                          onChange={(e) => setNewCompanyName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newCompanyName.trim()) handleSaveCompany();
+                            if (e.key === 'Escape') { setAddingCompany(false); setNewCompanyName(''); }
+                          }}
+                          placeholder="Company name..."
+                          disabled={savingCompany}
+                          className="flex-1 text-xs text-foreground bg-muted border border-border rounded-md px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                        />
+                        {savingCompany && <Loader2 className="h-3 w-3 animate-spin text-blue-500 shrink-0" />}
+                      </div>
+                    ) : (
+                      <button onClick={() => setAddingCompany(true)} className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-1">
+                        + {lead?.company_name ? 'Change' : 'Add'} company...
+                      </button>
                     )}
                   </div>
                 </RelatedSection>
@@ -980,7 +1388,7 @@ export default function ProjectExpandedView() {
                 </div>
 
                 {/* Pipeline Records */}
-                <RelatedSection icon={<DollarSign className="h-3.5 w-3.5" />} label="Pipeline Records" count={lead ? 1 : 0} onAdd={() => {}}>
+                <RelatedSection icon={<DollarSign className="h-3.5 w-3.5" />} label="Pipeline Records" count={lead ? 1 : 0}>
                   <div className="py-1">
                     {lead ? (
                       <div className="space-y-2">
