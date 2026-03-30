@@ -484,25 +484,26 @@ export default function ProjectExpandedView() {
   const ownerName = project?.owner ? teamMemberMap[project.owner] : null;
 
   const teamMemberId = teamMember?.id;
+  const leadId = project?.lead_id;
   const { data: isFollowing = false } = useQuery({
-    queryKey: ['lead-follow', projectId, teamMemberId],
+    queryKey: ['lead-follow', leadId, teamMemberId],
     queryFn: async () => {
       const { data } = await supabase.from('lead_followers').select('id')
-        .eq('lead_id', projectId!).eq('team_member_id', teamMemberId!).maybeSingle();
+        .eq('lead_id', leadId!).eq('team_member_id', teamMemberId!).maybeSingle();
       return !!data;
     },
-    enabled: !!projectId && !!teamMemberId,
+    enabled: !!leadId && !!teamMemberId,
   });
   const toggleFollowMutation = useMutation({
     mutationFn: async () => {
       if (isFollowing) {
-        await supabase.from('lead_followers').delete().eq('lead_id', projectId!).eq('team_member_id', teamMemberId!);
+        await supabase.from('lead_followers').delete().eq('lead_id', leadId!).eq('team_member_id', teamMemberId!);
       } else {
-        await supabase.from('lead_followers').insert({ lead_id: projectId!, team_member_id: teamMemberId! });
+        await supabase.from('lead_followers').insert({ lead_id: leadId!, team_member_id: teamMemberId! });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lead-follow', projectId, teamMemberId] });
+      queryClient.invalidateQueries({ queryKey: ['lead-follow', leadId, teamMemberId] });
       toast.success(isFollowing ? 'Unfollowed' : 'Following');
     },
   });
@@ -967,7 +968,7 @@ export default function ProjectExpandedView() {
           {/* LEFT: Details */}
           <div className="w-full md:w-[300px] lg:w-[380px] xl:w-[480px] shrink-0 min-w-0 md:border-r border-b md:border-b-0 border-border bg-card overflow-hidden">
             <ScrollArea className="md:h-full">
-              <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6">
+              <div className="px-4 md:pl-6 md:pr-4 lg:pl-8 lg:pr-5 xl:pl-11 xl:pr-6 py-6 space-y-6 overflow-x-hidden">
 
                 {/* ── Back Arrow ── */}
                 <button onClick={() => navigate(-1)} className="flex items-center text-muted-foreground hover:text-foreground transition-colors -ml-2 py-1">
@@ -1476,6 +1477,13 @@ function FieldRow({ label, value, onSave, multiline, placeholder }: {
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const fieldRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editing && fieldRef.current) {
+      fieldRef.current.focus({ preventScroll: true });
+    }
+  }, [editing]);
 
   const handleSave = () => {
     if (draft.trim() !== value) onSave(draft.trim());
@@ -1484,21 +1492,21 @@ function FieldRow({ label, value, onSave, multiline, placeholder }: {
 
   if (editing) {
     return (
-      <div>
+      <div className="min-w-0">
         <label className="text-xs text-muted-foreground block mb-1">{label}</label>
         {multiline ? (
-          <Textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={handleSave} onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false); }} rows={3} className="text-sm resize-none" />
+          <Textarea ref={fieldRef} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={handleSave} onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false); }} rows={3} className="text-sm resize-none focus-visible:ring-offset-0" />
         ) : (
-          <Input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={handleSave} onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }} className="h-9 text-sm" />
+          <Input ref={fieldRef} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={handleSave} onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }} className="h-9 text-sm focus-visible:ring-offset-0" />
         )}
       </div>
     );
   }
 
   return (
-    <div className="cursor-pointer hover:bg-muted/40 rounded-md -mx-2 px-2 py-1 transition-colors" onClick={() => { setDraft(value); setEditing(true); }}>
+    <div className="cursor-pointer hover:bg-muted/40 rounded-md -mx-2 px-2 py-1 transition-colors min-w-0" onClick={() => { setDraft(value); setEditing(true); }}>
       <label className="text-xs text-muted-foreground block mb-0.5">{label}</label>
-      <p className="text-sm text-foreground whitespace-pre-wrap">{value || <span className="text-muted-foreground italic">{placeholder || '—'}</span>}</p>
+      <p className={`text-sm text-foreground ${multiline ? 'whitespace-pre-wrap' : 'truncate'}`}>{value || <span className="text-muted-foreground italic">{placeholder || '—'}</span>}</p>
     </div>
   );
 }

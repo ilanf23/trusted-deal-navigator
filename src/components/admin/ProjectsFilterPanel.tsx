@@ -207,8 +207,7 @@ function CheckboxSelect({
 }
 
 const STATUS_OPTIONS = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
+  { value: 'open', label: 'Open' },
   { value: 'completed', label: 'Completed' },
 ];
 
