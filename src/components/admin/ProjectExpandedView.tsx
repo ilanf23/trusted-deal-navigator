@@ -363,7 +363,8 @@ export default function ProjectExpandedView() {
     registerUndo({
       label: `Updated ${field}`,
       execute: async () => {
-        await supabase.from('lead_projects').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', projectId);
+        const { error: e } = await supabase.from('lead_projects').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', projectId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['project-expanded', projectId] });
         queryClient.invalidateQueries({ queryKey: ['all-projects'] });
       },
@@ -410,7 +411,8 @@ export default function ProjectExpandedView() {
       registerUndo({
         label: `Created task "${newTaskTitle.trim()}"`,
         execute: async () => {
-          await supabase.from('tasks').delete().eq('id', created.id);
+          const { error: e } = await supabase.from('tasks').delete().eq('id', created.id);
+          if (e) throw e;
           queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
         },
       });
@@ -433,12 +435,13 @@ export default function ProjectExpandedView() {
     registerUndo({
       label: isCompleting ? `Completed "${task.title}"` : `Reopened "${task.title}"`,
       execute: async () => {
-        await supabase.from('tasks').update({
+        const { error: e } = await supabase.from('tasks').update({
           completed_at: prevCompletedAt,
           is_completed: !!prevCompletedAt,
           status: prevStatus || 'todo',
           updated_at: new Date().toISOString(),
         }).eq('id', task.id);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
       },
     });
@@ -462,7 +465,8 @@ export default function ProjectExpandedView() {
     registerUndo({
       label: `Updated task ${field}`,
       execute: async () => {
-        await supabase.from('tasks').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', taskId);
+        const { error: e } = await supabase.from('tasks').update({ [field]: previousValue, updated_at: new Date().toISOString() }).eq('id', taskId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
       },
     });
@@ -513,7 +517,8 @@ export default function ProjectExpandedView() {
       registerUndo({
         label: `Deleted project "${projectData.name}"`,
         execute: async () => {
-          await supabase.from('lead_projects').insert(projectData);
+          const { error: e } = await supabase.from('lead_projects').insert(projectData);
+          if (e) throw e;
           queryClient.invalidateQueries({ queryKey: ['all-projects'] });
         },
       });
@@ -563,7 +568,8 @@ export default function ProjectExpandedView() {
       registerUndo({
         label: `Created task "${newSidebarTaskTitle.trim()}"`,
         execute: async () => {
-          await supabase.from('tasks').delete().eq('id', created.id);
+          const { error: e } = await supabase.from('tasks').delete().eq('id', created.id);
+          if (e) throw e;
           queryClient.invalidateQueries({ queryKey: ['person-tasks', project?.lead_id] });
         },
       });
@@ -637,23 +643,13 @@ export default function ProjectExpandedView() {
 
   // ── File delete ──
   const handleDeleteFile = useCallback(async (file: LeadFile) => {
-    // Capture file record for undo before deleting
-    const { data: fileRecord } = await supabase.from('lead_files').select('*').eq('id', file.id).single();
     await supabase.storage.from('lead-files').remove([file.file_url]);
     const { error } = await supabase.from('lead_files').delete().eq('id', file.id);
     if (error) { toast.error('Failed to delete file'); return; }
     toast.success('File deleted');
     queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.lead_id] });
-    if (fileRecord) {
-      registerUndo({
-        label: `Deleted file "${file.file_name}"`,
-        execute: async () => {
-          await supabase.from('lead_files').insert(fileRecord);
-          queryClient.invalidateQueries({ queryKey: ['project-lead-files', project?.lead_id] });
-        },
-      });
-    }
-  }, [project?.lead_id, queryClient, registerUndo]);
+    // No undo for file deletes — storage object is already removed and cannot be restored
+  }, [project?.lead_id, queryClient]);
 
   // ── File download (signed URL) ──
   const handleDownloadFile = useCallback(async (file: LeadFile) => {

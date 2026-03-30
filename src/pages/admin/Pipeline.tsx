@@ -563,8 +563,10 @@ const Pipeline = () => {
       registerUndo({
         label: `Created opportunity "${lead.name}"`,
         execute: async () => {
-          await supabase.from('pipeline_leads').delete().eq('lead_id', lead.id);
-          await supabase.from('leads').delete().eq('id', lead.id);
+          const { error: e1 } = await supabase.from('pipeline_leads').delete().eq('lead_id', lead.id);
+          if (e1) throw e1;
+          const { error: e2 } = await supabase.from('leads').delete().eq('id', lead.id);
+          if (e2) throw e2;
           setDetailDialogLead(null);
           queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
         },
@@ -828,7 +830,8 @@ const Pipeline = () => {
           execute: async () => {
             for (const rec of deletedRecords) {
               const { id, ...rest } = rec;
-              await supabase.from('pipeline_leads').insert({ id, ...rest });
+              const { error: e } = await supabase.from('pipeline_leads').insert({ id, ...rest });
+              if (e) throw e;
             }
             queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
           },
@@ -873,7 +876,8 @@ const Pipeline = () => {
         label: `Assigned ${result.leadIds.length} lead(s) to ${ownerName}`,
         execute: async () => {
           for (const prev of result.previousOwners) {
-            await supabase.from('leads').update({ assigned_to: prev.assigned_to }).eq('id', prev.id);
+            const { error: e } = await supabase.from('leads').update({ assigned_to: prev.assigned_to }).eq('id', prev.id);
+            if (e) throw e;
           }
           queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
         },
@@ -921,7 +925,8 @@ const Pipeline = () => {
         label: `Added tags to ${result.count} lead(s)`,
         execute: async () => {
           for (const prev of result.previousTags) {
-            await supabase.from('leads').update({ tags: prev.tags }).eq('id', prev.id);
+            const { error: e } = await supabase.from('leads').update({ tags: prev.tags }).eq('id', prev.id);
+            if (e) throw e;
           }
           queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
         },

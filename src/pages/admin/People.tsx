@@ -902,7 +902,8 @@ const People = () => {
         label: `Bulk changed ${prevRecords.length} contacts to "${newType}"`,
         execute: async () => {
           for (const rec of prevRecords) {
-            await supabase.from('leads').update({ contact_type: rec.contact_type }).eq('id', rec.id);
+            const { error: e } = await supabase.from('leads').update({ contact_type: rec.contact_type }).eq('id', rec.id);
+            if (e) throw e;
           }
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
         },

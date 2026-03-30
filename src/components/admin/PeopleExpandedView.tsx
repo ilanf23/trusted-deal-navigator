@@ -343,7 +343,8 @@ function useInlineSave(
     registerUndo({
       label: `Updated ${field}`,
       execute: async () => {
-        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', personId);
+        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', personId);
+        if (e) throw e;
         onSaved(field, previousValue);
       },
     });
@@ -548,7 +549,7 @@ function EditableTags({
   const { registerUndo: registerUndoTags } = useUndo();
 
   const saveTags = async (newTags: string[]) => {
-    const currentStr = tags.sort().join(',');
+    const currentStr = [...tags].sort().join(',');
     const newStr = [...newTags].sort().join(',');
     if (newStr === currentStr) {
       setEditing(false);
@@ -568,7 +569,8 @@ function EditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', personId);
+        const { error: e } = await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', personId);
+        if (e) throw e;
         onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
       },
     });
@@ -750,7 +752,8 @@ function EditableRichTextField({
     registerUndoRich({
       label: `Updated ${field}`,
       execute: async () => {
-        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', personId);
+        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', personId);
+        if (e) throw e;
         onSaved(field, previousValue);
       },
     });
@@ -1381,7 +1384,8 @@ export default function PeopleExpandedView() {
     registerUndo({
       label: `Contact type changed to ${newType}`,
       execute: async () => {
-        await supabase.from('leads').update({ contact_type: previousType }).eq('id', personId);
+        const { error: e } = await supabase.from('leads').update({ contact_type: previousType }).eq('id', personId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['person-expanded', personId] });
         queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       },
@@ -1714,7 +1718,8 @@ export default function PeopleExpandedView() {
         label: `Deleted event "${eventData.title}"`,
         execute: async () => {
           const { id: _id, ...rest } = eventData;
-          await supabase.from('appointments').insert({ ...rest, id: eventId });
+          const { error: e } = await supabase.from('appointments').insert({ ...rest, id: eventId });
+          if (e) throw e;
           queryClient.invalidateQueries({ queryKey: ['person-appointments', personId] });
         },
       });

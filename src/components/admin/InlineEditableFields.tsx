@@ -178,7 +178,8 @@ export function useInlineSave(
       label: `Updated ${field}`,
       execute: async () => {
         const restoreValue = transform ? transform(previousValue) : (previousValue || null);
-        await supabase.from('leads').update({ [field]: restoreValue }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ [field]: restoreValue }).eq('id', leadId);
+        if (e) throw e;
         onSaved(field, previousValue);
       },
     });
@@ -277,7 +278,8 @@ export function EditableSelectField({
     registerUndo({
       label: `Updated ${label}`,
       execute: async () => {
-        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        if (e) throw e;
         onSaved(field, previousValue);
       },
     });
@@ -415,7 +417,7 @@ export function EditableTags({
   const { registerUndo: registerUndoTags } = useUndo();
 
   const saveTags = async (newTags: string[]) => {
-    const currentStr = tags.sort().join(',');
+    const currentStr = [...tags].sort().join(',');
     const newStr = [...newTags].sort().join(',');
     if (newStr === currentStr) {
       setEditing(false);
@@ -435,7 +437,8 @@ export function EditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        if (e) throw e;
         onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
       },
     });
@@ -616,7 +619,8 @@ export function EditableNotes({
     registerUndoNotes({
       label: 'Updated notes',
       execute: async () => {
-        await supabase.from('leads').update({ notes: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ notes: previousValue || null }).eq('id', leadId);
+        if (e) throw e;
         onSaved('notes', previousValue);
       },
     });
@@ -692,7 +696,8 @@ export function EditableNotesField({
     registerUndoField({
       label: `Updated ${field}`,
       execute: async () => {
-        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        if (e) throw e;
         onSaved(field, previousValue);
       },
     });

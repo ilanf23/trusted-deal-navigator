@@ -188,7 +188,8 @@ export default function ProjectDetailDialog({
         registerUndo({
           label: `Created project "${name.trim()}"`,
           execute: async () => {
-            await supabase.from('lead_projects').delete().eq('id', data.id);
+            const { error: e } = await supabase.from('lead_projects').delete().eq('id', data.id);
+            if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });
           },
@@ -220,10 +221,11 @@ export default function ProjectDetailDialog({
         registerUndo({
           label: `Updated project ${fieldNames}`,
           execute: async () => {
-            await supabase
+            const { error: e } = await supabase
               .from('lead_projects')
               .update({ ...result.previousValues, updated_at: new Date().toISOString() })
               .eq('id', result.projectId);
+            if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });
           },
@@ -255,7 +257,8 @@ export default function ProjectDetailDialog({
           label: `Deleted project "${deletedProject.name}"`,
           execute: async () => {
             const { id, ...rest } = deletedProject;
-            await supabase.from('lead_projects').insert({ id, ...rest });
+            const { error: e } = await supabase.from('lead_projects').insert({ id, ...rest });
+            if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['lead-projects'] });
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });
           },

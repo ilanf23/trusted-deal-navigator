@@ -309,7 +309,8 @@ const Projects = () => {
           execute: async () => {
             for (const proj of deletedProjects) {
               const { id, ...rest } = proj;
-              await supabase.from('lead_projects').insert({ id, ...rest });
+              const { error: e } = await supabase.from('lead_projects').insert({ id, ...rest });
+              if (e) throw e;
             }
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });
           },
@@ -351,7 +352,8 @@ const Projects = () => {
         label: `Assigned ${ids.length} project(s) to ${ownerName}`,
         execute: async () => {
           for (const prev of previousOwners) {
-            await supabase.from('lead_projects').update({ owner: prev.owner }).eq('id', prev.id);
+            const { error: e } = await supabase.from('lead_projects').update({ owner: prev.owner }).eq('id', prev.id);
+            if (e) throw e;
           }
           queryClient.invalidateQueries({ queryKey: ['all-projects'] });
         },
@@ -388,7 +390,8 @@ const Projects = () => {
         label: `Added ${result.tags.length} tag(s) to ${result.count} project(s)`,
         execute: async () => {
           for (const prev of result.previousTags) {
-            await supabase.from('lead_projects').update({ tags: prev.tags }).eq('id', prev.id);
+            const { error: e } = await supabase.from('lead_projects').update({ tags: prev.tags }).eq('id', prev.id);
+            if (e) throw e;
           }
           queryClient.invalidateQueries({ queryKey: ['all-projects'] });
         },

@@ -206,7 +206,8 @@ function useCrmInlineSave(
     registerUndo({
       label: `Updated ${field}`,
       execute: async () => {
-        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        if (e) throw e;
         onSaved(field, previousValue);
       },
     });
@@ -324,7 +325,8 @@ function CrmEditableRichTextField({
     registerUndoRich({
       label: `Updated ${field}`,
       execute: async () => {
-        await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ [field]: previousValue || null }).eq('id', leadId);
+        if (e) throw e;
         onSaved(field, previousValue);
       },
     });
@@ -411,7 +413,8 @@ function CrmEditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', leadId);
+        if (e) throw e;
         onSaved('tags', previousTags.join(','));
       },
     });
@@ -674,7 +677,8 @@ export default function PipelineExpandedView() {
       label: `Stage changed to ${pipelineStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
         if (previousStatus) {
-          await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+          const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+          if (e) throw e;
         }
         queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
@@ -699,7 +703,8 @@ export default function PipelineExpandedView() {
     registerUndo({
       label: `Toggled ${field}`,
       execute: async () => {
-        await supabase.from('leads').update({ [field]: currentVal }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ [field]: currentVal }).eq('id', leadId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
       },
@@ -1400,8 +1405,17 @@ export default function PipelineExpandedView() {
                 <div>
                   <span className="text-xs font-medium text-muted-foreground block mb-1">Contact Type</span>
                   <Select value={lead.contact_type ?? ''} onValueChange={async (v) => {
+                    const previousType = lead.contact_type;
                     const { error } = await supabase.from('leads').update({ contact_type: v || null }).eq('id', lead.id);
                     if (error) { toast.error('Failed to save'); return; }
+                    registerUndo({
+                      label: `Contact type changed to ${v}`,
+                      execute: async () => {
+                        const { error: e } = await supabase.from('leads').update({ contact_type: previousType || null }).eq('id', lead.id);
+                        if (e) throw e;
+                        handleFieldSaved('contact_type', previousType ?? '');
+                      },
+                    });
                     handleFieldSaved('contact_type', v);
                   }}>
                     <SelectTrigger className="h-auto w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0">
@@ -1425,7 +1439,17 @@ export default function PipelineExpandedView() {
                       <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{assignedName}</span>
                       <button
                         onClick={async () => {
-                          await supabase.from('leads').update({ assigned_to: null }).eq('id', lead.id);
+                          const previousOwner = lead.assigned_to;
+                          const { error } = await supabase.from('leads').update({ assigned_to: null }).eq('id', lead.id);
+                          if (error) { toast.error('Failed to save'); return; }
+                          registerUndo({
+                            label: 'Owner cleared',
+                            execute: async () => {
+                              const { error: e } = await supabase.from('leads').update({ assigned_to: previousOwner }).eq('id', lead.id);
+                              if (e) throw e;
+                              handleFieldSaved('assigned_to', previousOwner ?? '');
+                            },
+                          });
                           handleFieldSaved('assigned_to', '');
                         }}
                         className="text-muted-foreground hover:text-foreground"
@@ -1435,8 +1459,17 @@ export default function PipelineExpandedView() {
                     </div>
                   ) : ownerOptions.length > 0 ? (
                     <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
+                      const previousOwner = lead.assigned_to;
                       const { error } = await supabase.from('leads').update({ assigned_to: v || null }).eq('id', lead.id);
                       if (error) { toast.error('Failed to save'); return; }
+                      registerUndo({
+                        label: `Owner changed`,
+                        execute: async () => {
+                          const { error: e } = await supabase.from('leads').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
+                          if (e) throw e;
+                          handleFieldSaved('assigned_to', previousOwner ?? '');
+                        },
+                      });
                       handleFieldSaved('assigned_to', v);
                     }}>
                       <SelectTrigger className="h-auto w-full text-sm font-medium text-foreground bg-transparent border-0 border-b border-border rounded-none shadow-none px-0 py-1.5 gap-1 focus:ring-0">

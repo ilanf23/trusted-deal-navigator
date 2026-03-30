@@ -493,7 +493,8 @@ export default function UnderwritingExpandedView() {
       label: `Stage changed to ${canonicalStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
         if (previousStatus) {
-          await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+          const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+          if (e) throw e;
         }
         queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
@@ -519,7 +520,8 @@ export default function UnderwritingExpandedView() {
     registerUndo({
       label: `Toggled ${field}`,
       execute: async () => {
-        await supabase.from('leads').update({ [field]: currentVal }).eq('id', leadId);
+        const { error: e } = await supabase.from('leads').update({ [field]: currentVal }).eq('id', leadId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
       },
@@ -745,7 +747,8 @@ export default function UnderwritingExpandedView() {
       registerUndo({
         label: `Deleted event "${eventData.title}"`,
         execute: async () => {
-          await supabase.from('appointments').insert(eventData);
+          const { error: e } = await supabase.from('appointments').insert(eventData);
+          if (e) throw e;
           queryClient.invalidateQueries({ queryKey: ['lead-appointments', leadId] });
         },
       });
@@ -1647,8 +1650,18 @@ export default function UnderwritingExpandedView() {
               <div className="border-b border-border pb-1">
                 {ownerOptions.length > 0 ? (
                   <Select value={lead.assigned_to ?? ''} onValueChange={async (v) => {
+                    const previousOwner = lead.assigned_to;
                     const { error } = await supabase.from('leads').update({ assigned_to: v || null }).eq('id', lead.id);
-                    if (!error) handleFieldSaved('assigned_to', v);
+                    if (error) { toast.error('Failed to save'); return; }
+                    registerUndo({
+                      label: 'Owner changed',
+                      execute: async () => {
+                        const { error: e } = await supabase.from('leads').update({ assigned_to: previousOwner || null }).eq('id', lead.id);
+                        if (e) throw e;
+                        handleFieldSaved('assigned_to', previousOwner ?? '');
+                      },
+                    });
+                    handleFieldSaved('assigned_to', v);
                   }}>
                     <SelectTrigger className="h-10 w-full text-base text-foreground border-0 bg-transparent shadow-none px-1 rounded-none">
                       <SelectValue>{assignedName}</SelectValue>

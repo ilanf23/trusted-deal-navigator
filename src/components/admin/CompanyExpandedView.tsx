@@ -22,6 +22,8 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { formatPhoneNumber } from './InlineEditableFields';
 
@@ -140,7 +142,8 @@ function useInlineSave(
       label: `Updated ${field}`,
       execute: async () => {
         const restoreValue = transform ? transform(previousValue) : (previousValue || null);
-        await supabase.from('leads').update({ [dbField]: restoreValue } as any).eq('id', companyId);
+        const { error: e } = await supabase.from('leads').update({ [dbField]: restoreValue } as any).eq('id', companyId);
+        if (e) throw e;
         onSaved(field, previousValue);
       },
     });
@@ -304,7 +307,8 @@ function EditableTags({
     registerUndoTags({
       label: 'Updated tags',
       execute: async () => {
-        await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', companyId);
+        const { error: e } = await supabase.from('leads').update({ tags: previousTags.length > 0 ? previousTags : null }).eq('id', companyId);
+        if (e) throw e;
         onSaved('tags', JSON.stringify(previousTags.length > 0 ? previousTags : null));
       },
     });
@@ -384,7 +388,8 @@ function EditableNotes({
     registerUndoNotes({
       label: 'Updated notes',
       execute: async () => {
-        await supabase.from('leads').update({ notes: previousValue || null } as any).eq('id', companyId);
+        const { error: e } = await supabase.from('leads').update({ notes: previousValue || null } as any).eq('id', companyId);
+        if (e) throw e;
         onSaved('notes', previousValue);
       },
     });
@@ -505,6 +510,16 @@ export default function CompanyExpandedView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { registerUndo } = useUndo();
+  const { setSearchComponent } = useAdminTopBar();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setSearchComponent(
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+    );
+    return () => setSearchComponent(null);
+  }, [searchTerm]);
+
   const [activityTab, setActivityTab] = useState<'log' | 'note'>('log');
 
   // Activity form state
@@ -550,7 +565,8 @@ export default function CompanyExpandedView() {
     registerUndo({
       label: `Contact type changed to ${newType}`,
       execute: async () => {
-        await supabase.from('leads').update({ contact_type: previousType }).eq('id', companyId);
+        const { error: e } = await supabase.from('leads').update({ contact_type: previousType }).eq('id', companyId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
         queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       },
@@ -576,7 +592,8 @@ export default function CompanyExpandedView() {
     registerUndo({
       label: 'Owner updated',
       execute: async () => {
-        await supabase.from('leads').update({ assigned_to: previousOwner } as any).eq('id', companyId);
+        const { error: e } = await supabase.from('leads').update({ assigned_to: previousOwner } as any).eq('id', companyId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['company-expanded', companyId] });
         queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
       },
