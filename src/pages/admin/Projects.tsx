@@ -14,6 +14,7 @@ import EvanLayout from '@/components/evan/EvanLayout';
 import ProjectDetailDialog, { type LeadProject } from '@/components/admin/ProjectDetailDialog';
 import ProjectDetailPanel from '@/components/admin/ProjectDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
+import ProjectsFilterPanel, { type ProjectFilterValues } from '@/components/admin/ProjectsFilterPanel';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -85,6 +86,26 @@ const Projects = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedProject, setSelectedProject] = useState<LeadProject | null>(null);
   const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
+
+  // Filter panel state
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<ProjectFilterValues | null>(null);
+
+  const activeFilterCount = useMemo(() => {
+    if (!activeFilter) return 0;
+    return [
+      activeFilter.ownedBy.length > 0,
+      activeFilter.followed,
+      activeFilter.dateAddedFrom || activeFilter.dateAddedTo,
+      activeFilter.status.length > 0,
+      activeFilter.type.length > 0,
+      activeFilter.tags,
+      activeFilter.name,
+      activeFilter.description,
+      activeFilter.priority.length > 0,
+      activeFilter.stage.length > 0,
+    ].filter(Boolean).length;
+  }, [activeFilter]);
 
   // Bulk action dialog state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -251,6 +272,24 @@ const Projects = () => {
       );
     }
 
+    // Apply active filter
+    if (activeFilter) {
+      const f = activeFilter;
+      if (f.ownedBy.length > 0) result = result.filter(p => f.ownedBy.includes(p.owner ?? ''));
+      if (f.dateAddedFrom) result = result.filter(p => p.created_at >= f.dateAddedFrom);
+      if (f.dateAddedTo) result = result.filter(p => p.created_at <= f.dateAddedTo + 'T23:59:59');
+      if (f.status.length > 0) result = result.filter(p => f.status.includes(p.status ?? ''));
+      if (f.type.length > 0) result = result.filter(p => f.type.includes((p as any).project_type ?? ''));
+      if (f.tags) {
+        const filterTags = f.tags.toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
+        result = result.filter(p => (p.tags ?? []).some(t => filterTags.includes(t.toLowerCase())));
+      }
+      if (f.name) { const q = f.name.toLowerCase(); result = result.filter(p => p.name.toLowerCase().includes(q)); }
+      if (f.description) { const q = f.description.toLowerCase(); result = result.filter(p => (p.description ?? '').toLowerCase().includes(q)); }
+      if (f.priority.length > 0) result = result.filter(p => f.priority.includes(p.priority ?? ''));
+      if (f.stage.length > 0) result = result.filter(p => f.stage.includes(p.project_stage ?? ''));
+    }
+
     result.sort((a, b) => {
       let aVal = '';
       let bVal = '';
@@ -266,7 +305,7 @@ const Projects = () => {
     });
 
     return result;
-  }, [rawProjects, searchTerm, sortField, sortDir, leadMap, teamMemberMap, projectPeopleMap]);
+  }, [rawProjects, searchTerm, sortField, sortDir, leadMap, teamMemberMap, projectPeopleMap, activeFilter]);
 
 
 
@@ -533,15 +572,33 @@ const Projects = () => {
             <button className="p-1.5 rounded-md hover:bg-muted transition-colors">
               <Settings className="h-4 w-4 text-muted-foreground" />
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-muted transition-colors text-sm text-muted-foreground">
+            <button
+              onClick={() => { setFilterPanelOpen(!filterPanelOpen); if (!filterPanelOpen) setSelectedProject(null); }}
+              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-muted transition-colors text-sm ${
+                filterPanelOpen || activeFilter ? 'text-[#3b2778] font-medium' : 'text-muted-foreground'
+              }`}
+            >
               <SlidersHorizontal className="h-4 w-4" />
               Filters
+              {activeFilterCount > 0 && (
+                <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-[#3b2778] text-white text-[10px] font-semibold leading-none">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
+            {activeFilter && (
+              <button
+                onClick={() => setActiveFilter(null)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
         {/* Table + Detail Panel */}
-        <div className="relative flex flex-1 min-h-0 overflow-hidden">
+        <div className="relative flex flex-1 min-h-0 overflow-hidden pl-24 pt-24">
         <ScrollArea className="flex-1">
           {/* ── Bulk Selection Toolbar ── */}
           {selectedIds.size > 0 && (
@@ -688,7 +745,7 @@ const Projects = () => {
         </ScrollArea>
 
           {/* ── Right Detail Panel (overlay) ── */}
-          {selectedProject && (
+          {selectedProject && !filterPanelOpen && (
             <div className="absolute right-0 top-0 z-50 h-full">
               <ProjectDetailPanel
                 project={selectedProject}
@@ -700,6 +757,20 @@ const Projects = () => {
                 }}
               />
             </div>
+          )}
+
+          {/* ── Right Filter Panel ── */}
+          {filterPanelOpen && (
+            <ProjectsFilterPanel
+              teamMemberMap={teamMemberMap}
+              initialValues={activeFilter}
+              onClose={() => setFilterPanelOpen(false)}
+              onSave={(filter) => {
+                setActiveFilter(filter);
+                setFilterPanelOpen(false);
+                toast.success(`Filter "${filter.filterName}" applied`);
+              }}
+            />
           )}
         </div>
 

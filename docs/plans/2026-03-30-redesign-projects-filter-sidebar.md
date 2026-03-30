@@ -87,9 +87,9 @@ Complete visual and UX overhaul of the ProjectsFilterPanel to deliver a polished
 **Files:**
 - Modify: `src/pages/admin/Projects.tsx`
 
-- [ ] Update the "Filters" toolbar button to show active filter count as a small purple dot/badge instead of "(1)" text
-- [ ] Ensure opening/closing the filter panel still works correctly with the new component
-- [ ] Verify filter application logic still works (filteredProjects useMemo) since no interface changes were made
+- [x] Update the "Filters" toolbar button to show active filter count as a small purple dot/badge instead of "(1)" text
+- [x] Ensure opening/closing the filter panel still works correctly with the new component
+- [x] Verify filter application logic still works (filteredProjects useMemo) since no interface changes were made
 
 ### Task 3: Final verification
 
