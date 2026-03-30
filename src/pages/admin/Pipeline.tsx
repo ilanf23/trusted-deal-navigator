@@ -828,11 +828,8 @@ const Pipeline = () => {
         registerUndo({
           label: `Removed ${ids.length} lead(s) from pipeline`,
           execute: async () => {
-            for (const rec of deletedRecords) {
-              const { id, ...rest } = rec;
-              const { error: e } = await supabase.from('pipeline_leads').insert({ id, ...rest });
-              if (e) throw e;
-            }
+            const { error: e } = await supabase.from('pipeline_leads').insert(deletedRecords);
+            if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['pipeline-leads', pipeline?.id] });
           },
         });

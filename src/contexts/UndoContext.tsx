@@ -37,6 +37,10 @@ export const UndoProvider = ({ children }: { children: ReactNode }) => {
       await action.execute();
       setLastAction(null);
       lastActionRef.current = null;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       toast.dismiss(UNDO_TOAST_ID);
       toast.success('Undone');
     } catch (error) {

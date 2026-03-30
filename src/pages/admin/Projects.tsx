@@ -307,11 +307,8 @@ const Projects = () => {
         registerUndo({
           label: `Deleted ${ids.length} project(s)`,
           execute: async () => {
-            for (const proj of deletedProjects) {
-              const { id, ...rest } = proj;
-              const { error: e } = await supabase.from('lead_projects').insert({ id, ...rest });
-              if (e) throw e;
-            }
+            const { error: e } = await supabase.from('lead_projects').insert(deletedProjects);
+            if (e) throw e;
             queryClient.invalidateQueries({ queryKey: ['all-projects'] });
           },
         });

@@ -415,6 +415,11 @@ const People = () => {
           if (affectedIds.length === 0) return;
           const { error } = await supabase.from('leads').update({ contact_type: oldType }).in('id', affectedIds);
           if (error) throw error;
+          // Revert sidebar filter UI state to match reverted DB values
+          setFilterOptions(prev => prev.map(o =>
+            o.id === newType ? { ...o, id: oldType, label: oldType } : o
+          ));
+          setActiveFilter(prev => prev === newType ? oldType : prev);
           queryClient.invalidateQueries({ queryKey: ['all-pipeline-leads'] });
         },
       });
