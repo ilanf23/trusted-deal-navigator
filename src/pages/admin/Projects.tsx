@@ -367,14 +367,12 @@ const Projects = () => {
     const previousOwners = (prevProjects ?? []).map(p => ({ id: p.id, owner: p.owner }));
 
     try {
-      const results = await Promise.all(
-        ids.map(id =>
-          supabase.from('lead_projects').update({ owner: ownerId, updated_at: new Date().toISOString() }).eq('id', id)
-        )
-      );
-      const failed = results.filter(r => r.error);
-      if (failed.length > 0) {
-        toast.error(`Failed to assign ${failed.length} of ${ids.length} project(s)`);
+      const { error } = await supabase
+        .from('lead_projects')
+        .update({ owner: ownerId, updated_at: new Date().toISOString() })
+        .in('id', ids);
+      if (error) {
+        toast.error('Failed to assign owner');
         return;
       }
       queryClient.invalidateQueries({ queryKey: ['all-projects'] });
