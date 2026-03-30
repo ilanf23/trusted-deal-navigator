@@ -676,10 +676,8 @@ export default function PipelineExpandedView() {
     registerUndo({
       label: `Stage changed to ${pipelineStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
-        if (previousStatus) {
-          const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
-          if (e) throw e;
-        }
+        const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['pipeline-lead-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['pipeline-leads'] });
       },

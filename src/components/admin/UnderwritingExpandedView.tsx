@@ -492,10 +492,8 @@ export default function UnderwritingExpandedView() {
     registerUndo({
       label: `Stage changed to ${canonicalStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
-        if (previousStatus) {
-          const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
-          if (e) throw e;
-        }
+        const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['lead-expanded', leadId] });
         queryClient.invalidateQueries({ queryKey: ['underwriting-leads'] });
       },

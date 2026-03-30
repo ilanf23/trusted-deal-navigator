@@ -390,10 +390,8 @@ export default function LenderManagementExpandedView() {
     registerUndo({
       label: `Stage changed to ${pipelineStageConfig[newStatus]?.title ?? newStatus}`,
       execute: async () => {
-        if (previousStatus) {
-          const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
-          if (e) throw e;
-        }
+        const { error: e } = await supabase.from('leads').update({ status: previousStatus }).eq('id', leadId);
+        if (e) throw e;
         queryClient.invalidateQueries({ queryKey: ['lm-expanded-lead', leadId] });
         queryClient.invalidateQueries({ queryKey: ['lm-leads'] });
       },
