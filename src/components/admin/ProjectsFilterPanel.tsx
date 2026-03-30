@@ -1,22 +1,20 @@
 import { useState, useMemo } from 'react';
 import {
-  X, ChevronDown, ChevronUp, User, Heart, Calendar, CircleDot, Layers,
+  X, ChevronDown, ChevronUp, User, Calendar, CircleDot,
   Tag, FileText, AlertTriangle, GitBranch, Search,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Switch } from '@/components/ui/switch';
+
 
 // ── Filter values for projects ──
 export interface ProjectFilterValues {
   filterName: string;
   ownedBy: string[];
-  followed: boolean;
   dateAddedFrom: string;
   dateAddedTo: string;
   status: string[];
-  type: string[];
   tags: string;
   name: string;
   description: string;
@@ -27,11 +25,9 @@ export interface ProjectFilterValues {
 const defaultValues: ProjectFilterValues = {
   filterName: '',
   ownedBy: [],
-  followed: false,
   dateAddedFrom: '',
   dateAddedTo: '',
   status: [],
-  type: [],
   tags: '',
   name: '',
   description: '',
@@ -49,10 +45,8 @@ interface ProjectsFilterPanelProps {
 // ── Section icon map ──
 const SECTION_ICONS: Record<string, React.ElementType> = {
   ownedBy: User,
-  followed: Heart,
   dateAdded: Calendar,
   status: CircleDot,
-  type: Layers,
   tags: Tag,
   name: FileText,
   description: FileText,
@@ -218,14 +212,6 @@ const STATUS_OPTIONS = [
   { value: 'completed', label: 'Completed' },
 ];
 
-const TYPE_OPTIONS = [
-  { value: 'refinance', label: 'Refinance' },
-  { value: 'purchase', label: 'Purchase' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'bridge', label: 'Bridge' },
-  { value: 'other', label: 'Other' },
-];
-
 const PRIORITY_OPTIONS = [
   { value: 'urgent_to_close', label: 'Urgent to Close' },
   { value: 'urgent_to_get_approval', label: 'Urgent to Get Approval' },
@@ -255,9 +241,6 @@ function getActiveChips(
     const names = values.ownedBy.map((id) => teamMemberMap[id] ?? id).join(', ');
     chips.push({ key: 'ownedBy', label: `Owner: ${names}`, onRemove: (p) => ({ ...p, ownedBy: [] }) });
   }
-  if (values.followed) {
-    chips.push({ key: 'followed', label: 'Followed', onRemove: (p) => ({ ...p, followed: false }) });
-  }
   if (values.dateAddedFrom || values.dateAddedTo) {
     const range = [values.dateAddedFrom, values.dateAddedTo].filter(Boolean).join(' - ');
     chips.push({ key: 'dateAdded', label: `Date: ${range}`, onRemove: (p) => ({ ...p, dateAddedFrom: '', dateAddedTo: '' }) });
@@ -265,10 +248,6 @@ function getActiveChips(
   if (values.status.length > 0) {
     const labels = values.status.map((v) => STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v).join(', ');
     chips.push({ key: 'status', label: `Status: ${labels}`, onRemove: (p) => ({ ...p, status: [] }) });
-  }
-  if (values.type.length > 0) {
-    const labels = values.type.map((v) => TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v).join(', ');
-    chips.push({ key: 'type', label: `Type: ${labels}`, onRemove: (p) => ({ ...p, type: [] }) });
   }
   if (values.tags) {
     chips.push({ key: 'tags', label: `Tags: ${values.tags}`, onRemove: (p) => ({ ...p, tags: '' }) });
@@ -315,10 +294,8 @@ export default function ProjectsFilterPanel({
     () =>
       [
         values.ownedBy.length > 0,
-        values.followed,
         values.dateAddedFrom || values.dateAddedTo,
         values.status.length > 0,
-        values.type.length > 0,
         values.tags,
         values.name,
         values.description,
@@ -347,10 +324,8 @@ export default function ProjectsFilterPanel({
   // ── Section active-value helpers ──
   const sectionHasValue: Record<string, boolean> = {
     ownedBy: values.ownedBy.length > 0,
-    followed: values.followed,
     dateAdded: !!(values.dateAddedFrom || values.dateAddedTo),
     status: values.status.length > 0,
-    type: values.type.length > 0,
     tags: !!values.tags,
     name: !!values.name,
     description: !!values.description,
@@ -360,10 +335,8 @@ export default function ProjectsFilterPanel({
 
   const clearSection: Record<string, () => void> = {
     ownedBy: () => set('ownedBy', []),
-    followed: () => set('followed', false),
     dateAdded: () => setValues((prev) => ({ ...prev, dateAddedFrom: '', dateAddedTo: '' })),
     status: () => set('status', []),
-    type: () => set('type', []),
     tags: () => set('tags', ''),
     name: () => set('name', ''),
     description: () => set('description', ''),
@@ -426,20 +399,6 @@ export default function ProjectsFilterPanel({
           </FilterRow>
 
           <FilterRow
-            sectionKey="followed"
-            label="Followed"
-            expanded={expandedRows.has('followed')}
-            onToggle={() => toggle('followed')}
-            hasActiveValues={sectionHasValue.followed}
-            onClear={clearSection.followed}
-          >
-            <div className="flex items-center gap-2">
-              <Switch checked={values.followed} onCheckedChange={(v) => set('followed', v)} />
-              <span className="text-[13px] text-gray-600 dark:text-gray-300">Only projects I follow</span>
-            </div>
-          </FilterRow>
-
-          <FilterRow
             sectionKey="dateAdded"
             label="Date Added"
             expanded={expandedRows.has('dateAdded')}
@@ -464,17 +423,6 @@ export default function ProjectsFilterPanel({
             onClear={clearSection.status}
           >
             <CheckboxSelect options={STATUS_OPTIONS} selected={values.status} onChange={(v) => set('status', v)} />
-          </FilterRow>
-
-          <FilterRow
-            sectionKey="type"
-            label="Type"
-            expanded={expandedRows.has('type')}
-            onToggle={() => toggle('type')}
-            hasActiveValues={sectionHasValue.type}
-            onClear={clearSection.type}
-          >
-            <CheckboxSelect options={TYPE_OPTIONS} selected={values.type} onChange={(v) => set('type', v)} />
           </FilterRow>
 
           <FilterRow

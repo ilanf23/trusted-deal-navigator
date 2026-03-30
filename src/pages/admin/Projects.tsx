@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -95,10 +95,8 @@ const Projects = () => {
     if (!activeFilter) return 0;
     return [
       activeFilter.ownedBy.length > 0,
-      activeFilter.followed,
       activeFilter.dateAddedFrom || activeFilter.dateAddedTo,
       activeFilter.status.length > 0,
-      activeFilter.type.length > 0,
       activeFilter.tags,
       activeFilter.name,
       activeFilter.description,
@@ -279,7 +277,6 @@ const Projects = () => {
       if (f.dateAddedFrom) result = result.filter(p => new Date(p.created_at) >= new Date(f.dateAddedFrom + 'T00:00:00'));
       if (f.dateAddedTo) result = result.filter(p => new Date(p.created_at) <= new Date(f.dateAddedTo + 'T23:59:59.999'));
       if (f.status.length > 0) result = result.filter(p => f.status.includes(p.status ?? ''));
-      // Type filter: lead_projects has no project_type column yet — skip until schema supports it
       if (f.tags) {
         const filterTags = f.tags.toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
         result = result.filter(p => (p.tags ?? []).some(t => filterTags.includes(t.toLowerCase())));
@@ -598,7 +595,7 @@ const Projects = () => {
         </div>
 
         {/* Table + Detail Panel */}
-        <div className="relative flex flex-1 min-h-0 overflow-hidden pl-24 pt-24">
+        <div className="relative flex flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="flex-1">
           {/* ── Bulk Selection Toolbar ── */}
           {selectedIds.size > 0 && (
@@ -766,9 +763,19 @@ const Projects = () => {
               initialValues={activeFilter}
               onClose={() => setFilterPanelOpen(false)}
               onSave={(filter) => {
-                setActiveFilter(filter);
+                const hasAnyCriteria = [
+                  filter.ownedBy.length > 0,
+                  filter.dateAddedFrom || filter.dateAddedTo,
+                  filter.status.length > 0,
+                  filter.tags,
+                  filter.name,
+                  filter.description,
+                  filter.priority.length > 0,
+                  filter.stage.length > 0,
+                ].some(Boolean);
+                setActiveFilter(hasAnyCriteria ? filter : null);
                 setFilterPanelOpen(false);
-                toast.success(`Filter "${filter.filterName}" applied`);
+                toast.success(hasAnyCriteria ? 'Filters applied' : 'Filters cleared');
               }}
             />
           )}
