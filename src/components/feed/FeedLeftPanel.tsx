@@ -7,20 +7,9 @@ interface FeedLeftPanelProps {
   selectedTeamMember: string | null;
   onTeamMemberSelect: (member: string | null) => void;
   teamMembers: TeamMember[];
-  activityCounts: {
-    total: number;
-    last30Days: number;
-    calls: number;
-    emails: number;
-    sms: number;
-    notes: number;
-    tasks: number;
-    leads: number;
-  };
   isSheet?: boolean;
   selectedFilters: Set<string>;
   onFiltersChange: (filters: Set<string>) => void;
-  filterCounts: Record<string, number>;
 }
 
 const filterOptions = [
@@ -40,7 +29,6 @@ const FeedLeftPanel = ({
   isSheet,
   selectedFilters,
   onFiltersChange,
-  filterCounts,
 }: FeedLeftPanelProps) => {
   const [filterSearch, setFilterSearch] = useState('');
 
@@ -89,6 +77,7 @@ const FeedLeftPanel = ({
                 : 'border-slate-300 text-slate-700 hover:bg-slate-100'
             )}
             title={member.name}
+            aria-label={member.name}
           >
             {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
           </button>

@@ -169,40 +169,6 @@ const PipelineFeed = () => {
     return result;
   }, [activities, selectedTeamMember, selectedFilters, searchQuery]);
 
-  const activityCounts = useMemo(() => {
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const source = selectedTeamMember
-      ? activities.filter((a) => a.actorName.toLowerCase().includes(selectedTeamMember.toLowerCase()))
-      : activities;
-
-    return {
-      total: source.length,
-      last30Days: source.filter((a) => a.rawDate >= thirtyDaysAgo).length,
-      calls: source.filter((a) => a.type === 'call').length,
-      emails: source.filter((a) => a.type === 'email').length,
-      sms: source.filter((a) => a.type === 'sms').length,
-      notes: source.filter((a) => a.type === 'note').length,
-      tasks: source.filter((a) => a.type === 'task_created').length,
-      leads: source.filter((a) => a.type === 'lead_created').length,
-    };
-  }, [activities, selectedTeamMember]);
-
-  // Compute per-filter counts for badge display
-  const filterCounts = useMemo(() => {
-    const source = selectedTeamMember
-      ? activities.filter((a) => a.actorName.toLowerCase().includes(selectedTeamMember.toLowerCase()))
-      : activities;
-
-    const counts: Record<string, number> = {};
-    for (const [label, type] of Object.entries(FILTER_TYPE_MAP)) {
-      counts[label] = source.filter((a) => a.type === type).length;
-    }
-    return counts;
-  }, [activities, selectedTeamMember]);
-
   return (
     <EvanLayout>
       <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full bg-white">
@@ -216,10 +182,8 @@ const PipelineFeed = () => {
               selectedTeamMember={selectedTeamMember}
               onTeamMemberSelect={handleTeamMemberSelect}
               teamMembers={teamMembers}
-              activityCounts={activityCounts}
               selectedFilters={selectedFilters}
               onFiltersChange={setSelectedFilters}
-              filterCounts={filterCounts}
               isSheet
             />
           </SheetContent>
@@ -242,10 +206,8 @@ const PipelineFeed = () => {
               selectedTeamMember={selectedTeamMember}
               onTeamMemberSelect={setSelectedTeamMember}
               teamMembers={teamMembers}
-              activityCounts={activityCounts}
               selectedFilters={selectedFilters}
               onFiltersChange={setSelectedFilters}
-              filterCounts={filterCounts}
             />
           </div>
           <FeedCenter
