@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import type { TeamMember } from '@/hooks/useTeamMember';
 
 interface FeedLeftPanelProps {
   selectedTeamMember: string | null;
@@ -33,7 +34,8 @@ const filterOptions = [
 
 const FeedLeftPanel = ({
   selectedTeamMember,
-  activityCounts,
+  onTeamMemberSelect,
+  teamMembers,
   isSheet,
   selectedFilters,
   onFiltersChange,
@@ -60,19 +62,30 @@ const FeedLeftPanel = ({
       )}
     >
       {/* Welcome section */}
-      <div className="px-5 pt-6 pb-4">
-        <h2 className="text-[15px] font-semibold text-gray-900 leading-snug">
-          Welcome to your Feed,
+      <div className="px-5 py-6">
+        <h2 className="text-xl font-bold text-foreground leading-tight">
+          Welcome to your Feed, {selectedTeamMember || 'Team'} 👋
         </h2>
-        <h2 className="text-[15px] font-semibold text-gray-900 leading-snug">
-          {selectedTeamMember || 'Team'} 👋
-        </h2>
-        <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+        <p className="text-sm text-muted-foreground leading-relaxed mt-3">
           Your relationships, your activities, the heartbeat of your business. All in one place.
         </p>
-        <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
-          <span><span className="font-semibold text-gray-700">{activityCounts.total}</span> total</span>
-          <span><span className="font-semibold text-gray-700">{activityCounts.last30Days}</span> last 30d</span>
+        <div className="border-b border-border my-4" />
+        <div className="flex items-center gap-3">
+          {teamMembers.map((member) => (
+            <button
+              key={member.id}
+              onClick={() => onTeamMemberSelect(selectedTeamMember === member.name ? null : member.name)}
+              className={cn(
+                'w-10 h-10 rounded-full border-2 bg-transparent font-medium text-sm flex items-center justify-center transition-colors',
+                selectedTeamMember === member.name
+                  ? 'border-violet-500 text-violet-700 bg-violet-50'
+                  : 'border-slate-300 text-slate-700 hover:bg-slate-100'
+              )}
+              title={member.name}
+            >
+              {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+            </button>
+          ))}
         </div>
       </div>
 
