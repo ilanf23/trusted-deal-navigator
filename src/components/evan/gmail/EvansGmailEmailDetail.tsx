@@ -380,7 +380,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                   {/* Local replies for this thread */}
                   {(localReplies[selectedEmail.threadId || selectedEmail.id] || []).map((msg) => (
                     <div key={msg.id} className="py-6">
-                      <div className="p-4 rounded-lg">
+                      <div className="p-4 rounded-lg border-l-2 border-emerald-400">
                         <div className="flex items-start gap-3 mb-4">
                           <Avatar className="w-10 h-10 flex-shrink-0">
                             <AvatarFallback className="bg-emerald-100 text-emerald-700 font-semibold">E</AvatarFallback>
@@ -424,7 +424,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
               <div className="mt-6 pt-4 border-t border-border flex items-center gap-3">
                 <Button
                   variant="outline"
-                  className="flex-1 justify-center gap-2 h-11 rounded-full"
+                  className="flex-1 justify-center gap-2 h-10 rounded-lg"
                   onClick={() => setShowInlineReply(true)}
                 >
                   <Reply className="w-4 h-4" />
@@ -433,7 +433,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                 {(selectedEmail.cc || (selectedEmail.to && selectedEmail.to.includes(','))) && (
                   <Button
                     variant="outline"
-                    className="flex-1 justify-center gap-2 h-11 rounded-full"
+                    className="flex-1 justify-center gap-2 h-10 rounded-lg"
                     onClick={() => {
                       const toAddresses = selectedEmail.to?.split(',').map(e => e.trim()) || [];
                       const ccAddresses = selectedEmail.cc?.split(',').map(e => e.trim()) || [];
@@ -458,7 +458,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                 )}
                 <Button
                   variant="outline"
-                  className="flex-1 justify-center gap-2 h-11 rounded-full"
+                  className="flex-1 justify-center gap-2 h-10 rounded-lg"
                   onClick={() => {
                     const fwdSubject = selectedEmail.subject.toLowerCase().startsWith('fwd:')
                       ? selectedEmail.subject
