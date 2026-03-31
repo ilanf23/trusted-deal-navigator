@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, Reply, ReplyAll, Forward, ListTodo, User, Users, Paperclip, FileText, FileImage, File, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Reply, ReplyAll, Forward, ListTodo, User, Users, Paperclip, FileText, FileImage, File, Download, Loader2 } from 'lucide-react';
 import InlineReplyBox from '@/components/admin/inbox/InlineReplyBox';
 import { GmailEmail, ThreadMessage, extractSenderName, extractEmailAddress, toRenderableHtml } from '@/components/gmail/gmailHelpers';
 import { mockThreadMessages } from '@/components/gmail/EvanGmailFeatures';
@@ -204,7 +204,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
     const isFromEvan = msg.from.toLowerCase().includes('evan');
     return (
       <div key={msg.id} className={cn("py-6", index === 0 && "pt-0")}>
-        <div className="p-4 rounded-lg">
+        <div className={cn("p-4 rounded-lg", isFromEvan && "border-l-2 border-emerald-400")}>
           <div className="flex items-start gap-3 mb-4">
             <Avatar className="w-10 h-10 flex-shrink-0">
               {msg.senderPhoto ? <AvatarImage src={msg.senderPhoto} /> : null}
@@ -238,33 +238,34 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
     <div className="h-full flex">
       {/* Email Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="p-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => { setSelectedEmailId(null); setShowDealSidebar(false); }}>
-              ← Back
+            <Button variant="outline" size="sm" className="rounded-lg gap-1.5 h-8 text-xs font-medium" onClick={() => { setSelectedEmailId(null); setShowDealSidebar(false); }}>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back
             </Button>
           </div>
 
           {/* Email Action Buttons */}
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" onClick={() => setShowInlineReply(true)} className="gap-2">
-              <Reply className="w-4 h-4" />
+            <Button variant="outline" size="sm" onClick={() => setShowInlineReply(true)} className="gap-1.5 h-8 rounded-lg text-xs font-medium">
+              <Reply className="w-3.5 h-3.5" />
               Reply
             </Button>
 
             {selectedEmail.cc && (
-              <Button variant="ghost" size="sm" onClick={handleReplyAll} className="gap-2">
-                <ReplyAll className="w-4 h-4" />
+              <Button variant="outline" size="sm" onClick={handleReplyAll} className="gap-1.5 h-8 rounded-lg text-xs font-medium">
+                <ReplyAll className="w-3.5 h-3.5" />
               </Button>
             )}
 
-            <Button variant="ghost" size="sm" onClick={handleForward} className="gap-2">
-              <Forward className="w-4 h-4" />
+            <Button variant="outline" size="sm" onClick={handleForward} className="gap-1.5 h-8 rounded-lg text-xs font-medium">
+              <Forward className="w-3.5 h-3.5" />
             </Button>
 
             {selectedLead && isExternalEmail(selectedEmail) && (
-              <Button variant="ghost" size="sm" onClick={handleAddTask} className="gap-2">
-                <ListTodo className="w-4 h-4" />
+              <Button variant="outline" size="sm" onClick={handleAddTask} className="gap-1.5 h-8 rounded-lg text-xs font-medium">
+                <ListTodo className="w-3.5 h-3.5" />
                 Add Task
               </Button>
             )}
@@ -274,9 +275,9 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
                 variant={showDealSidebar ? "secondary" : "outline"}
                 size="sm"
                 onClick={() => setShowDealSidebar(!showDealSidebar)}
-                className="gap-2 ml-2"
+                className="gap-1.5 ml-2 h-8 rounded-lg text-xs font-medium"
               >
-                {crm.type === 'lead' ? <User className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                {crm.type === 'lead' ? <User className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
                 {showDealSidebar
                   ? (crm.type === 'lead' ? 'Hide Lead Info' : 'Hide Contact Info')
                   : (crm.type === 'lead' ? 'Show Lead Info' : 'Show Contact Info')
@@ -287,7 +288,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
         </div>
         <ScrollArea className="flex-1">
           <div className="p-6">
-            <h1 className="text-xl font-semibold mb-2 leading-tight">{selectedEmail.subject}</h1>
+            <h1 className="text-xl font-semibold mb-4 leading-tight">{selectedEmail.subject}</h1>
 
             {/* CRM Label Badge */}
             {crm.type === 'lead' && crm.stageName && (

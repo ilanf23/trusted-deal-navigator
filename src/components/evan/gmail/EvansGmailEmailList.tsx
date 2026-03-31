@@ -69,32 +69,32 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                 <div
                   key={email.id}
                   onClick={() => handleSelectEmail(email.id)}
-                  className={`border-b border-border cursor-pointer transition-colors ${
+                  className={`group border-b border-border/50 cursor-pointer transition-colors duration-150 px-4 py-3.5 ${
                     !isRead
-                      ? 'bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50'
-                      : 'bg-white dark:bg-background hover:bg-muted/50'
-                  } ${isElevated ? 'py-5 px-4' : 'p-3'}`}
+                      ? 'bg-blue-50/50 dark:bg-blue-950/20 border-l-2 border-l-primary'
+                      : 'bg-background hover:bg-muted/40'
+                  }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <button
                       onClick={(e) => { e.stopPropagation(); }}
-                      className="text-amber-400 hover:text-amber-500 transition-colors flex-shrink-0"
+                      className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors flex-shrink-0"
                     >
-                      <Star className="w-4 h-4 fill-amber-400" />
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                     </button>
-                    <Avatar className={isElevated ? 'w-8 h-8' : 'w-6 h-6'}>
+                    <Avatar className="w-8 h-8">
                       {email.senderPhoto && <AvatarImage src={email.senderPhoto} />}
-                      <AvatarFallback className={isElevated ? 'text-sm' : 'text-xs'}>
+                      <AvatarFallback className="text-xs">
                         {extractSenderName(email.from).charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className={`truncate ${!isRead ? 'font-semibold' : ''} ${isElevated ? 'text-base' : 'text-sm'}`}>
+                    <span className={`truncate text-sm ${!isRead ? 'font-semibold' : 'font-medium'}`}>
                       {extractSenderName(email.from)}
                     </span>
                     {/* Lead stage badge */}
                     {crm.type === 'lead' && crm.stageName && (
                       <span
-                        className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                        className="text-xs px-2.5 py-0.5 rounded-full font-medium flex-shrink-0"
                         style={{
                           backgroundColor: crm.stageColor ? `${crm.stageColor}20` : 'hsl(var(--muted))',
                           color: crm.stageColor || 'hsl(var(--muted-foreground))'
@@ -105,33 +105,35 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                     )}
                     {/* Person contact type badge */}
                     {crm.type === 'person' && pillStyle && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${pillStyle.bg} ${pillStyle.text}`}>
+                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium flex-shrink-0 ${pillStyle.bg} ${pillStyle.text}`}>
                         {contactType}
                       </span>
                     )}
-                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" title="Mark as unread" onClick={(e) => { e.stopPropagation(); handleMarkUnread(email.id); }}>
-                      <MailOpen className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" title="Add to do task" onClick={(e) => {
-                      e.stopPropagation();
-                      const senderName = extractSenderName(email.from);
-                      setTaskInitialTitle(`Follow up: ${email.subject}`);
-                      setTaskInitialDescription(`From: ${senderName}\n\nEmail snippet: ${email.snippet}`);
-                      setTaskInitialLeadId(crm.lead?.id || null);
-                      setTaskDialogOpen(true);
-                    }}>
-                      <ListTodo className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" title={isHiddenByMe(email.threadId) ? 'Unhide thread' : 'Hide from others'} onClick={(e) => {
-                      e.stopPropagation();
-                      if (isHiddenByMe(email.threadId)) {
-                        unhideThread(email.threadId);
-                      } else {
-                        hideThread(email.threadId);
-                      }
-                    }}>
-                      {isHiddenByMe(email.threadId) ? <EyeOff className="w-3.5 h-3.5 text-amber-500" /> : <Eye className="w-3.5 h-3.5" />}
-                    </Button>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md flex-shrink-0" title="Mark as unread" onClick={(e) => { e.stopPropagation(); handleMarkUnread(email.id); }}>
+                        <MailOpen className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md flex-shrink-0" title="Add to do task" onClick={(e) => {
+                        e.stopPropagation();
+                        const senderName = extractSenderName(email.from);
+                        setTaskInitialTitle(`Follow up: ${email.subject}`);
+                        setTaskInitialDescription(`From: ${senderName}\n\nEmail snippet: ${email.snippet}`);
+                        setTaskInitialLeadId(crm.lead?.id || null);
+                        setTaskDialogOpen(true);
+                      }}>
+                        <ListTodo className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md flex-shrink-0" title={isHiddenByMe(email.threadId) ? 'Unhide thread' : 'Hide from others'} onClick={(e) => {
+                        e.stopPropagation();
+                        if (isHiddenByMe(email.threadId)) {
+                          unhideThread(email.threadId);
+                        } else {
+                          hideThread(email.threadId);
+                        }
+                      }}>
+                        {isHiddenByMe(email.threadId) ? <EyeOff className="w-3.5 h-3.5 text-amber-500" /> : <Eye className="w-3.5 h-3.5" />}
+                      </Button>
+                    </div>
                     <span className="flex-1" />
                     {email.attachments && email.attachments.length > 0 && (
                       <Paperclip className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
@@ -140,18 +142,18 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                       {format(new Date(email.date), 'MMM d')}
                     </span>
                   </div>
-                  <p className={`truncate ${!isRead ? 'font-medium' : ''} ${isElevated ? 'text-base mb-1' : 'text-sm'}`}>
+                  <p className={`truncate text-sm ${!isRead ? 'font-medium' : ''}`}>
                     {email.subject}
                   </p>
-                  <p className={`text-muted-foreground mt-0.5 ${isElevated ? 'text-sm line-clamp-2' : 'text-xs truncate'}`}>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                     {email.snippet}
                   </p>
                   {/* Lead-specific: Move Forward + metadata chips */}
                   {crm.type === 'lead' && (
-                    <div className="mt-2">
+                    <div className="mt-2.5">
                       <Button
                         size="sm"
-                        className="bg-[#0066FF]/80 hover:bg-[#0052CC]/80 text-white"
+                        className="bg-[#0066FF] hover:bg-[#0052CC] text-white rounded-lg h-8 text-xs font-medium"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleMoveForward(email);
@@ -173,7 +175,7 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                       </div>
                       {crm.lead && (
                         <div className="flex flex-wrap items-center gap-2 mt-2">
-                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300">
                             <MessageSquare className="w-3 h-3 flex-shrink-0" />
                             <span>
                               {crm.lead.last_activity_at
@@ -189,7 +191,7 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                                 ? new Date(crm.lead.converted_at)
                                 : new Date(crm.lead.created_at);
                             return (
-                              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-xs font-medium text-amber-700 dark:text-amber-400">
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-xs font-medium text-amber-700 dark:text-amber-400">
                                 <Clock className="w-3 h-3 flex-shrink-0" />
                                 <span>In stage {formatDistanceToNow(stageDate)}</span>
                               </div>
@@ -203,7 +205,7 @@ export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
                                 ? `$${(loanAmount / 1000000).toFixed(1)}M`
                                 : `$${(loanAmount / 1000).toFixed(0)}K`;
                               return (
-                                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                                   <Building className="w-3 h-3 flex-shrink-0" />
                                   <span>{formatted}</span>
                                 </div>

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Mail, Loader2, ChevronDown, RefreshCw, X, FileText, Unplug } from 'lucide-react';
+import { Mail, Loader2, ChevronDown, RefreshCw, X, FileText, Unplug, Search } from 'lucide-react';
 import { GmailTaskDialog } from '@/components/admin/GmailTaskDialog';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
@@ -101,29 +101,31 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Top Header with Search and Refresh */}
-          <div className="flex items-center gap-3 p-3 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/30">
             <Button
               variant="outline"
               size="icon"
               onClick={handleRefresh}
               disabled={isRefreshing}
+              className="h-9 w-9 rounded-lg"
             >
               <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
             </Button>
 
             {/* Search Input */}
             <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search emails..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-8 h-9"
+                className="pl-9 pr-8 h-10 rounded-lg bg-background"
               />
               {searchQuery && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-lg"
                   onClick={() => setSearchQuery('')}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -133,12 +135,12 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
 
             {/* Pagination Controls */}
             {filteredEmails.length > 0 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground ml-auto">
-                <span>{startEmailIndex}-{endEmailIndex} of {filteredEmails.length}</span>
+              <div className="flex items-center gap-2 text-muted-foreground ml-auto">
+                <span className="text-xs bg-muted rounded-md px-2.5 py-1">{startEmailIndex}-{endEmailIndex} of {filteredEmails.length}</span>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-lg"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                 >
@@ -147,7 +149,7 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-lg"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage >= totalPages}
                 >
@@ -160,7 +162,7 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
             <Button
               variant="ghost"
               size="sm"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto rounded-lg"
               onClick={disconnectGmail}
             >
               <Unplug className="w-4 h-4 mr-1.5" />

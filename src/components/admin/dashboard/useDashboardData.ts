@@ -48,7 +48,7 @@ export function useDashboardData(timePeriod: TimePeriod) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, status, lead_responses(loan_amount, funding_amount)')
+        .select('id, name, status, lead_responses(loan_amount, funding_amount)')
         .neq('status', 'funded');
       if (error) throw error;
       return data;

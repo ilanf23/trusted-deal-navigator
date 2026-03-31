@@ -2,13 +2,19 @@ import { useState, useMemo, useCallback } from 'react';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { useEvanUIState } from '@/contexts/EvanUIStateContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { Loader2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, CheckCircle2, Circle, Clock, CalendarDays, Phone } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 import { useDashboardData } from '@/components/admin/dashboard/useDashboardData';
+import NudgesWidget from '@/components/evan/dashboard/NudgesWidget';
+import TopActions from '@/components/evan/dashboard/TopActions';
 
 export type TimePeriod = 'mtd' | 'ytd' | 'qtd';
 
@@ -25,6 +31,25 @@ const getGreeting = (firstName: string) => {
   if (hour < 12) return `Good morning, ${firstName}`;
   if (hour < 18) return `Good afternoon, ${firstName}`;
   return `Good evening, ${firstName}`;
+};
+
+const isOverdue = (dueDate: string): boolean => {
+  return new Date(dueDate) < new Date();
+};
+
+const getPriorityColor = (priority: string): string => {
+  switch (priority) {
+    case 'critical':
+      return 'bg-red-100 text-red-700';
+    case 'high':
+      return 'bg-orange-100 text-orange-700';
+    case 'medium':
+      return 'bg-yellow-100 text-yellow-700';
+    case 'low':
+      return 'bg-green-100 text-green-700';
+    default:
+      return 'bg-muted text-muted-foreground';
+  }
 };
 
 const Dashboard = () => {
@@ -44,10 +69,59 @@ const Dashboard = () => {
   const {
     leadsData, pipelineData, fundedLeads,
     companyRevenueYTD, companyRevenueMTD,
+    tasksData, tasksLoading,
     isLoading, isFetching,
   } = useDashboardData(timePeriod);
 
   const firstName = teamMember?.name || 'Evan';
+  const evanId = teamMember?.id;
+  const upcomingTasks = tasksData?.topUrgent || [];
+
+  // Today's scheduled appointments
+  const { data: todaysAppointments, isLoading: appointmentsLoading } = useQuery({
+    queryKey: ['evan-todays-appointments'],
+    queryFn: async () => {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .gte('start_time', todayStart.toISOString())
+        .lte('start_time', todayEnd.toISOString())
+        .order('start_time', { ascending: true })
+        .limit(8);
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Hot deals — closest to closing
+  const hotDeals = useMemo(() => {
+    if (!pipelineData) return [];
+
+    const stageWeight: Record<string, number> = {
+      approval: 5,
+      underwriting: 4,
+      document_collection: 3,
+      pre_qualification: 2,
+      discovery: 1,
+    };
+
+    return [...pipelineData]
+      .sort((a, b) => {
+        const weightA = stageWeight[a.status] || 0;
+        const weightB = stageWeight[b.status] || 0;
+        if (weightB !== weightA) return weightB - weightA;
+        const amountA = a.lead_responses?.[0]?.loan_amount || 0;
+        const amountB = b.lead_responses?.[0]?.loan_amount || 0;
+        return amountB - amountA;
+      })
+      .slice(0, 5);
+  }, [pipelineData]);
 
   const metrics = useMemo(() => {
     const fundedDealsWithAmount = fundedLeads?.filter(
@@ -185,8 +259,108 @@ const Dashboard = () => {
         {/* ROW 3: Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* LEFT COLUMN */}
-          <div className="lg:col-span-2 rounded-xl border bg-card p-8 flex items-center justify-center min-h-[300px]">
-            <p className="text-muted-foreground text-sm">Actions Column — Prompt 2</p>
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Section 1: Nudges */}
+            <NudgesWidget evanId={evanId} />
+
+            {/* Section 2: Top Actions */}
+            <TopActions evanId={evanId} />
+
+            {/* Section 3: Today's Schedule */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Today's Schedule</CardTitle>
+                    <CardDescription>Calls & meetings today</CardDescription>
+                  </div>
+                  <Link to="/admin/evan/calendar">
+                    <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">View Calendar →</Badge>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {appointmentsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : todaysAppointments && todaysAppointments.length > 0 ? (
+                    todaysAppointments.map((appt) => (
+                      <div key={appt.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                        <div className="text-sm font-medium text-muted-foreground w-16 shrink-0">
+                          {format(new Date(appt.start_time), 'h:mm a')}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{appt.title}</p>
+                          {appt.description && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">{appt.description}</p>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="text-xs shrink-0">
+                          {appt.appointment_type || 'Scheduled'}
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <CalendarDays className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                      <p>No calls scheduled today</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Section 4: Hot Deals */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Hot Deals</CardTitle>
+                    <CardDescription>Closest to closing</CardDescription>
+                  </div>
+                  <Link to="/admin/evan/pipeline">
+                    <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">Full Pipeline →</Badge>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {hotDeals.length > 0 ? (
+                    hotDeals.map((deal) => {
+                      const stageLabels: Record<string, string> = {
+                        discovery: 'Discovery',
+                        pre_qualification: 'Pre-Qual',
+                        document_collection: 'Doc Collection',
+                        underwriting: 'Underwriting',
+                        approval: 'Approval',
+                      };
+                      const commission = (deal.lead_responses?.[0]?.loan_amount || 0) * 0.02;
+                      return (
+                        <div key={deal.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{deal.name || 'Unnamed Deal'}</p>
+                          </div>
+                          <Badge variant="secondary" className="text-xs shrink-0">
+                            {stageLabels[deal.status] || deal.status}
+                          </Badge>
+                          <span className="text-sm font-medium text-green-600 shrink-0">
+                            {formatCurrency(commission)}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <p>No active deals in pipeline</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
           {/* RIGHT COLUMN */}
           <div className="lg:col-span-1 rounded-xl border bg-card p-8 flex items-center justify-center min-h-[300px]">
