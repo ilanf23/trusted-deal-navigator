@@ -2,12 +2,14 @@ import { useState, useMemo, useCallback } from 'react';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { useEvanUIState } from '@/contexts/EvanUIStateContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { Loader2, CheckCircle2, Circle, Clock, CalendarDays, Phone } from 'lucide-react';
+import { Loader2, CheckCircle2, Circle, Clock, CalendarDays, Phone, Kanban, Mail, Calendar, Building2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +27,9 @@ const formatCurrency = (value: number) => {
   if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
   return `$${value.toFixed(0)}`;
 };
+
+const formatCurrencyFull = (value: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
 const getGreeting = (firstName: string) => {
   const hour = new Date().getHours();
@@ -121,6 +126,56 @@ const Dashboard = () => {
         return amountB - amountA;
       })
       .slice(0, 5);
+  }, [pipelineData]);
+
+  // Commission calculator state
+  const [calcLoanAmount, setCalcLoanAmount] = useState<string>(persisted.calcLoanAmount);
+  const [calcExtraDeals, setCalcExtraDeals] = useState<string>(persisted.calcExtraDeals);
+
+  const commissionCalc = useMemo(() => {
+    const loanAmount = parseFloat(calcLoanAmount) || 0;
+    const extraDeals = parseInt(calcExtraDeals) || 0;
+    const baseCommission = loanAmount * 0.02;
+    const bonusMultiplier = 1 + (extraDeals * 0.10);
+    const totalCommission = baseCommission * bonusMultiplier;
+    const bonusAmount = totalCommission - baseCommission;
+    return {
+      baseCommission,
+      bonusAmount,
+      totalCommission,
+      bonusPercentage: extraDeals * 10,
+    };
+  }, [calcLoanAmount, calcExtraDeals]);
+
+  // Pipeline grouped by stage
+  const pipelineByStage = useMemo(() => {
+    if (!pipelineData) return [];
+
+    const stageOrder = ['discovery', 'pre_qualification', 'document_collection', 'underwriting', 'approval'];
+    const stageLabels: Record<string, string> = {
+      discovery: 'Discovery',
+      pre_qualification: 'Pre-Qual',
+      document_collection: 'Doc Collection',
+      underwriting: 'Underwriting',
+      approval: 'Approval',
+    };
+
+    const grouped: Record<string, { count: number; value: number }> = {};
+    pipelineData.forEach((lead) => {
+      const stage = lead.status;
+      if (!grouped[stage]) grouped[stage] = { count: 0, value: 0 };
+      grouped[stage].count++;
+      grouped[stage].value += (lead.lead_responses?.[0]?.loan_amount || 0) * 0.02;
+    });
+
+    return stageOrder
+      .filter((stage) => grouped[stage])
+      .map((stage) => ({
+        stage,
+        label: stageLabels[stage] || stage,
+        count: grouped[stage].count,
+        value: grouped[stage].value,
+      }));
   }, [pipelineData]);
 
   const metrics = useMemo(() => {
@@ -363,8 +418,120 @@ const Dashboard = () => {
 
           </div>
           {/* RIGHT COLUMN */}
-          <div className="lg:col-span-1 rounded-xl border bg-card p-8 flex items-center justify-center min-h-[300px]">
-            <p className="text-muted-foreground text-sm">Insights Column — Prompt 3</p>
+          <div className="lg:col-span-1 space-y-6">
+
+            {/* Section 1: Pipeline Snapshot */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Pipeline Snapshot</CardTitle>
+                    <CardDescription>Deals by stage</CardDescription>
+                  </div>
+                  <Link to="/admin/evan/pipeline">
+                    <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">Open Pipeline →</Badge>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {pipelineByStage.length > 0 ? (
+                    pipelineByStage.map((s) => (
+                      <div key={s.stage} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{s.label}</span>
+                          <Badge variant="secondary" className="text-xs">{s.count}</Badge>
+                        </div>
+                        <span className="text-sm font-medium">{formatCurrency(s.value)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No active deals</p>
+                  )}
+                  <div className="border-t pt-3 flex items-center justify-between">
+                    <span className="text-sm font-medium">Total Pipeline</span>
+                    <span className="text-base font-bold">{formatCurrency(metrics.pipelineValue)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Section 2: Commission Calculator */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Commission Calculator</CardTitle>
+                <CardDescription>Estimate your earnings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="loanAmount" className="text-xs">Loan Amount</Label>
+                    <Input
+                      id="loanAmount"
+                      type="number"
+                      value={calcLoanAmount}
+                      onChange={(e) => setCalcLoanAmount(e.target.value)}
+                      placeholder="500000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="extraDeals" className="text-xs">Extra Deals This Period</Label>
+                    <Input
+                      id="extraDeals"
+                      type="number"
+                      min="0"
+                      max="10"
+                      value={calcExtraDeals}
+                      onChange={(e) => setCalcExtraDeals(e.target.value)}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">+10% bonus per extra deal</p>
+                  </div>
+                  <div className="border-t pt-3 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Base (2%)</span>
+                      <span>{formatCurrencyFull(commissionCalc.baseCommission)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-600">Bonus (+{commissionCalc.bonusPercentage}%)</span>
+                      <span className="text-green-600">+{formatCurrencyFull(commissionCalc.bonusAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold border-t pt-2">
+                      <span>Total</span>
+                      <span className="text-primary">{formatCurrencyFull(commissionCalc.totalCommission)}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Section 3: Quick Links */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Quick Links</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {[
+                    { to: '/admin/evan/pipeline', label: 'Pipeline', icon: Kanban },
+                    { to: '/admin/evan/calls', label: 'Calls', icon: Phone },
+                    { to: '/admin/evan/gmail', label: 'Gmail', icon: Mail },
+                    { to: '/admin/evan/calendar', label: 'Calendar', icon: Calendar },
+                    { to: '/admin/evan/lender-programs', label: 'Lender Programs', icon: Building2 },
+                  ].map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className="flex items-center gap-3 py-2 px-3 rounded-md hover:bg-muted transition-colors text-sm"
+                    >
+                      <link.icon className="h-4 w-4 text-muted-foreground" />
+                      <span>{link.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
         </div>
 
