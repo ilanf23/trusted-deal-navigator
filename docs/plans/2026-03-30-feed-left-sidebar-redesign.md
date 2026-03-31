@@ -36,14 +36,14 @@ Redesign the FeedLeftPanel component to match the target design exactly. All cha
 **Files:**
 - Modify: `src/components/feed/FeedLeftPanel.tsx`
 
-- [ ] Update search input: change to `h-10 rounded-lg border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-400`, add search icon (magnifying glass) positioned absolute left-3, input `pl-9`, container `mt-4`
-- [ ] Update "All" button active state: `px-3 py-2 rounded-lg bg-violet-50 text-violet-600 font-medium text-sm`, inactive: `px-3 py-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-900 transition-colors rounded-lg`
-- [ ] Remove all checkboxes from filter items - change from `<label>` with `<input type="checkbox">` to simple clickable `<button>` elements
-- [ ] Remove all count number badges from filter items
-- [ ] Change filter items to single-select: clicking a filter calls `onFiltersChange(new Set([filter]))`, clicking the active filter or "All" calls `onFiltersChange(new Set())`
-- [ ] Style filter items: default `px-3 py-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-900 transition-colors rounded-lg`, active same as "All" active style
-- [ ] Tighten filter list spacing to `space-y-0.5`
-- [ ] Add `mt-3` between search input and "All" item, `mt-1` between "All" and filter list
+- [x] Update search input: change to `h-10 rounded-lg border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-400`, add search icon (magnifying glass) positioned absolute left-3, input `pl-9`, container `mt-4`
+- [x] Update "All" button active state: `px-3 py-2 rounded-lg bg-violet-50 text-violet-600 font-medium text-sm`, inactive: `px-3 py-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-900 transition-colors rounded-lg`
+- [x] Remove all checkboxes from filter items - change from `<label>` with `<input type="checkbox">` to simple clickable `<button>` elements
+- [x] Remove all count number badges from filter items
+- [x] Change filter items to single-select: clicking a filter calls `onFiltersChange(new Set([filter]))`, clicking the active filter or "All" calls `onFiltersChange(new Set())`
+- [x] Style filter items: default `px-3 py-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-900 transition-colors rounded-lg`, active same as "All" active style
+- [x] Tighten filter list spacing to `space-y-0.5`
+- [x] Add `mt-3` between search input and "All" item, `mt-1` between "All" and filter list
 
 ### Task 3: Verify build and overall spacing
 

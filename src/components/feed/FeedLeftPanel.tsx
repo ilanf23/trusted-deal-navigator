@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { Search } from 'lucide-react';
 import type { TeamMember } from '@/hooks/useTeamMember';
 
 interface FeedLeftPanelProps {
@@ -48,10 +49,11 @@ const FeedLeftPanel = ({
   );
 
   const toggleFilter = (filter: string) => {
-    const next = new Set(selectedFilters);
-    if (next.has(filter)) next.delete(filter);
-    else next.add(filter);
-    onFiltersChange(next);
+    if (selectedFilters.has(filter)) {
+      onFiltersChange(new Set());
+    } else {
+      onFiltersChange(new Set([filter]));
+    }
   };
 
   return (
@@ -91,52 +93,50 @@ const FeedLeftPanel = ({
 
 
       {/* Filter search */}
-      <div className="px-4 pb-2">
+      <div className="px-5 mt-4">
         <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Search Filters"
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
-            className="w-full h-8 pl-3 pr-3 text-xs bg-gray-50 border border-gray-200 rounded-md text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-300 focus:border-purple-300"
+            className="w-full h-10 pl-9 pr-3 text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-300 focus:border-violet-300"
           />
         </div>
       </div>
 
       {/* Filter list */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 overflow-y-auto px-5 pb-4">
         {/* All button */}
         <button
           onClick={() => onFiltersChange(new Set())}
           className={cn(
-            'w-full text-left px-2.5 py-1.5 text-xs rounded-md mb-0.5 transition-colors',
+            'w-full text-left mt-3 transition-colors',
             selectedFilters.size === 0
-              ? 'bg-purple-50 text-purple-700 font-medium'
-              : 'text-gray-600 hover:bg-gray-50'
+              ? 'px-3 py-2 rounded-lg bg-violet-50 text-violet-600 font-medium text-sm'
+              : 'px-3 py-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-900 rounded-lg'
           )}
         >
           All
         </button>
 
-        {filteredOptions.map((filter) => (
-          <label
-            key={filter}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 rounded-md cursor-pointer"
-          >
-            <input
-              type="checkbox"
-              checked={selectedFilters.has(filter)}
-              onChange={() => toggleFilter(filter)}
-              className="w-3.5 h-3.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 accent-purple-600"
-            />
-            <span className="truncate flex-1">{filter}</span>
-            {(filterCounts[filter] ?? 0) > 0 && (
-              <span className="text-[10px] text-gray-400 font-medium tabular-nums">
-                {filterCounts[filter]}
-              </span>
-            )}
-          </label>
-        ))}
+        <div className="mt-1 space-y-0.5">
+          {filteredOptions.map((filter) => (
+            <button
+              key={filter}
+              onClick={() => toggleFilter(filter)}
+              className={cn(
+                'w-full text-left transition-colors',
+                selectedFilters.has(filter)
+                  ? 'px-3 py-2 rounded-lg bg-violet-50 text-violet-600 font-medium text-sm'
+                  : 'px-3 py-1.5 text-sm text-slate-600 cursor-pointer hover:text-slate-900 rounded-lg'
+              )}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
