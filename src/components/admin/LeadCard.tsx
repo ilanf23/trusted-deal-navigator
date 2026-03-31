@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatDistanceToNow } from 'date-fns';
 import { getLeadDisplayName } from '@/lib/utils';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
+import { TouchpointPill } from '@/components/admin/TouchpointChip';
 import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -190,29 +191,9 @@ export const LeadCard = ({ lead, touchpoint, teamMemberMap, teamAvatarMap, onCli
         )}
 
         {/* Last Touchpoint Indicator */}
-        {touchpoint ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1 border-t border-border/50">
-                {getTouchpointIcon(touchpoint.type, touchpoint.direction)}
-                <span className="truncate">
-                  {getTouchpointLabel(touchpoint.type, touchpoint.direction)}
-                </span>
-                <span className="text-[10px] opacity-70 ml-auto">
-                  {formatDistanceToNow(new Date(touchpoint.date), { addSuffix: true })}
-                </span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              {getTouchpointLabel(touchpoint.type, touchpoint.direction)} - {new Date(touchpoint.date).toLocaleDateString()}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/50 pt-1 border-t border-border/50">
-            <Calendar className="w-3 h-3" />
-            <span>No contact yet</span>
-          </div>
-        )}
+        <div className="pt-1.5 border-t border-border/50">
+          <TouchpointPill touchpoint={touchpoint} />
+        </div>
       </CardContent>
     </Card>
   );

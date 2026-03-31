@@ -17,6 +17,7 @@ import {
   Trophy,
   ArrowRightLeft,
   TrendingUp,
+  TrendingDown,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -27,6 +28,7 @@ import {
   PhoneOutgoing,
   ListTodo,
   Timer,
+  Clock,
 } from 'lucide-react';
 import {
   format,
@@ -38,6 +40,7 @@ import {
   eachMonthOfInterval,
   getYear,
 } from 'date-fns';
+import { motion } from 'framer-motion';
 
 
 const generateYearOptions = () => {
@@ -73,46 +76,151 @@ const generateMonthOptions = (year: number) => {
   }));
 };
 
-// Stat card variants
-interface StatCardProps {
+// ── Animated number entrance ──
+
+function AnimatedValue({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  return (
+    <motion.span
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay, ease: 'easeOut' }}
+      className="inline-block"
+    >
+      {children}
+    </motion.span>
+  );
+}
+
+// ── Pipeline Overview card ──
+
+interface OverviewCardProps {
   icon: React.ReactNode;
   label: string;
   value: number | string;
   sub?: string;
-  colorClass: string;
-  iconColorClass: string;
+  accentColor: string; // e.g. 'blue', 'emerald', 'rose', 'amber'
+  index: number;
 }
 
-const StatCard = ({ icon, label, value, sub, colorClass, iconColorClass }: StatCardProps) => (
-  <Card className={`border-0 shadow-sm ${colorClass}`}>
-    <CardContent className="p-3 sm:p-4">
-      <div className={`flex items-center gap-1.5 mb-2 ${iconColorClass}`}>
-        <span className="[&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>
-        <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide">{label}</span>
-      </div>
-      <p className="text-2xl sm:text-3xl font-bold leading-none">{value}</p>
-      {sub && <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5">{sub}</p>}
-    </CardContent>
-  </Card>
-);
+const accentMap: Record<string, { border: string; iconBg: string; iconText: string; valueBg: string }> = {
+  blue: { border: 'border-l-blue-500', iconBg: 'bg-blue-50 dark:bg-blue-950/40', iconText: 'text-blue-600 dark:text-blue-400', valueBg: '' },
+  emerald: { border: 'border-l-emerald-500', iconBg: 'bg-emerald-50 dark:bg-emerald-950/40', iconText: 'text-emerald-600 dark:text-emerald-400', valueBg: '' },
+  rose: { border: 'border-l-rose-500', iconBg: 'bg-rose-50 dark:bg-rose-950/40', iconText: 'text-rose-500 dark:text-rose-400', valueBg: '' },
+  amber: { border: 'border-l-amber-500', iconBg: 'bg-amber-50 dark:bg-amber-950/40', iconText: 'text-amber-600 dark:text-amber-400', valueBg: '' },
+  violet: { border: 'border-l-violet-500', iconBg: 'bg-violet-50 dark:bg-violet-950/40', iconText: 'text-violet-600 dark:text-violet-400', valueBg: '' },
+  admin: { border: 'border-l-admin-blue', iconBg: 'bg-admin-blue-light', iconText: 'text-admin-blue', valueBg: '' },
+};
 
-// Mini touchpoint tile
+const OverviewCard = ({ icon, label, value, sub, accentColor, index }: OverviewCardProps) => {
+  const a = accentMap[accentColor] || accentMap.blue;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.05, ease: 'easeOut' }}
+      className={`bg-card rounded-xl shadow-sm hover:shadow-card-hover transition-shadow duration-300 border-l-4 ${a.border} p-4 flex flex-col gap-2`}
+    >
+      <div className="flex items-center gap-2">
+        <div className={`p-1.5 rounded-lg ${a.iconBg}`}>
+          <span className={`[&>svg]:h-3.5 [&>svg]:w-3.5 ${a.iconText}`}>{icon}</span>
+        </div>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      </div>
+      <p className="text-3xl font-bold leading-none tracking-tight">
+        <AnimatedValue delay={index * 0.05}>{value}</AnimatedValue>
+      </p>
+      {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
+    </motion.div>
+  );
+};
+
+// ── Touchpoint tile ──
+
 interface TouchTileProps {
   icon: React.ReactNode;
   label: string;
   value: number | string;
   sub?: string;
-  accent: string;
+  accentColor: string;
+  index: number;
+  featured?: boolean;
 }
 
-const TouchTile = ({ icon, label, value, sub, accent }: TouchTileProps) => (
-  <div className="flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl bg-background border border-border/60 text-center">
-    <span className={`[&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ${accent}`}>{icon}</span>
-    <p className="text-xl sm:text-2xl font-bold leading-none mt-1">{value}</p>
-    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">{label}</p>
-    {sub && <p className="text-[10px] sm:text-[11px] text-muted-foreground/70">{sub}</p>}
-  </div>
-);
+const TouchTile = ({ icon, label, value, sub, accentColor, index, featured = false }: TouchTileProps) => {
+  const a = accentMap[accentColor] || accentMap.blue;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.15 + index * 0.05, ease: 'easeOut' }}
+      className={`flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl text-center transition-shadow duration-300 hover:shadow-sm ${
+        featured
+          ? `bg-admin-blue-light dark:bg-admin-blue/10 border-2 border-admin-blue/20`
+          : 'bg-card border border-border/60'
+      } ${featured ? '' : ''}`}
+    >
+      <div className={`p-2 rounded-lg ${featured ? 'bg-admin-blue/10' : a.iconBg}`}>
+        <span className={`[&>svg]:h-4 [&>svg]:w-4 ${featured ? 'text-admin-blue' : a.iconText}`}>{icon}</span>
+      </div>
+      <p className={`text-2xl font-bold leading-none mt-0.5 ${featured ? 'text-admin-blue' : ''}`}>
+        <AnimatedValue delay={0.15 + index * 0.05}>{value}</AnimatedValue>
+      </p>
+      <p className={`text-[10px] font-semibold uppercase tracking-wider ${featured ? 'text-admin-blue/70' : 'text-muted-foreground'}`}>{label}</p>
+      {sub && <p className="text-[10px] text-muted-foreground/60">{sub}</p>}
+    </motion.div>
+  );
+};
+
+// ── Task tile ──
+
+interface TaskTileProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  variant: 'default' | 'success' | 'danger';
+  index: number;
+}
+
+const TaskTile = ({ icon, label, value, variant, index }: TaskTileProps) => {
+  const styles = {
+    default: {
+      bg: 'bg-card border border-border/60',
+      iconClass: 'text-muted-foreground',
+      valueClass: '',
+      labelClass: 'text-muted-foreground',
+    },
+    success: {
+      bg: 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800',
+      iconClass: 'text-emerald-600 dark:text-emerald-400',
+      valueClass: 'text-emerald-700 dark:text-emerald-300',
+      labelClass: 'text-emerald-600 dark:text-emerald-400',
+    },
+    danger: {
+      bg: value > 0
+        ? 'bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800'
+        : 'bg-card border border-border/60',
+      iconClass: value > 0 ? 'text-rose-500' : 'text-muted-foreground',
+      valueClass: value > 0 ? 'text-rose-600 dark:text-rose-400' : '',
+      labelClass: value > 0 ? 'text-rose-500 dark:text-rose-400' : 'text-muted-foreground',
+    },
+  };
+  const s = styles[variant];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.3 + index * 0.05, ease: 'easeOut' }}
+      className={`flex flex-col items-center justify-center gap-1.5 p-4 rounded-xl text-center transition-shadow duration-300 hover:shadow-sm ${s.bg}`}
+    >
+      <span className={`[&>svg]:h-5 [&>svg]:w-5 ${s.iconClass}`}>{icon}</span>
+      <p className={`text-2xl font-bold leading-none mt-0.5 ${s.valueClass}`}>
+        <AnimatedValue delay={0.3 + index * 0.05}>{value}</AnimatedValue>
+      </p>
+      <p className={`text-[10px] font-semibold uppercase tracking-wider ${s.labelClass}`}>{label}</p>
+    </motion.div>
+  );
+};
 
 const Scorecard = () => {
   const { teamMember } = useTeamMember();
@@ -269,7 +377,6 @@ const Scorecard = () => {
     if (!allLeads) return null;
     const periodEnd = periodBoundaries.end;
 
-    // Scope all datasets to the current user's leads when repFilter='me'
     const userLeadIds = new Set(allLeads.map(l => l.id));
 
     const scopedComms = repFilter === 'me'
@@ -344,12 +451,6 @@ const Scorecard = () => {
       };
     });
 
-    const leadsNeedingAttention = activeLeads.filter((lead) => {
-      const lastTouchpoint = scopedComms.find((c) => c.lead_id === lead.id);
-      if (!lastTouchpoint) return true;
-      return differenceInDays(now, new Date(lastTouchpoint.created_at)) >= 7;
-    }).slice(0, 10);
-
     const followUpEmailsSent = scopedEmails.filter(
       (e) => e.source?.toLowerCase().includes('follow') || e.source?.toLowerCase().includes('nudge') || e.source?.toLowerCase().includes('7day')
     ).length;
@@ -379,7 +480,6 @@ const Scorecard = () => {
       tasksOverdue,
       followUpsSent: followUpEmailsSent + nudgeTasksCompleted,
       rateWatchSignups: rateWatchSignups?.length || 0,
-      leadsNeedingAttention,
     };
   }, [allLeads, communications, leadActivities, tasks, followUpEmails, rateWatchSignups, periodStart, periodBoundaries, now, repFilter, teamMember]);
 
@@ -398,20 +498,24 @@ const Scorecard = () => {
 
   if (!metrics) return null;
 
-  const periodLabel = timeMode === 'custom'
-    ? `${format(periodBoundaries.start, 'MMM d, h:mm a')} – ${format(periodBoundaries.end, 'MMM d, yyyy h:mm a')}`
-    : `${format(periodBoundaries.start, 'MMM d')} – ${format(periodBoundaries.end, 'MMM d, yyyy')}`;
+  const periodSub = timeMode === 'custom' ? 'this period' : 'this week';
 
   return (
     <EvanLayout>
-      <div className="space-y-5 sm:space-y-8 pb-5 sm:pb-8">
+      <div className="space-y-6 sm:space-y-8 pb-6 sm:pb-10">
 
         {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-end gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
+              {format(periodBoundaries.start, 'MMM d')} – {format(periodBoundaries.end, 'MMM d, yyyy')}
+            </span>
+          </div>
           <div className="flex flex-col gap-2">
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:flex-wrap">
               <Select value={timeMode} onValueChange={(v: 'week' | 'custom') => setTimeMode(v)}>
-                <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm">
+                <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -423,7 +527,7 @@ const Scorecard = () => {
               {timeMode === 'week' && (
                 <>
                   <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
-                    <SelectTrigger className="h-9 w-full sm:w-[90px] text-sm">
+                    <SelectTrigger className="h-9 w-full sm:w-[90px] text-sm rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -434,7 +538,7 @@ const Scorecard = () => {
                   </Select>
 
                   <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
-                    <SelectTrigger className="h-9 w-full sm:w-[120px] text-sm">
+                    <SelectTrigger className="h-9 w-full sm:w-[120px] text-sm rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -445,7 +549,7 @@ const Scorecard = () => {
                   </Select>
 
                   <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-                    <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm">
+                    <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm rounded-lg">
                       <Calendar className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                       <SelectValue />
                     </SelectTrigger>
@@ -459,27 +563,25 @@ const Scorecard = () => {
               )}
 
               {timeMode === 'custom' && (
-                <>
-                  <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
-                    <Input
-                      type="datetime-local"
-                      value={customStart}
-                      onChange={(e) => setCustomStart(e.target.value)}
-                      className="h-9 text-sm w-full sm:w-auto"
-                    />
-                    <span className="text-xs text-muted-foreground shrink-0">to</span>
-                    <Input
-                      type="datetime-local"
-                      value={customEnd}
-                      onChange={(e) => setCustomEnd(e.target.value)}
-                      className="h-9 text-sm w-full sm:w-auto"
-                    />
-                  </div>
-                </>
+                <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
+                  <Input
+                    type="datetime-local"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                    className="h-9 text-sm w-full sm:w-auto rounded-lg"
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">to</span>
+                  <Input
+                    type="datetime-local"
+                    value={customEnd}
+                    onChange={(e) => setCustomEnd(e.target.value)}
+                    className="h-9 text-sm w-full sm:w-auto rounded-lg"
+                  />
+                </div>
               )}
 
               <Select value={repFilter} onValueChange={setRepFilter}>
-                <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm">
+                <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -493,89 +595,30 @@ const Scorecard = () => {
 
         {/* ── Section 1: Pipeline Overview ── */}
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Pipeline Overview</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            <StatCard
-              icon={<Users />}
-              label="Active"
-              value={metrics.activeLeads}
-              sub="total pipeline"
-              colorClass="bg-blue-50 dark:bg-blue-950/40"
-              iconColorClass="text-blue-600 dark:text-blue-400"
-            />
-            <StatCard
-              icon={<UserPlus />}
-              label="New Leads"
-              value={metrics.newLeads}
-              sub={timeMode === 'custom' ? 'this period' : 'this week'}
-              colorClass="bg-violet-50 dark:bg-violet-950/40"
-              iconColorClass="text-violet-600 dark:text-violet-400"
-            />
-            <StatCard
-              icon={<Trophy />}
-              label="Closed Won"
-              value={metrics.closedWon}
-              sub={timeMode === 'custom' ? 'this period' : 'this week'}
-              colorClass="bg-emerald-50 dark:bg-emerald-950/40"
-              iconColorClass="text-emerald-600 dark:text-emerald-400"
-            />
-            <StatCard
-              icon={<AlertCircle />}
-              label="Closed Lost"
-              value={metrics.closedLost}
-              sub={timeMode === 'custom' ? 'this period' : 'this week'}
-              colorClass="bg-rose-50 dark:bg-rose-950/40"
-              iconColorClass="text-rose-500 dark:text-rose-400"
-            />
-            <StatCard
-              icon={<ArrowRightLeft />}
-              label="Stage Moves"
-              value={metrics.stageMovements}
-              sub={timeMode === 'custom' ? 'this period' : 'this week'}
-              colorClass="bg-amber-50 dark:bg-amber-950/40"
-              iconColorClass="text-amber-600 dark:text-amber-400"
-            />
-            <StatCard
-              icon={<Send />}
-              label="Follow-ups"
-              value={metrics.followUpsSent}
-              sub="7-day sent"
-              colorClass="bg-cyan-50 dark:bg-cyan-950/40"
-              iconColorClass="text-cyan-600 dark:text-cyan-400"
-            />
-            <StatCard
-              icon={<Eye />}
-              label="Rate Watch"
-              value={metrics.rateWatchSignups}
-              sub="signups"
-              colorClass="bg-purple-50 dark:bg-purple-950/40"
-              iconColorClass="text-purple-600 dark:text-purple-400"
-            />
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">Pipeline Overview</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+            <OverviewCard icon={<Users />} label="Active" value={metrics.activeLeads} sub="total pipeline" accentColor="blue" index={0} />
+            <OverviewCard icon={<UserPlus />} label="New Leads" value={metrics.newLeads} sub={periodSub} accentColor="violet" index={1} />
+            <OverviewCard icon={<Trophy />} label="Closed Won" value={metrics.closedWon} sub={periodSub} accentColor="emerald" index={2} />
+            <OverviewCard icon={<AlertCircle />} label="Closed Lost" value={metrics.closedLost} sub={periodSub} accentColor="rose" index={3} />
+            <OverviewCard icon={<ArrowRightLeft />} label="Stage Moves" value={metrics.stageMovements} sub={periodSub} accentColor="amber" index={4} />
+            <OverviewCard icon={<Send />} label="Follow-ups" value={metrics.followUpsSent} sub="7-day sent" accentColor="blue" index={5} />
+            <OverviewCard icon={<Eye />} label="Rate Watch" value={metrics.rateWatchSignups} sub="signups" accentColor="violet" index={6} />
           </div>
         </section>
 
         {/* ── Section 2: Touchpoints ── */}
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Touchpoints</h2>
-          <Card className="border border-border/60">
-            <CardContent className="p-3 sm:p-5">
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                {/* Total — featured, full-width on mobile */}
-                <div className="col-span-2 sm:col-span-1 flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl bg-primary/8 border border-primary/20 text-center">
-                  <span className="text-primary [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5"><TrendingUp /></span>
-                  <p className="text-2xl sm:text-3xl font-bold leading-none mt-1">{metrics.totalTouchpoints}</p>
-                  <p className="text-[10px] sm:text-xs font-semibold text-primary/80">Total</p>
-                </div>
-
-                <TouchTile icon={<Phone />} label="All Calls" value={metrics.calls} sub={`${metrics.totalCallMinutes} min`} accent="text-blue-500" />
-                <TouchTile icon={<PhoneOutgoing />} label="Outbound" value={metrics.outboundCalls} accent="text-emerald-500" />
-                <TouchTile icon={<PhoneIncoming />} label="Inbound" value={metrics.inboundCalls} accent="text-amber-500" />
-                <TouchTile icon={<Mail />} label="Emails" value={metrics.emails} accent="text-purple-500" />
-                <TouchTile icon={<MessageSquare />} label="SMS" value={metrics.sms} accent="text-green-500" />
-                <TouchTile icon={<Users />} label="Leads Reached" value={metrics.uniqueLeadsContacted} accent="text-indigo-500" />
-              </div>
-            </CardContent>
-          </Card>
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">Touchpoints</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            <TouchTile icon={<TrendingUp />} label="Total" value={metrics.totalTouchpoints} accentColor="admin" index={0} featured />
+            <TouchTile icon={<Phone />} label="All Calls" value={metrics.calls} sub={`${metrics.totalCallMinutes} min`} accentColor="blue" index={1} />
+            <TouchTile icon={<PhoneOutgoing />} label="Outbound" value={metrics.outboundCalls} accentColor="emerald" index={2} />
+            <TouchTile icon={<PhoneIncoming />} label="Inbound" value={metrics.inboundCalls} accentColor="amber" index={3} />
+            <TouchTile icon={<Mail />} label="Emails" value={metrics.emails} accentColor="blue" index={4} />
+            <TouchTile icon={<MessageSquare />} label="SMS" value={metrics.sms} accentColor="violet" index={5} />
+            <TouchTile icon={<Users />} label="Leads Reached" value={metrics.uniqueLeadsContacted} accentColor="blue" index={6} />
+          </div>
         </section>
 
         {/* ── Section 3 + 4 side by side ── */}
@@ -583,56 +626,33 @@ const Scorecard = () => {
 
           {/* Tasks & Follow-ups */}
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Tasks & Follow-ups</h2>
-            <Card className="border border-border/60 h-full">
-              <CardContent className="p-3 sm:p-5">
-                <div className="grid grid-cols-3 gap-3 h-full">
-                  <div className="flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl bg-muted/40 border border-border/40 text-center">
-                    <ListTodo className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                    <p className="text-2xl sm:text-3xl font-bold leading-none mt-1">{metrics.tasksCreated}</p>
-                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">Created</p>
-                  </div>
-
-                  <div className="flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-center">
-                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400" />
-                    <p className="text-2xl sm:text-3xl font-bold leading-none mt-1 text-emerald-700 dark:text-emerald-300">{metrics.tasksCompleted}</p>
-                    <p className="text-[10px] sm:text-xs font-medium text-emerald-600 dark:text-emerald-400">Completed</p>
-                  </div>
-
-                  <div className={`flex flex-col items-center justify-center gap-1 p-3 sm:p-4 rounded-xl border text-center ${
-                    metrics.tasksOverdue > 0
-                      ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900'
-                      : 'bg-muted/40 border-border/40'
-                  }`}>
-                    <Timer className={`h-4 w-4 sm:h-5 sm:w-5 ${metrics.tasksOverdue > 0 ? 'text-rose-500' : 'text-muted-foreground'}`} />
-                    <p className={`text-2xl sm:text-3xl font-bold leading-none mt-1 ${metrics.tasksOverdue > 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
-                      {metrics.tasksOverdue}
-                    </p>
-                    <p className={`text-[10px] sm:text-xs font-medium ${metrics.tasksOverdue > 0 ? 'text-rose-500 dark:text-rose-400' : 'text-muted-foreground'}`}>
-                      Overdue
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">Tasks & Follow-ups</h2>
+            <div className="grid grid-cols-3 gap-3">
+              <TaskTile icon={<ListTodo />} label="Created" value={metrics.tasksCreated} variant="default" index={0} />
+              <TaskTile icon={<CheckCircle2 />} label="Completed" value={metrics.tasksCompleted} variant="success" index={1} />
+              <TaskTile icon={<Timer />} label="Overdue" value={metrics.tasksOverdue} variant="danger" index={2} />
+            </div>
           </section>
 
           {/* Recent Stage Movements */}
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Recent Stage Movements</h2>
-            <Card className="border border-border/60 h-full">
-              <CardContent className="p-3 sm:p-5">
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">Recent Stage Movements</h2>
+            <Card className="border border-border/60 shadow-sm h-full">
+              <CardContent className="p-4">
                 {metrics.recentMovements.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full min-h-[120px] text-center gap-2">
-                    <ArrowRightLeft className="h-7 w-7 text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">No stage movements {timeMode === 'custom' ? 'this period' : 'this week'}</p>
+                    <ArrowRightLeft className="h-7 w-7 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">No stage movements {periodSub}</p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-[180px] sm:max-h-[260px] overflow-y-auto pr-1">
-                    {metrics.recentMovements.map((movement) => (
-                      <div
+                  <div className="space-y-2 max-h-[200px] sm:max-h-[260px] overflow-y-auto pr-1">
+                    {metrics.recentMovements.map((movement, idx) => (
+                      <motion.div
                         key={movement.id}
-                        className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.4 + idx * 0.04 }}
+                        className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors duration-150"
                       >
                         <div className="min-w-0">
                           <p className="font-medium text-sm truncate">{movement.leadName}</p>
@@ -641,14 +661,14 @@ const Scorecard = () => {
                           )}
                         </div>
                         <div className="flex flex-col items-end gap-1 ml-3 shrink-0">
-                          <Badge variant="secondary" className="text-[11px] px-2 py-0.5 whitespace-nowrap">
+                          <Badge variant="secondary" className="text-[11px] px-2 py-0.5 whitespace-nowrap rounded-full">
                             {movement.action}
                           </Badge>
                           <p className="text-[11px] text-muted-foreground">
                             {format(new Date(movement.date), 'MMM d')}
                           </p>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}

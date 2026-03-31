@@ -25,6 +25,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
 import { DbTableBadge } from '@/components/admin/DbTableBadge';
+import { TouchpointCell } from '@/components/admin/TouchpointChip';
 
 // Import avatar images
 import andrewFosterAvatar from '@/assets/avatars/andrew-foster.jpg';
@@ -1902,7 +1903,7 @@ const EmployeePipeline = () => {
                                     />
                                   );
                                 case 'last_touch':
-                                  return <span className="text-[12px] text-slate-400 capitalize">{touchpoint?.type || '—'}</span>;
+                                  return <TouchpointCell touchpoint={touchpoint} showStaleness />;
                                 case 'notes':
                                   return (
                                     <InlineEditableCell
@@ -1927,8 +1928,13 @@ const EmployeePipeline = () => {
                                         return <span className={cn("text-xs font-medium", color)}>{label}</span>;
                                       case 'days_in_stage': return <span className="text-xs text-purple-600 font-medium">{daysSinceUpdate}d</span>;
                                       case 'stage_entered_date': return <span className="text-xs text-purple-600">{lead.qualified_at ? new Date(lead.qualified_at).toLocaleDateString() : '—'}</span>;
-                                      case 'days_since_contact': return <span className="text-xs text-purple-600">{touchpoint ? `${daysSinceUpdate}d` : '—'}</span>;
-                                      case 'last_contact_type': return <span className="text-xs text-purple-600 capitalize">{touchpoint?.type || '—'}</span>;
+                                      case 'days_since_contact': {
+                                        if (!touchpoint) return <span className="text-xs text-amber-600">No contact</span>;
+                                        const daysSinceContact = Math.floor((Date.now() - new Date(touchpoint.date).getTime()) / (1000 * 60 * 60 * 24));
+                                        const contactColor = daysSinceContact <= 3 ? 'text-emerald-600' : daysSinceContact <= 7 ? 'text-amber-600' : 'text-rose-500';
+                                        return <span className={cn("text-xs font-medium", contactColor)}>{daysSinceContact}d</span>;
+                                      }
+                                      case 'last_contact_type': return <TouchpointCell touchpoint={touchpoint} showStaleness />;
                                       case 'email_count': case 'call_count': case 'task_count': case 'file_count': case 'comment_count': case 'meeting_count':
                                         return <span className="text-xs text-purple-600">0</span>;
                                       case 'lead_id': return <span className="text-xs text-purple-600 font-mono truncate" title={lead.id}>{lead.id.slice(0, 8)}</span>;

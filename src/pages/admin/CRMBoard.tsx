@@ -6,7 +6,8 @@ import { Database } from '@/integrations/supabase/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users } from 'lucide-react';
+import { Filter, List, ChevronDown, ChevronRight, Plus, Phone, Mail, Loader2, Users, AlertTriangle } from 'lucide-react';
+import { TouchpointCell } from '@/components/admin/TouchpointChip';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Link, useNavigate } from 'react-router-dom';
@@ -499,14 +500,8 @@ const CRMBoard = () => {
                                 <div className="text-xs text-slate-500">
                                   {lead.source || <span className="text-slate-300">—</span>}
                                 </div>
-                                <div className="text-xs text-slate-500">
-                                  {touchpoint ? (
-                                    <span className="capitalize">
-                                      {touchpoint.type}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-300">—</span>
-                                  )}
+                                <div>
+                                  <TouchpointCell touchpoint={touchpoint} />
                                 </div>
                                 <div className="text-xs text-slate-400">
                                   {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: false })}

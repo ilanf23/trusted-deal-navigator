@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { useEvanUIState } from '@/contexts/EvanUIStateContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
-import { Loader2, CheckCircle2, Circle, Clock, CalendarDays, Phone, Kanban, Mail, Calendar, Building2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Circle, Clock, CalendarDays, Phone, Kanban, Mail, Calendar, Building2, DollarSign, Briefcase, Target, TrendingUp, Flag } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDashboardData } from '@/components/admin/dashboard/useDashboardData';
 import NudgesWidget from '@/components/evan/dashboard/NudgesWidget';
 import TopActions from '@/components/evan/dashboard/TopActions';
+import RevenueChart from '@/components/evan/dashboard/RevenueChart';
 
 export type TimePeriod = 'mtd' | 'ytd' | 'qtd';
 
@@ -230,24 +231,26 @@ const Dashboard = () => {
         {/* ROW 1: Greeting bar */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{getGreeting(firstName)}</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            <h1 className="text-3xl font-medium tracking-tight text-foreground">
+              {getGreeting(firstName)}
+            </h1>
+            <p className="text-sm text-muted-foreground font-normal mt-1">
+              {format(new Date(), 'EEEE, MMMM d, yyyy')} · {metrics.pipelineDeals} active deal{metrics.pipelineDeals !== 1 ? 's' : ''} in pipeline
             </p>
           </div>
           <div className="flex items-center gap-2">
             {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
             <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
-              <TabsList className="bg-muted/50 h-8 p-0.5 rounded-lg">
+              <TabsList className="bg-muted/60 rounded-full p-1 h-10">
                 <TabsTrigger
                   value="mtd"
-                  className="text-xs px-3 h-7 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                  className="rounded-full px-5 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
                 >
                   MTD
                 </TabsTrigger>
                 <TabsTrigger
                   value="ytd"
-                  className="text-xs px-3 h-7 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                  className="rounded-full px-5 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
                 >
                   YTD
                 </TabsTrigger>
@@ -260,53 +263,62 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {/* Card 1: Revenue */}
           <Card>
-            <CardContent className="pt-5 pb-4 px-5">
-              <p className="text-sm text-muted-foreground">Revenue</p>
-              <p className="text-2xl font-bold mt-1">{formatCurrency(metrics.totalRevenue)}</p>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">Revenue</p>
+                <DollarSign className="h-4 w-4 text-emerald-500" />
+              </div>
+              <p className="text-2xl font-bold">{formatCurrency(metrics.totalRevenue)}</p>
               <p className="text-xs text-muted-foreground mt-1">{periodLabel}</p>
             </CardContent>
           </Card>
 
           {/* Card 2: Deals Closed */}
           <Card>
-            <CardContent className="pt-5 pb-4 px-5">
-              <p className="text-sm text-muted-foreground">Deals Closed</p>
-              <p className="text-2xl font-bold mt-1">{metrics.totalDeals}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                avg {formatCurrency(metrics.avgDealSize)} per deal
-              </p>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">Deals Closed</p>
+                <Briefcase className="h-4 w-4 text-blue-500" />
+              </div>
+              <p className="text-2xl font-bold">{metrics.totalDeals}</p>
+              <p className="text-xs text-muted-foreground mt-1">avg {formatCurrency(metrics.avgDealSize)} per deal</p>
             </CardContent>
           </Card>
 
           {/* Card 3: Pipeline Value */}
           <Card>
-            <CardContent className="pt-5 pb-4 px-5">
-              <p className="text-sm text-muted-foreground">Pipeline Value</p>
-              <p className="text-2xl font-bold mt-1">{formatCurrency(metrics.pipelineValue)}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {metrics.pipelineDeals} active deal{metrics.pipelineDeals !== 1 ? 's' : ''}
-              </p>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">Pipeline Value</p>
+                <Target className="h-4 w-4 text-violet-500" />
+              </div>
+              <p className="text-2xl font-bold">{formatCurrency(metrics.pipelineValue)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{metrics.pipelineDeals} active deal{metrics.pipelineDeals !== 1 ? 's' : ''}</p>
             </CardContent>
           </Card>
 
           {/* Card 4: Win Rate */}
           <Card>
-            <CardContent className="pt-5 pb-4 px-5">
-              <p className="text-sm text-muted-foreground">Win Rate</p>
-              <p className="text-2xl font-bold mt-1">{metrics.winRate}%</p>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">Win Rate</p>
+                <TrendingUp className="h-4 w-4 text-amber-500" />
+              </div>
+              <p className="text-2xl font-bold">{metrics.winRate}%</p>
               <p className="text-xs text-muted-foreground mt-1">lead conversion</p>
             </CardContent>
           </Card>
 
           {/* Card 5: Goal Progress */}
           <Card>
-            <CardContent className="pt-5 pb-4 px-5">
-              <p className="text-sm text-muted-foreground">Goal Progress</p>
-              <p className="text-2xl font-bold mt-1">
-                {formatCurrency(metrics.ytdRevenue)}
-                <span className="text-sm font-normal text-muted-foreground"> / {formatCurrency(metrics.periodGoal)}</span>
-              </p>
-              <Progress value={metrics.goalProgress} className="h-1.5 mt-2" />
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">Goal Progress</p>
+                <Flag className="h-4 w-4 text-rose-500" />
+              </div>
+              <p className="text-2xl font-bold">{formatCurrency(metrics.ytdRevenue)}</p>
+              <Progress value={metrics.goalProgress} className="h-2 mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">{metrics.goalProgress}% of {formatCurrency(metrics.periodGoal)}</p>
             </CardContent>
           </Card>
         </div>
@@ -315,6 +327,9 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* LEFT COLUMN */}
           <div className="lg:col-span-2 space-y-6">
+
+            {/* Revenue Chart */}
+            <RevenueChart evanId={evanId} />
 
             {/* Section 1: Nudges */}
             <NudgesWidget evanId={evanId} />
