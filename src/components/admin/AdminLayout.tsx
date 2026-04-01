@@ -13,6 +13,7 @@ import SplitViewContainer from './splitview/SplitViewContainer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState, createContext, useContext } from 'react';
 import { AdminTopBarProvider, useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import NotificationBell from './NotificationBell';
 
 export const AdminLayoutMountedContext = createContext(false);
 
@@ -113,6 +114,8 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
             {/* Right: page actions + global actions */}
             <div className="flex items-center gap-2 md:gap-4 shrink-0">
               {actionsComponent}
+              {/* Notification Bell */}
+              <NotificationBell />
               {/* Undo Button - Always Visible */}
               <TooltipProvider>
                 <Tooltip>

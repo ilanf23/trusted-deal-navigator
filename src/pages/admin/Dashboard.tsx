@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import EvanLayout from '@/components/evan/EvanLayout';
 import { useEvanUIState } from '@/contexts/EvanUIStateContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
@@ -14,6 +14,8 @@ import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
+import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { useDashboardData } from '@/components/admin/dashboard/useDashboardData';
 import NudgesWidget from '@/components/evan/dashboard/NudgesWidget';
 import TopActions from '@/components/evan/dashboard/TopActions';
@@ -71,6 +73,24 @@ const Dashboard = () => {
   const [timePeriod, setTimePeriodLocal] = useState<TimePeriod>(persisted.timePeriod);
 
   const setTimePeriod = useCallback((v: TimePeriod) => { setTimePeriodLocal(v); setPageState('dashboard', { timePeriod: v, chartPeriod: v }); }, [setPageState]);
+
+  // Top bar search
+  const { setPageTitle, setSearchComponent } = useAdminTopBar();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setPageTitle('Dashboard');
+    return () => {
+      setPageTitle(null);
+      setSearchComponent(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSearchComponent(
+      <AdminTopBarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search deals, contacts, tasks..." />
+    );
+  }, [searchTerm]);
 
   const {
     leadsData, pipelineData, fundedLeads,
@@ -226,7 +246,7 @@ const Dashboard = () => {
 
   return (
     <EvanLayout>
-      <div className="space-y-6">
+      <div className="space-y-6" style={{ fontFamily: "'Poppins', sans-serif" }}>
 
         {/* ROW 1: Greeting bar */}
         <div className="flex items-center justify-between">
@@ -337,49 +357,90 @@ const Dashboard = () => {
             {/* Section 2: Top Actions */}
             <TopActions evanId={evanId} />
 
-            {/* Section 3: Today's Schedule */}
+            {/* Section 3: Today's Schedule — hour-by-hour */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-base">Today's Schedule</CardTitle>
-                    <CardDescription>Calls & meetings today</CardDescription>
+                    <CardDescription>{format(new Date(), 'EEEE, MMMM d')}</CardDescription>
                   </div>
                   <Link to="/admin/evan/calendar">
                     <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted">View Calendar →</Badge>
                   </Link>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {appointmentsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : todaysAppointments && todaysAppointments.length > 0 ? (
-                    todaysAppointments.map((appt) => (
-                      <div key={appt.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                        <div className="text-sm font-medium text-muted-foreground w-16 shrink-0">
-                          {format(new Date(appt.start_time), 'h:mm a')}
+              <CardContent className="px-0 pb-0">
+                {appointmentsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="max-h-[420px] overflow-y-auto">
+                    {Array.from({ length: 11 }, (_, i) => i + 8).map((hour) => {
+                      const hourAppts = (todaysAppointments || []).filter((appt) => {
+                        const apptHour = new Date(appt.start_time).getHours();
+                        return apptHour === hour;
+                      });
+                      const isCurrentHour = new Date().getHours() === hour;
+                      const isPast = new Date().getHours() > hour;
+                      const hourLabel = hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`;
+
+                      return (
+                        <div
+                          key={hour}
+                          className="flex border-t"
+                          style={{ borderColor: '#c8bdd6', minHeight: 52, ...(isCurrentHour ? { backgroundColor: '#eee6f6' } : {}) }}
+                        >
+                          {/* Time label */}
+                          <div
+                            className="shrink-0 px-3 py-2 text-right"
+                            style={{ width: 70, borderRight: '1px solid #c8bdd6' }}
+                          >
+                            <span
+                              className="text-xs font-medium"
+                              style={{ color: isCurrentHour ? '#3b2778' : isPast ? '#9ca3af' : '#6b7280' }}
+                            >
+                              {hourLabel}
+                            </span>
+                            {isCurrentHour && (
+                              <div className="mt-0.5">
+                                <span className="text-[10px] font-semibold" style={{ color: '#3b2778' }}>NOW</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Appointments for this hour */}
+                          <div className="flex-1 px-3 py-1.5 min-w-0">
+                            {hourAppts.length > 0 ? (
+                              <div className="space-y-1">
+                                {hourAppts.map((appt) => (
+                                  <div
+                                    key={appt.id}
+                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md"
+                                    style={{ backgroundColor: '#f3eef9', border: '1px solid #c8bdd6' }}
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[13px] font-medium truncate" style={{ color: '#1a1a2e' }}>
+                                        {appt.title}
+                                      </p>
+                                      {appt.description && (
+                                        <p className="text-[11px] truncate" style={{ color: '#6b7280' }}>{appt.description}</p>
+                                      )}
+                                    </div>
+                                    <span className="text-[11px] shrink-0" style={{ color: '#3b2778' }}>
+                                      {format(new Date(appt.start_time), 'h:mm a')}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{appt.title}</p>
-                          {appt.description && (
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">{appt.description}</p>
-                          )}
-                        </div>
-                        <Badge variant="secondary" className="text-xs shrink-0">
-                          {appt.appointment_type || 'Scheduled'}
-                        </Badge>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                      <CalendarDays className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                      <p>No calls scheduled today</p>
-                    </div>
-                  )}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

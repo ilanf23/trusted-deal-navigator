@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,12 +35,15 @@ import {
   differenceInDays,
   startOfWeek,
   endOfWeek,
+  startOfMonth,
   endOfMonth,
+  startOfYear,
   eachWeekOfInterval,
   eachMonthOfInterval,
   getYear,
 } from 'date-fns';
 import { motion } from 'framer-motion';
+import { PipelineConnectors } from '@/components/admin/scorecard/PipelineConnectors';
 
 
 const generateYearOptions = () => {
@@ -118,7 +121,7 @@ const OverviewCard = ({ icon, label, value, sub, accentColor, index }: OverviewC
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05, ease: 'easeOut' }}
-      className={`bg-card rounded-xl shadow-sm hover:shadow-card-hover transition-shadow duration-300 border-l-4 ${a.border} p-4 flex flex-col gap-2`}
+      className="bg-card rounded-xl shadow-sm hover:shadow-card-hover transition-shadow duration-300 border border-border/60 p-4 flex flex-col gap-2"
     >
       <div className="flex items-center gap-2">
         <div className={`p-1.5 rounded-lg ${a.iconBg}`}>
@@ -224,6 +227,7 @@ const TaskTile = ({ icon, label, value, variant, index }: TaskTileProps) => {
 
 const Scorecard = () => {
   const { teamMember } = useTeamMember();
+  const pipelineGridRef = useRef<HTMLDivElement>(null);
   const now = new Date();
   const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
   const currentWeekYear = getYear(currentWeekStart);
@@ -233,7 +237,7 @@ const Scorecard = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(currentWeekMonth);
   const [selectedWeek, setSelectedWeek] = useState<string>(format(currentWeekStart, 'yyyy-MM-dd'));
   const [repFilter, setRepFilter] = useState<string>('me');
-  const [timeMode, setTimeMode] = useState<'week' | 'custom'>('week');
+  const [timeMode, setTimeMode] = useState<'week' | 'monthly' | 'ytd' | 'custom'>('week');
   const [customStart, setCustomStart] = useState<string>(format(currentWeekStart, "yyyy-MM-dd'T'HH:mm"));
   const [customEnd, setCustomEnd] = useState<string>(format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), "yyyy-MM-dd'T'HH:mm"));
 
@@ -254,12 +258,21 @@ const Scorecard = () => {
       }
       return { start, end };
     }
+    if (timeMode === 'monthly') {
+      const monthStart = startOfMonth(now);
+      return { start: monthStart, end: endOfMonth(now) };
+    }
+    if (timeMode === 'ytd') {
+      const yearStart = startOfYear(now);
+      return { start: yearStart, end: now };
+    }
+    // weekly (default)
     const [year, month, day] = selectedWeek.split('-').map(Number);
     const weekStart = new Date(year, month - 1, day);
     weekStart.setHours(0, 0, 0, 0);
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     return { start: weekStart, end: weekEnd };
-  }, [selectedWeek, timeMode, customStart, customEnd, currentWeekStart]);
+  }, [selectedWeek, timeMode, customStart, customEnd, currentWeekStart, now]);
 
   const periodStart = periodBoundaries.start;
 
@@ -331,16 +344,33 @@ const Scorecard = () => {
     refetchInterval: 30_000,
   });
 
+  // Tasks created OR due within the selected period
   const { data: tasks } = useQuery({
     queryKey: ['scorecard-tasks', periodStart.toISOString(), periodBoundaries.end.toISOString()],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch tasks created in the period
+      const { data: createdInPeriod, error: e1 } = await supabase
         .from('tasks')
         .select('id, title, is_completed, lead_id, created_at, due_date, source, team_member_id')
         .gte('created_at', periodStart.toISOString())
         .lte('created_at', periodBoundaries.end.toISOString());
-      if (error) throw error;
-      return data;
+      if (e1) throw e1;
+
+      // Fetch incomplete tasks whose due_date falls within or before the period end
+      // (captures overdue tasks that were created before this period)
+      const { data: dueInPeriod, error: e2 } = await supabase
+        .from('tasks')
+        .select('id, title, is_completed, lead_id, created_at, due_date, source, team_member_id')
+        .eq('is_completed', false)
+        .not('due_date', 'is', null)
+        .lte('due_date', periodBoundaries.end.toISOString());
+      if (e2) throw e2;
+
+      // Merge and dedupe by id
+      const map = new Map<string, NonNullable<typeof createdInPeriod>[number]>();
+      for (const t of (createdInPeriod || [])) map.set(t.id, t);
+      for (const t of (dueInPeriod || [])) map.set(t.id, t);
+      return Array.from(map.values());
     },
     refetchInterval: 30_000,
   });
@@ -434,10 +464,21 @@ const Scorecard = () => {
       (a) => a.activity_type === 'stage_change' || a.title?.includes('moved to')
     );
 
-    const tasksCompleted = scopedTasks.filter((t) => t.is_completed).length;
-    const tasksCreated = scopedTasks.length;
+    // Created: tasks whose created_at falls within the period
+    const tasksCreated = scopedTasks.filter((t) => {
+      const created = new Date(t.created_at);
+      return created >= periodStart && created <= periodEnd;
+    }).length;
+
+    // Completed: tasks completed (is_completed=true) that were created in this period
+    const tasksCompleted = scopedTasks.filter((t) => {
+      const created = new Date(t.created_at);
+      return t.is_completed && created >= periodStart && created <= periodEnd;
+    }).length;
+
+    // Overdue: incomplete tasks whose due_date is before the period end
     const tasksOverdue = scopedTasks.filter(
-      (t) => !t.is_completed && t.due_date && new Date(t.due_date) < now
+      (t) => !t.is_completed && t.due_date && new Date(t.due_date) <= periodEnd
     ).length;
 
     const recentMovements = stageChanges.slice(0, 10).map((activity) => {
@@ -498,112 +539,85 @@ const Scorecard = () => {
 
   if (!metrics) return null;
 
-  const periodSub = timeMode === 'custom' ? 'this period' : 'this week';
+  const periodSub = timeMode === 'week' ? 'this week' : timeMode === 'monthly' ? 'this month' : timeMode === 'ytd' ? 'year to date' : 'this period';
 
   return (
     <EvanLayout>
       <div className="space-y-6 sm:space-y-8 pb-6 sm:pb-10">
 
         {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 mr-auto sm:mr-0">
             <Clock className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">
               {format(periodBoundaries.start, 'MMM d')} – {format(periodBoundaries.end, 'MMM d, yyyy')}
             </span>
           </div>
-          <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:flex-wrap">
-              <Select value={timeMode} onValueChange={(v: 'week' | 'custom') => setTimeMode(v)}>
-                <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">Weekly</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
 
-              {timeMode === 'week' && (
-                <>
-                  <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
-                    <SelectTrigger className="h-9 w-full sm:w-[90px] text-sm rounded-lg">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {yearOptions.map((year) => (
-                        <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <Select value={timeMode} onValueChange={(v: 'week' | 'monthly' | 'ytd' | 'custom') => setTimeMode(v)}>
+            <SelectTrigger className="h-9 w-[100px] text-sm rounded-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="ytd">Year to Date</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
 
-                  <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
-                    <SelectTrigger className="h-9 w-full sm:w-[120px] text-sm rounded-lg">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {monthOptions.map((month) => (
-                        <SelectItem key={month.value} value={month.value.toString()}>{month.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          {timeMode === 'custom' && (
+            <>
+              <Input
+                type="datetime-local"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="h-9 text-sm w-auto rounded-lg"
+              />
+              <span className="text-xs text-muted-foreground shrink-0">to</span>
+              <Input
+                type="datetime-local"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="h-9 text-sm w-auto rounded-lg"
+              />
+            </>
+          )}
 
-                  <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-                    <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm rounded-lg">
-                      <Calendar className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {weekOptions.map((week) => (
-                        <SelectItem key={week.value} value={week.value}>{week.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
-
-              {timeMode === 'custom' && (
-                <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
-                  <Input
-                    type="datetime-local"
-                    value={customStart}
-                    onChange={(e) => setCustomStart(e.target.value)}
-                    className="h-9 text-sm w-full sm:w-auto rounded-lg"
-                  />
-                  <span className="text-xs text-muted-foreground shrink-0">to</span>
-                  <Input
-                    type="datetime-local"
-                    value={customEnd}
-                    onChange={(e) => setCustomEnd(e.target.value)}
-                    className="h-9 text-sm w-full sm:w-auto rounded-lg"
-                  />
-                </div>
-              )}
-
-              <Select value={repFilter} onValueChange={setRepFilter}>
-                <SelectTrigger className="h-9 w-full sm:w-[100px] text-sm rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Company</SelectItem>
-                  <SelectItem value="me">{teamMember?.name || 'Me'}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <Select value={repFilter} onValueChange={setRepFilter}>
+            <SelectTrigger className="h-9 w-[100px] text-sm rounded-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Company</SelectItem>
+              <SelectItem value="me">{teamMember?.name || 'Me'}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* ── Section 1: Pipeline Overview ── */}
         <section>
           <h2 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">Pipeline Overview</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-            <OverviewCard icon={<Users />} label="Active" value={metrics.activeLeads} sub="total pipeline" accentColor="blue" index={0} />
-            <OverviewCard icon={<UserPlus />} label="New Leads" value={metrics.newLeads} sub={periodSub} accentColor="violet" index={1} />
-            <OverviewCard icon={<Trophy />} label="Closed Won" value={metrics.closedWon} sub={periodSub} accentColor="emerald" index={2} />
-            <OverviewCard icon={<AlertCircle />} label="Closed Lost" value={metrics.closedLost} sub={periodSub} accentColor="rose" index={3} />
-            <OverviewCard icon={<ArrowRightLeft />} label="Stage Moves" value={metrics.stageMovements} sub={periodSub} accentColor="amber" index={4} />
-            <OverviewCard icon={<Send />} label="Follow-ups" value={metrics.followUpsSent} sub="7-day sent" accentColor="blue" index={5} />
-            <OverviewCard icon={<Eye />} label="Rate Watch" value={metrics.rateWatchSignups} sub="signups" accentColor="violet" index={6} />
+          <div ref={pipelineGridRef} className="relative pt-14">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+              {/* Chronological: Inflow → Pipeline → Activity → Outcomes */}
+              <OverviewCard icon={<UserPlus />} label="New Leads" value={metrics.newLeads} sub={periodSub} accentColor="violet" index={0} />
+              <OverviewCard icon={<Users />} label="Active" value={metrics.activeLeads} sub="total pipeline" accentColor="blue" index={1} />
+              <OverviewCard icon={<ArrowRightLeft />} label="Stage Moves" value={metrics.stageMovements} sub={periodSub} accentColor="amber" index={2} />
+              <OverviewCard icon={<Send />} label="Follow-ups" value={metrics.followUpsSent} sub="7-day sent" accentColor="blue" index={3} />
+              <OverviewCard icon={<Trophy />} label="Closed Won" value={metrics.closedWon} sub={periodSub} accentColor="emerald" index={4} />
+              <OverviewCard icon={<AlertCircle />} label="Closed Lost" value={metrics.closedLost} sub={periodSub} accentColor="rose" index={5} />
+              <OverviewCard icon={<Eye />} label="Rate Watch" value={metrics.rateWatchSignups} sub="signups" accentColor="violet" index={6} />
+            </div>
+            <PipelineConnectors
+              containerRef={pipelineGridRef}
+              metrics={{
+                activeLeads: metrics.activeLeads,
+                newLeads: metrics.newLeads,
+                closedWon: metrics.closedWon,
+                closedLost: metrics.closedLost,
+              }}
+            />
           </div>
         </section>
 

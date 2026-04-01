@@ -403,24 +403,12 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
   return (
     <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 md:px-6">
+      <div className="flex items-center justify-between px-5 py-3" style={{ backgroundColor: '#eee6f6', borderBottom: '1px solid #c8bdd6' }}>
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800">
-            <Zap className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-          </div>
-          <h3 className="text-base font-bold">Top Actions</h3>
-          <DbTableBadge tables={['leads', 'communications', 'tasks']} />
-          <span className="text-xs text-muted-foreground">{actions.length} items</span>
+          <Zap className="h-4 w-4" style={{ color: '#3b2778' }} />
+          <h3 className="text-sm font-semibold" style={{ color: '#3b2778' }}>Top Actions</h3>
+          <span className="text-xs" style={{ color: '#3b2778', opacity: 0.6 }}>{actions.length} items</span>
         </div>
-      </div>
-
-      {/* Table header */}
-      <div className="grid grid-cols-[2rem_1fr_4rem_5rem_4.5rem] gap-3 px-5 md:px-6 py-2 border-t border-b bg-muted/30 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        <span>#</span>
-        <span>Action</span>
-        <span className="text-right">Go to</span>
-        <span className="text-right">Stage</span>
-        <span className="text-right">Timing</span>
       </div>
 
       {/* Content */}
@@ -434,81 +422,118 @@ export const TopActions = ({ evanId }: TopActionsProps) => {
           <p className="text-sm font-medium">All caught up!</p>
         </div>
       ) : (
-        <ScrollArea className="h-[420px]">
-          {actions.map((item, index) => {
-            const Icon = ACTION_ICONS[item.actionType];
-            const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
-            const destination = getDestinationLabel(item);
-            const DestIcon = destination === 'Email' ? Mail : destination === 'Call' ? Phone : ArrowRight;
+        <ScrollArea className="h-[460px]">
+          <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 600, borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr>
+                {['#', 'Action', 'Go To', 'Stage', 'Timing'].map((label) => (
+                  <th
+                    key={label}
+                    style={{
+                      backgroundColor: '#eee6f6',
+                      border: '1px solid #c8bdd6',
+                      color: '#3b2778',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      textAlign: 'left',
+                      padding: '6px 10px',
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1,
+                    }}
+                  >
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {actions.map((item, index) => {
+                const Icon = ACTION_ICONS[item.actionType];
+                const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
+                const destination = getDestinationLabel(item);
+                const DestIcon = destination === 'Email' ? Mail : destination === 'Call' ? Phone : ArrowRight;
+                const cellBorder = '1px solid #c8bdd6';
 
-            return (
-              <Link
-                key={item.id}
-                to={getActionUrl(item)}
-                className="block"
-              >
-                <div className={`group grid grid-cols-[2rem_1fr_4rem_5rem_4.5rem] gap-3 items-center px-5 md:px-6 py-3 hover:bg-muted/40 transition-colors cursor-pointer ${
-                  index < actions.length - 1 ? 'border-b border-border/50' : ''
-                }`}>
-                  {/* Rank */}
-                  <span className={`text-xs font-bold ${
-                    index < 3 ? 'text-foreground' : 'text-muted-foreground'
-                  }`}>
-                    {index + 1}
-                  </span>
+                return (
+                  <Link
+                    key={item.id}
+                    to={getActionUrl(item)}
+                    className="contents"
+                  >
+                    <tr
+                      className="cursor-pointer"
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
+                    >
+                      {/* # */}
+                      <td style={{ border: cellBorder, padding: '8px 10px', width: 40, color: '#3b2778', fontWeight: 600 }}>
+                        {index + 1}
+                      </td>
 
-                  {/* Action + lead info */}
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`flex-shrink-0 p-1.5 rounded-md ${
-                      isOverdue
-                        ? 'bg-red-50 text-red-500 dark:bg-red-950/30 dark:text-red-400'
-                        : 'bg-muted/60 text-muted-foreground'
-                    }`}>
-                      <Icon className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate leading-tight">
-                        {item.action}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {item.leadName}
-                        {item.companyName && ` · ${item.companyName}`}
-                        {item.loanAmount ? ` · ${formatCurrency(item.loanAmount)}` : ''}
-                      </p>
-                    </div>
-                  </div>
+                      {/* Action */}
+                      <td style={{ border: cellBorder, padding: '8px 10px' }}>
+                        <div className="flex items-center gap-2" style={{ overflow: 'hidden' }}>
+                          <div className="flex-shrink-0 p-1 rounded" style={{ backgroundColor: isOverdue ? '#fef2f2' : '#f3eef9' }}>
+                            <Icon className="h-3.5 w-3.5" style={{ color: isOverdue ? '#dc2626' : '#3b2778' }} />
+                          </div>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ color: '#1a1a2e', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {item.action}
+                            </div>
+                            <div style={{ color: '#6b7280', fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
+                              {item.leadName}
+                              {item.companyName && ` · ${item.companyName}`}
+                              {item.loanAmount ? ` · ${formatCurrency(item.loanAmount)}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-                  {/* Destination */}
-                  <div className="text-right">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-                      <DestIcon className="h-3 w-3" />
-                      {destination}
-                    </span>
-                  </div>
+                      {/* Go To */}
+                      <td style={{ border: cellBorder, padding: '8px 10px', width: 70, color: '#1a1a2e', whiteSpace: 'nowrap' }}>
+                        <span className="inline-flex items-center gap-1">
+                          <DestIcon className="h-3 w-3" />
+                          {destination}
+                        </span>
+                      </td>
 
-                  {/* Stage */}
-                  <div className="text-right">
-                    <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${getStageColor(item.status)}`}>
-                      {stageLabels[item.status] || item.status}
-                    </span>
-                  </div>
+                      {/* Stage */}
+                      <td style={{ border: cellBorder, padding: '8px 10px', width: 110, color: '#1a1a2e', whiteSpace: 'nowrap' }}>
+                        {stageLabels[item.status] || item.status}
+                      </td>
 
-                  {/* Timing */}
-                  <div className="text-right">
-                    {item.dueDate ? (
-                      <span className={`text-xs font-medium ${isOverdue ? 'text-red-500' : 'text-foreground'}`}>
-                        {isOverdue ? 'Overdue' : format(new Date(item.dueDate), 'MMM d')}
-                      </span>
-                    ) : item.waitingTime > 0 ? (
-                      <span className="text-xs text-muted-foreground">
-                        {formatWaitingTime(item.waitingTime)} ago
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
+                      {/* Timing */}
+                      <td style={{ border: cellBorder, padding: '8px 10px', width: 90, whiteSpace: 'nowrap' }}>
+                        {item.dueDate ? (
+                          <>
+                            <span style={{ color: isOverdue ? '#dc2626' : '#1a1a2e' }}>
+                              {format(new Date(item.dueDate), 'MMM d')}
+                            </span>
+                            {isOverdue && (
+                              <span style={{ color: '#dc2626', fontSize: '11px', marginLeft: 4 }}>
+                                Overdue
+                              </span>
+                            )}
+                          </>
+                        ) : item.waitingTime > 0 ? (
+                          <span style={{ color: '#1a1a2e' }}>
+                            {formatWaitingTime(item.waitingTime)} ago
+                          </span>
+                        ) : (
+                          <span style={{ color: '#d1d5db' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  </Link>
+                );
+              })}
+            </tbody>
+          </table>
+          </div>
         </ScrollArea>
       )}
     </div>
