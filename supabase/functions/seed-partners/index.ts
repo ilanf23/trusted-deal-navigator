@@ -77,25 +77,16 @@ Deno.serve(async (req) => {
       }
 
       // Update profile
-      await supabaseAdmin.from('profiles').update({
+      await supabaseAdmin.from('users').update({
         company_name: partner.company,
         contact_person: partner.name,
       }).eq('user_id', userId)
 
-      // Ensure partner role exists
-      const { data: existingRole } = await supabaseAdmin
-        .from('user_roles')
-        .select('id')
+      // Ensure partner role is set on team_members record
+      await supabaseAdmin
+        .from('users')
+        .update({ app_role: 'partner' })
         .eq('user_id', userId)
-        .eq('role', 'partner')
-        .maybeSingle()
-
-      if (!existingRole) {
-        await supabaseAdmin.from('user_roles').insert({
-          user_id: userId,
-          role: 'partner',
-        })
-      }
 
       // Link to 1-2 random leads
       const numLeads = Math.random() > 0.5 ? 2 : 1

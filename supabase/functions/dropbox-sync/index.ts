@@ -507,10 +507,10 @@ Deno.serve(async (req) => {
     // Check admin role
     const supabaseAdmin = createClient(supabaseUrl, SUPABASE_SERVICE_ROLE_KEY);
     const { data: roleData } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
+      .from('users')
+      .select('app_role')
       .eq('user_id', userId)
-      .in('role', ['admin', 'super_admin'])
+      .in('app_role', ['admin', 'super_admin'])
       .maybeSingle();
 
     if (!roleData) {

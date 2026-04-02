@@ -783,7 +783,7 @@ const LenderPrograms = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-4">
+      <div data-full-bleed className="space-y-4 p-6">
         {/* Actions */}
         <div className="flex flex-wrap gap-2 justify-end">
             <input

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
@@ -445,7 +445,7 @@ const LenderManagement = () => {
     queryKey: ['lm-team-members'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name, avatar_url')
         .order('name');
       if (error) throw error;
@@ -507,14 +507,13 @@ const LenderManagement = () => {
   // Create opportunity mutation
   const createOpportunityMutation = useMutation({
     mutationFn: async (data: { name: string; company_name: string; email: string; phone: string; stageId: string }) => {
-      const evanMember = teamMembers.find(m => m.name === 'Evan');
       const result = await addLeadToPipeline.mutateAsync({
         leadData: {
           name: data.name,
           company_name: data.company_name || undefined,
           email: data.email || undefined,
           phone: data.phone || undefined,
-          assigned_to: evanMember?.id || null,
+          assigned_to: teamMembers[0]?.id || null,
         },
         stageId: data.stageId,
       });
@@ -818,21 +817,31 @@ const LenderManagement = () => {
     }`;
 
   return (
-    <EvanLayout>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background system-font">
+    <EmployeeLayout>
+      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-background system-font -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10">
 
         {/* ── Body: Sidebar + Table ── */}
-        <div className="flex flex-1 min-h-0 overflow-hidden gap-3">
+        <div className="relative flex flex-1 min-h-0 overflow-y-hidden overflow-x-clip">
 
+
+          {/* ── Sidebar collapse button (straddles border) ── */}
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            title={sidebarOpen ? 'Hide filters' : 'Show filters'}
+            style={{ left: sidebarOpen ? 'calc(18rem - 1.3125rem)' : 'calc(72px - 21px)', borderRadius: '50%', transition: 'left 200ms ease' }}
+            className="absolute top-[9px] z-20 h-[42px] w-[42px] border border-gray-300 dark:border-border bg-white dark:bg-card flex items-center justify-center text-black dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted hover:border-gray-400 transition-colors shadow-sm"
+          >
+            <ArrowLeft className="h-5 w-5" strokeWidth={2.5} style={{ transform: `scale(2) ${sidebarOpen ? '' : 'rotate(180deg)'}`, transition: 'transform 200ms ease' }} />
+          </button>
 
           {/* ── Left Sidebar (Copper style) ── */}
           <aside
-            className={`shrink-0 border-r border-[#e8eaed] dark:border-border bg-[#f8f9fa] dark:bg-muted/30 flex flex-col overflow-hidden transition-all duration-200 ${
-              sidebarOpen ? 'w-72' : 'w-0 border-r-0'
+            className={`shrink-0 border-r border-[#e8eaed] dark:border-border flex flex-col overflow-hidden transition-all duration-200 ${
+              sidebarOpen ? 'w-72 bg-[#f8f9fa] dark:bg-muted/30' : 'w-[72px] bg-[#eef0f2] dark:bg-muted/50'
             }`}
           >
-            <div className="w-72 pl-4 flex-1 overflow-y-auto">
-              <div className="px-6 pt-3 pb-2 flex items-center justify-between">
+            {sidebarOpen && <div className="w-72 pl-4 flex-1 overflow-y-auto">
+              <div className="px-6 pt-5 pb-3 flex items-center justify-between">
                 <span className="text-[20px] font-bold tracking-tight text-[#1f1f1f] dark:text-foreground">Saved Filters</span>
                 <div className="flex items-center gap-1">
                   <CreateFilterDialog
@@ -858,7 +867,7 @@ const LenderManagement = () => {
                 </div>
               </div>
 
-              <nav className="flex-1 overflow-y-auto pb-4">
+              <nav className="flex-1 overflow-y-auto pb-4 px-3">
                 {/* All Opportunities — top item */}
                 {FILTER_OPTIONS.filter(o => o.group === 'top').map((opt) => {
                   const isActive = activeFilter === opt.id;
@@ -867,8 +876,8 @@ const LenderManagement = () => {
                     <button
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center justify-between px-6 py-3 text-left transition-colors ${
-                        isActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted hover:text-[#1f1f1f] dark:hover:text-foreground'
+                      className={`relative w-full flex items-center justify-between px-3 py-3 text-left transition-colors ${
+                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -887,7 +896,7 @@ const LenderManagement = () => {
                 {/* Public section */}
                 <button
                   onClick={() => setPublicFiltersOpen(v => !v)}
-                  className="w-full px-6 pt-4 pb-1 flex items-center justify-between group"
+                  className="w-full px-3 pt-4 pb-1 flex items-center justify-between group"
                 >
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-muted-foreground">Public</span>
                   <ChevronUp className={`h-3.5 w-3.5 text-[#80868b] dark:text-muted-foreground transition-transform duration-200 ${publicFiltersOpen ? '' : 'rotate-180'}`} />
@@ -899,8 +908,8 @@ const LenderManagement = () => {
                     <button
                       key={opt.id}
                       onClick={() => setActiveFilter(opt.id)}
-                      className={`relative w-full flex items-center px-6 py-2.5 text-left transition-colors ${
-                        isActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted hover:text-[#1f1f1f] dark:hover:text-foreground'
+                      className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
+                        isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
                       }`}
                     >
                       <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{opt.label}</span>
@@ -911,7 +920,7 @@ const LenderManagement = () => {
                 {/* Custom Filters */}
                 {customFilters.length > 0 && (
                   <>
-                    <div className="px-6 pt-4 pb-1">
+                    <div className="pt-4 pb-1">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5f6368] dark:text-muted-foreground">Custom</span>
                     </div>
                     {customFilters.map((cf) => {
@@ -920,8 +929,8 @@ const LenderManagement = () => {
                         <button
                           key={cf.id}
                           onClick={() => setActiveFilter(cf.id)}
-                          className={`relative w-full flex items-center px-6 py-2.5 text-left transition-colors ${
-                            isActive ? 'bg-[#eee6f6] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted hover:text-[#1f1f1f] dark:hover:text-foreground'
+                          className={`relative w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors ${
+                            isActive ? 'bg-[#e0d4f0] dark:bg-purple-950/50 text-[#3b2778] dark:text-purple-400 rounded-lg font-medium' : 'text-[#3c4043] dark:text-muted-foreground hover:bg-[#f0eaf7] dark:hover:bg-purple-950/30 hover:text-[#3b2778] dark:hover:text-purple-300 rounded-lg'
                           }`}
                         >
                           <span className={`text-[14px] truncate ${isActive ? 'font-medium' : ''}`}>{cf.label}</span>
@@ -931,34 +940,16 @@ const LenderManagement = () => {
                   </>
                 )}
               </nav>
-            </div>
-            <div className="w-72 shrink-0 border-t border-[#e8eaed] dark:border-border px-6 py-3">
-              <button
-                onClick={() => setSidebarOpen(false)}
-                title="Hide filters"
-                className="flex items-center gap-2 text-[13px] font-medium text-black dark:text-foreground hover:text-[#5f6368] dark:hover:text-muted-foreground transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Hide Filters</span>
-              </button>
-            </div>
+            </div>}
           </aside>
 
           {/* Main Table Area */}
           <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
             {/* ── Copper-Style Content Title Bar ── */}
-            <div className="shrink-0 border-b-0 px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
+            <div className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 bg-white dark:bg-background">
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setSidebarOpen(v => !v)}
-                  title={sidebarOpen ? 'Hide filters' : 'Show filters'}
-                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-muted transition-colors text-[#5f6368] dark:text-muted-foreground"
-                >
-                  <PanelLeft className="h-4 w-4" />
-                </button>
-
+              <div className="flex items-center gap-3 ml-24">
                 <h2 className="text-[16px] font-bold text-[#1f1f1f] dark:text-foreground whitespace-nowrap">
                   {FILTER_OPTIONS.find(o => o.id === activeFilter)?.label ?? customFilters.find(cf => cf.id === activeFilter)?.label ?? 'All Opportunities'}
                 </h2>
@@ -1632,7 +1623,7 @@ const LenderManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

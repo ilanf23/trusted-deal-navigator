@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { Link, useNavigate } from 'react-router-dom';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import GmailComposeDialog, { Attachment } from '@/components/admin/GmailComposeDialog';
 import PipelineSharingModal from '@/components/admin/PipelineSharingModal';
@@ -97,7 +97,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { Checkbox } from '@/components/ui/checkbox';
 import { InlineEditableCell } from '@/components/admin/InlineEditableCell';
 import { useUndo } from '@/contexts/UndoContext';
-import { useEvanUIState } from '@/contexts/EvanUIStateContext';
+import { useEmployeeUIState } from '@/contexts/EmployeeUIStateContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -220,11 +220,11 @@ const EmployeePipeline = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { teamMember, isOwner } = useTeamMember();
-  const { getPageState, setPageState } = useEvanUIState();
+  const { getPageState, setPageState } = useEmployeeUIState();
   const persistedPipeline = getPageState('pipeline', { collapsedSections: {} as Record<LeadStatus, boolean>, selectedLeadId: null as string | null });
 
   const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [ownerFilter, setOwnerFilter] = useState<string>('evan');
+  const [ownerFilter, setOwnerFilter] = useState<string>(teamMember?.name?.toLowerCase() || 'all');
   const [detailDialogLead, setDetailDialogLead] = useState<Lead | null>(null);
   const [collapsedSections, setCollapsedSectionsLocal] = useState<Record<LeadStatus, boolean>>(persistedPipeline.collapsedSections as Record<LeadStatus, boolean>);
 
@@ -444,33 +444,21 @@ const EmployeePipeline = () => {
     onError: (error) => { console.error('Save stages mutation failed:', error); toast.error('Failed to update stages'); },
   });
 
-  const { data: evanTeamMember } = useQuery({
-    queryKey: ['evan-team-member'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('id')
-        .ilike('name', 'evan')
-        .single();
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Use current team member from auth context instead of hardcoded Evan lookup
+  const currentMemberId = teamMember?.id ?? null;
 
   // Fetch all team members for the owner filter
   const { data: allTeamMembers = [] } = useQuery({
     queryKey: ['all-team-members-for-filter'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name')
         .order('name');
       if (error) throw error;
       return data;
     },
   });
-
-  const evanId = evanTeamMember?.id;
 
   // Create a map of team member names to IDs for filtering
   const teamMemberNameToId = useMemo(() => {
@@ -482,9 +470,9 @@ const EmployeePipeline = () => {
   }, [allTeamMembers]);
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['evans-pipeline-leads', evanId, ownerFilter, teamMemberNameToId],
+    queryKey: ['evans-pipeline-leads', currentMemberId, ownerFilter, teamMemberNameToId],
     queryFn: async () => {
-      if (!evanId) return [];
+      if (!currentMemberId) return [];
       
       let query = supabase
         .from('leads')
@@ -503,7 +491,7 @@ const EmployeePipeline = () => {
       if (error) throw error;
       return data as Lead[];
     },
-    enabled: !!evanId,
+    enabled: !!currentMemberId,
   });
 
   const { data: touchpoints = {} } = useQuery({
@@ -541,7 +529,7 @@ const EmployeePipeline = () => {
     queryKey: ['team-members-list'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name')
         .not('name', 'ilike', 'adam')
         .not('name', 'ilike', 'ilan');
@@ -856,13 +844,13 @@ const EmployeePipeline = () => {
   // Create new lead mutation
   const createLeadMutation = useMutation({
     mutationFn: async ({ name, status }: { name: string; status: LeadStatus }) => {
-      if (!evanId) throw new Error('Evan team member not found');
+      if (!currentMemberId) throw new Error('Current team member not found');
       const { data, error } = await supabase
         .from('leads')
         .insert({
           name: name.trim(),
           status,
-          assigned_to: evanId,
+          assigned_to: currentMemberId,
           source: 'Pipeline',
         })
         .select()
@@ -1010,7 +998,7 @@ const EmployeePipeline = () => {
 
   // Create new lead via header button
   const handleCreateNewLead = () => {
-    if (!evanId) {
+    if (!currentMemberId) {
       toast.error('Cannot create lead - team member not found');
       return;
     }
@@ -1164,17 +1152,17 @@ const EmployeePipeline = () => {
 
   if (isLoading) {
     return (
-      <EvanLayout>
+      <EmployeeLayout>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0066FF]"></div>
         </div>
-      </EvanLayout>
+      </EmployeeLayout>
     );
   }
 
   return (
-    <EvanLayout>
-      <div className="flex flex-col h-full font-['Inter',_'SF_Pro_Display',_system-ui,_sans-serif]">
+    <EmployeeLayout>
+      <div data-full-bleed className="flex flex-col h-full font-['Inter',_'SF_Pro_Display',_system-ui,_sans-serif]">
         {/* Header - responsive layout */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
@@ -1253,7 +1241,7 @@ const EmployeePipeline = () => {
             </span>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-            {canEdit && evanId && (
+            {canEdit && currentMemberId && (
               <div className="hidden sm:flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -1321,7 +1309,7 @@ const EmployeePipeline = () => {
                     Columns
                   </DropdownMenuItem>
                   {/* Mobile-only share option */}
-                  {canEdit && evanId && (
+                  {canEdit && currentMemberId && (
                     <DropdownMenuItem onClick={() => setSharingModalOpen(true)} className="cursor-pointer py-2 md:py-3 px-3 md:px-4 text-xs md:text-sm sm:hidden">
                       <Users className="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
                       Share
@@ -1446,10 +1434,9 @@ const EmployeePipeline = () => {
                 <SelectValue placeholder="Owner" />
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-lg z-[100]">
-                <SelectItem value="evan" className="text-slate-900 dark:text-slate-100">Evan's Leads</SelectItem>
-                <SelectItem value="brad" className="text-slate-900 dark:text-slate-100">Brad's Leads</SelectItem>
-                <SelectItem value="maura" className="text-slate-900 dark:text-slate-100">Maura's Leads</SelectItem>
-                <SelectItem value="wendy" className="text-slate-900 dark:text-slate-100">Wendy's Leads</SelectItem>
+                {allTeamMembers.map((tm) => (
+                  <SelectItem key={tm.id} value={tm.name.toLowerCase()} className="text-slate-900 dark:text-slate-100">{tm.name}'s Leads</SelectItem>
+                ))}
                 <SelectItem value="all" className="text-slate-900 dark:text-slate-100">All Leads</SelectItem>
                 <SelectItem value="won" className="text-slate-900 dark:text-slate-100">Won Leads</SelectItem>
                 <SelectItem value="dead" className="text-slate-900 dark:text-slate-100">Finished Leads</SelectItem>
@@ -2021,12 +2008,12 @@ const EmployeePipeline = () => {
       />
 
       {/* Pipeline Sharing Modal */}
-      {evanId && (
+      {currentMemberId && (
         <PipelineSharingModal
           open={sharingModalOpen}
           onOpenChange={setSharingModalOpen}
-          ownerId={evanId}
-          ownerName="Evan"
+          ownerId={currentMemberId}
+          ownerName={teamMember?.name || 'Team Member'}
         />
       )}
 
@@ -2199,7 +2186,7 @@ const EmployeePipeline = () => {
           </div>
         </div>
       )}
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

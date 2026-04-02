@@ -25,8 +25,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow, differenceInDays, differenceInHours } from 'date-fns';
-import { TaskDetailDialog } from '@/components/evan/tasks/TaskDetailDialog';
-import { Task } from '@/components/evan/tasks/types';
+import { TaskDetailDialog } from '@/components/employee/tasks/TaskDetailDialog';
+import { Task } from '@/components/employee/tasks/types';
 import { LeadTodosSection } from '@/components/admin/LeadTodosSection';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import { FormattedPhoneInput } from '@/components/admin/FormattedPhoneInput';
@@ -394,7 +394,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
       if (!referral) return null;
       // Fetch partner profile for display name
       const { data: profile } = await supabase
-        .from('profiles')
+        .from('users')
         .select('contact_person, company_name')
         .eq('user_id', referral.partner_id)
         .maybeSingle();
@@ -502,7 +502,7 @@ const LeadDetailDialog = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetai
     queryKey: ['team-members'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name, avatar_url')
         .eq('is_active', true)
         .not('name', 'ilike', 'adam')

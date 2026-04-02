@@ -86,10 +86,10 @@ serve(async (req: Request): Promise<Response> => {
 
     // Check if user has admin role
     const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
+      .from("users")
+      .select("app_role")
       .eq("user_id", user.id)
-      .eq("role", "admin")
+      .in("app_role", ["admin", "super_admin"])
       .maybeSingle();
 
     if (!roleData) {

@@ -20,7 +20,7 @@ interface Task {
   created_at: string;
 }
 
-export const EvanTasksWidget = () => {
+export const TasksWidget = () => {
   const [newTask, setNewTask] = useState('');
   const queryClient = useQueryClient();
 

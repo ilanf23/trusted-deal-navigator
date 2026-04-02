@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
-import EvanLayout from '@/components/evan/EvanLayout';
-import { EvanCalendarWidget } from '@/components/evan/EvanCalendarWidget';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
+import { CalendarWidget } from '@/components/employee/CalendarWidget';
 
 const Calendar = () => {
   const { setPageTitle } = useAdminTopBar();
@@ -11,12 +11,12 @@ const Calendar = () => {
   }, []);
 
   return (
-    <EvanLayout>
+    <EmployeeLayout>
       <div className="space-y-2">
         {/* Calendar Widget */}
-        <EvanCalendarWidget />
+        <CalendarWidget />
       </div>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

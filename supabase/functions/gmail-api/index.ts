@@ -724,10 +724,10 @@ Deno.serve(async (req) => {
     } else {
       // Check if user is admin
       const { data: roleData } = await supabaseAdmin
-        .from('user_roles')
-        .select('role')
+        .from('users')
+        .select('app_role')
         .eq('user_id', userId)
-        .in('role', ['admin', 'super_admin'])
+        .in('app_role', ['admin', 'super_admin'])
         .maybeSingle();
       
       isAdmin = !!roleData;

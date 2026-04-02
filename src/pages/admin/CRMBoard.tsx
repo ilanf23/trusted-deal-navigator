@@ -21,7 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
-type TeamMember = Database['public']['Tables']['team_members']['Row'];
+type TeamMember = Database['public']['Tables']['users']['Row'];
 
 interface LeadWithOwner extends Lead {
   team_member?: TeamMember | null;
@@ -59,7 +59,7 @@ const CRMBoard = () => {
     queryKey: ['team-members'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('*')
         .eq('is_active', true)
         .not('name', 'ilike', 'adam')

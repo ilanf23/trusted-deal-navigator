@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       const userId = userData.user.id
 
       // Update profile with company info
-      await supabaseAdmin.from('profiles').update({
+      await supabaseAdmin.from('users').update({
         company_name: client.company,
         contact_person: client.name,
       }).eq('user_id', userId)

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useEvanUIState } from '@/contexts/EvanUIStateContext';
+import { useEmployeeUIState } from '@/contexts/EmployeeUIStateContext';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Task, TaskActivity, TaskType, statusConfig, statusPickerOptions, priorityConfig, taskTypeConfig } from './types';
@@ -57,22 +58,24 @@ export const TaskDetailDialog = ({
   onComposeEmail,
 }: TaskDetailDialogProps) => {
   const navigate = useNavigate();
-  const { getPageState, setPageState } = useEvanUIState();
+  const { teamMember } = useTeamMember();
+  const { getPageState, setPageState } = useEmployeeUIState();
   const [newComment, setNewComment] = useState('');
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
   
   // New task form state - restore from persisted context
   const persistedForm = getPageState('newTaskForm', {
-    title: '', description: '', status: 'todo', assignee: 'Evan',
+    title: '', description: '', status: 'todo', assignee: '',
     dueDate: undefined as string | undefined, dueTime: '', leadId: null as string | null,
     hours: null as number | null, priority: 'medium', taskType: 'internal' as TaskType,
   });
 
+  const defaultAssignee = teamMember?.name || '';
   const [newTaskTitle, setNewTaskTitle] = useState(isNewTask ? persistedForm.title : '');
   const [newTaskDescription, setNewTaskDescription] = useState(isNewTask ? persistedForm.description : '');
   const [newTaskStatus, setNewTaskStatus] = useState(isNewTask ? persistedForm.status : 'todo');
-  const [newTaskAssignee, setNewTaskAssignee] = useState(isNewTask ? persistedForm.assignee : 'Evan');
+  const [newTaskAssignee, setNewTaskAssignee] = useState(isNewTask ? (persistedForm.assignee || defaultAssignee) : defaultAssignee);
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(isNewTask && persistedForm.dueDate ? new Date(persistedForm.dueDate) : undefined);
   const [newTaskDueTime, setNewTaskDueTime] = useState<string>(isNewTask ? persistedForm.dueTime : '');
   const [newTaskLeadId, setNewTaskLeadId] = useState<string | null>(isNewTask ? persistedForm.leadId : null);
@@ -114,7 +117,7 @@ export const TaskDetailDialog = ({
       setNewTaskTitle('');
       setNewTaskDescription('');
       setNewTaskStatus('todo');
-      setNewTaskAssignee('Evan');
+      setNewTaskAssignee(teamMember?.name || '');
       setNewTaskDueDate(undefined);
       setNewTaskDueTime('');
       setNewTaskLeadId(null);
@@ -168,7 +171,7 @@ export const TaskDetailDialog = ({
     
     // Clear persisted new task form
     setPageState('newTaskForm', {
-      title: '', description: '', status: 'todo', assignee: 'Evan',
+      title: '', description: '', status: 'todo', assignee: teamMember?.name || '',
       dueDate: undefined, dueTime: '', leadId: null, hours: null, priority: 'medium', taskType: 'internal',
     });
   };

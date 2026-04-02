@@ -13,11 +13,12 @@ import { GmailEmail, ThreadMessage, extractSenderName, extractEmailAddress } fro
 import {
   mockExternalEmails,
   mockThreadMessages,
-  evanEmailTemplates as emailTemplates,
+  emailTemplates,
   findLeadForEmail as findLeadForEmailFn,
   getNextStepSuggestion,
-} from '@/components/gmail/EvanGmailFeatures';
-import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
+} from '@/components/gmail/GmailFeatures';
+import { EVAN_SIGNATURE_HTML, appendSignature, getSignatureHtml } from '@/lib/email-signature';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { useGmailPeopleSync } from '@/hooks/useGmailPeopleSync';
 
 const EMAILS_PER_PAGE = 50;
@@ -28,7 +29,7 @@ export interface CRMGmailConfig {
   returnPath?: string;
 }
 
-export function useEvansGmailLogic(config?: CRMGmailConfig) {
+export function useGmailLogic(config?: CRMGmailConfig) {
   const userKey = config?.userKey ?? 'evan';
   const callbackPrefix = config?.callbackPrefix ?? 'admin';
   const returnPath = config?.returnPath ?? '/admin/gmail';
@@ -38,6 +39,15 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { teamMember } = useTeamMember();
+
+  // Dynamic sender info from current team member
+  const senderName = teamMember?.name || 'Team Member';
+  const senderFirstName = senderName.split(' ')[0];
+  const senderEmail = teamMember?.email || 'info@commerciallendingx.com';
+  const senderSignature = teamMember
+    ? getSignatureHtml(senderName, senderEmail, teamMember.role || 'Associate')
+    : EVAN_SIGNATURE_HTML;
 
   // Shared Gmail connection & email data
   const gmail = useGmailConnection({
@@ -116,7 +126,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
 
   // Debug: log route transitions
   useEffect(() => {
-    console.debug('[EvansGmail] route', `${location.pathname}${location.search}`);
+    console.debug('[GmailLogic] route', `${location.pathname}${location.search}`);
   }, [location.pathname, location.search]);
 
   const clearComposeParams = useCallback(() => {
@@ -164,6 +174,40 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
     },
   });
 
+  // Handle URL param to auto-select a thread (from feed activity cards)
+  const handledThreadKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const threadId = searchParams.get('threadId');
+    const messageId = searchParams.get('messageId');
+    const replyIntent = searchParams.get('reply');
+    if (!threadId && !messageId) {
+      handledThreadKeyRef.current = null;
+      return;
+    }
+    const key = `${threadId || ''}:${messageId || ''}`;
+    if (handledThreadKeyRef.current === key) return;
+    handledThreadKeyRef.current = key;
+
+    // Find the email matching this thread or message ID
+    if (allEmails.length > 0) {
+      const match = allEmails.find(
+        (e) => (threadId && e.threadId === threadId) || (messageId && e.id === messageId)
+      );
+      if (match) {
+        handleSelectEmail(match.id);
+        if (replyIntent === 'true') {
+          setTimeout(() => setShowInlineReply(true), 300);
+        }
+      }
+      // Clear the params after handling
+      const next = new URLSearchParams(searchParams);
+      next.delete('threadId');
+      next.delete('messageId');
+      next.delete('reply');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, allEmails, handleSelectEmail, setShowInlineReply, setSearchParams]);
+
   // Handle URL params to open compose dialog from dashboard nudges or tasks
   useEffect(() => {
     const compose = searchParams.get('compose');
@@ -188,10 +232,10 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
 
     if (taskId) {
       setOriginatingTaskId(taskId);
-      console.debug('[EvansGmail] Task linked to compose', { taskId });
+      console.debug('[GmailLogic] Task linked to compose', { taskId });
     }
 
-    console.debug('[EvansGmail] compose intent', {
+    console.debug('[GmailLogic] compose intent', {
       from: `${location.pathname}${location.search}`,
       compose, to, draftId, leadId, template, taskId,
     });
@@ -238,8 +282,8 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
                 ? `Closing Documents - ${lead.company_name || lead.name}`
                 : `Following Up - ${lead.company_name || lead.name}`;
               const fallbackBody = template === 'closing'
-                ? `Hi ${lead.name?.split(' ')[0] || 'there'},\n\nCongratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.\n\nBest regards,\nEvan\nCommercial Lending X`
-                : `Hi ${lead.name?.split(' ')[0] || 'there'},\n\nI wanted to check in and see how things are progressing on your end.\n\nBest regards,\nEvan\nCommercial Lending X`;
+                ? `Hi ${lead.name?.split(' ')[0] || 'there'},\n\nCongratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.\n\nBest regards,\n${senderFirstName}\nCommercial Lending X`
+                : `Hi ${lead.name?.split(' ')[0] || 'there'},\n\nI wanted to check in and see how things are progressing on your end.\n\nBest regards,\n${senderFirstName}\nCommercial Lending X`;
               setComposeSubject(fallbackSubject);
               setComposeBody(appendSignature(fallbackBody));
               setComposeOpen(true);
@@ -255,10 +299,10 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
           let body = '';
           if (template === 'closing') {
             subject = 'Closing Documents';
-            body = `Hi,\n\nCongratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.\n\nPlease review the documents carefully and sign where indicated. If you have any questions, please reach out.\n\nBest regards,\nEvan\nCommercial Lending X`;
+            body = `Hi,\n\nCongratulations! We're approaching the closing stage for your financing. Please find attached the closing documents that require your signature.\n\nPlease review the documents carefully and sign where indicated. If you have any questions, please reach out.\n\nBest regards,\n${senderFirstName}\nCommercial Lending X`;
           } else if (template === 'follow_up') {
             subject = 'Following Up';
-            body = `Hi,\n\nI wanted to check in and see how things are progressing. Please let me know if there's anything I can help with.\n\nBest regards,\nEvan\nCommercial Lending X`;
+            body = `Hi,\n\nI wanted to check in and see how things are progressing. Please let me know if there's anything I can help with.\n\nBest regards,\n${senderFirstName}\nCommercial Lending X`;
           }
           setComposeTo('');
           setComposeSubject(subject);
@@ -267,7 +311,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
         } else {
           setComposeTo('');
           setComposeSubject('');
-          setComposeBody(EVAN_SIGNATURE_HTML);
+          setComposeBody(senderSignature);
           setComposeOpen(true);
         }
       };
@@ -306,7 +350,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
     const draft = draftEmails.find((d) => d.id === draftId);
     if (!draft) return;
     openedDraftIdRef.current = draftId;
-    console.debug('[EvansGmail] opening draft in compose modal', { draftId, to: draft.to, subject: draft.subject });
+    console.debug('[GmailLogic] opening draft in compose modal', { draftId, to: draft.to, subject: draft.subject });
     setActiveFolder('drafts');
     setComposeTo(draft.to || '');
     setComposeSubject(draft.subject || '');
@@ -563,6 +607,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
           user_id: session?.user?.id, flow_id: flowId, source: 'move_forward',
           lead_id: lead.id, to_email: toEmail, subject: finalSubject,
           body_html: bodyHtml, body_plain: bodyPlain, status: 'queued',
+          cc_emails: email.cc || null,
         });
       if (persistError) {
         console.error(`[${flowId}] Failed to persist to outbound_emails:`, persistError);
@@ -577,7 +622,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
     } catch (error: any) {
       console.error(`[${flowId}] Error generating email:`, error);
       const firstName = lead?.name?.split(' ')[0] || extractSenderName(email.from).split(' ')[0];
-      const fallbackPlain = `Hi ${firstName},\n\nThank you for your message. I wanted to follow up and discuss the next steps for moving your loan application forward.\n\nPlease let me know a good time to connect this week.\n\nBest regards,\nEvan`;
+      const fallbackPlain = `Hi ${firstName},\n\nThank you for your message. I wanted to follow up and discuss the next steps for moving your loan application forward.\n\nPlease let me know a good time to connect this week.\n\nBest regards,\n${senderFirstName}`;
       const fallbackHtml = fallbackPlain.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
       setCurrentBodyPlain(fallbackPlain);
       setCurrentBodyHtml(fallbackHtml);
@@ -629,6 +674,11 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      // Split composeTo into primary recipient and CC (ReplyAll puts CC in composeTo)
+      const toAddresses = toSend.split(',').map(e => e.trim()).filter(Boolean);
+      const primaryTo = toAddresses[0];
+      const ccFromTo = toAddresses.length > 1 ? toAddresses.slice(1).join(', ') : null;
+
       const payload: Record<string, any> = {
         to: toSend, subject: subjectSend, body: bodySend,
         bodyPlain: bodyPlainSend, flowId, attachments: attachmentsSend,
@@ -654,10 +704,12 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
       });
 
       if (currentFlowId) {
-        await supabase.from('outbound_emails').update({
+        const updateData: Record<string, any> = {
           status: 'sent', gmail_message_id: responseData.id,
           gmail_thread_id: responseData.threadId, sent_at: new Date().toISOString(),
-        }).eq('flow_id', currentFlowId);
+        };
+        if (ccFromTo) updateData.cc_emails = ccFromTo;
+        await supabase.from('outbound_emails').update(updateData).eq('flow_id', currentFlowId);
         console.log(`[${flowId}] Updated outbound_emails to status=sent`);
       }
 
@@ -682,7 +734,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ['evan-gmail-sent-emails'] });
+      queryClient.invalidateQueries({ queryKey: ['gmail-sent-emails'] });
     } catch (error: any) {
       console.error(`[${flowId}] Send email error:`, error);
       if (currentFlowId) {
@@ -741,7 +793,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
     setComposeBody(appendSignature('') + quotedContent);
     setComposeOpen(true);
 
-    console.debug('[EvansGmail] Reply initiated', {
+    console.debug('[GmailLogic] Reply initiated', {
       threadId: email.threadId, inReplyTo: email.id, to: senderEmail, subject: replySubject,
     });
   }, [findLeadForEmail, setReplyThreadId, setReplyInReplyTo, setCurrentLeadIdForEmail, setComposeTo, setComposeSubject, setComposeBody, setComposeOpen]);
@@ -783,7 +835,7 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
       const threadKey = selectedEmail.threadId || selectedEmail.id;
       const newReply: ThreadMessage = {
         id: `sent-${Date.now()}`,
-        from: 'Evan <evan@commerciallendingx.com>',
+        from: `${senderName} <${senderEmail}>`,
         to: extractEmailAddress(selectedEmail.from),
         date: new Date().toISOString(),
         body: body,
@@ -912,4 +964,4 @@ export function useEvansGmailLogic(config?: CRMGmailConfig) {
   };
 }
 
-export type EvansGmailLogic = ReturnType<typeof useEvansGmailLogic>;
+export type GmailLogic = ReturnType<typeof useGmailLogic>;

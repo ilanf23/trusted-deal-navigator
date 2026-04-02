@@ -5,7 +5,7 @@ import { Database } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { LeadDealSheetTab } from '@/components/admin/LeadDealSheetTab';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -32,30 +32,30 @@ const VolumeLogExpandedView = () => {
 
   if (isLoading) {
     return (
-      <EvanLayout>
+      <EmployeeLayout>
         <div className="p-6 space-y-4">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-[400px] w-full" />
         </div>
-      </EvanLayout>
+      </EmployeeLayout>
     );
   }
 
   if (!lead) {
     return (
-      <EvanLayout>
+      <EmployeeLayout>
         <div className="p-6">
           <p className="text-muted-foreground">Lead not found</p>
           <Button variant="ghost" onClick={() => navigate('/admin/pipeline/volume-log')} className="mt-4">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Volume Log
           </Button>
         </div>
-      </EvanLayout>
+      </EmployeeLayout>
     );
   }
 
   return (
-    <EvanLayout>
+    <EmployeeLayout>
       <div className="h-full flex flex-col">
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b bg-card">
@@ -86,7 +86,7 @@ const VolumeLogExpandedView = () => {
           />
         </div>
       </div>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

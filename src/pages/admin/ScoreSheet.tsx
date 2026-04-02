@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { Card, CardContent } from '@/components/ui/card';
@@ -75,21 +75,21 @@ const ScoreSheet = () => {
   // Loading auth state
   if (googleSheets.loading) {
     return (
-      <EvanLayout>
+      <EmployeeLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-muted-foreground">Loading...</p>
           </div>
         </div>
-      </EvanLayout>
+      </EmployeeLayout>
     );
   }
 
   // Not connected
   if (!googleSheets.isConnected) {
     return (
-      <EvanLayout>
+      <EmployeeLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <Card className="max-w-sm w-full">
             <CardContent className="flex flex-col items-center gap-5 py-10 px-6">
@@ -109,14 +109,14 @@ const ScoreSheet = () => {
             </CardContent>
           </Card>
         </div>
-      </EvanLayout>
+      </EmployeeLayout>
     );
   }
 
   // Editor view — full viewport
   if (view === 'editor' && activeFile) {
     return (
-      <EvanLayout>
+      <EmployeeLayout>
         <div className="h-[calc(100vh-4rem)] -mx-3 -mb-3 sm:-mx-4 sm:-mb-4 md:-mx-6 md:-mb-6 lg:-mx-8 lg:-mb-8 xl:-mx-10 xl:-mb-10">
           <SheetEditor
             spreadsheetId={activeFile.id}
@@ -125,13 +125,13 @@ const ScoreSheet = () => {
             onBack={handleBack}
           />
         </div>
-      </EvanLayout>
+      </EmployeeLayout>
     );
   }
 
   // File browser view
   return (
-    <EvanLayout>
+    <EmployeeLayout>
       <SheetFileBrowser
         spreadsheets={googleSheets.spreadsheets}
         connectedEmail={googleSheets.connectedEmail}
@@ -140,7 +140,7 @@ const ScoreSheet = () => {
         onDisconnect={googleSheets.disconnect}
         onRefresh={googleSheets.listSpreadsheets}
       />
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

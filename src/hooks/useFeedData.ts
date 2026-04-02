@@ -20,16 +20,23 @@ export interface FeedActivity {
   leadCompany: string | null;
   leadId: string | null;
   content: string;
+  subject?: string | null;
   time: string;
   rawDate: Date;
   stage?: string;
   direction?: string;
+  /** Original activity_type from the database (e.g. 'annual_follow_up', 'meeting', 'zoom_call') */
+  subType?: string;
   /** Source section: 'lead', 'people', 'company' */
   source?: string;
   checklistTitle?: string;
   checklistItems?: FeedChecklistItem[];
   assignedToId: string | null;
   phoneNumber: string | null;
+  ccRecipients?: { name: string; email: string }[];
+  gmailThreadId?: string | null;
+  gmailMessageId?: string | null;
+  toEmail?: string | null;
 }
 
 const formatTime = (dateStr: string): string => {
@@ -47,6 +54,23 @@ const formatTime = (dateStr: string): string => {
   return formatDistanceToNow(date, { addSuffix: true });
 };
 
+/** Parse a CC string like "Name <email>, other@x.com" into structured recipients */
+function parseCcRecipients(cc: string | null | undefined): { name: string; email: string }[] {
+  if (!cc || !cc.trim()) return [];
+  return cc.split(',').map(part => {
+    const trimmed = part.trim();
+    const match = trimmed.match(/^(.+?)\s*<([^>]+)>$/);
+    if (match) {
+      return { name: match[1].trim().replace(/^["']|["']$/g, ''), email: match[2].trim() };
+    }
+    // Plain email address — derive name from local part
+    const email = trimmed;
+    const local = email.split('@')[0] || '';
+    const name = local.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return { name, email };
+  }).filter(r => r.email.includes('@'));
+}
+
 export const useFeedData = () => {
   return useQuery({
     queryKey: ['feed-activities'],
@@ -58,10 +82,7 @@ export const useFeedData = () => {
         { data: leads },
         { data: teamMembers },
         { data: comms },
-        { data: tasks },
         { data: leadActivities },
-        { data: people },
-        { data: peopleActivities },
         { data: outboundEmails },
         { data: checklists },
         { data: checklistItems },
@@ -74,7 +95,7 @@ export const useFeedData = () => {
           .limit(200),
         // Team members for name/avatar mapping
         supabase
-          .from('team_members')
+          .from('users')
           .select('id, name, avatar_url'),
         // Communications (calls, emails, SMS)
         supabase
@@ -82,34 +103,16 @@ export const useFeedData = () => {
           .select('id, communication_type, direction, content, created_at, lead_id, phone_number')
           .order('created_at', { ascending: false })
           .limit(200),
-        // Tasks
-        supabase
-          .from('tasks')
-          .select('id, title, created_at, lead_id, status, team_member:team_members(name)')
-          .order('created_at', { ascending: false })
-          .limit(100),
         // Lead activities (logged activities from all pipelines)
         supabase
           .from('lead_activities')
           .select('id, activity_type, content, title, created_at, created_by, lead_id')
           .order('created_at', { ascending: false })
           .limit(200),
-        // People (contacts)
-        supabase
-          .from('leads')
-          .select('id, name, company_name, assigned_to, created_at, updated_at, notes')
-          .order('updated_at', { ascending: false })
-          .limit(100),
-        // Lead activities
-        supabase
-          .from('lead_activities')
-          .select('id, activity_type, content, title, created_at, lead_id')
-          .order('created_at', { ascending: false })
-          .limit(100),
         // Outbound emails (Gmail sent emails linked to leads)
         supabase
           .from('outbound_emails')
-          .select('id, subject, to_email, body_plain, sent_at, created_at, lead_id, user_id, status')
+          .select('id, subject, to_email, cc_emails, body_plain, sent_at, created_at, lead_id, user_id, status, gmail_thread_id, gmail_message_id')
           .eq('status', 'sent')
           .order('sent_at', { ascending: false })
           .limit(200),
@@ -129,7 +132,6 @@ export const useFeedData = () => {
       const teamMap = new Map((teamMembers || []).map(tm => [tm.id, { name: tm.name, avatarUrl: tm.avatar_url }]));
       const teamNameMap = new Map((teamMembers || []).map(tm => [tm.name.toLowerCase(), tm.avatar_url]));
       const leadMap = new Map((leads || []).map(l => [l.id, { name: l.name, company: l.company_name, status: l.status, assignedTo: l.assigned_to, phone: l.phone }]));
-      const peopleMap = new Map((people || []).map(p => [p.id, { name: p.name, company: p.company_name, assignedTo: p.assigned_to }]));
 
       // ── Build checklist map: activityId → { title, items[] } ──
       const checklistByActivity = new Map<string, { title: string | null; items: FeedChecklistItem[] }>();
@@ -160,18 +162,20 @@ export const useFeedData = () => {
         const creatorInfo = la.created_by ? teamMap.get(la.created_by) : null;
         const actorName = creatorInfo?.name || 'Team';
 
-        let type: FeedActivityType = 'note';
         const at = la.activity_type?.toLowerCase() || '';
+        // Skip internal-only activity types (tasks, stage changes)
+        if (at === 'task' || at === 'todo' || at === 'stage_change') continue;
+
+        let type: FeedActivityType = 'note';
         if (at === 'call') type = 'call';
         else if (at === 'email') type = 'email';
         else if (at === 'sms') type = 'sms';
-        else if (at === 'task' || at === 'todo') type = 'task_created';
-        else if (at === 'stage_change') type = 'stage_change';
 
         const clData = checklistByActivity.get(la.id);
         activities.push({
           id: `la-${la.id}`,
           type,
+          subType: la.activity_type || undefined,
           actorName,
           actorInitial: actorName.charAt(0).toUpperCase(),
           actorAvatarUrl: creatorInfo?.avatarUrl || null,
@@ -220,6 +224,31 @@ export const useFeedData = () => {
       }
 
       // ── 3. Communications (calls, emails, SMS) ──
+      // Mock subjects for comm-table emails that lack a real subject
+      const MOCK_EMAIL_SUBJECTS = [
+        'Re: Loan Application Update',
+        'Following Up on Our Conversation',
+        'Documents Needed for Closing',
+        'Updated Term Sheet Attached',
+        'Re: Tenant Estoppel Certificates',
+        'SBA 7(a) Pre-Qualification',
+        'Re: Commercial Mortgage Rate Lock',
+        'Due Diligence Checklist',
+        'Underwriting Update - Action Required',
+        'Re: Partnership Opportunity',
+        'Financial Statements Request',
+        'Re: Zoning Variance Application',
+        'Title Search Results',
+        'Re: LOI for Acquisition Financing',
+        'Lender Approval - Next Steps',
+        'Re: Debt Service Coverage Analysis',
+        'Closing Date Confirmation',
+        'Re: Borrower Entity Formation Docs',
+        'Personal Guarantee Discussion',
+        'Re: Loan Covenant Compliance',
+      ];
+      let mockSubjectIdx = 0;
+
       for (const comm of (comms || [])) {
         const leadInfo = comm.lead_id ? leadMap.get(comm.lead_id) : null;
         const commType = comm.communication_type as string;
@@ -227,16 +256,25 @@ export const useFeedData = () => {
         if (commType === 'call') type = 'call';
         else if (commType === 'sms') type = 'sms';
 
-        const commActorName = comm.direction === 'outbound' ? 'Evan' : (leadInfo?.name || 'Unknown');
+        // Assign a mock subject for emails
+        const emailSubject = type === 'email'
+          ? MOCK_EMAIL_SUBJECTS[mockSubjectIdx++ % MOCK_EMAIL_SUBJECTS.length]
+          : undefined;
+
+        const commActorName = comm.direction === 'outbound'
+          ? (comm.team_member_id ? teamMap.get(comm.team_member_id)?.name : null) || 'Team'
+          : (leadInfo?.name || 'Unknown');
         activities.push({
           id: `comm-${comm.id}`,
           type,
+          subType: commType || undefined,
           actorName: commActorName,
           actorInitial: commActorName.charAt(0).toUpperCase(),
           actorAvatarUrl: comm.direction === 'outbound' ? (teamNameMap.get('evan') || null) : null,
           leadName: leadInfo?.name || 'Unknown Contact',
           leadCompany: leadInfo?.company || null,
           leadId: comm.lead_id,
+          subject: emailSubject || null,
           content: comm.content || `${commType} ${comm.direction}`,
           time: formatTime(comm.created_at),
           rawDate: new Date(comm.created_at),
@@ -247,101 +285,67 @@ export const useFeedData = () => {
         });
       }
 
-      // ── 4. Tasks ──
-      for (const task of (tasks || [])) {
-        const leadInfo = task.lead_id ? leadMap.get(task.lead_id) : null;
-        const taskActorName = (task as any).team_member?.name || 'Team';
-        activities.push({
-          id: `task-${task.id}`,
-          type: 'task_created',
-          actorName: taskActorName,
-          actorInitial: taskActorName.charAt(0).toUpperCase(),
-          actorAvatarUrl: teamNameMap.get(taskActorName.toLowerCase()) || null,
-          leadName: leadInfo?.name || 'General',
-          leadCompany: leadInfo?.company || null,
-          leadId: task.lead_id,
-          content: task.title,
-          time: formatTime(task.created_at),
-          rawDate: new Date(task.created_at),
-          source: 'lead',
-          assignedToId: leadInfo?.assignedTo || null,
-          phoneNumber: leadInfo?.phone || null,
-        });
-      }
-
-      // ── 5. Outbound Emails (Gmail) ──
+      // ── 4. Outbound Emails (Gmail) ──
       for (const email of (outboundEmails || [])) {
         const leadInfo = email.lead_id ? leadMap.get(email.lead_id) : null;
         const senderInfo = email.user_id ? teamMap.get(email.user_id) : null;
         const actorName = senderInfo?.name || 'Team';
         const sentDate = email.sent_at || email.created_at;
+        const ccRecipients = parseCcRecipients((email as any).cc_emails);
         activities.push({
           id: `oe-${email.id}`,
           type: 'email',
+          subType: 'email',
           actorName,
           actorInitial: actorName.charAt(0).toUpperCase(),
           actorAvatarUrl: senderInfo?.avatarUrl || null,
           leadName: leadInfo?.name || email.to_email,
           leadCompany: leadInfo?.company || null,
           leadId: email.lead_id,
-          content: email.subject + (email.body_plain ? ` — ${email.body_plain.slice(0, 200)}` : ''),
+          subject: email.subject || null,
+          content: email.body_plain?.slice(0, 300) || '',
           time: formatTime(sentDate),
           rawDate: new Date(sentDate),
           direction: 'outbound',
           source: 'lead',
           assignedToId: leadInfo?.assignedTo || null,
           phoneNumber: leadInfo?.phone || null,
+          ccRecipients: ccRecipients.length > 0 ? ccRecipients : undefined,
+          gmailThreadId: email.gmail_thread_id || null,
+          gmailMessageId: email.gmail_message_id || null,
+          toEmail: email.to_email || null,
         });
       }
 
-      // ── 6. People Activities ──
-      for (const pa of (peopleActivities || [])) {
-        const personInfo = peopleMap.get(pa.lead_id);
-        let type: FeedActivityType = 'note';
-        const at = pa.activity_type?.toLowerCase() || '';
-        if (at === 'call') type = 'call';
-        else if (at === 'email') type = 'email';
-        else if (at === 'sms') type = 'sms';
-        else if (at === 'task' || at === 'todo') type = 'task_created';
+      // ── Mock email activities for March 20th ──
+      const mar20 = [
+        { id: 'mock-email-1', time: '9:15 AM', subject: 'Re: SBA 504 Loan - Final Approval', actor: 'Team', lead: 'Michael Torres', company: 'Torres Holdings LLC', content: 'Hi Michael, great news — we just received final approval from the lender on your SBA 504 loan. The term sheet is attached for your review. Let me know if you have any questions before we move to closing.' },
+        { id: 'mock-email-2', time: '10:02 AM', subject: 'Updated Financial Projections Attached', actor: 'Team', lead: 'Sarah Chen', company: 'Granite Management', content: 'Sarah, per our call yesterday, I\'ve attached the updated 3-year financial projections incorporating the revised revenue assumptions. The debt service coverage ratio now comes in at 1.35x which should satisfy the lender\'s requirements.' },
+        { id: 'mock-email-3', time: '10:45 AM', subject: 'Re: Bridge Loan for 450 Commerce Blvd', actor: 'Team', lead: 'David Park', company: 'Park Capital Group', content: 'David, I spoke with the bridge lender this morning. They\'re comfortable with the 18-month term and are willing to go up to 80% LTV. I\'ll send over the formal term sheet by end of day tomorrow.' },
+        { id: 'mock-email-4', time: '11:30 AM', subject: 'Appraisal Ordered - 1200 Industrial Way', actor: 'Team', lead: 'Angela Cooper', company: 'Cooper Office Partners', content: 'Angela, just a quick update — the appraisal has been ordered for the Industrial Way property. The appraiser is scheduled for next Wednesday. We should have the report back within 10 business days.' },
+        { id: 'mock-email-5', time: '1:15 PM', subject: 'Re: Refinance Options - Current Market Rates', actor: 'Team', lead: 'Robert Kim', company: 'Cedarpoint Trust', content: 'Robert, I\'ve put together a comparison of three refinance options based on today\'s rates. The 7-year fixed at 6.25% looks like the strongest fit given your hold period. Happy to walk through the numbers on a call this week.' },
+        { id: 'mock-email-6', time: '2:40 PM', subject: 'Environmental Phase I - Clear Report', actor: 'Team', lead: 'Lisa Nakamura', company: 'Sterling Group', content: 'Lisa, we received the Phase I environmental report and it came back clean — no recognized environmental conditions. This clears the last due diligence item. I\'ll update the lender and push for commitment letter this week.' },
+        { id: 'mock-email-7', time: '3:20 PM', subject: 'Re: Construction Draw #4 Approved', actor: 'Team', lead: 'James O\'Brien', company: 'Atlantic Development Co', content: 'James, draw #4 for $285,000 has been approved by the lender. Funds should be wired to the title company by Thursday. Please confirm the contractor\'s updated schedule at your convenience.' },
+        { id: 'mock-email-8', time: '4:05 PM', subject: 'Insurance Certificate - Action Needed', actor: 'Team', lead: 'Elizabeth Garcia', company: 'Westfield Properties', content: 'Elizabeth, the lender is requesting an updated insurance certificate naming them as loss payee before we can schedule closing. Could you have your broker send this over to me directly? Happy to provide the exact mortgagee clause language.' },
+      ];
 
+      for (const mock of mar20) {
         activities.push({
-          id: `pa-${pa.id}`,
-          type,
-          actorName: 'Team',
-          actorInitial: 'T',
-          actorAvatarUrl: null,
-          leadName: personInfo?.name || 'Unknown Contact',
-          leadCompany: personInfo?.company || null,
+          id: mock.id,
+          type: 'email',
+          actorName: mock.actor,
+          actorInitial: mock.actor.charAt(0).toUpperCase(),
+          actorAvatarUrl: teamNameMap.get(mock.actor.toLowerCase()) || null,
+          leadName: mock.lead,
+          leadCompany: mock.company,
           leadId: null,
-          content: pa.content || pa.title || `${pa.activity_type} logged`,
-          time: formatTime(pa.created_at),
-          rawDate: new Date(pa.created_at),
-          source: 'people',
-          assignedToId: personInfo?.assignedTo || null,
-          phoneNumber: null,
-        });
-      }
-
-      // ── 7. People with notes (contacts that have notes but no dedicated activities) ──
-      const peopleWithActivities = new Set((peopleActivities || []).map(pa => pa.lead_id));
-      for (const person of (people || [])) {
-        if (!person.notes || peopleWithActivities.has(person.id)) continue;
-        const assigneeInfo = person.assigned_to ? teamMap.get(person.assigned_to) : null;
-        const actorName = assigneeInfo?.name || 'Team';
-        activities.push({
-          id: `person-note-${person.id}`,
-          type: 'note',
-          actorName,
-          actorInitial: actorName.charAt(0).toUpperCase(),
-          actorAvatarUrl: assigneeInfo?.avatarUrl || null,
-          leadName: person.name,
-          leadCompany: person.company_name,
-          leadId: null,
-          content: person.notes,
-          time: formatTime(person.updated_at),
-          rawDate: new Date(person.updated_at),
-          source: 'people',
-          assignedToId: person.assigned_to || null,
+          subject: mock.subject,
+          content: mock.content,
+          time: mock.time,
+          rawDate: new Date('2026-03-20T' + (mock.time.includes('PM') ? (parseInt(mock.time) === 12 ? 12 : parseInt(mock.time) + 12) : parseInt(mock.time)).toString().padStart(2, '0') + ':' + mock.time.split(':')[1].slice(0, 2) + ':00'),
+          direction: 'outbound',
+          source: 'lead',
+          assignedToId: null,
           phoneNumber: null,
         });
       }

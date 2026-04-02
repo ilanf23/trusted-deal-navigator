@@ -43,7 +43,8 @@ export interface ScorecardItem {
   color_class: string | null;
 }
 
-// Team member URL mapping (kept here since it's a UI concern, not data)
+// Team member URL mapping — routing configuration.
+// TODO: Eventually derive from DB (team_members table with a `dashboard_url` column).
 const TEAM_URL_MAP: Record<string, string> = {
   'Brad': '/superadmin/brad',
   'Adam': '/superadmin/adam',
@@ -53,7 +54,8 @@ const TEAM_URL_MAP: Record<string, string> = {
   'Evan': '/admin/dashboard',
 };
 
-// Team role mapping from team_members table
+// Team role display mapping — UI configuration.
+// TODO: Eventually derive from DB (team_members.role column).
 const TEAM_ROLE_MAP: Record<string, string> = {
   'Brad': 'Owner',
   'Adam': 'Owner',

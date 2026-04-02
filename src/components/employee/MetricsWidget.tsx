@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Phone, MessageSquare, Users, CheckCircle, DollarSign } from 'lucide-react';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 
-export const EvanMetricsWidget = () => {
+export const MetricsWidget = () => {
   const today = new Date();
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(today);

@@ -20,7 +20,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { useUndo } from '@/contexts/UndoContext';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 
@@ -405,8 +405,8 @@ const EmployeeLeads = () => {
   };
 
   return (
-    <EvanLayout>
-      <div className="flex flex-col h-[calc(100vh-200px)]">
+    <EmployeeLayout>
+      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem)]">
       {/* Header Section */}
       <div className="flex items-start justify-end mb-6">
         <div className="flex items-center gap-3">
@@ -1044,7 +1044,7 @@ const EmployeeLeads = () => {
           queryClient.invalidateQueries({ queryKey: ['evans-leads'] });
         }}
       />
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

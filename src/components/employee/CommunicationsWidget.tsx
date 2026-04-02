@@ -48,7 +48,7 @@ interface Lead {
   phone: string | null;
 }
 
-export const EvanCommunicationsWidget = () => {
+export const CommunicationsWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSmsOpen, setIsSmsOpen] = useState(false);
   const [isCallOpen, setIsCallOpen] = useState(false);

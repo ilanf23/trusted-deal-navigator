@@ -65,7 +65,7 @@ const AIChanges = () => {
   };
 
   return (
-    <div className="flex-1 p-6 space-y-4">
+    <div data-full-bleed className="flex-1 p-6 space-y-4">
       <AIChangesFilters
         filters={filters}
         onFiltersChange={setFilters}

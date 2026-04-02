@@ -3,12 +3,13 @@ import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { addRecentlyViewed } from '@/lib/recentlyViewed';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import PeopleDetailPanel from '@/components/admin/PeopleDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
 import PipelineSettingsPopover from '@/components/admin/PipelineSettingsDialog';
@@ -78,6 +79,7 @@ import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
 import { useUndo } from '@/contexts/UndoContext';
 import { useAllPipelineLeads } from '@/hooks/useAllPipelineLeads';
+import BulkImportDialog from '@/components/admin/BulkImportDialog';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
 
@@ -589,6 +591,9 @@ const People = () => {
     },
   });
 
+  // ── Bulk Import state ──
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+
   // ── Add Person state ──
   const [addPersonOpen, setAddPersonOpen] = useState(false);
   const [addPersonType, setAddPersonType] = useState<string>('Prospect');
@@ -710,7 +715,7 @@ const People = () => {
     queryKey: ['team-members'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name, avatar_url')
         .eq('is_active', true);
       return (data || []) as { id: string; name: string; avatar_url: string | null }[];
@@ -844,6 +849,7 @@ const People = () => {
   function handleRowClick(person: Person) {
     setSelectedPerson(person);
     setFilterPanelOpen(false);
+    addRecentlyViewed({ id: person.id, name: person.name, title: person.title, company: person.company_name });
   }
 
   const togglePersonSelection = (personId: string) => {
@@ -1017,7 +1023,7 @@ const People = () => {
     }`;
 
   return (
-    <EvanLayout>
+    <EmployeeLayout>
       <div className="system-font flex flex-col h-full min-h-0 overflow-hidden bg-white dark:bg-background -m-3 sm:-m-4 md:-m-6 lg:-m-8 xl:-m-10">
 
 
@@ -1322,6 +1328,7 @@ const People = () => {
                       Add Person
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      onClick={() => setBulkImportOpen(true)}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer text-[14px] font-medium text-[#1f1f1f] dark:text-foreground hover:bg-[#f1f3f4] dark:hover:bg-muted focus:bg-[#f1f3f4] dark:focus:bg-muted transition-colors"
                     >
                       <Download className="h-4 w-4 text-[#5f6368] dark:text-muted-foreground" />
@@ -1729,6 +1736,9 @@ const People = () => {
         </div>
       </div>
 
+      {/* ── Bulk Import Dialog ── */}
+      <BulkImportDialog open={bulkImportOpen} onOpenChange={setBulkImportOpen} />
+
       {/* ── Add Person Dialog ── */}
       {/* ── Bulk Edit Contact Type Dialog ── */}
       <Dialog open={bulkEditOpen} onOpenChange={(open) => { setBulkEditOpen(open); if (!open) setBulkContactType(''); }}>
@@ -1931,7 +1941,7 @@ const People = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

@@ -1,13 +1,14 @@
-// Evan's professional email signature
-export const EVAN_SIGNATURE_HTML = `
+// Dynamic email signature generator for Commercial Lending X team members
+
+export const getSignatureHtml = (name: string, email: string, title: string): string => `
 <br><br>
 <div style="font-size: 13px; font-family: Arial, sans-serif; line-height: 1.2;">
-<strong style="color: inherit;">Evan Hettich<br>
-Associate<br>
+<strong style="color: inherit;">${name}<br>
+${title}<br>
 Commercial Lending X<br>
 Check out our commercial lending videos on our <a href="https://www.youtube.com/@commerciallendingx661/featured" style="color: #1a73e8;">CLX YouTube Channel</a>.<br>
 <a href="https://www.commerciallendingx.com/" style="color: #1a73e8;">www.commerciallendingx.com</a><br>
-Email: <a href="mailto:evan@commerciallendingx.com" style="color: #1a73e8;">evan@commerciallendingx.com</a><br>
+Email: <a href="mailto:${email}" style="color: #1a73e8;">${email}</a><br>
 Offices In:<br>
 Naperville, IL 60563<br>
 Saint Augustine, FL 32092</strong><br>
@@ -21,16 +22,24 @@ Saint Augustine, FL 32092</strong><br>
 </div>
 `.trim();
 
-// Helper to append signature to email body
-export const appendSignature = (body: string): string => {
-  // Don't add signature if it already contains one (check for unique identifier)
-  if (body.includes('Evan Hettich') && body.includes('Commercial Lending X')) {
+// Backwards-compatible constant for Evan's signature
+export const EVAN_SIGNATURE_HTML = getSignatureHtml('Evan Hettich', 'evan@commerciallendingx.com', 'Associate');
+
+// Check if a body already contains a CLX signature (generic check)
+export const hasSignature = (body: string): boolean => {
+  return body.includes('Commercial Lending X') && body.includes('commerciallendingx.com');
+};
+
+// Helper to append signature to email body.
+// If signatureHtml is provided, uses that; otherwise falls back to EVAN_SIGNATURE_HTML.
+export const appendSignature = (body: string, signatureHtml?: string): string => {
+  if (hasSignature(body)) {
     return body;
   }
-  return body + EVAN_SIGNATURE_HTML;
+  return body + (signatureHtml ?? EVAN_SIGNATURE_HTML);
 };
 
 // Helper to create a new email with signature
-export const createEmailWithSignature = (body: string = ''): string => {
-  return appendSignature(body);
+export const createEmailWithSignature = (body: string = '', signatureHtml?: string): string => {
+  return appendSignature(body, signatureHtml);
 };

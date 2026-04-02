@@ -133,10 +133,10 @@ Deno.serve(async (req) => {
     console.log('[twilio-token] Authenticated user:', userId, 'email:', user.email);
 
     const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
+      .from('users')
+      .select('app_role')
       .eq('user_id', userId)
-      .in('role', ['admin', 'super_admin'])
+      .in('app_role', ['admin', 'super_admin'])
       .maybeSingle();
 
     if (!roleData) {

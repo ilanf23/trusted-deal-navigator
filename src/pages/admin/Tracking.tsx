@@ -108,7 +108,7 @@ const Tracking = () => {
       let profilesMap: Record<string, any> = {};
       if (partnerIds.length > 0) {
         const { data: profiles } = await supabase
-          .from('profiles')
+          .from('users')
           .select('user_id, first_name, last_name, company')
           .in('user_id', partnerIds);
         (profiles || []).forEach((p: any) => { profilesMap[p.user_id] = p; });

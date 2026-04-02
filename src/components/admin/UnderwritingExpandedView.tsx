@@ -452,7 +452,7 @@ export default function UnderwritingExpandedView() {
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members'],
     queryFn: async () => {
-      const { data } = await supabase.from('team_members').select('id, name').eq('is_active', true);
+      const { data } = await supabase.from('users').select('id, name').eq('is_active', true);
       return (data || []) as { id: string; name: string }[];
     },
   });

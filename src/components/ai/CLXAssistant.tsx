@@ -113,7 +113,7 @@ const CLXAssistant = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name, avatar_url')
         .eq('user_id', user.id)
         .single();

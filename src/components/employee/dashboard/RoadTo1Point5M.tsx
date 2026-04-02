@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, Target, Users, User, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { supabase } from '@/integrations/supabase/client';
 import type { TimePeriod } from '@/pages/admin/Dashboard';
 
@@ -11,6 +12,8 @@ interface RoadTo1Point5MProps {
 }
 
 export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MProps) => {
+  const { teamMember } = useTeamMember();
+  const currentName = teamMember?.name || '';
   const COMPANY_GOAL = 1500000; // $1.5M
 
   const { data: teamDeals = [], isLoading } = useQuery({
@@ -36,8 +39,8 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
 
   // Calculate totals
   const totalCompanyRevenue = teamDeals.reduce((sum, deal) => sum + deal.fee, 0);
-  const evanDeals = teamDeals.filter(d => d.rep === 'Evan');
-  const evanRevenue = evanDeals.reduce((sum, deal) => sum + deal.fee, 0);
+  const myDeals = teamDeals.filter(d => d.rep === currentName);
+  const evanRevenue = myDeals.reduce((sum, deal) => sum + deal.fee, 0);
   
   const companyProgress = Math.min(100, (totalCompanyRevenue / COMPANY_GOAL) * 100);
   const evanContribution = totalCompanyRevenue > 0 ? (evanRevenue / totalCompanyRevenue) * 100 : 0;
@@ -117,7 +120,7 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
               <div className="p-1.5 rounded-full bg-primary/10">
                 <User className="h-4 w-4 text-primary" />
               </div>
-              <span className="font-medium">Evan's Contribution</span>
+              <span className="font-medium">{currentName ? `${currentName}'s Contribution` : 'My Contribution'}</span>
             </div>
             <div className="flex items-center gap-1 text-emerald-600">
               <TrendingUp className="h-4 w-4" />
@@ -131,11 +134,11 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
               <p className="text-xs text-muted-foreground">Revenue Generated</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold">{evanDeals.length}</p>
+              <p className="text-2xl font-bold">{myDeals.length}</p>
               <p className="text-xs text-muted-foreground">Deals Closed</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold">{formatCurrency(evanRevenue / Math.max(1, evanDeals.length))}</p>
+              <p className="text-2xl font-bold">{formatCurrency(evanRevenue / Math.max(1, myDeals.length))}</p>
               <p className="text-xs text-muted-foreground">Avg Deal Size</p>
             </div>
           </div>
@@ -158,10 +161,10 @@ export const RoadTo1Point5M = ({ evanId, timePeriod = 'ytd' }: RoadTo1Point5MPro
                 {teamDeals.slice(0, 6).map((deal, idx) => (
                   <tr 
                     key={idx} 
-                    className={deal.rep === 'Evan' ? 'bg-primary/5' : ''}
+                    className={deal.rep === currentName ? 'bg-primary/5' : ''}
                   >
                     <td className="p-2">
-                      <span className={deal.rep === 'Evan' ? 'font-medium text-primary' : ''}>
+                      <span className={deal.rep === currentName ? 'font-medium text-primary' : ''}>
                         {deal.rep}
                       </span>
                     </td>

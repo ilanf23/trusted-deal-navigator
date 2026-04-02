@@ -21,7 +21,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
 type LeadStatus = Database['public']['Enums']['lead_status'];
-type TeamMember = Database['public']['Tables']['team_members']['Row'];
+type TeamMember = Database['public']['Tables']['users']['Row'];
 
 interface LeadWithOwner extends Lead {
   team_member?: TeamMember | null;
@@ -133,7 +133,7 @@ const AdminLeads = () => {
   const fetchTeamMembers = async () => {
     try {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('*')
         .eq('is_active', true)
         .not('name', 'ilike', 'adam')
@@ -186,7 +186,7 @@ const AdminLeads = () => {
 
     setIsSubmitting(true);
     try {
-      const assignedTo = newLead.assigned_to || teamMembers.find(m => m.name === 'Evan')?.id || teamMembers[0]?.id || null;
+      const assignedTo = newLead.assigned_to || teamMembers[0]?.id || null;
       
       const { error } = await supabase.from('leads').insert({
         name: newLead.name,
@@ -322,7 +322,7 @@ const AdminLeads = () => {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col h-[calc(100vh-112px)]">
+      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem)]">
         {/* Header Section */}
         <div className="flex items-start justify-end mb-6">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -410,7 +410,7 @@ const AdminLeads = () => {
                   <div>
                     <Label htmlFor="assigned_to" className="text-[13px] font-medium">Owner</Label>
                     <Select
-                      value={newLead.assigned_to || teamMembers.find(m => m.name === 'Evan')?.id || ''}
+                      value={newLead.assigned_to || teamMembers[0]?.id || ''}
                       onValueChange={(value) => setNewLead({ ...newLead, assigned_to: value })}
                     >
                       <SelectTrigger className="mt-1.5 h-10 rounded-xl">

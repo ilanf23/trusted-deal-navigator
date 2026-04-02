@@ -116,7 +116,7 @@ const AdminMessages = () => {
 
       const clientIds = convos?.map(c => c.client_id) || [];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('users')
         .select('user_id, email')
         .in('user_id', clientIds);
 

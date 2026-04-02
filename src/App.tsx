@@ -8,7 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import CLXAssistant from "@/components/ai/CLXAssistant";
 import { CallProvider } from "@/contexts/CallContext";
-import { IncomingCallPopup } from "@/components/evan/IncomingCallPopup";
+import { IncomingCallPopup } from "@/components/employee/IncomingCallPopup";
 import { useEdgeFunctionWarmup } from "@/hooks/useEdgeFunctionWarmup";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import EmployeeRoute from "@/components/admin/EmployeeRoute";

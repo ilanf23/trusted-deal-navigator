@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
     const callerId = claimsData.claims.sub as string
 
-    // --- 2. Verify caller is admin via user_roles table ---
+    // --- 2. Verify caller is admin via team_members table ---
     const supabaseAdmin = createClient(
       supabaseUrl,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -53,10 +53,10 @@ Deno.serve(async (req) => {
     )
 
     const { data: roleData } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
+      .from('users')
+      .select('app_role')
       .eq('user_id', callerId)
-      .in('role', ['admin', 'super_admin'])
+      .in('app_role', ['admin', 'super_admin'])
       .maybeSingle()
 
     const { user_id, email, password } = await req.json()
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
 
     if (email) {
       await supabaseAdmin
-        .from('team_members')
+        .from('users')
         .update({ email })
         .eq('user_id', user_id)
     }

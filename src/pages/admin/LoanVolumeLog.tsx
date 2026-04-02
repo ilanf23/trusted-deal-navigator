@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
 import { CrmAvatar } from '@/components/admin/CrmAvatar';
 import PipelineDetailPanel from '@/components/admin/PipelineDetailPanel';
@@ -379,7 +379,7 @@ const LoanVolumeLog = () => {
     queryKey: ['vl-team-members'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name, avatar_url')
         .order('name');
       if (error) throw error;
@@ -644,8 +644,8 @@ const LoanVolumeLog = () => {
   };
 
   return (
-    <EvanLayout>
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
+    <EmployeeLayout>
+      <div data-full-bleed className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
 
         {/* Header */}
         <div className="shrink-0 border-b border-border bg-background px-5 py-3 space-y-3">
@@ -1525,7 +1525,7 @@ const LoanVolumeLog = () => {
           )}
         </div>
       </div>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

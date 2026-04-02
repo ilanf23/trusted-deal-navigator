@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -101,20 +102,8 @@ export const FloatingAIChat = () => {
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number; corner: string } | null>(null);
 
-  // Fetch Evan's team member ID and avatar
-  const { data: evanTeamMember } = useQuery({
-    queryKey: ['evan-team-member-ai'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('team_members')
-        .select('id, name, avatar_url')
-        .ilike('name', 'evan')
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: isOpen,
-  });
+  // Get current team member for AI chat context
+  const { teamMember: currentTeamMember } = useTeamMember();
 
   // Fetch suggested tasks (incomplete, high priority or due soon)
   const { data: suggestedTasks = [] } = useQuery({
@@ -291,8 +280,8 @@ export const FloatingAIChat = () => {
           },
           body: JSON.stringify({ 
             messages: newMessages,
-            evanId: evanTeamMember?.id,
-            userName: evanTeamMember?.name || 'Evan',
+            evanId: currentTeamMember?.id,
+            userName: currentTeamMember?.name || 'Team',
             file: fileToSend,
           }),
           signal: abortController.signal,
@@ -664,10 +653,10 @@ export const FloatingAIChat = () => {
                     </div>
                     {msg.role === 'user' && (
                       <Avatar className="h-6 w-6 shrink-0">
-                        {evanTeamMember?.avatar_url ? (
+                        {currentTeamMember?.avatar_url ? (
                           <img 
-                            src={evanTeamMember.avatar_url} 
-                            alt={evanTeamMember.name || 'User'} 
+                            src={currentTeamMember.avatar_url} 
+                            alt={currentTeamMember.name || 'User'} 
                             className="h-full w-full object-cover"
                           />
                         ) : (

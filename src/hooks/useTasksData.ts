@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Task, TaskActivity } from '@/components/evan/tasks/types';
+import { Task, TaskActivity } from '@/components/employee/tasks/types';
 import { toast } from 'sonner';
 import { useUndo } from '@/contexts/UndoContext';
 
@@ -77,7 +77,7 @@ export const useTasksData = () => {
           activity_type: 'status_change',
           old_value: currentTask?.status || '',
           new_value: updates.status,
-          created_by: 'Evan',
+          created_by: 'System',
         });
       }
       
@@ -170,7 +170,7 @@ export const useTasksData = () => {
         task_id: taskId,
         activity_type: 'comment',
         content,
-        created_by: 'Evan',
+        created_by: 'System',
       }).select().single();
       if (error) throw error;
       return data;

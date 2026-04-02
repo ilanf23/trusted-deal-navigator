@@ -124,28 +124,20 @@ const UsersAndRoles = () => {
   const { data: users, isLoading } = useQuery({
     queryKey: ['users-and-roles'],
     queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, email, created_at')
+      const { data: members, error } = await supabase
+        .from('users')
+        .select('user_id, email, app_role, created_at, is_active')
+        .not('user_id', 'is', null)
         .order('email');
 
-      if (profilesError) throw profilesError;
+      if (error) throw error;
 
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      if (rolesError) throw rolesError;
-
-      const roleMap = new Map<string, AppRole>();
-      roles?.forEach((r) => roleMap.set(r.user_id, r.role as AppRole));
-
-      return (profiles || []).map((p) => ({
-        user_id: p.user_id,
-        email: p.email || 'No email',
-        role: roleMap.get(p.user_id) || ('client' as AppRole),
-        created_at: p.created_at,
-        status: 'active' as const,
+      return (members || []).map((m) => ({
+        user_id: m.user_id!,
+        email: m.email || 'No email',
+        role: (m.app_role as AppRole) || 'client',
+        created_at: m.created_at,
+        status: m.is_active ? ('active' as const) : ('inactive' as const),
       })) as UserWithRole[];
     },
   });
@@ -282,7 +274,7 @@ const UsersAndRoles = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
+    <div data-full-bleed className="p-4 md:p-6 space-y-5">
       {/* Actions */}
       <div className="flex justify-end">
         <Button size="sm" className="w-fit">

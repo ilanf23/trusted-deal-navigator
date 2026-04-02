@@ -105,7 +105,7 @@ const AdminLayoutContent = ({ children }: AdminLayoutProps) => {
             {/* Center: search bar or spacer */}
             <div className="flex-1 flex justify-center min-w-0" key="topbar-center">
               {searchComponent && (
-                <div className="w-full max-w-3xl">
+                <div className="w-full max-w-[614px]">
                   {searchComponent}
                 </div>
               )}

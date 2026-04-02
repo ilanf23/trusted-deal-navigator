@@ -239,7 +239,7 @@ export type Database = {
             foreignKeyName: "ai_agent_changes_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -366,7 +366,7 @@ export type Database = {
             foreignKeyName: "appointments_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -432,7 +432,7 @@ export type Database = {
             foreignKeyName: "bug_reports_assigned_to_id_fkey"
             columns: ["assigned_to_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -770,7 +770,7 @@ export type Database = {
             foreignKeyName: "communications_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -896,7 +896,7 @@ export type Database = {
             foreignKeyName: "dashboard_deals_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1257,7 +1257,7 @@ export type Database = {
             foreignKeyName: "email_templates_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1313,7 +1313,7 @@ export type Database = {
             foreignKeyName: "email_threads_assigned_to_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -1324,6 +1324,68 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      feed_comments: {
+        Row: {
+          activity_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string | null
+        }
+        Insert: {
+          activity_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string | null
+        }
+        Update: {
+          activity_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_comments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feed_reactions: {
+        Row: {
+          activity_id: string
+          created_at: string
+          emoji: string
+          id: string
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          emoji: string
+          id?: string
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: []
       }
       gmail_connections: {
         Row: {
@@ -1382,7 +1444,7 @@ export type Database = {
             foreignKeyName: "hidden_email_threads_hidden_by_fkey"
             columns: ["hidden_by"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1852,7 +1914,7 @@ export type Database = {
             foreignKeyName: "lead_followers_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -2042,7 +2104,7 @@ export type Database = {
             foreignKeyName: "lead_projects_owner_fkey"
             columns: ["owner"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -2513,7 +2575,7 @@ export type Database = {
             foreignKeyName: "leads_assigned_to_team_member_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -2964,7 +3026,7 @@ export type Database = {
             foreignKeyName: "notes_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -2973,6 +3035,7 @@ export type Database = {
         Row: {
           body_html: string
           body_plain: string
+          cc_emails: string | null
           created_at: string
           error: string | null
           flow_id: string
@@ -2993,6 +3056,7 @@ export type Database = {
         Insert: {
           body_html?: string
           body_plain?: string
+          cc_emails?: string | null
           created_at?: string
           error?: string | null
           flow_id: string
@@ -3013,6 +3077,7 @@ export type Database = {
         Update: {
           body_html?: string
           body_plain?: string
+          cc_emails?: string | null
           created_at?: string
           error?: string | null
           flow_id?: string
@@ -3225,102 +3290,6 @@ export type Database = {
           },
         ]
       }
-      people_addresses: {
-        Row: {
-          address_line_1: string | null
-          address_line_2: string | null
-          address_type: string | null
-          city: string | null
-          country: string | null
-          created_at: string
-          id: string
-          is_primary: boolean | null
-          person_id: string
-          state: string | null
-          zip_code: string | null
-        }
-        Insert: {
-          address_line_1?: string | null
-          address_line_2?: string | null
-          address_type?: string | null
-          city?: string | null
-          country?: string | null
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          person_id: string
-          state?: string | null
-          zip_code?: string | null
-        }
-        Update: {
-          address_line_1?: string | null
-          address_line_2?: string | null
-          address_type?: string | null
-          city?: string | null
-          country?: string | null
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          person_id?: string
-          state?: string | null
-          zip_code?: string | null
-        }
-        Relationships: []
-      }
-      people_emails: {
-        Row: {
-          created_at: string
-          email: string
-          email_type: string | null
-          id: string
-          is_primary: boolean | null
-          person_id: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          email_type?: string | null
-          id?: string
-          is_primary?: boolean | null
-          person_id: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          email_type?: string | null
-          id?: string
-          is_primary?: boolean | null
-          person_id?: string
-        }
-        Relationships: []
-      }
-      people_phones: {
-        Row: {
-          created_at: string
-          id: string
-          is_primary: boolean | null
-          person_id: string
-          phone_number: string
-          phone_type: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          person_id: string
-          phone_number: string
-          phone_type?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_primary?: boolean | null
-          person_id?: string
-          phone_number?: string
-          phone_type?: string | null
-        }
-        Relationships: []
-      }
       pipeline_column_values: {
         Row: {
           assigned_to_id: string | null
@@ -3372,7 +3341,7 @@ export type Database = {
             foreignKeyName: "pipeline_column_values_assigned_to_id_fkey"
             columns: ["assigned_to_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -3526,21 +3495,21 @@ export type Database = {
             foreignKeyName: "pipeline_shares_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "pipeline_shares_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "pipeline_shares_shared_with_id_fkey"
             columns: ["shared_with_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3628,58 +3597,49 @@ export type Database = {
             foreignKeyName: "pipelines_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
-      profiles: {
+      project_people: {
         Row: {
-          address: string | null
-          city: string | null
-          company_name: string | null
-          contact_person: string | null
           created_at: string
-          email: string | null
           id: string
-          notes: string | null
-          phone: string | null
-          state: string | null
-          updated_at: string
-          user_id: string
-          zip_code: string | null
+          lead_id: string
+          project_id: string
+          role: string | null
         }
         Insert: {
-          address?: string | null
-          city?: string | null
-          company_name?: string | null
-          contact_person?: string | null
           created_at?: string
-          email?: string | null
           id?: string
-          notes?: string | null
-          phone?: string | null
-          state?: string | null
-          updated_at?: string
-          user_id: string
-          zip_code?: string | null
+          lead_id: string
+          project_id: string
+          role?: string | null
         }
         Update: {
-          address?: string | null
-          city?: string | null
-          company_name?: string | null
-          contact_person?: string | null
           created_at?: string
-          email?: string | null
           id?: string
-          notes?: string | null
-          phone?: string | null
-          state?: string | null
-          updated_at?: string
-          user_id?: string
-          zip_code?: string | null
+          lead_id?: string
+          project_id?: string
+          role?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "project_people_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_people_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "lead_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rate_limits: {
         Row: {
@@ -4034,7 +3994,7 @@ export type Database = {
             foreignKeyName: "task_activities_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -4085,7 +4045,7 @@ export type Database = {
             foreignKeyName: "task_files_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -4163,7 +4123,7 @@ export type Database = {
             foreignKeyName: "tasks_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -4217,52 +4177,10 @@ export type Database = {
             foreignKeyName: "team_funded_deals_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
-      }
-      team_members: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          email: string | null
-          id: string
-          is_active: boolean
-          is_owner: boolean | null
-          name: string
-          phone: string | null
-          role: string | null
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_active?: boolean
-          is_owner?: boolean | null
-          name: string
-          phone?: string | null
-          role?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_active?: boolean
-          is_owner?: boolean | null
-          name?: string
-          phone?: string | null
-          role?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Relationships: []
       }
       team_monthly_goals: {
         Row: {
@@ -4297,29 +4215,74 @@ export type Database = {
             foreignKeyName: "team_monthly_goals_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
-            referencedRelation: "team_members"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
-      user_roles: {
+      users: {
         Row: {
+          address: string | null
+          app_role: Database["public"]["Enums"]["app_role"] | null
+          avatar_url: string | null
+          city: string | null
+          company_name: string | null
+          contact_person: string | null
           created_at: string
+          email: string | null
           id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          is_active: boolean
+          is_owner: boolean | null
+          name: string
+          phone: string | null
+          role: string | null
+          state: string | null
+          updated_at: string
+          user_id: string | null
+          user_type: string
+          zip_code: string | null
         }
         Insert: {
+          address?: string | null
+          app_role?: Database["public"]["Enums"]["app_role"] | null
+          avatar_url?: string | null
+          city?: string | null
+          company_name?: string | null
+          contact_person?: string | null
           created_at?: string
+          email?: string | null
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          is_active?: boolean
+          is_owner?: boolean | null
+          name: string
+          phone?: string | null
+          role?: string | null
+          state?: string | null
+          updated_at?: string
+          user_id?: string | null
+          user_type?: string
+          zip_code?: string | null
         }
         Update: {
+          address?: string | null
+          app_role?: Database["public"]["Enums"]["app_role"] | null
+          avatar_url?: string | null
+          city?: string | null
+          company_name?: string | null
+          contact_person?: string | null
           created_at?: string
+          email?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
+          is_active?: boolean
+          is_owner?: boolean | null
+          name?: string
+          phone?: string | null
+          role?: string | null
+          state?: string | null
+          updated_at?: string
+          user_id?: string | null
+          user_type?: string
+          zip_code?: string | null
         }
         Relationships: []
       }

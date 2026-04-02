@@ -62,7 +62,7 @@ const AdminClients = () => {
     const fetchClients = async () => {
       try {
         const { data, error } = await supabase
-          .from('profiles')
+          .from('users')
           .select('*')
           .order('created_at', { ascending: false });
         
@@ -90,7 +90,7 @@ const AdminClients = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div data-full-bleed className="space-y-6 p-6">
         <Card>
           <CardHeader>
             <div>

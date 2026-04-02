@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import ProjectDetailDialog, { type LeadProject } from '@/components/admin/ProjectDetailDialog';
 import ProjectDetailPanel from '@/components/admin/ProjectDetailPanel';
 import PipelineBulkToolbar from '@/components/admin/PipelineBulkToolbar';
@@ -193,7 +193,7 @@ const Projects = () => {
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['team-members'],
     queryFn: async () => {
-      const { data } = await supabase.from('team_members').select('id, name');
+      const { data } = await supabase.from('users').select('id, name');
       return (data ?? []) as { id: string; name: string }[];
     },
   });
@@ -540,7 +540,7 @@ const Projects = () => {
   };
 
   return (
-    <EvanLayout>
+    <EmployeeLayout>
       <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem)] bg-background">
         {/* Filter bar */}
         <div className="shrink-0 border-b border-border bg-card px-8 py-2.5 flex items-center justify-between">
@@ -836,7 +836,7 @@ const Projects = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

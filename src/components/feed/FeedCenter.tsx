@@ -13,12 +13,12 @@ interface FeedCenterProps {
   onSearchChange: (q: string) => void;
   onToggleLeftPanel?: () => void;
   onToggleRightPanel?: () => void;
-  selectedTeamMember?: string | null;
+  selectedTeamMembers?: Set<string>;
   onViewLead?: (leadId: string) => void;
   currentTeamMemberId: string | null;
 }
 
-const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onToggleLeftPanel, onToggleRightPanel, selectedTeamMember, onViewLead, currentTeamMemberId }: FeedCenterProps) => {
+const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onToggleLeftPanel, onToggleRightPanel, selectedTeamMembers, onViewLead, currentTeamMemberId }: FeedCenterProps) => {
   const [activeTab, setActiveTab] = useState<'following' | 'all'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -29,27 +29,39 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
     return activities.filter(a => a.assignedToId === currentTeamMemberId);
   }, [activities, activeTab, currentTeamMemberId]);
 
-  // Group by date
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  // Group by date — each day gets its own section
+  const groups = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-  const groups: { label: string; items: FeedActivity[] }[] = [];
-  const todayItems = filtered.filter(a => a.rawDate >= today);
-  const yesterdayItems = filtered.filter(a => a.rawDate >= yesterday && a.rawDate < today);
-  const olderItems = filtered.filter(a => a.rawDate < yesterday);
+    const dateMap = new Map<string, FeedActivity[]>();
 
-  if (todayItems.length > 0) groups.push({ label: 'Today', items: todayItems });
-  if (yesterdayItems.length > 0) groups.push({ label: 'Yesterday', items: yesterdayItems });
-  if (olderItems.length > 0) groups.push({ label: 'Earlier', items: olderItems });
+    for (const a of filtered) {
+      const d = new Date(a.rawDate);
+      d.setHours(0, 0, 0, 0);
+      let label: string;
+      if (d >= today) {
+        label = 'Today';
+      } else if (d >= yesterday) {
+        label = 'Yesterday';
+      } else {
+        label = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      }
+      if (!dateMap.has(label)) dateMap.set(label, []);
+      dateMap.get(label)!.push(a);
+    }
+
+    return Array.from(dateMap.entries()).map(([label, items]) => ({ label, items }));
+  }, [filtered]);
 
   const handleToggle = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
   };
 
   return (
-    <div className="flex-1 min-w-0 bg-white flex flex-col h-full relative">
+    <div className="flex-1 min-w-0 bg-transparent flex flex-col h-full relative">
       {/* Top bar with tabs — Copper style */}
       <div className="border-b border-gray-200 px-4 sm:px-6">
         {/* Mobile filter buttons */}
@@ -62,18 +74,7 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
               className="flex items-center gap-2 lg:hidden text-xs"
             >
               <Users className="w-3.5 h-3.5" />
-              {selectedTeamMember || 'All Team'}
-            </Button>
-          )}
-          {onToggleRightPanel && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onToggleRightPanel}
-              className="flex items-center gap-2 text-xs"
-            >
-              <SquareCheckBig className="w-3.5 h-3.5" />
-              Tasks
+              {selectedTeamMembers && selectedTeamMembers.size > 0 ? Array.from(selectedTeamMembers).join(', ') : 'All Team'}
             </Button>
           )}
         </div>
@@ -136,10 +137,10 @@ const FeedCenter = ({ activities, isLoading, searchQuery, onSearchChange, onTogg
             groups.map((group) => (
               <div key={group.label}>
                 {/* Date group header — Copper style */}
-                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4 mt-5 first:mt-0">
+                <h4 className="text-[13px] font-medium text-gray-500 mb-3 mt-6 first:mt-0 py-2">
                   {group.label}
                 </h4>
-                <div className="space-y-1">
+                <div>
                   {group.items.map((activity) => (
                     <ActivityCard
                       key={activity.id}

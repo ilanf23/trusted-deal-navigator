@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -8,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { BorrowerSearchSelect } from '@/components/evan/tasks/BorrowerSearchSelect';
-import { statusConfig, statusPickerOptions, TaskType, taskTypeConfig } from '@/components/evan/tasks/types';
+import { BorrowerSearchSelect } from '@/components/employee/tasks/BorrowerSearchSelect';
+import { statusConfig, statusPickerOptions, TaskType, taskTypeConfig } from '@/components/employee/tasks/types';
 import { format } from 'date-fns';
 import { 
   CalendarIcon, 
@@ -45,11 +46,13 @@ export const GmailTaskDialog = ({
   initialDescription = '',
   initialLeadId = null,
 }: GmailTaskDialogProps) => {
+  const { teamMember } = useTeamMember();
+  const defaultAssignee = teamMember?.name || '';
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [status, setStatus] = useState('todo');
   const [priority, setPriority] = useState<string | null>(null);
-  const [assignee, setAssignee] = useState('Evan');
+  const [assignee, setAssignee] = useState(defaultAssignee);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [leadId, setLeadId] = useState<string | null>(initialLeadId);
   const [estimatedHours, setEstimatedHours] = useState<number | null>(null);
@@ -65,13 +68,13 @@ export const GmailTaskDialog = ({
       setLeadId(initialLeadId);
       setStatus('todo');
       setPriority(null);
-      setAssignee('Evan');
+      setAssignee(teamMember?.name || '');
       setDueDate(undefined);
       setEstimatedHours(null);
       setGroupName(null);
       setTaskType('email');
     }
-  }, [open, initialTitle, initialDescription, initialLeadId]);
+  }, [open, initialTitle, initialDescription, initialLeadId, teamMember]);
 
   // Fetch leads for the customer dropdown
   const { data: leads = [] } = useQuery({
@@ -105,7 +108,7 @@ export const GmailTaskDialog = ({
     setDescription('');
     setStatus('todo');
     setPriority(null);
-    setAssignee('Evan');
+    setAssignee(teamMember?.name || '');
     setDueDate(undefined);
     setLeadId(null);
     setEstimatedHours(null);

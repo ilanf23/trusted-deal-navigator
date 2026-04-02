@@ -124,10 +124,10 @@ Deno.serve(async (req) => {
     const adminSupabase = createClient(supabaseUrl, serviceKey);
 
     const { data: role } = await adminSupabase
-      .from('user_roles')
-      .select('role')
+      .from('users')
+      .select('app_role')
       .eq('user_id', userData.user.id)
-      .in('role', ['admin', 'super_admin'])
+      .in('app_role', ['admin', 'super_admin'])
       .maybeSingle();
 
     if (!role) {

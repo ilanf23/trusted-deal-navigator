@@ -76,7 +76,7 @@ const TeamPerformance = () => {
     queryKey: ['all-team-members'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name, role, avatar_url, is_owner')
         .order('name');
       if (error) throw error;
@@ -84,8 +84,8 @@ const TeamPerformance = () => {
     },
   });
 
-  // Fetch Evan's team member ID
-  const evanTeamMember = allTeamMembers?.find(tm => tm.name.toLowerCase() === 'evan');
+  // Fetch selected employee's team member data
+  const selectedTeamMember = allTeamMembers?.find(tm => tm.name.toLowerCase() === selectedEmployee);
 
   // Fetch leads data for metrics
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
@@ -411,14 +411,9 @@ const TeamPerformance = () => {
 
         {/* Employee Selector Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {[
-            { id: 'evan', name: 'Evan', role: 'Sales Rep', active: true },
-            { id: 'brad', name: 'Brad', role: 'Owner', active: false },
-            { id: 'adam', name: 'Adam', role: 'Owner', active: false },
-            { id: 'maura', name: 'Maura', role: 'Processor', active: false },
-            { id: 'wendy', name: 'Wendy', role: 'Processor', active: false },
-          ].map((emp) => {
-            const teamMemberData = allTeamMembers?.find(tm => tm.name.toLowerCase() === emp.id);
+          {(allTeamMembers || []).map((tm) => {
+            const emp = { id: tm.name.toLowerCase(), name: tm.name, role: tm.role || 'Team Member', active: true };
+            const teamMemberData = tm;
             return (
               <Card
                 key={emp.id}
@@ -464,13 +459,13 @@ const TeamPerformance = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16 border-2 border-primary">
-                      {evanTeamMember?.avatar_url && (
-                        <AvatarImage src={evanTeamMember.avatar_url} alt="Evan" />
+                      {selectedTeamMember?.avatar_url && (
+                        <AvatarImage src={selectedTeamMember.avatar_url} alt={selectedTeamMember.name} />
                       )}
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">E</AvatarFallback>
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">{selectedEmployee[0]?.toUpperCase() || 'T'}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <h2 className="text-xl font-bold">Evan's Performance</h2>
+                      <h2 className="text-xl font-bold">{selectedTeamMember?.name || 'Team'}'s Performance</h2>
                       <p className="text-sm text-muted-foreground">{periodLabel} Results</p>
                     </div>
                   </div>

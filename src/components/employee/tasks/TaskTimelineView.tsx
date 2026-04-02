@@ -1,6 +1,7 @@
 import { Task, statusConfig } from './types';
 import { format, parseISO, differenceInDays, startOfDay, addDays, addWeeks, addMonths, isToday, isWeekend, startOfWeek, startOfMonth, isSameMonth } from 'date-fns';
 import { useState } from 'react';
+import { useTeamMember } from '@/hooks/useTeamMember';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -16,6 +17,7 @@ export const TaskTimelineView = ({
   tasks,
   onOpenDetail,
 }: TaskTimelineViewProps) => {
+  const { teamMember } = useTeamMember();
   const [viewMode, setViewMode] = useState<TimelineViewMode>('week');
   const [startDate, setStartDate] = useState(() => {
     const today = startOfDay(new Date());
@@ -59,7 +61,7 @@ export const TaskTimelineView = ({
   };
 
   const groupedByAssignee = tasksWithDates.reduce((acc, task) => {
-    const assignee = 'Evan';
+    const assignee = teamMember?.name || 'Team';
     if (!acc[assignee]) acc[assignee] = [];
     acc[assignee].push(task);
     return acc;

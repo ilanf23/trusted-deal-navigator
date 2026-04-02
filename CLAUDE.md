@@ -55,7 +55,7 @@ email-templates/  # HTML email templates (confirm-signup)
 
 ## Role-Based Access Control
 
-Three roles stored in `user_roles` table: `admin`, `client`, `partner`.
+Four roles stored in `users.app_role` column (using `app_role` enum): `admin`, `super_admin`, `client`, `partner`. The `users.user_type` column distinguishes `team_member`, `client`, `partner`, and `contact`.
 
 - **Founders** (Ilan/Brad/Adam): full `/superadmin` + personal dashboards at `/superadmin/:name`
 - **Employees**: only their own `/admin/:name` dashboard — enforced by `EmployeeRoute` component
@@ -81,7 +81,7 @@ DB types (auto-generated, ~5000 lines): `src/integrations/supabase/types.ts`
 
 Edge functions live in `supabase/functions/`. Each function is a Deno TypeScript module. All use a shared rate limiting pattern via Postgres atomic counters (`enforceRateLimit(req, funcName, limit, window)`). See `supabase/functions/CLAUDE.md` for full catalog.
 
-Key tables: `team_members`, `user_roles`, `leads`, `tasks`, `active_calls`, `call_events`, `evan_communications`, `ai_conversations`, `contracts`, `invoices`, `partner_referrals`. The `tasks` table is the unified task store (replaces former `lead_tasks`). Task status values are `todo`, `in_progress`, `done`. Assignment uses `team_member_id` (FK to `team_members`).
+Key tables: `users`, `leads`, `tasks`, `active_calls`, `call_events`, `evan_communications`, `ai_conversations`, `contracts`, `invoices`, `partner_referrals`. The `users` table consolidates former `team_members`, `profiles`, and `people` tables. The `tasks` table is the unified task store (replaces former `lead_tasks`). Task status values are `todo`, `in_progress`, `done`. Assignment uses `team_member_id` (FK to `users`).
 
 ## Twilio Calling Architecture
 
@@ -95,13 +95,25 @@ Token identity: `clx-admin`. 1-hour expiry from `twilio-token` edge function. De
 
 ## Component Conventions
 
-- UI primitives: `src/components/ui/` (shadcn/ui — do not heavily modify)
-- Admin-shared: `src/components/admin/` — see its CLAUDE.md for patterns
-- Evan-specific: `src/components/evan/`
-- `AdminSidebar.tsx` renders different nav sections based on role (via `useMemo` from `teamMember` + `isOwner`)
+- UI primitives: `src/components/ui/` (shadcn/ui — do not heavily modify these)
+- Admin-shared components: `src/components/admin/`
+- Employee portal components: `src/components/employee/`
+- `AdminSidebar.tsx` renders different nav sections based on role: Ilan-specific, owner, or employee (built via `useMemo` from `teamMember` + `isOwner`)
 - Sidebar collapsed state: `state === 'collapsed'` from `useSidebar()`; always handle both expanded and collapsed rendering paths
 - Variants via `cva` (class-variance-authority), props extend native HTML attributes, `React.forwardRef` for ref access
 - CRM admin tables: All use native HTML `<table>` (not shadcn Table) with a unified purple theme. Reference implementation: `src/pages/admin/People.tsx`. Key patterns: header bg `#eee6f6`, cell borders `#c8bdd6`, `ResizableColumnHeader` (ColHeader), sticky first column with box shadow, purple selection highlights (`#eee6f6` / `#3b2778`), 13px typography.
+
+## CRITICAL: No Hardcoded Team Member Names
+
+**NEVER hardcode team member names** (e.g., "Evan", "Brad", "Maura") in component names, file names, variable names, default values, or business logic. This rule is non-negotiable.
+
+- **File/component names**: Use generic names like `EmployeeLayout`, `CalendarWidget` — never `EvanLayout`, `EvanCalendarWidget`
+- **Default values**: Use `teamMember?.name` from the `useTeamMember()` hook — never `assignee: 'Evan'`
+- **Filters/comparisons**: Use team member IDs from the database — never `.find(m => m.name === 'Evan')`
+- **Email signatures**: Use `getSignatureHtml(name, email, title)` from `src/lib/email-signature.ts` — never a hardcoded signature constant
+- **Route configuration**: Team URL/role maps in `useSuperAdminDashboard.ts` are the only acceptable exception (routing config), and these should eventually come from the DB
+
+If you need team member data, query the `users` table or use the `useTeamMember()` hook. The app must work for any team member without code changes.
 
 ## Key Dependencies
 

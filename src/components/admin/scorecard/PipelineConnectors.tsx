@@ -228,7 +228,7 @@ export function PipelineConnectors({ containerRef, metrics }: PipelineConnectors
                 fill={conn.color}
                 fontSize={10}
                 fontWeight={600}
-                fontFamily="Plus Jakarta Sans, system-ui, sans-serif"
+                fontFamily="Inter, system-ui, sans-serif"
               >
                 {conn.labelText}
               </text>

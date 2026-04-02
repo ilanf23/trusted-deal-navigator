@@ -33,7 +33,7 @@ export const useTeamMember = () => {
 
       // Then fetch avatar_url from team_members table
       const { data: fullData, error: fullError } = await supabase
-        .from('team_members')
+        .from('users')
         .select('avatar_url')
         .eq('id', basicInfo.id)
         .single();

@@ -76,7 +76,7 @@ const AdminContracts = () => {
 
   const fetchClients = async () => {
     try {
-      const { data, error } = await supabase.from('profiles').select('id, user_id, email, company_name');
+      const { data, error } = await supabase.from('users').select('id, user_id, email, company_name');
       if (error) throw error;
       setClients(data || []);
     } catch (error) {
@@ -148,7 +148,7 @@ const AdminContracts = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div data-full-bleed className="space-y-6 p-6">
         <div className="flex items-center justify-end">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>

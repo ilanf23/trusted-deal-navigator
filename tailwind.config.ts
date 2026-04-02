@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'system-ui', '-apple-system', 'sans-serif'],
-        poppins: ['Poppins', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        poppins: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         serif: ['Cormorant Garamond', 'Georgia', 'serif'],
         display: ['Bodoni Moda', 'Georgia', 'serif'],
       },

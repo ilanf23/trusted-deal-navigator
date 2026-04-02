@@ -9,14 +9,13 @@ import { TaskDetailDialog } from './TaskDetailDialog';
 import { CompletedTasksSection } from './CompletedTasksSection';
 import GmailComposeDialog from '@/components/admin/GmailComposeDialog';
 import { Button } from '@/components/ui/button';
-import { ShimmerButton } from '@/components/ui/shimmer-button';
 import { MovingBorderButton } from '@/components/ui/moving-border-button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useGmail } from '@/hooks/useGmail';
 import { appendSignature } from '@/lib/email-signature';
 import { toast } from 'sonner';
-import { useEvanUIState } from '@/contexts/EvanUIStateContext';
+import { useEmployeeUIState } from '@/contexts/EmployeeUIStateContext';
 import { 
   LayoutGrid, 
   Table, 
@@ -63,7 +62,7 @@ export const TaskWorkspace = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { tasks, isLoading, addTask, updateTask, deleteTask, addComment } = useTasksData();
   const { sendMessage } = useGmail();
-  const { getPageState, setPageState } = useEvanUIState();
+  const { getPageState, setPageState } = useEmployeeUIState();
 
   // Initialize from persisted state
   const persisted = getPageState('tasks', TASKS_DEFAULTS);
@@ -418,18 +417,14 @@ export const TaskWorkspace = () => {
 
       {/* Top Row - New Task + Search */}
       <div className="flex items-center gap-3 py-3 md:py-4">
-        <ShimmerButton
+        <Button
           onClick={() => setIsNewTaskDialogOpen(true)}
-          shimmerColor="#ffffff"
-          shimmerDuration="2.5s"
-          background="hsl(var(--primary))"
-          borderRadius="9999px"
-          className="h-9 md:h-10 px-3 md:px-5 flex-shrink-0 font-medium text-sm md:text-base shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30"
+          className="h-9 md:h-10 px-3 md:px-5 flex-shrink-0 font-medium text-sm md:text-base rounded-full"
         >
           <Plus className="h-4 w-4 mr-1 md:mr-2" />
           <span className="hidden sm:inline">New Task</span>
           <span className="sm:hidden">Add</span>
-        </ShimmerButton>
+        </Button>
         
         <div className="relative flex-1 max-w-xs">
           <Input

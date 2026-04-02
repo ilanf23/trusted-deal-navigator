@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
-import EvanLayout from '@/components/evan/EvanLayout';
-import { TaskWorkspace } from '@/components/evan/tasks/TaskWorkspace';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
+import { TaskWorkspace } from '@/components/employee/tasks/TaskWorkspace';
 
 const Tasks = () => {
   const { setPageTitle } = useAdminTopBar();
@@ -11,12 +11,12 @@ const Tasks = () => {
   }, []);
 
   return (
-    <EvanLayout>
-      <div className="space-y-2">
+    <EmployeeLayout>
+      <div data-full-bleed className="space-y-2">
         {/* Task Workspace */}
         <TaskWorkspace />
       </div>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

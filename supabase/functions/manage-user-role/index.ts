@@ -50,10 +50,10 @@ Deno.serve(async (req) => {
 
     // Verify caller is admin or super_admin
     const { data: roleData } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
+      .from('users')
+      .select('app_role')
       .eq('user_id', callerId)
-      .in('role', ['admin', 'super_admin'])
+      .in('app_role', ['admin', 'super_admin'])
       .maybeSingle()
 
     if (!roleData) {
@@ -89,26 +89,14 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Delete existing roles and insert new one
-    const { error: deleteError } = await supabaseAdmin
-      .from('user_roles')
-      .delete()
+    // Update app_role on team_members
+    const { error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({ app_role: new_role })
       .eq('user_id', target_user_id)
 
-    if (deleteError) {
-      console.error('Error deleting old roles:', deleteError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to update role' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const { error: insertError } = await supabaseAdmin
-      .from('user_roles')
-      .insert({ user_id: target_user_id, role: new_role })
-
-    if (insertError) {
-      console.error('Error inserting new role:', insertError)
+    if (updateError) {
+      console.error('Error updating role:', updateError)
       return new Response(
         JSON.stringify({ error: 'Failed to update role' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

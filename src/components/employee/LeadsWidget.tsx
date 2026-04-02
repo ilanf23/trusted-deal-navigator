@@ -38,7 +38,7 @@ const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
   uw_paused: { label: 'UW Paused', color: 'bg-gray-500' },
 };
 
-export const EvanLeadsWidget = () => {
+export const LeadsWidget = () => {
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['evan-leads'],
     queryFn: async () => {

@@ -10,7 +10,7 @@ export const useTeamMemberByName = (name: string) => {
     queryKey: ['team-member-by-name', name.toLowerCase()],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name')
         .ilike('name', name)
         .limit(1)

@@ -48,7 +48,7 @@ export function useLoanVolumeLog() {
     queryKey: ['vl-team-members'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name')
         .order('name');
       if (error) throw error;

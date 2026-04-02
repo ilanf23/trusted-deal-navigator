@@ -428,7 +428,7 @@ const Newsletter = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div data-full-bleed className="space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center justify-end">
           <Dialog open={createCampaignOpen} onOpenChange={setCreateCampaignOpen}>

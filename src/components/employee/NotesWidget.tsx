@@ -15,7 +15,7 @@ interface Note {
   created_at: string;
 }
 
-export const EvanNotesWidget = () => {
+export const NotesWidget = () => {
   const [newNote, setNewNote] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const queryClient = useQueryClient();

@@ -12,15 +12,15 @@ import {
 } from '@/components/ui/select';
 import { Mail, Phone, Users, Building, User, Plus, Maximize2, FileText, Loader2 } from 'lucide-react';
 import { GmailEmail } from '@/components/gmail/gmailHelpers';
-import type { EvansGmailLogic } from '@/hooks/useEvansGmailLogic';
+import type { GmailLogic } from '@/hooks/useGmailLogic';
 
-interface EvansGmailDealSidebarProps {
+interface GmailDealSidebarProps {
   selectedLead: any;
   selectedEmail: GmailEmail;
-  logic: EvansGmailLogic;
+  logic: GmailLogic;
 }
 
-export function EvansGmailDealSidebar({ selectedLead, selectedEmail, logic }: EvansGmailDealSidebarProps) {
+export function GmailDealSidebar({ selectedLead, selectedEmail, logic }: GmailDealSidebarProps) {
   const {
     updateLeadMutation,
     updateStageMutation,

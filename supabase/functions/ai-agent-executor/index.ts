@@ -22,18 +22,19 @@ async function getUserFromRequest(req: Request) {
 
   // Get team member
   const { data: teamMember } = await supabase
-    .from("team_members")
+    .from("users")
     .select("id, name")
     .eq("user_id", user.id)
     .single();
 
   // Check if owner
-  const { data: roles } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id);
+  const { data: memberData } = await supabase
+    .from("users")
+    .select("app_role")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-  const isOwner = roles?.some(r => r.role === "admin") || false;
+  const isOwner = memberData?.app_role === "admin" || memberData?.app_role === "super_admin";
 
   return { user, teamMember, isOwner };
 }

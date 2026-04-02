@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import EvanLayout from '@/components/evan/EvanLayout';
-import { useEvanUIState } from '@/contexts/EvanUIStateContext';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
+import { useEmployeeUIState } from '@/contexts/EmployeeUIStateContext';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { Loader2, CheckCircle2, Circle, Clock, CalendarDays, Phone, Kanban, Mail, Calendar, Building2, DollarSign, Briefcase, Target, TrendingUp, Flag } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -17,9 +17,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { useDashboardData } from '@/components/admin/dashboard/useDashboardData';
-import NudgesWidget from '@/components/evan/dashboard/NudgesWidget';
-import TopActions from '@/components/evan/dashboard/TopActions';
-import RevenueChart from '@/components/evan/dashboard/RevenueChart';
+import NudgesWidget from '@/components/employee/dashboard/NudgesWidget';
+import TopActions from '@/components/employee/dashboard/TopActions';
+import RevenueChart from '@/components/employee/dashboard/RevenueChart';
 
 export type TimePeriod = 'mtd' | 'ytd' | 'qtd';
 
@@ -62,7 +62,7 @@ const getPriorityColor = (priority: string): string => {
 
 const Dashboard = () => {
   const { teamMember } = useTeamMember();
-  const { getPageState, setPageState } = useEvanUIState();
+  const { getPageState, setPageState } = useEmployeeUIState();
   const persisted = getPageState('dashboard', {
     timePeriod: 'ytd' as TimePeriod,
     chartPeriod: 'ytd' as TimePeriod,
@@ -99,7 +99,7 @@ const Dashboard = () => {
     isLoading, isFetching,
   } = useDashboardData(timePeriod);
 
-  const firstName = teamMember?.name || 'Evan';
+  const firstName = teamMember?.name || 'Team';
   const evanId = teamMember?.id;
   const upcomingTasks = tasksData?.topUrgent || [];
 
@@ -231,22 +231,22 @@ const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <EvanLayout>
+      <EmployeeLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-muted-foreground">Loading dashboard...</p>
           </div>
         </div>
-      </EvanLayout>
+      </EmployeeLayout>
     );
   }
 
   const periodLabel = timePeriod === 'mtd' ? 'this month' : 'year to date';
 
   return (
-    <EvanLayout>
-      <div className="space-y-6" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <EmployeeLayout>
+      <div className="space-y-6" style={{ fontFamily: "'Inter', sans-serif" }}>
 
         {/* ROW 1: Greeting bar */}
         <div className="flex items-center justify-between">
@@ -612,7 +612,7 @@ const Dashboard = () => {
         </div>
 
       </div>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

@@ -48,7 +48,7 @@ const PipelineSharingModal = ({ open, onOpenChange, ownerId, ownerName }: Pipeli
     queryKey: ['team-members-for-sharing'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name, email, role, avatar_url')
         .eq('is_active', true)
         .order('name');

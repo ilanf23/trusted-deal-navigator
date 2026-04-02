@@ -3,7 +3,7 @@ import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { OutboundCallCard } from '@/components/evan/OutboundCallCard';
+import { OutboundCallCard } from '@/components/employee/OutboundCallCard';
 import { useCall } from '@/contexts/CallContext';
 import { 
   Phone, 
@@ -312,7 +312,7 @@ const Calls = () => {
     }) => {
       // First, get Evan's team_member id
       const { data: evanMember } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id')
         .ilike('name', '%evan%')
         .limit(1)
@@ -513,16 +513,16 @@ const Calls = () => {
 
   if (callsLoading) {
     return (
-      <EvanLayout>
+      <EmployeeLayout>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-admin-blue" />
         </div>
-      </EvanLayout>
+      </EmployeeLayout>
     );
   }
 
   return (
-    <EvanLayout>
+    <EmployeeLayout>
       <div className="space-y-4">
         {/* Phone Number Badge */}
         <div className="flex justify-end">
@@ -1126,7 +1126,7 @@ const Calls = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

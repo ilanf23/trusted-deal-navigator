@@ -3,14 +3,14 @@ import { createContext, useContext, useState, useCallback, ReactNode, useRef } f
 // Generic state store keyed by page name
 type StateMap = Record<string, Record<string, any>>;
 
-interface EvanUIStateContextType {
+interface EmployeeUIStateContextType {
   getPageState: <T extends Record<string, any>>(page: string, defaults: T) => T;
   setPageState: <T extends Record<string, any>>(page: string, state: Partial<T>) => void;
 }
 
-const EvanUIStateContext = createContext<EvanUIStateContextType | null>(null);
+const EmployeeUIStateContext = createContext<EmployeeUIStateContextType | null>(null);
 
-export const EvanUIStateProvider = ({ children }: { children: ReactNode }) => {
+export const EmployeeUIStateProvider = ({ children }: { children: ReactNode }) => {
   const stateRef = useRef<StateMap>({});
   // Force re-renders aren't needed — consumers read on mount and write through setters
   const [, setTick] = useState(0);
@@ -27,14 +27,14 @@ export const EvanUIStateProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <EvanUIStateContext.Provider value={{ getPageState, setPageState }}>
+    <EmployeeUIStateContext.Provider value={{ getPageState, setPageState }}>
       {children}
-    </EvanUIStateContext.Provider>
+    </EmployeeUIStateContext.Provider>
   );
 };
 
-export const useEvanUIState = () => {
-  const ctx = useContext(EvanUIStateContext);
-  if (!ctx) throw new Error('useEvanUIState must be used within EvanUIStateProvider');
+export const useEmployeeUIState = () => {
+  const ctx = useContext(EmployeeUIStateContext);
+  if (!ctx) throw new Error('useEmployeeUIState must be used within EmployeeUIStateProvider');
   return ctx;
 };

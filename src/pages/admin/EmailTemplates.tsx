@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -164,7 +164,7 @@ const EmailTemplates = () => {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <EvanLayout>
+    <EmployeeLayout>
       <div className="p-6 max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-end mb-6">
@@ -280,7 +280,7 @@ const EmailTemplates = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

@@ -5,13 +5,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, ChevronDown, Reply, ReplyAll, Forward, ListTodo, User, Users, Paperclip, FileText, FileImage, File, Download, Loader2 } from 'lucide-react';
 import InlineReplyBox from '@/components/admin/inbox/InlineReplyBox';
 import { GmailEmail, ThreadMessage, extractSenderName, extractEmailAddress, toRenderableHtml } from '@/components/gmail/gmailHelpers';
-import { mockThreadMessages } from '@/components/gmail/EvanGmailFeatures';
+import { mockThreadMessages } from '@/components/gmail/GmailFeatures';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { appendSignature } from '@/lib/email-signature';
-import { EvansGmailDealSidebar } from './EvansGmailDealSidebar';
-import { EvansGmailContactSidebar } from './EvansGmailContactSidebar';
-import type { EvansGmailLogic } from '@/hooks/useEvansGmailLogic';
+import { GmailDealSidebar } from './GmailDealSidebar';
+import { GmailContactSidebar } from './GmailContactSidebar';
+import type { GmailLogic } from '@/hooks/useGmailLogic';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -115,11 +115,11 @@ function AttachmentList({ attachments }: { attachments: GmailEmail['attachments'
   );
 }
 
-interface EvansGmailEmailDetailProps {
-  logic: EvansGmailLogic;
+interface GmailEmailDetailProps {
+  logic: GmailLogic;
 }
 
-export function EvansGmailEmailDetail({ logic }: EvansGmailEmailDetailProps) {
+export function GmailEmailDetail({ logic }: GmailEmailDetailProps) {
   const {
     selectedEmail,
     selectedLead,
@@ -493,7 +493,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
 
       {/* Deal Summary Sidebar (leads) */}
       {showDealSidebar && crm.type === 'lead' && selectedLead && (
-        <EvansGmailDealSidebar
+        <GmailDealSidebar
           selectedLead={selectedLead}
           selectedEmail={selectedEmail}
           logic={logic}
@@ -502,7 +502,7 @@ ${bodyToForward.replace(/\n/g, '<br>')}`;
 
       {/* Contact Sidebar (people) */}
       {showDealSidebar && crm.type === 'person' && crm.person && (
-        <EvansGmailContactSidebar
+        <GmailContactSidebar
           person={crm.person}
           onClose={() => setShowDealSidebar(false)}
         />

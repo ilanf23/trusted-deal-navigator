@@ -43,7 +43,7 @@ export const AvatarUpload = ({
   fallbackInitials,
   className = '',
   size = 'md',
-  tableName = 'team_members',
+  tableName = 'users',
   tableIdColumn = 'user_id',
   tableImageColumn = 'avatar_url',
   queryKeysToInvalidate = [['team-member'], ['team-members']],

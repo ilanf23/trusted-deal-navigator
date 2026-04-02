@@ -5,10 +5,10 @@ import { Loader2, ArrowRight, ArrowDown, Building, Clock, MessageSquare, Star, M
 import { useHiddenThreads } from '@/hooks/useHiddenThreads';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { GmailEmail, extractSenderName } from '@/components/gmail/gmailHelpers';
-import { getNextStepSuggestion } from '@/components/gmail/EvanGmailFeatures';
+import { getNextStepSuggestion } from '@/components/gmail/GmailFeatures';
 import { format, formatDistanceToNow } from 'date-fns';
 import { appendSignature } from '@/lib/email-signature';
-import type { EvansGmailLogic } from '@/hooks/useEvansGmailLogic';
+import type { GmailLogic } from '@/hooks/useGmailLogic';
 
 const contactTypeConfig: Record<string, { bg: string; text: string }> = {
   Client: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
@@ -18,11 +18,11 @@ const contactTypeConfig: Record<string, { bg: string; text: string }> = {
   Other: { bg: 'bg-slate-100', text: 'text-slate-700' },
 };
 
-interface EvansGmailEmailListProps {
-  logic: EvansGmailLogic;
+interface GmailEmailListProps {
+  logic: GmailLogic;
 }
 
-export function EvansGmailEmailList({ logic }: EvansGmailEmailListProps) {
+export function GmailEmailList({ logic }: GmailEmailListProps) {
   const {
     emailsLoading,
     filteredEmails,

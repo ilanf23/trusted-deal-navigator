@@ -8,9 +8,9 @@ import LeadDetailDialog from '@/components/admin/LeadDetailDialog';
 import { GmailSidebar } from '@/components/admin/inbox/GmailSidebar';
 import { cn } from '@/lib/utils';
 import { EVAN_SIGNATURE_HTML, appendSignature } from '@/lib/email-signature';
-import { useEvansGmailLogic } from '@/hooks/useEvansGmailLogic';
-import { EvansGmailEmailDetail } from '@/components/evan/gmail/EvansGmailEmailDetail';
-import { EvansGmailEmailList } from '@/components/evan/gmail/EvansGmailEmailList';
+import { useGmailLogic } from '@/hooks/useGmailLogic';
+import { GmailEmailDetail } from '@/components/employee/gmail/GmailEmailDetail';
+import { GmailEmailList } from '@/components/employee/gmail/GmailEmailList';
 
 interface GmailCRMViewProps {
   userKey: string;
@@ -19,7 +19,7 @@ interface GmailCRMViewProps {
 }
 
 export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMViewProps) {
-  const logic = useEvansGmailLogic({ userKey, callbackPrefix, returnPath });
+  const logic = useGmailLogic({ userKey, callbackPrefix, returnPath });
 
   const {
     connectionLoading,
@@ -182,7 +182,7 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
               </div>
             )}
             {selectedEmail ? (
-              <EvansGmailEmailDetail logic={logic} />
+              <GmailEmailDetail logic={logic} />
             ) : activeFolder === 'templates' ? (
               /* Templates View */
               <div className="h-full flex flex-col">
@@ -217,7 +217,7 @@ export function GmailCRMView({ userKey, callbackPrefix, returnPath }: GmailCRMVi
                 </ScrollArea>
               </div>
             ) : (
-              <EvansGmailEmailList logic={logic} />
+              <GmailEmailList logic={logic} />
             )}
           </div>
         </div>

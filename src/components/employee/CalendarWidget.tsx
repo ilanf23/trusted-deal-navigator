@@ -93,7 +93,7 @@ interface CalendarFilter {
   enabled: boolean;
 }
 
-export const EvanCalendarWidget = () => {
+export const CalendarWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());

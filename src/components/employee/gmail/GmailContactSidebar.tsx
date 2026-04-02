@@ -36,7 +36,7 @@ interface Person {
   last_activity_at?: string | null;
 }
 
-interface EvansGmailContactSidebarProps {
+interface GmailContactSidebarProps {
   person: Person;
   onClose: () => void;
 }
@@ -326,7 +326,7 @@ function EditableTags({ tags, personId, onSaved }: { tags: string[]; personId: s
 // ══════════════════════════════════════════════════
 // ── Main Contact Sidebar ──
 // ══════════════════════════════════════════════════
-export function EvansGmailContactSidebar({ person, onClose }: EvansGmailContactSidebarProps) {
+export function GmailContactSidebar({ person, onClose }: GmailContactSidebarProps) {
   const queryClient = useQueryClient();
   const [contactType, setContactType] = useState(person.contact_type || 'Prospect');
   const [savingType, setSavingType] = useState(false);

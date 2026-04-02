@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -291,11 +291,11 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   .admin-portal {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -657,10 +657,13 @@
   /* Full-bleed pages: remove padding and max-width from AdminLayout wrappers */
   .admin-portal main > div:not([data-split-view]):has([data-full-bleed]) {
     padding: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+    background: transparent !important;
   }
   .admin-portal main > div:not([data-split-view]) > div:has([data-full-bleed]) {
     max-width: none !important;
+    width: 100% !important;
+    height: 100% !important;
   }
   .admin-portal main:has([data-full-bleed]) {
     overflow-x: hidden !important;

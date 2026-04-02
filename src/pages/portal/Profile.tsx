@@ -19,7 +19,7 @@ const PortalProfile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
-      const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+      const { data } = await supabase.from('users').select('*').eq('user_id', user.id).single();
       if (data) setProfile({ company_name: data.company_name || '', contact_person: data.contact_person || '', phone: data.phone || '', address: data.address || '', city: data.city || '', state: data.state || '', zip_code: data.zip_code || '' });
       setLoading(false);
     };
@@ -29,7 +29,7 @@ const PortalProfile = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from('profiles').update(profile).eq('user_id', user.id);
+    const { error } = await supabase.from('users').update(profile).eq('user_id', user.id);
     if (error) toast({ title: 'Error', description: 'Failed to save profile', variant: 'destructive' });
     else toast({ title: 'Success', description: 'Profile updated successfully' });
     setSaving(false);

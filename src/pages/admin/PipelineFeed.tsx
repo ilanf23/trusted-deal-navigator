@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import FeedLeftPanel from '@/components/feed/FeedLeftPanel';
 import FeedCenter from '@/components/feed/FeedCenter';
 import FeedRightPanel from '@/components/feed/FeedRightPanel';
@@ -16,14 +16,24 @@ import AdminTopBarSearch from '@/components/admin/AdminTopBarSearch';
 import { Bell, CheckCircle, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 
-const FILTER_TYPE_MAP: Record<string, FeedActivityType> = {
+const FILTER_TYPE_MAP: Record<string, FeedActivityType | null> = {
+  'Annual Follow Up': null,
+  'CLX Agr. Out for eSignature': null,
   'Email': 'email',
-  'Phone Call': 'call',
-  'SMS': 'sms',
+  'Follow Up': null,
+  'Form': null,
+  'Lender Needs List': null,
+  'Lender Q&A': null,
+  'Mail': null,
+  'Meeting': null,
   'Note': 'note',
-  'New Lead': 'lead_created',
-  'Task': 'task_created',
-  'Stage Change': 'stage_change',
+  'Phone Call': 'call',
+  'Prep Projections': null,
+  'Review Financials': null,
+  'SMS': 'sms',
+  'To Do': null,
+  'UW Paused - Need Info': null,
+  'Zoom Call': 'call',
 };
 
 const PipelineFeed = () => {
@@ -36,8 +46,9 @@ const PipelineFeed = () => {
     queryKey: ['feed-team-members'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('users')
         .select('id, name, avatar_url')
+        .in('name', ['Evan', 'Wendy', 'Maura', 'Brad'])
         .order('name');
       if (error) throw error;
       return data;
@@ -86,13 +97,13 @@ const PipelineFeed = () => {
     queryClient.invalidateQueries({ queryKey: ['feed-unread-notifications'] });
   };
 
-  const [selectedTeamMember, setSelectedTeamMember] = useState<string | null>(null);
+  const [selectedTeamMembers, setSelectedTeamMembers] = useState<Set<string>>(new Set());
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
   const initializedRef = useRef(false);
 
   useEffect(() => {
     if (!initializedRef.current && teamMember?.name) {
-      setSelectedTeamMember(teamMember.name);
+      setSelectedTeamMembers(new Set([teamMember.name]));
       initializedRef.current = true;
     }
   }, [teamMember?.name]);
@@ -131,28 +142,43 @@ const PipelineFeed = () => {
     }
   }, []);
 
-  const handleTeamMemberSelect = useCallback((member: string | null) => {
-    setSelectedTeamMember(member);
+  const handleTeamMemberSelect = useCallback((members: Set<string>) => {
+    setSelectedTeamMembers(members);
     setLeftPanelOpen(false);
   }, []);
 
   const filteredActivities = useMemo(() => {
     let result = activities;
 
-    if (selectedTeamMember) {
+    if (selectedTeamMembers.size > 0) {
+      // Build a set of selected team member IDs for assignedTo matching
+      const selectedNames = Array.from(selectedTeamMembers).map(n => n.toLowerCase());
+      const selectedIds = new Set(
+        teamMembers.filter(tm => selectedNames.includes(tm.name.toLowerCase())).map(tm => tm.id)
+      );
       result = result.filter(
-        (a) => a.actorName.toLowerCase().includes(selectedTeamMember.toLowerCase())
+        (a) =>
+          selectedNames.some(name => a.actorName.toLowerCase().includes(name)) ||
+          (a.assignedToId && selectedIds.has(a.assignedToId))
       );
     }
 
     // Apply type filters
     if (selectedFilters.size > 0) {
       const allowedTypes = new Set<string>();
+      const contentKeywords: string[] = [];
       for (const label of selectedFilters) {
         const mapped = FILTER_TYPE_MAP[label];
-        if (mapped) allowedTypes.add(mapped);
+        if (mapped) {
+          allowedTypes.add(mapped);
+        } else {
+          contentKeywords.push(label.toLowerCase());
+        }
       }
-      result = result.filter((a) => allowedTypes.has(a.type));
+      result = result.filter((a) =>
+        allowedTypes.has(a.type) ||
+        contentKeywords.some(kw => a.content.toLowerCase().includes(kw) || a.type.toLowerCase().includes(kw))
+      );
     }
 
     if (searchQuery.trim()) {
@@ -167,11 +193,11 @@ const PipelineFeed = () => {
     }
 
     return result;
-  }, [activities, selectedTeamMember, selectedFilters, searchQuery]);
+  }, [activities, selectedTeamMembers, selectedFilters, searchQuery]);
 
   return (
-    <EvanLayout>
-      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full bg-white">
+    <EmployeeLayout>
+      <div data-full-bleed className="flex flex-col h-[calc(100vh-3.5rem-1px)] md:h-[calc(100vh-4rem-1px)] w-full bg-[#f3f4f6]">
         {/* Mobile Sheet drawer for left panel */}
         <Sheet open={leftPanelOpen} onOpenChange={setLeftPanelOpen}>
           <SheetContent side="left" className="p-0 w-[280px] border-r-0">
@@ -179,8 +205,8 @@ const PipelineFeed = () => {
               <SheetTitle>Team Filter</SheetTitle>
             </SheetHeader>
             <FeedLeftPanel
-              selectedTeamMember={selectedTeamMember}
-              onTeamMemberSelect={handleTeamMemberSelect}
+              selectedTeamMembers={selectedTeamMembers}
+              onTeamMembersChange={handleTeamMemberSelect}
               teamMembers={teamMembers}
               selectedFilters={selectedFilters}
               onFiltersChange={setSelectedFilters}
@@ -203,8 +229,8 @@ const PipelineFeed = () => {
           {/* Inline left panel — visible at lg+ */}
           <div className="hidden lg:block">
             <FeedLeftPanel
-              selectedTeamMember={selectedTeamMember}
-              onTeamMemberSelect={setSelectedTeamMember}
+              selectedTeamMembers={selectedTeamMembers}
+              onTeamMembersChange={setSelectedTeamMembers}
               teamMembers={teamMembers}
               selectedFilters={selectedFilters}
               onFiltersChange={setSelectedFilters}
@@ -217,7 +243,7 @@ const PipelineFeed = () => {
             onSearchChange={setSearchQuery}
             onToggleLeftPanel={() => setLeftPanelOpen(true)}
             onToggleRightPanel={() => setRightPanelOpen(true)}
-            selectedTeamMember={selectedTeamMember}
+            selectedTeamMembers={selectedTeamMembers}
             onViewLead={handleViewLead}
             currentTeamMemberId={teamMember?.id || null}
           />
@@ -233,7 +259,7 @@ const PipelineFeed = () => {
           if (!open) setDetailLead(null);
         }}
       />
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 

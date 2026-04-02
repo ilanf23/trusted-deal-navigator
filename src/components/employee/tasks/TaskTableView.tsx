@@ -315,14 +315,12 @@ export const TaskTableView = ({
             <ColHeader colKey="priority" className="sticky top-0 z-10">
               <Tag className="h-4 w-4" /> Priority
             </ColHeader>
-            {/* Actions column (delete) */}
-            <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
           </tr>
         </thead>
         <tbody>
           {sortedTasks.length === 0 && !isAddingTask ? (
             <tr>
-              <td colSpan={7}>
+              <td colSpan={6}>
                 <div className="flex flex-col items-center justify-center py-24 gap-4">
                   <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
                     <FileSearch className="h-6 w-6 text-muted-foreground" />
@@ -431,19 +429,17 @@ export const TaskTableView = ({
                     <StatusPill task={task} />
                   </td>
 
-                  {/* Priority */}
-                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.priority, border: '1px solid #c8bdd6' }}>
-                    {renderPriorityIndicator(task.priority)}
-                  </td>
-
-                  {/* Delete action */}
-                  <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => onDeleteTask(task.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-transparent group-hover:text-muted-foreground hover:text-destructive transition-all"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                  {/* Priority + Delete */}
+                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.priority, border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between">
+                      {renderPriorityIndicator(task.priority)}
+                      <button
+                        onClick={() => onDeleteTask(task.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

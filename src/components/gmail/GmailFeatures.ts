@@ -18,7 +18,8 @@ export interface EmailTemplate {
   body: string;
 }
 
-export const evanEmailTemplates: EmailTemplate[] = [
+// Email templates — generic CLX templates, not employee-specific
+export const emailTemplates: EmailTemplate[] = [
   { id: 'template-1', name: 'Initial Outreach', subject: 'Commercial Lending Opportunity', body: 'Hi, I wanted to reach out about financing options that could help grow your business.' },
   { id: 'template-2', name: 'Follow-Up', subject: 'Following Up on Our Conversation', body: 'Just checking in to see if you had any questions about the loan options we discussed.' },
   { id: 'template-3', name: 'Document Request', subject: 'Documents Needed for Your Application', body: 'To move forward with your application, please provide the following documents at your earliest convenience.' },
@@ -27,6 +28,8 @@ export const evanEmailTemplates: EmailTemplate[] = [
 ];
 
 // ── Mock Thread Messages ───────────────────────────────────────────
+// NOTE: Mock data below uses evan@commerciallendingx.com as demo sender/recipient.
+// These are static fixtures for development; not used in production email flows.
 export const mockThreadMessages: Record<string, ThreadMessage[]> = {
   'thread-mock-11': [
     {
@@ -173,6 +176,7 @@ export const mockThreadMessages: Record<string, ThreadMessage[]> = {
 };
 
 // ── Mock External Emails ───────────────────────────────────────────
+// NOTE: Mock data uses evan@commerciallendingx.com as demo recipient — static fixtures only.
 export const mockExternalEmails: GmailEmail[] = [
   { id: 'mock-1', threadId: 'thread-mock-1', subject: 'RE: Loan Application Status Update', from: 'Robert Martinez <robert.martinez@capitalventures.com>', to: 'evan@commerciallendingx.com', date: new Date(Date.now() - 1000 * 60 * 30).toISOString(), snippet: 'Hi Evan, Just following up on our conversation about the $2.5M acquisition loan. We have completed the due diligence...', isRead: false, senderPhoto: robertMartinezAvatar },
   { id: 'mock-2', threadId: 'thread-mock-2', subject: 'Documents for Property Appraisal', from: 'Sarah Richardson <sarah.r@meridiangroup.com>', to: 'evan@commerciallendingx.com', date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), snippet: 'Please find attached the property appraisal documents for the Meridian Plaza project. Let me know if you need anything else.', isRead: false, senderPhoto: sarahRichardsonAvatar },

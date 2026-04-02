@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAdminTopBar } from '@/contexts/AdminTopBarContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import EvanLayout from '@/components/evan/EvanLayout';
+import EmployeeLayout from '@/components/employee/EmployeeLayout';
 import { useTeamMember } from '@/hooks/useTeamMember';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -526,14 +526,14 @@ const Scorecard = () => {
 
   if (leadsLoading) {
     return (
-      <EvanLayout>
+      <EmployeeLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-muted-foreground">Loading scorecard...</p>
           </div>
         </div>
-      </EvanLayout>
+      </EmployeeLayout>
     );
   }
 
@@ -542,7 +542,7 @@ const Scorecard = () => {
   const periodSub = timeMode === 'week' ? 'this week' : timeMode === 'monthly' ? 'this month' : timeMode === 'ytd' ? 'year to date' : 'this period';
 
   return (
-    <EvanLayout>
+    <EmployeeLayout>
       <div className="space-y-6 sm:space-y-8 pb-6 sm:pb-10">
 
         {/* ── Header ── */}
@@ -693,7 +693,7 @@ const Scorecard = () => {
         </div>
 
       </div>
-    </EvanLayout>
+    </EmployeeLayout>
   );
 };
 
