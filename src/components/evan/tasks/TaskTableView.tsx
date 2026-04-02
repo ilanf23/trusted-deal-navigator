@@ -1,15 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Task, statusConfig, priorityConfig, taskTypeConfig } from './types';
+import { useState, useCallback } from 'react';
+import { Task, statusConfig, statusPickerOptions, priorityConfig, taskTypeConfig } from './types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Plus, ArrowUpRight, Building2, Calendar, ExternalLink, Mail, Users, FileText, Phone, User } from 'lucide-react';
+import ResizableColumnHeader from '@/components/admin/ResizableColumnHeader';
+import { Trash2, Plus, Building2, Calendar, Mail, Phone, User, CheckSquare, ArrowUpRight, Tag, Clock, FileSearch } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TaskTableViewProps {
   tasks: Task[];
@@ -23,6 +20,36 @@ interface TaskTableViewProps {
   onComposeEmail?: (leadId: string | null, template?: string) => void | Promise<void>;
 }
 
+type SortField = 'title' | 'due_date' | 'status' | 'priority' | 'lead_name' | 'task_type';
+type SortDir = 'asc' | 'desc';
+
+const COLUMN_SORT_OPTIONS: Record<string, { label: string; field: SortField; dir: SortDir }[]> = {
+  task: [
+    { label: 'Name ascending', field: 'title', dir: 'asc' },
+    { label: 'Name descending', field: 'title', dir: 'desc' },
+  ],
+  type: [
+    { label: 'Type ascending', field: 'task_type', dir: 'asc' },
+    { label: 'Type descending', field: 'task_type', dir: 'desc' },
+  ],
+  customer: [
+    { label: 'Customer ascending', field: 'lead_name', dir: 'asc' },
+    { label: 'Customer descending', field: 'lead_name', dir: 'desc' },
+  ],
+  dueDate: [
+    { label: 'Due date ascending', field: 'due_date', dir: 'asc' },
+    { label: 'Due date descending', field: 'due_date', dir: 'desc' },
+  ],
+  status: [
+    { label: 'Status ascending', field: 'status', dir: 'asc' },
+    { label: 'Status descending', field: 'status', dir: 'desc' },
+  ],
+  priority: [
+    { label: 'Priority ascending', field: 'priority', dir: 'asc' },
+    { label: 'Priority descending', field: 'priority', dir: 'desc' },
+  ],
+};
+
 export const TaskTableView = ({
   tasks,
   onUpdateTask,
@@ -32,11 +59,25 @@ export const TaskTableView = ({
   selectedTasks,
   onToggleSelect,
   fadingTasks = new Set(),
-  onComposeEmail,
 }: TaskTableViewProps) => {
-  const navigate = useNavigate();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [colMenuOpen, setColMenuOpen] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>('due_date');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
+    task: 260,
+    type: 100,
+    customer: 180,
+    dueDate: 140,
+    status: 120,
+    priority: 110,
+  });
+
+  const handleColumnResize = useCallback((columnId: string, newWidth: number) => {
+    setColumnWidths(prev => ({ ...prev, [columnId]: newWidth }));
+  }, []);
 
   const handleAddTask = () => {
     if (!newTaskTitle.trim()) return;
@@ -45,91 +86,22 @@ export const TaskTableView = ({
     setIsAddingTask(false);
   };
 
-  // Determine where to navigate based on task source and context
-  const getNavigationInfo = (task: Task): { 
-    path: string; 
-    label: string; 
-    icon: React.ReactNode;
-    action?: 'compose' | 'view';
-    template?: string;
-  } | null => {
-    const source = task.source?.toLowerCase() || '';
-    const title = task.title?.toLowerCase() || '';
-    const hasLead = task.lead_id || task.lead;
-    
-    // Closing docs / prepare closing - opens email with closing template
-    if (title.includes('closing') || title.includes('prepare closing')) {
-      return { 
-        path: hasLead 
-          ? `/admin/gmail?compose=true&leadId=${task.lead_id}&template=closing&taskId=${task.id}`
-          : `/admin/gmail?compose=true&template=closing&taskId=${task.id}`,
-        label: 'Draft Closing Email', 
-        icon: <FileText className="h-3.5 w-3.5" />,
-        action: 'compose',
-        template: 'closing'
-      };
+  // Sort tasks
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    switch (sortField) {
+      case 'title': return dir * (a.title || '').localeCompare(b.title || '');
+      case 'due_date': return dir * ((a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1);
+      case 'status': return dir * (a.status || '').localeCompare(b.status || '');
+      case 'priority': {
+        const order = ['critical', 'high', 'medium', 'low', 'none'];
+        return dir * (order.indexOf(a.priority || 'medium') - order.indexOf(b.priority || 'medium'));
+      }
+      case 'lead_name': return dir * (a.lead?.name || '').localeCompare(b.lead?.name || '');
+      case 'task_type': return dir * (a.task_type || '').localeCompare(b.task_type || '');
+      default: return 0;
     }
-    
-    if (source === 'nudge' || title.includes('follow up') || title.includes('follow-up')) {
-      return { 
-        path: hasLead 
-          ? `/admin/gmail?compose=true&leadId=${task.lead_id}&template=follow_up&taskId=${task.id}`
-          : `/admin/gmail?compose=true&template=follow_up&taskId=${task.id}`,
-        label: 'Draft Follow-up Email', 
-        icon: <Mail className="h-3.5 w-3.5" />,
-        action: 'compose',
-        template: 'follow_up'
-      };
-    }
-    
-    if (source === 'gmail' || title.includes('email') || title.includes('send')) {
-      return { 
-        path: hasLead 
-          ? `/admin/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}`
-          : `/admin/gmail?compose=true&taskId=${task.id}`,
-        label: 'Compose Email', 
-        icon: <Mail className="h-3.5 w-3.5" />,
-        action: 'compose'
-      };
-    }
-    
-    if (source === 'lead' || hasLead) {
-      return { 
-        path: `/admin/pipeline?lead=${task.lead_id}&tab=lenders`, 
-        label: 'View in CRM', 
-        icon: <Users className="h-3.5 w-3.5" />,
-        action: 'view'
-      };
-    }
-    
-    if (title.includes('document') || title.includes('doc') || title.includes('file')) {
-      return { 
-        path: '/admin/pipeline', 
-        label: 'Go to Pipeline', 
-        icon: <FileText className="h-3.5 w-3.5" />,
-        action: 'view'
-      };
-    }
-    
-    // Default - no navigation available
-    return null;
-  };
-
-  const handleNavigate = (e: React.MouseEvent, task: Task) => {
-    e.stopPropagation();
-    const navInfo = getNavigationInfo(task);
-    if (navInfo) {
-      console.debug('[TaskTableView] Go To click', {
-        taskId: task.id,
-        action: navInfo.action,
-        path: navInfo.path,
-        template: navInfo.template,
-      });
-
-      // Always navigate to Gmail page for compose actions - Gmail will handle email generation
-      navigate(navInfo.path);
-    }
-  };
+  });
 
   const renderPriorityIndicator = (priority: string | null) => {
     const config = priorityConfig[priority || 'medium'];
@@ -139,13 +111,14 @@ export const TaskTableView = ({
           <div
             key={level}
             className={`w-1.5 rounded-full transition-all ${
-              level <= Math.ceil(config.stars / 2) 
-                ? 'h-3 bg-current opacity-100' 
+              level <= Math.ceil(config.stars / 2)
+                ? 'h-3 bg-current opacity-100'
                 : 'h-2 bg-current opacity-20'
             }`}
             style={{ color: config.color }}
           />
         ))}
+        <span className="ml-1 text-[12px] text-[#5f6368] dark:text-muted-foreground">{config.label}</span>
       </div>
     );
   };
@@ -155,241 +128,332 @@ export const TaskTableView = ({
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <button 
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all hover:scale-105 ${config.bg} ${config.text}`}
+          <button
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all hover:scale-105 border whitespace-nowrap ${config.bg} ${config.text}`}
           >
             {config.label}
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-40 p-2 rounded-xl border-muted-foreground/10" align="start">
           <div className="space-y-1">
-            {Object.entries(statusConfig).map(([key, cfg]) => (
-              <button
-                key={key}
-                onClick={() => onUpdateTask(task.id, { status: key, is_completed: key === 'done' })}
-                className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-all hover:scale-[1.02] ${cfg.bg} ${cfg.text}`}
-              >
-                {cfg.label}
-              </button>
-            ))}
+            {statusPickerOptions.map((key) => {
+              const cfg = statusConfig[key];
+              return (
+                <button
+                  key={key}
+                  onClick={() => onUpdateTask(task.id, { status: key, is_completed: key === 'done' })}
+                  className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-all hover:scale-[1.02] ${cfg.bg} ${cfg.text}`}
+                >
+                  {cfg.label}
+                </button>
+              );
+            })}
           </div>
         </PopoverContent>
       </Popover>
     );
   };
 
-  return (
-    <div className="rounded-xl md:rounded-2xl border border-muted-foreground/10 bg-card/50 backdrop-blur-sm overflow-x-auto">
-      <Table className="min-w-[700px]">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent border-b border-muted-foreground/10">
-            <TableHead className="w-8 md:w-10"></TableHead>
-            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground w-24">Actions</TableHead>
-            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Task Name</TableHead>
-            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden md:table-cell">Assigned To</TableHead>
-            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Related Customer</TableHead>
-            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Due Date</TableHead>
-            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground">Status</TableHead>
-            <TableHead className="font-semibold text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Priority</TableHead>
-            <TableHead className="w-12 md:w-20"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tasks.map((task) => (
-            <TableRow
-              key={task.id}
-              className={`group cursor-pointer transition-all duration-500 hover:bg-muted/40 ${
-                fadingTasks.has(task.id) 
-                  ? 'opacity-0 scale-95 translate-x-4' 
-                  : task.is_completed 
-                    ? 'opacity-50' 
-                    : ''
-              }`}
-              onClick={() => onOpenDetail(task)}
+  const TaskTypeChip = ({ task }: { task: Task }) => {
+    const type = task.task_type || 'internal';
+    const cfg = taskTypeConfig[type] || taskTypeConfig.internal;
+    const Icon = type === 'call' ? Phone : type === 'email' ? Mail : User;
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap"
+        style={{
+          backgroundColor: `${cfg.color}10`,
+          color: cfg.color,
+          borderColor: `${cfg.color}30`,
+        }}
+      >
+        <Icon className="h-3 w-3" />
+        {cfg.label}
+      </span>
+    );
+  };
+
+  // ColHeader — matches People.tsx CRM header style
+  const ColHeader = ({
+    colKey,
+    children,
+    className: extraClassName,
+    style: extraStyle,
+  }: {
+    colKey?: string;
+    children: React.ReactNode;
+    className?: string;
+    style?: React.CSSProperties;
+  }) => {
+    const widthKey = colKey ?? 'task';
+    const width = columnWidths[widthKey] ?? 120;
+    const sortOptions = COLUMN_SORT_OPTIONS[widthKey];
+    const isMenuOpen = colMenuOpen === widthKey;
+
+    return (
+      <th
+        className={`px-4 py-1.5 text-left whitespace-nowrap group/col transition-colors hover:z-20 ${extraClassName ?? ''}`}
+        style={{ width: `${width}px`, minWidth: 60, maxWidth: 500, backgroundColor: '#eee6f6', border: '1px solid #c8bdd6', ...extraStyle }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d8cce8'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#eee6f6'; }}
+      >
+        <ResizableColumnHeader
+          columnId={widthKey}
+          currentWidth={`${width}px`}
+          onResize={handleColumnResize}
+        >
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[#3b2778] dark:text-muted-foreground">
+            {children}
+          </span>
+          {sortOptions && (
+            <div
+              className={`relative ml-auto shrink-0 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <Checkbox 
-                  checked={task.is_completed}
-                  onCheckedChange={(checked) => onUpdateTask(task.id, { 
-                    is_completed: !!checked, 
-                    status: checked ? 'done' : 'todo' 
-                  })}
-                  className="h-5 w-5 rounded-full border-2 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                />
-              </TableCell>
-
-              {/* Actions column - Based on task_type */}
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center gap-1">
-                  {/* Primary action based on task_type */}
-                  {task.task_type === 'call' && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (task.lead?.phone) {
-                                navigate(`/admin/calls?dial=${encodeURIComponent(task.lead.phone)}&leadId=${task.lead_id}`);
-                              }
-                            }}
-                            disabled={!task.lead?.phone}
-                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                              task.lead?.phone 
-                                ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
-                                : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
-                            }`}
-                          >
-                            <Phone className="h-3.5 w-3.5" />
-                            Call
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          {task.lead?.phone ? `Call ${task.lead.name}` : task.lead ? 'No phone on file' : 'No contact linked'}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  
-                  {task.task_type === 'email' && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (task.lead?.email || task.lead_id) {
-                                // Determine template based on task title
-                                const title = task.title?.toLowerCase() || '';
-                                const isFollowUp = title.includes('follow up') || title.includes('follow-up');
-                                const template = isFollowUp ? 'follow_up' : '';
-                                const templateParam = template ? `&template=${template}` : '';
-                                navigate(`/admin/gmail?compose=true&leadId=${task.lead_id}&taskId=${task.id}${templateParam}`);
-                              }
-                            }}
-                            disabled={!task.lead_id}
-                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                              task.lead_id 
-                                ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
-                                : 'bg-muted text-muted-foreground/50 cursor-not-allowed'
-                            }`}
-                          >
-                            <Mail className="h-3.5 w-3.5" />
-                            Email
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          {task.lead_id ? `Email ${task.lead?.name || 'contact'}` : 'No contact linked'}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  
-                  {(task.task_type === 'internal' || !task.task_type) && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500">
-                            <User className="h-3.5 w-3.5" />
-                            Internal
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          Internal task - no client communication
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </div>
-              </TableCell>
-
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium ${task.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                    {task.title}
-                  </span>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                {task.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 max-w-xs">
-                    {task.description}
-                  </p>
-                )}
-              </TableCell>
-
-              <TableCell className="hidden md:table-cell">
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-5 w-5 md:h-6 md:w-6 ring-2 ring-background">
-                    <AvatarFallback className="text-[9px] md:text-[10px] bg-gradient-to-br from-violet-500 to-purple-600 text-white font-medium">
-                      {'EV'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs md:text-sm">Evan</span>
-                </div>
-              </TableCell>
-
-              <TableCell className="hidden lg:table-cell">
-                {task.lead ? (
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 rounded-md bg-muted">
-                      <Building2 className="h-3 w-3 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-xs md:text-sm font-medium">{task.lead.name}</p>
-                      {task.lead.company_name && (
-                        <p className="text-[10px] md:text-xs text-muted-foreground">{task.lead.company_name}</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <span className="text-xs md:text-sm text-muted-foreground">—</span>
-                )}
-              </TableCell>
-
-              <TableCell>
-                {task.due_date ? (
-                  <div className="flex items-center gap-1 md:gap-1.5 text-xs md:text-sm">
-                    <Calendar className="h-3 w-3 md:h-3.5 md:w-3.5 text-muted-foreground" />
-                    <span className="hidden sm:inline">{format(parseISO(task.due_date), 'MMM d, yyyy')}</span>
-                    <span className="sm:hidden">{format(parseISO(task.due_date), 'M/d')}</span>
-                  </div>
-                ) : (
-                  <span className="text-xs md:text-sm text-muted-foreground">—</span>
-                )}
-              </TableCell>
-
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <StatusPill task={task} />
-              </TableCell>
-
-              <TableCell className="hidden sm:table-cell">
-                {renderPriorityIndicator(task.priority)}
-              </TableCell>
-
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => onDeleteTask(task.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+              <button
+                onClick={() => setColMenuOpen(isMenuOpen ? null : widthKey)}
+                title="Sort options"
+                style={{
+                  color: '#202124',
+                  backgroundColor: isMenuOpen ? '#d8cce8' : undefined,
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 18,
+                  fontWeight: 'bold',
+                  lineHeight: 1,
+                }}
+                onMouseEnter={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = '#d8cce8'; }}
+                onMouseLeave={(e) => { if (!isMenuOpen) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+              >
+                ⋮
+              </button>
+              {isMenuOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: 4,
+                    zIndex: 50,
+                    backgroundColor: '#fff',
+                    border: '1px solid #e4dced',
+                    borderRadius: 8,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                    minWidth: 220,
+                    padding: '4px 0',
+                    overflow: 'hidden',
+                  }}
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </TableCell>
-            </TableRow>
-          ))}
-
-          {/* Empty state */}
-          {tasks.length === 0 && !isAddingTask && (
-            <TableRow>
-              <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                No tasks yet. Click "Add task" to create one.
-              </TableCell>
-            </TableRow>
+                  {sortOptions.map((opt) => (
+                    <button
+                      key={`${opt.field}-${opt.dir}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSortField(opt.field);
+                        setSortDir(opt.dir);
+                        setColMenuOpen(null);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#f5f0fa] transition-colors"
+                    >
+                      {opt.dir === 'asc' ? (
+                        <span style={{ color: '#3b2778', fontSize: 16 }}>↑</span>
+                      ) : (
+                        <span style={{ color: '#5f6368', fontSize: 16 }}>↓</span>
+                      )}
+                      <span style={{ fontSize: 14, color: '#202124' }}>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-        </TableBody>
-      </Table>
+        </ResizableColumnHeader>
+      </th>
+    );
+  };
+
+  const isAllSelected = tasks.length > 0 && tasks.every(t => selectedTasks.has(t.id));
+
+  return (
+    <div className="flex-1 overflow-auto">
+      <table className="w-full text-sm" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            {/* Checkbox + Task Name (sticky) */}
+            <ColHeader colKey="task" className="sticky top-0 z-30 group/hdr" style={{ left: 0, boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}>
+              <div className="shrink-0" title="Select all" onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={isAllSelected}
+                  onCheckedChange={(checked) => {
+                    tasks.forEach(t => {
+                      if (checked && !selectedTasks.has(t.id)) onToggleSelect(t.id);
+                      if (!checked && selectedTasks.has(t.id)) onToggleSelect(t.id);
+                    });
+                  }}
+                  className="h-5 w-5 rounded-none border-slate-300 dark:border-slate-300 data-[state=checked]:bg-[#3b2778] data-[state=checked]:border-[#3b2778]"
+                />
+              </div>
+              <CheckSquare className="h-4 w-4" /> Task
+            </ColHeader>
+            <ColHeader colKey="type" className="sticky top-0 z-10">
+              <Tag className="h-4 w-4" /> Type
+            </ColHeader>
+            <ColHeader colKey="customer" className="sticky top-0 z-10">
+              <Building2 className="h-4 w-4" /> Customer
+            </ColHeader>
+            <ColHeader colKey="dueDate" className="sticky top-0 z-10">
+              <Calendar className="h-4 w-4" /> Due Date
+            </ColHeader>
+            <ColHeader colKey="status" className="sticky top-0 z-10">
+              <Clock className="h-4 w-4" /> Status
+            </ColHeader>
+            <ColHeader colKey="priority" className="sticky top-0 z-10">
+              <Tag className="h-4 w-4" /> Priority
+            </ColHeader>
+            {/* Actions column (delete) */}
+            <th className="w-10 px-2 py-1.5 sticky top-0 z-10" style={{ backgroundColor: '#eee6f6', border: '1px solid #c8bdd6' }} />
+          </tr>
+        </thead>
+        <tbody>
+          {sortedTasks.length === 0 && !isAddingTask ? (
+            <tr>
+              <td colSpan={7}>
+                <div className="flex flex-col items-center justify-center py-24 gap-4">
+                  <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-muted">
+                    <FileSearch className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">No tasks found</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
+                      Click "Add task" below to create one.
+                    </p>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          ) : (
+            sortedTasks.map((task) => {
+              const isBulkSelected = selectedTasks.has(task.id);
+              const isFading = fadingTasks.has(task.id);
+
+              const stickyBg = isBulkSelected
+                ? 'bg-[#eee6f6] dark:bg-violet-950/30 group-hover:bg-[#e0d4f0] dark:group-hover:bg-violet-900/40'
+                : 'bg-white dark:bg-card group-hover:bg-[#f8f9fb] dark:group-hover:bg-muted';
+
+              return (
+                <tr
+                  key={task.id}
+                  onClick={() => onOpenDetail(task)}
+                  className={`cursor-pointer transition-all duration-300 group ${
+                    isFading
+                      ? 'opacity-0 scale-95 translate-x-4'
+                      : isBulkSelected
+                        ? 'bg-[#eee6f6]/60 dark:bg-violet-950/20 hover:bg-[#eee6f6]/80'
+                        : task.is_completed
+                          ? 'opacity-50 bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                          : 'bg-white dark:bg-card hover:bg-[#f8f9fb] dark:hover:bg-muted/30'
+                  }`}
+                >
+                  {/* Task Name + Checkbox (sticky) */}
+                  <td
+                    className={`pl-4 pr-6 py-3 overflow-hidden sticky left-0 z-[5] transition-colors ${stickyBg}`}
+                    style={{ width: columnWidths.task, border: '1px solid #c8bdd6', boxShadow: '2px 0 4px -2px rgba(0,0,0,0.15)' }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="shrink-0" title="Complete" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={task.is_completed}
+                          onCheckedChange={(checked) => onUpdateTask(task.id, {
+                            is_completed: !!checked,
+                            status: checked ? 'done' : 'todo',
+                          })}
+                          className="h-5 w-5 rounded-full border-2 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="relative flex items-center">
+                          <p className={`font-semibold text-[#202124] dark:text-foreground truncate text-[13px] leading-tight flex-1 min-w-0 ${task.is_completed ? 'line-through text-[#5f6368]' : ''}`}>
+                            {task.title}
+                          </p>
+                          <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1" />
+                        </div>
+                        {task.description && (
+                          <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground mt-0.5 line-clamp-1 max-w-[200px]">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Type */}
+                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.type, border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
+                    <TaskTypeChip task={task} />
+                  </td>
+
+                  {/* Customer */}
+                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.customer, border: '1px solid #c8bdd6' }}>
+                    {task.lead ? (
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
+                          <Building2 className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[13px] text-[#202124] dark:text-foreground/80 truncate max-w-[120px] font-medium">{task.lead.name}</p>
+                          {task.lead.company_name && (
+                            <p className="text-[11px] text-[#5f6368] dark:text-muted-foreground truncate max-w-[120px]">{task.lead.company_name}</p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground/40">—</span>
+                    )}
+                  </td>
+
+                  {/* Due Date */}
+                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.dueDate, border: '1px solid #c8bdd6' }}>
+                    {task.due_date ? (
+                      <span className="text-[12px] text-muted-foreground tabular-nums">
+                        {format(parseISO(task.due_date), 'MMM d, yyyy')}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/40">—</span>
+                    )}
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.status, border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
+                    <StatusPill task={task} />
+                  </td>
+
+                  {/* Priority */}
+                  <td className="px-4 py-1.5 overflow-hidden" style={{ width: columnWidths.priority, border: '1px solid #c8bdd6' }}>
+                    {renderPriorityIndicator(task.priority)}
+                  </td>
+
+                  {/* Delete action */}
+                  <td className="px-2 py-1.5 w-10" style={{ border: '1px solid #c8bdd6' }} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => onDeleteTask(task.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-transparent group-hover:text-muted-foreground hover:text-destructive transition-all"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
 
       {/* Add Task Row */}
-      <div className="px-4 py-3 border-t border-muted-foreground/10">
+      <div className="px-4 py-3 border-t" style={{ borderColor: '#c8bdd6' }}>
         {isAddingTask ? (
           <div className="flex items-center gap-3">
             <Input
@@ -406,16 +470,16 @@ export const TaskTableView = ({
                 }
               }}
             />
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={handleAddTask}
-              className="h-8 px-4 rounded-full text-xs"
+              className="h-8 px-4 rounded-full text-xs text-white bg-[#3b2778] hover:bg-[#4a3490]"
             >
               Add
             </Button>
-            <Button 
-              size="sm" 
-              variant="ghost" 
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => { setIsAddingTask(false); setNewTaskTitle(''); }}
               className="h-8 px-4 rounded-full text-xs"
             >
@@ -425,7 +489,7 @@ export const TaskTableView = ({
         ) : (
           <button
             onClick={() => setIsAddingTask(true)}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-[13px] text-[#3b2778] hover:text-[#4a3490] font-semibold transition-colors"
           >
             <Plus className="h-4 w-4" />
             Add task
