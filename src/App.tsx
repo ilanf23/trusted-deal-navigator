@@ -16,6 +16,7 @@ import AdminRouteLayout from "@/components/admin/AdminRouteLayout";
 import PublicLayout from "@/components/layout/PublicLayout";
 import AdminPortalWrapper from "@/components/admin/AdminPortalWrapper";
 import AdminRoute from "@/components/admin/AdminRoute";
+import DynamicEmployeeDashboard from "@/components/admin/DynamicEmployeeDashboard";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
 import Contact from "./pages/Contact";
@@ -226,6 +227,8 @@ const App = () => (
                 <Route path="/user/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/team/evan" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/team/evan/*" element={<Navigate to="/admin/dashboard" replace />} />
+                {/* Catch-all for dynamic employee dashboards (new admins, future team members) */}
+                <Route path="/admin/:name" element={<DynamicEmployeeDashboard />} />
               </Route>
               
               {/* Other Employee Routes */}
