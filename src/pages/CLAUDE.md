@@ -75,6 +75,8 @@ Several list pages have detail routes:
 - `/admin/contacts/people/expanded-view/:personId`
 - `/admin/contacts/companies/expanded-view/:companyId`
 - `/superadmin/volume-log/lead/:leadId`
+- `/superadmin/lender-programs/expanded-view/:lenderId`
+- `/admin/lender-programs/expanded-view/:lenderId`
 
 ## Data Fetching Patterns
 - Admin pages use custom hooks (`useDashboardData`, `usePipelineLeads`, etc.)

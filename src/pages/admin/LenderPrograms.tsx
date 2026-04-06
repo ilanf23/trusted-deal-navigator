@@ -37,6 +37,14 @@ interface LenderRow {
   looking_for: string;
   last_contact: string;
   next_call: string;
+  program_name: string;
+  program_type: string;
+  description: string;
+  interest_range: string;
+  lender_specialty: string;
+  term: string;
+  created_at: string;
+  updated_at: string;
   isNew?: boolean;
   isDirty?: boolean;
   [key: string]: string | number | boolean | undefined;
@@ -239,6 +247,14 @@ const createEmptyRow = (): LenderRow => ({
   looking_for: '',
   last_contact: '',
   next_call: '',
+  program_name: '',
+  program_type: '',
+  description: '',
+  interest_range: '',
+  lender_specialty: '',
+  term: '',
+  created_at: '',
+  updated_at: '',
   isNew: true,
   isDirty: false,
 });
@@ -260,14 +276,14 @@ const lenderRowToProgram = (row: LenderRow): LenderProgram => ({
   looking_for: row.looking_for || null,
   last_contact: row.last_contact || null,
   next_call: row.next_call || null,
-  program_name: row.loan_types || 'General',
-  program_type: row.lender_type || 'Other',
-  description: null,
-  interest_range: null,
-  lender_specialty: null,
-  term: null,
-  created_at: '',
-  updated_at: '',
+  program_name: row.program_name || 'General',
+  program_type: row.program_type || 'Other',
+  description: row.description || null,
+  interest_range: row.interest_range || null,
+  lender_specialty: row.lender_specialty || null,
+  term: row.term || null,
+  created_at: row.created_at || '',
+  updated_at: row.updated_at || '',
 });
 
 const LenderPrograms = () => {
@@ -278,7 +294,7 @@ const LenderPrograms = () => {
   useEffect(() => {
     setPageTitle('Lender Programs');
     return () => { setPageTitle(null); };
-  }, []);
+  }, [setPageTitle]);
 
   // ── Data fetching via useQuery ──
   const { data: dbRows = [], isLoading } = useQuery({
@@ -304,6 +320,14 @@ const LenderPrograms = () => {
         looking_for: item.looking_for || '',
         last_contact: item.last_contact ? new Date(item.last_contact).toLocaleDateString() : '',
         next_call: item.next_call ? new Date(item.next_call).toLocaleDateString() : '',
+        program_name: item.program_name || '',
+        program_type: item.program_type || '',
+        description: item.description || '',
+        interest_range: item.interest_range || '',
+        lender_specialty: item.lender_specialty || '',
+        term: item.term || '',
+        created_at: item.created_at || '',
+        updated_at: item.updated_at || '',
         isNew: false,
         isDirty: false,
       }));
@@ -348,6 +372,7 @@ const LenderPrograms = () => {
   // ── Row selection ──
   const [selectedLenderIds, setSelectedLenderIds] = useState<Set<string>>(new Set());
   const [selectedLender, setSelectedLender] = useState<LenderProgram | null>(null);
+  const detailPanelRef = useRef<HTMLDivElement>(null);
 
   const toggleLenderSelection = (lenderId: string) => {
     setSelectedLenderIds(prev => {
@@ -377,6 +402,40 @@ const LenderPrograms = () => {
       return next;
     });
   }, []);
+
+  // ── Close sort menu on outside click ──
+  useEffect(() => {
+    if (!colMenuOpen) return;
+    function handleClick() { setColMenuOpen(null); }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [colMenuOpen]);
+
+  // ── Close detail panel / sort menu on Escape ──
+  useEffect(() => {
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (colMenuOpen) { setColMenuOpen(null); return; }
+        if (selectedLender) setSelectedLender(null);
+      }
+    }
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [colMenuOpen, selectedLender]);
+
+  // ── Close detail panel on outside click ──
+  useEffect(() => {
+    if (!selectedLender) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (detailPanelRef.current && !detailPanelRef.current.contains(e.target as Node)) {
+        const target = e.target as HTMLElement;
+        if (target.closest('tr')) return;
+        setSelectedLender(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectedLender]);
 
   // ── Filtering ──
   const filteredAndSorted = useMemo(() => {
@@ -425,11 +484,15 @@ const LenderPrograms = () => {
 
   const handleRowClick = (row: LenderRow) => {
     setSelectedLender(lenderRowToProgram(row));
+    if (panelMode !== 'list') setPanelMode('list');
   };
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedLenderIds);
     if (ids.length === 0) return;
+
+    const confirmed = window.confirm(`Delete ${ids.length} selected lender program${ids.length > 1 ? 's' : ''}? This action cannot be undone.`);
+    if (!confirmed) return;
 
     try {
       const { error } = await supabase.from('lender_programs').delete().in('id', ids);
@@ -1392,7 +1455,7 @@ const LenderPrograms = () => {
 
         {/* Detail Panel overlay */}
         {selectedLender && panelMode === 'list' && (
-          <div className="absolute right-0 top-0 z-50 h-[calc(100vh-200px)]">
+          <div ref={detailPanelRef} className="absolute right-0 top-0 z-50 h-[calc(100vh-200px)]">
             <LenderDetailPanel
               lender={selectedLender}
               onClose={() => setSelectedLender(null)}

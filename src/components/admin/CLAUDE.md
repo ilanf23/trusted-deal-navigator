@@ -16,6 +16,7 @@
 - `PeopleExpandedView` / `PeopleDetailPanel` — CRM people management
 - `CompanyExpandedView` / `CompanyDetailPanel` — CRM company management
 - `LenderManagementExpandedView` / `LenderManagementDetailPanel` — lender tracking
+- `LenderExpandedView` / `LenderDetailPanel` — lender programs CRM detail view
 - `PipelineExpandedView` / `PipelineDetailPanel` — deal pipeline
 - `ProjectExpandedView` / `ProjectDetailDialog` — project tracking
 - `UnderwritingExpandedView` / `UnderwritingDetailPanel` — underwriting pipeline

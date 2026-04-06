@@ -34,10 +34,17 @@ function useInlineSave(
       setEditing(false);
       return;
     }
+    const NOT_NULL_FIELDS = ['program_name', 'program_type', 'lender_name'];
+    const valueToSave = NOT_NULL_FIELDS.includes(field) ? (trimmed || currentValue) : (trimmed || null);
+    if (NOT_NULL_FIELDS.includes(field) && !trimmed) {
+      toast.error(`${field.replace('_', ' ')} cannot be empty`);
+      setEditing(false);
+      return;
+    }
     setSaving(true);
     const { error } = await supabase
       .from('lender_programs')
-      .update({ [field]: trimmed || null })
+      .update({ [field]: valueToSave })
       .eq('id', lenderId);
     setSaving(false);
     if (error) {
